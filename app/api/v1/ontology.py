@@ -3,14 +3,13 @@
 파이프라인 (매핑/인제스션) + 자연어 질의 + Cypher 변환을 통합한 라우터입니다.
 """
 
-import io
 import json
 
-import pandas as pd
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.infrastructure.excel_parser import extract_headers_and_rows, read_to_dataframe
 from app.modules.ontology import repository as repo
 from app.modules.ontology import service
 from app.modules.ontology.schemas import (
@@ -23,36 +22,6 @@ from app.modules.ontology.schemas import (
 )
 
 router = APIRouter(tags=["ontology"])
-
-
-# === 파일 파싱 유틸 ===
-
-def _read_file_to_dataframe(content: bytes, filename: str) -> pd.DataFrame:
-    """파일 바이트를 DataFrame으로 변환 (매직 바이트 + 인코딩 자동 감지)"""
-    name_lower = filename.lower()
-
-    is_xlsx = content[:4] == b"PK\x03\x04"
-    is_xls = content[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
-
-    if is_xlsx or (name_lower.endswith(".xlsx") and not is_xls):
-        return pd.read_excel(io.BytesIO(content), engine="openpyxl")
-    if is_xls or name_lower.endswith(".xls"):
-        return pd.read_excel(io.BytesIO(content))
-
-    for encoding in ("utf-8-sig", "utf-8", "utf-16", "cp949", "euc-kr", "latin-1"):
-        for sep in (",", "\t", ";"):
-            try:
-                df = pd.read_csv(io.BytesIO(content), encoding=encoding, sep=sep)
-                if len(df.columns) > 1:
-                    return df
-            except (UnicodeDecodeError, ValueError, pd.errors.ParserError):
-                continue
-    for encoding in ("utf-8-sig", "utf-16", "cp949", "latin-1"):
-        try:
-            return pd.read_csv(io.BytesIO(content), encoding=encoding, sep=None, engine="python")
-        except Exception:
-            continue
-    raise ValueError("파일 인코딩 또는 구분자를 인식할 수 없습니다.")
 
 
 # === 파이프라인: 매핑 ===
@@ -68,12 +37,11 @@ async def mapping_preview(
 
     content = await file.read()
     try:
-        df = _read_file_to_dataframe(content, file.filename)
+        headers, all_rows = extract_headers_and_rows(content, file.filename)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"파일 읽기 실패: {e}")
 
-    headers = list(df.columns)
-    sample_rows = df.head(5).fillna("").to_dict(orient="records")
+    sample_rows = all_rows[:5]
 
     try:
         mapping = service.generate_mapping(headers, sample_rows)
@@ -85,7 +53,7 @@ async def mapping_preview(
     return {
         "org_id": org_id,
         "file_name": file.filename,
-        "total_rows": len(df),
+        "total_rows": len(all_rows),
         "headers": headers,
         "sample_rows": sample_rows,
         "mapping": mapping_dump,
@@ -155,7 +123,7 @@ async def ingest(
 
     content = await file.read()
     try:
-        df = _read_file_to_dataframe(content, file.filename)
+        df = read_to_dataframe(content, file.filename)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"파일 읽기 실패: {e}")
 
