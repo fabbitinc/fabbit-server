@@ -1,0 +1,16 @@
+services:
+  fabbit-db:
+    image: apache/age:latest
+    container_name: fabbit-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: fabbit
+      POSTGRES_PASSWORD: fabbit
+      POSTGRES_DB: fabbit
+    volumes:
+      - ./initdb.d:/docker-entrypoint-initdb.d
+      - fabbit-db-data:/var/lib/postgresql
+
+volumes:
+  fabbit-db-data:

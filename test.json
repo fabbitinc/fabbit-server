@@ -1,0 +1,85 @@
+{
+  "org_id": "string",
+  "name": "BOM_Arduino Uno Rev3.csv",
+  "original_headers": [
+    "ID",
+    "Name",
+    "Designator",
+    "Footprint",
+    "Quantity",
+    "Manufacturer Part",
+    "Manufacturer",
+    "Supplier",
+    "Supplier Part",
+    "LCSC Assembly"
+  ],
+  "mapping": {
+    "column_mappings": [
+      {
+        "source_column": "Manufacturer Part",
+        "target_label": "Part",
+        "target_property": "part_number",
+        "data_type": "string"
+      },
+      {
+        "source_column": "Name",
+        "target_label": "Part",
+        "target_property": "name",
+        "data_type": "string"
+      },
+      {
+        "source_column": "Supplier",
+        "target_label": "Supplier",
+        "target_property": "name",
+        "data_type": "string"
+      }
+    ],
+    "relation_mappings": [
+      {
+        "from_label": "Part",
+        "to_label": "Supplier",
+        "rel_type": "SUPPLIED_BY",
+        "properties": {},
+        "property_types": {}
+      }
+    ],
+    "extended_properties": [
+      {
+        "source_column": "Designator",
+        "target_label": "Part",
+        "property_name": "_ext_designator",
+        "data_type": "string"
+      },
+      {
+        "source_column": "Footprint",
+        "target_label": "Part",
+        "property_name": "_ext_footprint",
+        "data_type": "string"
+      },
+      {
+        "source_column": "LCSC Assembly",
+        "target_label": "Part",
+        "property_name": "_ext_lcsc_assembly",
+        "data_type": "string"
+      },
+      {
+        "source_column": "Manufacturer",
+        "target_label": "Part",
+        "property_name": "_ext_manufacturer",
+        "data_type": "string"
+      },
+      {
+        "source_column": "Supplier Part",
+        "target_label": "Part",
+        "property_name": "_ext_supplier_part",
+        "data_type": "string"
+      },
+      {
+        "source_column": "Quantity",
+        "target_label": "Part",
+        "property_name": "_ext_quantity",
+        "data_type": "string"
+      }
+    ]
+  }
+}
