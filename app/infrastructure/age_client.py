@@ -3,8 +3,10 @@
 모든 실행 함수가 SQLAlchemy Session을 인자로 받습니다.
 AGE 초기화(LOAD 'age')는 database.py의 connect 이벤트로 자동 처리됩니다.
 
-콜론 이스케이프 문제는 exec_driver_sql() + %s 파라미터 바인딩으로 해결합니다.
-Session 트랜잭션을 그대로 유지하므로 db.commit()/db.rollback()이 정상 동작합니다.
+exec_driver_sql() + $$ 달러 쿼팅으로 AGE Cypher를 실행합니다.
+- AGE는 Cypher 인자로 dollar-quoted string을 요구 (%s 바인딩은 '...'로 전달되어 거부됨)
+- exec_driver_sql은 text()와 달리 :LabelName을 바인드 파라미터로 파싱하지 않아 콜론 충돌 없음
+- Session 트랜잭션을 그대로 유지하므로 db.commit()/db.rollback()이 정상 동작
 """
 
 import json
@@ -61,15 +63,15 @@ def execute_cypher(
 ) -> list:
     """Cypher 쿼리 실행 후 결과 반환 (다중 컬럼 지원)
 
-    exec_driver_sql로 실행하여 Session 트랜잭션을 유지합니다.
-    %s 파라미터 바인딩으로 :LabelName 콜론 충돌을 회피합니다.
+    exec_driver_sql + $$ 달러 쿼팅으로 실행하여 Session 트랜잭션을 유지합니다.
     """
+    query = query.strip().rstrip(";")
     col_count = _count_return_columns(query)
     cols = ", ".join(f"c{i} agtype" for i in range(col_count))
-    wrapped_sql = f"SELECT * FROM cypher('{graph_name}', %s) AS ({cols});"
+    wrapped_sql = f"SELECT * FROM cypher('{graph_name}', $${query}$$) AS ({cols});"
 
     conn = db.connection()
-    result = conn.exec_driver_sql(wrapped_sql, (query,))
+    result = conn.exec_driver_sql(wrapped_sql)
 
     rows = []
     for row in result:
@@ -88,5 +90,6 @@ def execute_cypher_raw(
     graph_name: str = settings.graph_name,
 ) -> None:
     """Cypher 쿼리 실행 (결과 없는 MERGE/CREATE 등, 커밋은 호출자가 관리)"""
-    wrapped_sql = f"SELECT * FROM cypher('{graph_name}', %s) AS (v agtype);"
-    db.connection().exec_driver_sql(wrapped_sql, (query,))
+    query = query.strip().rstrip(";")
+    wrapped_sql = f"SELECT * FROM cypher('{graph_name}', $${query}$$) AS (v agtype);"
+    db.connection().exec_driver_sql(wrapped_sql)
