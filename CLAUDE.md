@@ -22,6 +22,12 @@ docker compose up -d
 # 의존성 설치
 uv sync
 
+# DB 마이그레이션
+uv run alembic upgrade head
+
+# 마이그레이션 생성 (모델 변경 시)
+uv run alembic revision --autogenerate -m "설명"
+
 # 서버 실행
 uv run uvicorn app.main:app --reload
 
@@ -30,6 +36,7 @@ uv run python seed_data.py
 
 # DB 초기화 (데이터 포함 재생성)
 docker compose down -v && docker compose up -d
+# 이후 반드시: uv run alembic upgrade head
 ```
 
 ## 프로젝트 구조
@@ -38,20 +45,26 @@ docker compose down -v && docker compose up -d
 app/
 ├── main.py                          # FastAPI 앱 엔트리포인트
 ├── api/
-│   ├── deps.py                      # 공통 Dependency (인증 등, 현재 빈 파일)
+│   ├── deps.py                      # 공통 Dependency (get_db 세션 등)
 │   └── v1/
 │       └── ontology.py              # 전체 API 엔드포인트 라우터
 ├── core/
-│   └── config.py                    # Pydantic Settings (환경변수)
+│   ├── config.py                    # Pydantic Settings (환경변수)
+│   └── database.py                  # SQLAlchemy Engine, Session, Base, AGE 초기화
 ├── infrastructure/
-│   ├── age_client.py                # Apache AGE 커넥션 관리 + Cypher 실행
+│   ├── age_client.py                # Apache AGE Cypher 실행 유틸리티 (Session 기반)
 │   └── llm_client.py               # OpenAI API 추상화
 └── modules/
     └── ontology/
         ├── constants.py             # 온톨로지 스키마 정의 (Single Source of Truth)
+        ├── models.py                # ORM 모델 (ColumnMapping)
         ├── schemas.py               # Pydantic 요청/응답 모델
         ├── service.py               # 비즈니스 로직 (매핑, 인제스션, 질의)
-        └── repository.py            # 데이터 접근 (Cypher 생성, SQL 실행)
+        └── repository.py            # 데이터 접근 (Cypher 생성, ORM CRUD)
+alembic/
+├── env.py                           # Alembic 환경 설정
+├── script.py.mako                   # 마이그레이션 템플릿
+└── versions/                        # 마이그레이션 파일들
 ```
 
 ## 아키텍처 패턴
@@ -161,7 +174,7 @@ def get_tenant_db(org_id: str = Depends(get_current_org_id)):
 
 ## 주의사항
 
-- `apache-age-python` 패키지는 사용하지 않음 (빌드 이슈). `_setup_age()` 함수로 직접 초기화
+- `apache-age-python` 패키지는 사용하지 않음 (빌드 이슈). `database.py`의 SQLAlchemy connect 이벤트로 AGE 초기화
 - Apache AGE Cypher의 RETURN 컬럼 수를 자동 파싱하여 SQL 래핑 (`_count_return_columns`)
 - CSV 파일은 UTF-8, UTF-16, CP949, EUC-KR 인코딩과 쉼표/탭/세미콜론 구분자를 자동 감지
 - 현재 인증 없이 `org_id`를 파라미터로 받음 (임시, Clerk 도입 예정)

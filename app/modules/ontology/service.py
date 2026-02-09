@@ -9,6 +9,7 @@
 import json
 
 import pandas as pd
+from sqlalchemy.orm import Session
 
 from app.infrastructure.llm_client import chat_completion
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
@@ -150,6 +151,7 @@ def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
 # === 배치 인제스션 ===
 
 def ingest_dataframe(
+    db: Session,
     df: pd.DataFrame,
     mapping: MappingResult,
     org_id: str,
@@ -160,7 +162,6 @@ def ingest_dataframe(
     2. 노드 먼저 MERGE → 관계 MERGE (순서 보장)
     3. 청크 단위 커밋
     """
-    conn = repo.create_batch_connection()
     stats = IngestionStats(total_rows=len(df), nodes_created=0, relationships_created=0)
 
     # 라벨별 매핑 그룹핑
@@ -176,99 +177,95 @@ def ingest_dataframe(
     for rm in mapping.relation_mappings:
         rel_prop_types[rm.rel_type] = rm.property_types
 
-    try:
-        for chunk_start in range(0, len(df), CHUNK_SIZE):
-            chunk = df.iloc[chunk_start:chunk_start + CHUNK_SIZE]
+    for chunk_start in range(0, len(df), CHUNK_SIZE):
+        chunk = df.iloc[chunk_start:chunk_start + CHUNK_SIZE]
 
-            # Phase 1: 노드 MERGE
-            for _, row in chunk.iterrows():
-                for label, col_maps in label_mappings.items():
-                    node_def = MANUFACTURING_ONTOLOGY.get_node_label(label)
-                    if not node_def:
-                        continue
+        # Phase 1: 노드 MERGE
+        for _, row in chunk.iterrows():
+            for label, col_maps in label_mappings.items():
+                node_def = MANUFACTURING_ONTOLOGY.get_node_label(label)
+                if not node_def:
+                    continue
 
-                    merge_keys = {}
-                    set_props = {}
-                    for cm in col_maps:
-                        val = row.get(cm.source_column)
-                        if cm.target_property in node_def.merge_keys:
-                            formatted = repo.format_cypher_value(val, "string")
-                            if formatted is None:
-                                continue
-                            merge_keys[cm.target_property] = formatted
-                        else:
-                            formatted = repo.format_cypher_value(val, cm.data_type)
-                            if formatted is None:
-                                continue
-                            set_props[cm.target_property] = formatted
-
-                    for ep in ext_mappings.get(label, []):
-                        val = row.get(ep.source_column)
-                        formatted = repo.format_cypher_value(val, ep.data_type)
+                merge_keys = {}
+                set_props = {}
+                for cm in col_maps:
+                    val = row.get(cm.source_column)
+                    if cm.target_property in node_def.merge_keys:
+                        formatted = repo.format_cypher_value(val, "string")
                         if formatted is None:
                             continue
-                        set_props[ep.property_name] = formatted
+                        merge_keys[cm.target_property] = formatted
+                    else:
+                        formatted = repo.format_cypher_value(val, cm.data_type)
+                        if formatted is None:
+                            continue
+                        set_props[cm.target_property] = formatted
 
-                    if not merge_keys:
+                for ep in ext_mappings.get(label, []):
+                    val = row.get(ep.source_column)
+                    formatted = repo.format_cypher_value(val, ep.data_type)
+                    if formatted is None:
                         continue
+                    set_props[ep.property_name] = formatted
 
-                    cypher = repo.build_merge_node_cypher(label, merge_keys, set_props, org_id)
-                    try:
-                        repo.execute_graph_merge(cypher, conn)
-                        stats.nodes_created += 1
-                    except Exception as e:
-                        conn.rollback()
-                        stats.errors.append(f"노드 MERGE 실패 [{label}]: {e}")
+                if not merge_keys:
+                    continue
 
-            # Phase 2: 관계 MERGE
-            for _, row in chunk.iterrows():
-                for rm in mapping.relation_mappings:
-                    from_node = MANUFACTURING_ONTOLOGY.get_node_label(rm.from_label)
-                    to_node = MANUFACTURING_ONTOLOGY.get_node_label(rm.to_label)
-                    if not from_node or not to_node:
-                        continue
+                cypher = repo.build_merge_node_cypher(label, merge_keys, set_props, org_id)
+                try:
+                    repo.execute_graph_merge(db, cypher)
+                    stats.nodes_created += 1
+                except Exception as e:
+                    db.rollback()
+                    stats.errors.append(f"노드 MERGE 실패 [{label}]: {e}")
 
-                    from_keys = {}
-                    for cm in label_mappings.get(rm.from_label, []):
-                        if cm.target_property in from_node.merge_keys:
-                            formatted = repo.format_cypher_value(row.get(cm.source_column), "string")
-                            if formatted is not None:
-                                from_keys[cm.target_property] = formatted
+        # Phase 2: 관계 MERGE
+        for _, row in chunk.iterrows():
+            for rm in mapping.relation_mappings:
+                from_node = MANUFACTURING_ONTOLOGY.get_node_label(rm.from_label)
+                to_node = MANUFACTURING_ONTOLOGY.get_node_label(rm.to_label)
+                if not from_node or not to_node:
+                    continue
 
-                    to_keys = {}
-                    for cm in label_mappings.get(rm.to_label, []):
-                        if cm.target_property in to_node.merge_keys:
-                            formatted = repo.format_cypher_value(row.get(cm.source_column), "string")
-                            if formatted is not None:
-                                to_keys[cm.target_property] = formatted
-
-                    if not from_keys or not to_keys:
-                        continue
-
-                    prop_types = rel_prop_types.get(rm.rel_type, {})
-                    rel_props = {}
-                    for src_col, rel_prop in rm.properties.items():
-                        dtype = prop_types.get(rel_prop, "string")
-                        formatted = repo.format_cypher_value(row.get(src_col), dtype)
+                from_keys = {}
+                for cm in label_mappings.get(rm.from_label, []):
+                    if cm.target_property in from_node.merge_keys:
+                        formatted = repo.format_cypher_value(row.get(cm.source_column), "string")
                         if formatted is not None:
-                            rel_props[rel_prop] = formatted
+                            from_keys[cm.target_property] = formatted
 
-                    cypher = repo.build_merge_relationship_cypher(
-                        rm.from_label, from_keys,
-                        rm.to_label, to_keys,
-                        rm.rel_type, rel_props, org_id,
-                    )
-                    try:
-                        repo.execute_graph_merge(cypher, conn)
-                        stats.relationships_created += 1
-                    except Exception as e:
-                        conn.rollback()
-                        stats.errors.append(f"관계 MERGE 실패 [{rm.rel_type}]: {e}")
+                to_keys = {}
+                for cm in label_mappings.get(rm.to_label, []):
+                    if cm.target_property in to_node.merge_keys:
+                        formatted = repo.format_cypher_value(row.get(cm.source_column), "string")
+                        if formatted is not None:
+                            to_keys[cm.target_property] = formatted
 
-            conn.commit()
+                if not from_keys or not to_keys:
+                    continue
 
-    finally:
-        conn.close()
+                prop_types = rel_prop_types.get(rm.rel_type, {})
+                rel_props = {}
+                for src_col, rel_prop in rm.properties.items():
+                    dtype = prop_types.get(rel_prop, "string")
+                    formatted = repo.format_cypher_value(row.get(src_col), dtype)
+                    if formatted is not None:
+                        rel_props[rel_prop] = formatted
+
+                cypher = repo.build_merge_relationship_cypher(
+                    rm.from_label, from_keys,
+                    rm.to_label, to_keys,
+                    rm.rel_type, rel_props, org_id,
+                )
+                try:
+                    repo.execute_graph_merge(db, cypher)
+                    stats.relationships_created += 1
+                except Exception as e:
+                    db.rollback()
+                    stats.errors.append(f"관계 MERGE 실패 [{rm.rel_type}]: {e}")
+
+        db.commit()
 
     return stats
 
@@ -318,15 +315,15 @@ CYPHER_SYSTEM_PROMPT = f"""당신은 Apache AGE (PostgreSQL 그래프 DB) Cypher
 """
 
 
-def natural_language_query(question: str, org_id: str) -> QueryResponse:
+def natural_language_query(db: Session, question: str, org_id: str) -> QueryResponse:
     """자연어 질의 실행 (테넌트 격리)"""
-    ext_hints = repo.get_extended_property_hints(org_id)
+    ext_hints = repo.get_extended_property_hints(db, org_id)
     system_prompt = _build_query_system_prompt(org_id, ext_hints)
 
     cypher = chat_completion(system_prompt=system_prompt, user_message=question)
     _validate_read_only(cypher)
 
-    raw_results = repo.execute_graph_query(cypher)
+    raw_results = repo.execute_graph_query(db, cypher)
     results = _serialize_results(raw_results)
     return QueryResponse(cypher_query=cypher, results=results)
 
@@ -336,9 +333,9 @@ def text_to_cypher(question: str) -> str:
     return chat_completion(system_prompt=CYPHER_SYSTEM_PROMPT, user_message=question)
 
 
-def execute_cypher_query(cypher: str) -> list:
+def execute_cypher_query(db: Session, cypher: str) -> list:
     """Cypher 쿼리 직접 실행"""
-    raw = repo.execute_graph_query(cypher)
+    raw = repo.execute_graph_query(db, cypher)
     return _serialize_results(raw)
 
 

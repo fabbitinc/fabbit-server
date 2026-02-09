@@ -1,43 +1,19 @@
-"""Apache AGE 커넥션 관리.
+"""Apache AGE Cypher 실행 유틸리티.
 
-싱글턴 커넥션 (일반 API용)과 배치 전용 커넥션을 제공합니다.
-Cypher 쿼리 실행 시 RETURN 컬럼 수를 자동 파싱하여 다중 컬럼을 지원합니다.
+모든 실행 함수가 SQLAlchemy Session을 인자로 받습니다.
+AGE 초기화(LOAD 'age')는 database.py의 connect 이벤트로 자동 처리됩니다.
+
+콜론 이스케이프 문제는 exec_driver_sql() + %s 파라미터 바인딩으로 해결합니다.
+Session 트랜잭션을 그대로 유지하므로 db.commit()/db.rollback()이 정상 동작합니다.
 """
 
+import json
 import re
+from typing import Any
 
-import psycopg2
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
-
-GRAPH = settings.graph_name
-
-_connection = None
-
-
-def _setup_age(conn):
-    """AGE 확장 초기화"""
-    conn.autocommit = True
-    with conn.cursor() as cur:
-        cur.execute("LOAD 'age';")
-        cur.execute("SET search_path = ag_catalog, '$user', public;")
-    conn.autocommit = False
-
-
-def get_connection():
-    """싱글턴 커넥션 반환 (일반 API 요청용)"""
-    global _connection
-    if _connection is None or _connection.closed:
-        _connection = psycopg2.connect(settings.database_dsn)
-        _setup_age(_connection)
-    return _connection
-
-
-def create_connection():
-    """새 커넥션 생성 (배치 인제스션용, 호출자가 직접 close 필요)"""
-    conn = psycopg2.connect(settings.database_dsn)
-    _setup_age(conn)
-    return conn
 
 
 def _count_return_columns(query: str) -> int:
@@ -63,66 +39,54 @@ def _count_return_columns(query: str) -> int:
     return count
 
 
-def _build_cypher_sql(query: str) -> str:
-    """Cypher 쿼리를 Apache AGE SQL로 래핑 (다중 컬럼 RETURN 지원)"""
+def _parse_agtype(val: Any) -> Any:
+    """AGE의 agtype 값을 Python 객체로 변환
+
+    '{"id": 123, ...}::vertex' → dict
+    '"Steel"' → "Steel"
+    """
+    if not isinstance(val, str):
+        return val
+    clean = re.sub(r'::\w+$', '', val)
+    try:
+        return json.loads(clean)
+    except (json.JSONDecodeError, ValueError):
+        return val
+
+
+def execute_cypher(
+    db: Session,
+    query: str,
+    graph_name: str = settings.graph_name,
+) -> list:
+    """Cypher 쿼리 실행 후 결과 반환 (다중 컬럼 지원)
+
+    exec_driver_sql로 실행하여 Session 트랜잭션을 유지합니다.
+    %s 파라미터 바인딩으로 :LabelName 콜론 충돌을 회피합니다.
+    """
     col_count = _count_return_columns(query)
     cols = ", ".join(f"c{i} agtype" for i in range(col_count))
-    return f"SELECT * FROM cypher('{GRAPH}', $$ {query} $$) AS ({cols});"
+    wrapped_sql = f"SELECT * FROM cypher('{graph_name}', %s) AS ({cols});"
+
+    conn = db.connection()
+    result = conn.exec_driver_sql(wrapped_sql, (query,))
+
+    rows = []
+    for row in result:
+        parsed = [_parse_agtype(col) for col in row]
+        if col_count == 1:
+            rows.append(parsed[0])
+        else:
+            col_names = [f"c{i}" for i in range(col_count)]
+            rows.append(dict(zip(col_names, parsed)))
+    return rows
 
 
-def execute_cypher(query: str, conn=None) -> list:
-    """Cypher 쿼리 실행 후 결과 반환 (다중 컬럼 지원)"""
-    if conn is None:
-        conn = get_connection()
-
-    results = []
-    try:
-        with conn.cursor() as cur:
-            sql = _build_cypher_sql(query)
-            cur.execute(sql)
-            col_names = [desc[0] for desc in cur.description]
-            for row in cur:
-                if len(col_names) == 1:
-                    results.append(row[0])
-                else:
-                    results.append(dict(zip(col_names, row)))
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    return results
-
-
-def execute_cypher_raw(query: str, conn=None):
-    """Cypher 쿼리 실행 (결과 없는 MERGE/CREATE 등)"""
-    if conn is None:
-        conn = get_connection()
-
-    try:
-        with conn.cursor() as cur:
-            sql = _build_cypher_sql(query)
-            cur.execute(sql)
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-
-
-def execute_sql(query: str, params: tuple = None, conn=None) -> list:
-    """일반 SQL 쿼리 실행 (column_mappings 테이블 등)"""
-    if conn is None:
-        conn = get_connection()
-
-    results = []
-    try:
-        with conn.cursor() as cur:
-            cur.execute(query, params)
-            if cur.description:
-                columns = [desc[0] for desc in cur.description]
-                for row in cur:
-                    results.append(dict(zip(columns, row)))
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    return results
+def execute_cypher_raw(
+    db: Session,
+    query: str,
+    graph_name: str = settings.graph_name,
+) -> None:
+    """Cypher 쿼리 실행 (결과 없는 MERGE/CREATE 등, 커밋은 호출자가 관리)"""
+    wrapped_sql = f"SELECT * FROM cypher('{graph_name}', %s) AS (v agtype);"
+    db.connection().exec_driver_sql(wrapped_sql, (query,))

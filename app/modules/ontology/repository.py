@@ -1,6 +1,6 @@
 """온톨로지 데이터 접근 레이어.
 
-AGE 그래프 Cypher 실행과 column_mappings SQL을 담당합니다.
+AGE 그래프 Cypher 실행과 column_mappings ORM을 담당합니다.
 "어떻게 저장할 것인가"만 다루고, 비즈니스 로직은 service.py에 위임합니다.
 """
 
@@ -8,13 +8,11 @@ import json
 import re
 
 import pandas as pd
+from sqlalchemy import select, update
+from sqlalchemy.orm import Session
 
-from app.infrastructure.age_client import (
-    GRAPH,
-    create_connection,
-    execute_cypher,
-    execute_sql,
-)
+from app.infrastructure.age_client import execute_cypher, execute_cypher_raw
+from app.modules.ontology.models import ColumnMapping
 
 
 # === Cypher 값 포맷팅 ===
@@ -124,84 +122,75 @@ def build_merge_relationship_cypher(
 
 # === 그래프 쿼리 실행 ===
 
-def execute_graph_query(cypher: str) -> list:
+def execute_graph_query(db: Session, cypher: str) -> list:
     """Cypher 쿼리 실행 후 결과 반환"""
-    return execute_cypher(cypher)
+    return execute_cypher(db, cypher)
 
 
-def execute_graph_merge(cypher: str, conn=None):
-    """단일 MERGE Cypher 실행 (배치 커넥션 사용 가능)"""
-    if conn is None:
-        conn = create_connection()
-    with conn.cursor() as cur:
-        sql = f"SELECT * FROM cypher('{GRAPH}', $$ {cypher} $$) AS (result agtype);"
-        cur.execute(sql)
+def execute_graph_merge(db: Session, cypher: str) -> None:
+    """단일 MERGE Cypher 실행 (커밋은 호출자가 관리)"""
+    execute_cypher_raw(db, cypher)
 
 
-def create_batch_connection():
-    """배치 인제스션용 새 커넥션 생성"""
-    return create_connection()
 
+# === 매핑 저장소 (ORM) ===
 
-# === 매핑 저장소 (column_mappings 테이블) ===
-
-def save_mapping(org_id: str, name: str, original_headers: list[str], mapping: dict) -> dict:
-    """매핑을 DB에 저장하고 결과 반환"""
-    rows = execute_sql(
-        """
-        INSERT INTO column_mappings (org_id, name, original_headers, mapping)
-        VALUES (%s, %s, %s, %s)
-        RETURNING id, org_id, name, created_at
-        """,
-        (
-            org_id,
-            name,
-            json.dumps(original_headers, ensure_ascii=False),
-            json.dumps(mapping, ensure_ascii=False),
-        ),
+def save_mapping(db: Session, org_id: str, name: str, original_headers: list[str], mapping: dict) -> ColumnMapping:
+    """매핑을 DB에 저장하고 ORM 객체 반환"""
+    entity = ColumnMapping(
+        org_id=org_id,
+        name=name,
+        original_headers=original_headers,
+        mapping=mapping,
     )
-    return rows[0] if rows else None
+    db.add(entity)
+    db.commit()
+    db.refresh(entity)
+    return entity
 
 
-def get_mapping(mapping_id: str, org_id: str) -> dict | None:
+def get_mapping(db: Session, mapping_id: str, org_id: str) -> ColumnMapping | None:
     """ID와 org_id로 매핑 조회"""
-    rows = execute_sql(
-        "SELECT mapping, usage_count FROM column_mappings WHERE id = %s AND org_id = %s",
-        (mapping_id, org_id),
+    stmt = select(ColumnMapping).where(
+        ColumnMapping.id == mapping_id,
+        ColumnMapping.org_id == org_id,
     )
-    return rows[0] if rows else None
+    return db.execute(stmt).scalar_one_or_none()
 
 
-def list_mappings(org_id: str) -> list[dict]:
+def list_mappings(db: Session, org_id: str) -> list[ColumnMapping]:
     """org_id별 매핑 목록 조회"""
-    return execute_sql(
-        """
-        SELECT id, org_id, name, original_headers, mapping, usage_count, created_at
-        FROM column_mappings
-        WHERE org_id = %s
-        ORDER BY created_at DESC
-        """,
-        (org_id,),
+    stmt = (
+        select(ColumnMapping)
+        .where(ColumnMapping.org_id == org_id)
+        .order_by(ColumnMapping.created_at.desc())
     )
+    return list(db.execute(stmt).scalars().all())
 
 
-def increment_mapping_usage(mapping_id: str):
+def increment_mapping_usage(db: Session, mapping_id: str) -> None:
     """매핑 사용 횟수 증가"""
-    execute_sql(
-        "UPDATE column_mappings SET usage_count = usage_count + 1 WHERE id = %s",
-        (mapping_id,),
+    stmt = (
+        update(ColumnMapping)
+        .where(ColumnMapping.id == mapping_id)
+        .values(usage_count=ColumnMapping.usage_count + 1)
     )
+    db.execute(stmt)
+    db.commit()
 
 
-def get_extended_property_hints(org_id: str) -> list[str]:
+def get_extended_property_hints(db: Session, org_id: str) -> list[str]:
     """해당 테넌트의 확장 속성 목록을 DB에서 추출"""
-    rows = execute_sql(
-        "SELECT mapping FROM column_mappings WHERE org_id = %s ORDER BY created_at DESC LIMIT 5",
-        (org_id,),
+    stmt = (
+        select(ColumnMapping.mapping)
+        .where(ColumnMapping.org_id == org_id)
+        .order_by(ColumnMapping.created_at.desc())
+        .limit(5)
     )
+    rows = db.execute(stmt).scalars().all()
+
     ext_props = set()
-    for row in rows:
-        mapping_data = row["mapping"]
+    for mapping_data in rows:
         if isinstance(mapping_data, str):
             mapping_data = json.loads(mapping_data)
         for ep in mapping_data.get("extended_properties", []):

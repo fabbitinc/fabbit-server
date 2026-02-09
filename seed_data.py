@@ -11,15 +11,14 @@ Apache AGE 그래프에 제조업 온톨로지 샘플 데이터를 생성합니�
 
 사용법:
   docker compose up -d
+  uv run alembic upgrade head
   uv run python seed_data.py
 """
 
-import psycopg2
-
 from app.core.config import settings
-from app.infrastructure.age_client import _setup_age
+from app.core.database import SessionLocal
+from app.infrastructure.age_client import execute_cypher, execute_cypher_raw
 
-GRAPH = settings.graph_name
 ORG_ID = "org_demo"  # 데모용 테넌트 ID
 
 # 시드 Cypher 쿼리들 (_org_id 포함)
@@ -122,42 +121,35 @@ SEED_QUERIES = [
 
 
 def seed():
-    conn = psycopg2.connect(settings.database_dsn)
-    _setup_age(conn)
+    db = SessionLocal()
+    graph = settings.graph_name
 
-    print(f"그래프 '{GRAPH}'에 시드 데이터 삽입 시작... (org_id: {ORG_ID})")
+    print(f"그래프 '{graph}'에 시드 데이터 삽입 시작... (org_id: {ORG_ID})")
 
     for i, query in enumerate(SEED_QUERIES, 1):
         query = query.strip()
         try:
-            with conn.cursor() as cur:
-                sql = f"SELECT * FROM cypher('{GRAPH}', $$ {query} $$) AS (result agtype);"
-                cur.execute(sql)
-            conn.commit()
+            execute_cypher_raw(db, query)
+            db.commit()
             print(f"  [{i}/{len(SEED_QUERIES)}] 완료")
         except Exception as e:
-            conn.rollback()
+            db.rollback()
             print(f"  [{i}/{len(SEED_QUERIES)}] 실패: {e}")
 
     # 결과 확인
     print("\n=== 생성된 노드 ===")
-    with conn.cursor() as cur:
-        cur.execute(f"SELECT * FROM cypher('{GRAPH}', $$ MATCH (n) RETURN n $$) AS (node agtype);")
-        for row in cur:
-            print(f"  {row[0]}")
-    conn.commit()
+    nodes = execute_cypher(db, "MATCH (n) RETURN n")
+    db.commit()
+    for node in nodes:
+        print(f"  {node}")
 
     print("\n=== 생성된 관계 ===")
-    with conn.cursor() as cur:
-        cur.execute(
-            f"SELECT * FROM cypher('{GRAPH}', $$ MATCH (a)-[r]->(b) RETURN a, r, b $$) "
-            f"AS (a agtype, r agtype, b agtype);"
-        )
-        for row in cur:
-            print(f"  {row[0]} --[{row[1]}]--> {row[2]}")
-    conn.commit()
+    rels = execute_cypher(db, "MATCH (a)-[r]->(b) RETURN a, r, b")
+    db.commit()
+    for rel in rels:
+        print(f"  {rel['c0']} --[{rel['c1']}]--> {rel['c2']}")
 
-    conn.close()
+    db.close()
     print("\n시드 데이터 삽입 완료!")
 
 
