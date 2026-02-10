@@ -92,6 +92,17 @@ def extract_headers_and_rows(
     return headers, rows
 
 
+def get_sheet_names(content: bytes, filename: str) -> list[str]:
+    """Excel 파일의 시트 이름 목록 반환. CSV는 빈 리스트."""
+    suffix = Path(filename).suffix.lower()
+    if suffix in (".xlsx", ".xls") or _is_excel_magic(content):
+        wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+        names = wb.sheetnames
+        wb.close()
+        return names
+    return []
+
+
 # === 내부 함수 ===
 
 def _is_excel_magic(content: bytes) -> bool:
@@ -159,11 +170,16 @@ def _read_csv(content: bytes, header_row: int) -> list[list[Any]]:
     return rows
 
 
+_NULL_MARKERS = {"~", "-", "N/A", "n/a", "NA", "없음", "해당없음"}
+
+
 def _clean_value(value: Any) -> Any:
-    """셀 값 정리 (공백 제거, null byte 제거)."""
+    """셀 값 정리 (공백 제거, null byte 제거, 특수 NULL 값 처리)."""
     if value is None:
         return None
     if isinstance(value, str):
         value = value.strip().replace("\x00", "")
-        return value if value else None
+        if not value or value in _NULL_MARKERS:
+            return None
+        return value
     return value

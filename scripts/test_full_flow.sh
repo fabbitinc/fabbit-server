@@ -7,8 +7,7 @@ set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:8000}"
 API="${BASE_URL}/api/v1"
-SAMPLE_FILE="${SAMPLE_FILE:-sample/Arduino_Uno_R3_From_Scratch.csv}"
-HEADER_ROW="${HEADER_ROW:-3}"
+SAMPLE_FILE="${SAMPLE_FILE:-sample/Arduino_Uno_R3_From_Scratch - 시트1.csv}"
 
 # 랜덤 이메일 생성 (중복 방지)
 RANDOM_SUFFIX=$(date +%s)
@@ -129,8 +128,7 @@ PREVIEW_RESP=$(curl -sf -X POST "${API}/mappings/preview" \
     -H "$AUTH" \
     -H "Content-Type: application/json" \
     -d "{
-        \"upload_id\": \"${UPLOAD_ID}\",
-        \"header_row\": ${HEADER_ROW}
+        \"upload_id\": \"${UPLOAD_ID}\"
     }" \
     --max-time 120) || fail "매핑 미리보기 실패"
 
@@ -157,7 +155,6 @@ CONFIRM_RESP=$(curl -sf -X POST "${API}/mappings/confirm" \
     -d "{
         \"upload_id\": \"${UPLOAD_ID}\",
         \"name\": \"E2E 테스트 매핑\",
-        \"header_row\": ${HEADER_ROW},
         \"mapping\": ${MAPPING_DATA}
     }") || fail "매핑 확정 실패"
 
@@ -176,8 +173,7 @@ SYNTH_RESP=$(curl -sf -X POST "${API}/synthesis" \
     -H "$AUTH" \
     -H "Content-Type: application/json" \
     -d "{
-        \"mapping_id\": \"${MAPPING_ID}\",
-        \"header_row\": ${HEADER_ROW}
+        \"mapping_id\": \"${MAPPING_ID}\"
     }") || fail "합성 시작 실패"
 
 JOB_ID=$(echo "$SYNTH_RESP" | jq -r '.id')

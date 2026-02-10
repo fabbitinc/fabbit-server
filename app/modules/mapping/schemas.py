@@ -11,7 +11,21 @@ from app.modules.ontology.schemas import MappingResult
 class MappingPreviewRequest(BaseModel):
     """매핑 미리보기 요청"""
     upload_id: uuid.UUID
-    header_row: int = 1  # 헤더 행 번호 (1부터 시작)
+    sheet_name: str | None = None  # Excel 시트명 (None이면 모든 시트)
+
+
+class SheetPreview(BaseModel):
+    """개별 시트 미리보기 결과"""
+    sheet_name: str
+    headers: list[str]
+    sample_rows: list[dict]
+    mapping: MappingResult
+
+
+class SkippedSheet(BaseModel):
+    """스킵된 시트 정보"""
+    sheet_name: str
+    reason: str
 
 
 class MappingPreviewResponse(BaseModel):
@@ -19,13 +33,15 @@ class MappingPreviewResponse(BaseModel):
     headers: list[str]
     sample_rows: list[dict]
     mapping: MappingResult
+    sheets: list[SheetPreview] = []
+    skipped_sheets: list[SkippedSheet] = []
 
 
 class MappingConfirmRequest(BaseModel):
     """매핑 확정 요청 — 사용자 검토 후 확인"""
     upload_id: uuid.UUID
     name: str
-    header_row: int = 1  # 헤더 행 번호 (1부터 시작)
+    sheet_name: str | None = None  # Excel 시트명 (None이면 모든 시트)
     mapping: MappingResult
 
 
@@ -34,6 +50,7 @@ class MappingResponse(BaseModel):
     id: uuid.UUID
     upload_id: uuid.UUID
     name: str
+    sheet_name: str | None = None
     original_headers: list[str]
     mapping: MappingResult
     usage_count: int

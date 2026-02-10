@@ -11,7 +11,7 @@ from app.core.auth_context import AuthContext
 from app.core.database import SessionLocal, generate_uuid7
 from app.core.exceptions import AppError
 from app.infrastructure.age_client import execute_cypher_raw
-from app.infrastructure.excel_parser import read_to_dataframe
+from app.infrastructure.excel_parser import get_sheet_names, read_to_dataframe
 from app.infrastructure.s3_client import S3Client
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
@@ -62,7 +62,7 @@ def start_synthesis(
         graph_name=schema_name,
         file_key=upload.file_key,
         filename=upload.original_name,
-        header_row=req.header_row,
+        sheet_name=record.sheet_name,
         mapping_json=record.mapping,
     )
 
@@ -208,7 +208,7 @@ def _run_synthesis(
     graph_name: str,
     file_key: str,
     filename: str,
-    header_row: int,
+    sheet_name: str | None,
     mapping_json: dict,
 ) -> None:
     db = SessionLocal()
@@ -221,7 +221,37 @@ def _run_synthesis(
         db.commit()
 
         content = _s3.get_object(file_key)
-        df = read_to_dataframe(content, filename, header_row=header_row)
+
+        # sheet_name=None이면 모든 시트 처리, 특정 시트면 해당 시트만
+        sheet_names_list = get_sheet_names(content, filename)
+        is_excel = len(sheet_names_list) > 0
+
+        if sheet_name is not None:
+            target_sheets = [sheet_name]
+        elif is_excel:
+            target_sheets = sheet_names_list
+        else:
+            target_sheets = [None]
+
+        # 모든 시트의 DataFrame을 합산
+        dfs: list[pd.DataFrame] = []
+        for target in target_sheets:
+            try:
+                sheet_df = read_to_dataframe(content, filename, sheet_name=target)
+                if not sheet_df.empty:
+                    dfs.append(sheet_df)
+            except Exception as e:
+                sheet_label = target or filename
+                logger.warning("시트 스킵: {sheet} - {err}", sheet=sheet_label, err=e)
+
+        if not dfs:
+            job.total_rows = 0
+            job.status = "COMPLETED"
+            job.completed_at = datetime.now(timezone.utc)
+            db.commit()
+            return
+
+        df = pd.concat(dfs, ignore_index=True)
 
         total_rows = len(df)
         job.total_rows = total_rows

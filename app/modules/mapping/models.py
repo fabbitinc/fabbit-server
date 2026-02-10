@@ -32,6 +32,7 @@ class MappingRecord(TenantBase):
         nullable=False,
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    sheet_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     original_headers: Mapped[dict] = mapped_column(JSONB, nullable=False)
     mapping: Mapped[dict] = mapped_column(JSONB, nullable=False)
     usage_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

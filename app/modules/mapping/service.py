@@ -8,7 +8,10 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.database import generate_uuid7
 from app.core.exceptions import AppError
-from app.infrastructure.excel_parser import extract_headers_and_rows
+from app.infrastructure.excel_parser import (
+    extract_headers_and_rows,
+    get_sheet_names,
+)
 from app.infrastructure.s3_client import S3Client
 from app.modules.ai_usage.service import log_ai_usage
 from app.modules.mapping import repository as repo
@@ -19,6 +22,8 @@ from app.modules.mapping.schemas import (
     MappingPreviewRequest,
     MappingPreviewResponse,
     MappingResponse,
+    SheetPreview,
+    SkippedSheet,
 )
 from app.modules.ontology import service as ontology_service
 
@@ -40,39 +45,101 @@ def preview_mapping(
         )
 
     content = _s3.get_object(upload.file_key)
-    headers, sample_rows = extract_headers_and_rows(
-        content,
-        upload.original_name,
-        header_row=req.header_row,
-        max_rows=5,
-    )
-    if not headers:
+
+    sheet_names = get_sheet_names(content, upload.original_name)
+    is_excel = len(sheet_names) > 0
+
+    if req.sheet_name is not None:
+        # 특정 시트만 처리
+        target_sheets = [req.sheet_name]
+    elif is_excel:
+        # Excel이고 sheet_name=None이면 모든 시트 처리
+        target_sheets = sheet_names
+    else:
+        # CSV는 시트 개념 없음
+        target_sheets = [None]
+
+    sheets: list[SheetPreview] = []
+    skipped_sheets: list[SkippedSheet] = []
+    first_headers: list[str] = []
+    first_sample_rows: list[dict] = []
+    first_mapping = None
+
+    for sheet in target_sheets:
+        try:
+            headers, sample_rows = extract_headers_and_rows(
+                content,
+                upload.original_name,
+                sheet_name=sheet,
+                max_rows=5,
+            )
+        except Exception as e:
+            if sheet is not None:
+                skipped_sheets.append(SkippedSheet(
+                    sheet_name=sheet,
+                    reason=f"파싱 실패: {e}",
+                ))
+            continue
+
+        if not headers:
+            if sheet is not None:
+                skipped_sheets.append(SkippedSheet(
+                    sheet_name=sheet,
+                    reason="헤더를 추출할 수 없습니다",
+                ))
+            continue
+
+        mapping_result, llm_resp = ontology_service.generate_mapping(headers, sample_rows)
+
+        log_ai_usage(
+            org_id=auth.org_id,
+            user_id=auth.account_id,
+            feature="mapping:preview",
+            model=llm_resp.model,
+            input_tokens=llm_resp.input_tokens,
+            output_tokens=llm_resp.output_tokens,
+        )
+
+        if not mapping_result.column_mappings:
+            if sheet is not None:
+                skipped_sheets.append(SkippedSheet(
+                    sheet_name=sheet,
+                    reason="온톨로지에 매핑 가능한 컬럼이 없습니다",
+                ))
+            continue
+
+        if sheet is not None:
+            sheets.append(SheetPreview(
+                sheet_name=sheet,
+                headers=headers,
+                sample_rows=sample_rows,
+                mapping=mapping_result,
+            ))
+
+        # 첫 번째 유효 시트를 기본 응답으로 사용
+        if first_mapping is None:
+            first_headers = headers
+            first_sample_rows = sample_rows
+            first_mapping = mapping_result
+
+    if first_mapping is None:
         raise AppError(
-            message="파일에서 헤더를 추출할 수 없습니다",
+            message="파일에서 매핑 가능한 데이터를 찾을 수 없습니다",
             code="INVALID_INPUT",
         )
 
-    mapping_result, llm_resp = ontology_service.generate_mapping(headers, sample_rows)
-
-    log_ai_usage(
-        org_id=auth.org_id,
-        user_id=auth.account_id,
-        feature="mapping:preview",
-        model=llm_resp.model,
-        input_tokens=llm_resp.input_tokens,
-        output_tokens=llm_resp.output_tokens,
-    )
-
     logger.info(
-        "매핑 미리보기 생성: upload_id={upload_id} headers={header_count}개 mappings={mapping_count}개",
+        "매핑 미리보기 생성: upload_id={upload_id} sheets={sheet_count}개 skipped={skipped_count}개",
         upload_id=req.upload_id,
-        header_count=len(headers),
-        mapping_count=len(mapping_result.column_mappings),
+        sheet_count=len(sheets),
+        skipped_count=len(skipped_sheets),
     )
     return MappingPreviewResponse(
-        headers=headers,
-        sample_rows=sample_rows,
-        mapping=mapping_result,
+        headers=first_headers,
+        sample_rows=first_sample_rows,
+        mapping=first_mapping,
+        sheets=sheets,
+        skipped_sheets=skipped_sheets,
     )
 
 
@@ -85,10 +152,21 @@ def confirm_mapping(
         raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
 
     content = _s3.get_object(upload.file_key)
+
+    sheet_names = get_sheet_names(content, upload.original_name)
+    is_excel = len(sheet_names) > 0
+
+    if req.sheet_name is not None:
+        target_sheet = req.sheet_name
+    elif is_excel:
+        target_sheet = sheet_names[0]
+    else:
+        target_sheet = None
+
     headers, _ = extract_headers_and_rows(
         content,
         upload.original_name,
-        header_row=req.header_row,
+        sheet_name=target_sheet,
         max_rows=0,
     )
 
@@ -96,6 +174,7 @@ def confirm_mapping(
         id=generate_uuid7(),
         upload_id=req.upload_id,
         name=req.name,
+        sheet_name=req.sheet_name,
         original_headers=headers,
         mapping=req.mapping.model_dump(),
         usage_count=0,
@@ -129,6 +208,7 @@ def _to_mapping_response(record: MappingRecord) -> MappingResponse:
         id=record.id,
         upload_id=record.upload_id,
         name=record.name,
+        sheet_name=record.sheet_name,
         original_headers=record.original_headers,
         mapping=record.mapping,
         usage_count=record.usage_count,

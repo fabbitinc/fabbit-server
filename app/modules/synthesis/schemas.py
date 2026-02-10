@@ -9,7 +9,6 @@ from pydantic import BaseModel
 class SynthesisStartRequest(BaseModel):
     """합성 작업 시작 요청."""
     mapping_id: uuid.UUID
-    header_row: int = 1
 
 
 class SynthesisJobResponse(BaseModel):
