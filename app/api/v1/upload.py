@@ -129,7 +129,6 @@ def batch_create_uploads(
 @router.post("/batch/complete", response_model=BatchCompleteResponse)
 def batch_complete_uploads(
     req: BatchCompleteRequest,
-    auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """여러 업로드의 완료를 일괄 확인."""
@@ -192,7 +191,6 @@ def batch_complete_uploads(
 @router.post("/{upload_id}/complete", response_model=UploadCompleteResponse)
 def complete_upload(
     upload_id: uuid.UUID,
-    auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """업로드 완료 확인 (S3 head_object로 검증 후 상태 변경)."""

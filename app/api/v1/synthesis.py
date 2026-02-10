@@ -382,7 +382,6 @@ def start_synthesis(
 @router.get("/{job_id}", response_model=SynthesisJobResponse)
 def get_synthesis_job(
     job_id: uuid.UUID,
-    auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """합성 작업 상태 조회."""
@@ -408,7 +407,6 @@ def get_synthesis_job(
 
 @router.get("", response_model=SynthesisListResponse)
 def list_synthesis_jobs(
-    auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """합성 작업 목록 조회 (최신순)."""

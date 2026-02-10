@@ -69,7 +69,7 @@ def preview_mapping(
     # AI 사용량 로깅
     log_ai_usage(
         org_id=auth.org_id,
-        user_id=auth.user_id,
+        user_id=auth.account_id,
         feature="mapping:preview",
         model=llm_resp.model,
         input_tokens=llm_resp.input_tokens,
@@ -93,7 +93,6 @@ def preview_mapping(
 @router.post("/confirm", response_model=MappingResponse)
 def confirm_mapping(
     req: MappingConfirmRequest,
-    auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """매핑 확정 및 DB 저장."""
@@ -139,7 +138,6 @@ def confirm_mapping(
 
 @router.get("", response_model=MappingListResponse)
 def list_mappings(
-    auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """저장된 매핑 목록 조회 (최신순)."""
@@ -163,7 +161,6 @@ def list_mappings(
 @router.get("/{mapping_id}", response_model=MappingResponse)
 def get_mapping(
     mapping_id: uuid.UUID,
-    auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """매핑 상세 조회."""

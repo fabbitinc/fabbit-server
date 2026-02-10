@@ -477,7 +477,7 @@ def query_graph(
     # AI 사용량 로깅 — Cypher 생성
     log_ai_usage(
         org_id=auth.org_id,
-        user_id=auth.user_id,
+        user_id=auth.account_id,
         feature="activation:cypher",
         model=cypher_resp.model,
         input_tokens=cypher_resp.input_tokens,
@@ -520,7 +520,7 @@ def query_graph(
         # AI 사용량 로깅 — 답변 생성
         log_ai_usage(
             org_id=auth.org_id,
-            user_id=auth.user_id,
+            user_id=auth.account_id,
             feature="activation:answer",
             model=answer_resp.model,
             input_tokens=answer_resp.input_tokens,
