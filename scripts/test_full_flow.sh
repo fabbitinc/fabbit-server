@@ -414,7 +414,59 @@ info "생성된 Cypher: ${CYPHER}"
 info "AI 답변: ${ANSWER:0:200}"
 
 # =========================================================
-step "13. 토큰 갱신 (POST /auth/refresh)"
+step "13. 아이템 목록 조회 (GET /items)"
+# =========================================================
+ITEMS_RESP=$(curl -sf "${API}/items?limit=5" \
+    -H "$AUTH") || fail "아이템 목록 조회 실패"
+
+ITEM_TOTAL=$(echo "$ITEMS_RESP" | jq -r '.total')
+ITEM_COUNT=$(echo "$ITEMS_RESP" | jq '.items | length')
+
+if [ "$ITEM_TOTAL" -eq 0 ]; then
+    fail "아이템이 0건 (합성 후 Part가 존재해야 함)"
+fi
+pass "아이템 목록: total=${ITEM_TOTAL}, 조회=${ITEM_COUNT}건"
+
+# 첫 번째 아이템의 part_number 추출
+FIRST_PN=$(echo "$ITEMS_RESP" | jq -r '.items[0].part_number')
+info "첫 번째 Part: ${FIRST_PN}"
+
+# 13-1. 검색 조회
+SEARCH_RESP=$(curl -sf "${API}/items?search=${FIRST_PN}&limit=5" \
+    -H "$AUTH") || fail "아이템 검색 실패"
+
+SEARCH_TOTAL=$(echo "$SEARCH_RESP" | jq -r '.total')
+pass "아이템 검색 (search=${FIRST_PN}): ${SEARCH_TOTAL}건"
+
+# =========================================================
+step "14. 아이템 상세 조회 (GET /items/{part_number})"
+# =========================================================
+DETAIL_RESP=$(curl -sf "${API}/items/${FIRST_PN}" \
+    -H "$AUTH") || fail "아이템 상세 조회 실패"
+
+DETAIL_PN=$(echo "$DETAIL_RESP" | jq -r '.part_number')
+DETAIL_NAME=$(echo "$DETAIL_RESP" | jq -r '.name // "N/A"')
+DETAIL_CHILDREN=$(echo "$DETAIL_RESP" | jq '.children | length')
+DETAIL_PARENTS=$(echo "$DETAIL_RESP" | jq '.parents | length')
+DETAIL_DRAWINGS=$(echo "$DETAIL_RESP" | jq '.drawings | length')
+DETAIL_SUPPLIERS=$(echo "$DETAIL_RESP" | jq '.suppliers | length')
+
+pass "아이템 상세: ${DETAIL_PN} (${DETAIL_NAME})"
+info "관계: children=${DETAIL_CHILDREN}, parents=${DETAIL_PARENTS}, drawings=${DETAIL_DRAWINGS}, suppliers=${DETAIL_SUPPLIERS}"
+
+# =========================================================
+step "15. BOM 트리 조회 (GET /items/{part_number}/bom-tree)"
+# =========================================================
+BOM_RESP=$(curl -sf "${API}/items/${FIRST_PN}/bom-tree" \
+    -H "$AUTH") || fail "BOM 트리 조회 실패"
+
+BOM_ROOT=$(echo "$BOM_RESP" | jq -r '.root.part_number')
+BOM_CHILDREN=$(echo "$BOM_RESP" | jq '.root.children | length')
+
+pass "BOM 트리: root=${BOM_ROOT}, 직계 자식=${BOM_CHILDREN}건"
+
+# =========================================================
+step "16. 토큰 갱신 (POST /auth/refresh)"
 # =========================================================
 REFRESH_RESP=$(curl -sf -X POST "${API}/auth/refresh" \
     -H "Content-Type: application/json" \
