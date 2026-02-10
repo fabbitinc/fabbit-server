@@ -7,15 +7,14 @@ from sqlalchemy import Integer, String, DateTime, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
-
-from app.core.database import Base
+from app.core.database import Base, generate_uuid7
 
 
 class ColumnMapping(Base):
     __tablename__ = "column_mappings"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=generate_uuid7
     )
     org_id: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)

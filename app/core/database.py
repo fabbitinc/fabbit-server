@@ -4,10 +4,18 @@ AGE 확장 초기화를 connect 이벤트로 자동화하여
 모든 새 물리 커넥션에 LOAD 'age' + search_path 설정을 보장합니다.
 """
 
+import uuid as _uuid
+
 from sqlalchemy import event, create_engine, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from uuid_utils import uuid7 as _uuid7
 
 from app.core.config import settings
+
+
+def generate_uuid7() -> _uuid.UUID:
+    """UUID v7 생성 (시간순 정렬 PK용, psycopg2 호환 표준 uuid.UUID 반환)."""
+    return _uuid.UUID(bytes=_uuid7().bytes)
 
 engine = create_engine(
     settings.database_url,
@@ -36,4 +44,14 @@ SessionLocal = sessionmaker(bind=engine)
 
 
 class Base(DeclarativeBase):
+    """public 스키마 ORM 모델 베이스."""
+    pass
+
+
+class TenantBase(DeclarativeBase):
+    """테넌트 스키마 ORM 모델 베이스.
+
+    search_path가 전환된 상태에서 metadata.create_all()로 테이블 생성.
+    public.Base와 분리하여 create_all() 시 테넌트 테이블만 대상으로 함.
+    """
     pass

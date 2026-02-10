@@ -18,6 +18,7 @@ class TokenPayload:
     email: str
     token_type: str = "ACCESS"
     org_id: str | None = None
+    jti: str | None = None
 
 
 class TokenProvider:
@@ -75,6 +76,7 @@ class TokenProvider:
                 email=payload["email"],
                 token_type=payload.get("type", "ACCESS"),
                 org_id=payload.get("orgId"),
+                jti=payload.get("jti"),
             )
         except jwt.ExpiredSignatureError:
             raise AppError(message="토큰이 만료되었습니다", code="TOKEN_EXPIRED")

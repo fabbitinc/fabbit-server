@@ -1,15 +1,18 @@
 """공통 Dependency.
 
 인증, DB 세션 등 API 엔드포인트에서 공통으로 사용하는 의존성입니다.
-현재는 인증 없이 org_id를 파라미터로 받습니다 (임시).
 """
 
+import uuid
 from collections.abc import Generator
 
+from fastapi import Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.core.auth_context import AuthContext
 from app.core.database import SessionLocal
+from app.core.exceptions import AppError
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -41,3 +44,23 @@ def get_tenant_db(org_id: str) -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+def require_auth(request: Request) -> AuthContext:
+    """인증 필수 의존성 — request.state.auth_context에서 읽음.
+
+    인증 미들웨어가 JWT를 검증하고 request.state에 저장한 후,
+    이 의존성이 보호 엔드포인트에서 AuthContext를 추출합니다.
+    """
+    ctx: AuthContext | None = getattr(request.state, "auth_context", None)
+    if ctx is None:
+        raise AppError(message="인증이 필요합니다", code="UNAUTHENTICATED")
+    return ctx
+
+
+def get_current_org_id(request: Request) -> uuid.UUID:
+    """현재 요청의 org_id 추출 (AuthContext 기반)."""
+    ctx = require_auth(request)
+    if ctx.org_id is None:
+        raise AppError(message="조직 컨텍스트가 필요합니다", code="FORBIDDEN")
+    return ctx.org_id

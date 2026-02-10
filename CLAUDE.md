@@ -121,6 +121,40 @@ alembic/
 3. **배치 인제스션**: Excel + mapping_id → 500행 청크 → 노드 MERGE → 관계 MERGE → 커밋
 4. **자연어 질의**: 질문 → LLM이 Cypher 생성 (테넌트 격리 포함) → 실행 → 결과 반환
 
+## 모델(Entity) 작성 규칙
+
+### PK는 UUID v7 필수
+
+모든 ORM 모델의 PK는 `uuid7`을 사용한다. uuid4 대비 시간순 정렬이 가능하여 B-tree 인덱스 성능이 우수하다.
+
+```python
+from app.core.database import generate_uuid7
+
+id: Mapped[uuid.UUID] = mapped_column(
+    UUID(as_uuid=True), primary_key=True, default=generate_uuid7
+)
+```
+
+- `generate_uuid7()`은 `database.py`에 정의된 공통 함수. `uuid_utils.uuid7()` → 표준 `uuid.UUID`로 변환하여 psycopg2 호환성 보장
+- `uuid_utils.UUID`를 직접 사용하면 psycopg2가 `can't adapt type` 에러 발생
+
+### 인덱스 / 유니크 선언 원칙
+
+1. **FK 컬럼에는 반드시 인덱스 선언** — PostgreSQL은 FK에 자동 인덱스를 생성하지 않음
+2. **자주 WHERE 조건으로 사용되는 컬럼에 인덱스 추가** — 조회 패턴 기반으로 판단
+3. **복합 유니크 제약조건은 선두 컬럼 기준 조회를 커버** — 별도 단일 인덱스 불필요
+4. **인덱스 목적을 한글 주석으로 명시**
+5. **네이밍**: `ix_{table}_{columns}` (인덱스), `uq_{table}_{columns}` (유니크)
+
+```python
+__table_args__ = (
+    # 소유자별 조직 조회 최적화
+    Index("ix_organizations_owner_id", "owner_id"),
+    # 유저-조직 조합 유일성
+    UniqueConstraint("user_id", "org_id", name="uq_memberships_user_org"),
+)
+```
+
 ## 데이터베이스 & ORM 가이드라인
 
 ### DB 접근 원칙
