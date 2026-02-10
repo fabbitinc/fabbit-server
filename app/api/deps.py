@@ -6,13 +6,17 @@
 import uuid
 from collections.abc import Generator
 
-from fastapi import Request
+from fastapi import Depends, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
 from app.core.database import SessionLocal
 from app.core.exceptions import AppError
+
+# Swagger UI에 Authorize 버튼 표시 (실제 검증은 AuthMiddleware에서 처리)
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -46,11 +50,15 @@ def get_tenant_db(org_id: str) -> Generator[Session, None, None]:
         db.close()
 
 
-def require_auth(request: Request) -> AuthContext:
+def require_auth(
+    request: Request,
+    _credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> AuthContext:
     """인증 필수 의존성 — request.state.auth_context에서 읽음.
 
     인증 미들웨어가 JWT를 검증하고 request.state에 저장한 후,
     이 의존성이 보호 엔드포인트에서 AuthContext를 추출합니다.
+    _credentials 파라미터는 Swagger UI에 자물쇠 아이콘을 표시하기 위한 용도입니다.
     """
     ctx: AuthContext | None = getattr(request.state, "auth_context", None)
     if ctx is None:

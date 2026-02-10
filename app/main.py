@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from loguru import logger  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
+from app.api.v1.activation import router as activation_router  # noqa: E402
 from app.api.v1.auth import router as auth_router  # noqa: E402
 from app.api.v1.mapping import router as mapping_router  # noqa: E402
 from app.api.v1.ontology import router as ontology_router  # noqa: E402
@@ -108,6 +109,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(activation_router)
 app.include_router(auth_router)
 app.include_router(mapping_router)
 app.include_router(ontology_router)
