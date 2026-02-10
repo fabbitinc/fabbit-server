@@ -52,8 +52,8 @@ SIGNUP_RESP=$(curl -sf -X POST "${API}/auth/signup" \
         \"org_name\": \"${ORG_NAME}\"
     }" 2>/dev/null) || fail "회원가입 요청 실패"
 
-ACCESS_TOKEN=$(echo "$SIGNUP_RESP" | jq -r '.access_token // empty')
-REFRESH_TOKEN=$(echo "$SIGNUP_RESP" | jq -r '.refresh_token // empty')
+ACCESS_TOKEN=$(echo "$SIGNUP_RESP" | jq -r '.tokens.access_token // empty')
+REFRESH_TOKEN=$(echo "$SIGNUP_RESP" | jq -r '.tokens.refresh_token // empty')
 
 if [ -z "$ACCESS_TOKEN" ]; then
     echo "$SIGNUP_RESP" | jq . 2>/dev/null || echo "$SIGNUP_RESP"
@@ -69,8 +69,8 @@ AUTH="Authorization: Bearer ${ACCESS_TOKEN}"
 step "1-1. 내 정보 확인 (GET /auth/me)"
 # =========================================================
 ME_RESP=$(curl -sf "${API}/auth/me" -H "$AUTH") || fail "내 정보 조회 실패"
-ME_EMAIL=$(echo "$ME_RESP" | jq -r '.email')
-ME_ORG=$(echo "$ME_RESP" | jq -r '.org_name')
+ME_EMAIL=$(echo "$ME_RESP" | jq -r '.user.email')
+ME_ORG=$(echo "$ME_RESP" | jq -r '.memberships[0].organization.name // "N/A"')
 pass "내 정보: email=${ME_EMAIL}, org=${ME_ORG}"
 
 # =========================================================
@@ -93,7 +93,7 @@ UPLOAD_RESP=$(curl -sf -X POST "${API}/uploads" \
     }") || fail "Presigned URL 발급 실패"
 
 UPLOAD_ID=$(echo "$UPLOAD_RESP" | jq -r '.upload_id')
-PRESIGNED_URL=$(echo "$UPLOAD_RESP" | jq -r '.presigned_url')
+UPLOAD_URL=$(echo "$UPLOAD_RESP" | jq -r '.upload_url')
 
 if [ -z "$UPLOAD_ID" ] || [ "$UPLOAD_ID" = "null" ]; then
     echo "$UPLOAD_RESP" | jq . 2>/dev/null
@@ -102,9 +102,10 @@ fi
 pass "Presigned URL 발급: upload_id=${UPLOAD_ID}"
 
 # 2-2. S3에 파일 업로드
-S3_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
-    -X PUT "$PRESIGNED_URL" \
+S3_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+    -X PUT "$UPLOAD_URL" \
     -H "Content-Type: ${CONTENT_TYPE}" \
+    -H "Content-Length: ${FILE_SIZE}" \
     --data-binary "@${SAMPLE_FILE}") || fail "S3 업로드 실패"
 
 if [ "$S3_STATUS" != "200" ]; then

@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 
 import pandas as pd
 from loguru import logger
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
@@ -15,17 +14,16 @@ from app.infrastructure.age_client import execute_cypher_raw
 from app.infrastructure.excel_parser import read_to_dataframe
 from app.infrastructure.s3_client import S3Client
 from app.modules.auth.provisioning import org_id_to_schema
-from app.modules.mapping.models import MappingRecord
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
 from app.modules.ontology.repository import format_cypher_value
 from app.modules.ontology.schemas import MappingResult
+from app.modules.synthesis import repository as repo
 from app.modules.synthesis.models import SynthesisJob
 from app.modules.synthesis.schemas import (
     SynthesisJobResponse,
     SynthesisListResponse,
     SynthesisStartRequest,
 )
-from app.modules.upload.models import Upload
 
 _s3 = S3Client()
 
@@ -38,22 +36,21 @@ def start_synthesis(
     req: SynthesisStartRequest,
     add_background_task,
 ) -> SynthesisJobResponse:
-    record = db.query(MappingRecord).filter(MappingRecord.id == req.mapping_id).first()
+    record = repo.get_mapping_by_id(db, req.mapping_id)
     if record is None:
         raise AppError(message="매핑을 찾을 수 없습니다", code="NOT_FOUND")
 
-    upload = db.query(Upload).filter(Upload.id == record.upload_id).first()
+    upload = repo.get_upload_by_id(db, record.upload_id)
     if upload is None:
         raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
 
-    job = SynthesisJob(
-        id=generate_uuid7(),
+    job = repo.create_synthesis_job(
+        db=db,
+        job_id=generate_uuid7(),
         mapping_id=record.id,
         upload_id=upload.id,
-        status="PENDING",
     )
-    db.add(job)
-    record.usage_count += 1
+    repo.increment_mapping_usage(record)
     db.commit()
     db.refresh(job)
 
@@ -78,14 +75,14 @@ def start_synthesis(
 
 
 def get_synthesis_job(db: Session, job_id: uuid.UUID) -> SynthesisJobResponse:
-    job = db.query(SynthesisJob).filter(SynthesisJob.id == job_id).first()
+    job = repo.get_synthesis_job_by_id(db, job_id)
     if job is None:
         raise AppError(message="합성 작업을 찾을 수 없습니다", code="NOT_FOUND")
     return _to_job_response(job)
 
 
 def list_synthesis_jobs(db: Session) -> SynthesisListResponse:
-    jobs = db.query(SynthesisJob).order_by(SynthesisJob.created_at.desc()).all()
+    jobs = repo.list_synthesis_jobs(db)
     return SynthesisListResponse(items=[_to_job_response(j) for j in jobs])
 
 
@@ -216,9 +213,9 @@ def _run_synthesis(
 ) -> None:
     db = SessionLocal()
     try:
-        db.execute(text(f"SET search_path = {schema_name}, ag_catalog, public"))
+        repo.set_search_path(db, schema_name)
 
-        job = db.query(SynthesisJob).filter(SynthesisJob.id == job_id).one()
+        job = repo.get_synthesis_job_required(db, job_id)
         job.status = "PROCESSING"
         job.started_at = datetime.now(timezone.utc)
         db.commit()
@@ -295,7 +292,7 @@ def _run_synthesis(
         logger.error("합성 실패: job_id={job_id} error={err}", job_id=job_id, err=error)
         try:
             db.rollback()
-            job = db.query(SynthesisJob).filter(SynthesisJob.id == job_id).one()
+            job = repo.get_synthesis_job_required(db, job_id)
             job.status = "FAILED"
             job.errors = [str(error)]
             job.completed_at = datetime.now(timezone.utc)

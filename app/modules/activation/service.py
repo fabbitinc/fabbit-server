@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
-from app.infrastructure.age_client import execute_cypher
 from app.infrastructure.llm_client import chat_completion_with_usage
+from app.modules.activation import repository as repo
 from app.modules.activation.schemas import (
     HealthCheckIssue,
     HealthCheckResponse,
@@ -26,8 +26,16 @@ def health_check(
     auth: AuthContext,
 ) -> HealthCheckResponse:
     graph_name = org_id_to_schema(auth.org_id)
-    node_counts = _count_nodes_by_label(db, graph_name)
-    rel_counts = _count_relationships_by_type(db, graph_name)
+    node_counts = repo.count_nodes_by_labels(
+        db,
+        graph_name,
+        MANUFACTURING_ONTOLOGY.get_valid_labels(),
+    )
+    rel_counts = repo.count_relationships_by_types(
+        db,
+        graph_name,
+        [rt.rel_type for rt in MANUFACTURING_ONTOLOGY.relationship_types],
+    )
 
     total_nodes = sum(node_counts.values())
     total_rels = sum(rel_counts.values())
@@ -51,7 +59,7 @@ def health_check(
             issues=issues,
         )
 
-    orphan_count = _find_orphan_parts(db, graph_name, total_parts)
+    orphan_count = repo.count_orphan_parts(db, graph_name, total_parts)
     if orphan_count > 0:
         issues.append(
             HealthCheckIssue(
@@ -62,7 +70,7 @@ def health_check(
             )
         )
 
-    no_drawing = _find_parts_without_drawing(db, graph_name, total_parts)
+    no_drawing = repo.count_parts_without_drawing(db, graph_name, total_parts)
     if no_drawing > 0:
         issues.append(
             HealthCheckIssue(
@@ -73,7 +81,7 @@ def health_check(
             )
         )
 
-    no_supplier = _find_parts_without_supplier(db, graph_name, total_parts)
+    no_supplier = repo.count_parts_without_supplier(db, graph_name, total_parts)
     if no_supplier > 0:
         issues.append(
             HealthCheckIssue(
@@ -84,7 +92,7 @@ def health_check(
             )
         )
 
-    incomplete_bom = _find_leaf_parts_without_bom(db, graph_name)
+    incomplete_bom = repo.count_leaf_parts_without_bom(db, graph_name)
     if incomplete_bom > 0:
         issues.append(
             HealthCheckIssue(
@@ -117,9 +125,17 @@ def query_graph(
 ) -> QueryResponse:
     graph_name = org_id_to_schema(auth.org_id)
 
-    node_counts = _count_nodes_by_label(db, graph_name)
-    rel_counts = _count_relationships_by_type(db, graph_name)
-    ext_hints = _get_extended_hints(db)
+    node_counts = repo.count_nodes_by_labels(
+        db,
+        graph_name,
+        MANUFACTURING_ONTOLOGY.get_valid_labels(),
+    )
+    rel_counts = repo.count_relationships_by_types(
+        db,
+        graph_name,
+        [rt.rel_type for rt in MANUFACTURING_ONTOLOGY.relationship_types],
+    )
+    ext_hints = repo.list_extended_hints(db)
     system_prompt = _build_tenant_query_prompt(ext_hints, node_counts, rel_counts)
 
     cypher_resp = chat_completion_with_usage(
@@ -139,7 +155,7 @@ def query_graph(
     )
 
     try:
-        raw_results = execute_cypher(db, cypher, graph_name)
+        raw_results = repo.execute_graph_query(db, cypher, graph_name)
     except Exception as error:
         logger.warning(
             "Cypher 실행 실패: query={cypher} error={err}",
@@ -189,100 +205,6 @@ def query_graph(
 
 def get_starters() -> StartersResponse:
     return StartersResponse(starters=DEFAULT_STARTERS)
-
-
-def _count_nodes_by_label(db: Session, graph_name: str) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for label in MANUFACTURING_ONTOLOGY.get_valid_labels():
-        try:
-            rows = execute_cypher(db, f"MATCH (n:{label}) RETURN count(n)", graph_name)
-            counts[label] = rows[0] if rows else 0
-        except Exception:
-            counts[label] = 0
-    return counts
-
-
-def _count_relationships_by_type(db: Session, graph_name: str) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for rt in MANUFACTURING_ONTOLOGY.relationship_types:
-        try:
-            rows = execute_cypher(
-                db,
-                f"MATCH ()-[r:{rt.rel_type}]->() RETURN count(r)",
-                graph_name,
-            )
-            counts[rt.rel_type] = rows[0] if rows else 0
-        except Exception:
-            counts[rt.rel_type] = 0
-    return counts
-
-
-def _find_orphan_parts(db: Session, graph_name: str, total_parts: int) -> int:
-    connected = 0
-    try:
-        rows = execute_cypher(
-            db,
-            "MATCH ()-[:CONSISTS_OF]->(p:Part) RETURN count(DISTINCT p)",
-            graph_name,
-        )
-        connected += rows[0] if rows else 0
-    except Exception:
-        db.rollback()
-
-    try:
-        rows = execute_cypher(
-            db,
-            "MATCH ()-[:HAS_ITEM]->(p:Part) RETURN count(DISTINCT p)",
-            graph_name,
-        )
-        connected += rows[0] if rows else 0
-    except Exception:
-        db.rollback()
-
-    return max(0, total_parts - connected)
-
-
-def _find_parts_without_drawing(db: Session, graph_name: str, total_parts: int) -> int:
-    try:
-        rows = execute_cypher(
-            db,
-            "MATCH (p:Part)-[:DEFINED_BY]->() RETURN count(DISTINCT p)",
-            graph_name,
-        )
-        with_drawing = rows[0] if rows else 0
-        return max(0, total_parts - with_drawing)
-    except Exception:
-        db.rollback()
-        return 0
-
-
-def _find_parts_without_supplier(db: Session, graph_name: str, total_parts: int) -> int:
-    try:
-        rows = execute_cypher(
-            db,
-            "MATCH (p:Part)-[:SUPPLIED_BY]->() RETURN count(DISTINCT p)",
-            graph_name,
-        )
-        with_supplier = rows[0] if rows else 0
-        return max(0, total_parts - with_supplier)
-    except Exception:
-        db.rollback()
-        return 0
-
-
-def _find_leaf_parts_without_bom(db: Session, graph_name: str) -> int:
-    try:
-        rows = execute_cypher(
-            db,
-            "MATCH (parent:Part)-[:CONSISTS_OF]->(child:Part) "
-            "WHERE child.name IS NULL "
-            "RETURN count(child)",
-            graph_name,
-        )
-        return rows[0] if rows else 0
-    except Exception:
-        db.rollback()
-        return 0
 
 
 def _build_graph_summary(
@@ -383,31 +305,6 @@ def _serialize_results(raw_results: list) -> list[dict]:
         else:
             results.append({"result": str(row)})
     return results
-
-
-def _get_extended_hints(db: Session) -> list[str]:
-    try:
-        from app.modules.mapping.models import MappingRecord
-
-        records = (
-            db.query(MappingRecord.mapping)
-            .order_by(MappingRecord.created_at.desc())
-            .limit(5)
-            .all()
-        )
-        ext_props: set[str] = set()
-        for (mapping_data,) in records:
-            if isinstance(mapping_data, str):
-                mapping_data = json.loads(mapping_data)
-            for ep in mapping_data.get("extended_properties", []):
-                prop_name = ep.get("property_name", "")
-                source = ep.get("source_column", "")
-                label = ep.get("target_label", "")
-                if prop_name:
-                    ext_props.add(f"{label}.{prop_name} (원본: {source})")
-        return sorted(ext_props)
-    except Exception:
-        return []
 
 
 DEFAULT_STARTERS = [
