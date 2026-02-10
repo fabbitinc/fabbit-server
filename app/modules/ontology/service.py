@@ -90,6 +90,7 @@ def generate_mapping(
     llm_resp = chat_completion_with_usage(
         system_prompt=MAPPING_SYSTEM_PROMPT,
         user_message=user_message,
+        reasoning_effort="low",
         response_format={"type": "json_object"},
     )
     raw = json.loads(llm_resp.content)

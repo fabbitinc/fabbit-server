@@ -148,6 +148,8 @@ def query_graph(
     cypher_resp = chat_completion_with_usage(
         system_prompt=system_prompt,
         user_message=question,
+        max_tokens=500,
+        reasoning_effort="low",
     )
     cypher = cypher_resp.content
     _validate_read_only(cypher)
@@ -178,6 +180,13 @@ def query_graph(
 
     results = _serialize_results(raw_results)
 
+    # 답변 LLM에는 결과 요약만 전달 (토큰 절약)
+    results_for_answer = results[:20]
+    results_json = json.dumps(results_for_answer, ensure_ascii=False, default=str)
+    if len(results_json) > 3000:
+        results_json = results_json[:3000] + "...(truncated)"
+    total_note = f"\n\n(총 {len(results)}건 중 상위 {len(results_for_answer)}건 표시)" if len(results) > 20 else ""
+
     answer_input = f"""## 사용자 질문
 {question}
 
@@ -185,12 +194,14 @@ def query_graph(
 {cypher}
 
 ## 쿼리 결과
-{json.dumps(results[:50], ensure_ascii=False, default=str)}
+{results_json}{total_note}
 """
     try:
         answer_resp = chat_completion_with_usage(
             system_prompt=ANSWER_SYSTEM_PROMPT,
             user_message=answer_input,
+            max_tokens=500,
+            reasoning_effort="low",
         )
         answer = answer_resp.content
         log_ai_usage(
@@ -280,15 +291,13 @@ def _build_tenant_query_prompt(
 """
 
 
-ANSWER_SYSTEM_PROMPT = """당신은 제조업 데이터 분석 전문가입니다.
-사용자의 질문과 그래프 DB 쿼리 결과를 바탕으로 간결하고 유용한 답변을 작성하세요.
+ANSWER_SYSTEM_PROMPT = """제조업 데이터 분석 전문가. 쿼리 결과를 간결히 요약.
 
-## 답변 규칙
-1. 한국어로 답변하세요.
-2. 데이터 결과를 자연스러운 문장으로 해석하세요.
-3. 결과가 비어있으면 "해당하는 데이터가 없습니다"라고 안내하세요.
-4. 숫자 데이터가 있으면 핵심 통계를 요약하세요.
-5. 3-5문장 이내로 간결하게 답변하세요.
+규칙:
+- 한국어, 2-3문장 이내
+- 결과가 많으면 핵심 통계만 (목록 나열 금지)
+- 결과 비어있으면 "해당 데이터가 없습니다"
+- 마크다운 사용 금지, 순수 텍스트만
 """
 
 

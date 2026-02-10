@@ -30,6 +30,7 @@ def _create_llm(
     model: str = DEFAULT_MODEL,
     temperature: float = 0,
     max_tokens: int | None = None,
+    reasoning_effort: str | None = None,
     response_format: dict | None = None,
 ) -> ChatOpenAI:
     """ChatOpenAI 인스턴스 생성"""
@@ -40,8 +41,13 @@ def _create_llm(
     }
     if max_tokens is not None:
         kwargs["max_tokens"] = max_tokens
+    model_kwargs: dict = {}
     if response_format:
-        kwargs["model_kwargs"] = {"response_format": response_format}
+        model_kwargs["response_format"] = response_format
+    if reasoning_effort:
+        model_kwargs["reasoning_effort"] = reasoning_effort
+    if model_kwargs:
+        kwargs["model_kwargs"] = model_kwargs
     return ChatOpenAI(**kwargs)
 
 
@@ -58,6 +64,8 @@ def chat_completion(
     user_message: str,
     model: str = DEFAULT_MODEL,
     temperature: float = 0,
+    max_tokens: int | None = None,
+    reasoning_effort: str | None = None,
     response_format: dict | None = None,
 ) -> str:
     """LLM 채팅 완성 호출 후 텍스트 응답 반환"""
@@ -66,6 +74,8 @@ def chat_completion(
         user_message=user_message,
         model=model,
         temperature=temperature,
+        max_tokens=max_tokens,
+        reasoning_effort=reasoning_effort,
         response_format=response_format,
     )
     return resp.content
@@ -76,10 +86,18 @@ def chat_completion_with_usage(
     user_message: str,
     model: str = DEFAULT_MODEL,
     temperature: float = 0,
+    max_tokens: int | None = None,
+    reasoning_effort: str | None = None,
     response_format: dict | None = None,
 ) -> LLMResponse:
     """LLM 채팅 완성 호출 후 텍스트 + 토큰 사용량 반환"""
-    llm = _create_llm(model=model, temperature=temperature, response_format=response_format)
+    llm = _create_llm(
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        reasoning_effort=reasoning_effort,
+        response_format=response_format,
+    )
 
     messages = [
         SystemMessage(content=system_prompt),
@@ -87,7 +105,8 @@ def chat_completion_with_usage(
     ]
 
     prompt_preview = user_message[:80].replace("\n", " ")
-    logger.info("[LLM] 호출 시작: model={model} prompt={prompt}...", model=model, prompt=prompt_preview)
+    effort_tag = f" reasoning={reasoning_effort}" if reasoning_effort else ""
+    logger.info("[LLM] 호출 시작: model={model}{effort} prompt={prompt}...", model=model, effort=effort_tag, prompt=prompt_preview)
     t0 = time.perf_counter()
 
     response = llm.invoke(messages)
