@@ -13,7 +13,7 @@ from loguru import logger
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_org_id, require_auth
+from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
 from app.core.database import SessionLocal, generate_uuid7
 from app.infrastructure.age_client import execute_cypher_raw
@@ -40,20 +40,8 @@ _s3 = S3Client()
 CHUNK_SIZE = 500
 
 
-# === 테넌트 세션 의존성 ===
-
-def _get_tenant_db(org_id: uuid.UUID = Depends(get_current_org_id)):
-    """테넌트 격리 세션 의존성."""
-    schema = org_id_to_schema(org_id)
-    db = SessionLocal()
-    try:
-        db.execute(text(f"SET search_path = {schema}, ag_catalog, public"))
-        yield db
-    finally:
-        db.close()
-
-
 # === Cypher 빌더 (schema-per-tenant, _org_id 없음) ===
+
 
 def _build_merge_node(
     label: str,
@@ -97,6 +85,7 @@ def _build_merge_rel(
 
 
 # === 행 → Cypher 변환 ===
+
 
 def _process_row_nodes(
     row: dict,
@@ -167,7 +156,9 @@ def _process_row_relationships(
             val = row.get(cm.source_column)
             formatted = format_cypher_value(val, cm.data_type)
             if formatted is not None:
-                label_merge_vals.setdefault(cm.target_label, {})[cm.target_property] = formatted
+                label_merge_vals.setdefault(cm.target_label, {})[cm.target_property] = (
+                    formatted
+                )
 
     for rm in mapping.relation_mappings:
         from_keys = label_merge_vals.get(rm.from_label, {})
@@ -185,16 +176,22 @@ def _process_row_relationships(
             if formatted is not None:
                 rel_props[rel_prop] = formatted
 
-        cyphers.append(_build_merge_rel(
-            rm.from_label, from_keys,
-            rm.to_label, to_keys,
-            rm.rel_type, rel_props,
-        ))
+        cyphers.append(
+            _build_merge_rel(
+                rm.from_label,
+                from_keys,
+                rm.to_label,
+                to_keys,
+                rm.rel_type,
+                rel_props,
+            )
+        )
 
     return cyphers
 
 
 # === 합성 실행 (BackgroundTask) ===
+
 
 def _run_synthesis(
     job_id: uuid.UUID,
@@ -314,12 +311,13 @@ def _run_synthesis(
 
 # === API 엔드포인트 ===
 
+
 @router.post("", response_model=SynthesisJobResponse)
 def start_synthesis(
     req: SynthesisStartRequest,
     background_tasks: BackgroundTasks,
     auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(_get_tenant_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """합성 작업 시작 (백그라운드 실행)."""
     # 1. MappingRecord 조회
@@ -385,7 +383,7 @@ def start_synthesis(
 def get_synthesis_job(
     job_id: uuid.UUID,
     auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(_get_tenant_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """합성 작업 상태 조회."""
     job = db.query(SynthesisJob).filter(SynthesisJob.id == job_id).first()
@@ -411,14 +409,10 @@ def get_synthesis_job(
 @router.get("", response_model=SynthesisListResponse)
 def list_synthesis_jobs(
     auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(_get_tenant_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """합성 작업 목록 조회 (최신순)."""
-    jobs = (
-        db.query(SynthesisJob)
-        .order_by(SynthesisJob.created_at.desc())
-        .all()
-    )
+    jobs = db.query(SynthesisJob).order_by(SynthesisJob.created_at.desc()).all()
     return SynthesisListResponse(
         items=[
             SynthesisJobResponse(

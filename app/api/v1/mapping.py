@@ -8,16 +8,14 @@ import uuid
 
 from fastapi import APIRouter, Depends
 from loguru import logger
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_org_id, require_auth
+from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
-from app.core.database import SessionLocal, generate_uuid7
+from app.core.database import generate_uuid7
 from app.core.exceptions import AppError
 from app.infrastructure.excel_parser import extract_headers_and_rows
 from app.infrastructure.s3_client import S3Client
-from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.mapping.models import MappingRecord
 from app.modules.mapping.schemas import (
     MappingConfirmRequest,
@@ -35,22 +33,11 @@ router = APIRouter(prefix="/mappings", tags=["mappings"])
 _s3 = S3Client()
 
 
-def _get_tenant_db(org_id: uuid.UUID = Depends(get_current_org_id)):
-    """테넌트 격리 세션 의존성."""
-    schema = org_id_to_schema(org_id)
-    db = SessionLocal()
-    try:
-        db.execute(text(f"SET search_path = {schema}, ag_catalog, public"))
-        yield db
-    finally:
-        db.close()
-
-
 @router.post("/preview", response_model=MappingPreviewResponse)
 def preview_mapping(
     req: MappingPreviewRequest,
     auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(_get_tenant_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """업로드 파일 분석 → LLM 매핑 미리보기."""
     # 1. Upload 조회 + 상태 검증
@@ -107,7 +94,7 @@ def preview_mapping(
 def confirm_mapping(
     req: MappingConfirmRequest,
     auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(_get_tenant_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """매핑 확정 및 DB 저장."""
     # Upload 존재 검증
@@ -153,14 +140,10 @@ def confirm_mapping(
 @router.get("", response_model=MappingListResponse)
 def list_mappings(
     auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(_get_tenant_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """저장된 매핑 목록 조회 (최신순)."""
-    records = (
-        db.query(MappingRecord)
-        .order_by(MappingRecord.created_at.desc())
-        .all()
-    )
+    records = db.query(MappingRecord).order_by(MappingRecord.created_at.desc()).all()
     return MappingListResponse(
         items=[
             MappingResponse(
@@ -181,7 +164,7 @@ def list_mappings(
 def get_mapping(
     mapping_id: uuid.UUID,
     auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(_get_tenant_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """매핑 상세 조회."""
     record = db.query(MappingRecord).filter(MappingRecord.id == mapping_id).first()

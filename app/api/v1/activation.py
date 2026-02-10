@@ -5,17 +5,14 @@ schema-per-tenant 기반으로 _org_id 없이 테넌트 격리를 보장합니�
 """
 
 import json
-import uuid
 
 from fastapi import APIRouter, Depends
 from loguru import logger
 from pydantic import BaseModel
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_org_id, require_auth
+from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
-from app.core.database import SessionLocal
 from app.core.exceptions import AppError
 from app.infrastructure.age_client import execute_cypher
 from app.infrastructure.llm_client import chat_completion_with_usage
@@ -28,8 +25,10 @@ router = APIRouter(prefix="/activation", tags=["activation"])
 
 # === Pydantic 스키마 ===
 
+
 class HealthCheckIssue(BaseModel):
     """헬스 체크 개별 이슈."""
+
     category: str  # orphan_parts | missing_drawing | missing_supplier | missing_bom
     severity: str  # warning | info
     message: str
@@ -38,6 +37,7 @@ class HealthCheckIssue(BaseModel):
 
 class HealthCheckResponse(BaseModel):
     """헬스 체크 리포트 응답."""
+
     total_nodes: int
     total_relationships: int
     node_counts: dict[str, int]
@@ -47,11 +47,13 @@ class HealthCheckResponse(BaseModel):
 
 class QueryRequest(BaseModel):
     """자연어 질의 요청."""
+
     question: str
 
 
 class QueryResponse(BaseModel):
     """자연어 질의 응답."""
+
     cypher_query: str
     results: list[dict]
     answer: str
@@ -59,29 +61,19 @@ class QueryResponse(BaseModel):
 
 class StarterQuestion(BaseModel):
     """추천 질문."""
+
     question: str
     description: str
 
 
 class StartersResponse(BaseModel):
     """추천 질문 목록 응답."""
+
     starters: list[StarterQuestion]
 
 
-# === 테넌트 세션 의존성 ===
-
-def _get_tenant_db(org_id: uuid.UUID = Depends(get_current_org_id)):
-    """테넌트 격리 세션 의존성."""
-    schema = org_id_to_schema(org_id)
-    db = SessionLocal()
-    try:
-        db.execute(text(f"SET search_path = {schema}, ag_catalog, public"))
-        yield db
-    finally:
-        db.close()
-
-
 # === 헬스 체크 Cypher 쿼리 ===
+
 
 def _count_nodes_by_label(db: Session, graph_name: str) -> dict[str, int]:
     """라벨별 노드 수 조회."""
@@ -191,13 +183,18 @@ def _find_leaf_parts_without_bom(db: Session, graph_name: str) -> int:
 
 # === 자연어 질의 (schema-per-tenant) ===
 
+
 def _build_graph_summary(
     node_counts: dict[str, int],
     rel_counts: dict[str, int],
 ) -> str:
     """현재 그래프 데이터 요약 텍스트 생성."""
-    node_lines = [f"  - {label}: {count}개" for label, count in node_counts.items() if count > 0]
-    rel_lines = [f"  - {rel}: {count}개" for rel, count in rel_counts.items() if count > 0]
+    node_lines = [
+        f"  - {label}: {count}개" for label, count in node_counts.items() if count > 0
+    ]
+    rel_lines = [
+        f"  - {rel}: {count}개" for rel, count in rel_counts.items() if count > 0
+    ]
 
     if not node_lines:
         return "\n## 현재 그래프 상태\n데이터가 없습니다.\n"
@@ -300,6 +297,7 @@ def _get_extended_hints(db: Session) -> list[str]:
     """테넌트의 확장 속성 힌트 조회 (mapping_records에서 추출)."""
     try:
         from app.modules.mapping.models import MappingRecord
+
         records = (
             db.query(MappingRecord.mapping)
             .order_by(MappingRecord.created_at.desc())
@@ -353,10 +351,11 @@ DEFAULT_STARTERS = [
 
 # === API 엔드포인트 ===
 
+
 @router.post("/health-check", response_model=HealthCheckResponse)
 def health_check(
     auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(_get_tenant_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """지식 그래프 품질 진단 리포트."""
     graph_name = org_id_to_schema(auth.org_id)
@@ -373,12 +372,14 @@ def health_check(
     total_parts = node_counts.get("Part", 0)
 
     if total_nodes == 0:
-        issues.append(HealthCheckIssue(
-            category="empty_graph",
-            severity="warning",
-            message="지식 그래프에 데이터가 없습니다. 먼저 데이터를 합성해주세요.",
-            count=0,
-        ))
+        issues.append(
+            HealthCheckIssue(
+                category="empty_graph",
+                severity="warning",
+                message="지식 그래프에 데이터가 없습니다. 먼저 데이터를 합성해주세요.",
+                count=0,
+            )
+        )
         return HealthCheckResponse(
             total_nodes=0,
             total_relationships=0,
@@ -390,42 +391,50 @@ def health_check(
     # 고립 부품 탐지
     orphan_count = _find_orphan_parts(db, graph_name, total_parts)
     if orphan_count > 0:
-        issues.append(HealthCheckIssue(
-            category="orphan_parts",
-            severity="warning",
-            message=f"어떤 프로젝트나 조립체에도 소속되지 않은 부품 {orphan_count}개",
-            count=orphan_count,
-        ))
+        issues.append(
+            HealthCheckIssue(
+                category="orphan_parts",
+                severity="warning",
+                message=f"어떤 프로젝트나 조립체에도 소속되지 않은 부품 {orphan_count}개",
+                count=orphan_count,
+            )
+        )
 
     # 도면 미연결 부품
     no_drawing = _find_parts_without_drawing(db, graph_name, total_parts)
     if no_drawing > 0:
-        issues.append(HealthCheckIssue(
-            category="missing_drawing",
-            severity="info",
-            message=f"도면이 연결되지 않은 부품 {no_drawing}개",
-            count=no_drawing,
-        ))
+        issues.append(
+            HealthCheckIssue(
+                category="missing_drawing",
+                severity="info",
+                message=f"도면이 연결되지 않은 부품 {no_drawing}개",
+                count=no_drawing,
+            )
+        )
 
     # 공급사 미연결 부품
     no_supplier = _find_parts_without_supplier(db, graph_name, total_parts)
     if no_supplier > 0:
-        issues.append(HealthCheckIssue(
-            category="missing_supplier",
-            severity="info",
-            message=f"공급사가 연결되지 않은 부품 {no_supplier}개",
-            count=no_supplier,
-        ))
+        issues.append(
+            HealthCheckIssue(
+                category="missing_supplier",
+                severity="info",
+                message=f"공급사가 연결되지 않은 부품 {no_supplier}개",
+                count=no_supplier,
+            )
+        )
 
     # BOM에는 있지만 상세정보 부족
     incomplete_bom = _find_leaf_parts_without_bom(db, graph_name)
     if incomplete_bom > 0:
-        issues.append(HealthCheckIssue(
-            category="incomplete_bom",
-            severity="warning",
-            message=f"BOM에 존재하지만 품명 정보가 없는 부품 {incomplete_bom}개",
-            count=incomplete_bom,
-        ))
+        issues.append(
+            HealthCheckIssue(
+                category="incomplete_bom",
+                severity="warning",
+                message=f"BOM에 존재하지만 품명 정보가 없는 부품 {incomplete_bom}개",
+                count=incomplete_bom,
+            )
+        )
 
     logger.info(
         "헬스 체크 완료: 노드={nodes} 관계={rels} 이슈={issues}개",
@@ -447,7 +456,7 @@ def health_check(
 def query_graph(
     req: QueryRequest,
     auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(_get_tenant_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """자연어 → Cypher → 그래프 질의 + AI 답변 생성."""
     graph_name = org_id_to_schema(auth.org_id)

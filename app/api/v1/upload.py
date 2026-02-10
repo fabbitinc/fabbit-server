@@ -8,15 +8,13 @@ import uuid
 
 from fastapi import APIRouter, Depends
 from loguru import logger
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_org_id, require_auth
+from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
-from app.core.database import SessionLocal, generate_uuid7
+from app.core.database import generate_uuid7
 from app.core.exceptions import AppError
 from app.infrastructure.s3_client import S3Client
-from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.upload.models import Upload
 from app.modules.upload.schemas import (
     BatchCompleteFailure,
@@ -34,17 +32,6 @@ router = APIRouter(prefix="/uploads", tags=["uploads"])
 _s3 = S3Client()
 
 
-def _get_tenant_db(org_id: uuid.UUID = Depends(get_current_org_id)):
-    """테넌트 격리 세션 의존성."""
-    schema = org_id_to_schema(org_id)
-    db = SessionLocal()
-    try:
-        db.execute(text(f"SET search_path = {schema}, ag_catalog, public"))
-        yield db
-    finally:
-        db.close()
-
-
 # ── 단일 엔드포인트 ──
 
 
@@ -52,12 +39,11 @@ def _get_tenant_db(org_id: uuid.UUID = Depends(get_current_org_id)):
 def create_upload(
     req: CreateUploadRequest,
     auth: AuthContext = Depends(require_auth),
-    org_id: uuid.UUID = Depends(get_current_org_id),
-    db: Session = Depends(_get_tenant_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Presigned URL 발급 + Upload 레코드 생성."""
     upload_id = generate_uuid7()
-    file_key = f"tenants/{org_id}/raw_data/{upload_id}/{req.original_name}"
+    file_key = f"tenants/{auth.org_id}/raw_data/{upload_id}/{req.original_name}"
 
     upload = Upload(
         id=upload_id,
@@ -97,15 +83,14 @@ def create_upload(
 def batch_create_uploads(
     req: BatchCreateUploadRequest,
     auth: AuthContext = Depends(require_auth),
-    org_id: uuid.UUID = Depends(get_current_org_id),
-    db: Session = Depends(_get_tenant_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """여러 파일의 Presigned URL 일괄 발급."""
     results: list[CreateUploadResponse] = []
 
     for item in req.items:
         upload_id = generate_uuid7()
-        file_key = f"tenants/{org_id}/raw_data/{upload_id}/{item.original_name}"
+        file_key = f"tenants/{auth.org_id}/raw_data/{upload_id}/{item.original_name}"
 
         upload = Upload(
             id=upload_id,
@@ -145,48 +130,50 @@ def batch_create_uploads(
 def batch_complete_uploads(
     req: BatchCompleteRequest,
     auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(_get_tenant_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """여러 업로드의 완료를 일괄 확인."""
     completed: list[UploadCompleteResponse] = []
     failed: list[BatchCompleteFailure] = []
 
-    uploads = (
-        db.query(Upload).filter(Upload.id.in_(req.upload_ids)).all()
-    )
+    uploads = db.query(Upload).filter(Upload.id.in_(req.upload_ids)).all()
     upload_map = {u.id: u for u in uploads}
 
     for uid in req.upload_ids:
         upload = upload_map.get(uid)
         if upload is None:
-            failed.append(BatchCompleteFailure(
-                upload_id=uid, reason="업로드를 찾을 수 없습니다"
-            ))
+            failed.append(
+                BatchCompleteFailure(upload_id=uid, reason="업로드를 찾을 수 없습니다")
+            )
             continue
 
         if upload.status == "UPLOADED":
-            failed.append(BatchCompleteFailure(
-                upload_id=uid, reason="이미 완료된 업로드입니다"
-            ))
+            failed.append(
+                BatchCompleteFailure(upload_id=uid, reason="이미 완료된 업로드입니다")
+            )
             continue
 
         obj_meta = _s3.head_object(upload.file_key)
         if obj_meta is None:
-            failed.append(BatchCompleteFailure(
-                upload_id=uid, reason="S3에 파일이 존재하지 않습니다"
-            ))
+            failed.append(
+                BatchCompleteFailure(
+                    upload_id=uid, reason="S3에 파일이 존재하지 않습니다"
+                )
+            )
             continue
 
         upload.status = "UPLOADED"
-        completed.append(UploadCompleteResponse(
-            upload_id=upload.id,
-            status=upload.status,
-            original_name=upload.original_name,
-            file_key=upload.file_key,
-            file_size=upload.file_size,
-            content_type=upload.content_type,
-            created_at=upload.created_at,
-        ))
+        completed.append(
+            UploadCompleteResponse(
+                upload_id=upload.id,
+                status=upload.status,
+                original_name=upload.original_name,
+                file_key=upload.file_key,
+                file_size=upload.file_size,
+                content_type=upload.content_type,
+                created_at=upload.created_at,
+            )
+        )
 
     db.commit()
 
@@ -206,7 +193,7 @@ def batch_complete_uploads(
 def complete_upload(
     upload_id: uuid.UUID,
     auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(_get_tenant_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """업로드 완료 확인 (S3 head_object로 검증 후 상태 변경)."""
     upload = db.query(Upload).filter(Upload.id == upload_id).first()

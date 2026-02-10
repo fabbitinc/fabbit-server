@@ -3,7 +3,6 @@
 인증, DB 세션 등 API 엔드포인트에서 공통으로 사용하는 의존성입니다.
 """
 
-import uuid
 from collections.abc import Generator
 
 from fastapi import Depends, Request
@@ -14,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.database import SessionLocal
 from app.core.exceptions import AppError
+from app.modules.auth.provisioning import org_id_to_schema
 
 # Swagger UI에 Authorize 버튼 표시 (실제 검증은 AuthMiddleware에서 처리)
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -26,25 +26,6 @@ def get_db() -> Generator[Session, None, None]:
     """
     db = SessionLocal()
     try:
-        yield db
-    finally:
-        db.close()
-
-
-def get_tenant_db(org_id: str) -> Generator[Session, None, None]:
-    """테넌트 격리 세션 의존성 (요청마다 search_path 전환)
-
-    커넥션 풀에서 꺼낸 커넥션에 이전 요청의 search_path가 남아있을 수 있으므로,
-    매 요청마다 명시적으로 SET search_path를 실행하여 테넌트 격리를 보장합니다.
-
-    사용법:
-        @router.post("/some-endpoint")
-        def some_endpoint(org_id: str, db: Session = Depends(get_tenant_db)):
-            ...
-    """
-    db = SessionLocal()
-    try:
-        db.execute(text(f"SET search_path = tenant_{org_id}, ag_catalog, public"))
         yield db
     finally:
         db.close()
@@ -66,6 +47,20 @@ def require_auth(
     return ctx
 
 
-def get_current_org_id(request: Request) -> uuid.UUID:
-    """현재 요청의 org_id 추출 (AuthContext 기반)."""
-    return require_auth(request).org_id
+def get_tenant_db(
+    auth: AuthContext = Depends(require_auth),
+) -> Generator[Session, None, None]:
+    """테넌트 격리 세션 의존성 (인증 기반 search_path 전환)
+
+    커넥션 풀에서 꺼낸 커넥션에 이전 요청의 search_path가 남아있을 수 있으므로,
+    매 요청마다 명시적으로 SET search_path를 실행하여 테넌트 격리를 보장합니다.
+
+    인증 컨텍스트의 org_id를 사용해 테넌트 스키마를 결정합니다.
+    """
+    schema = org_id_to_schema(auth.org_id)
+    db = SessionLocal()
+    try:
+        db.execute(text(f"SET search_path = {schema}, ag_catalog, public"))
+        yield db
+    finally:
+        db.close()
