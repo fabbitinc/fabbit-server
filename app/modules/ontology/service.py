@@ -32,6 +32,13 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
    - 예: "탄소배출량" → "_ext_carbon_emission"
 5. 매핑할 수 없는 컬럼(빈 값, 의미 없는 인덱스 등)은 무시합니다.
 
+## 관계 매핑 주의사항 (매우 중요)
+- **CONSISTS_OF (Part → Part)**: 반드시 **상위 부품(조립품)의 part_number**와 **하위 부품의 part_number**가 **서로 다른 컬럼**에 존재해야 합니다.
+  - 올바른 예: "상위품번" 컬럼과 "하위품번" 컬럼이 별도로 존재하는 계층적 BOM
+  - **잘못된 예**: 부품 목록만 나열된 flat BOM (하나의 part_number 컬럼만 존재). 이 경우 CONSISTS_OF를 생성하지 마세요.
+  - Qty/수량 컬럼이 있더라도, 상위-하위 관계를 식별할 수 있는 두 개의 서로 다른 part_number 컬럼이 없으면 CONSISTS_OF를 생성하면 안 됩니다.
+- **SUPPLIED_BY, MADE_OF, DEFINED_BY**: 각각 from_label과 to_label의 MERGE KEY에 해당하는 컬럼이 데이터에 존재해야 합니다. 존재하지 않는 관계는 생성하지 마세요.
+
 ## 데이터 타입 규칙
 - 각 매핑에 data_type을 지정하세요: "string", "integer", "float", "boolean"
 - 샘플 데이터를 보고 적절한 타입을 추론하세요.
@@ -125,12 +132,28 @@ def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
 
     result.column_mappings = verified_columns
 
-    verified_rels = [
-        rm for rm in result.relation_mappings
-        if rm.rel_type in valid_rel_types
-        and rm.from_label in valid_labels
-        and rm.to_label in valid_labels
-    ]
+    # 관계 매핑 검증
+    verified_rels = []
+    for rm in result.relation_mappings:
+        if rm.rel_type not in valid_rel_types:
+            continue
+        if rm.from_label not in valid_labels or rm.to_label not in valid_labels:
+            continue
+        # CONSISTS_OF self-loop 방어: from/to가 같은 라벨이면
+        # 서로 다른 merge key 컬럼이 column_mappings에 있어야 함
+        if rm.from_label == rm.to_label:
+            node_def = MANUFACTURING_ONTOLOGY.get_node_label(rm.from_label)
+            if node_def:
+                merge_key_columns = [
+                    cm.source_column
+                    for cm in result.column_mappings
+                    if cm.target_label == rm.from_label
+                    and cm.target_property in node_def.merge_keys
+                ]
+                # merge key에 매핑된 고유 컬럼이 2개 미만이면 self-loop → 제거
+                if len(set(merge_key_columns)) < 2:
+                    continue
+        verified_rels.append(rm)
     result.relation_mappings = verified_rels
 
     fixed_ext = []
