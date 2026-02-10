@@ -70,11 +70,14 @@ class TokenProvider:
                 algorithms=[settings.jwt_algorithm],
                 issuer=settings.jwt_issuer,
             )
+            token_type = payload.get("type", "ACCESS")
+            # Refresh token에는 orgId가 없으므로 기본값 처리
+            org_id = payload["orgId"] if token_type == "ACCESS" else ""
             return TokenPayload(
                 sub=payload["sub"],
                 email=payload["email"],
-                token_type=payload.get("type", "ACCESS"),
-                org_id=payload["orgId"],
+                org_id=org_id,
+                token_type=token_type,
                 jti=payload.get("jti"),
             )
         except jwt.ExpiredSignatureError:

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_org_id, require_auth
 from app.core.auth_context import AuthContext
-from app.core.database import SessionLocal
+from app.core.database import SessionLocal, generate_uuid7
 from app.core.exceptions import AppError
 from app.infrastructure.s3_client import S3Client
 from app.modules.auth.provisioning import org_id_to_schema
@@ -45,6 +45,9 @@ def _get_tenant_db(org_id: uuid.UUID = Depends(get_current_org_id)):
         db.close()
 
 
+# ── 단일 엔드포인트 ──
+
+
 @router.post("", response_model=CreateUploadResponse)
 def create_upload(
     req: CreateUploadRequest,
@@ -53,17 +56,18 @@ def create_upload(
     db: Session = Depends(_get_tenant_db),
 ):
     """Presigned URL 발급 + Upload 레코드 생성."""
+    upload_id = generate_uuid7()
+    file_key = f"tenants/{org_id}/raw_data/{upload_id}/{req.original_name}"
+
     upload = Upload(
+        id=upload_id,
         original_name=req.original_name,
+        file_key=file_key,
         content_type=req.content_type,
         file_size=req.file_size,
         project_id=req.project_id,
     )
     db.add(upload)
-    db.flush()
-
-    file_key = f"tenants/{org_id}/raw_data/{upload.id}/{req.original_name}"
-    upload.file_key = file_key
 
     presigned = _s3.generate_upload_presigned_url(
         file_key=file_key,
@@ -75,57 +79,18 @@ def create_upload(
 
     logger.info(
         "업로드 URL 발급: upload_id={upload_id} file_key={file_key}",
-        upload_id=upload.id,
+        upload_id=upload_id,
         file_key=file_key,
     )
 
     return CreateUploadResponse(
-        upload_id=upload.id,
+        upload_id=upload_id,
         upload_url=presigned["upload_url"],
         file_key=file_key,
     )
 
 
-@router.post("/{upload_id}/complete", response_model=UploadCompleteResponse)
-def complete_upload(
-    upload_id: uuid.UUID,
-    auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(_get_tenant_db),
-):
-    """업로드 완료 확인 (S3 head_object로 검증 후 상태 변경)."""
-    upload = db.query(Upload).filter(Upload.id == upload_id).first()
-    if upload is None:
-        raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
-
-    if upload.status == "UPLOADED":
-        raise AppError(message="이미 완료된 업로드입니다", code="CONFLICT")
-
-    # S3에 실제로 파일이 존재하는지 검증
-    obj_meta = _s3.head_object(upload.file_key)
-    if obj_meta is None:
-        raise AppError(
-            message="S3에 파일이 존재하지 않습니다. 업로드를 완료해주세요.",
-            code="PRECONDITION_FAILED",
-        )
-
-    upload.status = "UPLOADED"
-    db.commit()
-
-    logger.info(
-        "업로드 완료: upload_id={upload_id} size={size}",
-        upload_id=upload.id,
-        size=obj_meta["content_length"],
-    )
-
-    return UploadCompleteResponse(
-        upload_id=upload.id,
-        status=upload.status,
-        original_name=upload.original_name,
-        file_key=upload.file_key,
-        file_size=upload.file_size,
-        content_type=upload.content_type,
-        created_at=upload.created_at,
-    )
+# ── 배치 엔드포인트 (고정 경로 — 동적 경로보다 먼저 등록) ──
 
 
 @router.post("/batch", response_model=BatchCreateUploadResponse)
@@ -139,17 +104,18 @@ def batch_create_uploads(
     results: list[CreateUploadResponse] = []
 
     for item in req.items:
+        upload_id = generate_uuid7()
+        file_key = f"tenants/{org_id}/raw_data/{upload_id}/{item.original_name}"
+
         upload = Upload(
+            id=upload_id,
             original_name=item.original_name,
+            file_key=file_key,
             content_type=item.content_type,
             file_size=item.file_size,
             project_id=item.project_id,
         )
         db.add(upload)
-        db.flush()
-
-        file_key = f"tenants/{org_id}/raw_data/{upload.id}/{item.original_name}"
-        upload.file_key = file_key
 
         presigned = _s3.generate_upload_presigned_url(
             file_key=file_key,
@@ -159,7 +125,7 @@ def batch_create_uploads(
 
         results.append(
             CreateUploadResponse(
-                upload_id=upload.id,
+                upload_id=upload_id,
                 upload_url=presigned["upload_url"],
                 file_key=file_key,
             )
@@ -231,3 +197,48 @@ def batch_complete_uploads(
     )
 
     return BatchCompleteResponse(items=completed, failed=failed)
+
+
+# ── 동적 경로 (배치 고정 경로 뒤에 등록) ──
+
+
+@router.post("/{upload_id}/complete", response_model=UploadCompleteResponse)
+def complete_upload(
+    upload_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(_get_tenant_db),
+):
+    """업로드 완료 확인 (S3 head_object로 검증 후 상태 변경)."""
+    upload = db.query(Upload).filter(Upload.id == upload_id).first()
+    if upload is None:
+        raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
+
+    if upload.status == "UPLOADED":
+        raise AppError(message="이미 완료된 업로드입니다", code="CONFLICT")
+
+    # S3에 실제로 파일이 존재하는지 검증
+    obj_meta = _s3.head_object(upload.file_key)
+    if obj_meta is None:
+        raise AppError(
+            message="S3에 파일이 존재하지 않습니다. 업로드를 완료해주세요.",
+            code="PRECONDITION_FAILED",
+        )
+
+    upload.status = "UPLOADED"
+    db.commit()
+
+    logger.info(
+        "업로드 완료: upload_id={upload_id} size={size}",
+        upload_id=upload.id,
+        size=obj_meta["content_length"],
+    )
+
+    return UploadCompleteResponse(
+        upload_id=upload.id,
+        status=upload.status,
+        original_name=upload.original_name,
+        file_key=upload.file_key,
+        file_size=upload.file_size,
+        content_type=upload.content_type,
+        created_at=upload.created_at,
+    )
