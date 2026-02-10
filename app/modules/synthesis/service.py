@@ -1,5 +1,6 @@
 """합성 도메인 서비스 레이어."""
 
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -272,6 +273,7 @@ def _run_synthesis(
         for chunk_start in range(0, total_rows, CHUNK_SIZE):
             chunk_end = min(chunk_start + CHUNK_SIZE, total_rows)
             chunk = df.iloc[chunk_start:chunk_end]
+            t_chunk = time.perf_counter()
 
             for idx, (_, row_series) in enumerate(chunk.iterrows()):
                 row_num = chunk_start + idx + 1
@@ -294,6 +296,7 @@ def _run_synthesis(
                 processed += 1
 
             db.commit()
+            chunk_elapsed = time.perf_counter() - t_chunk
             job.processed_rows = processed
             job.nodes_created = nodes_created
             job.relationships_created = rels_created
@@ -301,10 +304,12 @@ def _run_synthesis(
             db.commit()
 
             logger.info(
-                "합성 진행: job_id={job_id} {processed}/{total}행",
+                "합성 진행: job_id={job_id} {processed}/{total}행 청크 {elapsed:.1f}s ({rate:.0f}행/s)",
                 job_id=job_id,
                 processed=processed,
                 total=total_rows,
+                elapsed=chunk_elapsed,
+                rate=len(chunk) / chunk_elapsed if chunk_elapsed > 0 else 0,
             )
 
         job.status = "COMPLETED"

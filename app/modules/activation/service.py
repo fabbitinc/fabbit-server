@@ -1,6 +1,7 @@
 """활성화 및 탐색 도메인 서비스 레이어."""
 
 import json
+import time
 
 from loguru import logger
 from sqlalchemy.orm import Session
@@ -25,6 +26,7 @@ def health_check(
     db: Session,
     auth: AuthContext,
 ) -> HealthCheckResponse:
+    t0 = time.perf_counter()
     graph_name = org_id_to_schema(auth.org_id)
     node_counts = repo.count_nodes_by_labels(
         db,
@@ -36,6 +38,7 @@ def health_check(
         graph_name,
         [rt.rel_type for rt in MANUFACTURING_ONTOLOGY.relationship_types],
     )
+    logger.info("[헬스체크] 카운트 조회: {elapsed:.2f}s", elapsed=time.perf_counter() - t0)
 
     total_nodes = sum(node_counts.values())
     total_rels = sum(rel_counts.values())
@@ -123,8 +126,10 @@ def query_graph(
     auth: AuthContext,
     question: str,
 ) -> QueryResponse:
+    t_total = time.perf_counter()
     graph_name = org_id_to_schema(auth.org_id)
 
+    t0 = time.perf_counter()
     node_counts = repo.count_nodes_by_labels(
         db,
         graph_name,
@@ -136,6 +141,8 @@ def query_graph(
         [rt.rel_type for rt in MANUFACTURING_ONTOLOGY.relationship_types],
     )
     ext_hints = repo.list_extended_hints(db)
+    logger.info("[질의] 컨텍스트 수집: {elapsed:.2f}s", elapsed=time.perf_counter() - t0)
+
     system_prompt = _build_tenant_query_prompt(ext_hints, node_counts, rel_counts)
 
     cypher_resp = chat_completion_with_usage(
@@ -155,7 +162,9 @@ def query_graph(
     )
 
     try:
+        t0 = time.perf_counter()
         raw_results = repo.execute_graph_query(db, cypher, graph_name)
+        logger.info("[질의] Cypher 실행: {elapsed:.2f}s ({count}건)", elapsed=time.perf_counter() - t0, count=len(raw_results))
     except Exception as error:
         logger.warning(
             "Cypher 실행 실패: query={cypher} error={err}",
@@ -195,10 +204,12 @@ def query_graph(
     except Exception:
         answer = "쿼리 결과를 확인해주세요."
 
+    total_elapsed = time.perf_counter() - t_total
     logger.info(
-        "질의 완료: question={q} results={count}건",
+        "질의 완료: question={q} results={count}건 총 {elapsed:.1f}s",
         q=question[:50],
         count=len(results),
+        elapsed=total_elapsed,
     )
     return QueryResponse(cypher_query=cypher, results=results, answer=answer)
 

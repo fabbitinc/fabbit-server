@@ -1,5 +1,6 @@
 """매핑 도메인 서비스 레이어."""
 
+import time
 import uuid
 
 from loguru import logger
@@ -35,6 +36,7 @@ def preview_mapping(
     auth: AuthContext,
     req: MappingPreviewRequest,
 ) -> MappingPreviewResponse:
+    t_total = time.perf_counter()
     upload = repo.get_upload_by_id(db, req.upload_id)
     if upload is None:
         raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
@@ -66,12 +68,18 @@ def preview_mapping(
     first_mapping = None
 
     for sheet in target_sheets:
+        sheet_label = sheet or upload.original_name
         try:
+            t_parse = time.perf_counter()
             headers, sample_rows = extract_headers_and_rows(
                 content,
                 upload.original_name,
                 sheet_name=sheet,
                 max_rows=5,
+            )
+            logger.info(
+                "[매핑] 파싱 완료: {sheet} ({elapsed:.2f}s)",
+                sheet=sheet_label, elapsed=time.perf_counter() - t_parse,
             )
         except Exception as e:
             if sheet is not None:
@@ -89,7 +97,12 @@ def preview_mapping(
                 ))
             continue
 
+        t_llm = time.perf_counter()
         mapping_result, llm_resp = ontology_service.generate_mapping(headers, sample_rows)
+        logger.info(
+            "[매핑] LLM 매핑 완료: {sheet} ({elapsed:.1f}s)",
+            sheet=sheet_label, elapsed=time.perf_counter() - t_llm,
+        )
 
         log_ai_usage(
             org_id=auth.org_id,
@@ -128,11 +141,13 @@ def preview_mapping(
             code="INVALID_INPUT",
         )
 
+    total_elapsed = time.perf_counter() - t_total
     logger.info(
-        "매핑 미리보기 생성: upload_id={upload_id} sheets={sheet_count}개 skipped={skipped_count}개",
+        "매핑 미리보기 완료: upload_id={upload_id} sheets={sheet_count}개 skipped={skipped_count}개 총 {elapsed:.1f}s",
         upload_id=req.upload_id,
         sheet_count=len(sheets),
         skipped_count=len(skipped_sheets),
+        elapsed=total_elapsed,
     )
     return MappingPreviewResponse(
         headers=first_headers,

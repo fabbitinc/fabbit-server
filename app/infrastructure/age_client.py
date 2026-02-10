@@ -11,8 +11,10 @@ exec_driver_sql() + $$ 달러 쿼팅으로 AGE Cypher를 실행합니다.
 
 import json
 import re
+import time
 from typing import Any
 
+from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -73,6 +75,7 @@ def execute_cypher(
     wrapped_sql = wrapped_sql.replace("%", "%%")
 
     conn = db.connection()
+    t0 = time.perf_counter()
     result = conn.exec_driver_sql(wrapped_sql)
 
     rows = []
@@ -83,6 +86,13 @@ def execute_cypher(
         else:
             col_names = [f"c{i}" for i in range(col_count)]
             rows.append(dict(zip(col_names, parsed)))
+
+    elapsed = time.perf_counter() - t0
+    query_preview = query[:80].replace("\n", " ")
+    if elapsed > 0.5:
+        logger.warning("[AGE] 느린 쿼리: {elapsed:.2f}s | {q}...", elapsed=elapsed, q=query_preview)
+    else:
+        logger.debug("[AGE] 쿼리: {elapsed:.3f}s | {q}...", elapsed=elapsed, q=query_preview)
     return rows
 
 
@@ -96,4 +106,9 @@ def execute_cypher_raw(
     wrapped_sql = f"SELECT * FROM cypher('{graph_name}', $${query}$$) AS (v agtype);"
     # psycopg2가 %를 파라미터 마커로 해석하므로 %%로 이스케이프
     wrapped_sql = wrapped_sql.replace("%", "%%")
+    t0 = time.perf_counter()
     db.connection().exec_driver_sql(wrapped_sql)
+    elapsed = time.perf_counter() - t0
+    if elapsed > 0.5:
+        query_preview = query[:80].replace("\n", " ")
+        logger.warning("[AGE] 느린 쓰기: {elapsed:.2f}s | {q}...", elapsed=elapsed, q=query_preview)

@@ -1,7 +1,10 @@
 """S3 호환 스토리지 클라이언트 (Cloudflare R2 / MinIO)."""
 
+import time
+
 import boto3
 from botocore.config import Config
+from loguru import logger
 
 from app.core.config import settings
 
@@ -86,8 +89,12 @@ class S3Client:
 
     def get_object(self, file_key: str) -> bytes:
         """S3 객체 다운로드 → 바이트 반환."""
+        t0 = time.perf_counter()
         resp = self._client.get_object(Bucket=self._bucket, Key=file_key)
-        return resp["Body"].read()
+        data = resp["Body"].read()
+        elapsed = time.perf_counter() - t0
+        logger.info("[S3] 다운로드: {key} ({size} bytes, {elapsed:.1f}s)", key=file_key, size=len(data), elapsed=elapsed)
+        return data
 
     def delete_object(self, file_key: str) -> None:
         """S3 객체 삭제."""
