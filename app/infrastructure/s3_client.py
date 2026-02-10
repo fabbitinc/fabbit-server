@@ -1,0 +1,72 @@
+"""S3 호환 스토리지 클라이언트 (Cloudflare R2 / MinIO)."""
+
+import boto3
+from botocore.config import Config
+
+from app.core.config import settings
+
+
+class S3Client:
+    """S3 호환 스토리지 클라이언트."""
+
+    def __init__(self) -> None:
+        self._client = boto3.client(
+            "s3",
+            endpoint_url=settings.storage_endpoint,
+            aws_access_key_id=settings.storage_access_key,
+            aws_secret_access_key=settings.storage_secret_key,
+            region_name="auto",
+            config=Config(s3={"addressing_style": "path"}),
+        )
+        self._bucket = settings.storage_bucket
+        self._public_url = settings.storage_public_url
+
+    def _get_file_url(self, file_key: str) -> str:
+        """파일 공개 URL 생성."""
+        if self._public_url:
+            return f"{self._public_url.rstrip('/')}/{file_key}"
+        return f"{settings.storage_endpoint}/{self._bucket}/{file_key}"
+
+    def generate_upload_presigned_url(
+        self,
+        file_key: str,
+        content_type: str,
+        content_length: int,
+        expiration_minutes: int = 15,
+    ) -> dict[str, str]:
+        """업로드용 Presigned URL 생성.
+
+        Returns:
+            {"upload_url": "...", "file_url": "...", "file_key": "..."}
+        """
+        upload_url = self._client.generate_presigned_url(
+            "put_object",
+            Params={
+                "Bucket": self._bucket,
+                "Key": file_key,
+                "ContentType": content_type,
+                "ContentLength": content_length,
+            },
+            ExpiresIn=expiration_minutes * 60,
+        )
+        return {
+            "upload_url": upload_url,
+            "file_url": self._get_file_url(file_key),
+            "file_key": file_key,
+        }
+
+    def generate_download_presigned_url(
+        self,
+        file_key: str,
+        expiration_minutes: int = 5,
+    ) -> str:
+        """다운로드용 Presigned URL 생성."""
+        return self._client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": self._bucket, "Key": file_key},
+            ExpiresIn=expiration_minutes * 60,
+        )
+
+    def delete_object(self, file_key: str) -> None:
+        """S3 객체 삭제."""
+        self._client.delete_object(Bucket=self._bucket, Key=file_key)

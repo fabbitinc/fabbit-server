@@ -20,4 +20,14 @@ dependencies = [
     "chardet>=5.0.0",
     "python-multipart>=0.0.9",
     "loguru>=0.7.3",
+    # OpenTelemetry
+    "opentelemetry-api>=1.29.0",
+    "opentelemetry-sdk>=1.29.0",
+    "opentelemetry-exporter-otlp>=1.29.0",
+    "opentelemetry-instrumentation-fastapi>=0.50b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.50b0",
+    # JWT 인증
+    "pyjwt>=2.11.0",
+    # S3 스토리지
+    "boto3>=1.42.42",
 ]

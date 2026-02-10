@@ -2,6 +2,12 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    # 앱 기본
+    app_name: str = "Fabbit Ontology Engine"
+    debug: bool = False
+    log_level: str = "INFO"
+    cors_origins: list[str] = ["*"]
+
     # PostgreSQL (Apache AGE)
     database_host: str = "localhost"
     database_port: int = 5432
@@ -14,6 +20,26 @@ class Settings(BaseSettings):
 
     # Apache AGE 그래프 이름
     graph_name: str = "fabbit_graph"
+
+    # JWT 인증
+    jwt_secret_key: str = "change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_issuer: str = "fabbit"
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
+
+    # OpenTelemetry
+    otel_enabled: bool = False
+    otel_service_name: str = "fabbit-ontology-engine"
+    otel_exporter_endpoint: str = ""
+    otel_exporter_headers: str = ""
+
+    # S3 호환 스토리지 (Cloudflare R2 / MinIO)
+    storage_endpoint: str = "http://localhost:9000"
+    storage_access_key: str = "minioadmin"
+    storage_secret_key: str = "minioadmin"
+    storage_bucket: str = "fabbit"
+    storage_public_url: str = ""
 
     @property
     def database_dsn(self) -> str:
