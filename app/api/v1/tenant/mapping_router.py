@@ -28,7 +28,7 @@ from app.modules.ontology import service as ontology_service
 from app.modules.ai_usage.service import log_ai_usage
 from app.modules.upload.models import Upload
 
-router = APIRouter(prefix="/mappings", tags=["mappings"])
+router = APIRouter(prefix="/api/v1/mappings", tags=["mappings"])
 
 _s3 = S3Client()
 

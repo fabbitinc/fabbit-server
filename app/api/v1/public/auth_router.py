@@ -16,7 +16,7 @@ from app.modules.auth.schemas import (
     TokenResponse,
 )
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
 @router.post("/signup", response_model=SignupResponse)

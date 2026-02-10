@@ -20,7 +20,7 @@ from app.modules.ai_usage.service import log_ai_usage
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
 
-router = APIRouter(prefix="/activation", tags=["activation"])
+router = APIRouter(prefix="/api/v1/activation", tags=["activation"])
 
 
 # === Pydantic 스키마 ===

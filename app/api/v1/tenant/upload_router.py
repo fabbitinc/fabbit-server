@@ -27,7 +27,7 @@ from app.modules.upload.schemas import (
     UploadCompleteResponse,
 )
 
-router = APIRouter(prefix="/uploads", tags=["uploads"])
+router = APIRouter(prefix="/api/v1/uploads", tags=["uploads"])
 
 _s3 = S3Client()
 

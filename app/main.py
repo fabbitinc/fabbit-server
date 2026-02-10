@@ -13,11 +13,11 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from loguru import logger  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
-from app.api.v1.activation import router as activation_router  # noqa: E402
-from app.api.v1.auth import router as auth_router  # noqa: E402
-from app.api.v1.mapping import router as mapping_router  # noqa: E402
-from app.api.v1.synthesis import router as synthesis_router  # noqa: E402
-from app.api.v1.upload import router as upload_router  # noqa: E402
+from app.api.v1.public.auth_router import router as auth_router  # noqa: E402
+from app.api.v1.tenant.activation_router import router as activation_router  # noqa: E402
+from app.api.v1.tenant.mapping_router import router as mapping_router  # noqa: E402
+from app.api.v1.tenant.synthesis_router import router as synthesis_router  # noqa: E402
+from app.api.v1.tenant.upload_router import router as upload_router  # noqa: E402
 from app.core.auth_context import AuthContext  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.database import engine  # noqa: E402
@@ -36,15 +36,17 @@ register_exception_handlers(app)
 _token_provider = TokenProvider()
 
 # 인증이 불필요한 경로
-_PUBLIC_PATHS = frozenset({
-    "/health",
-    "/auth/signup",
-    "/auth/login",
-    "/auth/refresh",
-    "/docs",
-    "/openapi.json",
-    "/redoc",
-})
+_PUBLIC_PATHS = frozenset(
+    {
+        "/health",
+        "/api/v1/auth/signup",
+        "/api/v1/auth/login",
+        "/api/v1/auth/refresh",
+        "/docs",
+        "/openapi.json",
+        "/redoc",
+    }
+)
 
 
 def _is_public_path(path: str) -> bool:

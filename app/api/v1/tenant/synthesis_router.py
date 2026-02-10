@@ -33,7 +33,7 @@ from app.modules.synthesis.schemas import (
 from app.modules.upload.models import Upload
 from app.core.exceptions import AppError
 
-router = APIRouter(prefix="/synthesis", tags=["synthesis"])
+router = APIRouter(prefix="/api/v1/synthesis", tags=["synthesis"])
 
 _s3 = S3Client()
 
