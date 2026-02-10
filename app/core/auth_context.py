@@ -11,7 +11,7 @@ class AuthContext:
 
     account_id: uuid.UUID
     email: str
-    org_id: uuid.UUID | None = None
+    org_id: uuid.UUID
 
 
 _auth_context: ContextVar[AuthContext | None] = ContextVar("auth_context", default=None)

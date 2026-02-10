@@ -19,6 +19,11 @@ from app.infrastructure.s3_client import S3Client
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.upload.models import Upload
 from app.modules.upload.schemas import (
+    BatchCompleteFailure,
+    BatchCompleteRequest,
+    BatchCompleteResponse,
+    BatchCreateUploadRequest,
+    BatchCreateUploadResponse,
     CreateUploadRequest,
     CreateUploadResponse,
     UploadCompleteResponse,
@@ -121,3 +126,108 @@ def complete_upload(
         content_type=upload.content_type,
         created_at=upload.created_at,
     )
+
+
+@router.post("/batch", response_model=BatchCreateUploadResponse)
+def batch_create_uploads(
+    req: BatchCreateUploadRequest,
+    auth: AuthContext = Depends(require_auth),
+    org_id: uuid.UUID = Depends(get_current_org_id),
+    db: Session = Depends(_get_tenant_db),
+):
+    """여러 파일의 Presigned URL 일괄 발급."""
+    results: list[CreateUploadResponse] = []
+
+    for item in req.items:
+        upload = Upload(
+            original_name=item.original_name,
+            content_type=item.content_type,
+            file_size=item.file_size,
+            project_id=item.project_id,
+        )
+        db.add(upload)
+        db.flush()
+
+        file_key = f"tenants/{org_id}/raw_data/{upload.id}/{item.original_name}"
+        upload.file_key = file_key
+
+        presigned = _s3.generate_upload_presigned_url(
+            file_key=file_key,
+            content_type=item.content_type,
+            content_length=item.file_size,
+        )
+
+        results.append(
+            CreateUploadResponse(
+                upload_id=upload.id,
+                upload_url=presigned["upload_url"],
+                file_key=file_key,
+            )
+        )
+
+    db.commit()
+
+    logger.info(
+        "배치 업로드 URL 발급: {count}건",
+        count=len(results),
+    )
+
+    return BatchCreateUploadResponse(items=results)
+
+
+@router.post("/batch/complete", response_model=BatchCompleteResponse)
+def batch_complete_uploads(
+    req: BatchCompleteRequest,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(_get_tenant_db),
+):
+    """여러 업로드의 완료를 일괄 확인."""
+    completed: list[UploadCompleteResponse] = []
+    failed: list[BatchCompleteFailure] = []
+
+    uploads = (
+        db.query(Upload).filter(Upload.id.in_(req.upload_ids)).all()
+    )
+    upload_map = {u.id: u for u in uploads}
+
+    for uid in req.upload_ids:
+        upload = upload_map.get(uid)
+        if upload is None:
+            failed.append(BatchCompleteFailure(
+                upload_id=uid, reason="업로드를 찾을 수 없습니다"
+            ))
+            continue
+
+        if upload.status == "UPLOADED":
+            failed.append(BatchCompleteFailure(
+                upload_id=uid, reason="이미 완료된 업로드입니다"
+            ))
+            continue
+
+        obj_meta = _s3.head_object(upload.file_key)
+        if obj_meta is None:
+            failed.append(BatchCompleteFailure(
+                upload_id=uid, reason="S3에 파일이 존재하지 않습니다"
+            ))
+            continue
+
+        upload.status = "UPLOADED"
+        completed.append(UploadCompleteResponse(
+            upload_id=upload.id,
+            status=upload.status,
+            original_name=upload.original_name,
+            file_key=upload.file_key,
+            file_size=upload.file_size,
+            content_type=upload.content_type,
+            created_at=upload.created_at,
+        ))
+
+    db.commit()
+
+    logger.info(
+        "배치 업로드 완료: 성공={ok}건 실패={fail}건",
+        ok=len(completed),
+        fail=len(failed),
+    )
+
+    return BatchCompleteResponse(items=completed, failed=failed)

@@ -140,19 +140,45 @@ id: Mapped[uuid.UUID] = mapped_column(
 
 ### 인덱스 / 유니크 선언 원칙
 
-1. **FK 컬럼에는 반드시 인덱스 선언** — PostgreSQL은 FK에 자동 인덱스를 생성하지 않음
-2. **자주 WHERE 조건으로 사용되는 컬럼에 인덱스 추가** — 조회 패턴 기반으로 판단
-3. **복합 유니크 제약조건은 선두 컬럼 기준 조회를 커버** — 별도 단일 인덱스 불필요
-4. **인덱스 목적을 한글 주석으로 명시**
-5. **네이밍**: `ix_{table}_{columns}` (인덱스), `uq_{table}_{columns}` (유니크)
+1. **모든 인덱스·유니크 제약은 `__table_args__`에서 선언** — 컬럼 정의에 `unique=True`, `index=True` 사용 금지
+2. **FK 컬럼에는 반드시 인덱스 선언** — PostgreSQL은 FK에 자동 인덱스를 생성하지 않음
+3. **자주 WHERE 조건으로 사용되는 컬럼에 인덱스 추가** — 조회 패턴 기반으로 판단
+4. **복합 유니크 제약조건은 선두 컬럼 기준 조회를 커버** — 별도 단일 인덱스 불필요
+5. **인덱스 목적을 한글 주석으로 명시**
+6. **네이밍**: `ix_{table}_{columns}` (인덱스), `uq_{table}_{columns}` (유니크)
 
 ```python
 __table_args__ = (
+    # 이메일 유일성
+    UniqueConstraint("email", name="uq_users_email"),
     # 소유자별 조직 조회 최적화
     Index("ix_organizations_owner_id", "owner_id"),
-    # 유저-조직 조합 유일성
-    UniqueConstraint("user_id", "org_id", name="uq_memberships_user_org"),
 )
+```
+
+### TenantBase 사용 규칙
+
+테넌트 스키마(`tenant_{org_id}`)에 생성되는 비즈니스 모델은 `TenantBase`를 상속한다.
+
+1. **`TenantBase` 상속** — `Base`가 아닌 `TenantBase`를 상속하여 `public` 스키마 모델과 분리
+2. **프리픽스 없이 도메인 이름 사용** — `TenantProject` ✗ → `Project` ✓. 대부분의 비즈니스 모델은 테넌트 소속이므로 별도 프리픽스 불필요
+3. **도메인별 모듈 배치** — `app/modules/{domain}/models.py`에 배치 (예: `app/modules/project/models.py`)
+4. **프로비저닝 시 import 필수** — `TenantBase.metadata.create_all()`이 모델을 인식하려면 `provisioning.py`에서 해당 모듈을 import 해야 함
+5. **초기 생성은 프로비저닝, 이후 변경은 Alembic** — 신규 테넌트는 `TenantBase.metadata.create_all()`로 생성. 기존 테넌트의 스키마 변경은 Alembic tenant 트랙으로 모든 `tenant_*` 스키마를 순회하며 적용
+
+```python
+# app/modules/project/models.py
+from app.core.database import TenantBase, generate_uuid7
+
+class Project(TenantBase):
+    __tablename__ = "projects"
+    ...
+```
+
+```python
+# app/modules/auth/provisioning.py
+import app.modules.project.models  # noqa: F401 — TenantBase에 모델 등록
+import app.modules.document.models  # noqa: F401
 ```
 
 ## 데이터베이스 & ORM 가이드라인
@@ -195,16 +221,19 @@ def get_tenant_db(org_id: str = Depends(get_current_org_id)):
 
 ### 마이그레이션 전략 (Alembic)
 
-- **public 트랙**: 일반 `alembic upgrade head`로 public 스키마만 관리
-- **tenant 트랙**: 모든 테넌트 스키마를 순회하며 동일 구조 적용
-  - `env.py`에서 `include_schemas=True` + `tenant_*` 패턴 필터링
-  - Migration Runner가 organizations 테이블 조회 후 각 스키마에 적용
+- **public 트랙** (`Base` 모델): `alembic upgrade head`로 public 스키마만 관리
+- **tenant 트랙** (`TenantBase` 모델): 기존 테넌트 스키마에 변경사항 적용
+  - `organizations` 테이블에서 모든 org_id 조회
+  - 각 `tenant_{org_id}` 스키마에 `SET search_path` 후 마이그레이션 실행
+  - 구현 예정: Custom Migration Runner 또는 Alembic multi-schema 확장
 
 ### 테넌트 프로비저닝 (신규 조직 가입 시)
 
-1. `tenant_{org_id}` 스키마 내 AGE 그래프 생성: `SELECT create_graph('tenant_{org_id}')`
-2. 기본 테이블 생성 (SQL 템플릿 실행)
-3. AGE 인덱스 설정: `SELECT create_vlabel_index('tenant_{org_id}', 'Part', 'part_number')`
+`app/modules/auth/provisioning.py`에서 단일 트랜잭션으로 실행:
+
+1. AGE 그래프 생성: `SELECT create_graph('tenant_{org_id}')` (스키마 자동 생성)
+2. 테넌트 테이블 생성: `TenantBase.metadata.create_all()` (search_path 전환 후)
+3. 온톨로지 vlabel + 속성 인덱스 생성: `create_vlabel()` + `agtype_access_operator` B-tree
 
 ### 쿼리 작성 규칙
 

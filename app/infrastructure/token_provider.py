@@ -16,15 +16,15 @@ class TokenPayload:
 
     sub: str
     email: str
+    org_id: str
     token_type: str = "ACCESS"
-    org_id: str | None = None
     jti: str | None = None
 
 
 class TokenProvider:
     """PyJWT 기반 토큰 생성/검증."""
 
-    def create_access_token(self, sub: str, email: str, org_id: str | None = None) -> str:
+    def create_access_token(self, sub: str, email: str, org_id: str) -> str:
         """Access Token 생성 (기본 15분 TTL)."""
         expire = datetime.now(timezone.utc) + timedelta(
             minutes=settings.access_token_expire_minutes
@@ -32,12 +32,11 @@ class TokenProvider:
         payload: dict = {
             "sub": sub,
             "email": email,
+            "orgId": org_id,
             "exp": expire,
             "type": "ACCESS",
             "iss": settings.jwt_issuer,
         }
-        if org_id is not None:
-            payload["orgId"] = org_id
         return jwt.encode(
             payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm
         )
@@ -75,7 +74,7 @@ class TokenProvider:
                 sub=payload["sub"],
                 email=payload["email"],
                 token_type=payload.get("type", "ACCESS"),
-                org_id=payload.get("orgId"),
+                org_id=payload["orgId"],
                 jti=payload.get("jti"),
             )
         except jwt.ExpiredSignatureError:

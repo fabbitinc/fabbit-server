@@ -73,7 +73,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     request.state.auth_context = AuthContext(
                         account_id=uuid.UUID(payload.sub),
                         email=payload.email,
-                        org_id=uuid.UUID(payload.org_id) if payload.org_id else None,
+                        org_id=uuid.UUID(payload.org_id),
                     )
                 except Exception:
                     pass  # 인증 실패 시 auth_context 미설정 → require_auth에서 401

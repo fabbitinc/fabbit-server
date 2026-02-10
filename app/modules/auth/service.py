@@ -100,10 +100,11 @@ def login(db: Session, req: LoginRequest) -> LoginResponse:
 
     # 첫 번째 소속 조직을 기본 org_id로 사용
     memberships = repo.get_user_memberships(db, user.id)
-    default_org_id = str(memberships[0].org_id) if memberships else None
+    if not memberships:
+        raise AppError(message="소속된 조직이 없습니다", code="FORBIDDEN")
 
     access_token = token_provider.create_access_token(
-        sub=str(user.id), email=user.email, org_id=default_org_id
+        sub=str(user.id), email=user.email, org_id=str(memberships[0].org_id)
     )
     refresh_token_str, expires_at = token_provider.create_refresh_token(
         sub=str(user.id), email=user.email
@@ -151,10 +152,11 @@ def refresh_tokens(db: Session, refresh_token_str: str) -> TokenResponse:
         raise AppError(message="사용자를 찾을 수 없습니다", code="NOT_FOUND")
 
     memberships = repo.get_user_memberships(db, user.id)
-    default_org_id = str(memberships[0].org_id) if memberships else None
+    if not memberships:
+        raise AppError(message="소속된 조직이 없습니다", code="FORBIDDEN")
 
     new_access = token_provider.create_access_token(
-        sub=str(user.id), email=user.email, org_id=default_org_id
+        sub=str(user.id), email=user.email, org_id=str(memberships[0].org_id)
     )
     new_refresh_str, new_expires = token_provider.create_refresh_token(
         sub=str(user.id), email=user.email

@@ -60,7 +60,4 @@ def require_auth(request: Request) -> AuthContext:
 
 def get_current_org_id(request: Request) -> uuid.UUID:
     """현재 요청의 org_id 추출 (AuthContext 기반)."""
-    ctx = require_auth(request)
-    if ctx.org_id is None:
-        raise AppError(message="조직 컨텍스트가 필요합니다", code="FORBIDDEN")
-    return ctx.org_id
+    return require_auth(request).org_id

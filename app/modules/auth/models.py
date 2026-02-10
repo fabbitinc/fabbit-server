@@ -16,7 +16,7 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=generate_uuid7
     )
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -34,6 +34,11 @@ class User(Base):
         "Membership", back_populates="user"
     )
 
+    __table_args__ = (
+        # 이메일 유일성
+        UniqueConstraint("email", name="uq_users_email"),
+    )
+
 
 class Organization(Base):
     __tablename__ = "organizations"
@@ -41,7 +46,7 @@ class Organization(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=generate_uuid7
     )
-    slug: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    slug: Mapped[str] = mapped_column(String(50), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     owner_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
@@ -61,6 +66,8 @@ class Organization(Base):
     )
 
     __table_args__ = (
+        # 슬러그 유일성
+        UniqueConstraint("slug", name="uq_organizations_slug"),
         # 소유자별 조직 조회 최적화
         Index("ix_organizations_owner_id", "owner_id"),
     )
@@ -111,7 +118,7 @@ class RefreshToken(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    token_jti: Mapped[str] = mapped_column(String(36), unique=True, nullable=False)
+    token_jti: Mapped[str] = mapped_column(String(36), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
@@ -120,6 +127,8 @@ class RefreshToken(Base):
     )
 
     __table_args__ = (
+        # jti 유일성
+        UniqueConstraint("token_jti", name="uq_refresh_tokens_token_jti"),
         # 유저별 토큰 조회 최적화
         Index("ix_refresh_tokens_user_id", "user_id"),
     )
