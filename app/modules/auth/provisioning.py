@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.core.database import TenantBase
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
-import app.modules.tenant.models  # noqa: F401 — TenantBase에 모델 등록
+import app.modules.project.models  # noqa: F401 — TenantBase에 모델 등록
+import app.modules.document.models  # noqa: F401 — TenantBase에 모델 등록
+import app.modules.upload.models  # noqa: F401 — TenantBase에 모델 등록
 
 
 def org_id_to_schema(org_id: uuid.UUID) -> str:

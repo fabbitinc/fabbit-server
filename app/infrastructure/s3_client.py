@@ -67,6 +67,23 @@ class S3Client:
             ExpiresIn=expiration_minutes * 60,
         )
 
+    def head_object(self, file_key: str) -> dict | None:
+        """S3 객체 메타데이터 조회 (존재 확인 + 크기 반환).
+
+        Returns:
+            {"content_length": int, "content_type": str} 또는 존재하지 않으면 None
+        """
+        try:
+            resp = self._client.head_object(Bucket=self._bucket, Key=file_key)
+            return {
+                "content_length": resp["ContentLength"],
+                "content_type": resp["ContentType"],
+            }
+        except self._client.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "404":
+                return None
+            raise
+
     def delete_object(self, file_key: str) -> None:
         """S3 객체 삭제."""
         self._client.delete_object(Bucket=self._bucket, Key=file_key)
