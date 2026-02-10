@@ -69,6 +69,8 @@ def execute_cypher(
     col_count = _count_return_columns(query)
     cols = ", ".join(f"c{i} agtype" for i in range(col_count))
     wrapped_sql = f"SELECT * FROM cypher('{graph_name}', $${query}$$) AS ({cols});"
+    # psycopg2가 %를 파라미터 마커로 해석하므로 %%로 이스케이프
+    wrapped_sql = wrapped_sql.replace("%", "%%")
 
     conn = db.connection()
     result = conn.exec_driver_sql(wrapped_sql)
@@ -92,4 +94,6 @@ def execute_cypher_raw(
     """Cypher 쿼리 실행 (결과 없는 MERGE/CREATE 등, 커밋은 호출자가 관리)"""
     query = query.strip().rstrip(";")
     wrapped_sql = f"SELECT * FROM cypher('{graph_name}', $${query}$$) AS (v agtype);"
+    # psycopg2가 %를 파라미터 마커로 해석하므로 %%로 이스케이프
+    wrapped_sql = wrapped_sql.replace("%", "%%")
     db.connection().exec_driver_sql(wrapped_sql)
