@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.database import generate_uuid7
 from app.core.exceptions import AppError
+from app.core.transactional import transactional
 from app.infrastructure.s3_client import S3Client
 from app.modules.upload import repository as repo
 from app.modules.upload.models import Upload
@@ -25,6 +26,7 @@ from app.modules.upload.schemas import (
 _s3 = S3Client()
 
 
+@transactional
 def create_upload(
     db: Session,
     auth: AuthContext,
@@ -48,8 +50,6 @@ def create_upload(
         content_type=req.content_type,
         content_length=req.file_size,
     )
-    db.commit()
-
     logger.info(
         "업로드 URL 발급: upload_id={upload_id} file_key={file_key}",
         upload_id=upload_id,
@@ -62,6 +62,7 @@ def create_upload(
     )
 
 
+@transactional
 def batch_create_uploads(
     db: Session,
     auth: AuthContext,
@@ -96,7 +97,6 @@ def batch_create_uploads(
             )
         )
 
-    db.commit()
     logger.info("배치 업로드 URL 발급: {count}건", count=len(results))
     return BatchCreateUploadResponse(items=results)
 
