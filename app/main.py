@@ -16,7 +16,6 @@ from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 from app.api.v1.activation import router as activation_router  # noqa: E402
 from app.api.v1.auth import router as auth_router  # noqa: E402
 from app.api.v1.mapping import router as mapping_router  # noqa: E402
-from app.api.v1.ontology import router as ontology_router  # noqa: E402
 from app.api.v1.synthesis import router as synthesis_router  # noqa: E402
 from app.api.v1.upload import router as upload_router  # noqa: E402
 from app.core.auth_context import AuthContext  # noqa: E402
@@ -50,12 +49,7 @@ _PUBLIC_PATHS = frozenset({
 
 def _is_public_path(path: str) -> bool:
     """인증 미들웨어를 건너뛸 경로인지 확인."""
-    if path in _PUBLIC_PATHS:
-        return True
-    # 기존 ontology 엔드포인트 하위호환 (인증 없이 org_id 파라미터 사용)
-    if path.startswith("/pipeline/") or path.startswith("/ontology/"):
-        return True
-    return False
+    return path in _PUBLIC_PATHS
 
 
 # 인증 미들웨어
@@ -112,7 +106,6 @@ app.add_middleware(
 app.include_router(activation_router)
 app.include_router(auth_router)
 app.include_router(mapping_router)
-app.include_router(ontology_router)
 app.include_router(synthesis_router)
 app.include_router(upload_router)
 

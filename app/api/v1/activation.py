@@ -18,7 +18,8 @@ from app.core.auth_context import AuthContext
 from app.core.database import SessionLocal
 from app.core.exceptions import AppError
 from app.infrastructure.age_client import execute_cypher
-from app.infrastructure.llm_client import chat_completion
+from app.infrastructure.llm_client import chat_completion_with_usage
+from app.modules.ai_usage.service import log_ai_usage
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
 
@@ -190,7 +191,34 @@ def _find_leaf_parts_without_bom(db: Session, graph_name: str) -> int:
 
 # === 자연어 질의 (schema-per-tenant) ===
 
-def _build_tenant_query_prompt(extended_hints: list[str]) -> str:
+def _build_graph_summary(
+    node_counts: dict[str, int],
+    rel_counts: dict[str, int],
+) -> str:
+    """현재 그래프 데이터 요약 텍스트 생성."""
+    node_lines = [f"  - {label}: {count}개" for label, count in node_counts.items() if count > 0]
+    rel_lines = [f"  - {rel}: {count}개" for rel, count in rel_counts.items() if count > 0]
+
+    if not node_lines:
+        return "\n## 현재 그래프 상태\n데이터가 없습니다.\n"
+
+    return f"""
+## 현재 그래프 상태 (실제 데이터 기준 — 반드시 참고하세요)
+노드:
+{chr(10).join(node_lines)}
+관계:
+{chr(10).join(rel_lines) if rel_lines else "  - (관계 없음)"}
+
+**중요**: 위 통계에 0개인 노드 라벨이나 관계 타입은 데이터가 없으므로 쿼리하지 마세요.
+존재하는 데이터만 활용하여 쿼리를 생성하세요.
+"""
+
+
+def _build_tenant_query_prompt(
+    extended_hints: list[str],
+    node_counts: dict[str, int] | None = None,
+    rel_counts: dict[str, int] | None = None,
+) -> str:
     """schema-per-tenant용 질의 시스템 프롬프트 (_org_id 불필요)."""
     ext_section = ""
     if extended_hints:
@@ -201,11 +229,16 @@ def _build_tenant_query_prompt(extended_hints: list[str]) -> str:
 확장 속성은 `_ext_` 프리픽스가 붙어 있으며, 일반 속성처럼 WHERE 절에서 사용 가능합니다.
 """
 
+    graph_summary = ""
+    if node_counts is not None and rel_counts is not None:
+        graph_summary = _build_graph_summary(node_counts, rel_counts)
+
     return f"""당신은 Apache AGE (PostgreSQL 그래프 DB) Cypher 쿼리 생성 전문가입니다.
 사용자의 자연어 질문을 Cypher 쿼리로 변환하세요.
 
 {MANUFACTURING_ONTOLOGY.to_llm_prompt()}
 {ext_section}
+{graph_summary}
 
 ## 쿼리 규칙
 1. MATCH 쿼리만 생성하세요. CREATE/MERGE/DELETE/SET은 절대 금지입니다.
@@ -214,6 +247,7 @@ def _build_tenant_query_prompt(extended_hints: list[str]) -> str:
 4. 노드 라벨과 관계 타입은 위에 정의된 것만 사용하세요.
 5. 속성명은 정확히 위에 정의된 이름을 사용하세요.
 6. 테넌트 격리는 그래프 레벨에서 이미 보장되므로 _org_id 조건을 추가하지 마세요.
+7. 질문이 모호하거나 광범위하면, 존재하는 데이터를 기반으로 유용한 개요를 보여주는 쿼리를 생성하세요.
 """
 
 
@@ -418,13 +452,28 @@ def query_graph(
     """자연어 → Cypher → 그래프 질의 + AI 답변 생성."""
     graph_name = org_id_to_schema(auth.org_id)
 
-    # 확장 속성 힌트
+    # 그래프 상태 + 확장 속성 힌트
+    node_counts = _count_nodes_by_label(db, graph_name)
+    rel_counts = _count_relationships_by_type(db, graph_name)
     ext_hints = _get_extended_hints(db)
-    system_prompt = _build_tenant_query_prompt(ext_hints)
+    system_prompt = _build_tenant_query_prompt(ext_hints, node_counts, rel_counts)
 
     # 1. 자연어 → Cypher
-    cypher = chat_completion(system_prompt=system_prompt, user_message=req.question)
+    cypher_resp = chat_completion_with_usage(
+        system_prompt=system_prompt, user_message=req.question
+    )
+    cypher = cypher_resp.content
     _validate_read_only(cypher)
+
+    # AI 사용량 로깅 — Cypher 생성
+    log_ai_usage(
+        org_id=auth.org_id,
+        user_id=auth.user_id,
+        feature="activation:cypher",
+        model=cypher_resp.model,
+        input_tokens=cypher_resp.input_tokens,
+        output_tokens=cypher_resp.output_tokens,
+    )
 
     # 2. Cypher 실행
     try:
@@ -453,9 +502,20 @@ def query_graph(
 {json.dumps(results[:50], ensure_ascii=False, default=str)}
 """
     try:
-        answer = chat_completion(
+        answer_resp = chat_completion_with_usage(
             system_prompt=ANSWER_SYSTEM_PROMPT,
             user_message=answer_input,
+        )
+        answer = answer_resp.content
+
+        # AI 사용량 로깅 — 답변 생성
+        log_ai_usage(
+            org_id=auth.org_id,
+            user_id=auth.user_id,
+            feature="activation:answer",
+            model=answer_resp.model,
+            input_tokens=answer_resp.input_tokens,
+            output_tokens=answer_resp.output_tokens,
         )
     except Exception:
         answer = "쿼리 결과를 확인해주세요."

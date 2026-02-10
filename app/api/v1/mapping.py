@@ -27,6 +27,7 @@ from app.modules.mapping.schemas import (
     MappingResponse,
 )
 from app.modules.ontology import service as ontology_service
+from app.modules.ai_usage.service import log_ai_usage
 from app.modules.upload.models import Upload
 
 router = APIRouter(prefix="/mappings", tags=["mappings"])
@@ -76,7 +77,17 @@ def preview_mapping(
         )
 
     # 4. LLM 매핑 생성
-    mapping_result = ontology_service.generate_mapping(headers, sample_rows)
+    mapping_result, llm_resp = ontology_service.generate_mapping(headers, sample_rows)
+
+    # AI 사용량 로깅
+    log_ai_usage(
+        org_id=auth.org_id,
+        user_id=auth.user_id,
+        feature="mapping:preview",
+        model=llm_resp.model,
+        input_tokens=llm_resp.input_tokens,
+        output_tokens=llm_resp.output_tokens,
+    )
 
     logger.info(
         "매핑 미리보기 생성: upload_id={upload_id} headers={header_count}개 mappings={mapping_count}개",

@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.database import Base
 import app.modules.ontology.models  # noqa: F401
 import app.modules.auth.models  # noqa: F401
+import app.modules.ai_usage.models  # noqa: F401
 
 config = context.config
 

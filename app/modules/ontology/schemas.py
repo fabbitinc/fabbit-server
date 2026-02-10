@@ -1,6 +1,6 @@
-"""Pydantic 요청/응답 모델.
+"""온톨로지 매핑 스키마.
 
-파이프라인 API에서 사용하는 매핑, 인제스션, 질의 관련 스키마입니다.
+LLM 매핑 결과를 표현하는 Pydantic 모델입니다.
 """
 
 from pydantic import BaseModel
@@ -42,38 +42,3 @@ class MappingResult(BaseModel):
     column_mappings: list[ColumnMapping]
     relation_mappings: list[RelationMapping]
     extended_properties: list[ExtendedPropertyMapping]
-
-
-# === API 요청/응답 ===
-
-class MappingConfirmRequest(BaseModel):
-    """매핑 확정 요청 - 사용자가 검토 후 확인"""
-    org_id: str
-    name: str
-    original_headers: list[str]
-    mapping: MappingResult
-
-
-class QueryRequest(BaseModel):
-    """자연어 질의 요청"""
-    org_id: str
-    question: str
-
-
-class CypherRequest(BaseModel):
-    """자연어 → Cypher 변환 요청"""
-    question: str
-
-
-class IngestionStats(BaseModel):
-    """인제스션 결과 통계"""
-    total_rows: int
-    nodes_created: int
-    relationships_created: int
-    errors: list[str] = []
-
-
-class QueryResponse(BaseModel):
-    """질의 응답"""
-    cypher_query: str
-    results: list[dict]
