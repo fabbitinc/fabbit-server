@@ -16,6 +16,7 @@ from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 from app.api.v1.auth import router as auth_router  # noqa: E402
 from app.api.v1.mapping import router as mapping_router  # noqa: E402
 from app.api.v1.ontology import router as ontology_router  # noqa: E402
+from app.api.v1.synthesis import router as synthesis_router  # noqa: E402
 from app.api.v1.upload import router as upload_router  # noqa: E402
 from app.core.auth_context import AuthContext  # noqa: E402
 from app.core.config import settings  # noqa: E402
@@ -110,6 +111,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(mapping_router)
 app.include_router(ontology_router)
+app.include_router(synthesis_router)
 app.include_router(upload_router)
 
 
