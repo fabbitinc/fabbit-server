@@ -14,6 +14,7 @@ class SignupRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     full_name: str = Field(min_length=1, max_length=100)
     org_name: str = Field(min_length=1, max_length=100)
+    turnstile_token: str | None = Field(None, description="Cloudflare Turnstile 토큰")
 
 
 class LoginRequest(BaseModel):

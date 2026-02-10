@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError
 from app.infrastructure.password_hasher import hash_password, verify_password
+from app.infrastructure.turnstile import verify_turnstile_token
 from app.infrastructure.token_provider import TokenProvider
 from app.modules.auth import repository as repo
 from app.modules.auth.provisioning import provision_tenant
@@ -38,6 +39,9 @@ def _slugify(name: str) -> str:
 
 def signup(db: Session, req: SignupRequest) -> SignupResponse:
     """통합 회원가입: 유저 + 조직 + 멤버십 + 테넌트 프로비저닝 + 토큰 발급."""
+    # Turnstile 봇 방지 검증
+    verify_turnstile_token(req.turnstile_token)
+
     # 이메일 중복 검사
     if repo.get_user_by_email(db, req.email):
         raise AppError(message="이미 가입된 이메일입니다", code="ALREADY_EXISTS")

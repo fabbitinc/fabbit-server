@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     otel_exporter_endpoint: str = ""
     otel_exporter_headers: str = ""
 
+    # Cloudflare Turnstile (봇 방지)
+    turnstile_secret_key: str = ""
+    turnstile_enabled: bool = False
+
     # S3 호환 스토리지 (Cloudflare R2 / MinIO)
     storage_endpoint: str = "http://localhost:9000"
     storage_access_key: str = "minioadmin"
