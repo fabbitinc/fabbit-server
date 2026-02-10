@@ -84,6 +84,11 @@ class S3Client:
                 return None
             raise
 
+    def get_object(self, file_key: str) -> bytes:
+        """S3 객체 다운로드 → 바이트 반환."""
+        resp = self._client.get_object(Bucket=self._bucket, Key=file_key)
+        return resp["Body"].read()
+
     def delete_object(self, file_key: str) -> None:
         """S3 객체 삭제."""
         self._client.delete_object(Bucket=self._bucket, Key=file_key)

@@ -14,6 +14,8 @@ class ColumnMapping(BaseModel):
     target_label: str
     target_property: str
     data_type: str = "string"  # string | integer | float | boolean
+    confidence: int = 0  # 0-100, LLM 매핑 신뢰도
+    reason: str = ""  # 매핑 근거 (1줄)
 
 
 class RelationMapping(BaseModel):
@@ -31,6 +33,8 @@ class ExtendedPropertyMapping(BaseModel):
     target_label: str
     property_name: str  # _ext_ 프리픽스가 붙은 속성명
     data_type: str = "string"  # string | integer | float | boolean
+    confidence: int = 0  # 0-100, LLM 매핑 신뢰도
+    reason: str = ""  # 매핑 근거 (1줄)
 
 
 class MappingResult(BaseModel):

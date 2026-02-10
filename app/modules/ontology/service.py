@@ -50,17 +50,22 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
 - 이름, 코드, 설명 등 텍스트 → "string"
 - 확신이 없으면 "string"으로 지정하세요.
 
+## 신뢰도 규칙
+- 각 매핑에 confidence (0-100 정수)와 reason (영문 1줄)을 반드시 포함하세요.
+- confidence: 매핑이 정확하다는 확신 정도 (100=확실, 50=불확실, 0=추측)
+- reason: 해당 매핑을 선택한 근거를 영문 1줄로 설명
+
 ## 출력 형식 (JSON)
 ```json
 {{
   "column_mappings": [
-    {{"source_column": "품번", "target_label": "Part", "target_property": "part_number", "data_type": "string"}}
+    {{"source_column": "품번", "target_label": "Part", "target_property": "part_number", "data_type": "string", "confidence": 95, "reason": "Column header directly translates to part number"}}
   ],
   "relation_mappings": [
     {{"from_label": "Part", "to_label": "Material", "rel_type": "MADE_OF", "properties": {{}}, "property_types": {{}}}}
   ],
   "extended_properties": [
-    {{"source_column": "탄소배출량", "target_label": "Part", "property_name": "_ext_carbon_emission", "data_type": "float"}}
+    {{"source_column": "탄소배출량", "target_label": "Part", "property_name": "_ext_carbon_emission", "data_type": "float", "confidence": 80, "reason": "Not in ontology but clearly carbon emission data"}}
   ]
 }}
 ```

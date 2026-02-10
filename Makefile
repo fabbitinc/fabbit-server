@@ -6,6 +6,8 @@ dev-start:
 	@echo "PostgreSQL 준비 대기..."
 	@until docker exec fabbit-db pg_isready -U fabbit -q 2>/dev/null; do sleep 0.5; done
 	@echo "PostgreSQL 준비 완료"
+	uv run alembic upgrade head
+	@echo "마이그레이션 완료"
 	uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # 개발환경 종료
