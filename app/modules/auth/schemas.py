@@ -57,6 +57,7 @@ class OrganizationResponse(BaseModel):
     industry: str | None = None
     team_size: str | None = None
     plan_type: str
+    onboarded_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

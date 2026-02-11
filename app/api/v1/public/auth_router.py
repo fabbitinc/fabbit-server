@@ -13,6 +13,7 @@ from app.modules.auth.schemas import (
     LoginRequest,
     LoginResponse,
     MeResponse,
+    OrganizationResponse,
     PlanResponse,
     RefreshRequest,
     RegisterRequest,
@@ -63,6 +64,14 @@ def logout(
     auth: AuthContext = Depends(require_auth),
 ):
     service.logout(db, str(auth.account_id), req.refresh_token)
+
+
+@router.post("/onboarding/complete", response_model=OrganizationResponse)
+def complete_onboarding(
+    db: Session = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+):
+    return service.complete_onboarding(db, str(auth.org_id))
 
 
 @router.get("/me", response_model=MeResponse)

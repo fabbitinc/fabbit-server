@@ -254,6 +254,21 @@ def get_me(db: Session, user_id: str) -> MeResponse:
     )
 
 
+def complete_onboarding(db: Session, org_id: str) -> OrganizationResponse:
+    """조직 온보딩 완료 처리."""
+    import uuid
+
+    org = repo.get_org_by_id(db, uuid.UUID(org_id))
+    if not org:
+        raise AppError(message="조직을 찾을 수 없습니다", code="NOT_FOUND")
+    if org.onboarded_at:
+        raise AppError(message="이미 온보딩이 완료된 조직입니다", code="ALREADY_EXISTS")
+
+    org = repo.complete_onboarding(db, uuid.UUID(org_id))
+    db.commit()
+    return OrganizationResponse.model_validate(org)
+
+
 def get_plans() -> list[PlanResponse]:
     """플랜 목록 및 제한값 조회."""
     return [

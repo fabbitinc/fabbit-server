@@ -3,8 +3,9 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 
 from app.modules.auth.models import Membership, Organization, RefreshToken, User
 
@@ -55,6 +56,21 @@ def create_organization(
     db.add(org)
     db.flush()
     return org
+
+
+def get_org_by_id(db: Session, org_id: uuid.UUID) -> Organization | None:
+    return db.get(Organization, org_id)
+
+
+def complete_onboarding(db: Session, org_id: uuid.UUID) -> Organization:
+    """온보딩 완료 시각 기록."""
+    db.execute(
+        update(Organization)
+        .where(Organization.id == org_id)
+        .values(onboarded_at=func.now())
+    )
+    db.flush()
+    return db.get(Organization, org_id)
 
 
 # ── Membership ──
