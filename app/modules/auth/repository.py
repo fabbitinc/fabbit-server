@@ -39,9 +39,19 @@ def get_org_by_slug(db: Session, slug: str) -> Organization | None:
 
 
 def create_organization(
-    db: Session, slug: str, name: str, owner_id: uuid.UUID
+    db: Session,
+    slug: str,
+    name: str,
+    owner_id: uuid.UUID,
+    *,
+    industry: str | None = None,
+    team_size: str | None = None,
+    plan_type: str = "FREE",
 ) -> Organization:
-    org = Organization(slug=slug, name=name, owner_id=owner_id)
+    org = Organization(
+        slug=slug, name=name, owner_id=owner_id,
+        industry=industry, team_size=team_size, plan_type=plan_type,
+    )
     db.add(org)
     db.flush()
     return org
@@ -51,9 +61,14 @@ def create_organization(
 
 
 def create_membership(
-    db: Session, user_id: uuid.UUID, org_id: uuid.UUID, role: str = "ADMIN"
+    db: Session,
+    user_id: uuid.UUID,
+    org_id: uuid.UUID,
+    role: str = "ADMIN",
+    *,
+    job_role: str | None = None,
 ) -> Membership:
-    membership = Membership(user_id=user_id, org_id=org_id, role=role)
+    membership = Membership(user_id=user_id, org_id=org_id, role=role, job_role=job_role)
     db.add(membership)
     db.flush()
     return membership

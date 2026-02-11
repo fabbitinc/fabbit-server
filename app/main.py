@@ -41,9 +41,12 @@ _token_provider = TokenProvider()
 _PUBLIC_PATHS = frozenset(
     {
         "/health",
-        "/api/v1/auth/signup",
+        "/api/v1/auth/register",
         "/api/v1/auth/login",
         "/api/v1/auth/refresh",
+        "/api/v1/auth/check-email",
+        "/api/v1/auth/check-slug",
+        "/api/v1/auth/plans",
         "/docs",
         "/openapi.json",
         "/redoc",

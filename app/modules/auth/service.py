@@ -2,6 +2,7 @@
 
 import re
 import unicodedata
+import uuid as _uuid
 
 from loguru import logger
 from sqlalchemy.orm import Session
@@ -11,15 +12,19 @@ from app.infrastructure.password_hasher import hash_password, verify_password
 from app.infrastructure.turnstile import verify_turnstile_token
 from app.infrastructure.token_provider import TokenProvider
 from app.modules.auth import repository as repo
+from app.modules.auth.constants import PLAN_LIMITS, PlanType, RESERVED_SLUGS, validate_slug_format
 from app.modules.auth.provisioning import provision_tenant
 from app.modules.auth.schemas import (
+    CheckEmailResponse,
+    CheckSlugResponse,
     LoginRequest,
     LoginResponse,
     MeResponse,
     MembershipResponse,
     OrganizationResponse,
-    SignupRequest,
-    SignupResponse,
+    PlanResponse,
+    RegisterRequest,
+    RegisterResponse,
     TokenResponse,
     UserResponse,
 )
@@ -37,33 +42,77 @@ def _slugify(name: str) -> str:
     return slug[:50]
 
 
-def signup(db: Session, req: SignupRequest) -> SignupResponse:
+def check_email(db: Session, email: str) -> CheckEmailResponse:
+    """이메일 중복 확인."""
+    exists = repo.get_user_by_email(db, email) is not None
+    return CheckEmailResponse(
+        available=not exists,
+        message="이미 가입된 이메일입니다" if exists else None,
+    )
+
+
+def check_slug(db: Session, slug: str) -> CheckSlugResponse:
+    """slug 사용 가능 여부 확인."""
+    # 1. 포맷 검증
+    error = validate_slug_format(slug)
+    if error:
+        return CheckSlugResponse(available=False, message=error)
+    # 2. DB 중복 확인
+    if repo.get_org_by_slug(db, slug):
+        suggestion = f"{slug}-{str(_uuid.uuid4())[:4]}"
+        return CheckSlugResponse(
+            available=False,
+            message="이미 사용 중인 워크스페이스 주소입니다",
+            suggestion=suggestion,
+        )
+    return CheckSlugResponse(available=True)
+
+
+def register(db: Session, req: RegisterRequest) -> RegisterResponse:
     """통합 회원가입: 유저 + 조직 + 멤버십 + 테넌트 프로비저닝 + 토큰 발급."""
     # Turnstile 봇 방지 검증
     verify_turnstile_token(req.turnstile_token)
+
+    # 플랜 검증
+    try:
+        plan = PlanType(req.plan_type)
+    except ValueError:
+        raise AppError(message="유효하지 않은 플랜입니다", code="VALIDATION_ERROR")
 
     # 이메일 중복 검사
     if repo.get_user_by_email(db, req.email):
         raise AppError(message="이미 가입된 이메일입니다", code="ALREADY_EXISTS")
 
-    # slug 생성 및 중복 처리
-    slug = _slugify(req.org_name)
-    if not slug:
-        slug = "org"
-    if repo.get_org_by_slug(db, slug):
-        import uuid as _uuid
-
-        slug = f"{slug}-{str(_uuid.uuid4())[:8]}"
+    # slug 결정
+    if req.slug:
+        # 커스텀 slug: 포맷 검증 + 중복 검사
+        error = validate_slug_format(req.slug)
+        if error:
+            raise AppError(message=error, code="VALIDATION_ERROR")
+        if repo.get_org_by_slug(db, req.slug):
+            raise AppError(message="이미 사용 중인 워크스페이스 주소입니다", code="ALREADY_EXISTS")
+        slug = req.slug
+    else:
+        # 자동 생성: org_name → slug
+        slug = _slugify(req.org_name)
+        if not slug:
+            slug = "org"
+        # 예약어 또는 DB 중복 시 suffix 추가
+        if slug in RESERVED_SLUGS or repo.get_org_by_slug(db, slug):
+            slug = f"{slug}-{str(_uuid.uuid4())[:8]}"
 
     # 유저 생성
     hashed = hash_password(req.password)
     user = repo.create_user(db, req.email, hashed, req.full_name)
 
     # 조직 생성
-    org = repo.create_organization(db, slug, req.org_name, user.id)
+    org = repo.create_organization(
+        db, slug, req.org_name, user.id,
+        industry=req.industry, team_size=req.team_size, plan_type=plan.value,
+    )
 
     # 멤버십 (ADMIN)
-    repo.create_membership(db, user.id, org.id, role="ADMIN")
+    repo.create_membership(db, user.id, org.id, role="ADMIN", job_role=req.job_role)
 
     # 테넌트 프로비저닝 (스키마 + AGE 그래프)
     schema_name = provision_tenant(db, org.id)
@@ -84,7 +133,7 @@ def signup(db: Session, req: SignupRequest) -> SignupResponse:
 
     db.commit()
 
-    return SignupResponse(
+    return RegisterResponse(
         user=UserResponse.model_validate(user),
         organization=OrganizationResponse.model_validate(org),
         tokens=TokenResponse(
@@ -197,8 +246,26 @@ def get_me(db: Session, user_id: str) -> MeResponse:
             MembershipResponse(
                 org_id=m.org_id,
                 role=m.role,
+                job_role=m.job_role,
                 organization=OrganizationResponse.model_validate(m.organization),
             )
             for m in memberships
         ],
     )
+
+
+def get_plans() -> list[PlanResponse]:
+    """플랜 목록 및 제한값 조회."""
+    return [
+        PlanResponse(
+            plan_type=pt.value,
+            display_name=limits.display_name,
+            description=limits.description,
+            max_members=limits.max_members,
+            storage_gb=limits.storage_gb,
+            max_bom=limits.max_bom,
+            max_drawing_parses=limits.max_drawing_parses,
+            price_monthly=limits.price_monthly,
+        )
+        for pt, limits in PLAN_LIMITS.items()
+    ]

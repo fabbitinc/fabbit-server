@@ -1,6 +1,7 @@
 """앱 예외 정의 및 글로벌 예외 핸들러."""
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from loguru import logger
 
@@ -42,6 +43,20 @@ async def _handle_app_error(_request: Request, exc: AppError) -> JSONResponse:
     )
 
 
+async def _handle_validation_error(
+    _request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Pydantic / FastAPI 입력 검증 에러를 앱 표준 형식으로 변환."""
+    errors = exc.errors()
+    # 첫 번째 에러의 메시지를 대표 메시지로 사용
+    first = errors[0] if errors else {}
+    message = first.get("msg", "입력값이 올바르지 않습니다")
+    return JSONResponse(
+        status_code=422,
+        content={"code": "VALIDATION_ERROR", "message": message},
+    )
+
+
 async def _handle_unexpected_error(_request: Request, exc: Exception) -> JSONResponse:
     """예기치 않은 시스템 에러 처리."""
     logger.exception("예상치 못한 서버 오류", exc_type=type(exc).__name__)
@@ -56,5 +71,6 @@ async def _handle_unexpected_error(_request: Request, exc: Exception) -> JSONRes
 
 def register_exception_handlers(app: FastAPI) -> None:
     """FastAPI 앱에 예외 핸들러를 등록한다."""
+    app.add_exception_handler(RequestValidationError, _handle_validation_error)
     app.add_exception_handler(AppError, _handle_app_error)
     app.add_exception_handler(Exception, _handle_unexpected_error)

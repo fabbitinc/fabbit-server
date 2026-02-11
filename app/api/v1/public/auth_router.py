@@ -1,27 +1,49 @@
 """인증 API 라우터."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
+from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_auth
 from app.core.auth_context import AuthContext
 from app.modules.auth import service
 from app.modules.auth.schemas import (
+    CheckEmailResponse,
+    CheckSlugResponse,
     LoginRequest,
     LoginResponse,
     MeResponse,
+    PlanResponse,
     RefreshRequest,
-    SignupRequest,
-    SignupResponse,
+    RegisterRequest,
+    RegisterResponse,
     TokenResponse,
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
-@router.post("/signup", response_model=SignupResponse)
-def signup(req: SignupRequest, db: Session = Depends(get_db)):
-    return service.signup(db, req)
+@router.get("/plans", response_model=list[PlanResponse])
+def get_plans():
+    return service.get_plans()
+
+
+@router.get("/check-email", response_model=CheckEmailResponse)
+def check_email(email: EmailStr = Query(...), db: Session = Depends(get_db)):
+    return service.check_email(db, email)
+
+
+@router.get("/check-slug", response_model=CheckSlugResponse)
+def check_slug(
+    slug: str = Query(..., min_length=3, max_length=50),
+    db: Session = Depends(get_db),
+):
+    return service.check_slug(db, slug)
+
+
+@router.post("/register", response_model=RegisterResponse)
+def register(req: RegisterRequest, db: Session = Depends(get_db)):
+    return service.register(db, req)
 
 
 @router.post("/login", response_model=LoginResponse)
