@@ -11,6 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
+from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.exceptions import AppError
 from app.modules.auth.provisioning import org_id_to_schema
@@ -45,6 +46,25 @@ def require_auth(
     if ctx is None:
         raise AppError(message="인증이 필요합니다", code="UNAUTHENTICATED")
     return ctx
+
+
+def get_origin_slug(request: Request) -> str | None:
+    """Origin 헤더에서 서브도메인 slug를 추출한다.
+
+    Origin: http://test-org.lvh.me:5173 → "test-org"
+    Origin: http://lvh.me:5173          → None
+    """
+    origin = request.headers.get("origin", "")
+    if not origin:
+        return None
+    # "http://test-org.lvh.me:5173" → "test-org.lvh.me"
+    host = origin.split("://", 1)[-1].split(":")[0]
+    base = settings.base_domain
+    if host == base:
+        return None
+    if host.endswith(f".{base}"):
+        return host.removesuffix(f".{base}")
+    return None
 
 
 def get_tenant_db(

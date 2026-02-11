@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_auth
+from app.api.deps import get_db, get_origin_slug, require_auth
 from app.core.auth_context import AuthContext
 from app.modules.auth import service
 from app.modules.auth.schemas import (
@@ -48,8 +48,12 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=LoginResponse)
-def login(req: LoginRequest, db: Session = Depends(get_db)):
-    return service.login(db, req)
+def login(
+    req: LoginRequest,
+    db: Session = Depends(get_db),
+    slug: str | None = Depends(get_origin_slug),
+):
+    return service.login(db, req, slug=slug)
 
 
 @router.post("/refresh", response_model=TokenResponse)

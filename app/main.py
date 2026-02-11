@@ -102,9 +102,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(AuthMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
+# CORS: {slug}.lvh.me:5173 (local) / {slug}.fabbit.io (prod)
+_escaped_domain = settings.base_domain.replace(".", r"\.")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origin_regex=rf"https?://([\w-]+\.)?{_escaped_domain}(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

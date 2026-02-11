@@ -142,7 +142,7 @@ def register(db: Session, req: RegisterRequest) -> RegisterResponse:
     )
 
 
-def login(db: Session, req: LoginRequest) -> LoginResponse:
+def login(db: Session, req: LoginRequest, *, slug: str | None = None) -> LoginResponse:
     """로그인: 자격증명 검증 + 토큰 발급."""
     user = repo.get_user_by_email(db, req.email)
     if not user or not verify_password(req.password, user.hashed_password):
@@ -151,13 +151,20 @@ def login(db: Session, req: LoginRequest) -> LoginResponse:
     if not user.is_active:
         raise AppError(message="비활성화된 계정입니다", code="FORBIDDEN")
 
-    # 첫 번째 소속 조직을 기본 org_id로 사용
-    memberships = repo.get_user_memberships(db, user.id)
-    if not memberships:
-        raise AppError(message="소속된 조직이 없습니다", code="FORBIDDEN")
+    # slug(Origin 서브도메인)가 있으면 해당 조직으로, 없으면 첫 번째 소속 조직
+    if slug:
+        membership = repo.get_membership_by_slug(db, user.id, slug)
+        if not membership:
+            raise AppError(message="해당 워크스페이스에 소속되어 있지 않습니다", code="FORBIDDEN")
+        org_id = membership.org_id
+    else:
+        memberships = repo.get_user_memberships(db, user.id)
+        if not memberships:
+            raise AppError(message="소속된 조직이 없습니다", code="FORBIDDEN")
+        org_id = memberships[0].org_id
 
     access_token = token_provider.create_access_token(
-        sub=str(user.id), email=user.email, org_id=str(memberships[0].org_id)
+        sub=str(user.id), email=user.email, org_id=str(org_id)
     )
     refresh_token_str, expires_at = token_provider.create_refresh_token(
         sub=str(user.id), email=user.email

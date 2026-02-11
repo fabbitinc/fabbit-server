@@ -98,6 +98,17 @@ def get_user_memberships(db: Session, user_id: uuid.UUID) -> list[Membership]:
     )
 
 
+def get_membership_by_slug(
+    db: Session, user_id: uuid.UUID, slug: str
+) -> Membership | None:
+    """유저의 특정 slug 조직 멤버십 조회."""
+    return db.scalars(
+        select(Membership)
+        .join(Organization, Membership.org_id == Organization.id)
+        .where(Membership.user_id == user_id, Organization.slug == slug)
+    ).first()
+
+
 # ── RefreshToken ──
 
 

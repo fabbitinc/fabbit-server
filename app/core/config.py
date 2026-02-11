@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     app_name: str = "Fabbit Ontology Engine"
     debug: bool = False
     log_level: str = "INFO"
-    cors_origins: list[str] = ["*"]
+    base_domain: str = "lvh.me"  # lvh.me (local) / fabbit.io (prod)
 
     # PostgreSQL (Apache AGE)
     database_host: str = "localhost"
