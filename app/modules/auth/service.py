@@ -151,17 +151,14 @@ def login(db: Session, req: LoginRequest, *, slug: str | None = None) -> LoginRe
     if not user.is_active:
         raise AppError(message="비활성화된 계정입니다", code="FORBIDDEN")
 
-    # slug(Origin 서브도메인)가 있으면 해당 조직으로, 없으면 첫 번째 소속 조직
-    if slug:
-        membership = repo.get_membership_by_slug(db, user.id, slug)
-        if not membership:
-            raise AppError(message="해당 워크스페이스에 소속되어 있지 않습니다", code="FORBIDDEN")
-        org_id = membership.org_id
-    else:
-        memberships = repo.get_user_memberships(db, user.id)
-        if not memberships:
-            raise AppError(message="소속된 조직이 없습니다", code="FORBIDDEN")
-        org_id = memberships[0].org_id
+    # Origin 서브도메인에서 추출한 slug로 조직 결정
+    if not slug:
+        raise AppError(message="워크스페이스를 통해 로그인해주세요", code="VALIDATION_ERROR")
+
+    membership = repo.get_membership_by_slug(db, user.id, slug)
+    if not membership:
+        raise AppError(message="해당 워크스페이스에 소속되어 있지 않습니다", code="FORBIDDEN")
+    org_id = membership.org_id
 
     access_token = token_provider.create_access_token(
         sub=str(user.id), email=user.email, org_id=str(org_id)
