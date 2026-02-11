@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_origin_slug, require_auth
 from app.core.auth_context import AuthContext
 from app.modules.auth import service
+from app.core.exceptions import AppError
 from app.modules.auth.schemas import (
     CheckEmailResponse,
     CheckSlugResponse,
@@ -18,10 +19,21 @@ from app.modules.auth.schemas import (
     RefreshRequest,
     RegisterRequest,
     RegisterResponse,
+    SiteResponse,
     TokenResponse,
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+
+
+@router.get("/site", response_model=SiteResponse)
+def get_site(
+    db: Session = Depends(get_db),
+    slug: str | None = Depends(get_origin_slug),
+):
+    if not slug:
+        raise AppError(message="워크스페이스를 통해 접근해주세요", code="VALIDATION_ERROR")
+    return service.get_site(db, slug)
 
 
 @router.get("/plans", response_model=list[PlanResponse])

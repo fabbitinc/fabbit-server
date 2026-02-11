@@ -53,7 +53,7 @@ class Organization(Base):
     )
     industry: Mapped[str | None] = mapped_column(String(50), nullable=True)
     team_size: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    plan_type: Mapped[str] = mapped_column(String(20), nullable=False, default="FREE")
+    plan_type: Mapped[str] = mapped_column(String(20), nullable=False, default="STARTER")
     onboarded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

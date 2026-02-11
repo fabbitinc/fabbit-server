@@ -47,7 +47,7 @@ def create_organization(
     *,
     industry: str | None = None,
     team_size: str | None = None,
-    plan_type: str = "FREE",
+    plan_type: str = "STARTER",
 ) -> Organization:
     org = Organization(
         slug=slug, name=name, owner_id=owner_id,

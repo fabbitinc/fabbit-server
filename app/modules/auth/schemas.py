@@ -101,12 +101,20 @@ class CheckSlugResponse(BaseModel):
     suggestion: str | None = None
 
 
+class SiteResponse(BaseModel):
+    """서브도메인 접근 시 워크스페이스 기본 정보 (로그인 페이지용)."""
+    slug: str
+    name: str
+
+    model_config = {"from_attributes": True}
+
+
 class PlanResponse(BaseModel):
     plan_type: str
     display_name: str
     description: str
-    max_members: int
     storage_gb: int
     max_bom: int
     max_drawing_parses: int
+    max_chats: int
     price_monthly: int

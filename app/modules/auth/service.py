@@ -25,6 +25,7 @@ from app.modules.auth.schemas import (
     PlanResponse,
     RegisterRequest,
     RegisterResponse,
+    SiteResponse,
     TokenResponse,
     UserResponse,
 )
@@ -273,6 +274,14 @@ def complete_onboarding(db: Session, org_id: str) -> OrganizationResponse:
     return OrganizationResponse.model_validate(org)
 
 
+def get_site(db: Session, slug: str) -> SiteResponse:
+    """서브도메인 slug로 워크스페이스 기본 정보 조회."""
+    org = repo.get_org_by_slug(db, slug)
+    if not org:
+        raise AppError(message="존재하지 않는 워크스페이스입니다", code="NOT_FOUND")
+    return SiteResponse.model_validate(org)
+
+
 def get_plans() -> list[PlanResponse]:
     """플랜 목록 및 제한값 조회."""
     return [
@@ -280,10 +289,10 @@ def get_plans() -> list[PlanResponse]:
             plan_type=pt.value,
             display_name=limits.display_name,
             description=limits.description,
-            max_members=limits.max_members,
             storage_gb=limits.storage_gb,
             max_bom=limits.max_bom,
             max_drawing_parses=limits.max_drawing_parses,
+            max_chats=limits.max_chats,
             price_monthly=limits.price_monthly,
         )
         for pt, limits in PLAN_LIMITS.items()

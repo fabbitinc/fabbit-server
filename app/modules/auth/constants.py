@@ -6,49 +6,49 @@ from enum import Enum
 
 
 class PlanType(str, Enum):
-    FREE = "FREE"
-    PRO = "PRO"
-    ELITE = "ELITE"
+    STARTER = "STARTER"
+    TEAM = "TEAM"
+    ENTERPRISE = "ENTERPRISE"
 
 
 @dataclass(frozen=True)
 class PlanLimits:
-    max_members: int          # 최대 사용자 수 (-1 = 무제한)
-    storage_gb: int           # 스토리지 GB
-    max_bom: int              # BOM 건수 (-1 = 무제한)
-    max_drawing_parses: int   # 월 도면 AI 파싱 건수 (-1 = 무제한)
+    storage_gb: int           # 월 스토리지 GB
+    max_bom: int              # 월 BOM 분석 건수
+    max_drawing_parses: int   # 월 도면 분석 건수
+    max_chats: int            # 월 채팅 횟수
     price_monthly: int        # 월 요금 (원)
     display_name: str         # 표시명
     description: str          # 설명
 
 
 PLAN_LIMITS: dict[PlanType, PlanLimits] = {
-    PlanType.FREE: PlanLimits(
-        max_members=3,
-        storage_gb=1,
-        max_bom=100,
-        max_drawing_parses=0,
+    PlanType.STARTER: PlanLimits(
+        storage_gb=2,
+        max_bom=50,
+        max_drawing_parses=10,
+        max_chats=200,
         price_monthly=0,
-        display_name="Free",
-        description="소규모 팀의 첫 시작에 적합합니다",
+        display_name="Starter",
+        description="소규모 팀이 부담 없이 시작할 수 있는 상시 무료 플랜",
     ),
-    PlanType.PRO: PlanLimits(
-        max_members=20,
-        storage_gb=50,
-        max_bom=-1,
-        max_drawing_parses=500,
-        price_monthly=49_000,
-        display_name="Pro",
-        description="성장하는 팀을 위한 전문 PLM",
+    PlanType.TEAM: PlanLimits(
+        storage_gb=100,
+        max_bom=3_000,
+        max_drawing_parses=300,
+        max_chats=3_000,
+        price_monthly=249_000,
+        display_name="Team",
+        description="5~10인 팀의 실무 운영에 맞춘 기본 플랜",
     ),
-    PlanType.ELITE: PlanLimits(
-        max_members=-1,
-        storage_gb=500,
-        max_bom=-1,
-        max_drawing_parses=-1,
-        price_monthly=149_000,
-        display_name="Elite",
-        description="대규모 조직을 위한 엔터프라이즈급",
+    PlanType.ENTERPRISE: PlanLimits(
+        storage_gb=1_000,
+        max_bom=30_000,
+        max_drawing_parses=3_000,
+        max_chats=30_000,
+        price_monthly=999_000,
+        display_name="Enterprise",
+        description="대량 처리와 안정적 운영이 필요한 조직용 플랜",
     ),
 }
 
