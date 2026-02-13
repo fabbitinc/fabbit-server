@@ -12,9 +12,13 @@
 ## ontology
 - `todo/ontology/03-ontology-base-bomline.md`: BOMLine 구조 확장 TODO
 
+## test-strategy
+- `todo/test-strategy/01-llm-test-strategy.md`: LLM 테스트 운영/평가 전략 TODO
+
 ## 권장 진행 순서
 1. `todo/foundation/01-direction.md`
 2. `todo/foundation/02-reliability.md`
 3. `todo/mapping-editor/phase1-todo.md`
 4. `todo/mapping-editor/phase2-todo.md`
-5. `todo/ontology/03-ontology-base-bomline.md`
+5. `todo/test-strategy/01-llm-test-strategy.md`
+6. `todo/ontology/03-ontology-base-bomline.md`

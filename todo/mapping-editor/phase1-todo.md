@@ -4,30 +4,30 @@
 
 ## 0) 정책 고정 (Frontend 합의 반영)
 
-- [ ] 관계 유효성 규칙 분리 적용
+- [x] 관계 유효성 규칙 분리 적용
   - endpoint(`from_columns`/`to_columns`)는 엄격 검증
   - 관계 속성(`properties`)은 완화 검증 + required만 강제
 - [ ] restore/toggle은 서버 revalidate 성공 시에만 반영
-- [ ] confirm 전에 validate 강제 + normalized_mapping 동기화
-- [ ] `dismissed_reason` 코드 체계 도입
+- [x] confirm 전에 validate 강제 + normalized_mapping 동기화
+- [x] `dismissed_reason` 코드 체계 도입
   - 예: `missing_from_endpoint`, `missing_to_endpoint`, `missing_required_rel_property`
 
 ## 1) 백엔드 API
 
-- [ ] `POST /api/v1/mappings/validate` 추가
+- [x] `POST /api/v1/mappings/validate` 추가
   - 입력: `upload_id`, `sheet_name`, `mapping`
   - 출력: `normalized_mapping`, `errors`, `warnings`, `impact_summary`
-- [ ] `POST /api/v1/mappings/confirm` 강화
+- [x] `POST /api/v1/mappings/confirm` 강화
   - validate 통과본만 저장하도록 서버 가드레일 적용
 
 ## 2) 검증 규칙 (서버)
 
-- [ ] merge key 누락 차단
-- [ ] self-loop 관계에서 from/to source column 동일 사용 차단
-- [ ] 관계 endpoint 컬럼 존재 여부 검증
-- [ ] relation property source column 존재 여부 검증 (required 우선)
-- [ ] `data_type` 불일치 경고 (`"2 EA"` 등 숫자 파싱 불가)
-- [ ] ext naming 규칙 검증 (`_ext_` prefix + snake_case)
+- [x] merge key 누락 차단
+- [x] self-loop 관계에서 from/to source column 동일 사용 차단
+- [x] 관계 endpoint 컬럼 존재 여부 검증
+- [x] relation property source column 존재 여부 검증 (required 우선)
+- [x] `data_type` 불일치 경고 (`"2 EA"` 등 숫자 파싱 불가)
+- [x] ext naming 규칙 검증 (`_ext_` prefix + snake_case)
 
 ## 3) 프론트 편집 범위
 
@@ -53,6 +53,11 @@
 - [ ] API 테스트
   - validate 실패/성공 케이스
   - confirm 시 validate 강제 여부
+
+## 6) E2E 반영
+
+- [x] `scripts/test_full_flow.sh`에 validate 단계 추가
+- [x] `scripts/test_full_flow.sh`에 DB 직접 검증(public/tenant) 추가
 
 ## 완료 기준 (DoD)
 
