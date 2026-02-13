@@ -33,6 +33,14 @@ step() { echo -e "\n${YELLOW}━━━ $1 ━━━${NC}"; }
 # jq 존재 확인
 command -v jq >/dev/null 2>&1 || { echo "jq가 필요합니다: brew install jq"; exit 1; }
 
+DB_CONTAINER="${DB_CONTAINER:-fabbit-db}"
+DB_USER="${DB_USER:-fabbit}"
+DB_NAME="${DB_NAME:-fabbit}"
+
+db_query() {
+    docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "$1"
+}
+
 # 서버 헬스체크
 step "0. 서버 헬스체크"
 HEALTH=$(curl -sf "${BASE_URL}/health" 2>/dev/null || echo "")
@@ -74,7 +82,12 @@ step "1-1. 내 정보 확인 (GET /auth/me)"
 ME_RESP=$(curl -sf "${API}/auth/me" -H "$AUTH") || fail "내 정보 조회 실패"
 ME_EMAIL=$(echo "$ME_RESP" | jq -r '.user.email')
 ME_ORG=$(echo "$ME_RESP" | jq -r '.memberships[0].organization.name // "N/A"')
-pass "내 정보: email=${ME_EMAIL}, org=${ME_ORG}"
+ME_ORG_ID=$(echo "$ME_RESP" | jq -r '.memberships[0].organization.id // empty')
+if [ -z "$ME_ORG_ID" ]; then
+    fail "organization id 조회 실패"
+fi
+TENANT_SCHEMA="tenant_${ME_ORG_ID//-/}"
+pass "내 정보: email=${ME_EMAIL}, org=${ME_ORG}, org_id=${ME_ORG_ID}"
 
 # =========================================================
 step "2. 파일 업로드 (Presigned URL)"
@@ -169,20 +182,52 @@ if [ "$RELATION_COUNT" -gt 0 ]; then
     fi
 fi
 
+MAPPING_DATA=$(echo "$PREVIEW_RESP" | jq '.mapping')
+
+# =========================================================
+step "3-1. 매핑 검증 (POST /mappings/validate)"
+# =========================================================
+VALIDATE_RESP=$(curl -sf -X POST "${API}/mappings/validate" \
+    -H "$AUTH" \
+    -H "Content-Type: application/json" \
+    -d "{
+        \"upload_id\": \"${UPLOAD_ID}\",
+        \"mapping\": ${MAPPING_DATA}
+    }") || fail "매핑 검증 실패"
+
+VALIDATION_ERROR_COUNT=$(echo "$VALIDATE_RESP" | jq '.errors | length')
+VALIDATION_WARNING_COUNT=$(echo "$VALIDATE_RESP" | jq '.warnings | length')
+DISABLED_COLUMN_COUNT=$(echo "$VALIDATE_RESP" | jq -r '.impact_summary.disabled_column_count // 0')
+
+if [ "$VALIDATION_ERROR_COUNT" -gt 0 ]; then
+    echo "$VALIDATE_RESP" | jq '.errors'
+    fail "매핑 검증 error ${VALIDATION_ERROR_COUNT}건"
+fi
+
+MAPPING_DATA=$(echo "$VALIDATE_RESP" | jq '.normalized_mapping')
+pass "매핑 검증 통과: error=${VALIDATION_ERROR_COUNT}, warning=${VALIDATION_WARNING_COUNT}, disabled_columns=${DISABLED_COLUMN_COUNT}"
+
 # =========================================================
 step "4. 매핑 확정 (POST /mappings/confirm)"
 # =========================================================
-MAPPING_DATA=$(echo "$PREVIEW_RESP" | jq '.mapping')
-HEADERS_DATA=$(echo "$PREVIEW_RESP" | jq '.headers')
 
-CONFIRM_RESP=$(curl -sf -X POST "${API}/mappings/confirm" \
+CONFIRM_RAW=$(curl -s -X POST "${API}/mappings/confirm" \
     -H "$AUTH" \
     -H "Content-Type: application/json" \
     -d "{
         \"upload_id\": \"${UPLOAD_ID}\",
         \"name\": \"E2E 테스트 매핑\",
         \"mapping\": ${MAPPING_DATA}
-    }") || fail "매핑 확정 실패"
+    }" \
+    -w "\nHTTP_STATUS:%{http_code}")
+
+CONFIRM_HTTP=$(echo "$CONFIRM_RAW" | awk -F: '/HTTP_STATUS/ {print $2}')
+CONFIRM_RESP=$(echo "$CONFIRM_RAW" | sed '/HTTP_STATUS:/d')
+
+if [ -z "$CONFIRM_HTTP" ] || [ "$CONFIRM_HTTP" -lt 200 ] || [ "$CONFIRM_HTTP" -ge 300 ]; then
+    echo "$CONFIRM_RESP" | jq . 2>/dev/null || echo "$CONFIRM_RESP"
+    fail "매핑 확정 실패 (HTTP ${CONFIRM_HTTP:-unknown})"
+fi
 
 MAPPING_ID=$(echo "$CONFIRM_RESP" | jq -r '.id')
 
@@ -572,6 +617,61 @@ if [ -z "$NEW_TOKEN" ]; then
     fail "새 access_token 없음"
 fi
 pass "토큰 갱신 성공"
+
+# =========================================================
+step "17. DB 검증 (PostgreSQL 직접 조회)"
+# =========================================================
+docker ps --format '{{.Names}}' | jq -R -s 'split("\n") | map(select(length>0))' >/dev/null 2>&1 || fail "docker 또는 jq 실행 실패"
+if ! docker ps --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
+    fail "DB 컨테이너(${DB_CONTAINER})가 실행 중이 아닙니다"
+fi
+
+USER_ORG_COUNT=$(db_query "
+SELECT COUNT(*)
+FROM users u
+JOIN memberships m ON m.user_id = u.id
+JOIN organizations o ON o.id = m.org_id
+WHERE u.email = '${EMAIL}'
+  AND o.slug = '${ORG_SLUG}';
+" | tr -d '[:space:]')
+
+if [ "$USER_ORG_COUNT" != "1" ]; then
+    fail "public 스키마 사용자/조직 데이터 검증 실패 (count=${USER_ORG_COUNT})"
+fi
+pass "public 스키마 검증 통과: 사용자/조직/멤버십 1건"
+
+UPLOAD_DB_STATUS=$(db_query "SELECT status FROM ${TENANT_SCHEMA}.uploads WHERE id = '${UPLOAD_ID}'::uuid;" | tr -d '[:space:]')
+if [ "$UPLOAD_DB_STATUS" != "UPLOADED" ] && [ "$UPLOAD_DB_STATUS" != "COMPLETED" ]; then
+    fail "tenant 업로드 상태 검증 실패 (status=${UPLOAD_DB_STATUS})"
+fi
+pass "tenant 업로드 상태 검증 통과: ${UPLOAD_DB_STATUS}"
+
+MAPPING_DB_COUNT=$(db_query "SELECT COUNT(*) FROM ${TENANT_SCHEMA}.mapping_records WHERE id = '${MAPPING_ID}'::uuid;" | tr -d '[:space:]')
+if [ "$MAPPING_DB_COUNT" != "1" ]; then
+    fail "tenant 매핑 레코드 검증 실패 (count=${MAPPING_DB_COUNT})"
+fi
+
+CONSISTS_EMPTY_COUNT=$(db_query "
+SELECT COUNT(*)
+FROM ${TENANT_SCHEMA}.mapping_records mr,
+LATERAL jsonb_array_elements(COALESCE(mr.mapping->'relation_mappings', '[]'::jsonb)) rm
+WHERE mr.id = '${MAPPING_ID}'::uuid
+  AND rm->>'rel_type' = 'CONSISTS_OF'
+  AND (
+    COALESCE(rm->'from_columns', '{}'::jsonb) = '{}'::jsonb
+    OR COALESCE(rm->'to_columns', '{}'::jsonb) = '{}'::jsonb
+  );
+" | tr -d '[:space:]')
+if [ "$CONSISTS_EMPTY_COUNT" != "0" ]; then
+    fail "tenant 매핑 레코드 관계 endpoint 검증 실패 (empty_consists_of=${CONSISTS_EMPTY_COUNT})"
+fi
+pass "tenant 매핑 레코드 검증 통과: mapping_records 1건, CONSISTS_OF endpoint 정상"
+
+SYNTH_DB_STATUS=$(db_query "SELECT status FROM ${TENANT_SCHEMA}.synthesis_jobs WHERE id = '${JOB_ID}'::uuid;" | tr -d '[:space:]')
+if [ "$SYNTH_DB_STATUS" != "COMPLETED" ]; then
+    fail "tenant 합성 잡 상태 검증 실패 (status=${SYNTH_DB_STATUS})"
+fi
+pass "tenant 합성 잡 상태 검증 통과: ${SYNTH_DB_STATUS}"
 
 # =========================================================
 echo -e "\n${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
