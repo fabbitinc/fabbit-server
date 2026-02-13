@@ -32,6 +32,16 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
    - 예: "탄소배출량" → "_ext_carbon_emission"
 5. 매핑할 수 없는 컬럼(빈 값, 의미 없는 인덱스 등)은 무시합니다.
 
+## 품질 가드레일 (매우 중요)
+- 샘플 행 기준으로 **값이 전부 비어 있는 컬럼은 절대 매핑하지 마세요**.
+  - 예: Item, Qty가 모두 빈 값이면 column/relation/ext 어디에도 넣지 않습니다.
+- 아래 매핑은 금지합니다:
+  - `Value -> Part.material`
+  - `Critical -> Part.is_phantom`
+- `MFN`/`Manufacturer` 계열 컬럼은 가능하면 `Supplier.company_name`으로 우선 매핑하세요.
+- ext 속성명은 `_ext_` 접두사를 **한 번만** 사용하세요.
+  - `_ext__ext_*` 또는 중복 접두사 형태는 금지합니다.
+
 ## 관계 매핑 주의사항 (매우 중요)
 - **모든 관계에 `from_columns`와 `to_columns`를 반드시 지정하세요.**
   - `from_columns`: from 노드의 merge key → 해당 Excel 컬럼명 매핑
@@ -86,7 +96,9 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
 
 
 def generate_mapping(
-    headers: list[str], sample_rows: list[dict]
+    headers: list[str],
+    sample_rows: list[dict],
+    model: str | None = None,
 ) -> tuple[MappingResult, LLMResponse]:
     """Excel 헤더 + 샘플 데이터로 매핑 생성 (LLM 1회 호출 + 검증).
 
@@ -105,6 +117,7 @@ def generate_mapping(
     llm_resp = chat_completion_with_usage(
         system_prompt=MAPPING_SYSTEM_PROMPT,
         user_message=user_message,
+        model=model if model else "gpt-5-mini",
         reasoning_effort="low",
         response_format={"type": "json_object"},
     )
@@ -159,6 +172,18 @@ def _auto_fill_endpoint_columns(
     )
 
 
+def _normalize_ext_property_name(name: str) -> str:
+    normalized = (name or "").strip()
+    while normalized.startswith("_ext__ext_"):
+        normalized = normalized[len("_ext_") :]
+    if normalized.startswith("_ext_"):
+        core = normalized[len("_ext_") :]
+    else:
+        core = normalized
+    core = core.strip("_")
+    return f"_ext_{core}" if core else "_ext_unknown"
+
+
 def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
     """온톨로지 라벨/속성 유효성 검증 + 자동 보정"""
     valid_labels = MANUFACTURING_ONTOLOGY.get_valid_labels()
@@ -177,6 +202,9 @@ def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
             continue
 
         node = MANUFACTURING_ONTOLOGY.get_node_label(cm.target_label)
+        if node is None:
+            continue
+        assert node is not None
         valid_props = [p.name for p in node.properties]
         if cm.target_property not in valid_props:
             result.extended_properties.append(
@@ -219,13 +247,14 @@ def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
     result.relation_mappings = verified_rels
 
     fixed_ext = []
+    seen_ext_keys: set[tuple[str, str, str]] = set()
     for ep in result.extended_properties:
         label = ep.target_label if ep.target_label in valid_labels else "Part"
-        name = (
-            ep.property_name
-            if ep.property_name.startswith("_ext_")
-            else f"_ext_{ep.property_name}"
-        )
+        name = _normalize_ext_property_name(ep.property_name)
+        dedupe_key = (ep.source_column, label, name)
+        if dedupe_key in seen_ext_keys:
+            continue
+        seen_ext_keys.add(dedupe_key)
         fixed_ext.append(
             ExtendedPropertyMapping(
                 source_column=ep.source_column,

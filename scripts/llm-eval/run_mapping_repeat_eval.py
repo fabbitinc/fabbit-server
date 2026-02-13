@@ -52,6 +52,11 @@ def parse_args() -> argparse.Namespace:
         default="sample/hierarchical_bom.csv",
         help="평가용 입력 파일 경로",
     )
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="평가에 사용할 모델명 (예: gpt-5.2)",
+    )
     parser.add_argument("--sheet", default=None, help="엑셀 시트명(선택)")
     parser.add_argument("--rows", type=int, default=5, help="샘플 행 수")
     parser.add_argument("--runs", type=int, default=10, help="반복 호출 횟수")
@@ -228,7 +233,11 @@ def main() -> int:
 
     for run_idx in range(1, args.runs + 1):
         started = time.perf_counter()
-        mapping, llm_resp = ontology_service.generate_mapping(headers, sample_rows)
+        mapping, llm_resp = ontology_service.generate_mapping(
+            headers,
+            sample_rows,
+            model=args.model,
+        )
         elapsed = time.perf_counter() - started
 
         elapsed_list.append(elapsed)

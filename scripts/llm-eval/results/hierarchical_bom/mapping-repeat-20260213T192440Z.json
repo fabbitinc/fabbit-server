@@ -1,0 +1,652 @@
+{
+  "summary": {
+    "sample": {
+      "file": "scripts/llm-eval/cases/hierarchical_bom/input.csv",
+      "sheet": null,
+      "rows": 5,
+      "headers": [
+        "상위품번",
+        "상위품명",
+        "하위품번",
+        "하위품명",
+        "수량",
+        "단위",
+        "재질",
+        "공급업체",
+        "비고"
+      ]
+    },
+    "runs": 5,
+    "latency": {
+      "avg_sec": 10.981,
+      "min_sec": 9.532,
+      "max_sec": 11.839
+    },
+    "tokens": {
+      "input_total": 23825,
+      "output_total": 5838,
+      "input_avg": 4765.0,
+      "output_avg": 1167.6
+    },
+    "consistency": {
+      "unique_fingerprints": 5,
+      "fingerprints": [
+        "15f8ec2a04d98420",
+        "1be439c78157e205",
+        "22efaaec59eee463",
+        "323ed2819d3a5fc8",
+        "7ef0d9c45d03b72b"
+      ]
+    },
+    "expectation_violations": {
+      "missing_relation_properties": 0,
+      "missing_column_targets": 0,
+      "forbidden_ext_hits": 0,
+      "forbidden_column_target_hits": 0,
+      "max_extended_properties_exceeded_runs": 0,
+      "min_relation_mappings_missing_runs": 0
+    }
+  },
+  "runs": [
+    {
+      "run": 1,
+      "elapsed_sec": 11.434,
+      "model": "gpt-5-mini",
+      "input_tokens": 4765,
+      "output_tokens": 1140,
+      "fingerprint": "1be439c78157e205",
+      "counts": {
+        "column_mappings": 8,
+        "relation_mappings": 2,
+        "extended_properties": 0
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [],
+      "forbidden_ext_pattern_hits": [],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": false,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "상위품번",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header literally denotes the parent part number (merge key) used in BOM"
+          },
+          {
+            "source_column": "상위품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header denotes parent part name/description"
+          },
+          {
+            "source_column": "하위품번",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header literally denotes the child part number (merge key) used in BOM"
+          },
+          {
+            "source_column": "하위품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header denotes child part name/description"
+          },
+          {
+            "source_column": "재질",
+            "target_label": "Part",
+            "target_property": "material",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header clearly indicates material/specified substrate"
+          },
+          {
+            "source_column": "단위",
+            "target_label": "Part",
+            "target_property": "unit",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Unit of measure for parts (EA etc.)"
+          },
+          {
+            "source_column": "비고",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Notes/remarks map to part description"
+          },
+          {
+            "source_column": "공급업체",
+            "target_label": "Supplier",
+            "target_property": "company_name",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header corresponds to supplier/company name (merge key)"
+          }
+        ],
+        "relation_mappings": [
+          {
+            "from_label": "Part",
+            "to_label": "Part",
+            "rel_type": "CONSISTS_OF",
+            "from_columns": {
+              "part_number": "상위품번"
+            },
+            "to_columns": {
+              "part_number": "하위품번"
+            },
+            "properties": {
+              "수량": "quantity"
+            },
+            "property_types": {
+              "quantity": "integer"
+            }
+          },
+          {
+            "from_label": "Part",
+            "to_label": "Supplier",
+            "rel_type": "SUPPLIED_BY",
+            "from_columns": {
+              "part_number": "하위품번"
+            },
+            "to_columns": {
+              "company_name": "공급업체"
+            },
+            "properties": {},
+            "property_types": {}
+          }
+        ],
+        "extended_properties": []
+      }
+    },
+    {
+      "run": 2,
+      "elapsed_sec": 10.673,
+      "model": "gpt-5-mini",
+      "input_tokens": 4765,
+      "output_tokens": 1217,
+      "fingerprint": "15f8ec2a04d98420",
+      "counts": {
+        "column_mappings": 8,
+        "relation_mappings": 2,
+        "extended_properties": 0
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [],
+      "forbidden_ext_pattern_hits": [],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": false,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "상위품번",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header directly indicates parent part number (merge key) in Korean"
+          },
+          {
+            "source_column": "상위품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header means parent part name and matches Part.name"
+          },
+          {
+            "source_column": "하위품번",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header directly indicates child part number (merge key) in Korean"
+          },
+          {
+            "source_column": "하위품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header means child part name and maps to Part.name"
+          },
+          {
+            "source_column": "단위",
+            "target_label": "Part",
+            "target_property": "unit",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Column denotes measurement unit (UOM) for parts"
+          },
+          {
+            "source_column": "재질",
+            "target_label": "Part",
+            "target_property": "material",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header is material/composition which maps to Part.material"
+          },
+          {
+            "source_column": "비고",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Remarks/notes column maps to Part.description"
+          },
+          {
+            "source_column": "공급업체",
+            "target_label": "Supplier",
+            "target_property": "company_name",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header is supplier/company name and matches Supplier.company_name (merge key)"
+          }
+        ],
+        "relation_mappings": [
+          {
+            "from_label": "Part",
+            "to_label": "Part",
+            "rel_type": "CONSISTS_OF",
+            "from_columns": {
+              "part_number": "상위품번"
+            },
+            "to_columns": {
+              "part_number": "하위품번"
+            },
+            "properties": {
+              "수량": "quantity"
+            },
+            "property_types": {
+              "quantity": "integer"
+            }
+          },
+          {
+            "from_label": "Part",
+            "to_label": "Supplier",
+            "rel_type": "SUPPLIED_BY",
+            "from_columns": {
+              "part_number": "하위품번"
+            },
+            "to_columns": {
+              "company_name": "공급업체"
+            },
+            "properties": {},
+            "property_types": {}
+          }
+        ],
+        "extended_properties": []
+      }
+    },
+    {
+      "run": 3,
+      "elapsed_sec": 11.428,
+      "model": "gpt-5-mini",
+      "input_tokens": 4765,
+      "output_tokens": 1131,
+      "fingerprint": "7ef0d9c45d03b72b",
+      "counts": {
+        "column_mappings": 8,
+        "relation_mappings": 2,
+        "extended_properties": 0
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [],
+      "forbidden_ext_pattern_hits": [],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": false,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "상위품번",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header directly indicates parent part number (merge key) and sample values are part-like codes"
+          },
+          {
+            "source_column": "상위품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header translates to part name and contains human-readable names in samples"
+          },
+          {
+            "source_column": "하위품번",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header clearly indicates child part number (merge key) and sample values are part-like codes"
+          },
+          {
+            "source_column": "하위품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header translates to part name and sample values are human-readable part names"
+          },
+          {
+            "source_column": "재질",
+            "target_label": "Part",
+            "target_property": "material",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header means material and sample values are material codes like SS400, SUS304"
+          },
+          {
+            "source_column": "단위",
+            "target_label": "Part",
+            "target_property": "unit",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Header denotes unit/UOM and sample values like 'EA' match expected units"
+          },
+          {
+            "source_column": "비고",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 85,
+            "reason": "Header is remarks/notes and sample values are descriptive text about the part"
+          },
+          {
+            "source_column": "공급업체",
+            "target_label": "Supplier",
+            "target_property": "company_name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header means supplier/company and sample values are supplier names; maps to Supplier.company_name (merge key)"
+          }
+        ],
+        "relation_mappings": [
+          {
+            "from_label": "Part",
+            "to_label": "Part",
+            "rel_type": "CONSISTS_OF",
+            "from_columns": {
+              "part_number": "상위품번"
+            },
+            "to_columns": {
+              "part_number": "하위품번"
+            },
+            "properties": {
+              "수량": "quantity"
+            },
+            "property_types": {
+              "quantity": "integer"
+            }
+          },
+          {
+            "from_label": "Part",
+            "to_label": "Supplier",
+            "rel_type": "SUPPLIED_BY",
+            "from_columns": {
+              "part_number": "하위품번"
+            },
+            "to_columns": {
+              "company_name": "공급업체"
+            },
+            "properties": {},
+            "property_types": {}
+          }
+        ],
+        "extended_properties": []
+      }
+    },
+    {
+      "run": 4,
+      "elapsed_sec": 9.532,
+      "model": "gpt-5-mini",
+      "input_tokens": 4765,
+      "output_tokens": 1097,
+      "fingerprint": "323ed2819d3a5fc8",
+      "counts": {
+        "column_mappings": 8,
+        "relation_mappings": 2,
+        "extended_properties": 0
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [],
+      "forbidden_ext_pattern_hits": [],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": false,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "상위품번",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header clearly means parent part number and matches Part.part_number MERGE KEY"
+          },
+          {
+            "source_column": "상위품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header translates to parent part name matching Part.name"
+          },
+          {
+            "source_column": "하위품번",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header clearly means child part number and matches Part.part_number MERGE KEY"
+          },
+          {
+            "source_column": "하위품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header translates to child part name matching Part.name"
+          },
+          {
+            "source_column": "단위",
+            "target_label": "Part",
+            "target_property": "unit",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Column header indicates unit of measure corresponding to Part.unit"
+          },
+          {
+            "source_column": "재질",
+            "target_label": "Part",
+            "target_property": "material",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header directly refers to material which maps to Part.material"
+          },
+          {
+            "source_column": "비고",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Remarks/notes column corresponds to Part.description"
+          },
+          {
+            "source_column": "공급업체",
+            "target_label": "Supplier",
+            "target_property": "company_name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Column header is supplier/vendor name and matches Supplier.company_name MERGE KEY"
+          }
+        ],
+        "relation_mappings": [
+          {
+            "from_label": "Part",
+            "to_label": "Part",
+            "rel_type": "CONSISTS_OF",
+            "from_columns": {
+              "part_number": "상위품번"
+            },
+            "to_columns": {
+              "part_number": "하위품번"
+            },
+            "properties": {
+              "수량": "quantity"
+            },
+            "property_types": {
+              "quantity": "integer"
+            }
+          },
+          {
+            "from_label": "Part",
+            "to_label": "Supplier",
+            "rel_type": "SUPPLIED_BY",
+            "from_columns": {
+              "part_number": "하위품번"
+            },
+            "to_columns": {
+              "company_name": "공급업체"
+            },
+            "properties": {},
+            "property_types": {}
+          }
+        ],
+        "extended_properties": []
+      }
+    },
+    {
+      "run": 5,
+      "elapsed_sec": 11.839,
+      "model": "gpt-5-mini",
+      "input_tokens": 4765,
+      "output_tokens": 1253,
+      "fingerprint": "22efaaec59eee463",
+      "counts": {
+        "column_mappings": 8,
+        "relation_mappings": 2,
+        "extended_properties": 0
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [],
+      "forbidden_ext_pattern_hits": [],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": false,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "상위품번",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header explicitly indicates parent part number (merge key) and sample values are part codes."
+          },
+          {
+            "source_column": "상위품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header translates to part name and contains descriptive names for parent parts."
+          },
+          {
+            "source_column": "하위품번",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header explicitly indicates child part number (merge key) and sample values are part codes."
+          },
+          {
+            "source_column": "하위품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header translates to part name and sample values are descriptive child part names."
+          },
+          {
+            "source_column": "단위",
+            "target_label": "Part",
+            "target_property": "unit",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Column indicates unit of measure (EA) matching Part.unit semantics."
+          },
+          {
+            "source_column": "재질",
+            "target_label": "Part",
+            "target_property": "material",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Header is material and sample values are materials like SS400, SUS304."
+          },
+          {
+            "source_column": "비고",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 85,
+            "reason": "Remarks/notes column maps to Part.description as free-text detail about the part."
+          },
+          {
+            "source_column": "공급업체",
+            "target_label": "Supplier",
+            "target_property": "company_name",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header clearly indicates supplier/company name and sample values are vendor names (MERGE KEY)."
+          }
+        ],
+        "relation_mappings": [
+          {
+            "from_label": "Part",
+            "to_label": "Part",
+            "rel_type": "CONSISTS_OF",
+            "from_columns": {
+              "part_number": "상위품번"
+            },
+            "to_columns": {
+              "part_number": "하위품번"
+            },
+            "properties": {
+              "수량": "quantity"
+            },
+            "property_types": {
+              "quantity": "integer"
+            }
+          },
+          {
+            "from_label": "Part",
+            "to_label": "Supplier",
+            "rel_type": "SUPPLIED_BY",
+            "from_columns": {
+              "part_number": "하위품번"
+            },
+            "to_columns": {
+              "company_name": "공급업체"
+            },
+            "properties": {},
+            "property_types": {}
+          }
+        ],
+        "extended_properties": []
+      }
+    }
+  ]
+}
