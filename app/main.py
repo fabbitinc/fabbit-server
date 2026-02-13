@@ -1,5 +1,9 @@
-from app.core.observability import setup_telemetry, instrument_app, instrument_database  # noqa: E402
 from app.core.logging import setup_logging  # noqa: E402
+from app.core.observability import (  # noqa: E402
+    instrument_app,
+    instrument_database,
+    setup_telemetry,
+)
 
 # OTel → 로깅 순서 (trace context 연동)
 setup_telemetry()
@@ -15,17 +19,25 @@ from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
 from app.api.v1.public.auth_router import router as auth_router  # noqa: E402
 from app.api.v1.public.ontology_router import router as ontology_router  # noqa: E402
-from app.api.v1.tenant.activation_router import router as activation_router  # noqa: E402
-from app.api.v1.tenant.mapping_router import router as mapping_router  # noqa: E402
-from app.api.v1.tenant.synthesis_router import router as synthesis_router  # noqa: E402
+from app.api.v1.tenant.activation_router import (
+    router as activation_router,  # noqa: E402
+)
 from app.api.v1.tenant.drawing_router import router as drawing_router  # noqa: E402
 from app.api.v1.tenant.item_router import router as item_router  # noqa: E402
+from app.api.v1.tenant.mapping_router import router as mapping_router  # noqa: E402
+from app.api.v1.tenant.synthesis_router import router as synthesis_router  # noqa: E402
 from app.api.v1.tenant.upload_router import router as upload_router  # noqa: E402
 from app.core.auth_context import AuthContext  # noqa: E402
 from app.core.config import settings  # noqa: E402
-from app.core.database import engine  # noqa: E402
+from app.core.database import (
+    SessionLocal,  # noqa: E402
+    engine,  # noqa: E402
+)
 from app.core.exceptions import register_exception_handlers  # noqa: E402
+from app.infrastructure.password_hasher import hash_password  # noqa: E402
 from app.infrastructure.token_provider import TokenProvider  # noqa: E402
+from app.modules.auth import repository as auth_repo  # noqa: E402
+from app.modules.auth.provisioning import provision_tenant  # noqa: E402
 
 app = FastAPI(title=settings.app_name, version="0.1.0", debug=settings.debug)
 
@@ -122,6 +134,74 @@ app.include_router(synthesis_router)
 app.include_router(item_router)
 app.include_router(upload_router)
 app.include_router(ontology_router)
+
+
+# TODO 삭제
+def _bootstrap_test_account_once() -> None:
+    """개발용 테스트 조직/유저를 서버 시작 시 1회 보장.
+
+    제거가 필요하면 이 함수와 startup 이벤트 호출부를 통째로 지우면 됩니다.
+    """
+
+    # --- 간편 삭제 구간 시작: test bootstrap ---
+    test_email = "test@gmail.com"
+    test_password = "qwer1234"
+    test_full_name = "Test User"
+    test_org_slug = "test"
+    test_org_name = "Test Org"
+    # --- 간편 삭제 구간 끝 ---
+
+    db = SessionLocal()
+    try:
+        user = auth_repo.get_user_by_email(db, test_email)
+        if user is None:
+            user = auth_repo.create_user(
+                db,
+                email=test_email,
+                hashed_password=hash_password(test_password),
+                full_name=test_full_name,
+            )
+
+        org = auth_repo.get_org_by_slug(db, test_org_slug)
+        if org is None:
+            org = auth_repo.create_organization(
+                db,
+                slug=test_org_slug,
+                name=test_org_name,
+                owner_id=user.id,
+                plan_type="FREE",
+            )
+            provision_tenant(db, org.id)
+
+        if org.onboarded_at is None:
+            org = auth_repo.complete_onboarding(db, org.id)
+
+        memberships = auth_repo.get_user_memberships(db, user.id)
+        if not any(m.org_id == org.id for m in memberships):
+            auth_repo.create_membership(
+                db,
+                user_id=user.id,
+                org_id=org.id,
+                role="ADMIN",
+            )
+
+        db.commit()
+        logger.info(
+            "테스트 계정 보장 완료: email={email} slug={slug}",
+            email=test_email,
+            slug=test_org_slug,
+        )
+    except Exception as e:
+        db.rollback()
+        logger.warning("테스트 계정 보장 실패: {err}", err=e)
+    finally:
+        db.close()
+
+
+# TODO 삭제
+@app.on_event("startup")
+def _startup_bootstrap() -> None:
+    _bootstrap_test_account_once()
 
 
 @app.get("/health")
