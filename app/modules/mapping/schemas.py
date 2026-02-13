@@ -40,7 +40,37 @@ class MappingPreviewResponse(BaseModel):
     mapping: MappingResult
     sheets: list[SheetPreview] = []
     skipped_sheets: list[SkippedSheet] = []
-    editable_constraints: dict = Field(default_factory=dict)
+    editable_constraints: "EditableConstraints" = Field(
+        default_factory=lambda: EditableConstraints()
+    )
+
+
+class RelationCatalogItem(BaseModel):
+    rel_type: str
+    from_label: str
+    to_label: str
+    description: str
+
+
+class RelationPropertyCatalogItem(BaseModel):
+    rel_type: str
+    property: str
+    data_type: str
+    required: bool
+    description: str
+
+
+class EditableConstraints(BaseModel):
+    allowed_labels: list[str] = Field(default_factory=list)
+    allowed_properties_by_label: dict[str, list[str]] = Field(default_factory=dict)
+    allowed_rel_types: list[str] = Field(default_factory=list)
+    allowed_rel_properties_by_type: dict[str, list[str]] = Field(default_factory=dict)
+    merge_keys_by_label: dict[str, list[str]] = Field(default_factory=dict)
+    relation_edit_mode: Literal["existing_only", "selectable"] = "existing_only"
+    relation_catalog: list[RelationCatalogItem] = Field(default_factory=list)
+    relation_property_catalog: list[RelationPropertyCatalogItem] = Field(
+        default_factory=list
+    )
 
 
 class MappingConfirmRequest(BaseModel):
@@ -107,3 +137,6 @@ class MappingValidateResponse(BaseModel):
     errors: list[ValidationIssue] = Field(default_factory=list)
     warnings: list[ValidationIssue] = Field(default_factory=list)
     impact_summary: MappingImpactSummary = Field(default_factory=MappingImpactSummary)
+
+
+MappingPreviewResponse.model_rebuild()

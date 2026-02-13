@@ -19,6 +19,7 @@ from app.modules.ai_usage.service import log_ai_usage
 from app.modules.mapping import repository as repo
 from app.modules.mapping.models import MappingRecord
 from app.modules.mapping.schemas import (
+    EditableConstraints,
     MappingConfirmRequest,
     MappingListResponse,
     MappingPreviewRequest,
@@ -390,6 +391,11 @@ def validate_mapping(
     used_columns = {cm.source_column for cm in normalized_mapping.column_mappings} | {
         ep.source_column for ep in normalized_mapping.extended_properties
     }
+    for rm in normalized_mapping.relation_mappings:
+        used_columns.update(rm.from_columns.values())
+        used_columns.update(rm.to_columns.values())
+        used_columns.update(rm.properties.keys())
+
     impact_summary = MappingImpactSummary(
         disabled_column_count=sum(1 for h in headers if h not in used_columns),
     )
@@ -501,22 +507,50 @@ def _to_mapping_response(record: MappingRecord) -> MappingResponse:
     )
 
 
-def _build_editable_constraints() -> dict:
-    return {
-        "allowed_labels": [node.label for node in MANUFACTURING_ONTOLOGY.node_labels],
-        "allowed_properties_by_label": {
+def _build_editable_constraints() -> EditableConstraints:
+    relation_catalog = []
+    relation_property_catalog = []
+    for rel in MANUFACTURING_ONTOLOGY.relationship_types:
+        relation_catalog.append(
+            {
+                "rel_type": rel.rel_type,
+                "from_label": rel.from_label,
+                "to_label": rel.to_label,
+                "description": rel.description,
+            }
+        )
+        for prop in rel.properties:
+            relation_property_catalog.append(
+                {
+                    "rel_type": rel.rel_type,
+                    "property": prop.name,
+                    "data_type": prop.data_type,
+                    "required": prop.required,
+                    "description": prop.description,
+                }
+            )
+
+    return EditableConstraints(
+        allowed_labels=[node.label for node in MANUFACTURING_ONTOLOGY.node_labels],
+        allowed_properties_by_label={
             node.label: [prop.name for prop in node.properties]
             for node in MANUFACTURING_ONTOLOGY.node_labels
         },
-        "allowed_rel_types": [
+        allowed_rel_types=[
             rel.rel_type for rel in MANUFACTURING_ONTOLOGY.relationship_types
         ],
-        "merge_keys_by_label": {
+        allowed_rel_properties_by_type={
+            rel.rel_type: [prop.name for prop in rel.properties]
+            for rel in MANUFACTURING_ONTOLOGY.relationship_types
+        },
+        merge_keys_by_label={
             node.label: list(node.merge_keys)
             for node in MANUFACTURING_ONTOLOGY.node_labels
         },
-        "relation_edit_mode": "existing_only",
-    }
+        relation_edit_mode="selectable",
+        relation_catalog=relation_catalog,
+        relation_property_catalog=relation_property_catalog,
+    )
 
 
 def _validate_relation_endpoint(
