@@ -1,0 +1,1069 @@
+{
+  "summary": {
+    "sample": {
+      "file": "scripts/llm-eval/cases/arduino_sheet1/input.csv",
+      "sheet": null,
+      "rows": 5,
+      "headers": [
+        "Item",
+        "Qty",
+        "Reference(s)",
+        "Value",
+        "LibPart",
+        "Footprint",
+        "Datasheet",
+        "Characteristics",
+        "Critical",
+        "Description",
+        "MFN",
+        "MPN",
+        "Notes",
+        "Package ID",
+        "Source",
+        "Subsystem"
+      ]
+    },
+    "runs": 5,
+    "latency": {
+      "avg_sec": 24.015,
+      "min_sec": 20.507,
+      "max_sec": 28.364
+    },
+    "tokens": {
+      "input_total": 26040,
+      "output_total": 10866,
+      "input_avg": 5208.0,
+      "output_avg": 2173.2
+    },
+    "consistency": {
+      "unique_fingerprints": 5,
+      "fingerprints": [
+        "11964c144423d932",
+        "14fa6d0606575287",
+        "35d1133bf754f655",
+        "c972783feab7d983",
+        "e19b1d1b1534d582"
+      ]
+    },
+    "expectation_violations": {
+      "missing_relation_properties": 0,
+      "missing_column_targets": 2,
+      "forbidden_ext_hits": 3,
+      "forbidden_column_target_hits": 0,
+      "max_extended_properties_exceeded_runs": 2,
+      "min_relation_mappings_missing_runs": 0
+    }
+  },
+  "runs": [
+    {
+      "run": 1,
+      "elapsed_sec": 20.507,
+      "model": "gpt-5-mini",
+      "input_tokens": 5208,
+      "output_tokens": 1987,
+      "fingerprint": "14fa6d0606575287",
+      "counts": {
+        "column_mappings": 3,
+        "relation_mappings": 1,
+        "extended_properties": 12
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [
+        "Supplier:company_name"
+      ],
+      "forbidden_ext_pattern_hits": [],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": false,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "MPN",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "MPN is the manufacturer part number and commonly used as part unique identifier"
+          },
+          {
+            "source_column": "Description",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Description provides a human-readable part name/usage which fits Part.name"
+          },
+          {
+            "source_column": "Characteristics",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Characteristics contains detailed spec text appropriate for Part.description"
+          }
+        ],
+        "relation_mappings": [
+          {
+            "from_label": "Part",
+            "to_label": "Supplier",
+            "rel_type": "SUPPLIED_BY",
+            "from_columns": {
+              "part_number": "MPN"
+            },
+            "to_columns": {
+              "company_name": "MFN"
+            },
+            "properties": {},
+            "property_types": {}
+          }
+        ],
+        "extended_properties": [
+          {
+            "source_column": "Value",
+            "target_label": "Part",
+            "property_name": "_ext_value",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "LibPart",
+            "target_label": "Part",
+            "property_name": "_ext_lib_part",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Footprint",
+            "target_label": "Part",
+            "property_name": "_ext_footprint",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Datasheet",
+            "target_label": "Part",
+            "property_name": "_ext_datasheet",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Critical",
+            "target_label": "Part",
+            "property_name": "_ext_critical",
+            "data_type": "boolean",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Notes",
+            "target_label": "Part",
+            "property_name": "_ext_notes",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Package ID",
+            "target_label": "Part",
+            "property_name": "_ext_package_id",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Source",
+            "target_label": "Part",
+            "property_name": "_ext_source",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Subsystem",
+            "target_label": "Part",
+            "property_name": "_ext_subsystem",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Reference(s)",
+            "target_label": "Part",
+            "property_name": "_ext_reference",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Item",
+            "target_label": "Part",
+            "property_name": "_ext_item",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Qty",
+            "target_label": "Part",
+            "property_name": "_ext_qty",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          }
+        ]
+      }
+    },
+    {
+      "run": 2,
+      "elapsed_sec": 22.282,
+      "model": "gpt-5-mini",
+      "input_tokens": 5208,
+      "output_tokens": 2099,
+      "fingerprint": "35d1133bf754f655",
+      "counts": {
+        "column_mappings": 6,
+        "relation_mappings": 1,
+        "extended_properties": 12
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [
+        "Supplier:company_name"
+      ],
+      "forbidden_ext_pattern_hits": [],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": false,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "MPN",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "MPN is the manufacturer part number and serves as a unique part identifier"
+          },
+          {
+            "source_column": "Description",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Description provides a human-readable part name/description appropriate for Part.name"
+          },
+          {
+            "source_column": "Characteristics",
+            "target_label": "Part",
+            "target_property": "material",
+            "data_type": "string",
+            "confidence": 75,
+            "reason": "Characteristics contains material/technical attributes including material type, mapped to material with moderate confidence"
+          },
+          {
+            "source_column": "Package ID",
+            "target_label": "Part",
+            "target_property": "unit",
+            "data_type": "string",
+            "confidence": 60,
+            "reason": "Package ID describes physical packaging/size; no explicit unit column exists so map as unit (best fit)"
+          },
+          {
+            "source_column": "Notes",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 60,
+            "reason": "Notes contain additional remarks which fit the free-text description field though 'Description' also exists"
+          },
+          {
+            "source_column": "Value",
+            "target_label": "Part",
+            "target_property": "revision",
+            "data_type": "string",
+            "confidence": 30,
+            "reason": "No explicit revision column exists; Value is not revision but mapping to revision is low confidence (kept conservative)"
+          }
+        ],
+        "relation_mappings": [
+          {
+            "from_label": "Part",
+            "to_label": "Supplier",
+            "rel_type": "SUPPLIED_BY",
+            "from_columns": {
+              "part_number": "MPN"
+            },
+            "to_columns": {
+              "company_name": "MFN"
+            },
+            "properties": {},
+            "property_types": {}
+          }
+        ],
+        "extended_properties": [
+          {
+            "source_column": "Item",
+            "target_label": "Part",
+            "property_name": "_ext_item",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Qty",
+            "target_label": "Part",
+            "property_name": "_ext_qty",
+            "data_type": "integer",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Reference(s)",
+            "target_label": "Part",
+            "property_name": "_ext_reference_s",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "LibPart",
+            "target_label": "Part",
+            "property_name": "_ext_libpart",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Footprint",
+            "target_label": "Part",
+            "property_name": "_ext_footprint",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Datasheet",
+            "target_label": "Part",
+            "property_name": "_ext_datasheet",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Critical",
+            "target_label": "Part",
+            "property_name": "_ext_critical",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Value",
+            "target_label": "Part",
+            "property_name": "_ext_value",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "MFN",
+            "target_label": "Supplier",
+            "property_name": "_ext_mfn_raw",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Notes",
+            "target_label": "Part",
+            "property_name": "_ext_notes",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Source",
+            "target_label": "Part",
+            "property_name": "_ext_source",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Subsystem",
+            "target_label": "Part",
+            "property_name": "_ext_subsystem",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          }
+        ]
+      }
+    },
+    {
+      "run": 3,
+      "elapsed_sec": 21.432,
+      "model": "gpt-5-mini",
+      "input_tokens": 5208,
+      "output_tokens": 1870,
+      "fingerprint": "c972783feab7d983",
+      "counts": {
+        "column_mappings": 4,
+        "relation_mappings": 1,
+        "extended_properties": 10
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [],
+      "forbidden_ext_pattern_hits": [
+        "_ext__ext_"
+      ],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": false,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "MPN",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "MPN is the manufacturer part number and serves as a unique part identifier suitable for part_number"
+          },
+          {
+            "source_column": "Description",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "Description provides the human-readable part name/description appropriate for Part.name"
+          },
+          {
+            "source_column": "Characteristics",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Characteristics contains detailed textual specs and is suitable for Part.description"
+          },
+          {
+            "source_column": "MFN",
+            "target_label": "Supplier",
+            "target_property": "company_name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "MFN (Manufacturer) is the supplier/company name suitable for Supplier.company_name"
+          }
+        ],
+        "relation_mappings": [
+          {
+            "from_label": "Part",
+            "to_label": "Supplier",
+            "rel_type": "SUPPLIED_BY",
+            "from_columns": {
+              "part_number": "MPN"
+            },
+            "to_columns": {
+              "company_name": "MFN"
+            },
+            "properties": {},
+            "property_types": {}
+          }
+        ],
+        "extended_properties": [
+          {
+            "source_column": "Value",
+            "target_label": "Part",
+            "property_name": "_ext_value",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "LibPart",
+            "target_label": "Part",
+            "property_name": "_ext_libpart",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Footprint",
+            "target_label": "Part",
+            "property_name": "_ext_footprint",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Critical",
+            "target_label": "Part",
+            "property_name": "_ext_critical",
+            "data_type": "boolean",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Notes",
+            "target_label": "Part",
+            "property_name": "_ext_notes",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Package ID",
+            "target_label": "Part",
+            "property_name": "_ext_package_id",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Source",
+            "target_label": "Part",
+            "property_name": "_ext_source",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Subsystem",
+            "target_label": "Part",
+            "property_name": "_ext_subsystem",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Reference(s)",
+            "target_label": "Part",
+            "property_name": "_ext_reference",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Datasheet",
+            "target_label": "Part",
+            "property_name": "_ext__ext_datasheet",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          }
+        ]
+      }
+    },
+    {
+      "run": 4,
+      "elapsed_sec": 28.364,
+      "model": "gpt-5-mini",
+      "input_tokens": 5208,
+      "output_tokens": 2380,
+      "fingerprint": "e19b1d1b1534d582",
+      "counts": {
+        "column_mappings": 3,
+        "relation_mappings": 1,
+        "extended_properties": 22
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [],
+      "forbidden_ext_pattern_hits": [
+        "_ext__ext_"
+      ],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": true,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "MPN",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "MPN serves as a unique manufacturer part identifier and no explicit internal part number column exists"
+          },
+          {
+            "source_column": "Description",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Description is the human-readable part name/description"
+          },
+          {
+            "source_column": "MFN",
+            "target_label": "Supplier",
+            "target_property": "company_name",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "MFN appears to be manufacturer/supplier name"
+          }
+        ],
+        "relation_mappings": [
+          {
+            "from_label": "Part",
+            "to_label": "Supplier",
+            "rel_type": "SUPPLIED_BY",
+            "from_columns": {
+              "part_number": "MPN"
+            },
+            "to_columns": {
+              "company_name": "MFN"
+            },
+            "properties": {},
+            "property_types": {}
+          }
+        ],
+        "extended_properties": [
+          {
+            "source_column": "Value",
+            "target_label": "Part",
+            "property_name": "_ext_value",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Datasheet",
+            "target_label": "Part",
+            "property_name": "_ext_datasheet",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "LibPart",
+            "target_label": "Part",
+            "property_name": "_ext_libpart",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Footprint",
+            "target_label": "Part",
+            "property_name": "_ext_footprint",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Characteristics",
+            "target_label": "Part",
+            "property_name": "_ext_characteristics",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Notes",
+            "target_label": "Part",
+            "property_name": "_ext_notes",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Package ID",
+            "target_label": "Part",
+            "property_name": "_ext_package_id",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Source",
+            "target_label": "Part",
+            "property_name": "_ext_source_preference",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Subsystem",
+            "target_label": "Part",
+            "property_name": "_ext_subsystem",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Reference(s)",
+            "target_label": "Part",
+            "property_name": "_ext_reference",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Critical",
+            "target_label": "Part",
+            "property_name": "_ext_critical_flag",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Datasheet",
+            "target_label": "Part",
+            "property_name": "_ext__ext_datasheet",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Value",
+            "target_label": "Part",
+            "property_name": "_ext__ext_value",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "LibPart",
+            "target_label": "Part",
+            "property_name": "_ext__ext_libpart",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Footprint",
+            "target_label": "Part",
+            "property_name": "_ext__ext_footprint",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Characteristics",
+            "target_label": "Part",
+            "property_name": "_ext__ext_characteristics",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Notes",
+            "target_label": "Part",
+            "property_name": "_ext__ext_notes",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Package ID",
+            "target_label": "Part",
+            "property_name": "_ext__ext_package_id",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Source",
+            "target_label": "Part",
+            "property_name": "_ext__ext_source_preference",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Subsystem",
+            "target_label": "Part",
+            "property_name": "_ext__ext_subsystem",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Reference(s)",
+            "target_label": "Part",
+            "property_name": "_ext__ext_reference",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Critical",
+            "target_label": "Part",
+            "property_name": "_ext__ext_critical_flag",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          }
+        ]
+      }
+    },
+    {
+      "run": 5,
+      "elapsed_sec": 27.489,
+      "model": "gpt-5-mini",
+      "input_tokens": 5208,
+      "output_tokens": 2530,
+      "fingerprint": "11964c144423d932",
+      "counts": {
+        "column_mappings": 4,
+        "relation_mappings": 1,
+        "extended_properties": 24
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [],
+      "forbidden_ext_pattern_hits": [
+        "_ext__ext_"
+      ],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": true,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "MPN",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "MPN is the manufacturer part number and serves as the unique part identifier in BOMs"
+          },
+          {
+            "source_column": "Description",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Description provides a human-readable part name/title"
+          },
+          {
+            "source_column": "Characteristics",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Characteristics contains detailed textual specifications suitable for part description"
+          },
+          {
+            "source_column": "MFN",
+            "target_label": "Supplier",
+            "target_property": "company_name",
+            "data_type": "string",
+            "confidence": 95,
+            "reason": "MFN appears to be the manufacturer/supplier name"
+          }
+        ],
+        "relation_mappings": [
+          {
+            "from_label": "Part",
+            "to_label": "Supplier",
+            "rel_type": "SUPPLIED_BY",
+            "from_columns": {
+              "part_number": "MPN"
+            },
+            "to_columns": {
+              "company_name": "MFN"
+            },
+            "properties": {},
+            "property_types": {}
+          }
+        ],
+        "extended_properties": [
+          {
+            "source_column": "Datasheet",
+            "target_label": "Part",
+            "property_name": "_ext_datasheet",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Value",
+            "target_label": "Part",
+            "property_name": "_ext_value",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "LibPart",
+            "target_label": "Part",
+            "property_name": "_ext_libpart",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Footprint",
+            "target_label": "Part",
+            "property_name": "_ext_footprint",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Package ID",
+            "target_label": "Part",
+            "property_name": "_ext_package_id",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Critical",
+            "target_label": "Part",
+            "property_name": "_ext_critical",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Notes",
+            "target_label": "Part",
+            "property_name": "_ext_notes",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Source",
+            "target_label": "Part",
+            "property_name": "_ext_source",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Subsystem",
+            "target_label": "Part",
+            "property_name": "_ext_subsystem",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Reference(s)",
+            "target_label": "Part",
+            "property_name": "_ext_reference",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Characteristics",
+            "target_label": "Part",
+            "property_name": "_ext_characteristics",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Item",
+            "target_label": "Part",
+            "property_name": "_ext_item",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Datasheet",
+            "target_label": "Part",
+            "property_name": "_ext__ext_datasheet",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Value",
+            "target_label": "Part",
+            "property_name": "_ext__ext_value",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "LibPart",
+            "target_label": "Part",
+            "property_name": "_ext__ext_libpart",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Footprint",
+            "target_label": "Part",
+            "property_name": "_ext__ext_footprint",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Package ID",
+            "target_label": "Part",
+            "property_name": "_ext__ext_package_id",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Critical",
+            "target_label": "Part",
+            "property_name": "_ext__ext_critical",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Notes",
+            "target_label": "Part",
+            "property_name": "_ext__ext_notes",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Source",
+            "target_label": "Part",
+            "property_name": "_ext__ext_source",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Subsystem",
+            "target_label": "Part",
+            "property_name": "_ext__ext_subsystem",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Reference(s)",
+            "target_label": "Part",
+            "property_name": "_ext__ext_reference",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Value",
+            "target_label": "Part",
+            "property_name": "_ext__ext_value_unit",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "Item",
+            "target_label": "Part",
+            "property_name": "_ext__ext_item",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          }
+        ]
+      }
+    }
+  ]
+}

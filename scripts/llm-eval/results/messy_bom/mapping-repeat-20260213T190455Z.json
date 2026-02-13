@@ -1,0 +1,552 @@
+{
+  "summary": {
+    "sample": {
+      "file": "scripts/llm-eval/cases/messy_bom/input.csv",
+      "sheet": null,
+      "rows": 5,
+      "headers": [
+        "No.",
+        "부품코드",
+        "품명",
+        "규격",
+        "수량",
+        "단가(원)",
+        "중량(kg)",
+        "표면처리",
+        "납기(일)",
+        "담당자",
+        "비고"
+      ]
+    },
+    "runs": 5,
+    "latency": {
+      "avg_sec": 14.352,
+      "min_sec": 12.859,
+      "max_sec": 16.881
+    },
+    "tokens": {
+      "input_total": 23425,
+      "output_total": 5711,
+      "input_avg": 4685.0,
+      "output_avg": 1142.2
+    },
+    "consistency": {
+      "unique_fingerprints": 5,
+      "fingerprints": [
+        "4178b7b68dccda33",
+        "7649550d5630f4a7",
+        "9b0d618a24259e8a",
+        "b19183615364c52b",
+        "de85f5ef5a89623a"
+      ]
+    },
+    "expectation_violations": {
+      "missing_relation_properties": 0,
+      "missing_column_targets": 0,
+      "forbidden_ext_hits": 0,
+      "forbidden_column_target_hits": 0,
+      "max_extended_properties_exceeded_runs": 0,
+      "min_relation_mappings_missing_runs": 0
+    }
+  },
+  "runs": [
+    {
+      "run": 1,
+      "elapsed_sec": 13.226,
+      "model": "gpt-5-mini",
+      "input_tokens": 4685,
+      "output_tokens": 1152,
+      "fingerprint": "4178b7b68dccda33",
+      "counts": {
+        "column_mappings": 4,
+        "relation_mappings": 0,
+        "extended_properties": 5
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [],
+      "forbidden_ext_pattern_hits": [],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": false,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "부품코드",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header literally means part code and serves as unique part identifier"
+          },
+          {
+            "source_column": "품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header is the part name which maps directly to Part.name"
+          },
+          {
+            "source_column": "규격",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Specification/size is best represented as descriptive detail of the part"
+          },
+          {
+            "source_column": "납기(일)",
+            "target_label": "Part",
+            "target_property": "lead_time_days",
+            "data_type": "integer",
+            "confidence": 95,
+            "reason": "Column header indicates lead time in days matching lead_time_days"
+          }
+        ],
+        "relation_mappings": [],
+        "extended_properties": [
+          {
+            "source_column": "단가(원)",
+            "target_label": "Part",
+            "property_name": "_ext_unit_price",
+            "data_type": "float",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "중량(kg)",
+            "target_label": "Part",
+            "property_name": "_ext_weight_kg",
+            "data_type": "float",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "표면처리",
+            "target_label": "Part",
+            "property_name": "_ext_surface_treatment",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "담당자",
+            "target_label": "Part",
+            "property_name": "_ext_responsible_person",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "비고",
+            "target_label": "Part",
+            "property_name": "_ext_note",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          }
+        ]
+      }
+    },
+    {
+      "run": 2,
+      "elapsed_sec": 16.881,
+      "model": "gpt-5-mini",
+      "input_tokens": 4685,
+      "output_tokens": 1135,
+      "fingerprint": "9b0d618a24259e8a",
+      "counts": {
+        "column_mappings": 5,
+        "relation_mappings": 0,
+        "extended_properties": 4
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [],
+      "forbidden_ext_pattern_hits": [],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": false,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "부품코드",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header directly indicates part number / unique part identifier"
+          },
+          {
+            "source_column": "품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header directly corresponds to human-readable part name"
+          },
+          {
+            "source_column": "규격",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Specification/dimensions best map to part description field"
+          },
+          {
+            "source_column": "납기(일)",
+            "target_label": "Part",
+            "target_property": "lead_time_days",
+            "data_type": "integer",
+            "confidence": 95,
+            "reason": "Header indicates lead time in days which maps to lead_time_days"
+          },
+          {
+            "source_column": "비고",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 85,
+            "reason": "Remarks augment part description; map into description as free text"
+          }
+        ],
+        "relation_mappings": [],
+        "extended_properties": [
+          {
+            "source_column": "단가(원)",
+            "target_label": "Part",
+            "property_name": "_ext_unit_price",
+            "data_type": "float",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "중량(kg)",
+            "target_label": "Part",
+            "property_name": "_ext_weight_kg",
+            "data_type": "float",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "표면처리",
+            "target_label": "Part",
+            "property_name": "_ext_surface_treatment",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "담당자",
+            "target_label": "Part",
+            "property_name": "_ext_person_in_charge",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          }
+        ]
+      }
+    },
+    {
+      "run": 3,
+      "elapsed_sec": 15.435,
+      "model": "gpt-5-mini",
+      "input_tokens": 4685,
+      "output_tokens": 1141,
+      "fingerprint": "7649550d5630f4a7",
+      "counts": {
+        "column_mappings": 4,
+        "relation_mappings": 0,
+        "extended_properties": 5
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [],
+      "forbidden_ext_pattern_hits": [],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": false,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "부품코드",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header directly denotes part number (merge key) in Korean"
+          },
+          {
+            "source_column": "품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header is the part name (required name property)"
+          },
+          {
+            "source_column": "규격",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Specification/size is best represented as descriptive text"
+          },
+          {
+            "source_column": "납기(일)",
+            "target_label": "Part",
+            "target_property": "lead_time_days",
+            "data_type": "integer",
+            "confidence": 95,
+            "reason": "Header indicates lead time in days and sample values are integers"
+          }
+        ],
+        "relation_mappings": [],
+        "extended_properties": [
+          {
+            "source_column": "단가(원)",
+            "target_label": "Part",
+            "property_name": "_ext_unit_price_krw",
+            "data_type": "float",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "중량(kg)",
+            "target_label": "Part",
+            "property_name": "_ext_weight_kg",
+            "data_type": "float",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "표면처리",
+            "target_label": "Part",
+            "property_name": "_ext_surface_treatment",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "담당자",
+            "target_label": "Part",
+            "property_name": "_ext_owner",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "비고",
+            "target_label": "Part",
+            "property_name": "_ext_note",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          }
+        ]
+      }
+    },
+    {
+      "run": 4,
+      "elapsed_sec": 12.859,
+      "model": "gpt-5-mini",
+      "input_tokens": 4685,
+      "output_tokens": 1130,
+      "fingerprint": "de85f5ef5a89623a",
+      "counts": {
+        "column_mappings": 5,
+        "relation_mappings": 0,
+        "extended_properties": 4
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [],
+      "forbidden_ext_pattern_hits": [],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": false,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "부품코드",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header directly denotes part number (merge key) in Korean"
+          },
+          {
+            "source_column": "품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header is the part name (required)"
+          },
+          {
+            "source_column": "규격",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Column contains dimensional/spec text suitable for part description"
+          },
+          {
+            "source_column": "납기(일)",
+            "target_label": "Part",
+            "target_property": "lead_time_days",
+            "data_type": "integer",
+            "confidence": 95,
+            "reason": "Header indicates lead time in days and sample values are integers"
+          },
+          {
+            "source_column": "비고",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 85,
+            "reason": "Remarks complement specification and fit into part description"
+          }
+        ],
+        "relation_mappings": [],
+        "extended_properties": [
+          {
+            "source_column": "단가(원)",
+            "target_label": "Part",
+            "property_name": "_ext_unit_price_krw",
+            "data_type": "float",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "중량(kg)",
+            "target_label": "Part",
+            "property_name": "_ext_weight_kg",
+            "data_type": "float",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "표면처리",
+            "target_label": "Part",
+            "property_name": "_ext_surface_treatment",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "담당자",
+            "target_label": "Part",
+            "property_name": "_ext_contact_person",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          }
+        ]
+      }
+    },
+    {
+      "run": 5,
+      "elapsed_sec": 13.36,
+      "model": "gpt-5-mini",
+      "input_tokens": 4685,
+      "output_tokens": 1153,
+      "fingerprint": "b19183615364c52b",
+      "counts": {
+        "column_mappings": 4,
+        "relation_mappings": 0,
+        "extended_properties": 6
+      },
+      "missing_expected_relation_properties": [],
+      "missing_expected_column_targets": [],
+      "forbidden_ext_pattern_hits": [],
+      "forbidden_column_target_hits": [],
+      "max_extended_properties_exceeded": false,
+      "min_relation_mappings_missing": false,
+      "mapping": {
+        "column_mappings": [
+          {
+            "source_column": "부품코드",
+            "target_label": "Part",
+            "target_property": "part_number",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header directly indicates part code which maps to part_number MERGE KEY"
+          },
+          {
+            "source_column": "품명",
+            "target_label": "Part",
+            "target_property": "name",
+            "data_type": "string",
+            "confidence": 100,
+            "reason": "Header is the part name which maps to Part.name (required)"
+          },
+          {
+            "source_column": "비고",
+            "target_label": "Part",
+            "target_property": "description",
+            "data_type": "string",
+            "confidence": 90,
+            "reason": "Remarks/notes column maps well to Part.description"
+          },
+          {
+            "source_column": "납기(일)",
+            "target_label": "Part",
+            "target_property": "lead_time_days",
+            "data_type": "integer",
+            "confidence": 95,
+            "reason": "Header indicates lead time in days matching lead_time_days"
+          }
+        ],
+        "relation_mappings": [],
+        "extended_properties": [
+          {
+            "source_column": "규격",
+            "target_label": "Part",
+            "property_name": "_ext_specification",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "단가(원)",
+            "target_label": "Part",
+            "property_name": "_ext_unit_price",
+            "data_type": "float",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "중량(kg)",
+            "target_label": "Part",
+            "property_name": "_ext_weight_kg",
+            "data_type": "float",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "표면처리",
+            "target_label": "Part",
+            "property_name": "_ext_surface_treatment",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "담당자",
+            "target_label": "Part",
+            "property_name": "_ext_person_in_charge",
+            "data_type": "string",
+            "confidence": 0,
+            "reason": ""
+          },
+          {
+            "source_column": "No.",
+            "target_label": "Part",
+            "property_name": "_ext_row_number",
+            "data_type": "integer",
+            "confidence": 0,
+            "reason": ""
+          }
+        ]
+      }
+    }
+  ]
+}

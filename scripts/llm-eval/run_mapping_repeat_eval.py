@@ -38,6 +38,13 @@ class ExpectColumnTarget:
     prop: str
 
 
+@dataclass
+class ForbidColumnTarget:
+    source_column: str
+    label: str
+    prop: str
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="LLM 매핑 반복 평가")
     parser.add_argument(
@@ -76,6 +83,25 @@ def parse_args() -> argparse.Namespace:
         help="ext source/property에서 금지할 정규식",
     )
     parser.add_argument(
+        "--forbid-column-target",
+        action="append",
+        default=[],
+        metavar="SRC:LABEL:PROP",
+        help="금지할 컬럼→타겟 매핑. 예: Value:Part:material",
+    )
+    parser.add_argument(
+        "--max-extended-properties",
+        type=int,
+        default=None,
+        help="허용 가능한 extended_properties 최대 개수",
+    )
+    parser.add_argument(
+        "--min-relation-mappings",
+        type=int,
+        default=None,
+        help="필수 relation_mappings 최소 개수",
+    )
+    parser.add_argument(
         "--report",
         default=None,
         help="리포트 JSON 출력 경로(미지정 시 자동 파일명)",
@@ -104,6 +130,17 @@ def parse_column_target(raw: str) -> ExpectColumnTarget:
     return ExpectColumnTarget(label=label.strip(), prop=prop.strip())
 
 
+def parse_forbid_column_target(raw: str) -> ForbidColumnTarget:
+    parts = [it.strip() for it in raw.split(":", 2)]
+    if len(parts) != 3 or not all(parts):
+        raise ValueError(f"잘못된 --forbid-column-target 형식: {raw}")
+    return ForbidColumnTarget(
+        source_column=parts[0],
+        label=parts[1],
+        prop=parts[2],
+    )
+
+
 def mapping_fingerprint(mapping: MappingResult) -> str:
     payload = mapping.model_dump(mode="json")
     canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False)
@@ -124,6 +161,20 @@ def has_relation_property(
 def has_column_target(mapping: MappingResult, expected: ExpectColumnTarget) -> bool:
     for cm in mapping.column_mappings:
         if cm.target_label == expected.label and cm.target_property == expected.prop:
+            return True
+    return False
+
+
+def has_forbidden_column_target(
+    mapping: MappingResult,
+    forbidden: ForbidColumnTarget,
+) -> bool:
+    for cm in mapping.column_mappings:
+        if (
+            cm.source_column == forbidden.source_column
+            and cm.target_label == forbidden.label
+            and cm.target_property == forbidden.prop
+        ):
             return True
     return False
 
@@ -166,6 +217,9 @@ def main() -> int:
     forbidden_patterns = [
         re.compile(raw, re.IGNORECASE) for raw in args.forbid_ext_pattern
     ]
+    forbidden_column_targets = [
+        parse_forbid_column_target(raw) for raw in args.forbid_column_target
+    ]
 
     run_results: list[dict] = []
     elapsed_list: list[float] = []
@@ -196,6 +250,19 @@ def main() -> int:
             for pattern in forbidden_patterns
             if has_forbidden_ext(mapping, pattern)
         ]
+        forbidden_column_target_hits = [
+            f"{it.source_column}:{it.label}:{it.prop}"
+            for it in forbidden_column_targets
+            if has_forbidden_column_target(mapping, it)
+        ]
+        max_ext_exceeded = (
+            args.max_extended_properties is not None
+            and len(mapping.extended_properties) > args.max_extended_properties
+        )
+        min_relation_missing = (
+            args.min_relation_mappings is not None
+            and len(mapping.relation_mappings) < args.min_relation_mappings
+        )
 
         run_results.append(
             {
@@ -213,6 +280,9 @@ def main() -> int:
                 "missing_expected_relation_properties": rel_prop_missing,
                 "missing_expected_column_targets": column_target_missing,
                 "forbidden_ext_pattern_hits": forbidden_ext_hits,
+                "forbidden_column_target_hits": forbidden_column_target_hits,
+                "max_extended_properties_exceeded": max_ext_exceeded,
+                "min_relation_mappings_missing": min_relation_missing,
                 "mapping": mapping.model_dump(mode="json"),
             }
         )
@@ -235,6 +305,15 @@ def main() -> int:
     )
     forbidden_ext_hit_total = sum(
         len(it["forbidden_ext_pattern_hits"]) for it in run_results
+    )
+    forbidden_column_target_hit_total = sum(
+        len(it["forbidden_column_target_hits"]) for it in run_results
+    )
+    max_ext_exceeded_total = sum(
+        1 for it in run_results if it["max_extended_properties_exceeded"]
+    )
+    min_rel_missing_total = sum(
+        1 for it in run_results if it["min_relation_mappings_missing"]
     )
 
     summary = {
@@ -264,6 +343,9 @@ def main() -> int:
             "missing_relation_properties": rel_prop_miss_total,
             "missing_column_targets": column_target_miss_total,
             "forbidden_ext_hits": forbidden_ext_hit_total,
+            "forbidden_column_target_hits": forbidden_column_target_hit_total,
+            "max_extended_properties_exceeded_runs": max_ext_exceeded_total,
+            "min_relation_mappings_missing_runs": min_rel_missing_total,
         },
     }
 
@@ -282,6 +364,9 @@ def main() -> int:
         rel_prop_miss_total > 0
         or column_target_miss_total > 0
         or forbidden_ext_hit_total > 0
+        or forbidden_column_target_hit_total > 0
+        or max_ext_exceeded_total > 0
+        or min_rel_missing_total > 0
     )
     if args.strict_exit and has_violation:
         return 1

@@ -8,17 +8,29 @@
 - 특정 기대 매핑의 충족률 확인
 - ext 누락/오매핑 패턴을 반복 실행으로 관찰
 
+## 폴더 구조
+
+- `cases/hierarchical_bom/input.csv`
+- `cases/messy_bom/input.csv`
+- `cases/arduino_sheet1/input.csv`
+- `results/<case>/` (실행 결과 저장)
+
 ## 실행 예시
 
 ```bash
 uv run python scripts/llm-eval/run_mapping_repeat_eval.py \
-  --file sample/hierarchical_bom.csv \
-  --runs 20 \
-  --expect-relation-property SUPPLIED_BY:unit_cost \
-  --expect-column-target Supplier:company_name \
-  --forbid-ext-pattern "(단가|price|cost)" \
-  --strict-exit
+  --file scripts/llm-eval/cases/hierarchical_bom/input.csv \
+  --runs 5 \
+  --report scripts/llm-eval/results/hierarchical_bom/result.json
 ```
+
+3개 케이스를 각 5회씩 실행:
+
+```bash
+bash scripts/llm-eval/run_all_cases.sh
+```
+
+`run_all_cases.sh`는 케이스별 기대/금지 규칙을 함께 적용합니다.
 
 ## 주요 옵션
 
@@ -27,7 +39,9 @@ uv run python scripts/llm-eval/run_mapping_repeat_eval.py \
 - `--expect-relation-property REL:PROP`: 기대 관계 속성
 - `--expect-column-target LABEL:PROP`: 기대 노드 속성
 - `--forbid-ext-pattern REGEX`: ext에서 금지할 패턴
-- `--strict-exit`: 기대 위반이 있으면 종료 코드 1 반환
+- `--forbid-column-target SRC:LABEL:PROP`: 금지할 컬럼→타겟 매핑
+- `--max-extended-properties`: 허용 가능한 ext 최대 개수
+- `--min-relation-mappings`: 요구되는 relation 최소 개수
 - `--report`: 리포트 저장 경로 지정(기본 `reports/llm-eval/*.json`)
 
 ## 비고
