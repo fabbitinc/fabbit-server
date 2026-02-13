@@ -124,21 +124,73 @@ def _build_merge_rel(
 
 def _process_row_nodes(row: dict, mapping: MappingResult) -> list[str]:
     cyphers: list[str] = []
-    label_props: dict[str, dict[str, str]] = {}
+
+    # 분리 판별: column_mappings에서 같은 (label, property)에 복수 source_column이 있으면 분리 필요
+    prop_sources: dict[tuple[str, str], list[str]] = {}
+    for cm in mapping.column_mappings:
+        key = (cm.target_label, cm.target_property)
+        prop_sources.setdefault(key, []).append(cm.source_column)
+
+    label_needs_split: set[str] = set()
+    for (label, _prop), sources in prop_sources.items():
+        if len(sources) >= 2:
+            label_needs_split.add(label)
+
+    # self-join 관계(from_label == to_label)에서만 from/to role 수집
+    # 다른 라벨 간 관계(SUPPLIED_BY 등)는 분리 판별에 영향 주지 않음
+    endpoint_roles: dict[tuple[str, str], str] = {}
+    for rm in mapping.relation_mappings:
+        if rm.from_label != rm.to_label:
+            continue
+        for _mk, src_col in rm.from_columns.items():
+            endpoint_roles[(rm.from_label, src_col)] = "from"
+        for _mk, src_col in rm.to_columns.items():
+            endpoint_roles[(rm.to_label, src_col)] = "to"
+
+    # 분리 대상 라벨에서 동일 target_property에 중복 매핑된 source_column을 role로 분류
+    # 예: (Part, name) → [상위품명, 하위품명] → 상위품명은 from, 하위품명은 to
+    _assign_duplicate_column_roles(mapping, endpoint_roles, label_needs_split)
+
+    # 라벨별 속성 수집 (분리가 필요한 라벨은 from/to 별도 dict)
+    # 키: (label, role) — role은 "from", "to", 또는 "default"
+    grouped_props: dict[tuple[str, str], dict[str, str]] = {}
 
     for cm in mapping.column_mappings:
         val = row.get(cm.source_column)
         formatted = format_cypher_value(val, cm.data_type)
-        if formatted is not None:
-            label_props.setdefault(cm.target_label, {})[cm.target_property] = formatted
+        if formatted is None:
+            continue
+
+        label = cm.target_label
+        if label in label_needs_split:
+            role = endpoint_roles.get((label, cm.source_column))
+            if role:
+                grouped_props.setdefault((label, role), {})[cm.target_property] = formatted
+            else:
+                # 엔드포인트에 속하지 않는 고유 속성 → from/to 양쪽에 추가
+                for r in ("from", "to"):
+                    grouped_props.setdefault((label, r), {})[cm.target_property] = formatted
+        else:
+            grouped_props.setdefault((label, "default"), {})[cm.target_property] = formatted
 
     for ep in mapping.extended_properties:
         val = row.get(ep.source_column)
         formatted = format_cypher_value(val, ep.data_type)
-        if formatted is not None:
-            label_props.setdefault(ep.target_label, {})[ep.property_name] = formatted
+        if formatted is None:
+            continue
 
-    for label, props in label_props.items():
+        label = ep.target_label
+        if label in label_needs_split:
+            role = endpoint_roles.get((label, ep.source_column))
+            if role:
+                grouped_props.setdefault((label, role), {})[ep.property_name] = formatted
+            else:
+                for r in ("from", "to"):
+                    grouped_props.setdefault((label, r), {})[ep.property_name] = formatted
+        else:
+            grouped_props.setdefault((label, "default"), {})[ep.property_name] = formatted
+
+    for (label, _role), props in grouped_props.items():
         node_def = MANUFACTURING_ONTOLOGY.get_node_label(label)
         if node_def is None:
             continue
@@ -160,14 +212,92 @@ def _process_row_nodes(row: dict, mapping: MappingResult) -> list[str]:
     return cyphers
 
 
+def _assign_duplicate_column_roles(
+    mapping: MappingResult,
+    endpoint_roles: dict[tuple[str, str], str],
+    label_needs_split: set[str],
+) -> None:
+    """동일 target_property에 복수 source_column이 매핑된 경우 from/to role을 추론.
+
+    예: Part.name에 "상위품명"과 "하위품명"이 모두 매핑된 경우,
+    from_columns에 있는 "상위품번"과 같은 관계의 from 쪽 컬럼 그룹에서
+    "상위품명"을 찾아 from role을 부여.
+    """
+    # 분리 대상 라벨에서 중복 매핑 탐색
+    # (label, target_property) → [source_column, ...]
+    prop_sources: dict[tuple[str, str], list[str]] = {}
+    for cm in mapping.column_mappings:
+        if cm.target_label in label_needs_split:
+            key = (cm.target_label, cm.target_property)
+            prop_sources.setdefault(key, []).append(cm.source_column)
+
+    # 중복 매핑이 없으면 추론 불필요
+    duplicates = {k: v for k, v in prop_sources.items() if len(v) >= 2}
+    if not duplicates:
+        return
+
+    # 관계별로 from/to 소스 컬럼 집합 수집 (role 추론 기준)
+    for rm in mapping.relation_mappings:
+        from_src_cols = set(rm.from_columns.values())
+        to_src_cols = set(rm.to_columns.values())
+
+        for (label, _prop), src_cols in duplicates.items():
+            if label != rm.from_label or label != rm.to_label:
+                continue
+            for src_col in src_cols:
+                if (label, src_col) in endpoint_roles:
+                    continue  # 이미 할당됨
+                # 같은 관계의 from/to 소스 컬럼과 이름 유사도로 그룹 추론
+                # 휴리스틱: from_columns의 소스 컬럼과 공통 접두/접미사 공유
+                from_score = _column_group_affinity(src_col, from_src_cols)
+                to_score = _column_group_affinity(src_col, to_src_cols)
+                if from_score > to_score:
+                    endpoint_roles[(label, src_col)] = "from"
+                elif to_score > from_score:
+                    endpoint_roles[(label, src_col)] = "to"
+
+
+def _column_group_affinity(candidate: str, group_cols: set[str]) -> int:
+    """후보 컬럼과 그룹 컬럼들 간의 이름 유사도 점수 계산.
+
+    공통 접두사/접미사 길이 기반 휴리스틱.
+    예: "상위품명"과 {"상위품번"} → "상위" 접두사 2자 공유 → 점수 2
+    """
+    if not group_cols:
+        return 0
+    best = 0
+    for gc in group_cols:
+        # 공통 접두사 길이
+        prefix_len = 0
+        for a, b in zip(candidate, gc):
+            if a == b:
+                prefix_len += 1
+            else:
+                break
+        # 공통 접미사 길이
+        suffix_len = 0
+        for a, b in zip(reversed(candidate), reversed(gc)):
+            if a == b:
+                suffix_len += 1
+            else:
+                break
+        best = max(best, prefix_len + suffix_len)
+    return best
+
+
 def _process_row_relationships(row: dict, mapping: MappingResult) -> list[str]:
     cyphers: list[str] = []
+
+    # column_mappings에서 라벨별 merge key 값을 수집 (폴백용)
     label_merge_vals: dict[str, dict[str, str]] = {}
+    # source_column → data_type 매핑 (from_columns/to_columns에서 타입 조회용)
+    col_data_types: dict[str, str] = {}
 
     for cm in mapping.column_mappings:
         node_def = MANUFACTURING_ONTOLOGY.get_node_label(cm.target_label)
         if node_def is None:
             continue
+        col_data_types[cm.source_column] = cm.data_type
         if cm.target_property in node_def.merge_keys:
             val = row.get(cm.source_column)
             formatted = format_cypher_value(val, cm.data_type)
@@ -177,8 +307,17 @@ def _process_row_relationships(row: dict, mapping: MappingResult) -> list[str]:
                 )
 
     for rm in mapping.relation_mappings:
-        from_keys = label_merge_vals.get(rm.from_label, {})
-        to_keys = label_merge_vals.get(rm.to_label, {})
+        # from_columns/to_columns가 있으면 독립적으로 merge key 조회
+        if rm.from_columns:
+            from_keys = _resolve_endpoint_keys(row, rm.from_columns, col_data_types)
+        else:
+            from_keys = label_merge_vals.get(rm.from_label, {})
+
+        if rm.to_columns:
+            to_keys = _resolve_endpoint_keys(row, rm.to_columns, col_data_types)
+        else:
+            to_keys = label_merge_vals.get(rm.to_label, {})
+
         if not from_keys or not to_keys:
             continue
 
@@ -201,6 +340,22 @@ def _process_row_relationships(row: dict, mapping: MappingResult) -> list[str]:
             )
         )
     return cyphers
+
+
+def _resolve_endpoint_keys(
+    row: dict,
+    endpoint_columns: dict[str, str],
+    col_data_types: dict[str, str],
+) -> dict[str, str]:
+    """from_columns/to_columns 기반으로 행에서 merge key 값 추출"""
+    keys: dict[str, str] = {}
+    for merge_key, source_column in endpoint_columns.items():
+        val = row.get(source_column)
+        data_type = col_data_types.get(source_column, "string")
+        formatted = format_cypher_value(val, data_type)
+        if formatted is not None:
+            keys[merge_key] = formatted
+    return keys
 
 
 def _run_synthesis(

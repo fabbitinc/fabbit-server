@@ -14,6 +14,7 @@ from loguru import logger  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
 from app.api.v1.public.auth_router import router as auth_router  # noqa: E402
+from app.api.v1.public.ontology_router import router as ontology_router  # noqa: E402
 from app.api.v1.tenant.activation_router import router as activation_router  # noqa: E402
 from app.api.v1.tenant.mapping_router import router as mapping_router  # noqa: E402
 from app.api.v1.tenant.synthesis_router import router as synthesis_router  # noqa: E402
@@ -120,6 +121,7 @@ app.include_router(mapping_router)
 app.include_router(synthesis_router)
 app.include_router(item_router)
 app.include_router(upload_router)
+app.include_router(ontology_router)
 
 
 @app.get("/health")

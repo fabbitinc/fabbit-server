@@ -48,10 +48,13 @@ def _parse_agtype(val: Any) -> Any:
 
     '{"id": 123, ...}::vertex' → dict
     '"Steel"' → "Steel"
+    '[{...}::vertex, {...}::vertex]' → [dict, dict]
     """
     if not isinstance(val, str):
         return val
-    clean = re.sub(r'::\w+$', '', val)
+    # AGE는 모든 값에 ::type 접미사를 붙임 (::vertex, ::edge, ::numeric 등)
+    # 리스트 내부에도 각 요소마다 접미사가 있으므로 전역 제거
+    clean = re.sub(r'::\w+', '', val)
     try:
         return json.loads(clean)
     except (json.JSONDecodeError, ValueError):

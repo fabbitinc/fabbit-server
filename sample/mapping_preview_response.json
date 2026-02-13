@@ -1,0 +1,173 @@
+{
+  "headers": [
+    "상위품번",
+    "상위품명",
+    "하위품번",
+    "하위품명",
+    "수량",
+    "단위",
+    "재질",
+    "공급업체",
+    "비고"
+  ],
+  "sample_rows": [
+    {
+      "상위품번": "ASM-001",
+      "상위품명": "메인 프레임 조립품",
+      "하위품번": "PRT-001",
+      "하위품명": "브라켓",
+      "수량": "2",
+      "단위": "EA",
+      "재질": "SS400",
+      "공급업체": "한국정밀",
+      "비고": "지지용 브라켓"
+    },
+    {
+      "상위품번": "ASM-001",
+      "상위품명": "메인 프레임 조립품",
+      "하위품번": "PRT-002",
+      "하위품명": "드라이브 샤프트",
+      "수량": "1",
+      "단위": "EA",
+      "재질": "AL6061-T6",
+      "공급업체": "삼성기계",
+      "비고": "메인 구동축"
+    },
+    {
+      "상위품번": "ASM-001",
+      "상위품명": "메인 프레임 조립품",
+      "하위품번": "PRT-003",
+      "하위품명": "볼베어링",
+      "수량": "4",
+      "단위": "EA",
+      "재질": "SUS304",
+      "공급업체": "NSK코리아",
+      "비고": "6205-2RS"
+    },
+    {
+      "상위품번": "ASM-001",
+      "상위품명": "메인 프레임 조립품",
+      "하위품번": "PRT-004",
+      "하위품명": "커버 플레이트",
+      "수량": "1",
+      "단위": "EA",
+      "재질": "SS400",
+      "공급업체": "한국정밀",
+      "비고": "상부 커버"
+    },
+    {
+      "상위품번": "PRT-001",
+      "상위품명": "브라켓",
+      "하위품번": "PRT-005",
+      "하위품명": "육각볼트 M10",
+      "수량": "4",
+      "단위": "EA",
+      "재질": "SCM435",
+      "공급업체": "대한볼트",
+      "비고": "체결용"
+    }
+  ],
+  "mapping": {
+    "column_mappings": [
+      {
+        "source_column": "상위품번",
+        "target_label": "Part",
+        "target_property": "part_number",
+        "data_type": "string",
+        "confidence": 95,
+        "reason": "Header directly indicates parent part number (merge key)."
+      },
+      {
+        "source_column": "하위품번",
+        "target_label": "Part",
+        "target_property": "part_number",
+        "data_type": "string",
+        "confidence": 95,
+        "reason": "Header directly indicates child part number (merge key)."
+      },
+      {
+        "source_column": "상위품명",
+        "target_label": "Part",
+        "target_property": "name",
+        "data_type": "string",
+        "confidence": 90,
+        "reason": "Header corresponds to part name for the parent part."
+      },
+      {
+        "source_column": "하위품명",
+        "target_label": "Part",
+        "target_property": "name",
+        "data_type": "string",
+        "confidence": 95,
+        "reason": "Header corresponds to part name for the child part."
+      },
+      {
+        "source_column": "단위",
+        "target_label": "Part",
+        "target_property": "unit",
+        "data_type": "string",
+        "confidence": 90,
+        "reason": "Header matches ontology 'unit' (UOM) meaning."
+      },
+      {
+        "source_column": "재질",
+        "target_label": "Part",
+        "target_property": "material",
+        "data_type": "string",
+        "confidence": 95,
+        "reason": "Header directly maps to material/specified substance."
+      },
+      {
+        "source_column": "비고",
+        "target_label": "Part",
+        "target_property": "description",
+        "data_type": "string",
+        "confidence": 90,
+        "reason": "Remarks column contains descriptive notes appropriate for description."
+      },
+      {
+        "source_column": "공급업체",
+        "target_label": "Supplier",
+        "target_property": "company_name",
+        "data_type": "string",
+        "confidence": 95,
+        "reason": "Header directly indicates supplier/company name (merge key)."
+      }
+    ],
+    "relation_mappings": [
+      {
+        "from_label": "Part",
+        "to_label": "Part",
+        "rel_type": "CONSISTS_OF",
+        "from_columns": {
+          "part_number": "상위품번"
+        },
+        "to_columns": {
+          "part_number": "하위품번"
+        },
+        "properties": {
+          "수량": "quantity"
+        },
+        "property_types": {
+          "quantity": "integer"
+        }
+      },
+      {
+        "from_label": "Part",
+        "to_label": "Supplier",
+        "rel_type": "SUPPLIED_BY",
+        "from_columns": {
+          "part_number": "하위품번"
+        },
+        "to_columns": {
+          "company_name": "공급업체"
+        },
+        "properties": {},
+        "property_types": {}
+      }
+    ],
+    "extended_properties": []
+  },
+  "sheets": [],
+  "skipped_sheets": []
+}

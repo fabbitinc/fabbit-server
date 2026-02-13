@@ -114,14 +114,35 @@ def get_suppliers(db: Session, graph_name: str, part_number: str) -> list[dict]:
 
 
 def get_bom_paths(db: Session, graph_name: str, part_number: str) -> list[dict]:
-    """BOM 전체 경로 (가변 길이 CONSISTS_OF)"""
+    """BOM 전체 경로 (가변 길이 CONSISTS_OF)
+
+    AGE는 list comprehension 내 property 접근(n.prop)을 지원하지 않으므로
+    nodes(path)/relationships(path)를 반환 후 Python에서 파싱합니다.
+    """
     escaped = escape_cypher_value(part_number)
     query = (
         f"MATCH path = (root:Part {{part_number: '{escaped}'}})"
-        f"-[:CONSISTS_OF*]->(desc:Part) "
-        f"RETURN [n IN nodes(path) | n.part_number], "
-        f"[n IN nodes(path) | n.name], "
-        f"[r IN relationships(path) | r.quantity], "
-        f"[r IN relationships(path) | r.reference_designator]"
+        f"-[:CONSISTS_OF*]->(child:Part) "
+        f"RETURN nodes(path), relationships(path)"
     )
-    return execute_cypher(db, query, graph_name)
+    raw = execute_cypher(db, query, graph_name)
+    # 각 row를 service의 _build_bom_tree가 기대하는 형식으로 변환
+    # c0: [part_number, ...], c1: [name, ...], c2: [quantity, ...], c3: [ref, ...]
+    results = []
+    for row in raw:
+        nodes = row["c0"] if isinstance(row, dict) else row[0]
+        rels = row["c1"] if isinstance(row, dict) else row[1]
+        pn_list = []
+        name_list = []
+        for v in (nodes or []):
+            props = v.get("properties", {}) if isinstance(v, dict) else {}
+            pn_list.append(props.get("part_number"))
+            name_list.append(props.get("name"))
+        qty_list = []
+        ref_list = []
+        for e in (rels or []):
+            props = e.get("properties", {}) if isinstance(e, dict) else {}
+            qty_list.append(props.get("quantity"))
+            ref_list.append(props.get("reference_designator"))
+        results.append({"c0": pn_list, "c1": name_list, "c2": qty_list, "c3": ref_list})
+    return results

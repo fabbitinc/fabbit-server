@@ -1,0 +1,163 @@
+{
+  "headers": [
+    "No.",
+    "부품코드",
+    "품명",
+    "규격",
+    "수량",
+    "단가(원)",
+    "중량(kg)",
+    "표면처리",
+    "납기(일)",
+    "담당자",
+    "비고"
+  ],
+  "sample_rows": [
+    {
+      "No.": "1",
+      "부품코드": "PRT-A001",
+      "품명": "플랜지 커플링",
+      "규격": "φ80×L120",
+      "수량": "2",
+      "단가(원)": "45000",
+      "중량(kg)": "3.2",
+      "표면처리": "아연도금",
+      "납기(일)": "14",
+      "담당자": "김철수",
+      "비고": "2차 가공 필요"
+    },
+    {
+      "No.": "2",
+      "부품코드": "PRT-A002",
+      "품명": "유압 실린더",
+      "규격": "φ63×ST200",
+      "수량": "1",
+      "단가(원)": "320000",
+      "중량(kg)": "12.5",
+      "표면처리": "크롬 도금",
+      "납기(일)": "30",
+      "담당자": "이영희",
+      "비고": "수입품"
+    },
+    {
+      "No.": "3",
+      "부품코드": "PRT-A003",
+      "품명": "리니어 가이드",
+      "규격": "HSR25×L500",
+      "수량": "4",
+      "단가(원)": "85000",
+      "중량(kg)": "1.8",
+      "표면처리": null,
+      "납기(일)": "7",
+      "담당자": "김철수",
+      "비고": "미스미 호환"
+    },
+    {
+      "No.": "4",
+      "부품코드": "PRT-A004",
+      "품명": "서보모터",
+      "규격": "750W 3phase",
+      "수량": "1",
+      "단가(원)": "280000",
+      "중량(kg)": "5.4",
+      "표면처리": null,
+      "납기(일)": "45",
+      "담당자": "박민수",
+      "비고": null
+    },
+    {
+      "No.": "5",
+      "부품코드": "PRT-A005",
+      "품명": "감속기",
+      "규격": "1/50 ratio",
+      "수량": "1",
+      "단가(원)": "150000",
+      "중량(kg)": "8.1",
+      "표면처리": null,
+      "납기(일)": "21",
+      "담당자": "이영희",
+      "비고": "백래시 0.1도 이하"
+    }
+  ],
+  "mapping": {
+    "column_mappings": [
+      {
+        "source_column": "부품코드",
+        "target_label": "Part",
+        "target_property": "part_number",
+        "data_type": "string",
+        "confidence": 100,
+        "reason": "Header directly indicates part code which maps to part_number merge key"
+      },
+      {
+        "source_column": "품명",
+        "target_label": "Part",
+        "target_property": "name",
+        "data_type": "string",
+        "confidence": 100,
+        "reason": "Header is the part name which maps to Part.name required field"
+      },
+      {
+        "source_column": "규격",
+        "target_label": "Part",
+        "target_property": "description",
+        "data_type": "string",
+        "confidence": 90,
+        "reason": "Specification/details column best fits Part.description for textual specs"
+      },
+      {
+        "source_column": "납기(일)",
+        "target_label": "Part",
+        "target_property": "lead_time_days",
+        "data_type": "integer",
+        "confidence": 95,
+        "reason": "Header indicates lead time in days which maps to lead_time_days"
+      }
+    ],
+    "relation_mappings": [],
+    "extended_properties": [
+      {
+        "source_column": "단가(원)",
+        "target_label": "Part",
+        "property_name": "_ext_unit_price_krw",
+        "data_type": "float",
+        "confidence": 0,
+        "reason": ""
+      },
+      {
+        "source_column": "중량(kg)",
+        "target_label": "Part",
+        "property_name": "_ext_weight_kg",
+        "data_type": "float",
+        "confidence": 0,
+        "reason": ""
+      },
+      {
+        "source_column": "표면처리",
+        "target_label": "Part",
+        "property_name": "_ext_surface_treatment",
+        "data_type": "string",
+        "confidence": 0,
+        "reason": ""
+      },
+      {
+        "source_column": "담당자",
+        "target_label": "Part",
+        "property_name": "_ext_responsible_person",
+        "data_type": "string",
+        "confidence": 0,
+        "reason": ""
+      },
+      {
+        "source_column": "비고",
+        "target_label": "Part",
+        "property_name": "_ext_remark",
+        "data_type": "string",
+        "confidence": 0,
+        "reason": ""
+      }
+    ]
+  },
+  "sheets": [],
+  "skipped_sheets": []
+}

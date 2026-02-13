@@ -23,6 +23,11 @@ class RelationMapping(BaseModel):
     from_label: str
     to_label: str
     rel_type: str
+    # 엔드포인트별 merge key → source_column 매핑
+    # CONSISTS_OF 등 from/to가 같은 라벨일 때 필수
+    # 예: {"part_number": "상위품번"}, {"part_number": "하위품번"}
+    from_columns: dict[str, str] = {}  # merge_key → source_column
+    to_columns: dict[str, str] = {}    # merge_key → source_column
     properties: dict[str, str] = {}  # source_column → rel_property
     property_types: dict[str, str] = {}  # rel_property → data_type
 
