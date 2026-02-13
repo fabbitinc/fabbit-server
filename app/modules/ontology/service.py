@@ -112,11 +112,21 @@ def generate_mapping(
 
     result = MappingResult(
         column_mappings=[ColumnMapping(**cm) for cm in raw.get("column_mappings", [])],
-        relation_mappings=[RelationMapping(**rm) for rm in raw.get("relation_mappings", [])],
-        extended_properties=[ExtendedPropertyMapping(**ep) for ep in raw.get("extended_properties", [])],
+        relation_mappings=[
+            RelationMapping(**rm) for rm in raw.get("relation_mappings", [])
+        ],
+        extended_properties=[
+            ExtendedPropertyMapping(**ep) for ep in raw.get("extended_properties", [])
+        ],
     )
 
     return _validate_and_fix_mapping(result), llm_resp
+
+
+def normalize_mapping(mapping: MappingResult) -> MappingResult:
+    """매핑 결과를 온톨로지 규칙에 맞게 정규화."""
+
+    return _validate_and_fix_mapping(mapping)
 
 
 def _auto_fill_endpoint_columns(
@@ -157,21 +167,25 @@ def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
     verified_columns = []
     for cm in result.column_mappings:
         if cm.target_label not in valid_labels:
-            result.extended_properties.append(ExtendedPropertyMapping(
-                source_column=cm.source_column,
-                target_label="Part",
-                property_name=f"_ext_{cm.target_property}",
-            ))
+            result.extended_properties.append(
+                ExtendedPropertyMapping(
+                    source_column=cm.source_column,
+                    target_label="Part",
+                    property_name=f"_ext_{cm.target_property}",
+                )
+            )
             continue
 
         node = MANUFACTURING_ONTOLOGY.get_node_label(cm.target_label)
         valid_props = [p.name for p in node.properties]
         if cm.target_property not in valid_props:
-            result.extended_properties.append(ExtendedPropertyMapping(
-                source_column=cm.source_column,
-                target_label=cm.target_label,
-                property_name=f"_ext_{cm.target_property}",
-            ))
+            result.extended_properties.append(
+                ExtendedPropertyMapping(
+                    source_column=cm.source_column,
+                    target_label=cm.target_label,
+                    property_name=f"_ext_{cm.target_property}",
+                )
+            )
             continue
 
         verified_columns.append(cm)
@@ -207,13 +221,19 @@ def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
     fixed_ext = []
     for ep in result.extended_properties:
         label = ep.target_label if ep.target_label in valid_labels else "Part"
-        name = ep.property_name if ep.property_name.startswith("_ext_") else f"_ext_{ep.property_name}"
-        fixed_ext.append(ExtendedPropertyMapping(
-            source_column=ep.source_column,
-            target_label=label,
-            property_name=name,
-            data_type=ep.data_type,
-        ))
+        name = (
+            ep.property_name
+            if ep.property_name.startswith("_ext_")
+            else f"_ext_{ep.property_name}"
+        )
+        fixed_ext.append(
+            ExtendedPropertyMapping(
+                source_column=ep.source_column,
+                target_label=label,
+                property_name=name,
+                data_type=ep.data_type,
+            )
+        )
     result.extended_properties = fixed_ext
 
     return result

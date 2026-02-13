@@ -14,6 +14,8 @@ from app.modules.mapping.schemas import (
     MappingPreviewRequest,
     MappingPreviewResponse,
     MappingResponse,
+    MappingValidateRequest,
+    MappingValidateResponse,
 )
 
 router = APIRouter(prefix="/api/v1/mappings", tags=["mappings"])
@@ -34,6 +36,14 @@ def confirm_mapping(
     db: Session = Depends(get_tenant_db),
 ):
     return service.confirm_mapping(db, req)
+
+
+@router.post("/validate", response_model=MappingValidateResponse)
+def validate_mapping(
+    req: MappingValidateRequest,
+    db: Session = Depends(get_tenant_db),
+):
+    return service.validate_mapping(db, req)
 
 
 @router.get("", response_model=MappingListResponse)

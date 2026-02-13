@@ -2,20 +2,23 @@
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.modules.ontology.schemas import MappingResult
 
 
 class MappingPreviewRequest(BaseModel):
     """매핑 미리보기 요청"""
+
     upload_id: uuid.UUID
     sheet_name: str | None = None  # Excel 시트명 (None이면 모든 시트)
 
 
 class SheetPreview(BaseModel):
     """개별 시트 미리보기 결과"""
+
     sheet_name: str
     headers: list[str]
     sample_rows: list[dict]
@@ -24,21 +27,25 @@ class SheetPreview(BaseModel):
 
 class SkippedSheet(BaseModel):
     """스킵된 시트 정보"""
+
     sheet_name: str
     reason: str
 
 
 class MappingPreviewResponse(BaseModel):
     """매핑 미리보기 응답 — LLM 분석 결과"""
+
     headers: list[str]
     sample_rows: list[dict]
     mapping: MappingResult
     sheets: list[SheetPreview] = []
     skipped_sheets: list[SkippedSheet] = []
+    editable_constraints: dict = Field(default_factory=dict)
 
 
 class MappingConfirmRequest(BaseModel):
     """매핑 확정 요청 — 사용자 검토 후 확인"""
+
     upload_id: uuid.UUID
     name: str
     sheet_name: str | None = None  # Excel 시트명 (None이면 모든 시트)
@@ -47,6 +54,7 @@ class MappingConfirmRequest(BaseModel):
 
 class MappingResponse(BaseModel):
     """매핑 레코드 응답"""
+
     id: uuid.UUID
     upload_id: uuid.UUID
     name: str
@@ -61,4 +69,41 @@ class MappingResponse(BaseModel):
 
 class MappingListResponse(BaseModel):
     """매핑 목록 응답"""
+
     items: list[MappingResponse]
+
+
+class ValidationIssue(BaseModel):
+    """매핑 검증 이슈"""
+
+    code: str
+    severity: Literal["error", "warning"]
+    message: str
+    path: str = ""
+    dismissed_reason: str | None = None
+
+
+class MappingImpactSummary(BaseModel):
+    """매핑 변경 영향 요약"""
+
+    disabled_column_count: int = 0
+    changed_relations_count: int = 0
+    base_to_ext_count: int = 0
+    ext_to_base_count: int = 0
+
+
+class MappingValidateRequest(BaseModel):
+    """매핑 검증 요청"""
+
+    upload_id: uuid.UUID
+    sheet_name: str | None = None
+    mapping: MappingResult
+
+
+class MappingValidateResponse(BaseModel):
+    """매핑 검증 응답"""
+
+    normalized_mapping: MappingResult
+    errors: list[ValidationIssue] = Field(default_factory=list)
+    warnings: list[ValidationIssue] = Field(default_factory=list)
+    impact_summary: MappingImpactSummary = Field(default_factory=MappingImpactSummary)

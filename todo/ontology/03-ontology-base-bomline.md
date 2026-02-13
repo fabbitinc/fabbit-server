@@ -1,6 +1,13 @@
-# TODO — B안: BOMLine 엔티티 도입
+# TODO 03 — 온톨로지 구조 확장(B안): BOMLine 엔티티 도입
 
-> 트리거: effective_date, revision별 BOM 등 실제 필요성이 생길 때 진행
+> 선행 조건: `todo/foundation/01-direction.md`, `todo/foundation/02-reliability.md`의 핵심 항목 합의 후 진행
+> 트리거: effective_date, revision별 BOM, 라인 단위 변경이력 추적 요구가 실제로 발생할 때 진행
+
+## 진행 원칙
+
+- [ ] 전면 교체보다 단계적 전환(공존 기간)을 기본 전략으로 사용
+- [ ] 기존 `CONSISTS_OF` 읽기 경로를 즉시 제거하지 않고, migration 완료 후 단계적으로 제거
+- [ ] 전환 기간에 신규 적재 정책(BOMLine 기반)과 기존 조회 정책의 호환성 테스트 유지
 
 ## 온톨로지 변경
 
@@ -33,8 +40,18 @@
 
 - [ ] 마이그레이션 스크립트 작성: 기존 CONSISTS_OF 엣지 → BOMLine 노드 + 2관계 변환
 - [ ] 기존 테넌트 그래프 일괄 마이그레이션 실행 및 검증
+- [ ] 무결성 검증 체크리스트 수행
+  - 전/후 parent-child 연결 건수 동등성
+  - 샘플 부품의 BOM depth/path 비교
+  - 누락/중복 BOMLine 탐지 리포트 생성
 
 ## 테스트/시드
 
 - [ ] `seed_data.py` — BOMLine 기반 시드 데이터 변경
 - [ ] `scripts/test_full_flow.sh` — BOMLine 검증 단계 추가
+
+## 완료 기준 (Definition of Done)
+
+- [ ] 기존 주요 조회 API에서 BOM 구조 결과가 전환 전과 기능적으로 동일
+- [ ] effective/revision 요구를 수용할 수 있는 스키마로 확장 완료
+- [ ] 마이그레이션 롤백/재실행 절차가 문서화됨

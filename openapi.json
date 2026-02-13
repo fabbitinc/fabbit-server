@@ -802,6 +802,52 @@
                 ]
             }
         },
+        "/api/v1/mappings/validate": {
+            "post": {
+                "tags": [
+                    "mappings"
+                ],
+                "summary": "Validate Mapping",
+                "operationId": "validate_mapping_api_v1_mappings_validate_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MappingValidateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MappingValidateResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
         "/api/v1/mappings": {
             "get": {
                 "tags": [
@@ -2462,6 +2508,33 @@
                 "title": "MappingConfirmRequest",
                 "description": "\ub9e4\ud551 \ud655\uc815 \uc694\uccad \u2014 \uc0ac\uc6a9\uc790 \uac80\ud1a0 \ud6c4 \ud655\uc778"
             },
+            "MappingImpactSummary": {
+                "properties": {
+                    "disabled_column_count": {
+                        "type": "integer",
+                        "title": "Disabled Column Count",
+                        "default": 0
+                    },
+                    "changed_relations_count": {
+                        "type": "integer",
+                        "title": "Changed Relations Count",
+                        "default": 0
+                    },
+                    "base_to_ext_count": {
+                        "type": "integer",
+                        "title": "Base To Ext Count",
+                        "default": 0
+                    },
+                    "ext_to_base_count": {
+                        "type": "integer",
+                        "title": "Ext To Base Count",
+                        "default": 0
+                    }
+                },
+                "type": "object",
+                "title": "MappingImpactSummary",
+                "description": "\ub9e4\ud551 \ubcc0\uacbd \uc601\ud5a5 \uc694\uc57d"
+            },
             "MappingListResponse": {
                 "properties": {
                     "items": {
@@ -2540,6 +2613,11 @@
                         "type": "array",
                         "title": "Skipped Sheets",
                         "default": []
+                    },
+                    "editable_constraints": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Editable Constraints"
                     }
                 },
                 "type": "object",
@@ -2643,6 +2721,66 @@
                 ],
                 "title": "MappingResult",
                 "description": "LLM \ub9e4\ud551 \uacb0\uacfc \uc804\uccb4"
+            },
+            "MappingValidateRequest": {
+                "properties": {
+                    "upload_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Upload Id"
+                    },
+                    "sheet_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Sheet Name"
+                    },
+                    "mapping": {
+                        "$ref": "#/components/schemas/MappingResult"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "upload_id",
+                    "mapping"
+                ],
+                "title": "MappingValidateRequest",
+                "description": "\ub9e4\ud551 \uac80\uc99d \uc694\uccad"
+            },
+            "MappingValidateResponse": {
+                "properties": {
+                    "normalized_mapping": {
+                        "$ref": "#/components/schemas/MappingResult"
+                    },
+                    "errors": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationIssue"
+                        },
+                        "type": "array",
+                        "title": "Errors"
+                    },
+                    "warnings": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationIssue"
+                        },
+                        "type": "array",
+                        "title": "Warnings"
+                    },
+                    "impact_summary": {
+                        "$ref": "#/components/schemas/MappingImpactSummary"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "normalized_mapping"
+                ],
+                "title": "MappingValidateResponse",
+                "description": "\ub9e4\ud551 \uac80\uc99d \uc751\ub2f5"
             },
             "MatchingReport": {
                 "properties": {
@@ -3982,6 +4120,50 @@
                     "type"
                 ],
                 "title": "ValidationError"
+            },
+            "ValidationIssue": {
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "title": "Code"
+                    },
+                    "severity": {
+                        "type": "string",
+                        "enum": [
+                            "error",
+                            "warning"
+                        ],
+                        "title": "Severity"
+                    },
+                    "message": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "path": {
+                        "type": "string",
+                        "title": "Path",
+                        "default": ""
+                    },
+                    "dismissed_reason": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Dismissed Reason"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "code",
+                    "severity",
+                    "message"
+                ],
+                "title": "ValidationIssue",
+                "description": "\ub9e4\ud551 \uac80\uc99d \uc774\uc288"
             }
         },
         "securitySchemes": {
