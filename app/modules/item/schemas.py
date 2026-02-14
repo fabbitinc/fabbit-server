@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from pydantic import BaseModel
@@ -56,13 +57,11 @@ class RelatedSupplier(BaseModel):
 class PartSummary(BaseModel):
     """Part 목록 아이템"""
 
+    id: uuid.UUID
     part_number: str
     name: str | None = None
     category: str | None = None
     lifecycle_state: str | None = None
-    supplier_count: int = 0
-    drawing_count: int = 0
-    child_count: int = 0
 
 
 class PartListResponse(BaseModel):
@@ -80,6 +79,7 @@ class PartListResponse(BaseModel):
 class PartDetailResponse(BaseModel):
     """Part 상세 응답"""
 
+    id: uuid.UUID
     part_number: str
     name: str | None = None
     revision: str | None = None

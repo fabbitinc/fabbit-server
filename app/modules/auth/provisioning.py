@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 import app.modules.document.models  # noqa: F401 — TenantBase에 모델 등록
 import app.modules.drawing.models  # noqa: F401 — TenantBase에 모델 등록
 import app.modules.mapping.models  # noqa: F401 — TenantBase에 모델 등록
+import app.modules.part.models  # noqa: F401 — TenantBase에 모델 등록 (Part, PartRevision)
 import app.modules.project.models  # noqa: F401 — TenantBase에 모델 등록
 import app.modules.synthesis.models  # noqa: F401 — TenantBase에 모델 등록
 import app.modules.upload.models  # noqa: F401 — TenantBase에 모델 등록

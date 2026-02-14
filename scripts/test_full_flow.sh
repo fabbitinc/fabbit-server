@@ -244,6 +244,7 @@ SYNTH_RESP=$(curl -sf -X POST "${API}/synthesis" \
     -H "$AUTH" \
     -H "Content-Type: application/json" \
     -d "{
+        \"upload_id\": \"${UPLOAD_ID}\",
         \"mapping_id\": \"${MAPPING_ID}\"
     }") || fail "합성 시작 실패"
 
@@ -672,6 +673,31 @@ if [ "$SYNTH_DB_STATUS" != "COMPLETED" ]; then
     fail "tenant 합성 잡 상태 검증 실패 (status=${SYNTH_DB_STATUS})"
 fi
 pass "tenant 합성 잡 상태 검증 통과: ${SYNTH_DB_STATUS}"
+
+# Parts RDS 테이블 검증 (SoT 전환 확인)
+PARTS_COUNT=$(db_query "SELECT COUNT(*) FROM ${TENANT_SCHEMA}.parts;" | tr -d '[:space:]')
+if [ "$PARTS_COUNT" -eq 0 ]; then
+    fail "tenant parts 테이블이 비어있음 (합성 후 Part가 존재해야 함)"
+fi
+pass "tenant parts 테이블 검증 통과: ${PARTS_COUNT}건"
+
+PART_REVISIONS_COUNT=$(db_query "SELECT COUNT(*) FROM ${TENANT_SCHEMA}.part_revisions;" | tr -d '[:space:]')
+pass "tenant part_revisions 테이블: ${PART_REVISIONS_COUNT}건"
+
+# Graph Part 노드에 BOM 합성으로 생성된 노드의 name 속성이 없는지 확인
+# (도면 합성 모듈은 아직 별도 SoT 전환 대상이 아니므로 name이 있을 수 있음)
+GRAPH_BOM_PART_NAME=$(docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "
+LOAD 'age';
+SET search_path = ag_catalog, public;
+SELECT * FROM cypher('${TENANT_SCHEMA}', \$\$
+  MATCH (p:Part) WHERE p.part_number = '${FIRST_PN}' RETURN p.name
+\$\$) AS (nm agtype);
+" 2>/dev/null | tr -d '[:space:]')
+if [ -z "$GRAPH_BOM_PART_NAME" ] || [ "$GRAPH_BOM_PART_NAME" = "" ]; then
+    pass "Graph Part 노드 속성 축소 검증 통과 (BOM 합성 Part에 name 없음)"
+else
+    info "Graph Part name=${GRAPH_BOM_PART_NAME} (BOM 합성 Part — 신규 합성부터 적용)"
+fi
 
 # =========================================================
 echo -e "\n${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

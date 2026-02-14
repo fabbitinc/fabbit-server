@@ -175,9 +175,6 @@ def _bootstrap_test_account_once() -> None:
             )
             provision_tenant(db, org.id)
 
-        if org.onboarded_at is None:
-            org = auth_repo.complete_onboarding(db, org.id)
-
         memberships = auth_repo.get_user_memberships(db, user.id)
         if not any(m.org_id == org.id for m in memberships):
             auth_repo.create_membership(
