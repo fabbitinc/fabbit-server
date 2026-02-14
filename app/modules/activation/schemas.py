@@ -23,7 +23,6 @@ class QueryRequest(BaseModel):
 
 
 class QueryResponse(BaseModel):
-    cypher_query: str
     results: list[dict]
     answer: str
 

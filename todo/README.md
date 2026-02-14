@@ -15,6 +15,9 @@
 ## test-strategy
 - `todo/test-strategy/01-llm-test-strategy.md`: LLM 테스트 운영/평가 전략 TODO
 
+## mapping-governance
+- `todo/mapping-governance/01-latest-mapping-import.md`: 최신 매핑 기반 Item 업로드 + 매핑 거버넌스 TODO
+
 ## 권장 진행 순서
 1. `todo/foundation/01-direction.md`
 2. `todo/foundation/02-reliability.md`

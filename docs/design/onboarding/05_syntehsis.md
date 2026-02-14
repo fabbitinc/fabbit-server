@@ -27,6 +27,16 @@
    - 매핑된 관계 설정(예: `CONSISTS_OF`)에 따라 노드 간의 엣지를 생성합니다.
    - 부모-자식 관계를 연결하여 계층 구조(BOM)를 형성합니다.
 
+### 2.2 현재 API 규칙 (2026-02 기준)
+
+- 다중 파일 합성 시작은 `POST /api/v1/projects/{project_id}/synthesis/batch`를 사용하며 `upload_ids` 배열을 받습니다.
+- 서버는 매핑을 다음 우선순위로 선택합니다.
+  - `project_id`에 연결된 최신 매핑
+  - 없으면 조직 최신 매핑
+- 각 파일은 백그라운드 Job로 등록되며, 업로드가 해당 프로젝트에 속하지 않으면 실패 항목으로 분리됩니다.
+- 배치 진행상황은 `GET /api/v1/synthesis/batches/{batch_id}`로 조회합니다.
+- 즉, 사용자에게 `mapping_id`를 노출하지 않아도 Item 생성이 가능합니다.
+
 ---
 
 ## 3. 엔티티 병합 전략 (Entity Resolution)

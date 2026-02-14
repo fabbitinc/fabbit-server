@@ -5,14 +5,14 @@ import uuid
 from loguru import logger
 from sqlalchemy.orm import Session
 
+import app.modules.document.models  # noqa: F401 — TenantBase에 모델 등록
+import app.modules.drawing.models  # noqa: F401 — TenantBase에 모델 등록
+import app.modules.mapping.models  # noqa: F401 — TenantBase에 모델 등록
+import app.modules.project.models  # noqa: F401 — TenantBase에 모델 등록
+import app.modules.synthesis.models  # noqa: F401 — TenantBase에 모델 등록
+import app.modules.upload.models  # noqa: F401 — TenantBase에 모델 등록
 from app.core.database import TenantBase
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
-import app.modules.project.models  # noqa: F401 — TenantBase에 모델 등록
-import app.modules.document.models  # noqa: F401 — TenantBase에 모델 등록
-import app.modules.upload.models  # noqa: F401 — TenantBase에 모델 등록
-import app.modules.mapping.models  # noqa: F401 — TenantBase에 모델 등록
-import app.modules.synthesis.models  # noqa: F401 — TenantBase에 모델 등록
-import app.modules.drawing.models  # noqa: F401 — TenantBase에 모델 등록
 
 
 def org_id_to_schema(org_id: uuid.UUID) -> str:
@@ -42,9 +42,7 @@ def provision_tenant(db: Session, org_id: uuid.UUID) -> str:
         logger.info("AGE 그래프 생성: {graph}", graph=graph_name)
 
     # ── 2. 테넌트 내부 테이블 생성 (ORM 모델 기반) ──
-    conn.exec_driver_sql(
-        f"SET search_path = {graph_name}, ag_catalog, public"
-    )
+    conn.exec_driver_sql(f"SET search_path = {graph_name}, ag_catalog, public")
     TenantBase.metadata.create_all(bind=conn)
 
     # search_path 복원 (이후 작업이 ag_catalog를 참조하므로)
@@ -64,9 +62,7 @@ def _create_ontology_indexes(conn, graph_name: str) -> None:
     created_labels: set[str] = set()
     for label, _ in indexed:
         if label not in created_labels:
-            conn.exec_driver_sql(
-                f"SELECT create_vlabel('{graph_name}', '{label}')"
-            )
+            conn.exec_driver_sql(f"SELECT create_vlabel('{graph_name}', '{label}')")
             created_labels.add(label)
 
     # 속성별 B-tree 인덱스 (AGE agtype 컬럼 → agtype_access_operator 사용)

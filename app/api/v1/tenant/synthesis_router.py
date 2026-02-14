@@ -9,6 +9,7 @@ from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
 from app.modules.synthesis import service
 from app.modules.synthesis.schemas import (
+    SynthesisBatchStatusResponse,
     SynthesisJobResponse,
     SynthesisListResponse,
     SynthesisStartRequest,
@@ -25,6 +26,14 @@ def start_synthesis(
     db: Session = Depends(get_tenant_db),
 ):
     return service.start_synthesis(db, auth, req, background_tasks.add_task)
+
+
+@router.get("/batches/{batch_id}", response_model=SynthesisBatchStatusResponse)
+def get_synthesis_batch(
+    batch_id: uuid.UUID,
+    db: Session = Depends(get_tenant_db),
+):
+    return service.get_synthesis_batch(db, batch_id)
 
 
 @router.get("/{job_id}", response_model=SynthesisJobResponse)

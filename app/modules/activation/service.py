@@ -38,7 +38,9 @@ def health_check(
         graph_name,
         [rt.rel_type for rt in MANUFACTURING_ONTOLOGY.relationship_types],
     )
-    logger.info("[헬스체크] 카운트 조회: {elapsed:.2f}s", elapsed=time.perf_counter() - t0)
+    logger.info(
+        "[헬스체크] 카운트 조회: {elapsed:.2f}s", elapsed=time.perf_counter() - t0
+    )
 
     total_nodes = sum(node_counts.values())
     total_rels = sum(rel_counts.values())
@@ -141,7 +143,9 @@ def query_graph(
         [rt.rel_type for rt in MANUFACTURING_ONTOLOGY.relationship_types],
     )
     ext_hints = repo.list_extended_hints(db)
-    logger.info("[질의] 컨텍스트 수집: {elapsed:.2f}s", elapsed=time.perf_counter() - t0)
+    logger.info(
+        "[질의] 컨텍스트 수집: {elapsed:.2f}s", elapsed=time.perf_counter() - t0
+    )
 
     system_prompt = _build_tenant_query_prompt(ext_hints, node_counts, rel_counts)
 
@@ -153,6 +157,7 @@ def query_graph(
     )
     cypher = cypher_resp.content
     _validate_read_only(cypher)
+    logger.info("[질의] 생성 쿼리: {cypher}", cypher=_compact_query_for_log(cypher))
 
     log_ai_usage(
         org_id=auth.org_id,
@@ -166,15 +171,19 @@ def query_graph(
     try:
         t0 = time.perf_counter()
         raw_results = repo.execute_graph_query(db, cypher, graph_name)
-        logger.info("[질의] Cypher 실행: {elapsed:.2f}s ({count}건)", elapsed=time.perf_counter() - t0, count=len(raw_results))
+        logger.info(
+            "[질의] Cypher 실행: {elapsed:.2f}s ({count}건)",
+            elapsed=time.perf_counter() - t0,
+            count=len(raw_results),
+        )
     except Exception as error:
         logger.warning(
             "Cypher 실행 실패: query={cypher} error={err}",
-            cypher=cypher,
+            cypher=_compact_query_for_log(cypher),
             err=error,
         )
         raise AppError(
-            message=f"쿼리 실행에 실패했습니다: {error}",
+            message="쿼리 실행에 실패했습니다",
             code="QUERY_EXECUTION_FAILED",
         )
 
@@ -185,7 +194,11 @@ def query_graph(
     results_json = json.dumps(results_for_answer, ensure_ascii=False, default=str)
     if len(results_json) > 3000:
         results_json = results_json[:3000] + "...(truncated)"
-    total_note = f"\n\n(총 {len(results)}건 중 상위 {len(results_for_answer)}건 표시)" if len(results) > 20 else ""
+    total_note = (
+        f"\n\n(총 {len(results)}건 중 상위 {len(results_for_answer)}건 표시)"
+        if len(results) > 20
+        else ""
+    )
 
     answer_input = f"""## 사용자 질문
 {question}
@@ -222,7 +235,7 @@ def query_graph(
         count=len(results),
         elapsed=total_elapsed,
     )
-    return QueryResponse(cypher_query=cypher, results=results, answer=answer)
+    return QueryResponse(results=results, answer=answer)
 
 
 def get_starters() -> StartersResponse:
@@ -325,6 +338,13 @@ def _serialize_results(raw_results: list) -> list[dict]:
         else:
             results.append({"result": str(row)})
     return results
+
+
+def _compact_query_for_log(cypher: str, max_len: int = 500) -> str:
+    compact = " ".join(cypher.split())
+    if len(compact) <= max_len:
+        return compact
+    return compact[:max_len] + "..."
 
 
 DEFAULT_STARTERS = [

@@ -21,6 +21,11 @@ from app.modules.ontology.schemas import MappingResult
 from app.modules.synthesis import repository as repo
 from app.modules.synthesis.models import SynthesisJob
 from app.modules.synthesis.schemas import (
+    SynthesisBatchFailure,
+    SynthesisBatchItemStatus,
+    SynthesisBatchStartRequest,
+    SynthesisBatchStartResponse,
+    SynthesisBatchStatusResponse,
     SynthesisJobResponse,
     SynthesisListResponse,
     SynthesisStartRequest,
@@ -37,13 +42,26 @@ def start_synthesis(
     req: SynthesisStartRequest,
     add_background_task,
 ) -> SynthesisJobResponse:
-    record = repo.get_mapping_by_id(db, req.mapping_id)
-    if record is None:
-        raise AppError(message="매핑을 찾을 수 없습니다", code="NOT_FOUND")
+    if req.mapping_id is not None:
+        record = repo.get_mapping_by_id(db, req.mapping_id)
+        if record is None:
+            raise AppError(message="매핑을 찾을 수 없습니다", code="NOT_FOUND")
+    else:
+        record = repo.get_latest_mapping(db)
+        if record is None:
+            raise AppError(
+                message="조직에 등록된 매핑이 없습니다. 먼저 매핑을 확정해주세요.",
+                code="NOT_FOUND",
+            )
 
-    upload = repo.get_upload_by_id(db, record.upload_id)
+    upload = repo.get_upload_by_id(db, req.upload_id)
     if upload is None:
         raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
+    if upload.status != "UPLOADED":
+        raise AppError(
+            message="업로드가 완료되지 않은 파일입니다. 먼저 업로드를 완료해주세요.",
+            code="PRECONDITION_FAILED",
+        )
 
     job = repo.create_synthesis_job(
         db=db,
@@ -68,11 +86,130 @@ def start_synthesis(
     )
 
     logger.info(
-        "합성 작업 시작: job_id={job_id} mapping_id={mapping_id}",
+        "합성 작업 시작: job_id={job_id} mapping_id={mapping_id} upload_id={upload_id}",
         job_id=job.id,
         mapping_id=record.id,
+        upload_id=upload.id,
     )
     return _to_job_response(job)
+
+
+def start_synthesis_batch(
+    db: Session,
+    auth: AuthContext,
+    project_id: uuid.UUID,
+    req: SynthesisBatchStartRequest,
+    add_background_task,
+) -> SynthesisBatchStartResponse:
+    project = repo.get_project_by_id(db, project_id)
+    if project is None:
+        raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
+
+    if req.mapping_id is not None:
+        record = repo.get_mapping_by_id(db, req.mapping_id)
+        if record is None:
+            raise AppError(message="매핑을 찾을 수 없습니다", code="NOT_FOUND")
+    else:
+        record = repo.get_latest_mapping_by_project(db, project_id)
+        if record is None:
+            record = repo.get_latest_mapping(db)
+        if record is None:
+            raise AppError(
+                message="조직에 등록된 매핑이 없습니다. 먼저 매핑을 확정해주세요.",
+                code="NOT_FOUND",
+            )
+
+    schema_name = org_id_to_schema(auth.org_id)
+    accepted_jobs = []
+    failed = []
+    upload_ids = list(dict.fromkeys(req.upload_ids))
+
+    for upload_id in upload_ids:
+        upload = repo.get_upload_by_id(db, upload_id)
+        if upload is None:
+            failed.append(
+                SynthesisBatchFailure(
+                    upload_id=upload_id,
+                    reason="업로드를 찾을 수 없습니다",
+                )
+            )
+            continue
+
+        if upload.status != "UPLOADED":
+            failed.append(
+                SynthesisBatchFailure(
+                    upload_id=upload_id,
+                    reason="업로드가 완료되지 않은 파일입니다",
+                )
+            )
+            continue
+
+        if upload.project_id != project_id:
+            failed.append(
+                SynthesisBatchFailure(
+                    upload_id=upload_id,
+                    reason="해당 프로젝트에 속하지 않은 업로드입니다",
+                )
+            )
+            continue
+
+        job = repo.create_synthesis_job(
+            db=db,
+            job_id=generate_uuid7(),
+            batch_id=None,
+            mapping_id=record.id,
+            upload_id=upload.id,
+        )
+        accepted_jobs.append((job, upload))
+
+    batch = repo.create_synthesis_batch(
+        db=db,
+        batch_id=generate_uuid7(),
+        project_id=project_id,
+        mapping_id=record.id,
+        requested_count=len(req.upload_ids),
+        accepted_count=len(accepted_jobs),
+        failed_uploads=[item.model_dump(mode="json") for item in failed],
+    )
+
+    for job, _upload in accepted_jobs:
+        job.batch_id = batch.id
+
+    if accepted_jobs:
+        repo.increment_mapping_usage(record, len(accepted_jobs))
+
+    db.commit()
+    db.refresh(batch)
+    for job, _upload in accepted_jobs:
+        db.refresh(job)
+
+    for job, upload in accepted_jobs:
+        add_background_task(
+            _run_synthesis,
+            job_id=job.id,
+            schema_name=schema_name,
+            graph_name=schema_name,
+            file_key=upload.file_key,
+            filename=upload.original_name,
+            sheet_name=record.sheet_name,
+            mapping_json=record.mapping,
+        )
+
+    logger.info(
+        "합성 배치 시작: batch_id={batch_id} project_id={project_id} mapping_id={mapping_id} accepted={accepted} failed={failed}",
+        batch_id=batch.id,
+        project_id=project_id,
+        mapping_id=record.id,
+        accepted=len(accepted_jobs),
+        failed=len(failed),
+    )
+    return SynthesisBatchStartResponse(
+        batch_id=batch.id,
+        requested_count=batch.requested_count,
+        accepted_count=batch.accepted_count,
+        items=[_to_job_response(job) for job, _upload in accepted_jobs],
+        failed=failed,
+    )
 
 
 def get_synthesis_job(db: Session, job_id: uuid.UUID) -> SynthesisJobResponse:
@@ -85,6 +222,79 @@ def get_synthesis_job(db: Session, job_id: uuid.UUID) -> SynthesisJobResponse:
 def list_synthesis_jobs(db: Session) -> SynthesisListResponse:
     jobs = repo.list_synthesis_jobs(db)
     return SynthesisListResponse(items=[_to_job_response(j) for j in jobs])
+
+
+def get_synthesis_batch(
+    db: Session,
+    batch_id: uuid.UUID,
+) -> SynthesisBatchStatusResponse:
+    batch = repo.get_synthesis_batch_by_id(db, batch_id)
+    if batch is None:
+        raise AppError(message="합성 배치를 찾을 수 없습니다", code="NOT_FOUND")
+
+    jobs = repo.list_synthesis_jobs_by_batch_id(db, batch_id)
+    pending_count = 0
+    processing_count = 0
+    completed_count = 0
+    failed_job_count = 0
+    items = []
+
+    for job in jobs:
+        if job.status == "PENDING":
+            pending_count += 1
+        elif job.status == "PROCESSING":
+            processing_count += 1
+        elif job.status == "FAILED":
+            failed_job_count += 1
+        elif job.status == "COMPLETED":
+            completed_count += 1
+
+        items.append(
+            SynthesisBatchItemStatus(
+                job_id=job.id,
+                upload_id=job.upload_id,
+                status=job.status,
+                total_rows=job.total_rows,
+                processed_rows=job.processed_rows,
+                nodes_created=job.nodes_created,
+                relationships_created=job.relationships_created,
+                error_count=len(job.errors or []),
+                started_at=job.started_at,
+                completed_at=job.completed_at,
+            )
+        )
+
+    failed = [
+        SynthesisBatchFailure.model_validate(item)
+        for item in batch.failed_uploads or []
+    ]
+    failed_count = len(failed)
+    accepted_count = batch.accepted_count
+    done_count = completed_count + failed_job_count
+
+    if accepted_count == 0:
+        status = "FAILED" if failed_count > 0 else "PENDING"
+    elif done_count == accepted_count:
+        status = "COMPLETED" if failed_job_count == 0 else "COMPLETED_WITH_ERRORS"
+    elif processing_count > 0:
+        status = "PROCESSING"
+    else:
+        status = "PENDING"
+
+    return SynthesisBatchStatusResponse(
+        batch_id=batch.id,
+        requested_count=batch.requested_count,
+        accepted_count=accepted_count,
+        failed_count=failed_count,
+        pending_count=pending_count,
+        processing_count=processing_count,
+        completed_count=completed_count,
+        failed_job_count=failed_job_count,
+        status=status,
+        failed=failed,
+        items=items,
+        created_at=batch.created_at,
+    )
 
 
 def _build_merge_node(
@@ -165,13 +375,19 @@ def _process_row_nodes(row: dict, mapping: MappingResult) -> list[str]:
         if label in label_needs_split:
             role = endpoint_roles.get((label, cm.source_column))
             if role:
-                grouped_props.setdefault((label, role), {})[cm.target_property] = formatted
+                grouped_props.setdefault((label, role), {})[cm.target_property] = (
+                    formatted
+                )
             else:
                 # 엔드포인트에 속하지 않는 고유 속성 → from/to 양쪽에 추가
                 for r in ("from", "to"):
-                    grouped_props.setdefault((label, r), {})[cm.target_property] = formatted
+                    grouped_props.setdefault((label, r), {})[cm.target_property] = (
+                        formatted
+                    )
         else:
-            grouped_props.setdefault((label, "default"), {})[cm.target_property] = formatted
+            grouped_props.setdefault((label, "default"), {})[cm.target_property] = (
+                formatted
+            )
 
     for ep in mapping.extended_properties:
         val = row.get(ep.source_column)
@@ -183,12 +399,18 @@ def _process_row_nodes(row: dict, mapping: MappingResult) -> list[str]:
         if label in label_needs_split:
             role = endpoint_roles.get((label, ep.source_column))
             if role:
-                grouped_props.setdefault((label, role), {})[ep.property_name] = formatted
+                grouped_props.setdefault((label, role), {})[ep.property_name] = (
+                    formatted
+                )
             else:
                 for r in ("from", "to"):
-                    grouped_props.setdefault((label, r), {})[ep.property_name] = formatted
+                    grouped_props.setdefault((label, r), {})[ep.property_name] = (
+                        formatted
+                    )
         else:
-            grouped_props.setdefault((label, "default"), {})[ep.property_name] = formatted
+            grouped_props.setdefault((label, "default"), {})[ep.property_name] = (
+                formatted
+            )
 
     for (label, _role), props in grouped_props.items():
         node_def = MANUFACTURING_ONTOLOGY.get_node_label(label)

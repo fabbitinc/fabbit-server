@@ -19,6 +19,8 @@ class SynthesisJob(TenantBase):
     __tablename__ = "synthesis_jobs"
 
     __table_args__ = (
+        # 배치별 합성 작업 조회 최적화
+        Index("ix_synthesis_jobs_batch_id", "batch_id"),
         # 매핑별 합성 작업 조회 최적화
         Index("ix_synthesis_jobs_mapping_id", "mapping_id"),
         # 업로드별 합성 작업 조회 최적화
@@ -27,6 +29,11 @@ class SynthesisJob(TenantBase):
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=generate_uuid7
+    )
+    batch_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("synthesis_batches.id", ondelete="SET NULL"),
+        nullable=True,
     )
     mapping_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -38,9 +45,7 @@ class SynthesisJob(TenantBase):
         ForeignKey("uploads.id", ondelete="CASCADE"),
         nullable=False,
     )
-    status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="PENDING"
-    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING")
     total_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     processed_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     nodes_created: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -54,6 +59,32 @@ class SynthesisJob(TenantBase):
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SynthesisBatch(TenantBase):
+    __tablename__ = "synthesis_batches"
+
+    __table_args__ = (Index("ix_synthesis_batches_project_id", "project_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=generate_uuid7
+    )
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    mapping_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("mapping_records.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    requested_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    accepted_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    failed_uploads: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
