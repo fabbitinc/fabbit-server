@@ -1,6 +1,6 @@
 """아이템(Part) 조회 비즈니스 로직.
 
-속성은 RDS(parts 테이블)에서, 관계는 Graph(AGE)에서 읽습니다.
+속성과 BOM 관계는 RDS에서, 비-BOM 관계(Drawing, Supplier)는 Graph에서 읽습니다.
 """
 
 from sqlalchemy.orm import Session
@@ -9,6 +9,7 @@ from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.item import repository as repo
+from app.modules.part import repository as part_repo
 from app.modules.item.schemas import (
     BomChild,
     BomParent,
@@ -94,38 +95,34 @@ def get_item(db: Session, auth: AuthContext, part_number: str) -> PartDetailResp
     if not part:
         raise AppError(message=f"Part '{part_number}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
 
-    # 관계: Graph
-    children_rows = repo.get_children(db, graph_name, part_number)
-    parents_rows = repo.get_parents(db, graph_name, part_number)
+    # BOM 관계: RDS JOIN (name 포함)
+    children_rows = part_repo.get_children(db, part.id)
+    parents_rows = part_repo.get_parents(db, part.id)
+
+    # 비-BOM 관계: Graph
     drawings_rows = repo.get_drawings(db, graph_name, part_number)
     suppliers_rows = repo.get_suppliers(db, graph_name, part_number)
 
-    # children/parents의 name을 RDS에서 일괄 조회로 enrichment
-    child_pns = [r["c0"] for r in children_rows if r.get("c0")]
-    parent_pns = [r["c0"] for r in parents_rows if r.get("c0")]
-    all_related_pns = list(set(child_pns + parent_pns))
-    name_map = _bulk_get_names(db, all_related_pns)
-
     children = [
         BomChild(
-            part_number=r["c0"] or "",
-            name=name_map.get(r["c0"]),
-            quantity=_safe_int(r["c1"], 1),
-            sequence=_safe_int(r["c2"]) or None,
-            reference_designator=_safe_str(r["c3"]),
-            find_number=_safe_str(r["c4"]),
+            part_number=r["part_number"],
+            name=r["name"],
+            quantity=r["quantity"],
+            sequence=r["sequence"],
+            reference_designator=r["reference_designator"],
+            find_number=r["find_number"],
         )
         for r in children_rows
     ]
 
     parents = [
         BomParent(
-            part_number=r["c0"] or "",
-            name=name_map.get(r["c0"]),
-            quantity=_safe_int(r["c1"], 1),
-            sequence=_safe_int(r["c2"]) or None,
-            reference_designator=_safe_str(r["c3"]),
-            find_number=_safe_str(r["c4"]),
+            part_number=r["part_number"],
+            name=r["name"],
+            quantity=r["quantity"],
+            sequence=r["sequence"],
+            reference_designator=r["reference_designator"],
+            find_number=r["find_number"],
         )
         for r in parents_rows
     ]
@@ -236,7 +233,7 @@ def get_item_bom_tree(
     if not part:
         raise AppError(message=f"Part '{part_number}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
 
-    paths = repo.get_bom_paths(db, graph_name, part_number)
+    paths = part_repo.get_bom_paths(db, part_number, graph_name)
 
     # paths에서 모든 part_number 추출하여 name 일괄 조회
     all_pns: set[str] = {part_number}

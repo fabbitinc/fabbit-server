@@ -17,8 +17,8 @@ from app.infrastructure.s3_client import S3Client
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
 from app.modules.ontology.repository import format_cypher_value
-from app.modules.part.models import Part, PartRevision
 from app.modules.ontology.schemas import MappingResult
+from app.modules.part import repository as part_repo
 from app.modules.synthesis import repository as repo
 from app.modules.synthesis.models import SynthesisJob
 from app.modules.synthesis.schemas import (
@@ -336,7 +336,9 @@ def _build_merge_rel(
     )
 
 
-def _process_row_nodes(row: dict, mapping: MappingResult) -> list[str]:
+def _process_row_nodes(
+    row: dict, mapping: MappingResult, skip_labels: set[str] | None = None
+) -> list[str]:
     cyphers: list[str] = []
 
     # 분리 판별: column_mappings에서 같은 (label, property)에 복수 source_column이 있으면 분리 필요
@@ -419,6 +421,8 @@ def _process_row_nodes(row: dict, mapping: MappingResult) -> list[str]:
     for (label, _role), props in grouped_props.items():
         node_def = MANUFACTURING_ONTOLOGY.get_node_label(label)
         if node_def is None:
+            continue
+        if skip_labels and label in skip_labels:
             continue
 
         merge_keys: dict[str, str] = {}
@@ -511,7 +515,9 @@ def _column_group_affinity(candidate: str, group_cols: set[str]) -> int:
     return best
 
 
-def _process_row_relationships(row: dict, mapping: MappingResult) -> list[str]:
+def _process_row_relationships(
+    row: dict, mapping: MappingResult, skip_rel_types: set[str] | None = None
+) -> list[str]:
     cyphers: list[str] = []
 
     # column_mappings에서 라벨별 merge key 값을 수집 (폴백용)
@@ -533,6 +539,8 @@ def _process_row_relationships(row: dict, mapping: MappingResult) -> list[str]:
                 )
 
     for rm in mapping.relation_mappings:
+        if skip_rel_types and rm.rel_type in skip_rel_types:
+            continue
         # from_columns/to_columns가 있으면 독립적으로 merge key 조회
         if rm.from_columns:
             from_keys = _resolve_endpoint_keys(row, rm.from_columns, col_data_types)
@@ -660,21 +668,40 @@ def _run_synthesis(
                 row_num = chunk_start + idx + 1
                 row = row_series.to_dict()
                 try:
-                    # Part 데이터 → RDS upsert
+                    # Part → part_repo (RDS + Graph 통합)
                     part_entries = _extract_part_data(row, mapping)
-                    for part_number, props in part_entries.items():
-                        _upsert_part(db, part_number, props, job_id)
+                    for pn, props in part_entries.items():
+                        part_repo.upsert_part(db, pn, props, job_id, graph_name)
 
-                    # 그래프 노드 MERGE (Part는 part_number만, 나머지는 기존대로)
-                    node_cyphers = _process_row_nodes(row, mapping)
+                    # BOM 관계 → part_repo (RDS + Graph dual-write)
+                    bom_entries = _extract_bom_data(row, mapping)
+                    for entry in bom_entries:
+                        part_repo.upsert_bom_link(
+                            db,
+                            graph_name,
+                            entry["parent_pn"],
+                            entry["child_pn"],
+                            entry.get("quantity", 1),
+                            sequence=entry.get("sequence"),
+                            reference_designator=entry.get("reference_designator"),
+                            find_number=entry.get("find_number"),
+                        )
+
+                    # 비-Part 노드 → Graph only (기존)
+                    node_cyphers = _process_row_nodes(
+                        row, mapping, skip_labels={"Part"}
+                    )
                     for cypher in node_cyphers:
                         execute_cypher_raw(db, cypher, graph_name)
-                    nodes_created += len(node_cyphers)
+                    nodes_created += len(part_entries) + len(node_cyphers)
 
-                    rel_cyphers = _process_row_relationships(row, mapping)
+                    # 비-CONSISTS_OF 관계 → Graph only (기존)
+                    rel_cyphers = _process_row_relationships(
+                        row, mapping, skip_rel_types={"CONSISTS_OF"}
+                    )
                     for cypher in rel_cyphers:
                         execute_cypher_raw(db, cypher, graph_name)
-                    rels_created += len(rel_cyphers)
+                    rels_created += len(bom_entries) + len(rel_cyphers)
                 except Exception as error:
                     err_msg = f"행 {row_num}: {error}"
                     errors.append(err_msg)
@@ -741,14 +768,6 @@ def _to_job_response(job: SynthesisJob) -> SynthesisJobResponse:
         created_at=job.created_at,
     )
 
-
-# ── Part RDS upsert ──
-
-# Part 모델의 표준 속성 (온톨로지 정의 속성 중 RDS 컬럼에 매핑되는 것)
-_PART_STANDARD_ATTRS = {
-    "name", "revision", "material", "unit", "description",
-    "category", "is_phantom", "lifecycle_state", "lead_time_days",
-}
 
 
 def _cast_python_value(value, data_type: str):
@@ -853,79 +872,48 @@ def _extract_part_data(row: dict, mapping: MappingResult) -> dict[str, dict]:
     return result
 
 
-def _upsert_part(
-    db: Session,
-    part_number: str,
-    props: dict,
-    job_id: uuid.UUID,
-) -> None:
-    """Part를 RDS에 INSERT 또는 UPDATE하고, 변경 시 PartRevision 스냅샷 생성."""
-    # 표준 속성과 확장 속성 분리
-    standard: dict = {}
-    extended: dict = {}
-    for key, value in props.items():
-        if key == "part_number":
+def _extract_bom_data(row: dict, mapping: MappingResult) -> list[dict]:
+    """행에서 CONSISTS_OF 관계 데이터를 Python 원시값으로 추출.
+
+    반환: [{"parent_pn": "ASM-001", "child_pn": "BRK-001", "quantity": 2, ...}, ...]
+    """
+    col_data_types: dict[str, str] = {}
+    for cm in mapping.column_mappings:
+        col_data_types[cm.source_column] = cm.data_type
+
+    entries: list[dict] = []
+    for rm in mapping.relation_mappings:
+        if rm.rel_type != "CONSISTS_OF":
             continue
-        if key.startswith("_ext_"):
-            extended[key] = value
-        elif key in _PART_STANDARD_ATTRS:
-            standard[key] = value
-        else:
-            # 온톨로지에 정의되었지만 Part 컬럼에 없는 속성 → 확장 속성으로 저장
-            extended[key] = value
 
-    existing = db.query(Part).filter(Part.part_number == part_number).first()
+        # 엔드포인트 part_number 추출
+        parent_pn = _resolve_endpoint_pn(row, rm.from_columns, col_data_types)
+        child_pn = _resolve_endpoint_pn(row, rm.to_columns, col_data_types)
+        if not parent_pn or not child_pn:
+            continue
 
-    if existing is None:
-        part = Part(
-            id=generate_uuid7(),
-            part_number=part_number,
-            extended_properties=extended if extended else {},
-            **standard,
-        )
-        db.add(part)
-        db.flush()
+        entry: dict = {"parent_pn": parent_pn, "child_pn": child_pn}
+        for src_col, rel_prop in rm.properties.items():
+            data_type = rm.property_types.get(rel_prop, "string")
+            parsed = _cast_python_value(row.get(src_col), data_type)
+            if parsed is not None:
+                entry[rel_prop] = parsed
 
-        # 최초 생성 시 리비전 스냅샷
-        _create_revision_snapshot(db, part, job_id)
-    else:
-        # 변경 감지
-        changed = False
-        for key, value in standard.items():
-            if getattr(existing, key) != value:
-                setattr(existing, key, value)
-                changed = True
+        entries.append(entry)
 
-        if extended:
-            merged_ext = dict(existing.extended_properties or {})
-            for key, value in extended.items():
-                if merged_ext.get(key) != value:
-                    merged_ext[key] = value
-                    changed = True
-            if changed:
-                existing.extended_properties = merged_ext
-
-        if changed:
-            db.flush()
-            _create_revision_snapshot(db, existing, job_id)
+    return entries
 
 
-def _create_revision_snapshot(db: Session, part: Part, job_id: uuid.UUID) -> None:
-    """Part의 현재 상태를 PartRevision으로 스냅샷."""
-    revision = PartRevision(
-        id=generate_uuid7(),
-        part_id=part.id,
-        synthesis_job_id=job_id,
-        part_number=part.part_number,
-        name=part.name,
-        revision=part.revision,
-        material=part.material,
-        unit=part.unit,
-        description=part.description,
-        category=part.category,
-        is_phantom=part.is_phantom,
-        lifecycle_state=part.lifecycle_state,
-        lead_time_days=part.lead_time_days,
-        extended_properties=dict(part.extended_properties or {}),
-    )
-    db.add(revision)
+def _resolve_endpoint_pn(
+    row: dict,
+    endpoint_columns: dict[str, str],
+    col_data_types: dict[str, str],
+) -> str | None:
+    """엔드포인트 컬럼에서 part_number 값을 Python 문자열로 추출."""
+    src_col = endpoint_columns.get("part_number")
+    if not src_col:
+        return None
+    val = row.get(src_col)
+    data_type = col_data_types.get(src_col, "string")
+    parsed = _cast_python_value(val, data_type)
+    return str(parsed) if parsed is not None else None

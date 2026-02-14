@@ -103,3 +103,43 @@ class PartRevision(TenantBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class BomLink(TenantBase):
+    """BOM 관계 (Part → Part CONSISTS_OF)."""
+
+    __tablename__ = "bom_links"
+
+    __table_args__ = (
+        # 동일 부모-자식 관계 중복 방지
+        UniqueConstraint(
+            "parent_part_id", "child_part_id", name="uq_bom_links_parent_child"
+        ),
+        # 부모 기준 자식 조회 최적화
+        Index("ix_bom_links_parent_part_id", "parent_part_id"),
+        # 자식 기준 부모 조회 최적화 (역추적)
+        Index("ix_bom_links_child_part_id", "child_part_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=generate_uuid7
+    )
+    parent_part_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("parts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    child_part_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("parts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    sequence: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reference_designator: Mapped[str | None] = mapped_column(
+        String(200), nullable=True
+    )
+    find_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
