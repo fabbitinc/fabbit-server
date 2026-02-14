@@ -43,16 +43,20 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
   - `_ext__ext_*` 또는 중복 접두사 형태는 금지합니다.
 
 ## 관계 매핑 주의사항 (매우 중요)
-- **모든 관계에 `from_columns`와 `to_columns`를 반드시 지정하세요.**
-  - `from_columns`: from 노드의 merge key → 해당 Excel 컬럼명 매핑
-  - `to_columns`: to 노드의 merge key → 해당 Excel 컬럼명 매핑
+- 관계 매핑 객체는 아래 계약을 반드시 따르세요:
+  - 필수: `from_label`, `to_label`, `rel_type`, `from_columns`, `to_columns`
+  - 선택: `properties`, `property_types`
+  - `from_columns`/`to_columns`는 각 엔드포인트 라벨의 merge key를 모두 포함해야 합니다.
+- `from_columns`: from 노드의 merge key → Excel 컬럼명
+- `to_columns`: to 노드의 merge key → Excel 컬럼명
+- **속성 없는 관계도 유효합니다.** 엔드포인트만 충족하면 `properties`는 빈 객체(`{{}}`)로 유지하세요.
+  - 예: `DEFINED_BY`, `HAS_ITEM`은 `properties={{}}`, `property_types={{}}`가 정상일 수 있습니다.
 - **CONSISTS_OF (Part → Part)**: from/to가 같은 라벨이므로 `from_columns`와 `to_columns`가 **반드시 서로 다른 컬럼**을 참조해야 합니다.
   - 올바른 예: from_columns={{"part_number": "상위품번"}}, to_columns={{"part_number": "하위품번"}}
-  - **잘못된 예**: 부품 목록만 나열된 flat BOM (하나의 part_number 컬럼만 존재). 이 경우 CONSISTS_OF를 생성하지 마세요.
-  - Qty/수량 컬럼이 있더라도, 상위-하위 관계를 식별할 수 있는 두 개의 서로 다른 part_number 컬럼이 없으면 CONSISTS_OF를 생성하면 안 됩니다.
-- **SUPPLIED_BY, DEFINED_BY, HAS_ITEM**: from/to 라벨이 다르므로 각각의 merge key에 해당하는 컬럼을 from_columns/to_columns에 지정합니다.
+  - **잘못된 예**: 부품 목록만 있는 flat BOM(품번 컬럼 1개). 이 경우 CONSISTS_OF를 생성하지 마세요.
+- **SUPPLIED_BY, DEFINED_BY, HAS_ITEM**: from/to 라벨이 다르므로 각각의 merge key 컬럼을 from/to에 지정합니다.
   - 예: SUPPLIED_BY → from_columns={{"part_number": "품번"}}, to_columns={{"company_name": "업체명"}}
-  - 해당 merge key 컬럼이 데이터에 존재하지 않으면 관계를 생성하지 마세요.
+  - merge key 컬럼이 없으면 해당 관계는 생성하지 마세요.
 
 ## 관계 속성 매핑 규칙 (매우 중요)
 - **수량/Qty/Quantity/소요량** 컬럼은 **절대로** Part 노드의 속성이나 확장 속성(_ext_)으로 매핑하지 마세요.
@@ -63,6 +67,16 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
 - 마찬가지로, 순서/시퀀스(Seq/Item No) 컬럼은 CONSISTS_OF 관계의 `sequence` 속성으로,
   참조번호(Ref Des) 컬럼은 CONSISTS_OF 관계의 `reference_designator` 속성으로 매핑하세요.
 - 단가(Unit Price/Cost) 컬럼은 SUPPLIED_BY 관계의 `unit_cost` 속성으로 매핑하세요.
+- 관계 속성은 선택이지만, 온톨로지에서 `required=true`인 관계 속성은 반드시 매핑하세요.
+  - 현재 필수 관계 속성 예시: `CONSISTS_OF.quantity`
+
+## 관계 생성 절차 (체크리스트)
+관계 타입 후보마다 아래 순서로 판단하세요.
+1. from/to 라벨이 온톨로지에 존재하는가?
+2. from/to 라벨의 merge key에 대응되는 컬럼이 모두 존재하는가?
+3. (CONSISTS_OF인 경우) from/to가 서로 다른 컬럼으로 분리되는가?
+4. 필수 관계 속성이 있다면 source 컬럼을 찾았는가?
+5. 위 조건을 만족한 경우에만 relation_mappings에 추가하세요.
 
 ## 데이터 타입 규칙
 - 각 매핑에 data_type을 지정하세요: "string", "integer", "float", "boolean"

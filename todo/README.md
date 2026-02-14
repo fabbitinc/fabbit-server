@@ -18,6 +18,9 @@
 ## mapping-governance
 - `todo/mapping-governance/01-latest-mapping-import.md`: 최신 매핑 기반 Item 업로드 + 매핑 거버넌스 TODO
 
+## activation-query
+- `todo/activation-query/01-query-accuracy-scaling.md`: 자연어 질의 정확도 개선 및 대규모 확장 계획 (Entity Linking, Few-shot RAG)
+
 ## 권장 진행 순서
 1. `todo/foundation/01-direction.md`
 2. `todo/foundation/02-reliability.md`

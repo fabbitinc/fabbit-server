@@ -157,7 +157,7 @@ def query_graph(
     )
     cypher = cypher_resp.content
     _validate_read_only(cypher)
-    logger.info("[질의] 생성 쿼리: {cypher}", cypher=_compact_query_for_log(cypher))
+    _log_cypher(stage="initial", query=cypher)
 
     log_ai_usage(
         org_id=auth.org_id,
@@ -168,24 +168,42 @@ def query_graph(
         output_tokens=cypher_resp.output_tokens,
     )
 
-    try:
-        t0 = time.perf_counter()
-        raw_results = repo.execute_graph_query(db, cypher, graph_name)
-        logger.info(
-            "[질의] Cypher 실행: {elapsed:.2f}s ({count}건)",
-            elapsed=time.perf_counter() - t0,
-            count=len(raw_results),
+    raw_results = _execute_query_with_logging(db, graph_name, cypher, stage="initial")
+
+    if not raw_results:
+        retry_resp = chat_completion_with_usage(
+            system_prompt=system_prompt,
+            user_message=_build_zero_result_retry_prompt(question, cypher),
+            max_tokens=500,
+            reasoning_effort="low",
         )
-    except Exception as error:
-        logger.warning(
-            "Cypher 실행 실패: query={cypher} error={err}",
-            cypher=_compact_query_for_log(cypher),
-            err=error,
+        retry_cypher = retry_resp.content
+        _validate_read_only(retry_cypher)
+
+        log_ai_usage(
+            org_id=auth.org_id,
+            user_id=auth.account_id,
+            feature="activation:cypher_retry",
+            model=retry_resp.model,
+            input_tokens=retry_resp.input_tokens,
+            output_tokens=retry_resp.output_tokens,
         )
-        raise AppError(
-            message="쿼리 실행에 실패했습니다",
-            code="QUERY_EXECUTION_FAILED",
-        )
+
+        if _normalize_query(cypher) != _normalize_query(retry_cypher):
+            _log_cypher(stage="retry", query=retry_cypher)
+            retry_results = _execute_query_with_logging(
+                db,
+                graph_name,
+                retry_cypher,
+                stage="retry",
+            )
+            if retry_results:
+                cypher = retry_cypher
+                raw_results = retry_results
+            else:
+                logger.info("[질의] 재시도 쿼리도 0건입니다")
+        else:
+            logger.info("[질의] 재시도 쿼리가 초기 쿼리와 동일하여 실행을 생략합니다")
 
     results = _serialize_results(raw_results)
 
@@ -301,6 +319,8 @@ def _build_tenant_query_prompt(
 5. 속성명은 정확히 위에 정의된 이름을 사용하세요.
 6. 테넌트 격리는 그래프 레벨에서 이미 보장되므로 _org_id 조건을 추가하지 마세요.
 7. 질문이 모호하거나 광범위하면, 존재하는 데이터를 기반으로 유용한 개요를 보여주는 쿼리를 생성하세요.
+8. 관계 방향은 온톨로지 정의를 준수하세요. 예: SUPPLIED_BY는 (Part)-[:SUPPLIED_BY]->(Supplier)입니다.
+9. 질문에 특정 엔티티명이 있으면 해당 라벨 속성으로 WHERE 필터를 추가하세요.
 """
 
 
@@ -340,11 +360,72 @@ def _serialize_results(raw_results: list) -> list[dict]:
     return results
 
 
-def _compact_query_for_log(cypher: str, max_len: int = 500) -> str:
+def _build_zero_result_retry_prompt(question: str, previous_cypher: str) -> str:
+    return f"""다음 질의는 이전 Cypher 실행 결과가 0건이었습니다.
+질문의 의도는 유지하면서, 결과가 나오도록 Cypher를 1회 재작성하세요.
+
+규칙:
+- 읽기 전용 MATCH 쿼리만 허용
+- 온톨로지의 라벨/관계 방향을 준수
+- 질문에 특정 고유명사가 있으면 적절한 속성에서 필터링
+- 문자열 필터는 가능한 경우 toLower + CONTAINS를 사용
+
+## 사용자 질문
+{question}
+
+## 이전 Cypher (0건)
+{previous_cypher}
+"""
+
+
+def _execute_query_with_logging(
+    db: Session,
+    graph_name: str,
+    cypher: str,
+    *,
+    stage: str,
+) -> list:
+    try:
+        t0 = time.perf_counter()
+        raw_results = repo.execute_graph_query(db, cypher, graph_name)
+        logger.info(
+            "[질의] Cypher 실행({stage}): {elapsed:.2f}s ({count}건)",
+            stage=stage,
+            elapsed=time.perf_counter() - t0,
+            count=len(raw_results),
+        )
+        return raw_results
+    except Exception as error:
+        logger.warning(
+            "Cypher 실행 실패({stage}): query={cypher} error={err}",
+            stage=stage,
+            cypher=_compact_query_for_log(cypher),
+            err=error,
+        )
+        raise AppError(
+            message="쿼리 실행에 실패했습니다",
+            code="QUERY_EXECUTION_FAILED",
+        )
+
+
+def _log_cypher(*, stage: str, query: str) -> None:
+    logger.info(
+        "[질의] 생성 쿼리({stage}): {cypher}",
+        stage=stage,
+        cypher=_compact_query_for_log(query),
+    )
+
+
+def _normalize_query(cypher: str) -> str:
+    return " ".join(cypher.split()).strip().lower()
+
+
+def _compact_query_for_log(cypher: str, max_len: int = 2000) -> str:
     compact = " ".join(cypher.split())
     if len(compact) <= max_len:
         return compact
-    return compact[:max_len] + "..."
+    extra = len(compact) - max_len
+    return compact[:max_len] + f"...(truncated {extra} chars)"
 
 
 DEFAULT_STARTERS = [
