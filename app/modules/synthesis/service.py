@@ -37,7 +37,14 @@ _s3 = S3Client()
 CHUNK_SIZE = 500
 
 # BOM 관계의 표준 속성 키 (이 외의 속성은 extended_properties로 분류)
-_BOM_STANDARD_KEYS = {"parent_pn", "child_pn", "quantity", "sequence", "reference_designator", "find_number"}
+_BOM_STANDARD_KEYS = {
+    "parent_pn",
+    "child_pn",
+    "quantity",
+    "sequence",
+    "reference_designator",
+    "find_number",
+}
 
 
 @transactional
@@ -681,23 +688,36 @@ def _run_synthesis(
 
                     # BOM 관계 → part_repo (RDS + Graph dual-write)
                     bom_entries = _extract_bom_data(row, mapping)
+                    created_bom_links = 0
                     for entry in bom_entries:
                         # 표준 BOM 속성과 확장 속성 분리
                         ext_props = {
-                            k: v for k, v in entry.items()
+                            k: v
+                            for k, v in entry.items()
                             if k not in _BOM_STANDARD_KEYS
                         }
-                        part_repo.upsert_bom_link(
-                            db,
-                            graph_name,
-                            entry["parent_pn"],
-                            entry["child_pn"],
-                            entry.get("quantity", 1),
-                            sequence=entry.get("sequence"),
-                            reference_designator=entry.get("reference_designator"),
-                            find_number=entry.get("find_number"),
-                            extended_properties=ext_props if ext_props else None,
-                        )
+                        try:
+                            part_repo.upsert_bom_link(
+                                db,
+                                graph_name,
+                                entry["parent_pn"],
+                                entry["child_pn"],
+                                entry.get("quantity", 1),
+                                sequence=entry.get("sequence"),
+                                reference_designator=entry.get("reference_designator"),
+                                find_number=entry.get("find_number"),
+                                extended_properties=ext_props if ext_props else None,
+                            )
+                            created_bom_links += 1
+                        except part_repo.MissingPartForBomError as error:
+                            logger.warning(
+                                "합성 BOM 링크 스킵: row={row} parent={parent} child={child} reason={reason}",
+                                row=row_num,
+                                parent=error.parent_pn,
+                                child=error.child_pn,
+                                reason=str(error),
+                            )
+                            continue
 
                     # 비-Part 노드 → Graph only
                     node_cyphers = _process_row_nodes(
@@ -711,7 +731,7 @@ def _run_synthesis(
                         row, mapping, skip_rel_types={"CONSISTS_OF"}
                     )
                     repo.execute_graph_cyphers(db, graph_name, rel_cyphers)
-                    rels_created += len(bom_entries) + len(rel_cyphers)
+                    rels_created += created_bom_links + len(rel_cyphers)
                 except Exception as error:
                     err_msg = f"행 {row_num}: {error}"
                     errors.append(err_msg)
@@ -777,7 +797,6 @@ def _to_job_response(job: SynthesisJob) -> SynthesisJobResponse:
         completed_at=job.completed_at,
         created_at=job.created_at,
     )
-
 
 
 def _cast_python_value(value, data_type: str):

@@ -6,8 +6,11 @@ import uuid
 from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
+import pandas as pd
+
 from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
+from app.modules.part import repository as part_repo
 from app.modules.synthesis.schemas import (
     SynthesisBatchStartRequest,
     SynthesisStartRequest,
@@ -18,10 +21,21 @@ from app.modules.synthesis import service
 class _FakeSession:
     def __init__(self) -> None:
         self.commit_count = 0
+        self.rollback_count = 0
+        self.close_count = 0
         self.refreshed: list[object] = []
 
     def commit(self) -> None:
         self.commit_count += 1
+
+    def flush(self) -> None:
+        return None
+
+    def rollback(self) -> None:
+        self.rollback_count += 1
+
+    def close(self) -> None:
+        self.close_count += 1
 
     def refresh(self, obj: object) -> None:
         self.refreshed.append(obj)
@@ -104,7 +118,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
         create_job.assert_called_once()
         self.assertEqual(create_job.call_args.kwargs["mapping_id"], mapping_record.id)
         self.assertEqual(create_job.call_args.kwargs["upload_id"], upload.id)
-        inc_usage.assert_called_once_with(mapping_record)
+        inc_usage.assert_called_once_with(db, mapping_record)
         add_background_task.assert_called_once()
 
     def test_start_synthesis_raises_when_latest_mapping_missing(self) -> None:
@@ -159,7 +173,10 @@ class SynthesisStartServiceTests(unittest.TestCase):
         project_id = uuid.uuid4()
         upload_id_1 = uuid.uuid4()
         upload_id_2 = uuid.uuid4()
-        req = SynthesisBatchStartRequest(upload_ids=[upload_id_1, upload_id_2])
+        req = SynthesisBatchStartRequest(
+            upload_ids=[upload_id_1, upload_id_2],
+            mapping_id=None,
+        )
 
         mapping_record = types.SimpleNamespace(
             id=uuid.uuid4(),
@@ -172,14 +189,16 @@ class SynthesisStartServiceTests(unittest.TestCase):
         )
         upload_1 = types.SimpleNamespace(
             id=upload_id_1,
-            project_id=project_id,
+            owner_type="project",
+            owner_id=project_id,
             status="UPLOADED",
             file_key="k1",
             original_name="a.xlsx",
         )
         upload_2 = types.SimpleNamespace(
             id=upload_id_2,
-            project_id=project_id,
+            owner_type="project",
+            owner_id=project_id,
             status="UPLOADED",
             file_key="k2",
             original_name="b.xlsx",
@@ -278,7 +297,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
         self.assertEqual(len(res.failed), 0)
         self.assertEqual(db.commit_count, 1)
         self.assertEqual(add_background_task.call_count, 2)
-        inc_usage.assert_called_once_with(mapping_record, 2)
+        inc_usage.assert_called_once_with(db, mapping_record, 2)
         get_project_mapping.assert_called_once_with(db, project_id)
         get_org_mapping.assert_not_called()
 
@@ -287,7 +306,10 @@ class SynthesisStartServiceTests(unittest.TestCase):
         project_id = uuid.uuid4()
         ok_upload_id = uuid.uuid4()
         bad_upload_id = uuid.uuid4()
-        req = SynthesisBatchStartRequest(upload_ids=[ok_upload_id, bad_upload_id])
+        req = SynthesisBatchStartRequest(
+            upload_ids=[ok_upload_id, bad_upload_id],
+            mapping_id=None,
+        )
 
         mapping_record = types.SimpleNamespace(
             id=uuid.uuid4(),
@@ -300,7 +322,8 @@ class SynthesisStartServiceTests(unittest.TestCase):
         )
         ok_upload = types.SimpleNamespace(
             id=ok_upload_id,
-            project_id=project_id,
+            owner_type="project",
+            owner_id=project_id,
             status="UPLOADED",
             file_key="k1",
             original_name="a.xlsx",
@@ -381,7 +404,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
         db = _FakeSession()
         project_id = uuid.uuid4()
         upload_id = uuid.uuid4()
-        req = SynthesisBatchStartRequest(upload_ids=[upload_id])
+        req = SynthesisBatchStartRequest(upload_ids=[upload_id], mapping_id=None)
 
         org_mapping = types.SimpleNamespace(
             id=uuid.uuid4(),
@@ -394,7 +417,8 @@ class SynthesisStartServiceTests(unittest.TestCase):
         )
         upload = types.SimpleNamespace(
             id=upload_id,
-            project_id=project_id,
+            owner_type="project",
+            owner_id=project_id,
             status="UPLOADED",
             file_key="k1",
             original_name="a.xlsx",
@@ -464,7 +488,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
         project_id = uuid.uuid4()
         other_project_id = uuid.uuid4()
         upload_id = uuid.uuid4()
-        req = SynthesisBatchStartRequest(upload_ids=[upload_id])
+        req = SynthesisBatchStartRequest(upload_ids=[upload_id], mapping_id=None)
 
         mapping_record = types.SimpleNamespace(
             id=uuid.uuid4(),
@@ -477,7 +501,8 @@ class SynthesisStartServiceTests(unittest.TestCase):
         )
         upload = types.SimpleNamespace(
             id=upload_id,
-            project_id=other_project_id,
+            owner_type="project",
+            owner_id=other_project_id,
             status="UPLOADED",
             file_key="k1",
             original_name="a.xlsx",
@@ -581,6 +606,84 @@ class SynthesisStartServiceTests(unittest.TestCase):
         self.assertEqual(res.failed_job_count, 1)
         self.assertEqual(res.failed_count, 1)
         self.assertEqual(res.status, "COMPLETED_WITH_ERRORS")
+
+    def test_run_synthesis_skips_missing_bom_part_in_service(self) -> None:
+        db = _FakeSession()
+        job_id = uuid.uuid4()
+        job = types.SimpleNamespace(
+            id=job_id,
+            status="PENDING",
+            total_rows=0,
+            processed_rows=0,
+            nodes_created=0,
+            relationships_created=0,
+            errors=[],
+            started_at=None,
+            completed_at=None,
+            created_at=datetime.now(timezone.utc),
+        )
+
+        bom_entries = [
+            {"parent_pn": "ASM-001", "child_pn": "COMP-001", "quantity": 1},
+            {"parent_pn": "ASM-001", "child_pn": "COMP-002", "quantity": 2},
+        ]
+
+        with (
+            patch(
+                "app.modules.synthesis.service.create_tenant_session", return_value=db
+            ),
+            patch(
+                "app.modules.synthesis.service.repo.get_synthesis_job_required",
+                return_value=job,
+            ),
+            patch("app.modules.synthesis.service._s3.get_object", return_value=b"x"),
+            patch("app.modules.synthesis.service.get_sheet_names", return_value=[]),
+            patch(
+                "app.modules.synthesis.service.read_to_dataframe",
+                return_value=pd.DataFrame([{"col": "v"}]),
+            ),
+            patch("app.modules.synthesis.service._extract_part_data", return_value={}),
+            patch(
+                "app.modules.synthesis.service._extract_bom_data",
+                return_value=bom_entries,
+            ),
+            patch("app.modules.synthesis.service._process_row_nodes", return_value=[]),
+            patch(
+                "app.modules.synthesis.service._process_row_relationships",
+                return_value=[],
+            ),
+            patch("app.modules.synthesis.service.repo.execute_graph_cyphers"),
+            patch(
+                "app.modules.synthesis.service.part_repo.upsert_bom_link",
+                side_effect=[
+                    None,
+                    part_repo.MissingPartForBomError("ASM-001", "COMP-002"),
+                ],
+            ) as upsert_bom_link,
+            patch("app.modules.synthesis.service.logger.warning") as warning,
+        ):
+            service._run_synthesis(
+                job_id=job_id,
+                schema_name="tenant_x",
+                graph_name="tenant_x",
+                file_key="k",
+                filename="a.csv",
+                sheet_name=None,
+                mapping_json={
+                    "column_mappings": [],
+                    "relation_mappings": [],
+                    "extended_properties": [],
+                },
+            )
+
+        self.assertEqual(upsert_bom_link.call_count, 2)
+        self.assertEqual(job.relationships_created, 1)
+        self.assertEqual(job.errors, [])
+        self.assertEqual(job.status, "COMPLETED")
+        self.assertEqual(db.close_count, 1)
+        self.assertTrue(
+            any("합성 BOM 링크 스킵" in str(c) for c in warning.call_args_list)
+        )
 
 
 if __name__ == "__main__":

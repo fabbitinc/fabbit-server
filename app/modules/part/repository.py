@@ -5,7 +5,6 @@ Service는 저장 위치(RDS/Graph)를 모르고, Repository가 dual-write를 �
 
 import uuid
 
-from loguru import logger
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -16,9 +15,27 @@ from app.modules.part.models import BomLink, Part, PartRevision
 
 # Part 모델의 표준 속성 (온톨로지 정의 속성 중 RDS 컬럼에 매핑되는 것)
 _PART_STANDARD_ATTRS = {
-    "name", "revision", "material", "unit", "description",
-    "category", "is_phantom", "lifecycle_state", "lead_time_days",
+    "name",
+    "revision",
+    "material",
+    "unit",
+    "description",
+    "category",
+    "is_phantom",
+    "lifecycle_state",
+    "lead_time_days",
 }
+
+
+class MissingPartForBomError(Exception):
+    """BOM 링크 생성에 필요한 Part가 없는 경우."""
+
+    def __init__(self, parent_pn: str, child_pn: str) -> None:
+        self.parent_pn = parent_pn
+        self.child_pn = child_pn
+        super().__init__(
+            f"BOM 링크 대상 Part가 없습니다 (parent={parent_pn}, child={child_pn})"
+        )
 
 
 # ── Part CRUD ──
@@ -45,8 +62,7 @@ def list_parts_paginated(
     query = db.query(Part)
     if search:
         query = query.filter(
-            Part.part_number.ilike(f"%{search}%")
-            | Part.name.ilike(f"%{search}%")
+            Part.part_number.ilike(f"%{search}%") | Part.name.ilike(f"%{search}%")
         )
     total = query.count()
     parts = query.order_by(Part.part_number).offset(offset).limit(limit).all()
@@ -159,12 +175,7 @@ def upsert_bom_link(
     parent = db.query(Part).filter(Part.part_number == parent_pn).first()
     child = db.query(Part).filter(Part.part_number == child_pn).first()
     if not parent or not child:
-        logger.warning(
-            "BOM 링크 스킵: 부모({parent}) 또는 자식({child}) Part 미존재",
-            parent=parent_pn,
-            child=child_pn,
-        )
-        return
+        raise MissingPartForBomError(parent_pn=parent_pn, child_pn=child_pn)
 
     existing = (
         db.query(BomLink)
