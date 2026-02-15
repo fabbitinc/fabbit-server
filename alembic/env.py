@@ -5,9 +5,9 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 from app.core.config import settings
-from app.core.database import Base
-import app.modules.auth.models  # noqa: F401
-import app.modules.ai_usage.models  # noqa: F401
+from app.core.database import Base, discover_models
+
+discover_models()
 
 config = context.config
 
@@ -40,9 +40,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

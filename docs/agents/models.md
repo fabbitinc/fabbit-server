@@ -28,7 +28,7 @@
 
 - 프리픽스 없이 도메인 이름 사용 (`TenantProject` ✗ → `Project` ✓)
 - `app/modules/{domain}/models.py`에 배치
-- `provisioning.py`에서 import 필수 — `TenantBase.metadata.create_all()`이 인식하도록
+- 수동 import 불필요 — `discover_models()`가 `app/modules/*/models.py`를 자동 탐색
 
 ## 컬럼 규칙
 

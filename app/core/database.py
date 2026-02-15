@@ -4,7 +4,9 @@ AGE 확장 초기화를 connect 이벤트로 자동화하여
 모든 새 물리 커넥션에 LOAD 'age' + search_path 설정을 보장합니다.
 """
 
+import importlib
 import uuid as _uuid
+from pathlib import Path
 
 from sqlalchemy import event, create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -70,3 +72,14 @@ class TenantBase(DeclarativeBase):
     public.Base와 분리하여 create_all() 시 테넌트 테이블만 대상으로 함.
     """
     pass
+
+
+def discover_models() -> None:
+    """app/modules/**/models.py를 자동 import하여 Base/TenantBase에 모델 등록.
+
+    Alembic env.py, provisioning.py 등에서 수동 import 대신 호출.
+    """
+    modules_dir = Path(__file__).resolve().parent.parent / "modules"
+    for models_file in sorted(modules_dir.glob("*/models.py")):
+        module_name = f"app.modules.{models_file.parent.name}.models"
+        importlib.import_module(module_name)

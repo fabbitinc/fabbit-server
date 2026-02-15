@@ -5,14 +5,9 @@ import uuid
 from loguru import logger
 from sqlalchemy.orm import Session
 
-import app.modules.document.models  # noqa: F401 — TenantBase에 모델 등록
-import app.modules.drawing.models  # noqa: F401 — TenantBase에 모델 등록
-import app.modules.mapping.models  # noqa: F401 — TenantBase에 모델 등록
-import app.modules.part.models  # noqa: F401 — TenantBase에 모델 등록 (Part, PartRevision)
-import app.modules.project.models  # noqa: F401 — TenantBase에 모델 등록
-import app.modules.synthesis.models  # noqa: F401 — TenantBase에 모델 등록
-import app.modules.upload.models  # noqa: F401 — TenantBase에 모델 등록
-from app.core.database import TenantBase
+from app.core.database import TenantBase, discover_models
+
+discover_models()
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
 
 
