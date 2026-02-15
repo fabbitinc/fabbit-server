@@ -6,7 +6,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import BigInteger, DateTime, Index, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -18,8 +18,8 @@ class Upload(TenantBase):
     __tablename__ = "uploads"
 
     __table_args__ = (
-        # 프로젝트별 업로드 파일 조회 최적화
-        Index("ix_uploads_project_id", "project_id"),
+        # 소유자별 파일 조회 최적화 (owner_type + owner_id 복합)
+        Index("ix_uploads_owner", "owner_type", "owner_id"),
         # 파일 키 유일성 보장
         UniqueConstraint("file_key", name="uq_uploads_file_key"),
     )
@@ -34,10 +34,9 @@ class Upload(TenantBase):
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="PENDING"
     )
-    project_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("projects.id", ondelete="SET NULL"),
-    )
+    # 다형성 소유권: "project", "folder", "part", "supplier" 등
+    owner_type: Mapped[str | None] = mapped_column(String(50))
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

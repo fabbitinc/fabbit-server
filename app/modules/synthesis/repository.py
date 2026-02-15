@@ -30,7 +30,7 @@ def get_latest_mapping_by_project(
     return (
         db.query(MappingRecord)
         .join(Upload, Upload.id == MappingRecord.upload_id)
-        .filter(Upload.project_id == project_id)
+        .filter(Upload.owner_type == "project", Upload.owner_id == project_id)
         .order_by(MappingRecord.created_at.desc())
         .first()
     )

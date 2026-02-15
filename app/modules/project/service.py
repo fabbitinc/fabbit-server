@@ -1,20 +1,38 @@
-"""프로젝트 트리 조회 비즈니스 로직."""
+"""프로젝트 도메인 비즈니스 로직."""
 
 import uuid
 
+from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
+from app.core.exceptions import AppError
+from app.core.transactional import transactional
+from app.infrastructure.age_client import execute_cypher_raw
+from app.modules.auth.provisioning import org_id_to_schema
+from app.modules.part.models import Part
+from app.modules.ontology.repository import escape_cypher_value
 from app.modules.project import repository as repo
 from app.modules.project.models import Folder
 from app.modules.project.schemas import (
+    CreateFolderRequest,
+    CreateProjectRequest,
+    FolderResponse,
     FolderStats,
     FolderTreeNode,
+    MoveFolderRequest,
+    ProjectResponse,
     ProjectStats,
     ProjectTreeMeta,
     ProjectTreeNode,
     ProjectTreeResponse,
+    UpdateFolderRequest,
+    UpdateProjectRequest,
 )
+from app.modules.upload import repository as upload_repo
+
+
+# ── 트리 조회 (기존) ──
 
 
 def _to_folder_node(folder: Folder, drawing_count: int) -> FolderTreeNode:
@@ -145,4 +163,286 @@ def get_projects_tree(db: Session, _auth: AuthContext) -> ProjectTreeResponse:
         meta=ProjectTreeMeta(
             project_count=len(project_nodes), folder_count=len(folders)
         ),
+    )
+
+
+# ── Project CRUD ──
+
+
+@transactional
+def create_project(
+    db: Session,
+    auth: AuthContext,
+    req: CreateProjectRequest,
+) -> ProjectResponse:
+    project = repo.create_project(db, req.name, req.description)
+    logger.info("프로젝트 생성: id={id} name={name}", id=project.id, name=project.name)
+    return _to_project_response(project)
+
+
+def get_project(
+    db: Session,
+    auth: AuthContext,
+    project_id: uuid.UUID,
+) -> ProjectResponse:
+    project = repo.get_project_by_id(db, project_id)
+    if project is None:
+        raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
+    return _to_project_response(project)
+
+
+@transactional
+def update_project(
+    db: Session,
+    auth: AuthContext,
+    project_id: uuid.UUID,
+    req: UpdateProjectRequest,
+) -> ProjectResponse:
+    project = repo.get_project_by_id(db, project_id)
+    if project is None:
+        raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
+    repo.update_project(db, project, req.name, req.description)
+    logger.info("프로젝트 수정: id={id}", id=project.id)
+    return _to_project_response(project)
+
+
+@transactional
+def delete_project(
+    db: Session,
+    auth: AuthContext,
+    project_id: uuid.UUID,
+) -> None:
+    project = repo.get_project_by_id(db, project_id)
+    if project is None:
+        raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
+
+    # 프로젝트 소속 폴더의 Upload cascade 삭제
+    all_folder_ids = repo.get_folder_ids_by_project(db, project_id)
+    for fid in all_folder_ids:
+        upload_repo.delete_uploads_by_owner(db, "folder", fid)
+
+    # 프로젝트 소속 Upload cascade 삭제
+    upload_repo.delete_uploads_by_owner(db, "project", project_id)
+    # 프로젝트 삭제 (Folder, ProjectPart는 DB CASCADE로 자동 삭제)
+    repo.delete_project(db, project_id)
+    logger.info("프로젝트 삭제: id={id}", id=project_id)
+
+
+def _to_project_response(project) -> ProjectResponse:
+    return ProjectResponse(
+        id=project.id,
+        name=project.name,
+        description=project.description,
+        created_at=project.created_at,
+        updated_at=project.updated_at,
+    )
+
+
+# ── Folder CRUD ──
+
+
+@transactional
+def create_folder(
+    db: Session,
+    auth: AuthContext,
+    req: CreateFolderRequest,
+) -> FolderResponse:
+    # 프로젝트 존재 검증
+    project = repo.get_project_by_id(db, req.project_id)
+    if project is None:
+        raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
+
+    # 부모 폴더 존재 및 동일 프로젝트 검증
+    if req.parent_id is not None:
+        parent = repo.get_folder_by_id(db, req.parent_id)
+        if parent is None:
+            raise AppError(message="부모 폴더를 찾을 수 없습니다", code="NOT_FOUND")
+        if parent.project_id != req.project_id:
+            raise AppError(
+                message="부모 폴더가 다른 프로젝트에 속해 있습니다",
+                code="VALIDATION_ERROR",
+            )
+
+    folder = repo.create_folder(db, req.name, req.project_id, req.parent_id)
+    logger.info("폴더 생성: id={id} name={name}", id=folder.id, name=folder.name)
+    return _to_folder_response(folder)
+
+
+@transactional
+def update_folder(
+    db: Session,
+    auth: AuthContext,
+    folder_id: uuid.UUID,
+    req: UpdateFolderRequest,
+) -> FolderResponse:
+    folder = repo.get_folder_by_id(db, folder_id)
+    if folder is None:
+        raise AppError(message="폴더를 찾을 수 없습니다", code="NOT_FOUND")
+    repo.update_folder(db, folder, req.name)
+    logger.info("폴더 수정: id={id}", id=folder.id)
+    return _to_folder_response(folder)
+
+
+@transactional
+def move_folder(
+    db: Session,
+    auth: AuthContext,
+    folder_id: uuid.UUID,
+    req: MoveFolderRequest,
+) -> FolderResponse:
+    folder = repo.get_folder_by_id(db, folder_id)
+    if folder is None:
+        raise AppError(message="폴더를 찾을 수 없습니다", code="NOT_FOUND")
+
+    # 순환 참조 검증
+    if req.parent_id is not None:
+        if req.parent_id == folder_id:
+            raise AppError(
+                message="폴더를 자기 자신의 하위로 이동할 수 없습니다",
+                code="VALIDATION_ERROR",
+            )
+        # 대상 부모가 현재 폴더의 하위인지 검사
+        descendants = repo.get_descendant_folder_ids(db, folder_id)
+        if req.parent_id in descendants:
+            raise AppError(
+                message="하위 폴더로 이동할 수 없습니다 (순환 참조)",
+                code="VALIDATION_ERROR",
+            )
+        # 대상 부모 존재 및 동일 프로젝트 검증
+        parent = repo.get_folder_by_id(db, req.parent_id)
+        if parent is None:
+            raise AppError(message="대상 부모 폴더를 찾을 수 없습니다", code="NOT_FOUND")
+        if parent.project_id != folder.project_id:
+            raise AppError(
+                message="다른 프로젝트의 폴더로 이동할 수 없습니다",
+                code="VALIDATION_ERROR",
+            )
+
+    repo.move_folder(db, folder, req.parent_id)
+    logger.info("폴더 이동: id={id} parent_id={parent_id}", id=folder.id, parent_id=req.parent_id)
+    return _to_folder_response(folder)
+
+
+@transactional
+def delete_folder(
+    db: Session,
+    auth: AuthContext,
+    folder_id: uuid.UUID,
+) -> None:
+    folder = repo.get_folder_by_id(db, folder_id)
+    if folder is None:
+        raise AppError(message="폴더를 찾을 수 없습니다", code="NOT_FOUND")
+
+    # 하위 폴더의 Upload cascade 삭제
+    descendant_ids = repo.get_descendant_folder_ids(db, folder_id)
+    for fid in descendant_ids:
+        upload_repo.delete_uploads_by_owner(db, "folder", fid)
+
+    # 현재 폴더의 Upload 삭제
+    upload_repo.delete_uploads_by_owner(db, "folder", folder_id)
+    # 폴더 삭제 (하위 폴더는 DB CASCADE)
+    repo.delete_folder(db, folder_id)
+    logger.info("폴더 삭제: id={id}", id=folder_id)
+
+
+def _to_folder_response(folder) -> FolderResponse:
+    return FolderResponse(
+        id=folder.id,
+        name=folder.name,
+        parent_id=folder.parent_id,
+        project_id=folder.project_id,
+        created_at=folder.created_at,
+    )
+
+
+# ── ProjectPart (프로젝트-파트 연결, RDS + Graph dual-write) ──
+
+
+def get_project_parts(
+    db: Session,
+    auth: AuthContext,
+    project_id: uuid.UUID,
+) -> list[dict]:
+    project = repo.get_project_by_id(db, project_id)
+    if project is None:
+        raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
+
+    parts = repo.get_project_parts(db, project_id)
+    return [
+        {
+            "id": p.id,
+            "part_number": p.part_number,
+            "name": p.name,
+            "category": p.category,
+        }
+        for p in parts
+    ]
+
+
+@transactional
+def add_part_to_project(
+    db: Session,
+    auth: AuthContext,
+    project_id: uuid.UUID,
+    part_id: uuid.UUID,
+) -> None:
+    project = repo.get_project_by_id(db, project_id)
+    if project is None:
+        raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
+
+    part = db.query(Part).filter(Part.id == part_id).first()
+    if part is None:
+        raise AppError(message="부품을 찾을 수 없습니다", code="NOT_FOUND")
+
+    # RDS: INSERT project_parts
+    repo.add_part_to_project(db, project_id, part_id)
+
+    # Graph: MERGE HAS_ITEM 관계
+    graph_name = org_id_to_schema(auth.org_id)
+    esc_name = escape_cypher_value(project.name)
+    esc_pn = escape_cypher_value(part.part_number)
+    cypher = (
+        f"MERGE (p:Project {{name: '{esc_name}'}}) "
+        f"MERGE (part:Part {{part_number: '{esc_pn}'}}) "
+        f"MERGE (p)-[:HAS_ITEM]->(part)"
+    )
+    execute_cypher_raw(db, cypher, graph_name)
+    logger.info(
+        "프로젝트-파트 연결: project_id={project_id} part_id={part_id}",
+        project_id=project_id,
+        part_id=part_id,
+    )
+
+
+@transactional
+def remove_part_from_project(
+    db: Session,
+    auth: AuthContext,
+    project_id: uuid.UUID,
+    part_id: uuid.UUID,
+) -> None:
+    project = repo.get_project_by_id(db, project_id)
+    if project is None:
+        raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
+
+    part = db.query(Part).filter(Part.id == part_id).first()
+    if part is None:
+        raise AppError(message="부품을 찾을 수 없습니다", code="NOT_FOUND")
+
+    # RDS: DELETE project_parts
+    repo.remove_part_from_project(db, project_id, part_id)
+
+    # Graph: DELETE HAS_ITEM 관계
+    graph_name = org_id_to_schema(auth.org_id)
+    esc_name = escape_cypher_value(project.name)
+    esc_pn = escape_cypher_value(part.part_number)
+    cypher = (
+        f"MATCH (p:Project {{name: '{esc_name}'}})-[r:HAS_ITEM]->"
+        f"(part:Part {{part_number: '{esc_pn}'}}) DELETE r"
+    )
+    execute_cypher_raw(db, cypher, graph_name)
+    logger.info(
+        "프로젝트-파트 연결 해제: project_id={project_id} part_id={part_id}",
+        project_id=project_id,
+        part_id=part_id,
     )

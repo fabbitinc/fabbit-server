@@ -148,7 +148,7 @@ def start_synthesis_batch(
             )
             continue
 
-        if upload.project_id != project_id:
+        if upload.owner_type != "project" or upload.owner_id != project_id:
             failed.append(
                 SynthesisBatchFailure(
                     upload_id=upload_id,
