@@ -1,4 +1,4 @@
-.PHONY: dev-start dev-stop dev-db-reset openapi
+.PHONY: dev-start dev-stop dev-db-reset openapi test test-e2e
 
 # 개발환경 시작 (PostgreSQL + API 서버)
 dev-start:
@@ -31,3 +31,11 @@ dev-reset:
 	$(MAKE) dev-stop
 	$(MAKE) dev-db-reset
 	$(MAKE) dev-start
+
+# 통합 테스트 — fixture 매핑 (LLM 없이, 빠름)
+test:
+	uv run pytest tests/integration/test_crud_flow.py -v
+
+# 통합 테스트 — 실제 LLM 호출 포함 (매핑 미리보기, AI 질의)
+test-e2e:
+	uv run pytest tests/integration/test_crud_flow.py -v -s --use-llm

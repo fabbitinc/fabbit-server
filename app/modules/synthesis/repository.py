@@ -2,17 +2,12 @@
 
 import uuid
 
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.modules.mapping.models import MappingRecord
 from app.modules.project.models import Project
 from app.modules.synthesis.models import SynthesisBatch, SynthesisJob
 from app.modules.upload.models import Upload
-
-
-def set_search_path(db: Session, schema_name: str) -> None:
-    db.execute(text(f"SET search_path = {schema_name}, ag_catalog, public"))
 
 
 def get_mapping_by_id(db: Session, mapping_id: uuid.UUID) -> MappingRecord | None:

@@ -9,8 +9,9 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
-from app.core.database import SessionLocal, generate_uuid7
+from app.core.database import create_tenant_session, generate_uuid7
 from app.core.exceptions import AppError
+from app.core.transactional import transactional
 from app.infrastructure.age_client import execute_cypher_raw
 from app.infrastructure.excel_parser import get_sheet_names, read_to_dataframe
 from app.infrastructure.s3_client import S3Client
@@ -40,6 +41,7 @@ CHUNK_SIZE = 500
 _BOM_STANDARD_KEYS = {"parent_pn", "child_pn", "quantity", "sequence", "reference_designator", "find_number"}
 
 
+@transactional
 def start_synthesis(
     db: Session,
     auth: AuthContext,
@@ -74,7 +76,7 @@ def start_synthesis(
         upload_id=upload.id,
     )
     repo.increment_mapping_usage(record)
-    db.commit()
+    db.flush()
     db.refresh(job)
 
     schema_name = org_id_to_schema(auth.org_id)
@@ -98,6 +100,7 @@ def start_synthesis(
     return _to_job_response(job)
 
 
+@transactional
 def start_synthesis_batch(
     db: Session,
     auth: AuthContext,
@@ -182,7 +185,7 @@ def start_synthesis_batch(
     if accepted_jobs:
         repo.increment_mapping_usage(record, len(accepted_jobs))
 
-    db.commit()
+    db.flush()
     db.refresh(batch)
     for job, _upload in accepted_jobs:
         db.refresh(job)
@@ -604,10 +607,8 @@ def _run_synthesis(
     sheet_name: str | None,
     mapping_json: dict,
 ) -> None:
-    db = SessionLocal()
+    db = create_tenant_session(schema_name)
     try:
-        repo.set_search_path(db, schema_name)
-
         job = repo.get_synthesis_job_required(db, job_id)
         job.status = "PROCESSING"
         job.started_at = datetime.now(timezone.utc)

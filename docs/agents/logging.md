@@ -1,13 +1,4 @@
----
-name: logging
-description: |
-  코드 작성 시 로깅이 필요한 위치와 레벨을 판단할 때 참조.
-  OTel이 자동 처리하는 것과 로그로 남겨야 할 것을 구분한다.
-disable-model-invocation: false
-user-invocable: false
----
-
-# OTel-Native 로깅 전략
+# 로깅 규칙 (OTel-Native)
 
 > Trace = "어디로 갔는가", Log = "무슨 생각을 했는가"
 
@@ -25,12 +16,10 @@ user-invocable: false
 
 ## 로그 레벨
 
-| Level     | 용도                     | 예시                 |
-| --------- | ------------------------ | -------------------- |
-| `DEBUG`   | 개발 전용 (프로덕션 OFF) | 상세 데이터 덤프     |
-| `INFO`    | 정상 비즈니스 이벤트     | 상태 변경, 정책 적용 |
-| `WARNING` | 예상된 예외 상황         | 재시도, 폴백, 스킵   |
-| `ERROR`   | 처리 실패 (복구 불가)    | 외부 서비스 오류     |
+- `DEBUG` | 개발 전용 (프로덕션 OFF) | 상세 데이터 덤프
+- `INFO` | 정상 비즈니스 이벤트 | 상태 변경, 정책 적용 |
+- `WARNING` | 예상된 예외 상황 | 재시도, 폴백, 스킵 |
+- `ERROR` | 처리 실패 (복구 불가) | 외부 서비스 오류 |
 
 ## 레이어별 가이드
 
@@ -52,12 +41,5 @@ user-invocable: false
 ## 작성 규칙
 
 1. **구조화된 extra 사용** — f-string 금지
-
-   ```python
-   # ❌ logger.info(f"매핑 실패: {header}")
-   # ✅ logger.info("매핑 실패", extra={"header": header, "reason": reason})
-   ```
-
 2. **민감 정보 제외** — 비밀번호, 토큰, API 키 절대 포함 금지
-
 3. **Trace ID 자동 연결** — OTel Span Context가 로그에 주입되어야 함 (설정은 `core/observability.py`)

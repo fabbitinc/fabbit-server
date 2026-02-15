@@ -7,7 +7,7 @@ AGE 확장 초기화를 connect 이벤트로 자동화하여
 import uuid as _uuid
 
 from sqlalchemy import event, create_engine, text
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from uuid_utils import uuid7 as _uuid7
 
 from app.core.config import settings
@@ -41,6 +41,21 @@ def _setup_age(dbapi_connection, connection_record):
 
 
 SessionLocal = sessionmaker(bind=engine)
+
+
+def create_tenant_session(schema_name: str) -> Session:
+    """배경 태스크용 테넌트 격리 세션.
+
+    after_begin 이벤트로 매 트랜잭션 시작 시 search_path를 재설정하여
+    commit() 후 커넥션 교체 시에도 테넌트 격리를 보장합니다.
+    """
+    db = SessionLocal()
+
+    @event.listens_for(db, "after_begin")
+    def _restore_search_path(session, transaction, connection):
+        connection.execute(text(f"SET search_path = {schema_name}, ag_catalog, public"))
+
+    return db
 
 
 class Base(DeclarativeBase):

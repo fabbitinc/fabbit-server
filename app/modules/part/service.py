@@ -217,6 +217,9 @@ def _build_bom_tree(
                     reference_designator=ref,
                 )
                 node_cache[child_key] = child_node
+                # 부모로 재조회될 수 있도록 단순 키로도 등록
+                if child_pn not in node_cache:
+                    node_cache[child_pn] = child_node
                 parent_node.children.append(child_node)
 
     return root

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.database import generate_uuid7
 from app.core.exceptions import AppError
+from app.core.transactional import transactional
 from app.infrastructure.excel_parser import (
     extract_headers_and_rows,
     get_sheet_names,
@@ -408,6 +409,7 @@ def validate_mapping(
     )
 
 
+@transactional
 def confirm_mapping(
     db: Session,
     req: MappingConfirmRequest,
@@ -460,7 +462,7 @@ def confirm_mapping(
         usage_count=0,
     )
     repo.create_mapping_record(db, record)
-    db.commit()
+    db.flush()
     db.refresh(record)
 
     logger.info(

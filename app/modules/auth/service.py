@@ -8,6 +8,7 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError
+from app.core.transactional import transactional
 from app.infrastructure.password_hasher import hash_password, verify_password
 from app.infrastructure.turnstile import verify_turnstile_token
 from app.infrastructure.token_provider import TokenProvider
@@ -69,6 +70,7 @@ def check_slug(db: Session, slug: str) -> CheckSlugResponse:
     return CheckSlugResponse(available=True)
 
 
+@transactional
 def register(db: Session, req: RegisterRequest) -> RegisterResponse:
     """통합 회원가입: 유저 + 조직 + 멤버십 + 테넌트 프로비저닝 + 토큰 발급."""
     # Turnstile 봇 방지 검증
@@ -132,8 +134,6 @@ def register(db: Session, req: RegisterRequest) -> RegisterResponse:
     payload = token_provider.decode(refresh_token_str)
     repo.save_refresh_token(db, user.id, payload.jti, expires_at)
 
-    db.commit()
-
     return RegisterResponse(
         user=UserResponse.model_validate(user),
         organization=OrganizationResponse.model_validate(org),
@@ -143,6 +143,7 @@ def register(db: Session, req: RegisterRequest) -> RegisterResponse:
     )
 
 
+@transactional
 def login(db: Session, req: LoginRequest, *, slug: str | None = None) -> LoginResponse:
     """로그인: 자격증명 검증 + 토큰 발급."""
     user = repo.get_user_by_email(db, req.email)
@@ -170,8 +171,6 @@ def login(db: Session, req: LoginRequest, *, slug: str | None = None) -> LoginRe
     payload = token_provider.decode(refresh_token_str)
     repo.save_refresh_token(db, user.id, payload.jti, expires_at)
 
-    db.commit()
-
     return LoginResponse(
         user=UserResponse.model_validate(user),
         tokens=TokenResponse(
@@ -184,6 +183,9 @@ def refresh_tokens(db: Session, refresh_token_str: str) -> TokenResponse:
     """토큰 갱신 (회전): 기존 jti 삭제 → 새 토큰 발급.
 
     재사용 감지: DB에 없는 jti로 요청 시 해당 유저의 모든 토큰 폐기.
+
+    Note: @transactional 미적용 — 재사용 감지 시 삭제 커밋 후 예외를 발생시켜야 하므로
+    데코레이터의 "예외 시 rollback" 정책과 충돌합니다. 수동 try/except로 보호합니다.
     """
     payload = token_provider.decode(refresh_token_str)
     if payload.token_type != "REFRESH":
@@ -191,7 +193,7 @@ def refresh_tokens(db: Session, refresh_token_str: str) -> TokenResponse:
 
     stored = repo.get_refresh_token_by_jti(db, payload.jti)
     if not stored:
-        # 재사용 감지 — 모든 토큰 폐기
+        # 재사용 감지 — 모든 토큰 폐기 (커밋 후 예외)
         logger.warning(
             "리프레시 토큰 재사용 감지, 전체 폐기: user={user}", user=payload.sub
         )
@@ -201,38 +203,41 @@ def refresh_tokens(db: Session, refresh_token_str: str) -> TokenResponse:
         db.commit()
         raise AppError(message="토큰이 재사용되었습니다. 다시 로그인해주세요", code="TOKEN_INVALID")
 
-    # 기존 토큰 삭제 (회전)
-    repo.delete_refresh_token_by_jti(db, payload.jti)
+    # 정상 경로 — 기존 토큰 삭제 + 새 토큰 발급
+    try:
+        repo.delete_refresh_token_by_jti(db, payload.jti)
 
-    # 새 토큰 발급
-    user = repo.get_user_by_id(db, stored.user_id)
-    if not user:
-        raise AppError(message="사용자를 찾을 수 없습니다", code="NOT_FOUND")
+        user = repo.get_user_by_id(db, stored.user_id)
+        if not user:
+            raise AppError(message="사용자를 찾을 수 없습니다", code="NOT_FOUND")
 
-    memberships = repo.get_user_memberships(db, user.id)
-    if not memberships:
-        raise AppError(message="소속된 조직이 없습니다", code="FORBIDDEN")
+        memberships = repo.get_user_memberships(db, user.id)
+        if not memberships:
+            raise AppError(message="소속된 조직이 없습니다", code="FORBIDDEN")
 
-    new_access = token_provider.create_access_token(
-        sub=str(user.id), email=user.email, org_id=str(memberships[0].org_id)
-    )
-    new_refresh_str, new_expires = token_provider.create_refresh_token(
-        sub=str(user.id), email=user.email
-    )
-    new_payload = token_provider.decode(new_refresh_str)
-    repo.save_refresh_token(db, user.id, new_payload.jti, new_expires)
+        new_access = token_provider.create_access_token(
+            sub=str(user.id), email=user.email, org_id=str(memberships[0].org_id)
+        )
+        new_refresh_str, new_expires = token_provider.create_refresh_token(
+            sub=str(user.id), email=user.email
+        )
+        new_payload = token_provider.decode(new_refresh_str)
+        repo.save_refresh_token(db, user.id, new_payload.jti, new_expires)
 
-    db.commit()
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
     return TokenResponse(access_token=new_access, refresh_token=new_refresh_str)
 
 
+@transactional
 def logout(db: Session, user_id: str, refresh_token_str: str) -> None:
     """로그아웃: 리프레시 토큰 폐기."""
     payload = token_provider.decode(refresh_token_str)
     if payload.jti:
         repo.delete_refresh_token_by_jti(db, payload.jti)
-    db.commit()
 
 
 def get_me(db: Session, user_id: str) -> MeResponse:
@@ -259,6 +264,7 @@ def get_me(db: Session, user_id: str) -> MeResponse:
     )
 
 
+@transactional
 def complete_onboarding(db: Session, org_id: str) -> OrganizationResponse:
     """조직 온보딩 완료 처리."""
     import uuid
@@ -270,7 +276,6 @@ def complete_onboarding(db: Session, org_id: str) -> OrganizationResponse:
         raise AppError(message="이미 온보딩이 완료된 조직입니다", code="ALREADY_EXISTS")
 
     org = repo.complete_onboarding(db, uuid.UUID(org_id))
-    db.commit()
     return OrganizationResponse.model_validate(org)
 
 

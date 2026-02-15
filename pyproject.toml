@@ -40,3 +40,6 @@ dependencies = [
     "PyMuPDF>=1.24.0",
     "Pillow>=10.0.0",
 ]
+
+[dependency-groups]
+dev = ["pytest>=8.0.0"]

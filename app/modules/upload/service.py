@@ -103,6 +103,7 @@ def batch_create_uploads(
     return BatchCreateUploadResponse(items=results)
 
 
+@transactional
 def batch_complete_uploads(
     db: Session,
     req: BatchCompleteRequest,
@@ -146,7 +147,6 @@ def batch_complete_uploads(
         upload.status = "UPLOADED"
         completed.append(_to_upload_complete_response(upload))
 
-    db.commit()
     logger.info(
         "배치 업로드 완료: 성공={ok}건 실패={fail}건",
         ok=len(completed),
@@ -155,6 +155,7 @@ def batch_complete_uploads(
     return BatchCompleteResponse(items=completed, failed=failed)
 
 
+@transactional
 def complete_upload(
     db: Session,
     upload_id: uuid.UUID,
@@ -174,7 +175,6 @@ def complete_upload(
         )
 
     upload.status = "UPLOADED"
-    db.commit()
 
     logger.info(
         "업로드 완료: upload_id={upload_id} size={size}",

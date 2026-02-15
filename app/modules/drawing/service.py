@@ -8,7 +8,7 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
-from app.core.database import SessionLocal, generate_uuid7
+from app.core.database import create_tenant_session, generate_uuid7
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
 from app.infrastructure.age_client import execute_cypher_raw
@@ -212,6 +212,7 @@ def get_analysis(db: Session, analysis_id: uuid.UUID) -> DrawingAnalysisResponse
     return _to_analysis_response(record)
 
 
+@transactional
 def start_drawing_synthesis(
     db: Session,
     auth: AuthContext,
@@ -232,7 +233,7 @@ def start_drawing_synthesis(
         job_id=generate_uuid7(),
         analysis_id=record.id,
     )
-    db.commit()
+    db.flush()
     db.refresh(job)
 
     schema_name = org_id_to_schema(auth.org_id)
@@ -370,10 +371,8 @@ def _run_drawing_synthesis(
     file_key: str,
 ) -> None:
     """Background task — 도면 분석 결과를 AGE 그래프에 적재."""
-    db = SessionLocal()
+    db = create_tenant_session(schema_name)
     try:
-        repo.set_search_path(db, schema_name)
-
         job = repo.get_synthesis_job_required(db, job_id)
         job.status = "PROCESSING"
         job.started_at = datetime.now(timezone.utc)

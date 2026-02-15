@@ -1,259 +1,29 @@
-# CLAUDE.md — Fabbit Server (Ontology Engine)
+# Fabbit Server
 
-## 프로젝트 개요
+@docs/agents/project.md
 
-제조업 온톨로지 기반 데이터 파이프라인 서버. Excel/CSV 파일을 업로드하면 LLM이 구조를 분석(1회)하고, 순수 Python으로 Apache AGE 그래프 DB에 배치 적재합니다.
+## 레이어별 규칙
 
-## 기술 스택
+### core
 
-- Python 3.12+, FastAPI, Pydantic
-- PostgreSQL + Apache AGE (그래프 DB 확장)
-- SQLAlchemy (ORM + 세션 관리), Alembic (마이그레이션)
-- LangChain + LangChain-OpenAI (LLM 추상화), 기본 모델: gpt-5-mini
-- pandas, openpyxl (Excel/CSV 파싱)
-- 패키지 관리: uv
+### api
 
-## 주요 명령어
+@docs/agents/api.md
 
-```bash
-# 인프라 실행
-docker compose up -d
+### infrastructure
 
-# 의존성 설치
-uv sync
+@docs/agents/infrastructure.md
+@docs/agents/database.md
 
-# DB 마이그레이션
-uv run alembic upgrade head
+### modules
 
-# 마이그레이션 생성 (모델 변경 시)
-uv run alembic revision --autogenerate -m "설명"
+- `schemas.py` — Pydantic 요청/응답 모델. 새 API 추가 시 반드시 정의
+- `constants.py` — 도메인 상수/Enum. 매직 넘버 대신 여기서 관리
 
-# 서버 실행
-uv run uvicorn app.main:app --reload
+@docs/agents/models.md
+@docs/agents/service.md
+@docs/agents/repository.md
 
-# 시드 데이터 삽입
-uv run python seed_data.py
+## 로깅 규칙
 
-# DB 초기화 (데이터 포함 재생성)
-docker compose down -v && docker compose up -d
-# 이후 반드시: uv run alembic upgrade head
-```
-
-## 프로젝트 구조
-
-```
-app/
-├── main.py                          # FastAPI 앱 엔트리포인트
-├── api/
-│   ├── deps.py                      # 공통 Dependency (get_db 세션 등)
-│   └── v1/
-│       └── ontology.py              # 전체 API 엔드포인트 라우터
-├── core/
-│   ├── config.py                    # Pydantic Settings (환경변수)
-│   └── database.py                  # SQLAlchemy Engine, Session, Base, AGE 초기화
-├── infrastructure/
-│   ├── age_client.py                # Apache AGE Cypher 실행 유틸리티 (Session 기반)
-│   └── llm_client.py               # OpenAI API 추상화
-└── modules/
-    └── ontology/
-        ├── constants.py             # 온톨로지 스키마 정의 (Single Source of Truth)
-        ├── models.py                # ORM 모델 (ColumnMapping)
-        ├── schemas.py               # Pydantic 요청/응답 모델
-        ├── service.py               # 비즈니스 로직 (매핑, 인제스션, 질의)
-        └── repository.py            # 데이터 접근 (Cypher 생성, ORM CRUD)
-alembic/
-├── env.py                           # Alembic 환경 설정
-├── script.py.mako                   # 마이그레이션 템플릿
-└── versions/                        # 마이그레이션 파일들
-```
-
-## 아키텍처 패턴
-
-**Modular Layered Architecture (Service-Repository 패턴)**:
-
-- `api/` → HTTP 요청 처리, 파일 파싱
-- `modules/service` → 비즈니스 로직 (매핑 생성/검증, 배치 인제스션 오케스트레이션, 질의)
-- `modules/repository` → 데이터 접근 (Cypher 생성, 값 포맷팅, SQL CRUD)
-- `infrastructure/` → 외부 시스템 (AGE 커넥션, OpenAI API)
-
-## 핵심 도메인 개념
-
-### 온톨로지 노드
-
-- **Part** — 부품 (merge key: `part_number`)
-- **Material** — 재질 (merge key: `name`)
-- **Supplier** — 공급업체 (merge key: `name`)
-- **Drawing** — 도면 (merge key: `drawing_number`)
-
-### 관계 타입
-
-- `CONSISTS_OF` (Part → Part), `MADE_OF` (Part → Material)
-- `SUPPLIED_BY` (Part → Supplier), `DEFINED_BY` (Part → Drawing)
-
-### 테넌트 격리 (Schema-per-Tenant)
-
-- `_org_id` 노드 속성 방식은 **폐기 예정**. 모든 격리는 schema-per-tenant로 전환
-- `public` 스키마: 전역 공유 데이터 (organizations, users, subscriptions)
-- `tenant_{org_id}` 스키마: 테넌트별 비즈니스 데이터 + AGE 그래프
-- 요청 시 `SET search_path TO tenant_{org_id}, public`으로 스키마 전환
-
-### 확장 속성
-
-- 온톨로지에 없는 컬럼은 `_ext_` 프리픽스로 노드 속성에 저장
-- 예: `탄소배출량` → `_ext_carbon_emission`
-
-## API 엔드포인트
-
-| 메서드 | 경로                        | 설명                             |
-| ------ | --------------------------- | -------------------------------- |
-| POST   | `/pipeline/mapping/preview` | Excel 업로드 → LLM 매핑 미리보기 |
-| POST   | `/pipeline/mapping/confirm` | 매핑 확정 및 DB 저장             |
-| GET    | `/pipeline/mappings`        | 저장된 매핑 목록                 |
-| POST   | `/pipeline/ingest`          | Excel + mapping_id → 배치 적재   |
-| POST   | `/pipeline/query`           | 자연어 질의 (테넌트 격리)        |
-| POST   | `/ontology/cypher`          | 자연어 → Cypher 변환 및 실행     |
-| GET    | `/health`                   | 헬스체크                         |
-
-## 데이터 파이프라인 흐름
-
-1. **매핑 미리보기**: Excel 업로드 → LLM이 헤더+샘플 분석 → 매핑 JSON 반환
-2. **매핑 확정**: 사용자 검토 후 확정 → `column_mappings` 테이블 저장 (Human-in-the-loop)
-3. **배치 인제스션**: Excel + mapping_id → 500행 청크 → 노드 MERGE → 관계 MERGE → 커밋
-4. **자연어 질의**: 질문 → LLM이 Cypher 생성 (테넌트 격리 포함) → 실행 → 결과 반환
-
-## 모델(Entity) 작성 규칙
-
-### PK는 UUID v7 필수
-
-모든 ORM 모델의 PK는 `uuid7`을 사용한다. uuid4 대비 시간순 정렬이 가능하여 B-tree 인덱스 성능이 우수하다.
-
-```python
-from app.core.database import generate_uuid7
-
-id: Mapped[uuid.UUID] = mapped_column(
-    UUID(as_uuid=True), primary_key=True, default=generate_uuid7
-)
-```
-
-- `generate_uuid7()`은 `database.py`에 정의된 공통 함수. `uuid_utils.uuid7()` → 표준 `uuid.UUID`로 변환하여 psycopg2 호환성 보장
-- `uuid_utils.UUID`를 직접 사용하면 psycopg2가 `can't adapt type` 에러 발생
-
-### 인덱스 / 유니크 선언 원칙
-
-1. **모든 인덱스·유니크 제약은 `__table_args__`에서 선언** — 컬럼 정의에 `unique=True`, `index=True` 사용 금지
-2. **FK 컬럼에는 반드시 인덱스 선언** — PostgreSQL은 FK에 자동 인덱스를 생성하지 않음
-3. **자주 WHERE 조건으로 사용되는 컬럼에 인덱스 추가** — 조회 패턴 기반으로 판단
-4. **복합 유니크 제약조건은 선두 컬럼 기준 조회를 커버** — 별도 단일 인덱스 불필요
-5. **인덱스 목적을 한글 주석으로 명시**
-6. **네이밍**: `ix_{table}_{columns}` (인덱스), `uq_{table}_{columns}` (유니크)
-
-```python
-__table_args__ = (
-    # 이메일 유일성
-    UniqueConstraint("email", name="uq_users_email"),
-    # 소유자별 조직 조회 최적화
-    Index("ix_organizations_owner_id", "owner_id"),
-)
-```
-
-### TenantBase 사용 규칙
-
-테넌트 스키마(`tenant_{org_id}`)에 생성되는 비즈니스 모델은 `TenantBase`를 상속한다.
-
-1. **`TenantBase` 상속** — `Base`가 아닌 `TenantBase`를 상속하여 `public` 스키마 모델과 분리
-2. **프리픽스 없이 도메인 이름 사용** — `TenantProject` ✗ → `Project` ✓. 대부분의 비즈니스 모델은 테넌트 소속이므로 별도 프리픽스 불필요
-3. **도메인별 모듈 배치** — `app/modules/{domain}/models.py`에 배치 (예: `app/modules/project/models.py`)
-4. **프로비저닝 시 import 필수** — `TenantBase.metadata.create_all()`이 모델을 인식하려면 `provisioning.py`에서 해당 모듈을 import 해야 함
-5. **초기 생성은 프로비저닝, 이후 변경은 Alembic** — 신규 테넌트는 `TenantBase.metadata.create_all()`로 생성. 기존 테넌트의 스키마 변경은 Alembic tenant 트랙으로 모든 `tenant_*` 스키마를 순회하며 적용
-
-```python
-# app/modules/project/models.py
-from app.core.database import TenantBase, generate_uuid7
-
-class Project(TenantBase):
-    __tablename__ = "projects"
-    ...
-```
-
-```python
-# app/modules/auth/provisioning.py
-import app.modules.project.models  # noqa: F401 — TenantBase에 모델 등록
-import app.modules.document.models  # noqa: F401
-```
-
-## 데이터베이스 & ORM 가이드라인
-
-### DB 접근 원칙
-
-1. **SQLAlchemy 우선**: 모든 DB 접근은 SQLAlchemy Session을 통해야 함 (psycopg2 직접 사용 금지)
-2. **ORM for 정적 테이블**: `public` 스키마 테이블(Users, Orgs 등)은 SQLAlchemy 모델로 매핑
-3. **Raw SQL for AGE**: Cypher 쿼리는 `sqlalchemy.text()`로 실행. AGE vertex를 ORM 객체로 매핑하지 않음
-4. **테넌트 격리**: 반드시 `SET search_path` 또는 명시적 그래프 이름으로 데이터 격리 보장
-
-### 스키마 설계
-
-#### `public` 스키마 (Global Shared)
-
-- 전체 서비스 운영을 위한 마스터 데이터
-- 주요 테이블: `organizations` (id, name, plan_type), `users` (id, email, current_org_id), `subscriptions` (org_id, status, ai_credits_balance)
-- Alembic 표준 마이그레이션 사용
-
-#### `tenant_{org_id}` 스키마 (Isolated)
-
-- 특정 고객사만의 비즈니스 데이터 및 지식 그래프
-- SQL 테이블: projects, schedules, folders, file_metadata, column_mappings
-- AGE 그래프: 스키마 내 독립 그래프로 존재
-- Alembic Template 기반 + Custom Migration Runner
-
-### 테넌트 세션 관리 (FastAPI Depends)
-
-```python
-# app/api/deps.py 구현 방향
-def get_tenant_db(org_id: str = Depends(get_current_org_id)):
-    db = SessionLocal()
-    try:
-        schema_name = f"tenant_{org_id}"
-        db.execute(text(f"SET search_path TO {schema_name}, public"))
-        yield db
-    finally:
-        db.close()
-```
-
-### 마이그레이션 전략 (Alembic)
-
-- **public 트랙** (`Base` 모델): `alembic upgrade head`로 public 스키마만 관리
-- **tenant 트랙** (`TenantBase` 모델): 기존 테넌트 스키마에 변경사항 적용
-  - `organizations` 테이블에서 모든 org_id 조회
-  - 각 `tenant_{org_id}` 스키마에 `SET search_path` 후 마이그레이션 실행
-  - 구현 예정: Custom Migration Runner 또는 Alembic multi-schema 확장
-
-### 테넌트 프로비저닝 (신규 조직 가입 시)
-
-`app/modules/auth/provisioning.py`에서 단일 트랜잭션으로 실행:
-
-1. AGE 그래프 생성: `SELECT create_graph('tenant_{org_id}')` (스키마 자동 생성)
-2. 테넌트 테이블 생성: `TenantBase.metadata.create_all()` (search_path 전환 후)
-3. 온톨로지 vlabel + 속성 인덱스 생성: `create_vlabel()` + `agtype_access_operator` B-tree
-
-### 쿼리 작성 규칙
-
-- 일반 SQL: 스키마명 생략 가능 (`SET search_path` 덕분)
-- AGE Cypher: 반드시 첫 번째 인자에 **동적 그래프 이름** 사용
-  - `SELECT * FROM cypher(:graph_name, $$ ... $$)`
-- 테넌트 격리 테스트: 서로 다른 org_id 세션이 상대 데이터를 볼 수 없는지 반드시 검증
-
-### 데이터 백업
-
-- 전체 DB: 주기적 백업
-- 특정 테넌트: `pg_dump -n tenant_{org_id}`로 스키마 단위 추출
-
-## 로깅
-
-각 개발단계 이후 `logging` 스킬을 사용하여 로그 작성
-
-## 주의사항
-
-- `apache-age-python` 패키지는 사용하지 않음 (빌드 이슈). `database.py`의 SQLAlchemy connect 이벤트로 AGE 초기화
-- Apache AGE Cypher의 RETURN 컬럼 수를 자동 파싱하여 SQL 래핑 (`_count_return_columns`)
-- CSV 파일은 UTF-8, UTF-16, CP949, EUC-KR 인코딩과 쉼표/탭/세미콜론 구분자를 자동 감지
-- 현재 인증 없이 `org_id`를 파라미터로 받음 (임시)
+@docs/agents/logging.md

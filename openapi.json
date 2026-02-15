@@ -948,6 +948,396 @@
                 ]
             }
         },
+        "/api/v1/projects/folders": {
+            "post": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Create Folder",
+                "operationId": "create_folder_api_v1_projects_folders_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateFolderRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FolderResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/projects/folders/{folder_id}": {
+            "patch": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Update Folder",
+                "operationId": "update_folder_api_v1_projects_folders__folder_id__patch",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "folder_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Folder Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateFolderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FolderResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Delete Folder",
+                "operationId": "delete_folder_api_v1_projects_folders__folder_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "folder_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Folder Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/folders/{folder_id}/move": {
+            "patch": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Move Folder",
+                "operationId": "move_folder_api_v1_projects_folders__folder_id__move_patch",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "folder_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Folder Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MoveFolderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FolderResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects": {
+            "post": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Create Project",
+                "operationId": "create_project_api_v1_projects_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateProjectRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/projects/{project_id}": {
+            "get": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Get Project",
+                "operationId": "get_project_api_v1_projects__project_id__get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Update Project",
+                "operationId": "update_project_api_v1_projects__project_id__patch",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateProjectRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Delete Project",
+                "operationId": "delete_project_api_v1_projects__project_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/projects/{project_id}/synthesis/batch": {
             "post": {
                 "tags": [
@@ -992,6 +1382,152 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/parts": {
+            "get": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Get Project Parts",
+                "operationId": "get_project_parts_api_v1_projects__project_id__parts_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/parts/{part_id}": {
+            "post": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Add Part To Project",
+                "operationId": "add_part_to_project_api_v1_projects__project_id__parts__part_id__post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Remove Part From Project",
+                "operationId": "remove_part_from_project_api_v1_projects__project_id__parts__part_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
                     },
                     "422": {
                         "description": "Validation Error",
@@ -1172,13 +1708,13 @@
                 }
             }
         },
-        "/api/v1/items": {
+        "/api/v1/parts": {
             "get": {
                 "tags": [
-                    "items"
+                    "parts"
                 ],
-                "summary": "List Items",
-                "operationId": "list_items_api_v1_items_get",
+                "summary": "List Parts",
+                "operationId": "list_parts_api_v1_parts_get",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -1255,13 +1791,13 @@
                 }
             }
         },
-        "/api/v1/items/{part_number}": {
+        "/api/v1/parts/{part_number}": {
             "get": {
                 "tags": [
-                    "items"
+                    "parts"
                 ],
-                "summary": "Get Item",
-                "operationId": "get_item_api_v1_items__part_number__get",
+                "summary": "Get Part",
+                "operationId": "get_part_api_v1_parts__part_number__get",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -1302,13 +1838,13 @@
                 }
             }
         },
-        "/api/v1/items/{part_number}/bom-tree": {
+        "/api/v1/parts/{part_number}/bom-tree": {
             "get": {
                 "tags": [
-                    "items"
+                    "parts"
                 ],
-                "summary": "Get Item Bom Tree",
-                "operationId": "get_item_bom_tree_api_v1_items__part_number__bom_tree_get",
+                "summary": "Get Part Bom Tree",
+                "operationId": "get_part_bom_tree_api_v1_parts__part_number__bom_tree_get",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -1728,6 +2264,12 @@
                             }
                         ],
                         "title": "Find Number"
+                    },
+                    "extended_properties": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Extended Properties",
+                        "default": {}
                     }
                 },
                 "type": "object",
@@ -1791,6 +2333,12 @@
                             }
                         ],
                         "title": "Find Number"
+                    },
+                    "extended_properties": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Extended Properties",
+                        "default": {}
                     }
                 },
                 "type": "object",
@@ -1960,6 +2508,63 @@
                 "title": "ColumnMapping",
                 "description": "Excel \uceec\ub7fc \u2192 \uc628\ud1a8\ub85c\uc9c0 \ub178\ub4dc \uc18d\uc131 \ub9e4\ud551"
             },
+            "CreateFolderRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "title": "Name"
+                    },
+                    "project_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Project Id"
+                    },
+                    "parent_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Parent Id"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "project_id"
+                ],
+                "title": "CreateFolderRequest"
+            },
+            "CreateProjectRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "title": "Name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "CreateProjectRequest"
+            },
             "CreateUploadRequest": {
                 "properties": {
                     "original_name": {
@@ -1980,7 +2585,19 @@
                         "title": "File Size",
                         "description": "\ud30c\uc77c \ud06c\uae30 (\ubc14\uc774\ud2b8)"
                     },
-                    "project_id": {
+                    "owner_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Owner Type",
+                        "description": "\uc18c\uc720\uc790 \ud0c0\uc785 (project, folder, part, ...)"
+                    },
+                    "owner_id": {
                         "anyOf": [
                             {
                                 "type": "string",
@@ -1990,8 +2607,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Project Id",
-                        "description": "\uc5f0\uacb0\ud560 \ud504\ub85c\uc81d\ud2b8 ID"
+                        "title": "Owner Id",
+                        "description": "\uc18c\uc720\uc790 \uc5d4\ud2f0\ud2f0 ID"
                     }
                 },
                 "type": "object",
@@ -2559,6 +3176,57 @@
                 "type": "object",
                 "title": "ExtractedTitleBlock",
                 "description": "\ud45c\uc81c\ub780 \ucd94\ucd9c \uacb0\uacfc."
+            },
+            "FolderResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "parent_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Parent Id"
+                    },
+                    "project_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Project Id"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "parent_id",
+                    "project_id",
+                    "created_at"
+                ],
+                "title": "FolderResponse"
             },
             "FolderStats": {
                 "properties": {
@@ -3153,6 +3821,24 @@
                 ],
                 "title": "MembershipResponse"
             },
+            "MoveFolderRequest": {
+                "properties": {
+                    "parent_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Parent Id"
+                    }
+                },
+                "type": "object",
+                "title": "MoveFolderRequest"
+            },
             "NodeLabelSchema": {
                 "properties": {
                     "label": {
@@ -3315,6 +4001,11 @@
             },
             "PartDetailResponse": {
                 "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
                     "part_number": {
                         "type": "string",
                         "title": "Part Number"
@@ -3459,6 +4150,7 @@
                 },
                 "type": "object",
                 "required": [
+                    "id",
                     "part_number"
                 ],
                 "title": "PartDetailResponse",
@@ -3527,6 +4219,11 @@
             },
             "PartSummary": {
                 "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
                     "part_number": {
                         "type": "string",
                         "title": "Part Number"
@@ -3563,25 +4260,11 @@
                             }
                         ],
                         "title": "Lifecycle State"
-                    },
-                    "supplier_count": {
-                        "type": "integer",
-                        "title": "Supplier Count",
-                        "default": 0
-                    },
-                    "drawing_count": {
-                        "type": "integer",
-                        "title": "Drawing Count",
-                        "default": 0
-                    },
-                    "child_count": {
-                        "type": "integer",
-                        "title": "Child Count",
-                        "default": 0
                     }
                 },
                 "type": "object",
                 "required": [
+                    "id",
                     "part_number"
                 ],
                 "title": "PartSummary",
@@ -3634,6 +4317,49 @@
                     "price_monthly"
                 ],
                 "title": "PlanResponse"
+            },
+            "ProjectResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "ProjectResponse"
             },
             "ProjectStats": {
                 "properties": {
@@ -4720,6 +5446,53 @@
                     "refresh_token"
                 ],
                 "title": "TokenResponse"
+            },
+            "UpdateFolderRequest": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 200
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name"
+                    }
+                },
+                "type": "object",
+                "title": "UpdateFolderRequest"
+            },
+            "UpdateProjectRequest": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 200
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description"
+                    }
+                },
+                "type": "object",
+                "title": "UpdateProjectRequest"
             },
             "UploadCompleteResponse": {
                 "properties": {

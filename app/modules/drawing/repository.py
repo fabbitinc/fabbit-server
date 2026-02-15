@@ -2,16 +2,11 @@
 
 import uuid
 
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.infrastructure.age_client import execute_cypher
 from app.modules.drawing.models import DrawingAnalysisRecord, DrawingSynthesisJob
 from app.modules.upload.models import Upload
-
-
-def set_search_path(db: Session, schema_name: str) -> None:
-    db.execute(text(f"SET search_path = {schema_name}, ag_catalog, public"))
 
 
 def get_upload_by_id(db: Session, upload_id: uuid.UUID) -> Upload | None:
