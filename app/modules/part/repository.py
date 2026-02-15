@@ -105,6 +105,7 @@ def upsert_bom_link(
     sequence: int | None = None,
     reference_designator: str | None = None,
     find_number: str | None = None,
+    extended_properties: dict | None = None,
 ) -> None:
     """BOM 관계를 RDS(bom_links)와 Graph(CONSISTS_OF)에 동시 저장."""
     # ── RDS ──
@@ -135,6 +136,10 @@ def upsert_bom_link(
             existing.reference_designator = reference_designator
         if find_number is not None:
             existing.find_number = find_number
+        if extended_properties:
+            merged = dict(existing.extended_properties or {})
+            merged.update(extended_properties)
+            existing.extended_properties = merged
     else:
         link = BomLink(
             parent_part_id=parent.id,
@@ -143,6 +148,7 @@ def upsert_bom_link(
             sequence=sequence,
             reference_designator=reference_designator,
             find_number=find_number,
+            extended_properties=extended_properties or {},
         )
         db.add(link)
 
@@ -160,6 +166,13 @@ def upsert_bom_link(
     if find_number is not None:
         esc_fn = escape_cypher_value(find_number)
         set_parts.append(f"r.find_number = '{esc_fn}'")
+    for ext_key, ext_val in (extended_properties or {}).items():
+        esc_key = escape_cypher_value(ext_key)
+        if isinstance(ext_val, (int, float)):
+            set_parts.append(f"r.`{esc_key}` = {ext_val}")
+        else:
+            esc_val = escape_cypher_value(str(ext_val))
+            set_parts.append(f"r.`{esc_key}` = '{esc_val}'")
 
     set_str = ", ".join(set_parts)
     cypher = (
@@ -182,6 +195,7 @@ def get_children(db: Session, parent_part_id: uuid.UUID) -> list[dict]:
             BomLink.sequence,
             BomLink.reference_designator,
             BomLink.find_number,
+            BomLink.extended_properties,
             Part.part_number,
             Part.name,
         )
@@ -198,6 +212,7 @@ def get_children(db: Session, parent_part_id: uuid.UUID) -> list[dict]:
             "sequence": r.sequence,
             "reference_designator": r.reference_designator,
             "find_number": r.find_number,
+            "extended_properties": r.extended_properties or {},
         }
         for r in rows
     ]
@@ -211,6 +226,7 @@ def get_parents(db: Session, child_part_id: uuid.UUID) -> list[dict]:
             BomLink.sequence,
             BomLink.reference_designator,
             BomLink.find_number,
+            BomLink.extended_properties,
             Part.part_number,
             Part.name,
         )
@@ -227,6 +243,7 @@ def get_parents(db: Session, child_part_id: uuid.UUID) -> list[dict]:
             "sequence": r.sequence,
             "reference_designator": r.reference_designator,
             "find_number": r.find_number,
+            "extended_properties": r.extended_properties or {},
         }
         for r in rows
     ]
@@ -264,6 +281,31 @@ def get_bom_paths(db: Session, part_number: str, graph_name: str) -> list[dict]:
             ref_list.append(props.get("reference_designator"))
         results.append({"c0": pn_list, "c1": qty_list, "c2": ref_list})
     return results
+
+
+# ── 비-BOM 관계 (Graph only — 향후 drawing/, supplier/ 모듈로 분리 예정) ──
+
+
+def get_drawings(db: Session, graph_name: str, part_number: str) -> list[dict]:
+    """DEFINED_BY 도면 (Graph)."""
+    escaped = escape_cypher_value(part_number)
+    query = (
+        f"MATCH (p:Part {{part_number: '{escaped}'}})-[:DEFINED_BY]->(d:Drawing) "
+        f"RETURN d.drawing_number, d.name, d.version, d.status "
+        f"ORDER BY d.drawing_number"
+    )
+    return execute_cypher(db, query, graph_name)
+
+
+def get_suppliers(db: Session, graph_name: str, part_number: str) -> list[dict]:
+    """SUPPLIED_BY 공급사 (Graph)."""
+    escaped = escape_cypher_value(part_number)
+    query = (
+        f"MATCH (p:Part {{part_number: '{escaped}'}})-[r:SUPPLIED_BY]->(s:Supplier) "
+        f"RETURN s.company_name, s.code, s.country, r.unit_cost "
+        f"ORDER BY s.company_name"
+    )
+    return execute_cypher(db, query, graph_name)
 
 
 # ── 내부 헬퍼 ──

@@ -1,4 +1,4 @@
-"""아이템(Part) 조회 비즈니스 로직.
+"""부품(Part) 조회 비즈니스 로직.
 
 속성과 BOM 관계는 RDS에서, 비-BOM 관계(Drawing, Supplier)는 Graph에서 읽습니다.
 """
@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.modules.auth.provisioning import org_id_to_schema
-from app.modules.item import repository as repo
-from app.modules.part import repository as part_repo
-from app.modules.item.schemas import (
+from app.modules.part import repository as repo
+from app.modules.part.models import Part
+from app.modules.part.schemas import (
     BomChild,
     BomParent,
     BomTreeNode,
@@ -21,7 +21,6 @@ from app.modules.item.schemas import (
     RelatedDrawing,
     RelatedSupplier,
 )
-from app.modules.part.models import Part
 
 
 def _safe_int(val, default: int = 0) -> int:
@@ -53,7 +52,7 @@ def _safe_str(val) -> str | None:
 # ── Part 목록 ──
 
 
-def list_items(
+def list_parts(
     db: Session,
     auth: AuthContext,
     *,
@@ -87,7 +86,7 @@ def list_items(
 # ── Part 상세 ──
 
 
-def get_item(db: Session, auth: AuthContext, part_number: str) -> PartDetailResponse:
+def get_part(db: Session, auth: AuthContext, part_number: str) -> PartDetailResponse:
     graph_name = org_id_to_schema(auth.org_id)
 
     # 속성: RDS
@@ -96,8 +95,8 @@ def get_item(db: Session, auth: AuthContext, part_number: str) -> PartDetailResp
         raise AppError(message=f"Part '{part_number}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
 
     # BOM 관계: RDS JOIN (name 포함)
-    children_rows = part_repo.get_children(db, part.id)
-    parents_rows = part_repo.get_parents(db, part.id)
+    children_rows = repo.get_children(db, part.id)
+    parents_rows = repo.get_parents(db, part.id)
 
     # 비-BOM 관계: Graph
     drawings_rows = repo.get_drawings(db, graph_name, part_number)
@@ -111,6 +110,7 @@ def get_item(db: Session, auth: AuthContext, part_number: str) -> PartDetailResp
             sequence=r["sequence"],
             reference_designator=r["reference_designator"],
             find_number=r["find_number"],
+            extended_properties=r.get("extended_properties", {}),
         )
         for r in children_rows
     ]
@@ -123,6 +123,7 @@ def get_item(db: Session, auth: AuthContext, part_number: str) -> PartDetailResp
             sequence=r["sequence"],
             reference_designator=r["reference_designator"],
             find_number=r["find_number"],
+            extended_properties=r.get("extended_properties", {}),
         )
         for r in parents_rows
     ]
@@ -221,7 +222,7 @@ def _build_bom_tree(
     return root
 
 
-def get_item_bom_tree(
+def get_part_bom_tree(
     db: Session,
     auth: AuthContext,
     part_number: str,
@@ -233,7 +234,7 @@ def get_item_bom_tree(
     if not part:
         raise AppError(message=f"Part '{part_number}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
 
-    paths = part_repo.get_bom_paths(db, part_number, graph_name)
+    paths = repo.get_bom_paths(db, part_number, graph_name)
 
     # paths에서 모든 part_number 추출하여 name 일괄 조회
     all_pns: set[str] = {part_number}

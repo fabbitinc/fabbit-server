@@ -36,6 +36,9 @@ _s3 = S3Client()
 
 CHUNK_SIZE = 500
 
+# BOM 관계의 표준 속성 키 (이 외의 속성은 extended_properties로 분류)
+_BOM_STANDARD_KEYS = {"parent_pn", "child_pn", "quantity", "sequence", "reference_designator", "find_number"}
+
 
 def start_synthesis(
     db: Session,
@@ -676,6 +679,11 @@ def _run_synthesis(
                     # BOM 관계 → part_repo (RDS + Graph dual-write)
                     bom_entries = _extract_bom_data(row, mapping)
                     for entry in bom_entries:
+                        # 표준 BOM 속성과 확장 속성 분리
+                        ext_props = {
+                            k: v for k, v in entry.items()
+                            if k not in _BOM_STANDARD_KEYS
+                        }
                         part_repo.upsert_bom_link(
                             db,
                             graph_name,
@@ -685,6 +693,7 @@ def _run_synthesis(
                             sequence=entry.get("sequence"),
                             reference_designator=entry.get("reference_designator"),
                             find_number=entry.get("find_number"),
+                            extended_properties=ext_props if ext_props else None,
                         )
 
                     # 비-Part 노드 → Graph only (기존)

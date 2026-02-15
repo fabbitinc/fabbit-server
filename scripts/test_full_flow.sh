@@ -547,35 +547,35 @@ info "생성된 Cypher: ${BOM_CYPHER}"
 info "AI 답변: ${BOM_ANSWER:0:300}"
 
 # =========================================================
-step "13. 아이템 목록 조회 (GET /items)"
+step "13. Part 목록 조회 (GET /parts)"
 # =========================================================
-ITEMS_RESP=$(curl -sf "${API}/items?limit=5" \
-    -H "$AUTH") || fail "아이템 목록 조회 실패"
+ITEMS_RESP=$(curl -sf "${API}/parts?limit=5" \
+    -H "$AUTH") || fail "Part 목록 조회 실패"
 
 ITEM_TOTAL=$(echo "$ITEMS_RESP" | jq -r '.total')
 ITEM_COUNT=$(echo "$ITEMS_RESP" | jq '.items | length')
 
 if [ "$ITEM_TOTAL" -eq 0 ]; then
-    fail "아이템이 0건 (합성 후 Part가 존재해야 함)"
+    fail "Part가 0건 (합성 후 Part가 존재해야 함)"
 fi
-pass "아이템 목록: total=${ITEM_TOTAL}, 조회=${ITEM_COUNT}건"
+pass "Part 목록: total=${ITEM_TOTAL}, 조회=${ITEM_COUNT}건"
 
-# 첫 번째 아이템의 part_number 추출
+# 첫 번째 Part의 part_number 추출
 FIRST_PN=$(echo "$ITEMS_RESP" | jq -r '.items[0].part_number')
 info "첫 번째 Part: ${FIRST_PN}"
 
 # 13-1. 검색 조회
-SEARCH_RESP=$(curl -sf "${API}/items?search=${FIRST_PN}&limit=5" \
-    -H "$AUTH") || fail "아이템 검색 실패"
+SEARCH_RESP=$(curl -sf "${API}/parts?search=${FIRST_PN}&limit=5" \
+    -H "$AUTH") || fail "Part 검색 실패"
 
 SEARCH_TOTAL=$(echo "$SEARCH_RESP" | jq -r '.total')
-pass "아이템 검색 (search=${FIRST_PN}): ${SEARCH_TOTAL}건"
+pass "Part 검색 (search=${FIRST_PN}): ${SEARCH_TOTAL}건"
 
 # =========================================================
-step "14. 아이템 상세 조회 (GET /items/{part_number})"
+step "14. Part 상세 조회 (GET /parts/{part_number})"
 # =========================================================
-DETAIL_RESP=$(curl -sf "${API}/items/${FIRST_PN}" \
-    -H "$AUTH") || fail "아이템 상세 조회 실패"
+DETAIL_RESP=$(curl -sf "${API}/parts/${FIRST_PN}" \
+    -H "$AUTH") || fail "Part 상세 조회 실패"
 
 DETAIL_PN=$(echo "$DETAIL_RESP" | jq -r '.part_number')
 DETAIL_NAME=$(echo "$DETAIL_RESP" | jq -r '.name // "N/A"')
@@ -584,19 +584,19 @@ DETAIL_PARENTS=$(echo "$DETAIL_RESP" | jq '.parents | length')
 DETAIL_DRAWINGS=$(echo "$DETAIL_RESP" | jq '.drawings | length')
 DETAIL_SUPPLIERS=$(echo "$DETAIL_RESP" | jq '.suppliers | length')
 
-pass "아이템 상세: ${DETAIL_PN} (${DETAIL_NAME})"
+pass "Part 상세: ${DETAIL_PN} (${DETAIL_NAME})"
 info "관계: children=${DETAIL_CHILDREN}, parents=${DETAIL_PARENTS}, drawings=${DETAIL_DRAWINGS}, suppliers=${DETAIL_SUPPLIERS}"
 
 # =========================================================
-step "15. BOM 트리 조회 (GET /items/{part_number}/bom-tree)"
+step "15. BOM 트리 조회 (GET /parts/{part_number}/bom-tree)"
 # =========================================================
 # CONSISTS_OF 관계가 있는 부품(PRT-001)으로 BOM 트리 조회
 BOM_PN="PRT-001"
-BOM_RESP=$(curl -sf "${API}/items/${BOM_PN}/bom-tree" \
-    -H "$AUTH") || { info "BOM 트리 조회 실패 (${BOM_PN}) — 첫번째 아이템으로 재시도"; BOM_RESP=""; }
+BOM_RESP=$(curl -sf "${API}/parts/${BOM_PN}/bom-tree" \
+    -H "$AUTH") || { info "BOM 트리 조회 실패 (${BOM_PN}) — 첫번째 Part로 재시도"; BOM_RESP=""; }
 
 if [ -z "$BOM_RESP" ]; then
-    BOM_RESP=$(curl -sf "${API}/items/${FIRST_PN}/bom-tree" \
+    BOM_RESP=$(curl -sf "${API}/parts/${FIRST_PN}/bom-tree" \
         -H "$AUTH") || fail "BOM 트리 조회 실패"
     BOM_PN="${FIRST_PN}"
 fi
@@ -683,6 +683,10 @@ pass "tenant parts 테이블 검증 통과: ${PARTS_COUNT}건"
 
 PART_REVISIONS_COUNT=$(db_query "SELECT COUNT(*) FROM ${TENANT_SCHEMA}.part_revisions;" | tr -d '[:space:]')
 pass "tenant part_revisions 테이블: ${PART_REVISIONS_COUNT}건"
+
+# BOM Links RDS 테이블 검증 (dual-write 확인)
+BOM_LINKS_COUNT=$(db_query "SELECT COUNT(*) FROM ${TENANT_SCHEMA}.bom_links;" | tr -d '[:space:]')
+pass "tenant bom_links 테이블: ${BOM_LINKS_COUNT}건"
 
 # Graph Part 노드에 BOM 합성으로 생성된 노드의 name 속성이 없는지 확인
 # (도면 합성 모듈은 아직 별도 SoT 전환 대상이 아니므로 name이 있을 수 있음)

@@ -7,7 +7,7 @@ from collections.abc import Generator
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import text
+from sqlalchemy import event, text
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
@@ -72,15 +72,19 @@ def get_tenant_db(
 ) -> Generator[Session, None, None]:
     """테넌트 격리 세션 의존성 (인증 기반 search_path 전환)
 
-    커넥션 풀에서 꺼낸 커넥션에 이전 요청의 search_path가 남아있을 수 있으므로,
-    매 요청마다 명시적으로 SET search_path를 실행하여 테넌트 격리를 보장합니다.
-
-    인증 컨텍스트의 org_id를 사용해 테넌트 스키마를 결정합니다.
+    SQLAlchemy 2.0에서 session.commit() 후 DBAPI 커넥션이 풀로 반환되며,
+    이후 쿼리 시 새 커넥션을 받을 수 있습니다. 새 커넥션에는 테넌트 search_path가
+    설정되어 있지 않으므로, after_begin 이벤트로 매 트랜잭션 시작 시
+    search_path를 재설정하여 테넌트 격리를 보장합니다.
     """
     schema = org_id_to_schema(auth.org_id)
     db = SessionLocal()
+
+    @event.listens_for(db, "after_begin")
+    def _restore_search_path(session, transaction, connection):
+        connection.execute(text(f"SET search_path = {schema}, ag_catalog, public"))
+
     try:
-        db.execute(text(f"SET search_path = {schema}, ag_catalog, public"))
         yield db
     finally:
         db.close()

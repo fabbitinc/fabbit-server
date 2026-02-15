@@ -1,4 +1,4 @@
-"""아이템(Part) 조회 API 스키마."""
+"""부품(Part) 조회 API 스키마."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ class BomChild(BaseModel):
     sequence: int | None = None
     reference_designator: str | None = None
     find_number: str | None = None
+    extended_properties: dict[str, Any] = {}
 
 
 class BomParent(BaseModel):
@@ -31,6 +32,7 @@ class BomParent(BaseModel):
     sequence: int | None = None
     reference_designator: str | None = None
     find_number: str | None = None
+    extended_properties: dict[str, Any] = {}
 
 
 class RelatedDrawing(BaseModel):
