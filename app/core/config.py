@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     turnstile_secret_key: str = ""
     turnstile_enabled: bool = False
 
+    # Background Worker
+    background_max_workers: int = 3
+
     # S3 호환 스토리지 (Cloudflare R2 / MinIO)
     storage_endpoint: str = "http://localhost:9000"
     storage_access_key: str = "minioadmin"

@@ -9,6 +9,7 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
+from app.core.background_worker import guarded
 from app.core.database import create_tenant_session, generate_uuid7
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
@@ -87,7 +88,7 @@ def start_synthesis(
 
     schema_name = org_id_to_schema(auth.org_id)
     add_background_task(
-        _run_synthesis,
+        guarded(_run_synthesis),
         job_id=job.id,
         schema_name=schema_name,
         graph_name=schema_name,
@@ -198,7 +199,7 @@ def start_synthesis_batch(
 
     for job, upload in accepted_jobs:
         add_background_task(
-            _run_synthesis,
+            guarded(_run_synthesis),
             job_id=job.id,
             schema_name=schema_name,
             graph_name=schema_name,
