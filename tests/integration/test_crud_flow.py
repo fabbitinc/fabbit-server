@@ -303,9 +303,8 @@ class TestCRUDFlow:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert len(data["items"]) >= 1
-        mapping_ids = {item["id"] for item in data["items"]}
-        assert TestCRUDFlow.mapping_id in mapping_ids
+        assert len(data["items"]) == 1, f"매핑 1건 기대, 실제 {len(data['items'])}건"
+        assert data["items"][0]["id"] == TestCRUDFlow.mapping_id
 
     def test_get_mapping(self, client: TestClient):
         """GET /mappings/{mapping_id} → 매핑 상세 조회."""
@@ -362,9 +361,8 @@ class TestCRUDFlow:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert len(data["items"]) >= 1
-        job_ids = {item["id"] for item in data["items"]}
-        assert TestCRUDFlow.synthesis_job_id in job_ids
+        assert len(data["items"]) == 1, f"합성 1건 기대, 실제 {len(data['items'])}건"
+        assert data["items"][0]["id"] == TestCRUDFlow.synthesis_job_id
 
     # ── 조회 ──
 
@@ -376,7 +374,7 @@ class TestCRUDFlow:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert data["total"] > 0, "합성 후 Part가 0건"
+        assert data["total"] == 10, f"고유 품번 10건 기대, 실제 {data['total']}건"
         part_numbers = {item["part_number"] for item in data["items"]}
         assert "ASM-001" in part_numbers
         assert "PRT-001" in part_numbers
@@ -503,9 +501,8 @@ class TestCRUDFlow:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert len(data["projects"]) >= 1
-        project_ids = {p["id"] for p in data["projects"]}
-        assert TestCRUDFlow.project_id in project_ids
+        assert len(data["projects"]) == 1, f"프로젝트 1건 기대, 실제 {len(data['projects'])}건"
+        assert data["projects"][0]["id"] == TestCRUDFlow.project_id
 
     def test_add_part_to_project(self, client: TestClient):
         """POST /projects/{project_id}/parts/{part_id} → 프로젝트에 파트 추가."""
@@ -524,7 +521,7 @@ class TestCRUDFlow:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert len(data["parts"]) >= 1
+        assert len(data["parts"]) == 1, f"파트 1건 기대, 실제 {len(data['parts'])}건"
 
     def test_remove_part_from_project(self, client: TestClient):
         """DELETE /projects/{project_id}/parts/{part_id} → 프로젝트에서 파트 제거."""
