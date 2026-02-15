@@ -7,6 +7,7 @@ import uuid as _uuid
 from loguru import logger
 from sqlalchemy.orm import Session
 
+from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
 from app.infrastructure.password_hasher import hash_password, verify_password
@@ -233,18 +234,16 @@ def refresh_tokens(db: Session, refresh_token_str: str) -> TokenResponse:
 
 
 @transactional
-def logout(db: Session, user_id: str, refresh_token_str: str) -> None:
+def logout(db: Session, auth: AuthContext, refresh_token_str: str) -> None:
     """로그아웃: 리프레시 토큰 폐기."""
     payload = token_provider.decode(refresh_token_str)
     if payload.jti:
         repo.delete_refresh_token_by_jti(db, payload.jti)
 
 
-def get_me(db: Session, user_id: str) -> MeResponse:
+def get_me(db: Session, auth: AuthContext) -> MeResponse:
     """현재 유저 + 소속 조직 목록."""
-    import uuid
-
-    user = repo.get_user_by_id(db, uuid.UUID(user_id))
+    user = repo.get_user_by_id(db, auth.account_id)
     if not user:
         raise AppError(message="사용자를 찾을 수 없습니다", code="NOT_FOUND")
 
@@ -265,22 +264,22 @@ def get_me(db: Session, user_id: str) -> MeResponse:
 
 
 @transactional
-def complete_onboarding(db: Session, org_id: str) -> OrganizationResponse:
+def complete_onboarding(db: Session, auth: AuthContext) -> OrganizationResponse:
     """조직 온보딩 완료 처리."""
-    import uuid
-
-    org = repo.get_org_by_id(db, uuid.UUID(org_id))
+    org = repo.get_org_by_id(db, auth.org_id)
     if not org:
         raise AppError(message="조직을 찾을 수 없습니다", code="NOT_FOUND")
     if org.onboarded_at:
         raise AppError(message="이미 온보딩이 완료된 조직입니다", code="ALREADY_EXISTS")
 
-    org = repo.complete_onboarding(db, uuid.UUID(org_id))
+    org = repo.complete_onboarding(db, auth.org_id)
     return OrganizationResponse.model_validate(org)
 
 
-def get_site(db: Session, slug: str) -> SiteResponse:
+def get_site(db: Session, slug: str | None) -> SiteResponse:
     """서브도메인 slug로 워크스페이스 기본 정보 조회."""
+    if not slug:
+        raise AppError(message="워크스페이스를 통해 접근해주세요", code="VALIDATION_ERROR")
     org = repo.get_org_by_slug(db, slug)
     if not org:
         raise AppError(message="존재하지 않는 워크스페이스입니다", code="NOT_FOUND")

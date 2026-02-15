@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_origin_slug, require_auth
 from app.core.auth_context import AuthContext
 from app.modules.auth import service
-from app.core.exceptions import AppError
 from app.modules.auth.schemas import (
     CheckEmailResponse,
     CheckSlugResponse,
@@ -31,8 +30,6 @@ def get_site(
     db: Session = Depends(get_db),
     slug: str | None = Depends(get_origin_slug),
 ):
-    if not slug:
-        raise AppError(message="워크스페이스를 통해 접근해주세요", code="VALIDATION_ERROR")
     return service.get_site(db, slug)
 
 
@@ -79,7 +76,7 @@ def logout(
     db: Session = Depends(get_db),
     auth: AuthContext = Depends(require_auth),
 ):
-    service.logout(db, str(auth.account_id), req.refresh_token)
+    service.logout(db, auth, req.refresh_token)
 
 
 @router.post("/onboarding/complete", response_model=OrganizationResponse)
@@ -87,7 +84,7 @@ def complete_onboarding(
     db: Session = Depends(get_db),
     auth: AuthContext = Depends(require_auth),
 ):
-    return service.complete_onboarding(db, str(auth.org_id))
+    return service.complete_onboarding(db, auth)
 
 
 @router.get("/me", response_model=MeResponse)
@@ -95,4 +92,4 @@ def me(
     db: Session = Depends(get_db),
     auth: AuthContext = Depends(require_auth),
 ):
-    return service.get_me(db, str(auth.account_id))
+    return service.get_me(db, auth)

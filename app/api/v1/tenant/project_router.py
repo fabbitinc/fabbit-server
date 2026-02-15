@@ -13,12 +13,12 @@ from app.modules.project.schemas import (
     CreateProjectRequest,
     FolderResponse,
     MoveFolderRequest,
+    ProjectPartListResponse,
     ProjectResponse,
     ProjectTreeResponse,
     UpdateFolderRequest,
     UpdateProjectRequest,
 )
-from app.modules.synthesis import service as synthesis_service
 from app.modules.synthesis.schemas import (
     SynthesisBatchStartRequest,
     SynthesisBatchStartResponse,
@@ -129,7 +129,7 @@ def start_project_synthesis_batch(
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    return synthesis_service.start_synthesis_batch(
+    return service.start_synthesis_batch(
         db,
         auth,
         project_id,
@@ -141,7 +141,7 @@ def start_project_synthesis_batch(
 # ── ProjectPart (프로젝트-파트 연결) ──
 
 
-@router.get("/{project_id}/parts")
+@router.get("/{project_id}/parts", response_model=ProjectPartListResponse)
 def get_project_parts(
     project_id: uuid.UUID,
     auth: AuthContext = Depends(require_auth),

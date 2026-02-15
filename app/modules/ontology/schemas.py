@@ -47,3 +47,36 @@ class MappingResult(BaseModel):
     column_mappings: list[ColumnMapping]
     relation_mappings: list[RelationMapping]
     extended_properties: list[ExtendedPropertyMapping]
+
+
+# === 온톨로지 스키마 조회 ===
+
+
+class PropertySchema(BaseModel):
+    name: str
+    description: str
+    data_type: str
+    required: bool
+    is_merge_key: bool
+
+
+class NodeLabelSchema(BaseModel):
+    label: str
+    description: str
+    properties: list[PropertySchema]
+    merge_keys: list[str]
+
+
+class RelationshipTypeSchema(BaseModel):
+    rel_type: str
+    description: str
+    from_label: str
+    to_label: str
+    properties: list[PropertySchema]
+
+
+class OntologySchemaResponse(BaseModel):
+    name: str
+    description: str
+    node_labels: list[NodeLabelSchema]
+    relationship_types: list[RelationshipTypeSchema]

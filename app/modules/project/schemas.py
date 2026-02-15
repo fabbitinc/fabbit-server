@@ -99,3 +99,17 @@ class FolderResponse(BaseModel):
     parent_id: uuid.UUID | None
     project_id: uuid.UUID | None
     created_at: datetime
+
+
+# ── ProjectPart 스키마 ──
+
+
+class ProjectPartResponse(BaseModel):
+    id: uuid.UUID
+    part_number: str
+    name: str | None
+    category: str | None
+
+
+class ProjectPartListResponse(BaseModel):
+    parts: list[ProjectPartResponse]

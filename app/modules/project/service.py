@@ -21,6 +21,8 @@ from app.modules.project.schemas import (
     FolderStats,
     FolderTreeNode,
     MoveFolderRequest,
+    ProjectPartListResponse,
+    ProjectPartResponse,
     ProjectResponse,
     ProjectStats,
     ProjectTreeMeta,
@@ -362,21 +364,23 @@ def get_project_parts(
     db: Session,
     auth: AuthContext,
     project_id: uuid.UUID,
-) -> list[dict]:
+) -> ProjectPartListResponse:
     project = repo.get_project_by_id(db, project_id)
     if project is None:
         raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
 
     parts = repo.get_project_parts(db, project_id)
-    return [
-        {
-            "id": p.id,
-            "part_number": p.part_number,
-            "name": p.name,
-            "category": p.category,
-        }
-        for p in parts
-    ]
+    return ProjectPartListResponse(
+        parts=[
+            ProjectPartResponse(
+                id=p.id,
+                part_number=p.part_number,
+                name=p.name,
+                category=p.category,
+            )
+            for p in parts
+        ],
+    )
 
 
 @transactional
@@ -445,4 +449,22 @@ def remove_part_from_project(
         "프로젝트-파트 연결 해제: project_id={project_id} part_id={part_id}",
         project_id=project_id,
         part_id=part_id,
+    )
+
+
+# ── 합성 배치 (cross-domain 래퍼) ──
+
+
+def start_synthesis_batch(
+    db: Session,
+    auth: AuthContext,
+    project_id: uuid.UUID,
+    req,
+    add_background_task,
+):
+    """합성 배치 시작을 synthesis 서비스에 위임."""
+    from app.modules.synthesis import service as synthesis_service
+
+    return synthesis_service.start_synthesis_batch(
+        db, auth, project_id, req, add_background_task
     )
