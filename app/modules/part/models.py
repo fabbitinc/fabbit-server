@@ -35,7 +35,11 @@ class Part(TenantBase):
         # 분류별 조회 최적화
         Index("ix_parts_category", "category"),
         # 확장 속성 필터링 최적화 (GIN)
-        Index("ix_parts_extended_properties", "extended_properties", postgresql_using="gin"),
+        Index(
+            "ix_parts_extended_properties",
+            "extended_properties",
+            postgresql_using="gin",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -115,14 +119,20 @@ class BomLink(TenantBase):
     __table_args__ = (
         # 동일 부모-자식 관계 중복 방지
         UniqueConstraint(
-            "parent_part_id", "child_part_id", name="uq_bom_links_parent_child"
+            "parent_part_id",
+            "child_part_id",
+            name="uq_bom_links_parent_part_id_child_part_id",
         ),
         # 부모 기준 자식 조회 최적화
         Index("ix_bom_links_parent_part_id", "parent_part_id"),
         # 자식 기준 부모 조회 최적화 (역추적)
         Index("ix_bom_links_child_part_id", "child_part_id"),
         # 확장 속성 필터링 최적화 (GIN)
-        Index("ix_bom_links_extended_properties", "extended_properties", postgresql_using="gin"),
+        Index(
+            "ix_bom_links_extended_properties",
+            "extended_properties",
+            postgresql_using="gin",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -140,9 +150,7 @@ class BomLink(TenantBase):
     )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     sequence: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    reference_designator: Mapped[str | None] = mapped_column(
-        String(200), nullable=True
-    )
+    reference_designator: Mapped[str | None] = mapped_column(String(200), nullable=True)
     find_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
     extended_properties: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default="{}"
@@ -163,7 +171,11 @@ class ExtendedPropertyDefinition(TenantBase):
 
     __table_args__ = (
         # 동일 엔티티에 같은 키 중복 방지
-        UniqueConstraint("key", "target_entity", name="uq_ext_prop_def_key_entity"),
+        UniqueConstraint(
+            "key",
+            "target_entity",
+            name="uq_extended_property_definitions_key_target_entity",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

@@ -22,7 +22,7 @@
 ## Base 클래스
 
 - `public` 스키마 → `Base` (Organization, User)
-- `tenant_{org_id}` 스키마 → `TenantBase` (Project, ColumnMapping)
+- `tenant_{org_id}` 스키마 → `TenantBase` (Project, MappingRecord)
 
 ### TenantBase 규칙
 

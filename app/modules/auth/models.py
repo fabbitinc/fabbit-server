@@ -13,6 +13,11 @@ from app.core.database import Base, generate_uuid7
 class User(Base):
     __tablename__ = "users"
 
+    __table_args__ = (
+        # 이메일 유일성
+        UniqueConstraint("email", name="uq_users_email"),
+    )
+
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=generate_uuid7
     )
@@ -34,14 +39,16 @@ class User(Base):
         "Membership", back_populates="user"
     )
 
-    __table_args__ = (
-        # 이메일 유일성
-        UniqueConstraint("email", name="uq_users_email"),
-    )
-
 
 class Organization(Base):
     __tablename__ = "organizations"
+
+    __table_args__ = (
+        # 슬러그 유일성
+        UniqueConstraint("slug", name="uq_organizations_slug"),
+        # 소유자별 조직 조회 최적화
+        Index("ix_organizations_owner_id", "owner_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=generate_uuid7
@@ -49,11 +56,13 @@ class Organization(Base):
     slug: Mapped[str] = mapped_column(String(50), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     owner_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     industry: Mapped[str | None] = mapped_column(String(50), nullable=True)
     team_size: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    plan_type: Mapped[str] = mapped_column(String(20), nullable=False, default="STARTER")
+    plan_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="STARTER"
+    )
     onboarded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -71,16 +80,16 @@ class Organization(Base):
         "Membership", back_populates="organization"
     )
 
-    __table_args__ = (
-        # 슬러그 유일성
-        UniqueConstraint("slug", name="uq_organizations_slug"),
-        # 소유자별 조직 조회 최적화
-        Index("ix_organizations_owner_id", "owner_id"),
-    )
-
 
 class Membership(Base):
     __tablename__ = "memberships"
+
+    __table_args__ = (
+        # 유저-조직 조합 유일성 (user_id가 선두 → 유저별 멤버십 조회 커버)
+        UniqueConstraint("user_id", "org_id", name="uq_memberships_user_id_org_id"),
+        # 조직별 멤버 목록 조회 최적화
+        Index("ix_memberships_org_id", "org_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=generate_uuid7
@@ -106,16 +115,16 @@ class Membership(Base):
         "Organization", back_populates="memberships"
     )
 
-    __table_args__ = (
-        # 유저-조직 조합 유일성 (user_id가 선두 → 유저별 멤버십 조회 커버)
-        UniqueConstraint("user_id", "org_id", name="uq_memberships_user_org"),
-        # 조직별 멤버 목록 조회 최적화
-        Index("ix_memberships_org_id", "org_id"),
-    )
-
 
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
+
+    __table_args__ = (
+        # jti 유일성
+        UniqueConstraint("token_jti", name="uq_refresh_tokens_token_jti"),
+        # 유저별 토큰 조회 최적화
+        Index("ix_refresh_tokens_user_id", "user_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=generate_uuid7
@@ -131,11 +140,4 @@ class RefreshToken(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
-    __table_args__ = (
-        # jti 유일성
-        UniqueConstraint("token_jti", name="uq_refresh_tokens_token_jti"),
-        # 유저별 토큰 조회 최적화
-        Index("ix_refresh_tokens_user_id", "user_id"),
     )

@@ -26,7 +26,7 @@ class Project(TenantBase):
         UUID(as_uuid=True), primary_key=True, default=generate_uuid7
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -37,9 +37,7 @@ class Project(TenantBase):
         nullable=False,
     )
 
-    folders: Mapped[list["Folder"]] = relationship(
-        "Folder", back_populates="project"
-    )
+    folders: Mapped[list["Folder"]] = relationship("Folder", back_populates="project")
     drawings: Mapped[list["Drawing"]] = relationship(
         "Drawing", back_populates="project"
     )
@@ -58,15 +56,17 @@ class Folder(TenantBase):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=generate_uuid7
     )
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
     parent_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("folders.id", ondelete="CASCADE"),
+        nullable=True,
     )
     project_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=True,
     )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -74,9 +74,7 @@ class Folder(TenantBase):
     project: Mapped["Project | None"] = relationship(
         "Project", back_populates="folders"
     )
-    parent: Mapped["Folder | None"] = relationship(
-        "Folder", remote_side="Folder.id"
-    )
+    parent: Mapped["Folder | None"] = relationship("Folder", remote_side="Folder.id")
 
 
 class ProjectPart(TenantBase):
@@ -86,7 +84,9 @@ class ProjectPart(TenantBase):
 
     __table_args__ = (
         # 프로젝트-파트 쌍 유일성 보장
-        UniqueConstraint("project_id", "part_id", name="uq_project_parts"),
+        UniqueConstraint(
+            "project_id", "part_id", name="uq_project_parts_project_id_part_id"
+        ),
         # 프로젝트별 파트 조회 최적화
         Index("ix_project_parts_project_id", "project_id"),
         # 파트별 프로젝트 조회 최적화

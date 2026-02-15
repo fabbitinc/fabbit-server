@@ -67,7 +67,12 @@ class SynthesisJob(TenantBase):
 class SynthesisBatch(TenantBase):
     __tablename__ = "synthesis_batches"
 
-    __table_args__ = (Index("ix_synthesis_batches_project_id", "project_id"),)
+    __table_args__ = (
+        # 프로젝트별 배치 조회 최적화
+        Index("ix_synthesis_batches_project_id", "project_id"),
+        # 매핑별 배치 조회 최적화
+        Index("ix_synthesis_batches_mapping_id", "mapping_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=generate_uuid7

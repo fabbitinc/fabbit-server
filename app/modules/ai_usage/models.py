@@ -24,7 +24,7 @@ class AiUsageLog(Base):
         # 사용자별 사용량 조회 최적화
         Index("ix_ai_usage_logs_user_id", "user_id"),
         # 기간별 조회 (조직 + 생성일)
-        Index("ix_ai_usage_logs_org_created", "org_id", "created_at"),
+        Index("ix_ai_usage_logs_org_id_created_at", "org_id", "created_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
