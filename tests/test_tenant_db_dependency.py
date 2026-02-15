@@ -22,6 +22,23 @@ class _FakeSession:
         self.closed = True
 
 
+class _FakeConnection:
+    def __init__(self, session: _FakeSession) -> None:
+        self._session = session
+
+    def execute(self, statement) -> None:
+        self._session.executed.append(str(statement))
+
+
+def _immediate_after_begin_listener(session, identifier):
+    def _decorator(fn):
+        if identifier == "after_begin":
+            fn(session, None, _FakeConnection(session))
+        return fn
+
+    return _decorator
+
+
 class TenantDependencyTests(unittest.TestCase):
     def test_require_auth_raises_when_context_missing(self) -> None:
         request = types.SimpleNamespace(state=types.SimpleNamespace())
@@ -42,6 +59,10 @@ class TenantDependencyTests(unittest.TestCase):
         with (
             patch("app.api.deps.SessionLocal", return_value=fake_session),
             patch("app.api.deps.org_id_to_schema", return_value="tenant_testorg"),
+            patch(
+                "app.api.deps.event.listens_for",
+                side_effect=_immediate_after_begin_listener,
+            ),
         ):
             dep = get_tenant_db(auth=auth)
             yielded = next(dep)
@@ -75,10 +96,14 @@ class TenantDependencyTests(unittest.TestCase):
                 "app.api.deps.org_id_to_schema",
                 side_effect=["tenant_org_a", "tenant_org_b"],
             ):
-                dep_a = get_tenant_db(auth=auth_a)
-                next(dep_a)
-                dep_b = get_tenant_db(auth=auth_b)
-                next(dep_b)
+                with patch(
+                    "app.api.deps.event.listens_for",
+                    side_effect=_immediate_after_begin_listener,
+                ):
+                    dep_a = get_tenant_db(auth=auth_a)
+                    next(dep_a)
+                    dep_b = get_tenant_db(auth=auth_b)
+                    next(dep_b)
 
                 self.assertEqual(
                     session_a.executed[0],

@@ -49,6 +49,13 @@ def _folder(
 
 
 class ProjectTreeServiceTests(unittest.TestCase):
+    class _FakeSession:
+        def commit(self) -> None:
+            return None
+
+        def rollback(self) -> None:
+            return None
+
     def _auth(self) -> AuthContext:
         return AuthContext(
             account_id=uuid.uuid4(),
@@ -97,7 +104,7 @@ class ProjectTreeServiceTests(unittest.TestCase):
             ),
         ):
             result = service.get_projects_tree(
-                db=cast(Session, object()),
+                db=cast(Session, self._FakeSession()),
                 _auth=self._auth(),
             )
 
@@ -161,7 +168,7 @@ class ProjectTreeServiceTests(unittest.TestCase):
             ),
         ):
             result = service.get_projects_tree(
-                db=cast(Session, object()),
+                db=cast(Session, self._FakeSession()),
                 _auth=self._auth(),
             )
 
@@ -231,7 +238,7 @@ class ProjectTreeServiceTests(unittest.TestCase):
             ),
         ):
             result = service.get_projects_tree(
-                db=cast(Session, object()),
+                db=cast(Session, self._FakeSession()),
                 _auth=self._auth(),
             )
 
