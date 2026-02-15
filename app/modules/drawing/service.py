@@ -49,6 +49,7 @@ from app.modules.ontology.cypher_utils import escape_cypher_value
 _s3 = S3Client()
 
 
+@transactional(read_only=True)
 def analyze_drawing(
     db: Session,
     auth: AuthContext,
@@ -195,6 +196,7 @@ def confirm_analysis(
     return _to_analysis_response(record)
 
 
+@transactional(read_only=True)
 def list_analyses(db: Session) -> DrawingAnalysisListResponse:
     """분석 레코드 목록 조회."""
     records = repo.list_analysis_records(db)
@@ -203,6 +205,7 @@ def list_analyses(db: Session) -> DrawingAnalysisListResponse:
     )
 
 
+@transactional(read_only=True)
 def get_analysis(db: Session, analysis_id: uuid.UUID) -> DrawingAnalysisResponse:
     """분석 레코드 상세 조회."""
     record = repo.get_analysis_by_id(db, analysis_id)
@@ -253,6 +256,7 @@ def start_drawing_synthesis(
     return _to_job_response(job)
 
 
+@transactional(read_only=True)
 def get_synthesis_job(
     db: Session, job_id: uuid.UUID
 ) -> DrawingSynthesisJobResponse:

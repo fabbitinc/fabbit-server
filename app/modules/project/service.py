@@ -9,7 +9,7 @@ from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
 from app.modules.auth.provisioning import org_id_to_schema
-from app.modules.part.models import Part
+from app.modules.part import repository as part_repo
 from app.modules.project import repository as repo
 from app.modules.project.models import Folder
 from app.modules.project.schemas import (
@@ -72,6 +72,7 @@ def _sort_folder_tree(nodes: list[FolderTreeNode]) -> None:
         _sort_folder_tree(node.folders)
 
 
+@transactional(read_only=True)
 def get_projects_tree(db: Session, _auth: AuthContext) -> ProjectTreeResponse:
     projects = repo.list_projects(db)
     folders = repo.list_folders(db)
@@ -180,6 +181,7 @@ def create_project(
     return _to_project_response(project)
 
 
+@transactional(read_only=True)
 def get_project(
     db: Session,
     auth: AuthContext,
@@ -358,6 +360,7 @@ def _to_folder_response(folder) -> FolderResponse:
 # ── ProjectPart (프로젝트-파트 연결, RDS + Graph dual-write) ──
 
 
+@transactional(read_only=True)
 def get_project_parts(
     db: Session,
     auth: AuthContext,
@@ -392,7 +395,7 @@ def add_part_to_project(
     if project is None:
         raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
 
-    part = db.query(Part).filter(Part.id == part_id).first()
+    part = part_repo.get_by_id(db, part_id)
     if part is None:
         raise AppError(message="부품을 찾을 수 없습니다", code="NOT_FOUND")
 
@@ -421,7 +424,7 @@ def remove_part_from_project(
     if project is None:
         raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
 
-    part = db.query(Part).filter(Part.id == part_id).first()
+    part = part_repo.get_by_id(db, part_id)
     if part is None:
         raise AppError(message="부품을 찾을 수 없습니다", code="NOT_FOUND")
 

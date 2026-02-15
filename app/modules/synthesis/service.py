@@ -218,6 +218,7 @@ def start_synthesis_batch(
     )
 
 
+@transactional(read_only=True)
 def get_synthesis_job(db: Session, job_id: uuid.UUID) -> SynthesisJobResponse:
     job = repo.get_synthesis_job_by_id(db, job_id)
     if job is None:
@@ -225,11 +226,13 @@ def get_synthesis_job(db: Session, job_id: uuid.UUID) -> SynthesisJobResponse:
     return _to_job_response(job)
 
 
+@transactional(read_only=True)
 def list_synthesis_jobs(db: Session) -> SynthesisListResponse:
     jobs = repo.list_synthesis_jobs(db)
     return SynthesisListResponse(items=[_to_job_response(j) for j in jobs])
 
 
+@transactional(read_only=True)
 def get_synthesis_batch(
     db: Session,
     batch_id: uuid.UUID,

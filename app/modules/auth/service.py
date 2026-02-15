@@ -45,6 +45,7 @@ def _slugify(name: str) -> str:
     return slug[:50]
 
 
+@transactional(read_only=True)
 def check_email(db: Session, email: str) -> CheckEmailResponse:
     """이메일 중복 확인."""
     exists = repo.get_user_by_email(db, email) is not None
@@ -54,6 +55,7 @@ def check_email(db: Session, email: str) -> CheckEmailResponse:
     )
 
 
+@transactional(read_only=True)
 def check_slug(db: Session, slug: str) -> CheckSlugResponse:
     """slug 사용 가능 여부 확인."""
     # 1. 포맷 검증
@@ -241,6 +243,7 @@ def logout(db: Session, auth: AuthContext, refresh_token_str: str) -> None:
         repo.delete_refresh_token_by_jti(db, payload.jti)
 
 
+@transactional(read_only=True)
 def get_me(db: Session, auth: AuthContext) -> MeResponse:
     """현재 유저 + 소속 조직 목록."""
     user = repo.get_user_by_id(db, auth.account_id)
@@ -276,6 +279,7 @@ def complete_onboarding(db: Session, auth: AuthContext) -> OrganizationResponse:
     return OrganizationResponse.model_validate(org)
 
 
+@transactional(read_only=True)
 def get_site(db: Session, slug: str | None) -> SiteResponse:
     """서브도메인 slug로 워크스페이스 기본 정보 조회."""
     if not slug:

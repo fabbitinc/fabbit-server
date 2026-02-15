@@ -41,6 +41,7 @@ _s3 = S3Client()
 _EXT_NAME_RE = re.compile(r"^_ext_[a-z0-9_]+$")
 
 
+@transactional(read_only=True)
 def preview_mapping(
     db: Session,
     auth: AuthContext,
@@ -181,6 +182,7 @@ def preview_mapping(
     )
 
 
+@transactional(read_only=True)
 def validate_mapping(
     db: Session,
     req: MappingValidateRequest,
@@ -473,11 +475,13 @@ def confirm_mapping(
     return _to_mapping_response(record)
 
 
+@transactional(read_only=True)
 def list_mappings(db: Session) -> MappingListResponse:
     records = repo.list_mappings(db)
     return MappingListResponse(items=[_to_mapping_response(r) for r in records])
 
 
+@transactional(read_only=True)
 def get_mapping(db: Session, mapping_id: uuid.UUID) -> MappingResponse:
     record = repo.get_mapping_by_id(db, mapping_id)
     if record is None:

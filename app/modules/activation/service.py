@@ -11,11 +11,11 @@ import re
 import time
 
 from loguru import logger
-from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
+from app.core.transactional import transactional
 from app.infrastructure.llm_client import chat_completion_with_usage
 from app.modules.activation import repository as repo
 from app.modules.activation.schemas import (
@@ -28,14 +28,14 @@ from app.modules.activation.schemas import (
 from app.modules.ai_usage.service import log_ai_usage
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
-from app.modules.part.models import Part
+from app.modules.part import repository as part_repo
 
 
+@transactional(read_only=True)
 def health_check(
     db: Session,
     auth: AuthContext,
 ) -> HealthCheckResponse:
-    t0 = time.perf_counter()
     graph_name = org_id_to_schema(auth.org_id)
     node_counts = _count_nodes_by_labels(
         db,
@@ -43,16 +43,13 @@ def health_check(
         MANUFACTURING_ONTOLOGY.get_valid_labels(),
     )
     # Part 카운트는 RDS에서 오버라이드
-    part_count = db.query(func.count(Part.id)).scalar() or 0
+    part_count = part_repo.count_all(db)
     node_counts["Part"] = part_count
 
     rel_counts = _count_relationships_by_types(
         db,
         graph_name,
         [rt.rel_type for rt in MANUFACTURING_ONTOLOGY.relationship_types],
-    )
-    logger.info(
-        "[헬스체크] 카운트 조회: {elapsed:.2f}s", elapsed=time.perf_counter() - t0
     )
 
     total_nodes = sum(node_counts.values())
@@ -136,6 +133,7 @@ def health_check(
     )
 
 
+@transactional(read_only=True)
 def query_graph(
     db: Session,
     auth: AuthContext,
@@ -152,7 +150,7 @@ def query_graph(
         MANUFACTURING_ONTOLOGY.get_valid_labels(),
     )
     # Part 카운트 RDS 오버라이드
-    part_count = db.query(func.count(Part.id)).scalar() or 0
+    part_count = part_repo.count_all(db)
     node_counts["Part"] = part_count
 
     rel_counts = _count_relationships_by_types(
@@ -381,14 +379,8 @@ def _execute_sql_query(db: Session, where_clause: str) -> list[dict]:
     """parts 테이블에서 WHERE 조건으로 조회."""
     _validate_sql_where(where_clause)
 
-    sql = text(f"SELECT * FROM parts WHERE {where_clause} LIMIT 100")
     try:
-        result = db.execute(sql)
-        columns = result.keys()
-        rows = []
-        for row in result:
-            rows.append(dict(zip(columns, row)))
-        return rows
+        return repo.execute_parts_sql_where(db, where_clause)
     except Exception as e:
         logger.warning("[질의] SQL 실행 실패: where={w} error={e}", w=where_clause, e=e)
         raise AppError(
@@ -445,11 +437,7 @@ def _enrich_cypher_results(db: Session, raw_results: list) -> list[dict]:
         return serialized
 
     # RDS에서 Part 속성 일괄 조회
-    parts = (
-        db.query(Part)
-        .filter(Part.part_number.in_(list(part_numbers)))
-        .all()
-    )
+    parts = part_repo.get_by_part_numbers(db, list(part_numbers))
     part_map = {p.part_number: p for p in parts}
 
     # enrichment: part_number가 있는 행에 RDS 속성 병합

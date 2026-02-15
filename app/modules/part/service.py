@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
+from app.core.transactional import transactional
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.part import repository as repo
-from app.modules.part.models import Part
 from app.modules.part.schemas import (
     BomChild,
     BomParent,
@@ -52,6 +52,7 @@ def _safe_str(val) -> str | None:
 # ── Part 목록 ──
 
 
+@transactional(read_only=True)
 def list_parts(
     db: Session,
     auth: AuthContext,
@@ -60,14 +61,9 @@ def list_parts(
     offset: int = 0,
     limit: int = 20,
 ) -> PartListResponse:
-    query = db.query(Part)
-    if search:
-        query = query.filter(
-            Part.part_number.ilike(f"%{search}%")
-            | Part.name.ilike(f"%{search}%")
-        )
-    total = query.count()
-    parts = query.order_by(Part.part_number).offset(offset).limit(limit).all()
+    parts, total = repo.list_parts_paginated(
+        db, search=search, offset=offset, limit=limit
+    )
 
     items = [
         PartSummary(
@@ -86,11 +82,12 @@ def list_parts(
 # ── Part 상세 ──
 
 
+@transactional(read_only=True)
 def get_part(db: Session, auth: AuthContext, part_number: str) -> PartDetailResponse:
     graph_name = org_id_to_schema(auth.org_id)
 
     # 속성: RDS
-    part = db.query(Part).filter(Part.part_number == part_number).first()
+    part = repo.get_by_part_number(db, part_number)
     if not part:
         raise AppError(message=f"Part '{part_number}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
 
@@ -225,6 +222,7 @@ def _build_bom_tree(
     return root
 
 
+@transactional(read_only=True)
 def get_part_bom_tree(
     db: Session,
     auth: AuthContext,
@@ -233,7 +231,7 @@ def get_part_bom_tree(
     graph_name = org_id_to_schema(auth.org_id)
 
     # 루트 Part 존재 확인 (RDS)
-    part = db.query(Part).filter(Part.part_number == part_number).first()
+    part = repo.get_by_part_number(db, part_number)
     if not part:
         raise AppError(message=f"Part '{part_number}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
 
@@ -245,7 +243,7 @@ def get_part_bom_tree(
         for pn in (row["c0"] or []):
             if pn:
                 all_pns.add(pn)
-    name_map = _bulk_get_names(db, list(all_pns))
+    name_map = repo.bulk_get_names(db, list(all_pns))
 
     root = _build_bom_tree(
         root_pn=part_number,
@@ -257,13 +255,3 @@ def get_part_bom_tree(
     return BomTreeResponse(root=root)
 
 
-def _bulk_get_names(db: Session, part_numbers: list[str]) -> dict[str, str | None]:
-    """part_number 목록에 대한 name을 RDS에서 일괄 조회."""
-    if not part_numbers:
-        return {}
-    rows = (
-        db.query(Part.part_number, Part.name)
-        .filter(Part.part_number.in_(part_numbers))
-        .all()
-    )
-    return {pn: name for pn, name in rows}

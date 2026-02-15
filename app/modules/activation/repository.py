@@ -1,5 +1,6 @@
 """활성화 및 탐색 도메인 데이터 접근 레이어."""
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.infrastructure.age_client import execute_cypher
@@ -89,3 +90,11 @@ def list_recent_mappings(db: Session, limit: int = 5) -> list[dict]:
         .all()
     )
     return [row[0] for row in records]
+
+
+def execute_parts_sql_where(db: Session, where_clause: str) -> list[dict]:
+    """parts 테이블에서 WHERE 조건으로 조회."""
+    sql = text(f"SELECT * FROM parts WHERE {where_clause} LIMIT 100")
+    result = db.execute(sql)
+    columns = result.keys()
+    return [dict(zip(columns, row)) for row in result]

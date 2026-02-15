@@ -6,6 +6,7 @@ Service는 저장 위치(RDS/Graph)를 모르고, Repository가 dual-write를 �
 import uuid
 
 from loguru import logger
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import generate_uuid7
@@ -26,6 +27,52 @@ _PART_STANDARD_ATTRS = {
 def get_by_part_number(db: Session, part_number: str) -> Part | None:
     """품번으로 Part 조회 (RDS)."""
     return db.query(Part).filter(Part.part_number == part_number).first()
+
+
+def get_by_id(db: Session, part_id: uuid.UUID) -> Part | None:
+    """Part ID로 조회 (RDS)."""
+    return db.query(Part).filter(Part.id == part_id).first()
+
+
+def list_parts_paginated(
+    db: Session,
+    *,
+    search: str | None = None,
+    offset: int = 0,
+    limit: int = 20,
+) -> tuple[list[Part], int]:
+    """Part 목록 페이징 조회 (RDS)."""
+    query = db.query(Part)
+    if search:
+        query = query.filter(
+            Part.part_number.ilike(f"%{search}%")
+            | Part.name.ilike(f"%{search}%")
+        )
+    total = query.count()
+    parts = query.order_by(Part.part_number).offset(offset).limit(limit).all()
+    return parts, total
+
+
+def count_all(db: Session) -> int:
+    """전체 Part 수 (RDS)."""
+    return db.query(func.count(Part.id)).scalar() or 0
+
+
+def bulk_get_names(db: Session, part_numbers: list[str]) -> dict[str, str | None]:
+    """품번 목록에 대한 이름 일괄 조회 (RDS)."""
+    if not part_numbers:
+        return {}
+    rows = (
+        db.query(Part.part_number, Part.name)
+        .filter(Part.part_number.in_(part_numbers))
+        .all()
+    )
+    return {pn: name for pn, name in rows}
+
+
+def get_by_part_numbers(db: Session, part_numbers: list[str]) -> list[Part]:
+    """품번 목록으로 Part 일괄 조회 (RDS)."""
+    return db.query(Part).filter(Part.part_number.in_(part_numbers)).all()
 
 
 def upsert_part(
