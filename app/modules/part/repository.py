@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import generate_uuid7
 from app.infrastructure.age_client import execute_cypher, execute_cypher_raw
-from app.modules.ontology.repository import escape_cypher_value
+from app.modules.ontology.cypher_utils import escape_cypher_value
 from app.modules.part.models import BomLink, Part, PartRevision
 
 # Part 모델의 표준 속성 (온톨로지 정의 속성 중 RDS 컬럼에 매핑되는 것)

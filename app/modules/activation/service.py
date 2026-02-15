@@ -37,7 +37,7 @@ def health_check(
 ) -> HealthCheckResponse:
     t0 = time.perf_counter()
     graph_name = org_id_to_schema(auth.org_id)
-    node_counts = repo.count_nodes_by_labels(
+    node_counts = _count_nodes_by_labels(
         db,
         graph_name,
         MANUFACTURING_ONTOLOGY.get_valid_labels(),
@@ -46,7 +46,7 @@ def health_check(
     part_count = db.query(func.count(Part.id)).scalar() or 0
     node_counts["Part"] = part_count
 
-    rel_counts = repo.count_relationships_by_types(
+    rel_counts = _count_relationships_by_types(
         db,
         graph_name,
         [rt.rel_type for rt in MANUFACTURING_ONTOLOGY.relationship_types],
@@ -146,7 +146,7 @@ def query_graph(
 
     # 1. 컨텍스트 수집
     t0 = time.perf_counter()
-    node_counts = repo.count_nodes_by_labels(
+    node_counts = _count_nodes_by_labels(
         db,
         graph_name,
         MANUFACTURING_ONTOLOGY.get_valid_labels(),
@@ -155,12 +155,12 @@ def query_graph(
     part_count = db.query(func.count(Part.id)).scalar() or 0
     node_counts["Part"] = part_count
 
-    rel_counts = repo.count_relationships_by_types(
+    rel_counts = _count_relationships_by_types(
         db,
         graph_name,
         [rt.rel_type for rt in MANUFACTURING_ONTOLOGY.relationship_types],
     )
-    ext_hints = repo.list_extended_hints(db)
+    ext_hints = _build_extended_hints(db)
     logger.info(
         "[질의] 컨텍스트 수집: {elapsed:.2f}s", elapsed=time.perf_counter() - t0
     )
@@ -518,6 +518,47 @@ def _inject_part_filter(cypher: str, part_numbers: list[str]) -> str:
 
 
 # ── 프롬프트 ──
+
+
+def _count_nodes_by_labels(
+    db: Session, graph_name: str, labels: list[str]
+) -> dict[str, int]:
+    """각 라벨별 노드 수 조회."""
+    return {
+        label: repo.count_nodes_by_label(db, graph_name, label)
+        for label in labels
+    }
+
+
+def _count_relationships_by_types(
+    db: Session, graph_name: str, rel_types: list[str]
+) -> dict[str, int]:
+    """각 관계 타입별 수 조회."""
+    return {
+        rel_type: repo.count_relationships_by_type(db, graph_name, rel_type)
+        for rel_type in rel_types
+    }
+
+
+def _build_extended_hints(db: Session) -> list[str]:
+    """최근 매핑에서 확장 속성 힌트를 추출."""
+    import json
+
+    try:
+        raw_mappings = repo.list_recent_mappings(db)
+        ext_props: set[str] = set()
+        for mapping_data in raw_mappings:
+            if isinstance(mapping_data, str):
+                mapping_data = json.loads(mapping_data)
+            for ep in mapping_data.get("extended_properties", []):
+                prop_name = ep.get("property_name", "")
+                source = ep.get("source_column", "")
+                label = ep.get("target_label", "")
+                if prop_name:
+                    ext_props.add(f"{label}.{prop_name} (원본: {source})")
+        return sorted(ext_props)
+    except Exception:
+        return []
 
 
 def _build_graph_summary(

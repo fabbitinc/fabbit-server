@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+from app.infrastructure.age_client import execute_cypher_raw
 from app.modules.mapping.models import MappingRecord
 from app.modules.project.models import Project
 from app.modules.synthesis.models import SynthesisBatch, SynthesisJob
@@ -57,7 +58,7 @@ def create_synthesis_job(
     return job
 
 
-def increment_mapping_usage(record: MappingRecord, amount: int = 1) -> None:
+def increment_mapping_usage(db: Session, record: MappingRecord, amount: int = 1) -> None:
     record.usage_count += amount
 
 
@@ -110,3 +111,19 @@ def list_synthesis_jobs_by_batch_id(
 
 def list_synthesis_jobs(db: Session) -> list[SynthesisJob]:
     return db.query(SynthesisJob).order_by(SynthesisJob.created_at.desc()).all()
+
+
+# ── AGE 그래프 쓰기 ──
+
+
+def execute_graph_cyphers(
+    db: Session,
+    graph_name: str,
+    cyphers: list[str],
+) -> int:
+    """Cypher 쿼리 목록을 순차 실행. 실행된 수를 반환."""
+    count = 0
+    for cypher in cyphers:
+        execute_cypher_raw(db, cypher, graph_name)
+        count += 1
+    return count

@@ -12,12 +12,11 @@ from app.core.auth_context import AuthContext
 from app.core.database import create_tenant_session, generate_uuid7
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
-from app.infrastructure.age_client import execute_cypher_raw
 from app.infrastructure.excel_parser import get_sheet_names, read_to_dataframe
 from app.infrastructure.s3_client import S3Client
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
-from app.modules.ontology.repository import format_cypher_value
+from app.modules.ontology.cypher_utils import format_cypher_value
 from app.modules.ontology.schemas import MappingResult
 from app.modules.part import repository as part_repo
 from app.modules.synthesis import repository as repo
@@ -75,7 +74,7 @@ def start_synthesis(
         mapping_id=record.id,
         upload_id=upload.id,
     )
-    repo.increment_mapping_usage(record)
+    repo.increment_mapping_usage(db, record)
     db.flush()
     db.refresh(job)
 
@@ -183,7 +182,7 @@ def start_synthesis_batch(
         job.batch_id = batch.id
 
     if accepted_jobs:
-        repo.increment_mapping_usage(record, len(accepted_jobs))
+        repo.increment_mapping_usage(db, record, len(accepted_jobs))
 
     db.flush()
     db.refresh(batch)
@@ -697,20 +696,18 @@ def _run_synthesis(
                             extended_properties=ext_props if ext_props else None,
                         )
 
-                    # 비-Part 노드 → Graph only (기존)
+                    # 비-Part 노드 → Graph only
                     node_cyphers = _process_row_nodes(
                         row, mapping, skip_labels={"Part"}
                     )
-                    for cypher in node_cyphers:
-                        execute_cypher_raw(db, cypher, graph_name)
+                    repo.execute_graph_cyphers(db, graph_name, node_cyphers)
                     nodes_created += len(part_entries) + len(node_cyphers)
 
-                    # 비-CONSISTS_OF 관계 → Graph only (기존)
+                    # 비-CONSISTS_OF 관계 → Graph only
                     rel_cyphers = _process_row_relationships(
                         row, mapping, skip_rel_types={"CONSISTS_OF"}
                     )
-                    for cypher in rel_cyphers:
-                        execute_cypher_raw(db, cypher, graph_name)
+                    repo.execute_graph_cyphers(db, graph_name, rel_cyphers)
                     rels_created += len(bom_entries) + len(rel_cyphers)
                 except Exception as error:
                     err_msg = f"행 {row_num}: {error}"

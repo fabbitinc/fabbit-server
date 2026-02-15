@@ -14,6 +14,12 @@
 - 적용 대상: Part upsert, BOM 관계 (`CONSISTS_OF`), Project-Part 연결
 - service는 듀얼라이트 여부를 알 필요 없음 — repository가 내부적으로 관리
 
+## 예외 처리
+
+- repository에서 `try/except` 금지 — 예외는 호출자(service)에게 그대로 전파
+- 폴백(기본값 반환, 스킵 등) 결정은 비즈니스 로직이므로 service에서 처리
+- `db.rollback()` 직접 호출 금지 — 트랜잭션 경계는 `@transactional`이 관리
+
 ## AGE Cypher 쿼리
 
 - 동적 그래프 이름 필수: `cypher('{graph_name}', $$ ... $$)`

@@ -5,7 +5,9 @@ import uuid
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.infrastructure.age_client import execute_cypher_raw
 from app.modules.document.models import Drawing
+from app.modules.ontology.cypher_utils import escape_cypher_value
 from app.modules.part.models import Part
 from app.modules.project.models import Folder, Project, ProjectPart
 from app.modules.upload.models import Upload
@@ -167,10 +169,26 @@ def add_part_to_project(
     db: Session,
     project_id: uuid.UUID,
     part_id: uuid.UUID,
+    *,
+    project_name: str,
+    part_number: str,
+    graph_name: str,
 ) -> ProjectPart:
+    """프로젝트-파트 연결 (RDS + Graph dual-write)."""
+    # RDS
     pp = ProjectPart(project_id=project_id, part_id=part_id)
     db.add(pp)
     db.flush()
+
+    # Graph: MERGE HAS_ITEM 관계
+    esc_name = escape_cypher_value(project_name)
+    esc_pn = escape_cypher_value(part_number)
+    cypher = (
+        f"MERGE (p:Project {{name: '{esc_name}'}}) "
+        f"MERGE (part:Part {{part_number: '{esc_pn}'}}) "
+        f"MERGE (p)-[:HAS_ITEM]->(part)"
+    )
+    execute_cypher_raw(db, cypher, graph_name)
     return pp
 
 
@@ -178,11 +196,26 @@ def remove_part_from_project(
     db: Session,
     project_id: uuid.UUID,
     part_id: uuid.UUID,
+    *,
+    project_name: str,
+    part_number: str,
+    graph_name: str,
 ) -> None:
+    """프로젝트-파트 연결 해제 (RDS + Graph dual-write)."""
+    # RDS
     db.query(ProjectPart).filter(
         ProjectPart.project_id == project_id,
         ProjectPart.part_id == part_id,
     ).delete()
+
+    # Graph: DELETE HAS_ITEM 관계
+    esc_name = escape_cypher_value(project_name)
+    esc_pn = escape_cypher_value(part_number)
+    cypher = (
+        f"MATCH (p:Project {{name: '{esc_name}'}})-[r:HAS_ITEM]->"
+        f"(part:Part {{part_number: '{esc_pn}'}}) DELETE r"
+    )
+    execute_cypher_raw(db, cypher, graph_name)
 
 
 def get_project_parts(db: Session, project_id: uuid.UUID) -> list[Part]:

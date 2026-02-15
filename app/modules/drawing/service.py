@@ -11,7 +11,6 @@ from app.core.auth_context import AuthContext
 from app.core.database import create_tenant_session, generate_uuid7
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
-from app.infrastructure.age_client import execute_cypher_raw
 from app.infrastructure.image_converter import (
     detect_drawing_type,
     ensure_webp,
@@ -45,7 +44,7 @@ from app.modules.drawing.schemas import (
     PartMatch,
 )
 from app.modules.ai_usage.service import log_ai_usage
-from app.modules.ontology.repository import escape_cypher_value
+from app.modules.ontology.cypher_utils import escape_cypher_value
 
 _s3 = S3Client()
 
@@ -391,13 +390,9 @@ def _run_drawing_synthesis(
             logger.warning("도면번호 없음, 자동 생성: {dn}", dn=drawing_number)
 
         drawing_props = _build_drawing_props(tb, file_key)
-        drawing_merge = f"MERGE (d:Drawing {{drawing_number: '{escape_cypher_value(drawing_number)}'}})"
-        if drawing_props:
-            set_parts = [f"d.{k} = {v}" for k, v in drawing_props.items()]
-            drawing_merge += " SET " + ", ".join(set_parts)
 
         try:
-            execute_cypher_raw(db, drawing_merge, graph_name)
+            repo.merge_drawing_node(db, graph_name, drawing_number, drawing_props)
             nodes_created += 1
         except Exception as e:
             errors.append(f"Drawing 노드 MERGE 실패: {e}")
@@ -409,14 +404,8 @@ def _run_drawing_synthesis(
                 continue
 
             try:
-                # Part MERGE
                 part_props = _build_part_props(part)
-                part_merge = f"MERGE (p:Part {{part_number: '{escape_cypher_value(part.part_number)}'}})"
-                if part_props:
-                    set_parts = [f"p.{k} = {v}" for k, v in part_props.items()]
-                    part_merge += " SET " + ", ".join(set_parts)
-
-                execute_cypher_raw(db, part_merge, graph_name)
+                repo.merge_part_node(db, graph_name, part.part_number, part_props)
                 nodes_created += 1
             except Exception as e:
                 errors.append(f"Part MERGE 실패 ({part.part_number}): {e}")
@@ -424,13 +413,7 @@ def _run_drawing_synthesis(
                 continue
 
             try:
-                # DEFINED_BY 관계 MERGE
-                rel_cypher = (
-                    f"MATCH (p:Part {{part_number: '{escape_cypher_value(part.part_number)}'}}), "
-                    f"(d:Drawing {{drawing_number: '{escape_cypher_value(drawing_number)}'}}) "
-                    f"MERGE (p)-[:DEFINED_BY]->(d)"
-                )
-                execute_cypher_raw(db, rel_cypher, graph_name)
+                repo.merge_defined_by(db, graph_name, part.part_number, drawing_number)
                 rels_created += 1
             except Exception as e:
                 errors.append(f"DEFINED_BY 관계 실패 ({part.part_number}): {e}")

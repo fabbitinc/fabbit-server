@@ -4,8 +4,9 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.infrastructure.age_client import execute_cypher
+from app.infrastructure.age_client import execute_cypher, execute_cypher_raw
 from app.modules.drawing.models import DrawingAnalysisRecord, DrawingSynthesisJob
+from app.modules.ontology.cypher_utils import escape_cypher_value
 from app.modules.upload.models import Upload
 
 
@@ -120,3 +121,53 @@ def find_existing_parts_by_numbers(
         if pn:
             result[str(pn)] = {"name": str(name) if name else None}
     return result
+
+
+# ── AGE 그래프 쓰기 ──
+
+
+def merge_drawing_node(
+    db: Session,
+    graph_name: str,
+    drawing_number: str,
+    set_props: dict[str, str] | None = None,
+) -> None:
+    """Drawing 노드 MERGE (Graph only)."""
+    esc_dn = escape_cypher_value(drawing_number)
+    cypher = f"MERGE (d:Drawing {{drawing_number: '{esc_dn}'}})"
+    if set_props:
+        set_parts = [f"d.{k} = {v}" for k, v in set_props.items()]
+        cypher += " SET " + ", ".join(set_parts)
+    execute_cypher_raw(db, cypher, graph_name)
+
+
+def merge_part_node(
+    db: Session,
+    graph_name: str,
+    part_number: str,
+    set_props: dict[str, str] | None = None,
+) -> None:
+    """Part 노드 MERGE (Graph only)."""
+    esc_pn = escape_cypher_value(part_number)
+    cypher = f"MERGE (p:Part {{part_number: '{esc_pn}'}})"
+    if set_props:
+        set_parts = [f"p.{k} = {v}" for k, v in set_props.items()]
+        cypher += " SET " + ", ".join(set_parts)
+    execute_cypher_raw(db, cypher, graph_name)
+
+
+def merge_defined_by(
+    db: Session,
+    graph_name: str,
+    part_number: str,
+    drawing_number: str,
+) -> None:
+    """Part → Drawing DEFINED_BY 관계 MERGE (Graph only)."""
+    esc_pn = escape_cypher_value(part_number)
+    esc_dn = escape_cypher_value(drawing_number)
+    cypher = (
+        f"MATCH (p:Part {{part_number: '{esc_pn}'}}), "
+        f"(d:Drawing {{drawing_number: '{esc_dn}'}}) "
+        f"MERGE (p)-[:DEFINED_BY]->(d)"
+    )
+    execute_cypher_raw(db, cypher, graph_name)

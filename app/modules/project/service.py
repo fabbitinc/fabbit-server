@@ -8,10 +8,8 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
-from app.infrastructure.age_client import execute_cypher_raw
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.part.models import Part
-from app.modules.ontology.repository import escape_cypher_value
 from app.modules.project import repository as repo
 from app.modules.project.models import Folder
 from app.modules.project.schemas import (
@@ -398,19 +396,13 @@ def add_part_to_project(
     if part is None:
         raise AppError(message="부품을 찾을 수 없습니다", code="NOT_FOUND")
 
-    # RDS: INSERT project_parts
-    repo.add_part_to_project(db, project_id, part_id)
-
-    # Graph: MERGE HAS_ITEM 관계
     graph_name = org_id_to_schema(auth.org_id)
-    esc_name = escape_cypher_value(project.name)
-    esc_pn = escape_cypher_value(part.part_number)
-    cypher = (
-        f"MERGE (p:Project {{name: '{esc_name}'}}) "
-        f"MERGE (part:Part {{part_number: '{esc_pn}'}}) "
-        f"MERGE (p)-[:HAS_ITEM]->(part)"
+    repo.add_part_to_project(
+        db, project_id, part_id,
+        project_name=project.name,
+        part_number=part.part_number,
+        graph_name=graph_name,
     )
-    execute_cypher_raw(db, cypher, graph_name)
     logger.info(
         "프로젝트-파트 연결: project_id={project_id} part_id={part_id}",
         project_id=project_id,
@@ -433,18 +425,13 @@ def remove_part_from_project(
     if part is None:
         raise AppError(message="부품을 찾을 수 없습니다", code="NOT_FOUND")
 
-    # RDS: DELETE project_parts
-    repo.remove_part_from_project(db, project_id, part_id)
-
-    # Graph: DELETE HAS_ITEM 관계
     graph_name = org_id_to_schema(auth.org_id)
-    esc_name = escape_cypher_value(project.name)
-    esc_pn = escape_cypher_value(part.part_number)
-    cypher = (
-        f"MATCH (p:Project {{name: '{esc_name}'}})-[r:HAS_ITEM]->"
-        f"(part:Part {{part_number: '{esc_pn}'}}) DELETE r"
+    repo.remove_part_from_project(
+        db, project_id, part_id,
+        project_name=project.name,
+        part_number=part.part_number,
+        graph_name=graph_name,
     )
-    execute_cypher_raw(db, cypher, graph_name)
     logger.info(
         "프로젝트-파트 연결 해제: project_id={project_id} part_id={part_id}",
         project_id=project_id,
