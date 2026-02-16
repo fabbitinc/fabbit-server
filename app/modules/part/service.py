@@ -104,9 +104,6 @@ def get_part(db: Session, auth: AuthContext, part_number: str) -> PartDetailResp
             part_number=r["part_number"],
             name=r["name"],
             quantity=r["quantity"],
-            sequence=r["sequence"],
-            reference_designator=r["reference_designator"],
-            find_number=r["find_number"],
             extended_properties=r.get("extended_properties", {}),
         )
         for r in children_rows
@@ -117,9 +114,6 @@ def get_part(db: Session, auth: AuthContext, part_number: str) -> PartDetailResp
             part_number=r["part_number"],
             name=r["name"],
             quantity=r["quantity"],
-            sequence=r["sequence"],
-            reference_designator=r["reference_designator"],
-            find_number=r["find_number"],
             extended_properties=r.get("extended_properties", {}),
         )
         for r in parents_rows

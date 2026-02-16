@@ -158,14 +158,20 @@ def has_relation_property(
     for rm in mapping.relation_mappings:
         if rm.rel_type != expected.rel_type:
             continue
-        if expected.rel_property in rm.properties.values():
+        if expected.rel_property in rm.rel_columns:
             return True
     return False
 
 
 def has_column_target(mapping: MappingResult, expected: ExpectColumnTarget) -> bool:
-    for cm in mapping.column_mappings:
-        if cm.target_label == expected.label and cm.target_property == expected.prop:
+    # Part 속성은 property_mappings에서 확인
+    if expected.label == "Part":
+        for pm in mapping.property_mappings:
+            if pm.target_property == expected.prop:
+                return True
+    # 외부 노드 속성은 relation_mappings의 node_columns에서 확인
+    for rm in mapping.relation_mappings:
+        if rm.target_label == expected.label and expected.prop in rm.node_columns:
             return True
     return False
 
@@ -174,19 +180,34 @@ def has_forbidden_column_target(
     mapping: MappingResult,
     forbidden: ForbidColumnTarget,
 ) -> bool:
-    for cm in mapping.column_mappings:
-        if (
-            cm.source_column == forbidden.source_column
-            and cm.target_label == forbidden.label
-            and cm.target_property == forbidden.prop
-        ):
-            return True
+    if forbidden.label == "Part":
+        for pm in mapping.property_mappings:
+            if (
+                pm.source_column == forbidden.source_column
+                and pm.target_property == forbidden.prop
+            ):
+                return True
+    for rm in mapping.relation_mappings:
+        if rm.target_label != forbidden.label:
+            continue
+        for prop_name, src_col in rm.node_columns.items():
+            if src_col == forbidden.source_column and prop_name == forbidden.prop:
+                return True
     return False
 
 
+def _count_ext_properties(mapping: MappingResult) -> int:
+    """_ext_ 접두사 확장 속성 개수."""
+    return sum(
+        1 for pm in mapping.property_mappings if pm.target_property.startswith("_ext_")
+    )
+
+
 def has_forbidden_ext(mapping: MappingResult, pattern: re.Pattern[str]) -> bool:
-    for ep in mapping.extended_properties:
-        if pattern.search(ep.source_column) or pattern.search(ep.property_name):
+    for pm in mapping.property_mappings:
+        if not pm.target_property.startswith("_ext_"):
+            continue
+        if pattern.search(pm.source_column) or pattern.search(pm.target_property):
             return True
     return False
 
@@ -264,9 +285,10 @@ def main() -> int:
             for it in forbidden_column_targets
             if has_forbidden_column_target(mapping, it)
         ]
+        ext_count = _count_ext_properties(mapping)
         max_ext_exceeded = (
             args.max_extended_properties is not None
-            and len(mapping.extended_properties) > args.max_extended_properties
+            and ext_count > args.max_extended_properties
         )
         min_relation_missing = (
             args.min_relation_mappings is not None
@@ -282,9 +304,9 @@ def main() -> int:
                 "output_tokens": llm_resp.output_tokens,
                 "fingerprint": mapping_fingerprint(mapping),
                 "counts": {
-                    "column_mappings": len(mapping.column_mappings),
+                    "property_mappings": len(mapping.property_mappings),
                     "relation_mappings": len(mapping.relation_mappings),
-                    "extended_properties": len(mapping.extended_properties),
+                    "ext_properties": ext_count,
                 },
                 "missing_expected_relation_properties": rel_prop_missing,
                 "missing_expected_column_targets": column_target_missing,
@@ -298,7 +320,7 @@ def main() -> int:
 
         print(
             f"[{run_idx}/{args.runs}] {elapsed:.2f}s | fp={run_results[-1]['fingerprint']} "
-            f"| rel={len(mapping.relation_mappings)} ext={len(mapping.extended_properties)}"
+            f"| rel={len(mapping.relation_mappings)} ext={ext_count}"
         )
 
         if args.sleep_ms > 0 and run_idx < args.runs:

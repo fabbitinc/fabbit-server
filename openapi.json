@@ -1425,7 +1425,9 @@
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectPartListResponse"
+                                }
                             }
                         }
                     },
@@ -2232,39 +2234,6 @@
                         "title": "Quantity",
                         "default": 1
                     },
-                    "sequence": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Sequence"
-                    },
-                    "reference_designator": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Reference Designator"
-                    },
-                    "find_number": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Find Number"
-                    },
                     "extended_properties": {
                         "additionalProperties": true,
                         "type": "object",
@@ -2300,39 +2269,6 @@
                         "type": "integer",
                         "title": "Quantity",
                         "default": 1
-                    },
-                    "sequence": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Sequence"
-                    },
-                    "reference_designator": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Reference Designator"
-                    },
-                    "find_number": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Find Number"
                     },
                     "extended_properties": {
                         "additionalProperties": true,
@@ -2468,45 +2404,6 @@
                     "available"
                 ],
                 "title": "CheckSlugResponse"
-            },
-            "ColumnMapping": {
-                "properties": {
-                    "source_column": {
-                        "type": "string",
-                        "title": "Source Column"
-                    },
-                    "target_label": {
-                        "type": "string",
-                        "title": "Target Label"
-                    },
-                    "target_property": {
-                        "type": "string",
-                        "title": "Target Property"
-                    },
-                    "data_type": {
-                        "type": "string",
-                        "title": "Data Type",
-                        "default": "string"
-                    },
-                    "confidence": {
-                        "type": "integer",
-                        "title": "Confidence",
-                        "default": 0
-                    },
-                    "reason": {
-                        "type": "string",
-                        "title": "Reason",
-                        "default": ""
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "source_column",
-                    "target_label",
-                    "target_property"
-                ],
-                "title": "ColumnMapping",
-                "description": "Excel \uceec\ub7fc \u2192 \uc628\ud1a8\ub85c\uc9c0 \ub178\ub4dc \uc18d\uc131 \ub9e4\ud551"
             },
             "CreateFolderRequest": {
                 "properties": {
@@ -2919,39 +2816,12 @@
             },
             "EditableConstraints": {
                 "properties": {
-                    "allowed_labels": {
+                    "allowed_part_properties": {
                         "items": {
                             "type": "string"
                         },
                         "type": "array",
-                        "title": "Allowed Labels"
-                    },
-                    "allowed_properties_by_label": {
-                        "additionalProperties": {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        "type": "object",
-                        "title": "Allowed Properties By Label"
-                    },
-                    "allowed_rel_types": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "Allowed Rel Types"
-                    },
-                    "allowed_rel_properties_by_type": {
-                        "additionalProperties": {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        "type": "object",
-                        "title": "Allowed Rel Properties By Type"
+                        "title": "Allowed Part Properties"
                     },
                     "merge_keys_by_label": {
                         "additionalProperties": {
@@ -2962,15 +2832,6 @@
                         },
                         "type": "object",
                         "title": "Merge Keys By Label"
-                    },
-                    "relation_edit_mode": {
-                        "type": "string",
-                        "enum": [
-                            "existing_only",
-                            "selectable"
-                        ],
-                        "title": "Relation Edit Mode",
-                        "default": "existing_only"
                     },
                     "relation_catalog": {
                         "items": {
@@ -2989,45 +2850,6 @@
                 },
                 "type": "object",
                 "title": "EditableConstraints"
-            },
-            "ExtendedPropertyMapping": {
-                "properties": {
-                    "source_column": {
-                        "type": "string",
-                        "title": "Source Column"
-                    },
-                    "target_label": {
-                        "type": "string",
-                        "title": "Target Label"
-                    },
-                    "property_name": {
-                        "type": "string",
-                        "title": "Property Name"
-                    },
-                    "data_type": {
-                        "type": "string",
-                        "title": "Data Type",
-                        "default": "string"
-                    },
-                    "confidence": {
-                        "type": "integer",
-                        "title": "Confidence",
-                        "default": 0
-                    },
-                    "reason": {
-                        "type": "string",
-                        "title": "Reason",
-                        "default": ""
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "source_column",
-                    "target_label",
-                    "property_name"
-                ],
-                "title": "ExtendedPropertyMapping",
-                "description": "\ud655\uc7a5 \uc18d\uc131 \ub9e4\ud551 (\uc628\ud1a8\ub85c\uc9c0\uc5d0 \uc815\uc758\ub418\uc9c0 \uc54a\uc740 \ucd94\uac00 \uceec\ub7fc)"
             },
             "ExtractedPart": {
                 "properties": {
@@ -3453,6 +3275,11 @@
                     },
                     "mapping": {
                         "$ref": "#/components/schemas/MappingResult"
+                    },
+                    "scope": {
+                        "type": "string",
+                        "title": "Scope",
+                        "default": "master"
                     }
                 },
                 "type": "object",
@@ -3469,21 +3296,6 @@
                     "disabled_column_count": {
                         "type": "integer",
                         "title": "Disabled Column Count",
-                        "default": 0
-                    },
-                    "changed_relations_count": {
-                        "type": "integer",
-                        "title": "Changed Relations Count",
-                        "default": 0
-                    },
-                    "base_to_ext_count": {
-                        "type": "integer",
-                        "title": "Base To Ext Count",
-                        "default": 0
-                    },
-                    "ext_to_base_count": {
-                        "type": "integer",
-                        "title": "Ext To Base Count",
                         "default": 0
                     }
                 },
@@ -3620,6 +3432,16 @@
                     "mapping": {
                         "$ref": "#/components/schemas/MappingResult"
                     },
+                    "scope": {
+                        "type": "string",
+                        "title": "Scope",
+                        "default": "master"
+                    },
+                    "is_active": {
+                        "type": "boolean",
+                        "title": "Is Active",
+                        "default": true
+                    },
                     "usage_count": {
                         "type": "integer",
                         "title": "Usage Count"
@@ -3645,12 +3467,12 @@
             },
             "MappingResult": {
                 "properties": {
-                    "column_mappings": {
+                    "property_mappings": {
                         "items": {
-                            "$ref": "#/components/schemas/ColumnMapping"
+                            "$ref": "#/components/schemas/PropertyMapping"
                         },
                         "type": "array",
-                        "title": "Column Mappings"
+                        "title": "Property Mappings"
                     },
                     "relation_mappings": {
                         "items": {
@@ -3658,20 +3480,12 @@
                         },
                         "type": "array",
                         "title": "Relation Mappings"
-                    },
-                    "extended_properties": {
-                        "items": {
-                            "$ref": "#/components/schemas/ExtendedPropertyMapping"
-                        },
-                        "type": "array",
-                        "title": "Extended Properties"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "column_mappings",
-                    "relation_mappings",
-                    "extended_properties"
+                    "property_mappings",
+                    "relation_mappings"
                 ],
                 "title": "MappingResult",
                 "description": "LLM \ub9e4\ud551 \uacb0\uacfc \uc804\uccb4"
@@ -4318,6 +4132,65 @@
                 ],
                 "title": "PlanResponse"
             },
+            "ProjectPartListResponse": {
+                "properties": {
+                    "parts": {
+                        "items": {
+                            "$ref": "#/components/schemas/ProjectPartResponse"
+                        },
+                        "type": "array",
+                        "title": "Parts"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "parts"
+                ],
+                "title": "ProjectPartListResponse"
+            },
+            "ProjectPartResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "part_number": {
+                        "type": "string",
+                        "title": "Part Number"
+                    },
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name"
+                    },
+                    "category": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Category"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "part_number",
+                    "name",
+                    "category"
+                ],
+                "title": "ProjectPartResponse"
+            },
             "ProjectResponse": {
                 "properties": {
                     "id": {
@@ -4477,6 +4350,40 @@
                     "meta"
                 ],
                 "title": "ProjectTreeResponse"
+            },
+            "PropertyMapping": {
+                "properties": {
+                    "source_column": {
+                        "type": "string",
+                        "title": "Source Column"
+                    },
+                    "target_property": {
+                        "type": "string",
+                        "title": "Target Property"
+                    },
+                    "data_type": {
+                        "type": "string",
+                        "title": "Data Type",
+                        "default": "string"
+                    },
+                    "confidence": {
+                        "type": "integer",
+                        "title": "Confidence",
+                        "default": 0
+                    },
+                    "reason": {
+                        "type": "string",
+                        "title": "Reason",
+                        "default": ""
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "source_column",
+                    "target_property"
+                ],
+                "title": "PropertyMapping",
+                "description": "Part \uc18d\uc131 \ub9e4\ud551 \u2014 \ud589\uc758 \uc8fc\uc778\uacf5 Part\uc5d0 \uadc0\uc18d.\n\n\uc628\ud1a8\ub85c\uc9c0 \uc815\uc758 \uc18d\uc131\uacfc \ud655\uc7a5 \uc18d\uc131(_ext_) \ubaa8\ub450 \ud3ec\ud568."
             },
             "PropertySchema": {
                 "properties": {
@@ -4809,59 +4716,56 @@
             },
             "RelationMapping": {
                 "properties": {
-                    "from_label": {
-                        "type": "string",
-                        "title": "From Label"
-                    },
-                    "to_label": {
-                        "type": "string",
-                        "title": "To Label"
-                    },
                     "rel_type": {
                         "type": "string",
                         "title": "Rel Type"
                     },
-                    "from_columns": {
+                    "target_label": {
+                        "type": "string",
+                        "title": "Target Label"
+                    },
+                    "node_columns": {
                         "additionalProperties": {
                             "type": "string"
                         },
                         "type": "object",
-                        "title": "From Columns",
+                        "title": "Node Columns"
+                    },
+                    "rel_columns": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object",
+                        "title": "Rel Columns",
                         "default": {}
                     },
-                    "to_columns": {
+                    "rel_column_types": {
                         "additionalProperties": {
                             "type": "string"
                         },
                         "type": "object",
-                        "title": "To Columns",
+                        "title": "Rel Column Types",
                         "default": {}
                     },
-                    "properties": {
-                        "additionalProperties": {
-                            "type": "string"
-                        },
-                        "type": "object",
-                        "title": "Properties",
-                        "default": {}
+                    "confidence": {
+                        "type": "integer",
+                        "title": "Confidence",
+                        "default": 0
                     },
-                    "property_types": {
-                        "additionalProperties": {
-                            "type": "string"
-                        },
-                        "type": "object",
-                        "title": "Property Types",
-                        "default": {}
+                    "reason": {
+                        "type": "string",
+                        "title": "Reason",
+                        "default": ""
                     }
                 },
                 "type": "object",
                 "required": [
-                    "from_label",
-                    "to_label",
-                    "rel_type"
+                    "rel_type",
+                    "target_label",
+                    "node_columns"
                 ],
                 "title": "RelationMapping",
-                "description": "\ub178\ub4dc \uac04 \uad00\uacc4 \ub9e4\ud551"
+                "description": "\uc678\ubd80 \uad00\uacc4 \ub9e4\ud551 \u2014 \uad00\uacc4 + \uc0c1\ub300\ubc29 \ub178\ub4dc.\n\nCONSISTS_OF: \uc0c1\uc704 Part (from) \u2192 \uc8fc Part (to) \ubc29\ud5a5.\n  node_columns\uc740 \uc0c1\uc704 Part(from)\uc758 \uc18d\uc131\uc744 \ub9e4\ud551.\nSUPPLIED_BY, DEFINED_BY: \uc8fc Part (from) \u2192 \uc678\ubd80 \ub178\ub4dc (to) \ubc29\ud5a5.\n  node_columns\uc740 \uc678\ubd80 \ub178\ub4dc(to)\uc758 \uc18d\uc131\uc744 \ub9e4\ud551."
             },
             "RelationPropertyCatalogItem": {
                 "properties": {

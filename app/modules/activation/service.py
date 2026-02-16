@@ -538,12 +538,11 @@ def _build_extended_hints(db: Session) -> list[str]:
         for mapping_data in raw_mappings:
             if isinstance(mapping_data, str):
                 mapping_data = json.loads(mapping_data)
-            for ep in mapping_data.get("extended_properties", []):
-                prop_name = ep.get("property_name", "")
-                source = ep.get("source_column", "")
-                label = ep.get("target_label", "")
-                if prop_name:
-                    ext_props.add(f"{label}.{prop_name} (원본: {source})")
+            for pm in mapping_data.get("property_mappings", []):
+                prop_name = pm.get("target_property", "")
+                source = pm.get("source_column", "")
+                if prop_name.startswith("_ext_"):
+                    ext_props.add(f"Part.{prop_name} (원본: {source})")
         return sorted(ext_props)
     except Exception:
         return []

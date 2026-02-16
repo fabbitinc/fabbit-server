@@ -17,9 +17,6 @@ class BomChild(BaseModel):
     part_number: str
     name: str | None = None
     quantity: int = 1
-    sequence: int | None = None
-    reference_designator: str | None = None
-    find_number: str | None = None
     extended_properties: dict[str, Any] = {}
 
 
@@ -29,9 +26,6 @@ class BomParent(BaseModel):
     part_number: str
     name: str | None = None
     quantity: int = 1
-    sequence: int | None = None
-    reference_designator: str | None = None
-    find_number: str | None = None
     extended_properties: dict[str, Any] = {}
 
 

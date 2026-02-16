@@ -22,6 +22,9 @@ from app.api.v1.public.ontology_router import router as ontology_router  # noqa:
 from app.api.v1.tenant.activation_router import (
     router as activation_router,  # noqa: E402
 )
+from app.api.v1.tenant.dashboard_router import (
+    router as dashboard_router,  # noqa: E402
+)
 from app.api.v1.tenant.drawing_router import router as drawing_router  # noqa: E402
 from app.api.v1.tenant.part_router import router as part_router  # noqa: E402
 from app.api.v1.tenant.mapping_router import router as mapping_router  # noqa: E402
@@ -129,6 +132,7 @@ app.add_middleware(
 
 app.include_router(activation_router)
 app.include_router(auth_router)
+app.include_router(dashboard_router)
 app.include_router(drawing_router)
 app.include_router(mapping_router)
 app.include_router(project_router)

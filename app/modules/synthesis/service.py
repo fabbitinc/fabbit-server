@@ -37,16 +37,6 @@ _s3 = S3Client()
 
 CHUNK_SIZE = 500
 
-# BOM 관계의 표준 속성 키 (이 외의 속성은 extended_properties로 분류)
-_BOM_STANDARD_KEYS = {
-    "parent_pn",
-    "child_pn",
-    "quantity",
-    "sequence",
-    "reference_designator",
-    "find_number",
-}
-
 
 @transactional
 def start_synthesis(
@@ -314,6 +304,9 @@ def get_synthesis_batch(
     )
 
 
+# ── Cypher 빌더 ──
+
+
 def _build_merge_node(
     label: str,
     merge_keys: dict[str, str],
@@ -352,260 +345,189 @@ def _build_merge_rel(
     )
 
 
-def _process_row_nodes(
-    row: dict, mapping: MappingResult, skip_labels: set[str] | None = None
-) -> list[str]:
-    cyphers: list[str] = []
+# ── 데이터 추출 ──
 
-    # 분리 판별: column_mappings에서 같은 (label, property)에 복수 source_column이 있으면 분리 필요
-    prop_sources: dict[tuple[str, str], list[str]] = {}
-    for cm in mapping.column_mappings:
-        key = (cm.target_label, cm.target_property)
-        prop_sources.setdefault(key, []).append(cm.source_column)
 
-    label_needs_split: set[str] = set()
-    for (label, _prop), sources in prop_sources.items():
-        if len(sources) >= 2:
-            label_needs_split.add(label)
+def _extract_row_part(row: dict, mapping: MappingResult) -> tuple[str | None, dict]:
+    """행에서 주인공 Part 속성 추출 (property_mappings 기반).
 
-    # self-join 관계(from_label == to_label)에서만 from/to role 수집
-    # 다른 라벨 간 관계(SUPPLIED_BY 등)는 분리 판별에 영향 주지 않음
-    endpoint_roles: dict[tuple[str, str], str] = {}
+    Returns:
+        (part_number, {속성dict}) — part_number가 없으면 (None, {})
+    """
+    props: dict = {}
+    for pm in mapping.property_mappings:
+        val = _cast_python_value(row.get(pm.source_column), pm.data_type)
+        if val is not None:
+            props[pm.target_property] = val
+    pn = props.get("part_number")
+    return (str(pn), props) if pn else (None, {})
+
+
+def _extract_related_parts(row: dict, mapping: MappingResult) -> dict[str, dict]:
+    """CONSISTS_OF 관계에서 상대방(상위) Part 속성 추출.
+
+    Returns:
+        {part_number: {속성dict}} — 상위 Part가 없으면 빈 dict
+    """
+    result: dict[str, dict] = {}
     for rm in mapping.relation_mappings:
-        if rm.from_label != rm.to_label:
+        if rm.rel_type != "CONSISTS_OF" or rm.target_label != "Part":
             continue
-        for _mk, src_col in rm.from_columns.items():
-            endpoint_roles[(rm.from_label, src_col)] = "from"
-        for _mk, src_col in rm.to_columns.items():
-            endpoint_roles[(rm.to_label, src_col)] = "to"
+        props: dict = {}
+        for prop_name, src_col in rm.node_columns.items():
+            val = _cast_python_value(row.get(src_col), "string")
+            if val is not None:
+                props[prop_name] = val
+        pn = props.get("part_number")
+        if pn:
+            result[str(pn)] = props
+    return result
 
-    # 분리 대상 라벨에서 동일 target_property에 중복 매핑된 source_column을 role로 분류
-    # 예: (Part, name) → [상위품명, 하위품명] → 상위품명은 from, 하위품명은 to
-    _assign_duplicate_column_roles(mapping, endpoint_roles, label_needs_split)
 
-    # 라벨별 속성 수집 (분리가 필요한 라벨은 from/to 별도 dict)
-    # 키: (label, role) — role은 "from", "to", 또는 "default"
-    grouped_props: dict[tuple[str, str], dict[str, str]] = {}
+def _merge_part_props(part_data: dict[str, dict], pn: str, props: dict) -> None:
+    """Part 속성을 first-non-null 방식으로 병합.
 
-    for cm in mapping.column_mappings:
-        val = row.get(cm.source_column)
-        formatted = format_cypher_value(val, cm.data_type)
-        if formatted is None:
+    동일 part_number에 대해 먼저 수집된 값을 유지하고,
+    아직 없는 속성만 추가합니다.
+    """
+    if pn not in part_data:
+        part_data[pn] = dict(props)
+        return
+    existing = part_data[pn]
+    for key, value in props.items():
+        if key not in existing:
+            existing[key] = value
+
+
+def _extract_bom_data(
+    row: dict, mapping: MappingResult, child_pn: str | None
+) -> list[dict]:
+    """행에서 CONSISTS_OF 관계 데이터 추출.
+
+    Returns:
+        [{"parent_pn": "ASM-001", "child_pn": "BRK-001", "quantity": 2, ...}]
+    """
+    if not child_pn:
+        return []
+    entries: list[dict] = []
+    for rm in mapping.relation_mappings:
+        if rm.rel_type != "CONSISTS_OF":
+            continue
+        # 상위 Part의 part_number (node_columns에서)
+        parent_src = rm.node_columns.get("part_number")
+        if not parent_src:
+            continue
+        parent_pn = _cast_python_value(row.get(parent_src), "string")
+        if not parent_pn:
             continue
 
-        label = cm.target_label
-        if label in label_needs_split:
-            role = endpoint_roles.get((label, cm.source_column))
-            if role:
-                grouped_props.setdefault((label, role), {})[cm.target_property] = (
-                    formatted
-                )
-            else:
-                # 엔드포인트에 속하지 않는 고유 속성 → from/to 양쪽에 추가
-                for r in ("from", "to"):
-                    grouped_props.setdefault((label, r), {})[cm.target_property] = (
-                        formatted
-                    )
-        else:
-            grouped_props.setdefault((label, "default"), {})[cm.target_property] = (
-                formatted
-            )
+        entry: dict = {"parent_pn": str(parent_pn), "child_pn": child_pn}
+        # 관계 속성 (quantity 등)
+        for rel_prop, src_col in rm.rel_columns.items():
+            data_type = rm.rel_column_types.get(rel_prop, "string")
+            val = _cast_python_value(row.get(src_col), data_type)
+            if val is not None:
+                entry[rel_prop] = val
+        entries.append(entry)
+    return entries
 
-    for ep in mapping.extended_properties:
-        val = row.get(ep.source_column)
-        formatted = format_cypher_value(val, ep.data_type)
-        if formatted is None:
+
+def _process_row_nodes(row: dict, mapping: MappingResult) -> list[str]:
+    """행에서 비-Part 노드 MERGE Cypher 생성.
+
+    Part 노드는 RDS에서 처리하므로 여기서는 Supplier, Drawing 등만 처리합니다.
+    """
+    cyphers: list[str] = []
+    seen: set[tuple] = set()
+
+    for rm in mapping.relation_mappings:
+        if rm.target_label == "Part":
             continue
 
-        label = ep.target_label
-        if label in label_needs_split:
-            role = endpoint_roles.get((label, ep.source_column))
-            if role:
-                grouped_props.setdefault((label, role), {})[ep.property_name] = (
-                    formatted
-                )
-            else:
-                for r in ("from", "to"):
-                    grouped_props.setdefault((label, r), {})[ep.property_name] = (
-                        formatted
-                    )
-        else:
-            grouped_props.setdefault((label, "default"), {})[ep.property_name] = (
-                formatted
-            )
-
-    for (label, _role), props in grouped_props.items():
-        node_def = MANUFACTURING_ONTOLOGY.get_node_label(label)
-        if node_def is None:
-            continue
-        if skip_labels and label in skip_labels:
+        node_def = MANUFACTURING_ONTOLOGY.get_node_label(rm.target_label)
+        if not node_def:
             continue
 
         merge_keys: dict[str, str] = {}
         set_props: dict[str, str] = {}
-        for mk in node_def.merge_keys:
-            if mk in props:
-                merge_keys[mk] = props[mk]
+
+        for prop_name, src_col in rm.node_columns.items():
+            val = row.get(src_col)
+            formatted = format_cypher_value(val, "string")
+            if formatted is None:
+                continue
+            if prop_name in node_def.merge_keys:
+                merge_keys[prop_name] = formatted
+            else:
+                set_props[prop_name] = formatted
 
         if not merge_keys:
             continue
 
-        for key, value in props.items():
-            if key not in merge_keys:
-                set_props[key] = value
-        cyphers.append(_build_merge_node(label, merge_keys, set_props))
+        # 동일 노드 중복 방지
+        dedup_key = (rm.target_label, tuple(sorted(merge_keys.items())))
+        if dedup_key in seen:
+            continue
+        seen.add(dedup_key)
 
+        cyphers.append(_build_merge_node(rm.target_label, merge_keys, set_props))
     return cyphers
 
 
-def _assign_duplicate_column_roles(
-    mapping: MappingResult,
-    endpoint_roles: dict[tuple[str, str], str],
-    label_needs_split: set[str],
-) -> None:
-    """동일 target_property에 복수 source_column이 매핑된 경우 from/to role을 추론.
-
-    예: Part.name에 "상위품명"과 "하위품명"이 모두 매핑된 경우,
-    from_columns에 있는 "상위품번"과 같은 관계의 from 쪽 컬럼 그룹에서
-    "상위품명"을 찾아 from role을 부여.
-    """
-    # 분리 대상 라벨에서 중복 매핑 탐색
-    # (label, target_property) → [source_column, ...]
-    prop_sources: dict[tuple[str, str], list[str]] = {}
-    for cm in mapping.column_mappings:
-        if cm.target_label in label_needs_split:
-            key = (cm.target_label, cm.target_property)
-            prop_sources.setdefault(key, []).append(cm.source_column)
-
-    # 중복 매핑이 없으면 추론 불필요
-    duplicates = {k: v for k, v in prop_sources.items() if len(v) >= 2}
-    if not duplicates:
-        return
-
-    # 관계별로 from/to 소스 컬럼 집합 수집 (role 추론 기준)
-    for rm in mapping.relation_mappings:
-        from_src_cols = set(rm.from_columns.values())
-        to_src_cols = set(rm.to_columns.values())
-
-        for (label, _prop), src_cols in duplicates.items():
-            if label != rm.from_label or label != rm.to_label:
-                continue
-            for src_col in src_cols:
-                if (label, src_col) in endpoint_roles:
-                    continue  # 이미 할당됨
-                # 같은 관계의 from/to 소스 컬럼과 이름 유사도로 그룹 추론
-                # 휴리스틱: from_columns의 소스 컬럼과 공통 접두/접미사 공유
-                from_score = _column_group_affinity(src_col, from_src_cols)
-                to_score = _column_group_affinity(src_col, to_src_cols)
-                if from_score > to_score:
-                    endpoint_roles[(label, src_col)] = "from"
-                elif to_score > from_score:
-                    endpoint_roles[(label, src_col)] = "to"
-
-
-def _column_group_affinity(candidate: str, group_cols: set[str]) -> int:
-    """후보 컬럼과 그룹 컬럼들 간의 이름 유사도 점수 계산.
-
-    공통 접두사/접미사 길이 기반 휴리스틱.
-    예: "상위품명"과 {"상위품번"} → "상위" 접두사 2자 공유 → 점수 2
-    """
-    if not group_cols:
-        return 0
-    best = 0
-    for gc in group_cols:
-        # 공통 접두사 길이
-        prefix_len = 0
-        for a, b in zip(candidate, gc):
-            if a == b:
-                prefix_len += 1
-            else:
-                break
-        # 공통 접미사 길이
-        suffix_len = 0
-        for a, b in zip(reversed(candidate), reversed(gc)):
-            if a == b:
-                suffix_len += 1
-            else:
-                break
-        best = max(best, prefix_len + suffix_len)
-    return best
-
-
 def _process_row_relationships(
-    row: dict, mapping: MappingResult, skip_rel_types: set[str] | None = None
+    row: dict, mapping: MappingResult, part_pn: str
 ) -> list[str]:
+    """행에서 비-CONSISTS_OF 관계 MERGE Cypher 생성.
+
+    CONSISTS_OF는 part_repo.upsert_bom_link에서 처리하므로 제외합니다.
+    from = 주인공 Part, to = 상대방 노드 (Supplier, Drawing 등)
+    """
     cyphers: list[str] = []
 
-    # column_mappings에서 라벨별 merge key 값을 수집 (폴백용)
-    label_merge_vals: dict[str, dict[str, str]] = {}
-    # source_column → data_type 매핑 (from_columns/to_columns에서 타입 조회용)
-    col_data_types: dict[str, str] = {}
-
-    for cm in mapping.column_mappings:
-        node_def = MANUFACTURING_ONTOLOGY.get_node_label(cm.target_label)
-        if node_def is None:
-            continue
-        col_data_types[cm.source_column] = cm.data_type
-        if cm.target_property in node_def.merge_keys:
-            val = row.get(cm.source_column)
-            formatted = format_cypher_value(val, cm.data_type)
-            if formatted is not None:
-                label_merge_vals.setdefault(cm.target_label, {})[cm.target_property] = (
-                    formatted
-                )
+    escaped_pn = format_cypher_value(part_pn, "string")
+    if escaped_pn is None:
+        return []
 
     for rm in mapping.relation_mappings:
-        if skip_rel_types and rm.rel_type in skip_rel_types:
-            continue
-        # from_columns/to_columns가 있으면 독립적으로 merge key 조회
-        if rm.from_columns:
-            from_keys = _resolve_endpoint_keys(row, rm.from_columns, col_data_types)
-        else:
-            from_keys = label_merge_vals.get(rm.from_label, {})
-
-        if rm.to_columns:
-            to_keys = _resolve_endpoint_keys(row, rm.to_columns, col_data_types)
-        else:
-            to_keys = label_merge_vals.get(rm.to_label, {})
-
-        if not from_keys or not to_keys:
+        if rm.rel_type == "CONSISTS_OF":
             continue
 
-        rel_props: dict[str, str] = {}
-        for src_col, rel_prop in rm.properties.items():
+        target_def = MANUFACTURING_ONTOLOGY.get_node_label(rm.target_label)
+        if not target_def:
+            continue
+
+        # 상대방 노드의 merge key 추출
+        to_keys: dict[str, str] = {}
+        for prop_name, src_col in rm.node_columns.items():
             val = row.get(src_col)
-            data_type = rm.property_types.get(rel_prop, "string")
-            formatted = format_cypher_value(val, data_type)
+            formatted = format_cypher_value(val, "string")
+            if formatted is None:
+                continue
+            if prop_name in target_def.merge_keys:
+                to_keys[prop_name] = formatted
+
+        if not to_keys:
+            continue
+
+        # 관계 속성 추출
+        rel_props: dict[str, str] = {}
+        for rel_prop, src_col in rm.rel_columns.items():
+            data_type = rm.rel_column_types.get(rel_prop, "string")
+            formatted = format_cypher_value(row.get(src_col), data_type)
             if formatted is not None:
                 rel_props[rel_prop] = formatted
 
+        from_keys = {"part_number": escaped_pn}
         cyphers.append(
             _build_merge_rel(
-                rm.from_label,
-                from_keys,
-                rm.to_label,
-                to_keys,
-                rm.rel_type,
-                rel_props,
+                "Part", from_keys, rm.target_label, to_keys,
+                rm.rel_type, rel_props,
             )
         )
     return cyphers
 
 
-def _resolve_endpoint_keys(
-    row: dict,
-    endpoint_columns: dict[str, str],
-    col_data_types: dict[str, str],
-) -> dict[str, str]:
-    """from_columns/to_columns 기반으로 행에서 merge key 값 추출"""
-    keys: dict[str, str] = {}
-    for merge_key, source_column in endpoint_columns.items():
-        val = row.get(source_column)
-        data_type = col_data_types.get(source_column, "string")
-        formatted = format_cypher_value(val, data_type)
-        if formatted is not None:
-            keys[merge_key] = formatted
-    return keys
+# ── 백그라운드 합성 ──
 
 
 def _run_synthesis(
@@ -678,67 +600,86 @@ def _run_synthesis(
             chunk = df.iloc[chunk_start:chunk_end]
             t_chunk = time.perf_counter()
 
+            # === Phase 1: 데이터 수집 및 Part별 집계 (first-non-null) ===
+            part_data: dict[str, dict] = {}
+            bom_entries: list[dict] = []
+            all_node_cyphers: list[str] = []
+            all_rel_cyphers: list[str] = []
+
             for idx, (_, row_series) in enumerate(chunk.iterrows()):
                 row_num = chunk_start + idx + 1
                 row = row_series.to_dict()
                 try:
-                    # Part → part_repo (RDS + Graph 통합)
-                    part_entries = _extract_part_data(row, mapping)
-                    for pn, props in part_entries.items():
-                        part_repo.upsert_part(db, pn, props, job_id, graph_name)
+                    # 주인공 Part 속성 추출 및 집계
+                    pn, props = _extract_row_part(row, mapping)
+                    if pn:
+                        _merge_part_props(part_data, pn, props)
 
-                    # BOM 관계 → part_repo (RDS + Graph dual-write)
-                    bom_entries = _extract_bom_data(row, mapping)
-                    created_bom_links = 0
-                    for entry in bom_entries:
-                        # 표준 BOM 속성과 확장 속성 분리
-                        ext_props = {
-                            k: v
-                            for k, v in entry.items()
-                            if k not in _BOM_STANDARD_KEYS
-                        }
-                        try:
-                            part_repo.upsert_bom_link(
-                                db,
-                                graph_name,
-                                entry["parent_pn"],
-                                entry["child_pn"],
-                                entry.get("quantity", 1),
-                                sequence=entry.get("sequence"),
-                                reference_designator=entry.get("reference_designator"),
-                                find_number=entry.get("find_number"),
-                                extended_properties=ext_props if ext_props else None,
-                            )
-                            created_bom_links += 1
-                        except part_repo.MissingPartForBomError as error:
-                            logger.warning(
-                                "합성 BOM 링크 스킵: row={row} parent={parent} child={child} reason={reason}",
-                                row=row_num,
-                                parent=error.parent_pn,
-                                child=error.child_pn,
-                                reason=str(error),
-                            )
-                            continue
+                    # CONSISTS_OF 상대방(상위) Part 속성 추출 및 집계
+                    related = _extract_related_parts(row, mapping)
+                    for related_pn, related_props in related.items():
+                        _merge_part_props(part_data, related_pn, related_props)
 
-                    # 비-Part 노드 → Graph only
-                    node_cyphers = _process_row_nodes(
-                        row, mapping, skip_labels={"Part"}
-                    )
-                    repo.execute_graph_cyphers(db, graph_name, node_cyphers)
-                    nodes_created += len(part_entries) + len(node_cyphers)
+                    # BOM 데이터 수집
+                    bom_entries.extend(_extract_bom_data(row, mapping, pn))
 
-                    # 비-CONSISTS_OF 관계 → Graph only
-                    rel_cyphers = _process_row_relationships(
-                        row, mapping, skip_rel_types={"CONSISTS_OF"}
-                    )
-                    repo.execute_graph_cyphers(db, graph_name, rel_cyphers)
-                    rels_created += created_bom_links + len(rel_cyphers)
+                    # 비-Part 노드 Cypher 수집
+                    all_node_cyphers.extend(_process_row_nodes(row, mapping))
+
+                    # 비-CONSISTS_OF 관계 Cypher 수집
+                    if pn:
+                        all_rel_cyphers.extend(
+                            _process_row_relationships(row, mapping, pn)
+                        )
                 except Exception as error:
                     err_msg = f"행 {row_num}: {error}"
                     errors.append(err_msg)
                     logger.warning("합성 행 처리 오류: {err}", err=err_msg)
 
                 processed += 1
+
+            # === Phase 2: Part upsert (RDS + Graph dual-write) ===
+            for pn, props in part_data.items():
+                try:
+                    part_repo.upsert_part(db, pn, props, job_id, graph_name)
+                    nodes_created += 1
+                except Exception as error:
+                    errors.append(f"Part upsert 실패 ({pn}): {error}")
+                    logger.warning(
+                        "Part upsert 오류: pn={pn} error={err}", pn=pn, err=error
+                    )
+
+            # === Phase 3: 비-Part 노드 (Graph only) ===
+            if all_node_cyphers:
+                repo.execute_graph_cyphers(db, graph_name, all_node_cyphers)
+                nodes_created += len(all_node_cyphers)
+
+            # === Phase 4: BOM 링크 (RDS + Graph dual-write) ===
+            for entry in bom_entries:
+                quantity = entry.get("quantity", 1)
+                ext_props = {
+                    k: v for k, v in entry.items()
+                    if k not in {"parent_pn", "child_pn", "quantity"}
+                }
+                try:
+                    part_repo.upsert_bom_link(
+                        db, graph_name,
+                        entry["parent_pn"], entry["child_pn"],
+                        quantity,
+                        extended_properties=ext_props if ext_props else None,
+                    )
+                    rels_created += 1
+                except part_repo.MissingPartForBomError as error:
+                    logger.warning(
+                        "합성 BOM 링크 스킵: parent={parent} child={child}",
+                        parent=error.parent_pn,
+                        child=error.child_pn,
+                    )
+
+            # === Phase 5: 비-CONSISTS_OF 관계 (Graph only) ===
+            if all_rel_cyphers:
+                repo.execute_graph_cyphers(db, graph_name, all_rel_cyphers)
+                rels_created += len(all_rel_cyphers)
 
             db.commit()
             chunk_elapsed = time.perf_counter() - t_chunk
@@ -781,6 +722,9 @@ def _run_synthesis(
             logger.error("합성 실패 상태 저장 오류: job_id={job_id}", job_id=job_id)
     finally:
         db.close()
+
+
+# ── 헬퍼 ──
 
 
 def _to_job_response(job: SynthesisJob) -> SynthesisJobResponse:
@@ -826,124 +770,3 @@ def _cast_python_value(value, data_type: str):
         return str(value).strip()
 
     return str(value).strip()
-
-
-def _extract_part_data(row: dict, mapping: MappingResult) -> dict[str, dict]:
-    """행에서 Part 라벨 속성을 Python 원시값으로 추출.
-
-    반환: {part_number: {속성dict}} — 분리(split) 시 여러 Part가 포함될 수 있음
-    """
-    # _process_row_nodes와 동일한 분리 판별 로직 재활용
-    prop_sources: dict[tuple[str, str], list[str]] = {}
-    for cm in mapping.column_mappings:
-        key = (cm.target_label, cm.target_property)
-        prop_sources.setdefault(key, []).append(cm.source_column)
-
-    label_needs_split: set[str] = set()
-    for (label, _prop), sources in prop_sources.items():
-        if len(sources) >= 2:
-            label_needs_split.add(label)
-
-    endpoint_roles: dict[tuple[str, str], str] = {}
-    for rm in mapping.relation_mappings:
-        if rm.from_label != rm.to_label:
-            continue
-        for _mk, src_col in rm.from_columns.items():
-            endpoint_roles[(rm.from_label, src_col)] = "from"
-        for _mk, src_col in rm.to_columns.items():
-            endpoint_roles[(rm.to_label, src_col)] = "to"
-
-    _assign_duplicate_column_roles(mapping, endpoint_roles, label_needs_split)
-
-    # Part 라벨 속성만 수집 (Python 원시값)
-    grouped: dict[str, dict[str, object]] = {}  # role → {prop: value}
-
-    for cm in mapping.column_mappings:
-        if cm.target_label != "Part":
-            continue
-        val = _cast_python_value(row.get(cm.source_column), cm.data_type)
-        if val is None:
-            continue
-
-        if "Part" in label_needs_split:
-            role = endpoint_roles.get(("Part", cm.source_column))
-            if role:
-                grouped.setdefault(role, {})[cm.target_property] = val
-            else:
-                for r in ("from", "to"):
-                    grouped.setdefault(r, {})[cm.target_property] = val
-        else:
-            grouped.setdefault("default", {})[cm.target_property] = val
-
-    for ep in mapping.extended_properties:
-        if ep.target_label != "Part":
-            continue
-        val = _cast_python_value(row.get(ep.source_column), ep.data_type)
-        if val is None:
-            continue
-
-        if "Part" in label_needs_split:
-            role = endpoint_roles.get(("Part", ep.source_column))
-            if role:
-                grouped.setdefault(role, {})[ep.property_name] = val
-            else:
-                for r in ("from", "to"):
-                    grouped.setdefault(r, {})[ep.property_name] = val
-        else:
-            grouped.setdefault("default", {})[ep.property_name] = val
-
-    # part_number 기준으로 결과 구성
-    result: dict[str, dict] = {}
-    for _role, props in grouped.items():
-        pn = props.get("part_number")
-        if not pn:
-            continue
-        result[str(pn)] = props
-    return result
-
-
-def _extract_bom_data(row: dict, mapping: MappingResult) -> list[dict]:
-    """행에서 CONSISTS_OF 관계 데이터를 Python 원시값으로 추출.
-
-    반환: [{"parent_pn": "ASM-001", "child_pn": "BRK-001", "quantity": 2, ...}, ...]
-    """
-    col_data_types: dict[str, str] = {}
-    for cm in mapping.column_mappings:
-        col_data_types[cm.source_column] = cm.data_type
-
-    entries: list[dict] = []
-    for rm in mapping.relation_mappings:
-        if rm.rel_type != "CONSISTS_OF":
-            continue
-
-        # 엔드포인트 part_number 추출
-        parent_pn = _resolve_endpoint_pn(row, rm.from_columns, col_data_types)
-        child_pn = _resolve_endpoint_pn(row, rm.to_columns, col_data_types)
-        if not parent_pn or not child_pn:
-            continue
-
-        entry: dict = {"parent_pn": parent_pn, "child_pn": child_pn}
-        for src_col, rel_prop in rm.properties.items():
-            data_type = rm.property_types.get(rel_prop, "string")
-            parsed = _cast_python_value(row.get(src_col), data_type)
-            if parsed is not None:
-                entry[rel_prop] = parsed
-
-        entries.append(entry)
-
-    return entries
-
-
-def _resolve_endpoint_pn(
-    row: dict,
-    endpoint_columns: dict[str, str],
-    col_data_types: dict[str, str],
-) -> str | None:
-    """엔드포인트 컬럼에서 part_number 값을 Python 문자열로 추출."""
-    src_col = endpoint_columns.get("part_number")
-    if not src_col:
-        return None
-    val = row.get(src_col)
-    data_type = col_data_types.get(src_col, "string")
-    parsed = _cast_python_value(val, data_type)
-    return str(parsed) if parsed is not None else None

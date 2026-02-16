@@ -1,6 +1,5 @@
 """매핑 도메인 서비스 레이어."""
 
-import re
 import time
 import uuid
 
@@ -38,7 +37,6 @@ from app.modules.ontology.schemas import MappingResult
 from app.modules.ontology import service as ontology_service
 
 _s3 = S3Client()
-_EXT_NAME_RE = re.compile(r"^_ext_[a-z0-9_]+$")
 
 
 @transactional(read_only=True)
@@ -63,13 +61,10 @@ def preview_mapping(
     is_excel = len(sheet_names) > 0
 
     if req.sheet_name is not None:
-        # 특정 시트만 처리
         target_sheets = [req.sheet_name]
     elif is_excel:
-        # Excel이고 sheet_name=None이면 모든 시트 처리
         target_sheets = sheet_names
     else:
-        # CSV는 시트 개념 없음
         target_sheets = [None]
 
     sheets: list[SheetPreview] = []
@@ -132,7 +127,7 @@ def preview_mapping(
             output_tokens=llm_resp.output_tokens,
         )
 
-        if not mapping_result.column_mappings:
+        if not mapping_result.property_mappings:
             if sheet is not None:
                 skipped_sheets.append(
                     SkippedSheet(
@@ -152,7 +147,6 @@ def preview_mapping(
                 )
             )
 
-        # 첫 번째 유효 시트를 기본 응답으로 사용
         if first_mapping is None:
             first_headers = headers
             first_sample_rows = sample_rows
@@ -217,75 +211,37 @@ def validate_mapping(
     merge_keys_by_label = {
         nl.label: set(nl.merge_keys) for nl in MANUFACTURING_ONTOLOGY.node_labels
     }
-    rel_defs = {rt.rel_type: rt for rt in MANUFACTURING_ONTOLOGY.relationship_types}
 
-    mapped_properties: dict[str, set[str]] = {}
-
-    for idx, cm in enumerate(normalized_mapping.column_mappings):
-        mapped_properties.setdefault(cm.target_label, set()).add(cm.target_property)
-        if cm.source_column not in header_set:
+    # Part 속성 매핑 검증
+    for idx, pm in enumerate(normalized_mapping.property_mappings):
+        if pm.source_column not in header_set:
             errors.append(
                 ValidationIssue(
                     code="MISSING_SOURCE_COLUMN",
                     severity="error",
-                    message=f"컬럼 '{cm.source_column}'을(를) 파일에서 찾을 수 없습니다",
-                    path=f"column_mappings[{idx}].source_column",
+                    message=f"컬럼 '{pm.source_column}'을(를) 파일에서 찾을 수 없습니다",
+                    path=f"property_mappings[{idx}].source_column",
                     dismissed_reason="missing_source_column",
                 )
             )
             continue
-        if cm.data_type in ("integer", "float") and _has_non_numeric_sample(
+        if pm.data_type in ("integer", "float") and _has_non_numeric_sample(
             sample_rows,
-            cm.source_column,
+            pm.source_column,
         ):
             warnings.append(
                 ValidationIssue(
                     code="NUMERIC_PARSE_WARNING",
                     severity="warning",
                     message=(
-                        f"컬럼 '{cm.source_column}'에 숫자로 해석하기 어려운 값이 있습니다"
+                        f"컬럼 '{pm.source_column}'에 숫자로 해석하기 어려운 값이 있습니다"
                     ),
-                    path=f"column_mappings[{idx}].data_type",
+                    path=f"property_mappings[{idx}].data_type",
                 )
             )
 
-    for idx, ep in enumerate(normalized_mapping.extended_properties):
-        if ep.source_column not in header_set:
-            errors.append(
-                ValidationIssue(
-                    code="MISSING_SOURCE_COLUMN",
-                    severity="error",
-                    message=f"컬럼 '{ep.source_column}'을(를) 파일에서 찾을 수 없습니다",
-                    path=f"extended_properties[{idx}].source_column",
-                    dismissed_reason="missing_source_column",
-                )
-            )
-        if not _EXT_NAME_RE.match(ep.property_name):
-            errors.append(
-                ValidationIssue(
-                    code="INVALID_EXT_PROPERTY_NAME",
-                    severity="error",
-                    message=(
-                        f"확장 속성명 '{ep.property_name}'은 _ext_ 접두사 + snake_case여야 합니다"
-                    ),
-                    path=f"extended_properties[{idx}].property_name",
-                    dismissed_reason="invalid_ext_property_name",
-                )
-            )
-        if ep.data_type in ("integer", "float") and _has_non_numeric_sample(
-            sample_rows,
-            ep.source_column,
-        ):
-            warnings.append(
-                ValidationIssue(
-                    code="NUMERIC_PARSE_WARNING",
-                    severity="warning",
-                    message=(
-                        f"확장 컬럼 '{ep.source_column}'에 숫자로 해석하기 어려운 값이 있습니다"
-                    ),
-                    path=f"extended_properties[{idx}].data_type",
-                )
-            )
+    # 관계 매핑 검증
+    rel_defs = {rt.rel_type: rt for rt in MANUFACTURING_ONTOLOGY.relationship_types}
 
     for idx, rm in enumerate(normalized_mapping.relation_mappings):
         rel_def = rel_defs.get(rm.rel_type)
@@ -300,82 +256,52 @@ def validate_mapping(
             )
             continue
 
-        _validate_relation_endpoint(
-            errors=errors,
-            idx=idx,
-            direction="from",
-            label=rm.from_label,
-            endpoint_columns=rm.from_columns,
-            headers=header_set,
-            merge_keys_by_label=merge_keys_by_label,
-        )
-        _validate_relation_endpoint(
-            errors=errors,
-            idx=idx,
-            direction="to",
-            label=rm.to_label,
-            endpoint_columns=rm.to_columns,
-            headers=header_set,
-            merge_keys_by_label=merge_keys_by_label,
-        )
-
-        if rm.from_label == rm.to_label:
-            overlap = set(rm.from_columns.values()) & set(rm.to_columns.values())
-            if overlap:
+        # node_columns 검증: 상대방 노드의 merge key가 매핑되어 있는지
+        required_keys = merge_keys_by_label.get(rm.target_label, set())
+        for merge_key in required_keys:
+            src_col = rm.node_columns.get(merge_key)
+            if not src_col:
                 errors.append(
                     ValidationIssue(
-                        code="SELF_LOOP_ENDPOINT_CONFLICT",
+                        code="MISSING_NODE_MERGE_KEY",
                         severity="error",
                         message=(
-                            "self-loop 관계는 from/to 엔드포인트 컬럼을 동일하게 사용할 수 없습니다"
+                            f"관계 '{rm.rel_type}'의 대상 노드 merge key "
+                            f"'{merge_key}' 매핑이 누락되었습니다"
                         ),
-                        path=f"relation_mappings[{idx}]",
+                        path=f"relation_mappings[{idx}].node_columns.{merge_key}",
+                        dismissed_reason="missing_node_merge_key",
                     )
                 )
-
-        required_rel_props = {prop.name for prop in rel_def.properties if prop.required}
-        mapped_rel_props = set(rm.properties.values())
-        missing_required_props = sorted(required_rel_props - mapped_rel_props)
-        for prop_name in missing_required_props:
-            errors.append(
-                ValidationIssue(
-                    code="MISSING_REQUIRED_REL_PROPERTY",
-                    severity="error",
-                    message=(
-                        f"관계 '{rm.rel_type}'의 필수 속성 '{prop_name}' 매핑이 누락되었습니다"
-                    ),
-                    path=f"relation_mappings[{idx}].properties",
-                    dismissed_reason="missing_required_rel_property",
-                )
-            )
-
-        for src_col, rel_prop in rm.properties.items():
-            path = f"relation_mappings[{idx}].properties.{src_col}"
+                continue
             if src_col not in header_set:
-                if rel_prop in required_rel_props:
-                    errors.append(
-                        ValidationIssue(
-                            code="MISSING_SOURCE_COLUMN",
-                            severity="error",
-                            message=f"컬럼 '{src_col}'을(를) 파일에서 찾을 수 없습니다",
-                            path=path,
-                            dismissed_reason="missing_source_column",
-                        )
+                errors.append(
+                    ValidationIssue(
+                        code="MISSING_SOURCE_COLUMN",
+                        severity="error",
+                        message=f"컬럼 '{src_col}'을(를) 파일에서 찾을 수 없습니다",
+                        path=f"relation_mappings[{idx}].node_columns.{merge_key}",
+                        dismissed_reason="missing_source_column",
                     )
-                else:
-                    warnings.append(
-                        ValidationIssue(
-                            code="OPTIONAL_REL_PROPERTY_SOURCE_MISSING",
-                            severity="warning",
-                            message=(
-                                f"관계 속성 컬럼 '{src_col}'이 없어 해당 속성은 무시될 수 있습니다"
-                            ),
-                            path=path,
-                        )
+                )
+
+        # rel_columns 검증
+        for rel_prop, src_col in rm.rel_columns.items():
+            path = f"relation_mappings[{idx}].rel_columns.{rel_prop}"
+            if src_col not in header_set:
+                warnings.append(
+                    ValidationIssue(
+                        code="OPTIONAL_REL_PROPERTY_SOURCE_MISSING",
+                        severity="warning",
+                        message=(
+                            f"관계 속성 컬럼 '{src_col}'이 없어 해당 속성은 무시될 수 있습니다"
+                        ),
+                        path=path,
                     )
+                )
                 continue
 
-            data_type = rm.property_types.get(rel_prop, "string")
+            data_type = rm.rel_column_types.get(rel_prop, "string")
             if data_type in ("integer", "float") and _has_non_numeric_sample(
                 sample_rows,
                 src_col,
@@ -387,17 +313,15 @@ def validate_mapping(
                         message=(
                             f"관계 속성 컬럼 '{src_col}'에 숫자로 해석하기 어려운 값이 있습니다"
                         ),
-                        path=f"relation_mappings[{idx}].property_types.{rel_prop}",
+                        path=f"relation_mappings[{idx}].rel_column_types.{rel_prop}",
                     )
                 )
 
-    used_columns = {cm.source_column for cm in normalized_mapping.column_mappings} | {
-        ep.source_column for ep in normalized_mapping.extended_properties
-    }
+    # 미사용 컬럼 카운트
+    used_columns = {pm.source_column for pm in normalized_mapping.property_mappings}
     for rm in normalized_mapping.relation_mappings:
-        used_columns.update(rm.from_columns.values())
-        used_columns.update(rm.to_columns.values())
-        used_columns.update(rm.properties.keys())
+        used_columns.update(rm.node_columns.values())
+        used_columns.update(rm.rel_columns.values())
 
     impact_summary = MappingImpactSummary(
         disabled_column_count=sum(1 for h in headers if h not in used_columns),
@@ -461,6 +385,7 @@ def confirm_mapping(
         sheet_name=req.sheet_name,
         original_headers=headers,
         mapping=validation.normalized_mapping.model_dump(),
+        scope=req.scope,
         usage_count=0,
     )
     repo.create_mapping_record(db, record)
@@ -468,9 +393,10 @@ def confirm_mapping(
     db.refresh(record)
 
     logger.info(
-        "매핑 확정: mapping_id={mapping_id} name={name}",
+        "매핑 확정: mapping_id={mapping_id} name={name} scope={scope}",
         mapping_id=record.id,
         name=record.name,
+        scope=record.scope,
     )
     return _to_mapping_response(record)
 
@@ -495,9 +421,8 @@ def _to_mapping_response(record: MappingRecord) -> MappingResponse:
         original_headers = [str(header) for header in record.original_headers]
 
     mapping_payload = MappingResult(
-        column_mappings=[],
+        property_mappings=[],
         relation_mappings=[],
-        extended_properties=[],
     )
     if isinstance(record.mapping, dict):
         mapping_payload = MappingResult.model_validate(record.mapping)
@@ -508,6 +433,8 @@ def _to_mapping_response(record: MappingRecord) -> MappingResponse:
         sheet_name=record.sheet_name,
         original_headers=original_headers,
         mapping=mapping_payload,
+        scope=record.scope,
+        is_active=record.is_active,
         usage_count=record.usage_count,
         created_at=record.created_at,
     )
@@ -536,72 +463,16 @@ def _build_editable_constraints() -> EditableConstraints:
                 }
             )
 
+    part_node = MANUFACTURING_ONTOLOGY.get_node_label("Part")
     return EditableConstraints(
-        allowed_labels=[node.label for node in MANUFACTURING_ONTOLOGY.node_labels],
-        allowed_properties_by_label={
-            node.label: [prop.name for prop in node.properties]
-            for node in MANUFACTURING_ONTOLOGY.node_labels
-        },
-        allowed_rel_types=[
-            rel.rel_type for rel in MANUFACTURING_ONTOLOGY.relationship_types
-        ],
-        allowed_rel_properties_by_type={
-            rel.rel_type: [prop.name for prop in rel.properties]
-            for rel in MANUFACTURING_ONTOLOGY.relationship_types
-        },
+        allowed_part_properties=[p.name for p in part_node.properties] if part_node else [],
         merge_keys_by_label={
             node.label: list(node.merge_keys)
             for node in MANUFACTURING_ONTOLOGY.node_labels
         },
-        relation_edit_mode="selectable",
         relation_catalog=relation_catalog,
         relation_property_catalog=relation_property_catalog,
     )
-
-
-def _validate_relation_endpoint(
-    errors: list[ValidationIssue],
-    idx: int,
-    direction: str,
-    label: str,
-    endpoint_columns: dict[str, str],
-    headers: set[str],
-    merge_keys_by_label: dict[str, set[str]],
-) -> None:
-    required_keys = merge_keys_by_label.get(label, set())
-    for merge_key in required_keys:
-        src_col = endpoint_columns.get(merge_key)
-        if not src_col:
-            errors.append(
-                ValidationIssue(
-                    code=(
-                        "MISSING_FROM_ENDPOINT"
-                        if direction == "from"
-                        else "MISSING_TO_ENDPOINT"
-                    ),
-                    severity="error",
-                    message=(
-                        f"관계 {direction} 엔드포인트의 merge key '{merge_key}' 매핑이 누락되었습니다"
-                    ),
-                    path=(f"relation_mappings[{idx}].{direction}_columns.{merge_key}"),
-                    dismissed_reason=(
-                        "missing_from_endpoint"
-                        if direction == "from"
-                        else "missing_to_endpoint"
-                    ),
-                )
-            )
-            continue
-        if src_col not in headers:
-            errors.append(
-                ValidationIssue(
-                    code="MISSING_SOURCE_COLUMN",
-                    severity="error",
-                    message=f"컬럼 '{src_col}'을(를) 파일에서 찾을 수 없습니다",
-                    path=f"relation_mappings[{idx}].{direction}_columns.{merge_key}",
-                    dismissed_reason="missing_source_column",
-                )
-            )
 
 
 def _has_non_numeric_sample(sample_rows: list[dict], source_column: str) -> bool:

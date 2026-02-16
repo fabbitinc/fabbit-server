@@ -570,7 +570,6 @@ MANUFACTURING_ONTOLOGY = BaseOntology(
                         "Excel에서 '수량', '소요량', 'Qty', 'Quantity' 등으로 표기될 수 있음."
                     ),
                     data_type="integer",
-                    required=True,
                 ),
                 PropertyDef(
                     name="sequence",

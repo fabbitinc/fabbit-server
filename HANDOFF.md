@@ -1,109 +1,85 @@
-# HANDOFF — Synthesis/Part 설계 리팩토링
+# HANDOFF — BOM 업로드 설계 v2 구현
 
 ## Goal
 
-BOM 파일 synthesis 시 Part 데이터가 잘못 처리되는 근본적인 설계 문제를 해결해야 한다.
-현재 BOM 행의 모든 컬럼을 Part 속성으로 upsert하는 방식이 BOM 파일의 본질(관계 데이터)과 충돌한다.
-
-## 발견된 문제들
-
-### 1. BOM 행의 컬럼 소속 혼동
-
-BOM 한 행에는 3가지 성격의 데이터가 섞여 있다:
-
-| 소속 | 컬럼 예시 | 현재 동작 |
-|------|----------|----------|
-| 상위 Part (식별만) | 상위품번, 상위품명 | ✗ 하위 속성(재질 등)까지 상위 Part에 적용됨 |
-| 하위 Part (속성 포함) | 하위품번, 하위품명, 재질, 공급업체 | ✗ 같은 part_number 여러 행 시 마지막 값으로 덮어씀 |
-| 관계 (BomLink) | 수량, 단위, 비고 | ○ 정상 동작 |
-
-**원인 코드**: `synthesis/service.py`의 `_extract_part_data()` — from/to 어느 쪽에도 배정 안 되는 속성(재질 등)은 **양쪽에 복사**:
-```python
-# synthesis/service.py:404-408
-else:
-    for r in ("from", "to"):
-        grouped_props.setdefault((label, r), {})[cm.target_property] = formatted
-```
-
-**DB 증거** (`sample/hierarchical_bom.csv` 기준):
-- ASM-001(상위 조립품)의 material이 행마다 SS400→AL6061-T6→SUS304→SS400로 변경됨
-- 모두 하위 부품의 재질인데 상위 Part에 덮어씌워짐
-
-### 2. PartRevision 중복 생성
-
-같은 part_number가 여러 행에 나오면 행마다 `upsert_part()` → `changed=True` → `_create_revision_snapshot()` 호출.
-
-**DB 증거** (Arduino BOM 데이터):
-- Part 38개, PartRevision 531개 (7회 synthesis)
-- `C0805C104K1RACAUTO`: job당 6개 revision (6개 행에 등장, 매 행마다 name/ref_designator가 달라 변경 감지)
-- 2번째 이후 synthesis에서도 매번 73개 revision 생성 (동일 데이터인데도)
-
-**원인**: 행 단위 upsert이므로, 마지막 행에서 최종 상태 도달 → 다음 synthesis 실행 시 첫 행이 다시 최종 상태를 변경 → `changed=True`
-
-### 3. MappingRecord 중복 confirm
-
-`POST /api/v1/mappings/confirm`에 유니크 제약이 없어 같은 매핑을 여러 번 confirm하면 매번 새 MappingRecord INSERT. 데이터 정합성 문제는 아니지만 UX 이슈.
-
-### 4. 미해결 설계 질문들
-
-사용자가 제기한 근본 질문:
-
-- **BOM 파일은 관계 데이터인데, Part 마스터 속성을 여기서 추출하는 게 맞는가?**
-- Part 테이블 데이터가 안 바뀌어도 Drawing이 바뀌면 revision이어야 하는데, 현재 PartRevision은 Part 컬럼 스냅샷일 뿐
-- Excel 병행 사용 시 기존 Part와 신규 업로드의 merge 전략 (덮어쓰기 vs 충돌 감지)
-- synthesis가 일회성 초기 적재인지, 반복적 동기화인지 정의 필요
+BOM 파일의 다양한 양식(Flat BOM, Part List, Manual Root BOM)을 하나의 매핑/합성 파이프라인으로 처리할 수 있도록 매핑 스키마, 모델, synthesis 로직을 재설계하고 구현한다.
 
 ## 현재 진행 상태
 
-- [x] 문제 식별 및 DB 증거 수집 완료
-- [x] 코드 레벨 원인 분석 완료
-- [ ] 설계 방향 결정 (사용자와 논의 필요)
-- [ ] 코드 수정 미착수
+- [x] 문제 식별 및 DB 증거 수집
+- [x] 코드 레벨 원인 분석
+- [x] BOM 파일 유형 분류
+- [x] 설계 v2 작성 + 상세 토론 완료 (모든 미결 사항 해소)
+- [x] **코드 수정 완료** — 전체 테스트 60 passed, 4 skipped
 
-## 방향성 선택지 (사용자와 논의 중)
+## 완료된 작업
 
-### A) BOM synthesis는 관계 중심으로 축소
-- Part는 merge key(part_number) + name 정도만 upsert
-- material, supplier 등은 BomLink 확장 속성 또는 별도 Part 마스터 업로드로 분리
-- 가장 안전하지만, "BOM에서 Part 정보를 자동 추출"하는 기존 가치가 줄어듦
+### 1. base_ontology.py — CONSISTS_OF 속성 required 제거
+- `CONSISTS_OF`의 모든 속성을 `required=False`로 변경 (quantity 포함)
 
-### B) 매핑 단계에서 컬럼 소속 명시적 지정
-- "이 컬럼은 상위 Part / 하위 Part / 관계" 구분을 매핑 UI에서 명확히
-- 현재 from/to 휴리스틱 대신 사용자가 직접 지정
-- 매핑 스키마(MappingResult) 변경 필요
+### 2. ontology/schemas.py — Part 속성 / 외부 관계 이분법
+- 기존 3분법(ColumnMapping/RelationMapping/ExtendedPropertyMapping) → 2분법
+- **PropertyMapping**: `{source_column, target_property, data_type, confidence, reason}` — 행의 주인공 Part 속성
+- **RelationMapping**: `{rel_type, target_label, node_columns, rel_columns, rel_column_types, confidence, reason}` — 외부 관계 + 상대방 노드
+- `MappingResult`: `{property_mappings: list[PropertyMapping], relation_mappings: list[RelationMapping]}`
 
-### C) Part 마스터와 BOM 분리
-- Part 속성은 Part 목록 파일에서, BOM은 관계 파일에서 각각 synthesis
-- 파일 형태별 다른 전략 적용
+### 3. mapping/models.py — MappingRecord 확장
+- `scope: str` (master | part_detail), `version: int`, `is_active: bool` 추가
+- 인덱스: `ix_mapping_records_scope_is_active`
 
-## 관련 핵심 파일
+### 4. part/models.py — BomLink 슬림화
+- `sequence`, `reference_designator`, `find_number` 컬럼 제거
+- `extended_properties: JSONB`로 이동 (GIN 인덱스 추가)
 
-| 파일 | 역할 |
-|------|------|
-| `app/modules/synthesis/service.py` | synthesis 메인 로직 (`_run_synthesis`, `_extract_part_data`, `_process_row_nodes`) |
-| `app/modules/part/repository.py` | `upsert_part()`, `upsert_bom_link()`, `_create_revision_snapshot()` |
-| `app/modules/part/models.py` | Part, PartRevision, BomLink 모델 |
-| `app/modules/mapping/service.py` | `confirm_mapping()`, `validate_mapping()` |
-| `app/modules/mapping/models.py` | MappingRecord 모델 (유니크 제약 없음) |
-| `app/modules/ontology/base_ontology.py` | 온톨로지 SSoT (노드/관계/속성 정의) |
-| `app/modules/ontology/schemas.py` | MappingResult, ColumnMapping 스키마 |
+### 5. mapping/service.py — 새 스키마 기반 검증
+- `validate_mapping()`, `confirm_mapping()` 새 스키마에 맞게 재작성
 
-## 검증용 DB 쿼리
+### 6. synthesis/service.py — 완전 재작성
+- 기존 from/to 휴리스틱 함수 6개 제거
+- 새 데이터 추출 함수: `_extract_row_part`, `_extract_related_parts`, `_merge_part_props`, `_extract_bom_data`
+- `_run_synthesis` 청크 루프를 5-phase 구조로 재구성:
+  1. 데이터 수집 및 Part별 집계 (first-non-null)
+  2. Part upsert (RDS + Graph dual-write)
+  3. 비-Part 노드 (Graph only)
+  4. BOM 링크 (RDS + Graph dual-write)
+  5. 비-CONSISTS_OF 관계 (Graph only)
 
-```sql
--- 테넌트 스키마 (sample BOM 데이터)
-SET search_path TO "tenant_019c6035eb2578e181b53d40eff0f66d", public, ag_catalog;
+### 7. part/repository.py — Part 단위 upsert
+- `upsert_part()`: 변경 감지(standard/extended 속성 비교), PartRevision 스냅샷
+- `upsert_bom_link()`: sequence/ref_des/find_number 제거, extended_properties 지원
 
--- 테넌트 스키마 (Arduino BOM 데이터)
--- 이전 테넌트는 tenant_019c5fff... 였으나 테이블이 삭제됨
+### 8. 부수 변경
+- `activation/service.py`: `_build_extended_hints`에서 `property_mappings` + `_ext_` 필터 사용
+- `scripts/llm-eval/run_mapping_repeat_eval.py`: 새 스키마 형식 적용
+- `tests/fixtures/hierarchical_bom_mapping.json`: 새 스키마 형식으로 변환
+- `part/schemas.py`: BomChild/BomParent에서 sequence/ref_des/find_number 제거
+- `part/service.py`: 제거된 BomLink 필드 참조 정리
+- `tests/test_synthesis_start_service.py`: 새 함수명 및 스키마에 맞게 수정
 
--- Part별 revision 수 확인
-SELECT p.part_number, count(pr.id) as rev_count
-FROM parts p LEFT JOIN part_revisions pr ON pr.part_id = p.id
-GROUP BY p.part_number ORDER BY rev_count DESC;
+### 9. Alembic 마이그레이션
+- 테넌트 스키마는 `TenantBase.metadata.create_all()`로 관리되므로 별도 마이그레이션 불필요
+- DB 재생성(`docker compose down -v && up -d`) 후 프로비저닝 시 자동 적용
 
--- ASM-001 material 변화 추적
-SELECT pr.name, pr.material, pr.created_at
-FROM part_revisions pr JOIN parts p ON p.id = pr.part_id
-WHERE p.part_number = 'ASM-001' ORDER BY pr.created_at;
-```
+## What Worked
+
+- "Part 속성 / 외부 관계" 이분법이 from/to 혼동을 구조적으로 제거
+- 5-phase 청크 처리가 Part별 집계와 의존성 순서를 명확히 보장
+- first-non-null 병합이 중복 행 문제를 깔끔히 해결
+- BomLink의 선택적 속성을 extended_properties로 통합하여 모델 슬림화
+
+## What Didn't Work / 주의사항
+
+- `_extract_part_data()`의 from/to 휴리스틱은 완전 제거됨 — 새 코드는 스키마 기반 소속
+- 테스트에서 old schema(`column_mappings`, `extended_properties`)를 사용하는 곳이 일부 남아있으나 기능상 문제 없음 (mock으로 MappingResult 파싱을 우회하는 테스트)
+- 테넌트 스키마 변경 시 기존 DB는 재생성 필요 (개발 단계)
+
+## Next Steps
+
+1. **DB 재생성** — `docker compose down -v && docker compose up -d && uv run alembic upgrade head && uv run python seed_data.py`
+2. **E2E 검증** — 3가지 BOM 유형 샘플 파일로 매핑 → 합성 → 조회 흐름 검증
+   - `sample/hierarchical_bom.csv` (Flat BOM)
+   - `sample/messy_bom.csv` (Part List)
+   - `sample/Arduino_Uno_R3_From_Scratch - 시트1.csv` (전자부품 BOM)
+3. **업데이트 토글** — synthesis 시작 시 update_existing 옵션 (현재 항상 ON)
+4. **결과 화면** — 신규/변경/스킵 건수 및 충돌 감지 리포트 API
+5. **Manual Root BOM** — Part 상세화면에서 scope=part_detail 업로드 흐름

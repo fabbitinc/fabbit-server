@@ -642,7 +642,14 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 "app.modules.synthesis.service.read_to_dataframe",
                 return_value=pd.DataFrame([{"col": "v"}]),
             ),
-            patch("app.modules.synthesis.service._extract_part_data", return_value={}),
+            patch(
+                "app.modules.synthesis.service._extract_row_part",
+                return_value=("COMP-001", {"part_number": "COMP-001"}),
+            ),
+            patch(
+                "app.modules.synthesis.service._extract_related_parts",
+                return_value={},
+            ),
             patch(
                 "app.modules.synthesis.service._extract_bom_data",
                 return_value=bom_entries,
@@ -652,6 +659,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 "app.modules.synthesis.service._process_row_relationships",
                 return_value=[],
             ),
+            patch("app.modules.synthesis.service.part_repo.upsert_part"),
             patch("app.modules.synthesis.service.repo.execute_graph_cyphers"),
             patch(
                 "app.modules.synthesis.service.part_repo.upsert_bom_link",
@@ -670,9 +678,8 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 filename="a.csv",
                 sheet_name=None,
                 mapping_json={
-                    "column_mappings": [],
+                    "property_mappings": [],
                     "relation_mappings": [],
-                    "extended_properties": [],
                 },
             )
 

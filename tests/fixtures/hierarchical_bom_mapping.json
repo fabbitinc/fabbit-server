@@ -1,32 +1,14 @@
 {
-  "column_mappings": [
-    {
-      "source_column": "상위품번",
-      "target_label": "Part",
-      "target_property": "part_number",
-      "data_type": "string",
-      "confidence": 95,
-      "reason": "Header directly indicates parent part number (merge key)."
-    },
+  "property_mappings": [
     {
       "source_column": "하위품번",
-      "target_label": "Part",
       "target_property": "part_number",
       "data_type": "string",
       "confidence": 95,
       "reason": "Header directly indicates child part number (merge key)."
     },
     {
-      "source_column": "상위품명",
-      "target_label": "Part",
-      "target_property": "name",
-      "data_type": "string",
-      "confidence": 90,
-      "reason": "Header corresponds to part name for the parent part."
-    },
-    {
       "source_column": "하위품명",
-      "target_label": "Part",
       "target_property": "name",
       "data_type": "string",
       "confidence": 95,
@@ -34,7 +16,6 @@
     },
     {
       "source_column": "단위",
-      "target_label": "Part",
       "target_property": "unit",
       "data_type": "string",
       "confidence": 90,
@@ -42,7 +23,6 @@
     },
     {
       "source_column": "재질",
-      "target_label": "Part",
       "target_property": "material",
       "data_type": "string",
       "confidence": 95,
@@ -50,52 +30,39 @@
     },
     {
       "source_column": "비고",
-      "target_label": "Part",
       "target_property": "description",
       "data_type": "string",
       "confidence": 90,
       "reason": "Remarks column contains descriptive notes appropriate for description."
-    },
-    {
-      "source_column": "공급업체",
-      "target_label": "Supplier",
-      "target_property": "company_name",
-      "data_type": "string",
-      "confidence": 95,
-      "reason": "Header directly indicates supplier/company name (merge key)."
     }
   ],
   "relation_mappings": [
     {
-      "from_label": "Part",
-      "to_label": "Part",
       "rel_type": "CONSISTS_OF",
-      "from_columns": {
-        "part_number": "상위품번"
+      "target_label": "Part",
+      "node_columns": {
+        "part_number": "상위품번",
+        "name": "상위품명"
       },
-      "to_columns": {
-        "part_number": "하위품번"
+      "rel_columns": {
+        "quantity": "수량"
       },
-      "properties": {
-        "수량": "quantity"
-      },
-      "property_types": {
+      "rel_column_types": {
         "quantity": "integer"
-      }
+      },
+      "confidence": 95,
+      "reason": "Parent-child BOM relationship via CONSISTS_OF."
     },
     {
-      "from_label": "Part",
-      "to_label": "Supplier",
       "rel_type": "SUPPLIED_BY",
-      "from_columns": {
-        "part_number": "하위품번"
-      },
-      "to_columns": {
+      "target_label": "Supplier",
+      "node_columns": {
         "company_name": "공급업체"
       },
-      "properties": {},
-      "property_types": {}
+      "rel_columns": {},
+      "rel_column_types": {},
+      "confidence": 90,
+      "reason": "Supplier column maps to SUPPLIED_BY relationship."
     }
-  ],
-  "extended_properties": []
+  ]
 }

@@ -1,6 +1,10 @@
 """온톨로지 매핑 스키마.
 
 LLM 매핑 결과를 표현하는 Pydantic 모델입니다.
+
+매핑 구조 (Part 속성 / 외부 관계 이분법):
+  - PropertyMapping: 행의 주인공 Part에 귀속되는 속성 매핑
+  - RelationMapping: 외부 노드와의 관계 매핑 (상위 Part, Supplier, Drawing 등)
 """
 
 from pydantic import BaseModel
@@ -8,45 +12,46 @@ from pydantic import BaseModel
 
 # === 매핑 관련 ===
 
-class ColumnMapping(BaseModel):
-    """Excel 컬럼 → 온톨로지 노드 속성 매핑"""
+
+class PropertyMapping(BaseModel):
+    """Part 속성 매핑 — 행의 주인공 Part에 귀속.
+
+    온톨로지 정의 속성과 확장 속성(_ext_) 모두 포함.
+    """
+
     source_column: str
-    target_label: str
-    target_property: str
+    target_property: str  # Part 속성명 (예: part_number, name, _ext_weight)
     data_type: str = "string"  # string | integer | float | boolean
     confidence: int = 0  # 0-100, LLM 매핑 신뢰도
     reason: str = ""  # 매핑 근거 (1줄)
 
 
 class RelationMapping(BaseModel):
-    """노드 간 관계 매핑"""
-    from_label: str
-    to_label: str
-    rel_type: str
-    # 엔드포인트별 merge key → source_column 매핑
-    # CONSISTS_OF 등 from/to가 같은 라벨일 때 필수
-    # 예: {"part_number": "상위품번"}, {"part_number": "하위품번"}
-    from_columns: dict[str, str] = {}  # merge_key → source_column
-    to_columns: dict[str, str] = {}    # merge_key → source_column
-    properties: dict[str, str] = {}  # source_column → rel_property
-    property_types: dict[str, str] = {}  # rel_property → data_type
+    """외부 관계 매핑 — 관계 + 상대방 노드.
 
+    CONSISTS_OF: 상위 Part (from) → 주 Part (to) 방향.
+      node_columns은 상위 Part(from)의 속성을 매핑.
+    SUPPLIED_BY, DEFINED_BY: 주 Part (from) → 외부 노드 (to) 방향.
+      node_columns은 외부 노드(to)의 속성을 매핑.
+    """
 
-class ExtendedPropertyMapping(BaseModel):
-    """확장 속성 매핑 (온톨로지에 정의되지 않은 추가 컬럼)"""
-    source_column: str
-    target_label: str
-    property_name: str  # _ext_ 프리픽스가 붙은 속성명
-    data_type: str = "string"  # string | integer | float | boolean
+    rel_type: str  # CONSISTS_OF, SUPPLIED_BY, DEFINED_BY, HAS_ITEM
+    target_label: str  # 상대방 노드 라벨 (Part, Supplier, Drawing)
+    # 상대방 노드 속성: {property_name: source_column}
+    node_columns: dict[str, str]  # {"part_number": "상위품번", "name": "상위품명"}
+    # 관계 속성: {property_name: source_column}
+    rel_columns: dict[str, str] = {}  # {"quantity": "수량"}
+    # 관계 속성 타입: {property_name: data_type}
+    rel_column_types: dict[str, str] = {}  # {"quantity": "integer"}
     confidence: int = 0  # 0-100, LLM 매핑 신뢰도
     reason: str = ""  # 매핑 근거 (1줄)
 
 
 class MappingResult(BaseModel):
     """LLM 매핑 결과 전체"""
-    column_mappings: list[ColumnMapping]
+
+    property_mappings: list[PropertyMapping]
     relation_mappings: list[RelationMapping]
-    extended_properties: list[ExtendedPropertyMapping]
 
 
 # === 온톨로지 스키마 조회 ===

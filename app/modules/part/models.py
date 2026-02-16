@@ -149,9 +149,7 @@ class BomLink(TenantBase):
         nullable=False,
     )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    sequence: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    reference_designator: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    find_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # sequence, reference_designator, find_number는 extended_properties로 관리
     extended_properties: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default="{}"
     )

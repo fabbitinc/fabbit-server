@@ -61,12 +61,11 @@ class RelationPropertyCatalogItem(BaseModel):
 
 
 class EditableConstraints(BaseModel):
-    allowed_labels: list[str] = Field(default_factory=list)
-    allowed_properties_by_label: dict[str, list[str]] = Field(default_factory=dict)
-    allowed_rel_types: list[str] = Field(default_factory=list)
-    allowed_rel_properties_by_type: dict[str, list[str]] = Field(default_factory=dict)
+    # Part 속성 매핑에서 허용되는 속성 목록
+    allowed_part_properties: list[str] = Field(default_factory=list)
+    # 노드별 merge key 목록
     merge_keys_by_label: dict[str, list[str]] = Field(default_factory=dict)
-    relation_edit_mode: Literal["existing_only", "selectable"] = "existing_only"
+    # 관계 카탈로그
     relation_catalog: list[RelationCatalogItem] = Field(default_factory=list)
     relation_property_catalog: list[RelationPropertyCatalogItem] = Field(
         default_factory=list
@@ -80,6 +79,7 @@ class MappingConfirmRequest(BaseModel):
     name: str
     sheet_name: str | None = None  # Excel 시트명 (None이면 모든 시트)
     mapping: MappingResult
+    scope: str = "master"  # "master" | "part_detail"
 
 
 class MappingResponse(BaseModel):
@@ -91,6 +91,8 @@ class MappingResponse(BaseModel):
     sheet_name: str | None = None
     original_headers: list[str]
     mapping: MappingResult
+    scope: str = "master"
+    is_active: bool = True
     usage_count: int
     created_at: datetime
 
@@ -117,9 +119,6 @@ class MappingImpactSummary(BaseModel):
     """매핑 변경 영향 요약"""
 
     disabled_column_count: int = 0
-    changed_relations_count: int = 0
-    base_to_ext_count: int = 0
-    ext_to_base_count: int = 0
 
 
 class MappingValidateRequest(BaseModel):

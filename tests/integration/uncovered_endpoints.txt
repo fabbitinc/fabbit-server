@@ -1,5 +1,6 @@
-# 미테스트 API 엔드포인트 (9/50)
+# 미테스트 API 엔드포인트 (10/51)
 
+GET    /api/v1/dashboard/stats
 GET    /api/v1/drawings/analyses
 GET    /api/v1/drawings/analyses/{analysis_id}
 GET    /api/v1/drawings/synthesis/{job_id}

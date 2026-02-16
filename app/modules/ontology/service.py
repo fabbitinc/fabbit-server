@@ -4,20 +4,21 @@ LLM 매핑 생성 + 검증을 담당합니다.
 """
 
 import json
+import re
 
 from app.infrastructure.llm_client import LLMResponse, chat_completion_with_usage
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
 from app.modules.ontology.schemas import (
-    ColumnMapping,
-    ExtendedPropertyMapping,
     MappingResult,
     NodeLabelSchema,
     OntologySchemaResponse,
+    PropertyMapping,
     PropertySchema,
     RelationMapping,
     RelationshipTypeSchema,
 )
 
+_EXT_NAME_RE = re.compile(r"^_ext_[a-z0-9_]+$")
 
 # === 온톨로지 스키마 조회 ===
 
@@ -92,84 +93,73 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
 
 {MANUFACTURING_ONTOLOGY.to_mapping_prompt_text()}
 
-## 매핑 규칙
-1. **MERGE KEY가 있는 속성은 반드시 매핑해야 합니다** (part_number, name 등).
-2. 온톨로지에 정의된 속성에 해당하는 컬럼은 column_mappings로 분류합니다.
-3. 두 노드 간 관계를 유추할 수 있으면 relation_mappings로 분류합니다.
-4. 온톨로지에 없는 추가 컬럼은 extended_properties로 분류합니다:
-   - property_name은 반드시 `_ext_` 프리픽스를 붙이고, 영문 snake_case로 작성합니다.
-   - 예: "탄소배출량" → "_ext_carbon_emission"
-5. 매핑할 수 없는 컬럼(빈 값, 의미 없는 인덱스 등)은 무시합니다.
+## 매핑 구조
 
-## 품질 가드레일 (매우 중요)
+매핑 결과는 두 가지 카테고리로 구분합니다:
+
+### 1. property_mappings — Part 속성 매핑
+행의 주인공(대상 Part)에 귀속되는 속성입니다.
+- 품번(part_number), 품명(name), 재질(material), 단위(unit) 등
+- 온톨로지에 없는 추가 속성은 `_ext_` 접두사 + 영문 snake_case로 작성
+  예: "탄소배출량" → "_ext_carbon_emission"
+
+### 2. relation_mappings — 외부 관계 매핑
+행의 주인공 Part와 다른 노드(상위 Part, Supplier, Drawing 등)의 관계입니다.
+각 관계에는:
+- `rel_type`: 온톨로지 관계 타입 (CONSISTS_OF, SUPPLIED_BY, DEFINED_BY, HAS_ITEM)
+- `target_label`: 상대방 노드 라벨
+- `node_columns`: 상대방 노드의 속성 → 소스 컬럼 매핑
+- `rel_columns`: 관계 자체의 속성 → 소스 컬럼 매핑
+- `rel_column_types`: 관계 속성의 데이터 타입
+
+## 관계 매핑 규칙
+
+### CONSISTS_OF (BOM 관계, Part → Part)
+- 상위품번/하위품번이 별도 컬럼으로 존재하는 경우에만 생성
+- `target_label`: "Part" (상위 Part)
+- `node_columns`: 상위 Part의 merge key → 소스 컬럼
+  예: {{"part_number": "상위품번", "name": "상위품명"}}
+- `rel_columns`: 관계 속성 → 소스 컬럼
+  예: {{"quantity": "수량"}}
+- **주의**: 품번 컬럼이 1개뿐인 flat BOM에서는 CONSISTS_OF를 생성하지 마세요.
+
+### SUPPLIED_BY (Part → Supplier)
+- `target_label`: "Supplier"
+- `node_columns`: Supplier의 merge key → 소스 컬럼
+  예: {{"company_name": "공급업체"}}
+
+### DEFINED_BY (Part → Drawing)
+- `target_label`: "Drawing"
+- `node_columns`: Drawing의 merge key → 소스 컬럼
+  예: {{"drawing_number": "도면번호"}}
+
+## 수량/단가 매핑 주의
+- **수량(Qty/Quantity/소요량)**은 절대 Part 속성(property_mappings)으로 매핑하지 마세요.
+  반드시 CONSISTS_OF 관계의 `rel_columns`에 `quantity`로 매핑하세요.
+- **단가(Unit Price/Cost)**는 SUPPLIED_BY 관계의 `rel_columns`에 `unit_cost`로 매핑하세요.
+- **단위(Unit/UOM)**는 Part 속성(property_mappings)의 `unit`으로 매핑하세요.
+
+## 품질 가드레일
 - 샘플 행 기준으로 **값이 전부 비어 있는 컬럼은 절대 매핑하지 마세요**.
-  - 예: Item, Qty가 모두 빈 값이면 column/relation/ext 어디에도 넣지 않습니다.
-- 아래 매핑은 금지합니다:
-  - `Value -> Part.material`
-  - `Critical -> Part.is_phantom`
-- `MFN`/`Manufacturer` 계열 컬럼은 가능하면 `Supplier.company_name`으로 우선 매핑하세요.
-- ext 속성명은 `_ext_` 접두사를 **한 번만** 사용하세요.
-  - `_ext__ext_*` 또는 중복 접두사 형태는 금지합니다.
+- `_ext_` 접두사는 **한 번만** 사용하세요 (중복 금지).
+- 매핑할 수 없는 컬럼(빈 값, 의미 없는 인덱스 등)은 무시합니다.
 
-## 관계 매핑 주의사항 (매우 중요)
-- 관계 매핑 객체는 아래 계약을 반드시 따르세요:
-  - 필수: `from_label`, `to_label`, `rel_type`, `from_columns`, `to_columns`
-  - 선택: `properties`, `property_types`
-  - `from_columns`/`to_columns`는 각 엔드포인트 라벨의 merge key를 모두 포함해야 합니다.
-- `from_columns`: from 노드의 merge key → Excel 컬럼명
-- `to_columns`: to 노드의 merge key → Excel 컬럼명
-- **속성 없는 관계도 유효합니다.** 엔드포인트만 충족하면 `properties`는 빈 객체(`{{}}`)로 유지하세요.
-  - 예: `DEFINED_BY`, `HAS_ITEM`은 `properties={{}}`, `property_types={{}}`가 정상일 수 있습니다.
-- **CONSISTS_OF (Part → Part)**: from/to가 같은 라벨이므로 `from_columns`와 `to_columns`가 **반드시 서로 다른 컬럼**을 참조해야 합니다.
-  - 올바른 예: from_columns={{"part_number": "상위품번"}}, to_columns={{"part_number": "하위품번"}}
-  - **잘못된 예**: 부품 목록만 있는 flat BOM(품번 컬럼 1개). 이 경우 CONSISTS_OF를 생성하지 마세요.
-- **SUPPLIED_BY, DEFINED_BY, HAS_ITEM**: from/to 라벨이 다르므로 각각의 merge key 컬럼을 from/to에 지정합니다.
-  - 예: SUPPLIED_BY → from_columns={{"part_number": "품번"}}, to_columns={{"company_name": "업체명"}}
-  - merge key 컬럼이 없으면 해당 관계는 생성하지 마세요.
-
-## 관계 속성 매핑 규칙 (매우 중요)
-- **수량/Qty/Quantity/소요량** 컬럼은 **절대로** Part 노드의 속성이나 확장 속성(_ext_)으로 매핑하지 마세요.
-- 이 컬럼은 반드시 **CONSISTS_OF 관계의 `quantity` 속성**으로 매핑해야 합니다.
-- relation_mappings의 `properties`와 `property_types`에 다음과 같이 지정하세요:
-  - `"properties": {{"수량": "quantity"}}` (소스 컬럼명 → 관계 속성명)
-  - `"property_types": {{"quantity": "integer"}}` (관계 속성명 → 데이터 타입)
-- 마찬가지로, 순서/시퀀스(Seq/Item No) 컬럼은 CONSISTS_OF 관계의 `sequence` 속성으로,
-  참조번호(Ref Des) 컬럼은 CONSISTS_OF 관계의 `reference_designator` 속성으로 매핑하세요.
-- 단가(Unit Price/Cost) 컬럼은 SUPPLIED_BY 관계의 `unit_cost` 속성으로 매핑하세요.
-- 관계 속성은 선택이지만, 온톨로지에서 `required=true`인 관계 속성은 반드시 매핑하세요.
-  - 현재 필수 관계 속성 예시: `CONSISTS_OF.quantity`
-
-## 관계 생성 절차 (체크리스트)
-관계 타입 후보마다 아래 순서로 판단하세요.
-1. from/to 라벨이 온톨로지에 존재하는가?
-2. from/to 라벨의 merge key에 대응되는 컬럼이 모두 존재하는가?
-3. (CONSISTS_OF인 경우) from/to가 서로 다른 컬럼으로 분리되는가?
-4. 필수 관계 속성이 있다면 source 컬럼을 찾았는가?
-5. 위 조건을 만족한 경우에만 relation_mappings에 추가하세요.
-
-## 데이터 타입 규칙
-- 각 매핑에 data_type을 지정하세요: "string", "integer", "float", "boolean"
-- 샘플 데이터를 보고 적절한 타입을 추론하세요.
-- 수량(quantity), 개수, 가격 등 숫자 → "integer" 또는 "float"
-- 이름, 코드, 설명 등 텍스트 → "string"
+## 데이터 타입
+- "string", "integer", "float", "boolean" 중 선택
 - 확신이 없으면 "string"으로 지정하세요.
 
-## 신뢰도 규칙
-- 각 매핑에 confidence (0-100 정수)와 reason (영문 1줄)을 반드시 포함하세요.
-- confidence: 매핑이 정확하다는 확신 정도 (100=확실, 50=불확실, 0=추측)
-- reason: 해당 매핑을 선택한 근거를 영문 1줄로 설명
+## 신뢰도
+- confidence (0-100 정수): 매핑 정확도 확신 수준
+- reason (영문 1줄): 해당 매핑을 선택한 근거
 
 ## 출력 형식 (JSON)
 ```json
 {{
-  "column_mappings": [
-    {{"source_column": "품번", "target_label": "Part", "target_property": "part_number", "data_type": "string", "confidence": 95, "reason": "Column header directly translates to part number"}}
+  "property_mappings": [
+    {{"source_column": "품번", "target_property": "part_number", "data_type": "string", "confidence": 95, "reason": "Column header directly translates to part number"}}
   ],
   "relation_mappings": [
-    {{"from_label": "Part", "to_label": "Supplier", "rel_type": "SUPPLIED_BY", "from_columns": {{"part_number": "품번"}}, "to_columns": {{"company_name": "업체명"}}, "properties": {{}}, "property_types": {{}}}}
-  ],
-  "extended_properties": [
-    {{"source_column": "탄소배출량", "target_label": "Part", "property_name": "_ext_carbon_emission", "data_type": "float", "confidence": 80, "reason": "Not in ontology but clearly carbon emission data"}}
+    {{"rel_type": "SUPPLIED_BY", "target_label": "Supplier", "node_columns": {{"company_name": "업체명"}}, "rel_columns": {{}}, "rel_column_types": {{}}, "confidence": 85, "reason": "Supplier column maps to SUPPLIED_BY relationship"}}
   ]
 }}
 ```
@@ -207,12 +197,11 @@ def generate_mapping(
     raw = json.loads(llm_resp.content)
 
     result = MappingResult(
-        column_mappings=[ColumnMapping(**cm) for cm in raw.get("column_mappings", [])],
+        property_mappings=[
+            PropertyMapping(**pm) for pm in raw.get("property_mappings", [])
+        ],
         relation_mappings=[
             RelationMapping(**rm) for rm in raw.get("relation_mappings", [])
-        ],
-        extended_properties=[
-            ExtendedPropertyMapping(**ep) for ep in raw.get("extended_properties", [])
         ],
     )
 
@@ -225,42 +214,12 @@ def normalize_mapping(mapping: MappingResult) -> MappingResult:
     return _validate_and_fix_mapping(mapping)
 
 
-def _auto_fill_endpoint_columns(
-    rm: RelationMapping, column_mappings: list[ColumnMapping]
-) -> RelationMapping:
-    """from/to 라벨이 다른 관계에서 from_columns/to_columns를 column_mappings 기반으로 자동 추론"""
-    from_cols = dict(rm.from_columns)
-    to_cols = dict(rm.to_columns)
-
-    for label, target_cols in [(rm.from_label, from_cols), (rm.to_label, to_cols)]:
-        if target_cols:
-            continue
-        node_def = MANUFACTURING_ONTOLOGY.get_node_label(label)
-        if node_def is None:
-            continue
-        for mk in node_def.merge_keys:
-            for cm in column_mappings:
-                if cm.target_label == label and cm.target_property == mk:
-                    target_cols[mk] = cm.source_column
-                    break
-
-    return RelationMapping(
-        from_label=rm.from_label,
-        to_label=rm.to_label,
-        rel_type=rm.rel_type,
-        from_columns=from_cols,
-        to_columns=to_cols,
-        properties=rm.properties,
-        property_types=rm.property_types,
-    )
-
-
 def _normalize_ext_property_name(name: str) -> str:
     normalized = (name or "").strip()
     while normalized.startswith("_ext__ext_"):
-        normalized = normalized[len("_ext_") :]
+        normalized = normalized[len("_ext_"):]
     if normalized.startswith("_ext_"):
-        core = normalized[len("_ext_") :]
+        core = normalized[len("_ext_"):]
     else:
         core = normalized
     core = core.strip("_")
@@ -272,80 +231,71 @@ def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
     valid_labels = MANUFACTURING_ONTOLOGY.get_valid_labels()
     valid_rel_types = MANUFACTURING_ONTOLOGY.get_valid_rel_types()
 
-    verified_columns = []
-    for cm in result.column_mappings:
-        if cm.target_label not in valid_labels:
-            result.extended_properties.append(
-                ExtendedPropertyMapping(
-                    source_column=cm.source_column,
-                    target_label="Part",
-                    property_name=f"_ext_{cm.target_property}",
+    # Part 속성 검증
+    part_node = MANUFACTURING_ONTOLOGY.get_node_label("Part")
+    valid_part_props = {p.name for p in part_node.properties} if part_node else set()
+
+    verified_props = []
+    for pm in result.property_mappings:
+        if pm.target_property.startswith("_ext_"):
+            # 확장 속성: 이름 정규화
+            normalized_name = _normalize_ext_property_name(pm.target_property)
+            verified_props.append(
+                PropertyMapping(
+                    source_column=pm.source_column,
+                    target_property=normalized_name,
+                    data_type=pm.data_type,
+                    confidence=pm.confidence,
+                    reason=pm.reason,
                 )
             )
-            continue
-
-        node = MANUFACTURING_ONTOLOGY.get_node_label(cm.target_label)
-        if node is None:
-            continue
-        assert node is not None
-        valid_props = [p.name for p in node.properties]
-        if cm.target_property not in valid_props:
-            result.extended_properties.append(
-                ExtendedPropertyMapping(
-                    source_column=cm.source_column,
-                    target_label=cm.target_label,
-                    property_name=f"_ext_{cm.target_property}",
+        elif pm.target_property in valid_part_props:
+            verified_props.append(pm)
+        else:
+            # 온톨로지에 없는 속성 → 확장 속성으로 변환
+            verified_props.append(
+                PropertyMapping(
+                    source_column=pm.source_column,
+                    target_property=f"_ext_{pm.target_property}",
+                    data_type=pm.data_type,
+                    confidence=pm.confidence,
+                    reason=pm.reason,
                 )
             )
-            continue
-
-        verified_columns.append(cm)
-
-    result.column_mappings = verified_columns
 
     # 관계 매핑 검증
     verified_rels = []
     for rm in result.relation_mappings:
         if rm.rel_type not in valid_rel_types:
             continue
-        if rm.from_label not in valid_labels or rm.to_label not in valid_labels:
+        if rm.target_label not in valid_labels:
             continue
-        # from_columns/to_columns 검증: 모두 채워져 있어야 함
-        if rm.from_columns and rm.to_columns:
-            # self-loop 방어: from/to가 같은 라벨이면 source_column이 서로 달라야 함
-            if rm.from_label == rm.to_label:
-                from_src = set(rm.from_columns.values())
-                to_src = set(rm.to_columns.values())
-                if from_src & to_src:
-                    # 같은 source_column을 참조하면 자기 참조 → 제거
-                    continue
-        elif rm.from_label == rm.to_label:
-            # from/to가 같은 라벨인데 from_columns/to_columns가 없으면 구분 불가 → 제거
+        if not rm.node_columns:
             continue
-        else:
-            # from/to가 다른 라벨이면 from_columns/to_columns 자동 추론
-            rm = _auto_fill_endpoint_columns(rm, result.column_mappings)
+
+        # merge key 검증: 상대방 노드의 merge key가 node_columns에 포함되어야 함
+        target_node = MANUFACTURING_ONTOLOGY.get_node_label(rm.target_label)
+        if target_node is None:
+            continue
+        has_merge_key = any(
+            mk in rm.node_columns for mk in target_node.merge_keys
+        )
+        if not has_merge_key:
+            continue
 
         verified_rels.append(rm)
-    result.relation_mappings = verified_rels
 
-    fixed_ext = []
-    seen_ext_keys: set[tuple[str, str, str]] = set()
-    for ep in result.extended_properties:
-        label = ep.target_label if ep.target_label in valid_labels else "Part"
-        name = _normalize_ext_property_name(ep.property_name)
-        dedupe_key = (ep.source_column, label, name)
-        if dedupe_key in seen_ext_keys:
+    # 중복 제거
+    seen_props: set[tuple[str, str]] = set()
+    deduped_props = []
+    for pm in verified_props:
+        key = (pm.source_column, pm.target_property)
+        if key in seen_props:
             continue
-        seen_ext_keys.add(dedupe_key)
-        fixed_ext.append(
-            ExtendedPropertyMapping(
-                source_column=ep.source_column,
-                target_label=label,
-                property_name=name,
-                data_type=ep.data_type,
-            )
-        )
-    result.extended_properties = fixed_ext
+        seen_props.add(key)
+        deduped_props.append(pm)
 
-    return result
+    return MappingResult(
+        property_mappings=deduped_props,
+        relation_mappings=verified_rels,
+    )
