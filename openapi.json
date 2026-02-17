@@ -4501,6 +4501,11 @@
                         "type": "string",
                         "title": "Reason",
                         "default": ""
+                    },
+                    "is_extended": {
+                        "type": "boolean",
+                        "title": "Is Extended",
+                        "default": false
                     }
                 },
                 "type": "object",

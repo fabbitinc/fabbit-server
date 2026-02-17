@@ -257,6 +257,7 @@ class BaseOntology:
 # ──────────────────────────────────────────────
 # 제조업 표준 온톨로지 인스턴스 (SSoT)
 # ──────────────────────────────────────────────
+# is_merge_key: 식별키
 
 MANUFACTURING_ONTOLOGY = BaseOntology(
     name="Fabbit 제조업 온톨로지",

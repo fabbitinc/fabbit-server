@@ -68,183 +68,99 @@
     }
   ],
   "mapping": {
-    "column_mappings": [
-      {
-        "source_column": "상위품번",
-        "target_label": "Part",
-        "target_property": "part_number",
-        "data_type": "string",
-        "confidence": 95,
-        "reason": "Header directly indicates parent part number (merge key)."
-      },
+    "property_mappings": [
       {
         "source_column": "하위품번",
-        "target_label": "Part",
         "target_property": "part_number",
         "data_type": "string",
         "confidence": 95,
-        "reason": "Header directly indicates child part number (merge key)."
-      },
-      {
-        "source_column": "상위품명",
-        "target_label": "Part",
-        "target_property": "name",
-        "data_type": "string",
-        "confidence": 90,
-        "reason": "Header corresponds to part name for the parent part."
+        "reason": "Header directly indicates child part number (merge key).",
+        "is_extended": false
       },
       {
         "source_column": "하위품명",
-        "target_label": "Part",
         "target_property": "name",
         "data_type": "string",
         "confidence": 95,
-        "reason": "Header corresponds to part name for the child part."
+        "reason": "Header corresponds to part name for the child part.",
+        "is_extended": false
       },
       {
         "source_column": "단위",
-        "target_label": "Part",
         "target_property": "unit",
         "data_type": "string",
         "confidence": 90,
-        "reason": "Header matches ontology 'unit' (UOM) meaning."
+        "reason": "Header matches ontology 'unit' (UOM) meaning.",
+        "is_extended": false
       },
       {
         "source_column": "재질",
-        "target_label": "Part",
         "target_property": "material",
         "data_type": "string",
         "confidence": 95,
-        "reason": "Header directly maps to material/specified substance."
+        "reason": "Header directly maps to material/specified substance.",
+        "is_extended": false
       },
       {
         "source_column": "비고",
-        "target_label": "Part",
         "target_property": "description",
         "data_type": "string",
         "confidence": 90,
-        "reason": "Remarks column contains descriptive notes appropriate for description."
-      },
-      {
-        "source_column": "공급업체",
-        "target_label": "Supplier",
-        "target_property": "company_name",
-        "data_type": "string",
-        "confidence": 95,
-        "reason": "Header directly indicates supplier/company name (merge key)."
+        "reason": "Remarks column contains descriptive notes appropriate for description.",
+        "is_extended": false
       }
     ],
     "relation_mappings": [
       {
-        "from_label": "Part",
-        "to_label": "Part",
         "rel_type": "CONSISTS_OF",
-        "from_columns": {
-          "part_number": "상위품번"
+        "target_label": "Part",
+        "node_columns": {
+          "part_number": "상위품번",
+          "name": "상위품명"
         },
-        "to_columns": {
-          "part_number": "하위품번"
+        "rel_columns": {
+          "quantity": "수량"
         },
-        "properties": {
-          "수량": "quantity"
-        },
-        "property_types": {
+        "rel_column_types": {
           "quantity": "integer"
-        }
+        },
+        "confidence": 95,
+        "reason": "Parent/child part number columns indicate BOM hierarchy."
       },
       {
-        "from_label": "Part",
-        "to_label": "Supplier",
         "rel_type": "SUPPLIED_BY",
-        "from_columns": {
-          "part_number": "하위품번"
-        },
-        "to_columns": {
+        "target_label": "Supplier",
+        "node_columns": {
           "company_name": "공급업체"
         },
-        "properties": {},
-        "property_types": {}
+        "rel_columns": {},
+        "rel_column_types": {},
+        "confidence": 90,
+        "reason": "Supplier column maps to SUPPLIED_BY relationship."
       }
-    ],
-    "extended_properties": []
+    ]
   },
   "sheets": [],
   "skipped_sheets": [],
   "editable_constraints": {
-    "allowed_labels": [
-      "Part",
-      "Drawing",
-      "Supplier",
-      "Project"
+    "allowed_part_properties": [
+      "part_number",
+      "name",
+      "revision",
+      "material",
+      "unit",
+      "description",
+      "category",
+      "is_phantom",
+      "lifecycle_state",
+      "lead_time_days"
     ],
-    "allowed_properties_by_label": {
-      "Part": [
-        "part_number",
-        "name",
-        "revision",
-        "material",
-        "unit",
-        "description",
-        "category",
-        "is_phantom",
-        "lifecycle_state",
-        "lead_time_days"
-      ],
-      "Drawing": [
-        "drawing_number",
-        "name",
-        "file_path",
-        "version",
-        "status"
-      ],
-      "Supplier": [
-        "company_name",
-        "code",
-        "country",
-        "contact_info"
-      ],
-      "Project": [
-        "project_code",
-        "name",
-        "manager",
-        "target_date",
-        "status"
-      ]
-    },
-    "allowed_rel_types": [
-      "CONSISTS_OF",
-      "DEFINED_BY",
-      "SUPPLIED_BY",
-      "HAS_ITEM"
-    ],
-    "allowed_rel_properties_by_type": {
-      "CONSISTS_OF": [
-        "quantity",
-        "sequence",
-        "reference_designator",
-        "find_number"
-      ],
-      "DEFINED_BY": [],
-      "SUPPLIED_BY": [
-        "unit_cost"
-      ],
-      "HAS_ITEM": []
-    },
     "merge_keys_by_label": {
-      "Part": [
-        "part_number"
-      ],
-      "Drawing": [
-        "drawing_number"
-      ],
-      "Supplier": [
-        "company_name"
-      ],
-      "Project": [
-        "project_code"
-      ]
+      "Part": ["part_number"],
+      "Drawing": ["drawing_number"],
+      "Supplier": ["company_name"],
+      "Project": ["project_code"]
     },
-    "relation_edit_mode": "selectable",
     "relation_catalog": [
       {
         "rel_type": "CONSISTS_OF",
@@ -276,36 +192,36 @@
         "rel_type": "CONSISTS_OF",
         "property": "quantity",
         "data_type": "integer",
-        "required": true,
-        "description": "소요 수량. 상위 부품 1개를 만들기 위해 필요한 하위 부품의 개수. 예: 2 (브라켓 2개 필요), 4 (볼트 4개 필요). Excel에서 '수량', '소요량', 'Qty', 'Quantity' 등으로 표기될 수 있음."
+        "required": false,
+        "description": "소요 수량. 상위 부품 1개를 만들기 위해 필요한 하위 부품의 개수."
       },
       {
         "rel_type": "CONSISTS_OF",
         "property": "sequence",
         "data_type": "integer",
         "required": false,
-        "description": "조립 순서. BOM 내에서 하위 부품의 나열 순서를 나타내는 번호. 같은 상위 부품 아래에서 정렬 기준으로 사용. 예: 10, 20, 30 (10 단위로 부여하여 중간 삽입 용이). Excel에서 '순서', '시퀀스', 'Seq', 'Item No' 등으로 표기될 수 있음."
+        "description": "조립 순서. BOM 내에서 하위 부품의 나열 순서를 나타내는 번호."
       },
       {
         "rel_type": "CONSISTS_OF",
         "property": "reference_designator",
         "data_type": "string",
         "required": false,
-        "description": "참조 지시자. 조립도에서 해당 부품의 위치를 식별하는 기호. 주로 전자부품 PCB 조립에서 사용 (예: 'R1', 'C3', 'U5'). 기구부품에서는 잘 사용되지 않음. Excel에서 '참조번호', 'Ref Des', 'Reference' 등으로 표기될 수 있음."
+        "description": "참조 지시자. 조립도에서 해당 부품의 위치를 식별하는 기호."
       },
       {
         "rel_type": "CONSISTS_OF",
         "property": "find_number",
         "data_type": "string",
         "required": false,
-        "description": "찾기번호(풍선번호). 조립도 도면 위에 표시된 부품 식별 번호. 도면의 풍선(balloon) 기호와 BOM 행을 대조하는 데 사용. 예: '1', '2', '3A', '15'. Excel에서 '찾기번호', '풍선번호', 'Find No', 'Item No', 'Balloon' 등으로 표기될 수 있음."
+        "description": "찾기번호(풍선번호). 조립도 도면 위에 표시된 부품 식별 번호."
       },
       {
         "rel_type": "SUPPLIED_BY",
         "property": "unit_cost",
         "data_type": "float",
         "required": false,
-        "description": "단가. 해당 공급사로부터 이 부품을 공급받을 때의 개당 가격. 통화 단위는 별도 관리하며 숫자만 저장. 프로젝트 총 원가 산출의 핵심 데이터. 예: 1500.0, 25000, 0.5. Excel에서 '단가', '가격', 'Unit Price', 'Cost' 등으로 표기될 수 있음."
+        "description": "단가. 해당 공급사로부터 이 부품을 공급받을 때의 개당 가격."
       }
     ]
   }

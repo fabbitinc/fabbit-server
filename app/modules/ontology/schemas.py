@@ -24,6 +24,7 @@ class PropertyMapping(BaseModel):
     data_type: str = "string"  # string | integer | float | boolean
     confidence: int = 0  # 0-100, LLM 매핑 신뢰도
     reason: str = ""  # 매핑 근거 (1줄)
+    is_extended: bool = False  # 확장 속성 여부 (표시명은 source_column 사용)
 
 
 class RelationMapping(BaseModel):

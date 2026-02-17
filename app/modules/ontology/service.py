@@ -247,10 +247,14 @@ def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
                     data_type=pm.data_type,
                     confidence=pm.confidence,
                     reason=pm.reason,
+                    is_extended=True,
                 )
             )
         elif pm.target_property in valid_part_props:
-            verified_props.append(pm)
+            # 표준 속성: is_extended=False 보장
+            verified_props.append(
+                pm.model_copy(update={"is_extended": False})
+            )
         else:
             # 온톨로지에 없는 속성 → 확장 속성으로 변환
             verified_props.append(
@@ -260,6 +264,7 @@ def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
                     data_type=pm.data_type,
                     confidence=pm.confidence,
                     reason=pm.reason,
+                    is_extended=True,
                 )
             )
 

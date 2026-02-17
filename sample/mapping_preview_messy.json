@@ -80,185 +80,119 @@
     }
   ],
   "mapping": {
-    "column_mappings": [
+    "property_mappings": [
       {
         "source_column": "부품코드",
-        "target_label": "Part",
         "target_property": "part_number",
         "data_type": "string",
         "confidence": 100,
-        "reason": "Header directly indicates part code which maps to part_number merge key"
+        "reason": "Header directly indicates part code which maps to part_number merge key",
+        "is_extended": false
       },
       {
         "source_column": "품명",
-        "target_label": "Part",
         "target_property": "name",
         "data_type": "string",
         "confidence": 100,
-        "reason": "Header is the part name which maps to Part.name required field"
+        "reason": "Header is the part name which maps to Part.name required field",
+        "is_extended": false
       },
       {
         "source_column": "규격",
-        "target_label": "Part",
         "target_property": "description",
         "data_type": "string",
         "confidence": 90,
-        "reason": "Specification/details column best fits Part.description for textual specs"
+        "reason": "Specification/details column best fits Part.description for textual specs",
+        "is_extended": false
       },
       {
         "source_column": "납기(일)",
-        "target_label": "Part",
         "target_property": "lead_time_days",
         "data_type": "integer",
         "confidence": 95,
-        "reason": "Header indicates lead time in days which maps to lead_time_days"
-      }
-    ],
-    "relation_mappings": [],
-    "extended_properties": [
-      {
-        "source_column": "단가(원)",
-        "target_label": "Part",
-        "property_name": "_ext_unit_price_krw",
-        "data_type": "float",
-        "confidence": 0,
-        "reason": ""
+        "reason": "Header indicates lead time in days which maps to lead_time_days",
+        "is_extended": false
       },
       {
         "source_column": "중량(kg)",
-        "target_label": "Part",
-        "property_name": "_ext_weight_kg",
+        "target_property": "_ext_weight_kg",
         "data_type": "float",
-        "confidence": 0,
-        "reason": ""
+        "confidence": 85,
+        "reason": "Weight is not in ontology, stored as extended property",
+        "is_extended": true
       },
       {
         "source_column": "표면처리",
-        "target_label": "Part",
-        "property_name": "_ext_surface_treatment",
+        "target_property": "_ext_surface_treatment",
         "data_type": "string",
-        "confidence": 0,
-        "reason": ""
+        "confidence": 85,
+        "reason": "Surface treatment is not in ontology, stored as extended property",
+        "is_extended": true
       },
       {
         "source_column": "담당자",
-        "target_label": "Part",
-        "property_name": "_ext_responsible_person",
+        "target_property": "_ext_responsible_person",
         "data_type": "string",
-        "confidence": 0,
-        "reason": ""
+        "confidence": 80,
+        "reason": "Person in charge is not in ontology, stored as extended property",
+        "is_extended": true
       },
       {
         "source_column": "비고",
-        "target_label": "Part",
-        "property_name": "_ext_remark",
+        "target_property": "_ext_remark",
         "data_type": "string",
-        "confidence": 0,
-        "reason": ""
+        "confidence": 80,
+        "reason": "Remarks column stored as extended property",
+        "is_extended": true
       }
-    ]
+    ],
+    "relation_mappings": []
   },
   "sheets": [],
   "skipped_sheets": [],
   "editable_constraints": {
-    "allowed_labels": [
-      "Part",
-      "Drawing",
-      "Supplier",
-      "Project"
+    "allowed_part_properties": [
+      "part_number",
+      "name",
+      "revision",
+      "material",
+      "unit",
+      "description",
+      "category",
+      "is_phantom",
+      "lifecycle_state",
+      "lead_time_days"
     ],
-    "allowed_properties_by_label": {
-      "Part": [
-        "part_number",
-        "name",
-        "revision",
-        "material",
-        "unit",
-        "description",
-        "category",
-        "is_phantom",
-        "lifecycle_state",
-        "lead_time_days"
-      ],
-      "Drawing": [
-        "drawing_number",
-        "name",
-        "file_path",
-        "version",
-        "status"
-      ],
-      "Supplier": [
-        "company_name",
-        "code",
-        "country",
-        "contact_info"
-      ],
-      "Project": [
-        "project_code",
-        "name",
-        "manager",
-        "target_date",
-        "status"
-      ]
-    },
-    "allowed_rel_types": [
-      "CONSISTS_OF",
-      "DEFINED_BY",
-      "SUPPLIED_BY",
-      "HAS_ITEM"
-    ],
-    "allowed_rel_properties_by_type": {
-      "CONSISTS_OF": [
-        "quantity",
-        "sequence",
-        "reference_designator",
-        "find_number"
-      ],
-      "DEFINED_BY": [],
-      "SUPPLIED_BY": [
-        "unit_cost"
-      ],
-      "HAS_ITEM": []
-    },
     "merge_keys_by_label": {
-      "Part": [
-        "part_number"
-      ],
-      "Drawing": [
-        "drawing_number"
-      ],
-      "Supplier": [
-        "company_name"
-      ],
-      "Project": [
-        "project_code"
-      ]
+      "Part": ["part_number"],
+      "Drawing": ["drawing_number"],
+      "Supplier": ["company_name"],
+      "Project": ["project_code"]
     },
-    "relation_edit_mode": "selectable",
     "relation_catalog": [
       {
         "rel_type": "CONSISTS_OF",
         "from_label": "Part",
         "to_label": "Part",
-        "description": "BOM(Bill of Materials) 관계. 상위 부품(조립품)이 하위 부품을 포함함을 나타냄. 재귀적 관계로, Part → Part 간 트리 구조를 형성. 예: '메인 프레임 조립품'은 '브라켓' 2개와 '샤프트' 1개로 CONSISTS_OF."
+        "description": "BOM(Bill of Materials) 관계. 상위 부품(조립품)이 하위 부품을 포함함을 나타냄."
       },
       {
         "rel_type": "DEFINED_BY",
         "from_label": "Part",
         "to_label": "Drawing",
-        "description": "부품이 참조하는 도면. 부품의 형상·치수·공차 등이 이 도면에 정의되어 있음. 하나의 부품이 여러 도면을 참조할 수 있음 (조립도 + 상세도 등)."
+        "description": "부품이 참조하는 도면."
       },
       {
         "rel_type": "SUPPLIED_BY",
         "from_label": "Part",
         "to_label": "Supplier",
-        "description": "부품의 공급사. 해당 부품을 납품하거나 제조를 담당하는 외부 업체. 하나의 부품에 복수 공급사가 있을 수 있음 (듀얼 소싱 등)."
+        "description": "부품의 공급사."
       },
       {
         "rel_type": "HAS_ITEM",
         "from_label": "Project",
         "to_label": "Part",
-        "description": "프로젝트에 소속된 부품. 특정 프로젝트에서 사용·개발·관리되는 부품 목록을 나타냄. 프로젝트의 최상위 BOM을 구성하는 품목들과의 연결."
+        "description": "프로젝트에 소속된 부품."
       }
     ],
     "relation_property_catalog": [
@@ -266,36 +200,36 @@
         "rel_type": "CONSISTS_OF",
         "property": "quantity",
         "data_type": "integer",
-        "required": true,
-        "description": "소요 수량. 상위 부품 1개를 만들기 위해 필요한 하위 부품의 개수. 예: 2 (브라켓 2개 필요), 4 (볼트 4개 필요). Excel에서 '수량', '소요량', 'Qty', 'Quantity' 등으로 표기될 수 있음."
+        "required": false,
+        "description": "소요 수량."
       },
       {
         "rel_type": "CONSISTS_OF",
         "property": "sequence",
         "data_type": "integer",
         "required": false,
-        "description": "조립 순서. BOM 내에서 하위 부품의 나열 순서를 나타내는 번호. 같은 상위 부품 아래에서 정렬 기준으로 사용. 예: 10, 20, 30 (10 단위로 부여하여 중간 삽입 용이). Excel에서 '순서', '시퀀스', 'Seq', 'Item No' 등으로 표기될 수 있음."
+        "description": "조립 순서."
       },
       {
         "rel_type": "CONSISTS_OF",
         "property": "reference_designator",
         "data_type": "string",
         "required": false,
-        "description": "참조 지시자. 조립도에서 해당 부품의 위치를 식별하는 기호. 주로 전자부품 PCB 조립에서 사용 (예: 'R1', 'C3', 'U5'). 기구부품에서는 잘 사용되지 않음. Excel에서 '참조번호', 'Ref Des', 'Reference' 등으로 표기될 수 있음."
+        "description": "참조 지시자."
       },
       {
         "rel_type": "CONSISTS_OF",
         "property": "find_number",
         "data_type": "string",
         "required": false,
-        "description": "찾기번호(풍선번호). 조립도 도면 위에 표시된 부품 식별 번호. 도면의 풍선(balloon) 기호와 BOM 행을 대조하는 데 사용. 예: '1', '2', '3A', '15'. Excel에서 '찾기번호', '풍선번호', 'Find No', 'Item No', 'Balloon' 등으로 표기될 수 있음."
+        "description": "찾기번호(풍선번호)."
       },
       {
         "rel_type": "SUPPLIED_BY",
         "property": "unit_cost",
         "data_type": "float",
         "required": false,
-        "description": "단가. 해당 공급사로부터 이 부품을 공급받을 때의 개당 가격. 통화 단위는 별도 관리하며 숫자만 저장. 프로젝트 총 원가 산출의 핵심 데이터. 예: 1500.0, 25000, 0.5. Excel에서 '단가', '가격', 'Unit Price', 'Cost' 등으로 표기될 수 있음."
+        "description": "단가."
       }
     ]
   }
