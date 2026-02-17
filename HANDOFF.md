@@ -1,85 +1,73 @@
-# HANDOFF — BOM 업로드 설계 v2 구현
+# HANDOFF — Dashboard Stats API 구현
 
 ## Goal
 
-BOM 파일의 다양한 양식(Flat BOM, Part List, Manual Root BOM)을 하나의 매핑/합성 파이프라인으로 처리할 수 있도록 매핑 스키마, 모델, synthesis 로직을 재설계하고 구현한다.
+프론트엔드 대시보드 화면에 표시할 통계 API(`GET /api/v1/dashboard/stats`)를 구현한다. Part 총 개수, 이번 주 추가된 Part 수, 최근 합성 작업 정보를 반환하며, `total=0`이면 프론트에서 Empty State → Part 등록 유도 CTA를 보여줄 예정.
 
-## 현재 진행 상태
+## Current Progress
 
-- [x] 문제 식별 및 DB 증거 수집
-- [x] 코드 레벨 원인 분석
-- [x] BOM 파일 유형 분류
-- [x] 설계 v2 작성 + 상세 토론 완료 (모든 미결 사항 해소)
-- [x] **코드 수정 완료** — 전체 테스트 60 passed, 4 skipped
+- [x] Dashboard 모듈 신규 생성 (`app/modules/dashboard/`)
+- [x] 스키마, 리포지토리, 서비스, 라우터 구현
+- [x] `app/main.py`에 라우터 등록
+- [x] 린트 통과 (새 파일), 전체 테스트 71 passed, 6 skipped
 
 ## 완료된 작업
 
-### 1. base_ontology.py — CONSISTS_OF 속성 required 제거
-- `CONSISTS_OF`의 모든 속성을 `required=False`로 변경 (quantity 포함)
+### 신규 파일 (6개)
 
-### 2. ontology/schemas.py — Part 속성 / 외부 관계 이분법
-- 기존 3분법(ColumnMapping/RelationMapping/ExtendedPropertyMapping) → 2분법
-- **PropertyMapping**: `{source_column, target_property, data_type, confidence, reason}` — 행의 주인공 Part 속성
-- **RelationMapping**: `{rel_type, target_label, node_columns, rel_columns, rel_column_types, confidence, reason}` — 외부 관계 + 상대방 노드
-- `MappingResult`: `{property_mappings: list[PropertyMapping], relation_mappings: list[RelationMapping]}`
+| 파일 | 내용 |
+|---|---|
+| `app/modules/dashboard/__init__.py` | 빈 패키지 |
+| `app/modules/dashboard/schemas.py` | `PartStats`, `BomStats`, `LastSynthesis`, `DashboardStatsResponse` |
+| `app/modules/dashboard/repository.py` | `count_parts`, `count_parts_since`, `count_bom_links`, `get_last_synthesis_job` |
+| `app/modules/dashboard/service.py` | `get_stats()` — `@transactional(read_only=True)`, 최근 7일 기준 |
+| `app/api/v1/tenant/dashboard_router.py` | `GET /api/v1/dashboard/stats` (인증 필수) |
 
-### 3. mapping/models.py — MappingRecord 확장
-- `scope: str` (master | part_detail), `version: int`, `is_active: bool` 추가
-- 인덱스: `ix_mapping_records_scope_is_active`
+### 수정 파일 (1개)
 
-### 4. part/models.py — BomLink 슬림화
-- `sequence`, `reference_designator`, `find_number` 컬럼 제거
-- `extended_properties: JSONB`로 이동 (GIN 인덱스 추가)
+| 파일 | 변경 |
+|---|---|
+| `app/main.py` | `dashboard_router` import + `app.include_router(dashboard_router)` 추가 |
 
-### 5. mapping/service.py — 새 스키마 기반 검증
-- `validate_mapping()`, `confirm_mapping()` 새 스키마에 맞게 재작성
+### 응답 구조
 
-### 6. synthesis/service.py — 완전 재작성
-- 기존 from/to 휴리스틱 함수 6개 제거
-- 새 데이터 추출 함수: `_extract_row_part`, `_extract_related_parts`, `_merge_part_props`, `_extract_bom_data`
-- `_run_synthesis` 청크 루프를 5-phase 구조로 재구성:
-  1. 데이터 수집 및 Part별 집계 (first-non-null)
-  2. Part upsert (RDS + Graph dual-write)
-  3. 비-Part 노드 (Graph only)
-  4. BOM 링크 (RDS + Graph dual-write)
-  5. 비-CONSISTS_OF 관계 (Graph only)
+```json
+{
+  "parts": { "total": 42, "added_this_week": 5 },
+  "bom_links": { "total": 120 },
+  "last_synthesis": {
+    "job_id": "uuid",
+    "status": "COMPLETED",
+    "completed_at": "2026-02-16T...",
+    "nodes_created": 15,
+    "relationships_created": 30
+  }
+}
+```
 
-### 7. part/repository.py — Part 단위 upsert
-- `upsert_part()`: 변경 감지(standard/extended 속성 비교), PartRevision 스냅샷
-- `upsert_bom_link()`: sequence/ref_des/find_number 제거, extended_properties 지원
-
-### 8. 부수 변경
-- `activation/service.py`: `_build_extended_hints`에서 `property_mappings` + `_ext_` 필터 사용
-- `scripts/llm-eval/run_mapping_repeat_eval.py`: 새 스키마 형식 적용
-- `tests/fixtures/hierarchical_bom_mapping.json`: 새 스키마 형식으로 변환
-- `part/schemas.py`: BomChild/BomParent에서 sequence/ref_des/find_number 제거
-- `part/service.py`: 제거된 BomLink 필드 참조 정리
-- `tests/test_synthesis_start_service.py`: 새 함수명 및 스키마에 맞게 수정
-
-### 9. Alembic 마이그레이션
-- 테넌트 스키마는 `TenantBase.metadata.create_all()`로 관리되므로 별도 마이그레이션 불필요
-- DB 재생성(`docker compose down -v && up -d`) 후 프로비저닝 시 자동 적용
+- `last_synthesis`는 합성 이력이 없으면 `null`
+- `added_this_week`는 `datetime.now(UTC) - timedelta(days=7)` 기준
 
 ## What Worked
 
-- "Part 속성 / 외부 관계" 이분법이 from/to 혼동을 구조적으로 제거
-- 5-phase 청크 처리가 Part별 집계와 의존성 순서를 명확히 보장
-- first-non-null 병합이 중복 행 문제를 깔끔히 해결
-- BomLink의 선택적 속성을 extended_properties로 통합하여 모델 슬림화
+- 기존 Part/BomLink/SynthesisJob 모델을 직접 import하여 재사용 — 새 모델 불필요
+- `@transactional(read_only=True)` 패턴으로 읽기 전용 트랜잭션
+- `get_last_synthesis_job`에서 `completed_at.desc().nullslast()` 정렬로 미완료 작업 후순위
 
 ## What Didn't Work / 주의사항
 
-- `_extract_part_data()`의 from/to 휴리스틱은 완전 제거됨 — 새 코드는 스키마 기반 소속
-- 테스트에서 old schema(`column_mappings`, `extended_properties`)를 사용하는 곳이 일부 남아있으나 기능상 문제 없음 (mock으로 MappingResult 파싱을 우회하는 테스트)
-- 테넌트 스키마 변경 시 기존 DB는 재생성 필요 (개발 단계)
+- 특별한 이슈 없음. 기존 패턴(Service-Repository, `get_tenant_db` Depends)을 그대로 따름
+
+## 이전 컨텍스트 (BOM 업로드 설계 v2)
+
+이전 세션에서 BOM 매핑/합성 파이프라인 v2 재설계가 완료됨:
+- Part 속성 / 외부 관계 이분법, 5-phase 청크 처리
+- 상세 내용은 git log 참고
 
 ## Next Steps
 
-1. **DB 재생성** — `docker compose down -v && docker compose up -d && uv run alembic upgrade head && uv run python seed_data.py`
-2. **E2E 검증** — 3가지 BOM 유형 샘플 파일로 매핑 → 합성 → 조회 흐름 검증
-   - `sample/hierarchical_bom.csv` (Flat BOM)
-   - `sample/messy_bom.csv` (Part List)
-   - `sample/Arduino_Uno_R3_From_Scratch - 시트1.csv` (전자부품 BOM)
-3. **업데이트 토글** — synthesis 시작 시 update_existing 옵션 (현재 항상 ON)
-4. **결과 화면** — 신규/변경/스킵 건수 및 충돌 감지 리포트 API
-5. **Manual Root BOM** — Part 상세화면에서 scope=part_detail 업로드 흐름
+1. **커밋** — 현재 변경사항 커밋 (dashboard stats API)
+2. **E2E 검증** — 서버 실행 후 실제 API 호출 테스트 (`curl` 또는 Swagger UI)
+3. **단위 테스트** — dashboard service/repository 단위 테스트 추가 (선택)
+4. **프론트엔드 연동** — `GET /api/v1/dashboard/stats` 호출하여 대시보드 화면 구성
+5. **BOM v2 E2E 검증** — 3가지 BOM 유형 샘플 파일로 매핑 → 합성 → 조회 흐름 검증

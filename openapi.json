@@ -450,6 +450,32 @@
                 ]
             }
         },
+        "/api/v1/dashboard/stats": {
+            "get": {
+                "tags": [
+                    "dashboard"
+                ],
+                "summary": "Get Dashboard Stats",
+                "operationId": "get_dashboard_stats_api_v1_dashboard_stats_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DashboardStatsResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
         "/api/v1/drawings/analyze": {
             "post": {
                 "tags": [
@@ -2284,6 +2310,19 @@
                 "title": "BomParent",
                 "description": "CONSISTS_OF \ubd80\ubaa8 (depth 1)"
             },
+            "BomStats": {
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "title": "Total"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "total"
+                ],
+                "title": "BomStats"
+            },
             "BomTreeNode": {
                 "properties": {
                     "part_number": {
@@ -2539,6 +2578,33 @@
                     "file_key"
                 ],
                 "title": "CreateUploadResponse"
+            },
+            "DashboardStatsResponse": {
+                "properties": {
+                    "parts": {
+                        "$ref": "#/components/schemas/PartStats"
+                    },
+                    "bom_links": {
+                        "$ref": "#/components/schemas/BomStats"
+                    },
+                    "last_synthesis": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LastSynthesis"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "parts",
+                    "bom_links",
+                    "last_synthesis"
+                ],
+                "title": "DashboardStatsResponse"
             },
             "DrawingAnalysisListResponse": {
                 "properties": {
@@ -3215,6 +3281,48 @@
                     "issues"
                 ],
                 "title": "HealthCheckResponse"
+            },
+            "LastSynthesis": {
+                "properties": {
+                    "job_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Job Id"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "completed_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completed At"
+                    },
+                    "nodes_created": {
+                        "type": "integer",
+                        "title": "Nodes Created"
+                    },
+                    "relationships_created": {
+                        "type": "integer",
+                        "title": "Relationships Created"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "job_id",
+                    "status",
+                    "completed_at",
+                    "nodes_created",
+                    "relationships_created"
+                ],
+                "title": "LastSynthesis"
             },
             "LoginRequest": {
                 "properties": {
@@ -4030,6 +4138,24 @@
                 ],
                 "title": "PartMatch",
                 "description": "\uae30\uc874 Part\uc640 \uc77c\uce58\ud55c \ubd80\ud488."
+            },
+            "PartStats": {
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "title": "Total"
+                    },
+                    "added_this_week": {
+                        "type": "integer",
+                        "title": "Added This Week"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "total",
+                    "added_this_week"
+                ],
+                "title": "PartStats"
             },
             "PartSummary": {
                 "properties": {
