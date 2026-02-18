@@ -55,15 +55,6 @@ class TestCRUDFlow:
         assert data[0]["plan_type"]
         assert data[0]["display_name"]
 
-    def test_ontology_schema(self, client: TestClient):
-        """GET /ontology/schema → 온톨로지 스키마 조회."""
-        resp = client.get("/api/v1/ontology/schema")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["name"]
-        assert len(data["node_labels"]) > 0
-        assert len(data["relationship_types"]) > 0
-
     # ── 인증 ──
 
     def test_register(self, client: TestClient, unique_suffix: str):
@@ -162,6 +153,18 @@ class TestCRUDFlow:
         assert resp.status_code == 200, resp.text
         data = resp.json()
         assert data["onboarded_at"] is not None
+
+    def test_ontology_schema(self, client: TestClient):
+        """GET /ontology/schema → 온톨로지 스키마 조회 (인증 필수)."""
+        resp = client.get(
+            "/api/v1/ontology/schema",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"]
+        assert len(data["node_labels"]) > 0
+        assert len(data["relationship_types"]) > 0
 
     def test_me(self, client: TestClient):
         """GET /auth/me → 유저/조직 정보 확인."""

@@ -18,7 +18,7 @@ from app.infrastructure.s3_client import S3Client
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
 from app.modules.ontology.cypher_utils import format_cypher_value
-from app.modules.ontology.schemas import MappingResult
+from app.modules.ontology.schemas import MappingResult, RelationMapping
 from app.modules.part import repository as part_repo
 from app.modules.synthesis import repository as repo
 from app.modules.synthesis.models import SynthesisJob
@@ -36,6 +36,14 @@ from app.modules.synthesis.schemas import (
 _s3 = S3Client()
 
 CHUNK_SIZE = 500
+
+
+def _has_rootless_consists_of(mapping_dict: dict) -> bool:
+    """매핑 dict에 node_columns가 비어있는 CONSISTS_OF가 있는지 확인."""
+    for rm in mapping_dict.get("relation_mappings", []):
+        if rm.get("rel_type") == "CONSISTS_OF" and not rm.get("node_columns"):
+            return True
+    return False
 
 
 @transactional
@@ -56,6 +64,13 @@ def start_synthesis(
                 message="조직에 등록된 매핑이 없습니다. 먼저 매핑을 확정해주세요.",
                 code="NOT_FOUND",
             )
+
+    # Root-Specified BOM 검증
+    if _has_rootless_consists_of(record.mapping) and not req.root_part_number:
+        raise AppError(
+            message="이 매핑은 Root-Specified BOM입니다. root_part_number를 지정해주세요.",
+            code="INVALID_INPUT",
+        )
 
     upload = repo.get_upload_by_id(db, req.upload_id)
     if upload is None:
@@ -86,6 +101,7 @@ def start_synthesis(
         filename=upload.original_name,
         sheet_name=record.sheet_name,
         mapping_json=record.mapping,
+        root_part_number=req.root_part_number,
     )
 
     logger.info(
@@ -122,6 +138,13 @@ def start_synthesis_batch(
                 message="조직에 등록된 매핑이 없습니다. 먼저 매핑을 확정해주세요.",
                 code="NOT_FOUND",
             )
+
+    # Root-Specified BOM 검증
+    if _has_rootless_consists_of(record.mapping) and not req.root_part_number:
+        raise AppError(
+            message="이 매핑은 Root-Specified BOM입니다. root_part_number를 지정해주세요.",
+            code="INVALID_INPUT",
+        )
 
     schema_name = org_id_to_schema(auth.org_id)
     accepted_jobs = []
@@ -197,6 +220,7 @@ def start_synthesis_batch(
             filename=upload.original_name,
             sheet_name=record.sheet_name,
             mapping_json=record.mapping,
+            root_part_number=req.root_part_number,
         )
 
     logger.info(
@@ -538,6 +562,7 @@ def _run_synthesis(
     filename: str,
     sheet_name: str | None,
     mapping_json: dict,
+    root_part_number: str | None = None,
 ) -> None:
     db = create_tenant_session(schema_name)
     try:
@@ -590,6 +615,15 @@ def _run_synthesis(
             return
 
         mapping = MappingResult(**mapping_json)
+
+        # Root-Specified BOM: rootless CONSISTS_OF 탐지
+        rootless_consists_of: RelationMapping | None = None
+        if root_part_number:
+            for rm in mapping.relation_mappings:
+                if rm.rel_type == "CONSISTS_OF" and not rm.node_columns:
+                    rootless_consists_of = rm
+                    break
+
         processed = 0
         nodes_created = 0
         rels_created = 0
@@ -623,6 +657,16 @@ def _run_synthesis(
                     # BOM 데이터 수집
                     bom_entries.extend(_extract_bom_data(row, mapping, pn))
 
+                    # Root-Specified BOM: root_part_number를 상위 Part로 고정
+                    if rootless_consists_of and pn and pn != root_part_number:
+                        entry: dict = {"parent_pn": root_part_number, "child_pn": pn}
+                        for rel_prop, src_col in rootless_consists_of.rel_columns.items():
+                            data_type = rootless_consists_of.rel_column_types.get(rel_prop, "string")
+                            val = _cast_python_value(row.get(src_col), data_type)
+                            if val is not None:
+                                entry[rel_prop] = val
+                        bom_entries.append(entry)
+
                     # 비-Part 노드 Cypher 수집
                     all_node_cyphers.extend(_process_row_nodes(row, mapping))
 
@@ -637,6 +681,10 @@ def _run_synthesis(
                     logger.warning("합성 행 처리 오류: {err}", err=err_msg)
 
                 processed += 1
+
+            # Root-Specified BOM: root part를 part_data에 등록
+            if rootless_consists_of and root_part_number:
+                _merge_part_props(part_data, root_part_number, {"part_number": root_part_number})
 
             # === Phase 2: Part upsert (RDS + Graph dual-write) ===
             for pn, props in part_data.items():

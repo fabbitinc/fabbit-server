@@ -19,7 +19,6 @@ from app.modules.ai_usage.service import log_ai_usage
 from app.modules.mapping import repository as repo
 from app.modules.mapping.models import MappingRecord
 from app.modules.mapping.schemas import (
-    EditableConstraints,
     MappingConfirmRequest,
     MappingListResponse,
     MappingPreviewRequest,
@@ -172,7 +171,6 @@ def preview_mapping(
         mapping=first_mapping,
         sheets=sheets,
         skipped_sheets=skipped_sheets,
-        editable_constraints=_build_editable_constraints(),
     )
 
 
@@ -256,47 +254,56 @@ def validate_mapping(
             )
             continue
 
+        # Root-Specified BOM: node_columns 없는 CONSISTS_OF는 merge key 검증 스킵
+        is_rootless_bom = (
+            rm.rel_type == "CONSISTS_OF" and not rm.node_columns and rm.rel_columns
+        )
+
         # node_columns 검증: 상대방 노드의 merge key가 매핑되어 있는지
-        required_keys = merge_keys_by_label.get(rm.target_label, set())
-        for merge_key in required_keys:
-            src_col = rm.node_columns.get(merge_key)
-            if not src_col:
-                errors.append(
-                    ValidationIssue(
-                        code="MISSING_NODE_MERGE_KEY",
-                        severity="error",
-                        message=(
-                            f"관계 '{rm.rel_type}'의 대상 노드 merge key "
-                            f"'{merge_key}' 매핑이 누락되었습니다"
-                        ),
-                        path=f"relation_mappings[{idx}].node_columns.{merge_key}",
-                        dismissed_reason="missing_node_merge_key",
+        if is_rootless_bom:
+            pass  # rootless BOM은 합성 시점에 root_part_number로 보정
+        else:
+            required_keys = merge_keys_by_label.get(rm.target_label, set())
+            for merge_key in required_keys:
+                src_col = rm.node_columns.get(merge_key)
+                if not src_col:
+                    errors.append(
+                        ValidationIssue(
+                            code="MISSING_NODE_MERGE_KEY",
+                            severity="error",
+                            message=(
+                                f"관계 '{rm.rel_type}'의 대상 노드 merge key "
+                                f"'{merge_key}' 매핑이 누락되었습니다"
+                            ),
+                            path=f"relation_mappings[{idx}].node_columns.{merge_key}",
+                            dismissed_reason="missing_node_merge_key",
+                        )
                     )
-                )
-                continue
-            if src_col not in header_set:
-                errors.append(
-                    ValidationIssue(
-                        code="MISSING_SOURCE_COLUMN",
-                        severity="error",
-                        message=f"컬럼 '{src_col}'을(를) 파일에서 찾을 수 없습니다",
-                        path=f"relation_mappings[{idx}].node_columns.{merge_key}",
-                        dismissed_reason="missing_source_column",
+                    continue
+                if src_col not in header_set:
+                    errors.append(
+                        ValidationIssue(
+                            code="MISSING_SOURCE_COLUMN",
+                            severity="error",
+                            message=f"컬럼 '{src_col}'을(를) 파일에서 찾을 수 없습니다",
+                            path=f"relation_mappings[{idx}].node_columns.{merge_key}",
+                            dismissed_reason="missing_source_column",
+                        )
                     )
-                )
 
         # rel_columns 검증
         for rel_prop, src_col in rm.rel_columns.items():
             path = f"relation_mappings[{idx}].rel_columns.{rel_prop}"
             if src_col not in header_set:
-                warnings.append(
+                errors.append(
                     ValidationIssue(
-                        code="OPTIONAL_REL_PROPERTY_SOURCE_MISSING",
-                        severity="warning",
+                        code="MISSING_SOURCE_COLUMN",
+                        severity="error",
                         message=(
-                            f"관계 속성 컬럼 '{src_col}'이 없어 해당 속성은 무시될 수 있습니다"
+                            f"관계 속성 컬럼 '{src_col}'을(를) 파일에서 찾을 수 없습니다"
                         ),
                         path=path,
+                        dismissed_reason="missing_source_column",
                     )
                 )
                 continue
@@ -437,41 +444,6 @@ def _to_mapping_response(record: MappingRecord) -> MappingResponse:
         is_active=record.is_active,
         usage_count=record.usage_count,
         created_at=record.created_at,
-    )
-
-
-def _build_editable_constraints() -> EditableConstraints:
-    relation_catalog = []
-    relation_property_catalog = []
-    for rel in MANUFACTURING_ONTOLOGY.relationship_types:
-        relation_catalog.append(
-            {
-                "rel_type": rel.rel_type,
-                "from_label": rel.from_label,
-                "to_label": rel.to_label,
-                "description": rel.description,
-            }
-        )
-        for prop in rel.properties:
-            relation_property_catalog.append(
-                {
-                    "rel_type": rel.rel_type,
-                    "property": prop.name,
-                    "data_type": prop.data_type,
-                    "required": prop.required,
-                    "description": prop.description,
-                }
-            )
-
-    part_node = MANUFACTURING_ONTOLOGY.get_node_label("Part")
-    return EditableConstraints(
-        allowed_part_properties=[p.name for p in part_node.properties] if part_node else [],
-        merge_keys_by_label={
-            node.label: list(node.merge_keys)
-            for node in MANUFACTURING_ONTOLOGY.node_labels
-        },
-        relation_catalog=relation_catalog,
-        relation_property_catalog=relation_property_catalog,
     )
 
 

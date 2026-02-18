@@ -275,6 +275,10 @@ def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
             continue
         if rm.target_label not in valid_labels:
             continue
+        # Root-Specified BOM: node_columns 없이 rel_columns만 있는 CONSISTS_OF 허용
+        if rm.rel_type == "CONSISTS_OF" and not rm.node_columns and rm.rel_columns:
+            verified_rels.append(rm)
+            continue
         if not rm.node_columns:
             continue
 

@@ -77,9 +77,7 @@
           "is_merge_key": false
         }
       ],
-      "merge_keys": [
-        "part_number"
-      ]
+      "merge_keys": ["part_number"]
     },
     {
       "label": "Drawing",
@@ -121,9 +119,7 @@
           "is_merge_key": false
         }
       ],
-      "merge_keys": [
-        "drawing_number"
-      ]
+      "merge_keys": ["drawing_number"]
     },
     {
       "label": "Supplier",
@@ -158,9 +154,7 @@
           "is_merge_key": false
         }
       ],
-      "merge_keys": [
-        "company_name"
-      ]
+      "merge_keys": ["company_name"]
     },
     {
       "label": "Project",
@@ -202,9 +196,7 @@
           "is_merge_key": false
         }
       ],
-      "merge_keys": [
-        "project_code"
-      ]
+      "merge_keys": ["project_code"]
     }
   ],
   "relationship_types": [

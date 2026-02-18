@@ -11,6 +11,7 @@ class SynthesisStartRequest(BaseModel):
 
     upload_id: uuid.UUID
     mapping_id: uuid.UUID | None = None
+    root_part_number: str | None = None  # Root-Specified BOM일 때 상위 Part 품번
 
 
 class SynthesisBatchStartRequest(BaseModel):
@@ -26,6 +27,7 @@ class SynthesisBatchStartRequest(BaseModel):
         None,
         description="사용할 매핑 ID (미지정 시 프로젝트/조직 최신 매핑 자동 선택)",
     )
+    root_part_number: str | None = None  # Root-Specified BOM일 때 상위 Part 품번
 
 
 class SynthesisBatchFailure(BaseModel):

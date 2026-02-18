@@ -1,73 +1,94 @@
-# HANDOFF — Dashboard Stats API 구현
+# HANDOFF
 
 ## Goal
 
-프론트엔드 대시보드 화면에 표시할 통계 API(`GET /api/v1/dashboard/stats`)를 구현한다. Part 총 개수, 이번 주 추가된 Part 수, 최근 합성 작업 정보를 반환하며, `total=0`이면 프론트에서 Empty State → Part 등록 유도 CTA를 보여줄 예정.
+이번 세션에서 3가지 작업을 진행했다:
+1. 대시보드 통계 API 구현
+2. PropertyMapping에 `is_extended` 플래그 추가
+3. 샘플 JSON을 v2 스키마로 업데이트
 
 ## Current Progress
 
-- [x] Dashboard 모듈 신규 생성 (`app/modules/dashboard/`)
-- [x] 스키마, 리포지토리, 서비스, 라우터 구현
-- [x] `app/main.py`에 라우터 등록
-- [x] 린트 통과 (새 파일), 전체 테스트 71 passed, 6 skipped
+### 1. Dashboard Stats API — 완료
 
-## 완료된 작업
+- [x] `app/modules/dashboard/` 모듈 신규 생성 (schemas, repository, service)
+- [x] `GET /api/v1/dashboard/stats` 라우터 + `app/main.py` 등록
+- [x] 전체 테스트 71 passed
 
-### 신규 파일 (6개)
-
-| 파일 | 내용 |
-|---|---|
-| `app/modules/dashboard/__init__.py` | 빈 패키지 |
-| `app/modules/dashboard/schemas.py` | `PartStats`, `BomStats`, `LastSynthesis`, `DashboardStatsResponse` |
-| `app/modules/dashboard/repository.py` | `count_parts`, `count_parts_since`, `count_bom_links`, `get_last_synthesis_job` |
-| `app/modules/dashboard/service.py` | `get_stats()` — `@transactional(read_only=True)`, 최근 7일 기준 |
-| `app/api/v1/tenant/dashboard_router.py` | `GET /api/v1/dashboard/stats` (인증 필수) |
-
-### 수정 파일 (1개)
-
-| 파일 | 변경 |
-|---|---|
-| `app/main.py` | `dashboard_router` import + `app.include_router(dashboard_router)` 추가 |
-
-### 응답 구조
-
+**응답 구조:**
 ```json
 {
   "parts": { "total": 42, "added_this_week": 5 },
   "bom_links": { "total": 120 },
-  "last_synthesis": {
-    "job_id": "uuid",
-    "status": "COMPLETED",
-    "completed_at": "2026-02-16T...",
-    "nodes_created": 15,
-    "relationships_created": 30
-  }
+  "last_synthesis": { "job_id": "uuid", "status": "COMPLETED", "completed_at": "...", "nodes_created": 15, "relationships_created": 30 }
 }
 ```
 
-- `last_synthesis`는 합성 이력이 없으면 `null`
-- `added_this_week`는 `datetime.now(UTC) - timedelta(days=7)` 기준
+### 2. PropertyMapping `is_extended` 플래그 — 완료
+
+- [x] `ontology/schemas.py` — `PropertyMapping`에 `is_extended: bool = False` 추가
+- [x] `ontology/service.py` — `_validate_and_fix_mapping()`에서 자동 세팅
+  - `_ext_*` 접두사 또는 온톨로지에 없는 속성 → `is_extended=True`
+  - 표준 속성 → `is_extended=False`
+- [x] `display_name` 필드는 불필요하여 제거 (source_column이 이미 Excel 헤더명)
+
+**프론트 사용법:**
+- `is_extended=true` → `source_column`을 레이블로 사용
+- `is_extended=false` → 온톨로지 스키마에서 레이블 조회
+
+### 3. 샘플 JSON v2 업데이트 — 완료
+
+- [x] `sample/mapping_preview_response.json` — v2 스키마로 변환
+- [x] `sample/mapping_preview_messy.json` — v2 스키마로 변환
+
+**v1 → v2 주요 변경:**
+- `column_mappings` + `extended_properties` → `property_mappings` (`is_extended`로 구분)
+- `from_label/to_label/from_columns/to_columns` → `target_label/node_columns/rel_columns`
+- `editable_constraints` → `allowed_part_properties`, `relation_catalog`, `relation_property_catalog`
 
 ## What Worked
 
-- 기존 Part/BomLink/SynthesisJob 모델을 직접 import하여 재사용 — 새 모델 불필요
-- `@transactional(read_only=True)` 패턴으로 읽기 전용 트랜잭션
-- `get_last_synthesis_job`에서 `completed_at.desc().nullslast()` 정렬로 미완료 작업 후순위
+- `_validate_and_fix_mapping()`이 모든 매핑 생성/정규화의 최종 관문이라 `is_extended` 세팅을 여기서만 처리하면 전체 파이프라인에 적용됨
+- `confirm_mapping`이 저장 전에 `normalize_mapping`을 호출하므로 DB에는 항상 `is_extended` 포함된 상태로 저장됨
 
 ## What Didn't Work / 주의사항
 
-- 특별한 이슈 없음. 기존 패턴(Service-Repository, `get_tenant_db` Depends)을 그대로 따름
+- `display_name` 필드를 처음에 추가했다가 제거함 — `source_column`이 이미 Excel 원본 헤더명이라 중복
+- 프론트 매핑 UI가 v1 스키마 기준으로 구현되어 있어 전면 재작업 필요 (아래 Next Steps 참고)
 
-## 이전 컨텍스트 (BOM 업로드 설계 v2)
+## 프론트 매핑 UI 설계 방향 (합의됨)
 
-이전 세션에서 BOM 매핑/합성 파이프라인 v2 재설계가 완료됨:
-- Part 속성 / 외부 관계 이분법, 5-phase 청크 처리
-- 상세 내용은 git log 참고
+현재 프론트 문제:
+- 관계 추가 폼이 v1의 from/to 패턴 그대로
+- CONSISTS_OF만 지원, SUPPLIED_BY/DEFINED_BY 추가 불가
+- 상대방 노드의 전체 속성을 다 나열 (merge key만 필수인데 10개 필드 노출)
+
+**합의된 칸반 보드 방식:**
+```
+[부품]              [상위 부품]         [공급사]          [도면]
+ 품번 *              품번 *              업체명 *          도면번호 *
+ 품명                품명               ─ 관계 속성 ─
+ 재질               ─ 관계 속성 ─        단가
+ 단위                수량
+ ...                 순서
+─ 확장 속성 ─
+ (드롭 시 자동생성)
+```
+
+- 각 레인 = 엔티티 (Part, Parent Part, Supplier, Drawing)
+- Excel 컬럼 카드를 슬롯에 드래그 → 자동으로 property_mappings 또는 relation_mappings 생성
+- merge key(*) 슬롯만 필수, 나머지 선택
+- HAS_ITEM(프로젝트) 레인은 실무에서 거의 불필요하므로 당장은 제외
+
+**프론트가 참고할 API 데이터:**
+- `editable_constraints.allowed_part_properties` → 부품 레인 슬롯 목록
+- `editable_constraints.merge_keys_by_label` → 각 레인의 필수 슬롯
+- `editable_constraints.relation_catalog` → 관계 타입별 from/to 라벨
+- `editable_constraints.relation_property_catalog` → 관계 속성 슬롯 목록
 
 ## Next Steps
 
-1. **커밋** — 현재 변경사항 커밋 (dashboard stats API)
-2. **E2E 검증** — 서버 실행 후 실제 API 호출 테스트 (`curl` 또는 Swagger UI)
-3. **단위 테스트** — dashboard service/repository 단위 테스트 추가 (선택)
-4. **프론트엔드 연동** — `GET /api/v1/dashboard/stats` 호출하여 대시보드 화면 구성
-5. **BOM v2 E2E 검증** — 3가지 BOM 유형 샘플 파일로 매핑 → 합성 → 조회 흐름 검증
+1. **커밋** — 현재 미커밋 변경사항 (dashboard API + is_extended + 샘플 JSON)
+2. **프론트 매핑 UI** — 칸반 보드 방식으로 재구현 (백엔드 변경 불필요)
+3. **E2E 검증** — 서버 + 프론트 연동하여 매핑 → 합성 → 대시보드 흐름 테스트
+4. **openapi.json 갱신** — dashboard 엔드포인트 추가 반영

@@ -40,36 +40,6 @@ class MappingPreviewResponse(BaseModel):
     mapping: MappingResult
     sheets: list[SheetPreview] = []
     skipped_sheets: list[SkippedSheet] = []
-    editable_constraints: "EditableConstraints" = Field(
-        default_factory=lambda: EditableConstraints()
-    )
-
-
-class RelationCatalogItem(BaseModel):
-    rel_type: str
-    from_label: str
-    to_label: str
-    description: str
-
-
-class RelationPropertyCatalogItem(BaseModel):
-    rel_type: str
-    property: str
-    data_type: str
-    required: bool
-    description: str
-
-
-class EditableConstraints(BaseModel):
-    # Part 속성 매핑에서 허용되는 속성 목록
-    allowed_part_properties: list[str] = Field(default_factory=list)
-    # 노드별 merge key 목록
-    merge_keys_by_label: dict[str, list[str]] = Field(default_factory=dict)
-    # 관계 카탈로그
-    relation_catalog: list[RelationCatalogItem] = Field(default_factory=list)
-    relation_property_catalog: list[RelationPropertyCatalogItem] = Field(
-        default_factory=list
-    )
 
 
 class MappingConfirmRequest(BaseModel):
@@ -138,4 +108,3 @@ class MappingValidateResponse(BaseModel):
     impact_summary: MappingImpactSummary = Field(default_factory=MappingImpactSummary)
 
 
-MappingPreviewResponse.model_rebuild()

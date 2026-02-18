@@ -2105,7 +2105,7 @@
                     "ontology"
                 ],
                 "summary": "Get Ontology Schema",
-                "description": "\uc628\ud1a8\ub85c\uc9c0 \uc2a4\ud0a4\ub9c8 \uc870\ud68c (\uc815\uc801 \ub370\uc774\ud130, \uc778\uc99d \ubd88\ud544\uc694).",
+                "description": "\uc628\ud1a8\ub85c\uc9c0 \uc2a4\ud0a4\ub9c8 \uc870\ud68c.",
                 "operationId": "get_ontology_schema_api_v1_ontology_schema_get",
                 "responses": {
                     "200": {
@@ -2118,7 +2118,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
             }
         },
         "/health": {
@@ -2880,43 +2885,6 @@
                 "title": "DrawingSynthesisStartRequest",
                 "description": "\ub3c4\uba74 \ud569\uc131 \uc2dc\uc791 \uc694\uccad."
             },
-            "EditableConstraints": {
-                "properties": {
-                    "allowed_part_properties": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "Allowed Part Properties"
-                    },
-                    "merge_keys_by_label": {
-                        "additionalProperties": {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        "type": "object",
-                        "title": "Merge Keys By Label"
-                    },
-                    "relation_catalog": {
-                        "items": {
-                            "$ref": "#/components/schemas/RelationCatalogItem"
-                        },
-                        "type": "array",
-                        "title": "Relation Catalog"
-                    },
-                    "relation_property_catalog": {
-                        "items": {
-                            "$ref": "#/components/schemas/RelationPropertyCatalogItem"
-                        },
-                        "type": "array",
-                        "title": "Relation Property Catalog"
-                    }
-                },
-                "type": "object",
-                "title": "EditableConstraints"
-            },
             "ExtractedPart": {
                 "properties": {
                     "reference_designator": {
@@ -3489,9 +3457,6 @@
                         "type": "array",
                         "title": "Skipped Sheets",
                         "default": []
-                    },
-                    "editable_constraints": {
-                        "$ref": "#/components/schemas/EditableConstraints"
                     }
                 },
                 "type": "object",
@@ -4817,34 +4782,6 @@
                 "title": "RelatedSupplier",
                 "description": "SUPPLIED_BY \uacf5\uae09\uc0ac"
             },
-            "RelationCatalogItem": {
-                "properties": {
-                    "rel_type": {
-                        "type": "string",
-                        "title": "Rel Type"
-                    },
-                    "from_label": {
-                        "type": "string",
-                        "title": "From Label"
-                    },
-                    "to_label": {
-                        "type": "string",
-                        "title": "To Label"
-                    },
-                    "description": {
-                        "type": "string",
-                        "title": "Description"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "rel_type",
-                    "from_label",
-                    "to_label",
-                    "description"
-                ],
-                "title": "RelationCatalogItem"
-            },
             "RelationMapping": {
                 "properties": {
                     "rel_type": {
@@ -4897,39 +4834,6 @@
                 ],
                 "title": "RelationMapping",
                 "description": "\uc678\ubd80 \uad00\uacc4 \ub9e4\ud551 \u2014 \uad00\uacc4 + \uc0c1\ub300\ubc29 \ub178\ub4dc.\n\nCONSISTS_OF: \uc0c1\uc704 Part (from) \u2192 \uc8fc Part (to) \ubc29\ud5a5.\n  node_columns\uc740 \uc0c1\uc704 Part(from)\uc758 \uc18d\uc131\uc744 \ub9e4\ud551.\nSUPPLIED_BY, DEFINED_BY: \uc8fc Part (from) \u2192 \uc678\ubd80 \ub178\ub4dc (to) \ubc29\ud5a5.\n  node_columns\uc740 \uc678\ubd80 \ub178\ub4dc(to)\uc758 \uc18d\uc131\uc744 \ub9e4\ud551."
-            },
-            "RelationPropertyCatalogItem": {
-                "properties": {
-                    "rel_type": {
-                        "type": "string",
-                        "title": "Rel Type"
-                    },
-                    "property": {
-                        "type": "string",
-                        "title": "Property"
-                    },
-                    "data_type": {
-                        "type": "string",
-                        "title": "Data Type"
-                    },
-                    "required": {
-                        "type": "boolean",
-                        "title": "Required"
-                    },
-                    "description": {
-                        "type": "string",
-                        "title": "Description"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "rel_type",
-                    "property",
-                    "data_type",
-                    "required",
-                    "description"
-                ],
-                "title": "RelationPropertyCatalogItem"
             },
             "RelationshipTypeSchema": {
                 "properties": {
@@ -5196,6 +5100,17 @@
                         ],
                         "title": "Mapping Id",
                         "description": "\uc0ac\uc6a9\ud560 \ub9e4\ud551 ID (\ubbf8\uc9c0\uc815 \uc2dc \ud504\ub85c\uc81d\ud2b8/\uc870\uc9c1 \ucd5c\uc2e0 \ub9e4\ud551 \uc790\ub3d9 \uc120\ud0dd)"
+                    },
+                    "root_part_number": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Root Part Number"
                     }
                 },
                 "type": "object",
@@ -5450,6 +5365,17 @@
                             }
                         ],
                         "title": "Mapping Id"
+                    },
+                    "root_part_number": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Root Part Number"
                     }
                 },
                 "type": "object",
