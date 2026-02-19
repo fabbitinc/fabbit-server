@@ -3592,6 +3592,13 @@
                         "type": "array",
                         "title": "Original Headers"
                     },
+                    "mapped_headers": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Mapped Headers"
+                    },
                     "mapping": {
                         "$ref": "#/components/schemas/MappingResult"
                     },
@@ -3624,6 +3631,7 @@
                     "upload_id",
                     "name",
                     "original_headers",
+                    "mapped_headers",
                     "mapping",
                     "scope",
                     "usage_count",

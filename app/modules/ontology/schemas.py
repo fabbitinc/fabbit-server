@@ -54,6 +54,25 @@ class MappingResult(BaseModel):
     property_mappings: list[PropertyMapping]
     relation_mappings: list[RelationMapping]
 
+    def get_required_columns(self) -> list[str]:
+        """매핑에 실제 사용된 소스 컬럼 목록 (합성 검증 기준)."""
+        seen: set[str] = set()
+        result: list[str] = []
+        for pm in self.property_mappings:
+            if pm.source_column not in seen:
+                seen.add(pm.source_column)
+                result.append(pm.source_column)
+        for rm in self.relation_mappings:
+            for col in rm.node_columns.values():
+                if col not in seen:
+                    seen.add(col)
+                    result.append(col)
+            for col in rm.rel_columns.values():
+                if col not in seen:
+                    seen.add(col)
+                    result.append(col)
+        return result
+
 
 # === 온톨로지 스키마 조회 ===
 

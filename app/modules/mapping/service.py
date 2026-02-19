@@ -2,6 +2,7 @@
 
 import time
 import uuid
+from datetime import datetime, timezone
 
 from loguru import logger
 from sqlalchemy.orm import Session
@@ -526,6 +527,7 @@ def update_mapping(
 
     # 새 매핑 내용에 따라 scope 재판별
     record.scope = _determine_scope(validation.normalized_mapping)
+    record.updated_at = datetime.now(timezone.utc)
 
     new_revision = MappingRevision(
         id=generate_uuid7(),
@@ -580,6 +582,10 @@ def _to_mapping_response(
         name=record.name,
         sheet_name=revision.sheet_name,
         original_headers=original_headers,
+        mapped_headers=sorted(
+            mapping_payload.get_required_columns(),
+            key=lambda col: original_headers.index(col) if col in original_headers else len(original_headers),
+        ),
         mapping=mapping_payload,
         scope=record.scope,
         is_active=record.is_active,

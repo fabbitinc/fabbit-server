@@ -68,6 +68,7 @@ class MappingResponse(BaseModel):
     name: str
     sheet_name: str | None = None
     original_headers: list[str]
+    mapped_headers: list[str]
     mapping: MappingResult
     scope: str
     is_active: bool = True
