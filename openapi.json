@@ -3446,11 +3446,6 @@
                     },
                     "mapping": {
                         "$ref": "#/components/schemas/MappingResult"
-                    },
-                    "scope": {
-                        "type": "string",
-                        "title": "Scope",
-                        "default": "master"
                     }
                 },
                 "type": "object",
@@ -3602,8 +3597,7 @@
                     },
                     "scope": {
                         "type": "string",
-                        "title": "Scope",
-                        "default": "master"
+                        "title": "Scope"
                     },
                     "is_active": {
                         "type": "boolean",
@@ -3631,6 +3625,7 @@
                     "name",
                     "original_headers",
                     "mapping",
+                    "scope",
                     "usage_count",
                     "version",
                     "created_at"

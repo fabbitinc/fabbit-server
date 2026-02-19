@@ -17,6 +17,7 @@ from app.infrastructure.excel_parser import (
 from app.infrastructure.s3_client import S3Client
 from app.modules.ai_usage.service import log_ai_usage
 from app.modules.mapping import repository as repo
+from app.modules.mapping.constants import MappingScope
 from app.modules.mapping.models import MappingRecord, MappingRevision
 from app.modules.mapping.schemas import (
     MappingConfirmRequest,
@@ -37,6 +38,25 @@ from app.modules.ontology.schemas import MappingResult
 from app.modules.ontology import service as ontology_service
 
 _s3 = S3Client()
+
+# merge key 캐시: {label: {merge_key_name, ...}}
+_MERGE_KEYS_BY_LABEL = {
+    nl.label: set(nl.merge_keys) for nl in MANUFACTURING_ONTOLOGY.node_labels
+}
+
+
+def _determine_scope(mapping: MappingResult) -> MappingScope:
+    """매핑 내용 기반 scope 자동 판별."""
+    if not mapping.relation_mappings:
+        return MappingScope.PART_LIST
+
+    for rm in mapping.relation_mappings:
+        required_keys = _MERGE_KEYS_BY_LABEL.get(rm.target_label, set())
+        for merge_key in required_keys:
+            if not rm.node_columns.get(merge_key):
+                return MappingScope.ROOT_BOM
+
+    return MappingScope.FULL_BOM
 
 
 @transactional(read_only=True)
@@ -393,10 +413,12 @@ def confirm_mapping(
         max_rows=0,
     )
 
+    scope = _determine_scope(validation.normalized_mapping)
+
     record = MappingRecord(
         id=generate_uuid7(),
         name=req.name,
-        scope=req.scope,
+        scope=scope,
         usage_count=0,
     )
     revision = MappingRevision(
@@ -501,6 +523,9 @@ def update_mapping(
                 code="DUPLICATE_NAME",
             )
         record.name = req.name
+
+    # 새 매핑 내용에 따라 scope 재판별
+    record.scope = _determine_scope(validation.normalized_mapping)
 
     new_revision = MappingRevision(
         id=generate_uuid7(),

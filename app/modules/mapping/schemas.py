@@ -49,7 +49,6 @@ class MappingConfirmRequest(BaseModel):
     name: str
     sheet_name: str | None = None  # Excel 시트명 (None이면 모든 시트)
     mapping: MappingResult
-    scope: str = "master"  # "master" | "part_detail"
 
 
 class MappingUpdateRequest(BaseModel):
@@ -70,7 +69,7 @@ class MappingResponse(BaseModel):
     sheet_name: str | None = None
     original_headers: list[str]
     mapping: MappingResult
-    scope: str = "master"
+    scope: str
     is_active: bool = True
     usage_count: int
     version: int

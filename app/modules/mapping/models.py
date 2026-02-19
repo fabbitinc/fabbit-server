@@ -13,6 +13,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import TenantBase, generate_uuid7
+from app.modules.mapping.constants import MappingScope
 
 
 class MappingRecord(TenantBase):
@@ -29,8 +30,9 @@ class MappingRecord(TenantBase):
         UUID(as_uuid=True), primary_key=True, default=generate_uuid7
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    # 매핑 스코프 (자동 판별): "part_list" | "full_bom" | "root_bom"
-    scope: Mapped[str] = mapped_column(String(20), nullable=False, default="part_list")
+    scope: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=MappingScope.PART_LIST
+    )
     # 활성화/비활성화 (soft-delete)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # 전 리비전 합산 사용 횟수
