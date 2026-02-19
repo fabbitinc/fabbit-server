@@ -10,7 +10,7 @@ class SynthesisUploadItem(BaseModel):
     """합성 대상 업로드 항목."""
 
     upload_id: uuid.UUID
-    root_context: dict[str, str] | None = None  # ROOT_BOM: {"Part": "ASM-001"}
+    root_context: dict[str, str] | None = None  # ROOT_BOM: {"Part": "ASM-001", "Supplier": "ACME"}
 
 
 class SynthesisStartRequest(BaseModel):

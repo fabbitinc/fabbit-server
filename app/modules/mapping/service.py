@@ -276,14 +276,12 @@ def validate_mapping(
             )
             continue
 
-        # Root-Specified BOM: node_columns 없는 CONSISTS_OF는 merge key 검증 스킵
-        is_rootless_bom = (
-            rm.rel_type == "CONSISTS_OF" and not rm.node_columns and rm.rel_columns
-        )
+        # Rootless relation: node_columns 없는 관계는 merge key 검증 스킵
+        is_rootless = not rm.node_columns and rm.rel_columns
 
         # node_columns 검증: 상대방 노드의 merge key가 매핑되어 있는지
-        if is_rootless_bom:
-            pass  # rootless BOM은 합성 시점에 root_part_number로 보정
+        if is_rootless:
+            pass  # rootless relation은 합성 시점에 root_context로 보정
         else:
             required_keys = merge_keys_by_label.get(rm.target_label, set())
             for merge_key in required_keys:

@@ -39,7 +39,20 @@ _s3 = S3Client()
 CHUNK_SIZE = 500
 
 
-def _validate_root_context(scope: str, root_context: dict[str, str] | None) -> None:
+def _get_rootless_labels(mapping: MappingResult) -> set[str]:
+    """매핑에서 rootless relation의 target_label 집합 추출."""
+    return {
+        rm.target_label
+        for rm in mapping.relation_mappings
+        if not rm.node_columns and rm.rel_columns
+    }
+
+
+def _validate_root_context(
+    scope: str,
+    root_context: dict[str, str] | None,
+    required_labels: set[str],
+) -> None:
     """scope 기반 root_context 검증."""
     if scope in (MappingScope.PART_LIST, MappingScope.FULL_BOM):
         if root_context:
@@ -48,18 +61,17 @@ def _validate_root_context(scope: str, root_context: dict[str, str] | None) -> N
                 code="UNEXPECTED_ROOT_CONTEXT",
             )
     elif scope == MappingScope.ROOT_BOM:
-        if not root_context or "Part" not in root_context:
+        if not root_context:
             raise AppError(
-                message="이 매핑은 ROOT_BOM입니다. root_context에 Part 키를 지정해주세요.",
+                message="이 매핑은 ROOT_BOM입니다. root_context를 지정해주세요.",
                 code="MISSING_ROOT_CONTEXT",
             )
-
-
-def _resolve_root_part_number(root_context: dict[str, str] | None) -> str | None:
-    """root_context에서 root_part_number 추출."""
-    if not root_context:
-        return None
-    return root_context.get("Part")
+        missing = required_labels - root_context.keys()
+        if missing:
+            raise AppError(
+                message=f"root_context에 필요한 키가 누락되었습니다: {', '.join(sorted(missing))}",
+                code="MISSING_ROOT_CONTEXT",
+            )
 
 
 @transactional
@@ -86,8 +98,10 @@ def start_synthesis(
             raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
 
     # 4. 모든 upload에 대해 root_context 검증 (scope 기반)
+    mapping_for_scope = MappingResult(**revision.mapping)
+    required_labels = _get_rootless_labels(mapping_for_scope)
     for item in req.uploads:
-        _validate_root_context(record.scope, item.root_context)
+        _validate_root_context(record.scope, item.root_context, required_labels)
 
     # 5. upload 루프
     schema_name = org_id_to_schema(auth.org_id)
@@ -169,7 +183,7 @@ def start_synthesis(
             filename=upload.original_name,
             sheet_name=revision.sheet_name,
             mapping_json=revision.mapping,
-            root_part_number=_resolve_root_part_number(item.root_context),
+            root_context=item.root_context,
             overwrite=req.overwrite,
         )
 
@@ -512,7 +526,7 @@ def _run_synthesis(
     filename: str,
     sheet_name: str | None,
     mapping_json: dict,
-    root_part_number: str | None = None,
+    root_context: dict[str, str] | None = None,
     overwrite: bool = False,
 ) -> None:
     db = create_tenant_session(schema_name)
@@ -567,13 +581,12 @@ def _run_synthesis(
 
         mapping = MappingResult(**mapping_json)
 
-        # Root-Specified BOM: rootless CONSISTS_OF 탐지
-        rootless_consists_of: RelationMapping | None = None
-        if root_part_number:
+        # Rootless relation 탐지: node_columns 빈 모든 relation 수집
+        rootless_rels: list[RelationMapping] = []
+        if root_context:
             for rm in mapping.relation_mappings:
-                if rm.rel_type == "CONSISTS_OF" and not rm.node_columns:
-                    rootless_consists_of = rm
-                    break
+                if not rm.node_columns and rm.rel_columns:
+                    rootless_rels.append(rm)
 
         processed = 0
         nodes_created = 0
@@ -608,15 +621,41 @@ def _run_synthesis(
                     # BOM 데이터 수집
                     bom_entries.extend(_extract_bom_data(row, mapping, pn))
 
-                    # Root-Specified BOM: root_part_number를 상위 Part로 고정
-                    if rootless_consists_of and pn and pn != root_part_number:
-                        entry: dict = {"parent_pn": root_part_number, "child_pn": pn}
-                        for rel_prop, src_col in rootless_consists_of.rel_columns.items():
-                            data_type = rootless_consists_of.rel_column_types.get(rel_prop, "string")
-                            val = _cast_python_value(row.get(src_col), data_type)
-                            if val is not None:
-                                entry[rel_prop] = val
-                        bom_entries.append(entry)
+                    # Rootless relation 처리
+                    for rm in rootless_rels:
+                        if not pn:
+                            break
+                        root_value = root_context.get(rm.target_label)
+                        if not root_value:
+                            continue
+
+                        if rm.rel_type == "CONSISTS_OF":
+                            # BOM dual-write 경로: root Part를 상위로 고정
+                            if pn != root_value:
+                                entry: dict = {"parent_pn": root_value, "child_pn": pn}
+                                for rel_prop, src_col in rm.rel_columns.items():
+                                    data_type = rm.rel_column_types.get(rel_prop, "string")
+                                    val = _cast_python_value(row.get(src_col), data_type)
+                                    if val is not None:
+                                        entry[rel_prop] = val
+                                bom_entries.append(entry)
+                        else:
+                            # non-CONSISTS_OF: Graph Cypher 경로
+                            target_def = MANUFACTURING_ONTOLOGY.get_node_label(rm.target_label)
+                            if not target_def:
+                                continue
+                            merge_key = target_def.merge_keys[0]
+                            rel_props: dict[str, str] = {}
+                            for rel_prop, src_col in rm.rel_columns.items():
+                                data_type = rm.rel_column_types.get(rel_prop, "string")
+                                formatted = format_cypher_value(row.get(src_col), data_type)
+                                if formatted is not None:
+                                    rel_props[rel_prop] = formatted
+                            from_keys = {"part_number": format_cypher_value(pn, "string")}
+                            to_keys = {merge_key: format_cypher_value(root_value, "string")}
+                            all_rel_cyphers.append(
+                                _build_merge_rel("Part", from_keys, rm.target_label, to_keys, rm.rel_type, rel_props)
+                            )
 
                     # 비-Part 노드 Cypher 수집
                     all_node_cyphers.extend(_process_row_nodes(row, mapping))
@@ -633,9 +672,23 @@ def _run_synthesis(
 
                 processed += 1
 
-            # Root-Specified BOM: root part를 part_data에 등록
-            if rootless_consists_of and root_part_number:
-                _merge_part_props(part_data, root_part_number, {"part_number": root_part_number})
+            # Rootless relation: 외부 노드 등록
+            if root_context:
+                for rm in rootless_rels:
+                    root_value = root_context.get(rm.target_label)
+                    if not root_value:
+                        continue
+                    if rm.rel_type == "CONSISTS_OF":
+                        # Part는 RDS dual-write 경로
+                        _merge_part_props(part_data, root_value, {"part_number": root_value})
+                    else:
+                        # non-Part 노드: Graph MERGE
+                        target_def = MANUFACTURING_ONTOLOGY.get_node_label(rm.target_label)
+                        if target_def:
+                            merge_key = target_def.merge_keys[0]
+                            all_node_cyphers.append(
+                                _build_merge_node(rm.target_label, {merge_key: format_cypher_value(root_value, "string")}, {})
+                            )
 
             # === Phase 2: Part upsert (RDS + Graph dual-write) ===
             for pn, props in part_data.items():

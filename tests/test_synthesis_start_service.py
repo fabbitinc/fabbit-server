@@ -46,14 +46,13 @@ def _make_mapping_record(scope: str = MappingScope.PART_LIST):
     return types.SimpleNamespace(id=uuid.uuid4(), scope=scope)
 
 
-def _make_revision(sheet_name: str | None = "Sheet1"):
+def _make_revision(sheet_name: str | None = "Sheet1", mapping: dict | None = None):
     return types.SimpleNamespace(
         id=uuid.uuid4(),
         sheet_name=sheet_name,
-        mapping={
-            "column_mappings": [],
+        mapping=mapping or {
+            "property_mappings": [],
             "relation_mappings": [],
-            "extended_properties": [],
         },
     )
 
@@ -427,7 +426,17 @@ class SynthesisStartServiceTests(unittest.TestCase):
             mapping_id=mapping_record.id,
             uploads=[SynthesisUploadItem(upload_id=uuid.uuid4())],
         )
-        revision = _make_revision()
+        # rootless CONSISTS_OF → required_labels={"Part"}
+        revision = _make_revision(mapping={
+            "property_mappings": [],
+            "relation_mappings": [{
+                "rel_type": "CONSISTS_OF",
+                "target_label": "Part",
+                "node_columns": {},
+                "rel_columns": {"quantity": "수량"},
+                "rel_column_types": {"quantity": "integer"},
+            }],
+        })
 
         with (
             patch(
@@ -458,7 +467,17 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 ),
             ],
         )
-        revision = _make_revision()
+        # rootless CONSISTS_OF → required_labels={"Part"}
+        revision = _make_revision(mapping={
+            "property_mappings": [],
+            "relation_mappings": [{
+                "rel_type": "CONSISTS_OF",
+                "target_label": "Part",
+                "node_columns": {},
+                "rel_columns": {"quantity": "수량"},
+                "rel_column_types": {"quantity": "integer"},
+            }],
+        })
         upload = _make_upload(upload_id)
         job = _make_job(mapping_record.id, upload_id)
         batch = types.SimpleNamespace(
