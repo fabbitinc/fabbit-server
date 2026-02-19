@@ -105,3 +105,16 @@ class OntologySchemaResponse(BaseModel):
     description: str
     node_labels: list[NodeLabelSchema]
     relationship_types: list[RelationshipTypeSchema]
+
+
+# === 노드 merge key 검색 ===
+
+
+class NodeSearchItem(BaseModel):
+    value: str  # merge key 값 (root_context에 넣을 값)
+    label: str | None = None  # 표시용 (Part: name, Supplier: code 등)
+
+
+class NodeSearchResponse(BaseModel):
+    node_label: str
+    items: list[NodeSearchItem]

@@ -30,6 +30,9 @@ from app.api.v1.tenant.part_router import router as part_router  # noqa: E402
 from app.api.v1.tenant.mapping_router import router as mapping_router  # noqa: E402
 from app.api.v1.tenant.project_router import router as project_router  # noqa: E402
 from app.api.v1.tenant.synthesis_router import router as synthesis_router  # noqa: E402
+from app.api.v1.tenant.supplier_router import (  # noqa: E402
+    router as supplier_router,
+)
 from app.api.v1.tenant.upload_router import router as upload_router  # noqa: E402
 from app.core.auth_context import AuthContext  # noqa: E402
 from app.core.config import settings  # noqa: E402
@@ -136,6 +139,7 @@ app.include_router(dashboard_router)
 app.include_router(drawing_router)
 app.include_router(mapping_router)
 app.include_router(project_router)
+app.include_router(supplier_router)
 app.include_router(synthesis_router)
 app.include_router(part_router)
 app.include_router(upload_router)

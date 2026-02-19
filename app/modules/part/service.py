@@ -1,6 +1,6 @@
 """부품(Part) 조회 비즈니스 로직.
 
-속성과 BOM 관계는 RDS에서, 비-BOM 관계(Drawing, Supplier)는 Graph에서 읽습니다.
+속성, BOM 관계, Drawing/Supplier 관계 모두 RDS에서 읽습니다.
 """
 
 from sqlalchemy.orm import Session
@@ -31,15 +31,6 @@ def _safe_int(val, default: int = 0) -> int:
         return int(val)
     except (ValueError, TypeError):
         return default
-
-
-def _safe_float(val) -> float | None:
-    if val is None:
-        return None
-    try:
-        return float(val)
-    except (ValueError, TypeError):
-        return None
 
 
 def _safe_str(val) -> str | None:
@@ -84,8 +75,6 @@ def list_parts(
 
 @transactional(read_only=True)
 def get_part(db: Session, auth: AuthContext, part_number: str) -> PartDetailResponse:
-    graph_name = org_id_to_schema(auth.org_id)
-
     # 속성: RDS
     part = repo.get_by_part_number(db, part_number)
     if not part:
@@ -95,9 +84,9 @@ def get_part(db: Session, auth: AuthContext, part_number: str) -> PartDetailResp
     children_rows = repo.get_children(db, part.id)
     parents_rows = repo.get_parents(db, part.id)
 
-    # 비-BOM 관계: Graph
-    drawings_rows = repo.get_drawings(db, graph_name, part_number)
-    suppliers_rows = repo.get_suppliers(db, graph_name, part_number)
+    # Drawing/Supplier 관계: RDS
+    drawings_rows = repo.get_drawings(db, part.id)
+    suppliers_rows = repo.get_suppliers(db, part.id)
 
     children = [
         BomChild(
@@ -121,20 +110,20 @@ def get_part(db: Session, auth: AuthContext, part_number: str) -> PartDetailResp
 
     drawings = [
         RelatedDrawing(
-            drawing_number=r["c0"] or "",
-            name=_safe_str(r["c1"]),
-            version=_safe_str(r["c2"]),
-            status=_safe_str(r["c3"]),
+            drawing_number=r["drawing_number"],
+            name=r["name"],
+            version=r["version"],
+            status=r["status"],
         )
         for r in drawings_rows
     ]
 
     suppliers = [
         RelatedSupplier(
-            company_name=r["c0"] or "",
-            code=_safe_str(r["c1"]),
-            country=_safe_str(r["c2"]),
-            unit_cost=_safe_float(r["c3"]),
+            company_name=r["company_name"],
+            code=r["code"],
+            country=r["country"],
+            unit_cost=r["unit_cost"],
         )
         for r in suppliers_rows
     ]

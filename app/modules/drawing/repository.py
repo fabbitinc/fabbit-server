@@ -4,10 +4,16 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+from app.core.database import generate_uuid7
 from app.infrastructure.age_client import execute_cypher, execute_cypher_raw
+from app.modules.document.models import Drawing
 from app.modules.drawing.models import DrawingAnalysisRecord, DrawingSynthesisJob
 from app.modules.ontology.cypher_utils import escape_cypher_value
 from app.modules.upload.models import Upload
+
+# Drawing 모델의 표준 속성 (온톨로지 정의 속성 중 RDS 컬럼에 매핑되는 것)
+# 온톨로지의 file_path → RDS의 file_key로 매핑
+_DRAWING_STANDARD_ATTRS = {"name", "file_path", "version", "status"}
 
 
 def get_upload_by_id(db: Session, upload_id: uuid.UUID) -> Upload | None:
@@ -123,51 +129,116 @@ def find_existing_parts_by_numbers(
     return result
 
 
-# ── AGE 그래프 쓰기 ──
+# ── Drawing RDS + Graph dual-write ──
 
 
-def merge_drawing_node(
+def upsert_drawing(
     db: Session,
-    graph_name: str,
     drawing_number: str,
-    set_props: dict[str, str] | None = None,
-) -> None:
-    """Drawing 노드 MERGE (Graph only)."""
-    esc_dn = escape_cypher_value(drawing_number)
-    cypher = f"MERGE (d:Drawing {{drawing_number: '{esc_dn}'}})"
-    if set_props:
-        set_parts = [f"d.{k} = {v}" for k, v in set_props.items()]
-        cypher += " SET " + ", ".join(set_parts)
-    execute_cypher_raw(db, cypher, graph_name)
-
-
-def merge_part_node(
-    db: Session,
+    props: dict,
     graph_name: str,
-    part_number: str,
-    set_props: dict[str, str] | None = None,
+    *,
+    overwrite: bool = False,
 ) -> None:
-    """Part 노드 MERGE (Graph only)."""
-    esc_pn = escape_cypher_value(part_number)
-    cypher = f"MERGE (p:Part {{part_number: '{esc_pn}'}})"
-    if set_props:
-        set_parts = [f"p.{k} = {v}" for k, v in set_props.items()]
-        cypher += " SET " + ", ".join(set_parts)
-    execute_cypher_raw(db, cypher, graph_name)
+    """Drawing을 RDS에 INSERT/UPDATE하고, Graph에 MERGE.
 
+    RDS: 전체 속성 저장
+    Graph: drawing_number만 유지 (merge key)
 
-def merge_defined_by(
-    db: Session,
-    graph_name: str,
-    part_number: str,
-    drawing_number: str,
-) -> None:
-    """Part → Drawing DEFINED_BY 관계 MERGE (Graph only)."""
-    esc_pn = escape_cypher_value(part_number)
-    esc_dn = escape_cypher_value(drawing_number)
-    cypher = (
-        f"MATCH (p:Part {{part_number: '{esc_pn}'}}), "
-        f"(d:Drawing {{drawing_number: '{esc_dn}'}}) "
-        f"MERGE (p)-[:DEFINED_BY]->(d)"
+    overwrite=False: DB에 이미 값이 있는 필드는 유지 (빈 필드만 채움)
+    overwrite=True: 엑셀 값으로 덮어쓰기
+    """
+    # ── RDS upsert ──
+    standard: dict = {}
+    extended: dict = {}
+    for key, value in props.items():
+        if key == "drawing_number":
+            continue
+        if key.startswith("_ext_"):
+            extended[key] = value
+        elif key in _DRAWING_STANDARD_ATTRS:
+            standard[key] = value
+        else:
+            extended[key] = value
+
+    # file_path → file_key 매핑
+    if "file_path" in standard:
+        standard["file_key"] = standard.pop("file_path")
+
+    existing = (
+        db.query(Drawing).filter(Drawing.drawing_number == drawing_number).first()
     )
+
+    if existing is None:
+        drawing = Drawing(
+            id=generate_uuid7(),
+            drawing_number=drawing_number,
+            # name은 필수 컬럼이므로 기본값 제공
+            name=standard.pop("name", drawing_number),
+            extended_properties=extended if extended else {},
+            **standard,
+        )
+        db.add(drawing)
+        db.flush()
+    else:
+        changed = False
+        for key, value in standard.items():
+            current = getattr(existing, key)
+            if not overwrite and current is not None:
+                continue
+            if current != value:
+                setattr(existing, key, value)
+                changed = True
+
+        if extended:
+            merged_ext = dict(existing.extended_properties or {})
+            for key, value in extended.items():
+                if not overwrite and merged_ext.get(key) is not None:
+                    continue
+                if merged_ext.get(key) != value:
+                    merged_ext[key] = value
+                    changed = True
+            if changed:
+                existing.extended_properties = merged_ext
+
+        if changed:
+            db.flush()
+
+    # ── Graph MERGE (drawing_number만) ──
+    escaped = escape_cypher_value(drawing_number)
+    cypher = f"MERGE (n:Drawing {{drawing_number: '{escaped}'}})"
     execute_cypher_raw(db, cypher, graph_name)
+
+
+def list_drawings_paginated(
+    db: Session,
+    *,
+    search: str | None = None,
+    offset: int = 0,
+    limit: int = 20,
+) -> tuple[list[Drawing], int]:
+    """Drawing 목록 페이징 조회 (RDS)."""
+    query = db.query(Drawing)
+    if search:
+        query = query.filter(
+            Drawing.drawing_number.ilike(f"%{search}%")
+            | Drawing.name.ilike(f"%{search}%")
+        )
+    total = query.count()
+    drawings = (
+        query.order_by(Drawing.drawing_number).offset(offset).limit(limit).all()
+    )
+    return drawings, total
+
+
+def search_merge_key(
+    db: Session,
+    search: str,
+    limit: int = 10,
+) -> list[dict]:
+    """root_context 자동완성용 merge key 검색 (drawing_number, label=name)."""
+    query = db.query(Drawing.drawing_number, Drawing.name).filter(
+        Drawing.drawing_number.ilike(f"%{search}%"),
+    )
+    rows = query.order_by(Drawing.drawing_number).limit(limit).all()
+    return [{"value": r.drawing_number, "label": r.name} for r in rows]

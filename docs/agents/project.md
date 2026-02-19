@@ -26,9 +26,14 @@
 
 **SSoT**: `app/modules/ontology/base_ontology.py` — 노드/관계/속성의 단일 진실 공급원. LLM 프롬프트, 매핑 검증, 인제스션, 인덱스 생성에 모두 이 정의를 참조
 
-**온톨로지 노드**: Part(`part_number`), Material(`name`), Supplier(`name`), Drawing(`drawing_number`)
-**관계**: `CONSISTS_OF`(Part→Part), `MADE_OF`(Part→Material), `SUPPLIED_BY`(Part→Supplier), `DEFINED_BY`(Part→Drawing)
-**확장 속성**: 온톨로지에 없는 컬럼은 `_ext_` 프리픽스로 노드 속성 저장
+**온톨로지 노드**: Part(`part_number`), Drawing(`drawing_number`), Supplier(`company_name`), Project(`name`)
+**노드 dual-write**: Part, Drawing, Supplier는 RDS에 전체 속성 + Graph에 merge key만 유지
+**관계**:
+- `CONSISTS_OF`(Part→Part) — RDS `bom_links` + Graph
+- `HAS_ITEM`(Project→Part) — RDS `project_parts` + Graph
+- `DEFINED_BY`(Part→Drawing) — RDS `parts.drawing_id` FK + Graph (N:1)
+- `SUPPLIED_BY`(Part→Supplier) — RDS `part_suppliers` + Graph (M:N)
+**확장 속성**: 온톨로지에 없는 컬럼은 `_ext_` 프리픽스로 노드 속성 저장 (JSONB `extended_properties`)
 
 ## 주요 명령어
 

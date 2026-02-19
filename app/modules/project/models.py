@@ -22,6 +22,11 @@ if TYPE_CHECKING:
 class Project(TenantBase):
     __tablename__ = "projects"
 
+    __table_args__ = (
+        # 프로젝트명 유일성 보장
+        UniqueConstraint("name", name="uq_projects_name"),
+    )
+
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=generate_uuid7
     )

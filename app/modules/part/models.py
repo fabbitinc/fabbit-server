@@ -10,6 +10,7 @@ from datetime import datetime
 from sqlalchemy import (
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -34,6 +35,8 @@ class Part(TenantBase):
         Index("ix_parts_name", "name"),
         # 분류별 조회 최적화
         Index("ix_parts_category", "category"),
+        # 도면별 부품 조회 최적화
+        Index("ix_parts_drawing_id", "drawing_id"),
         # 확장 속성 필터링 최적화 (GIN)
         Index(
             "ix_parts_extended_properties",
@@ -44,6 +47,11 @@ class Part(TenantBase):
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=generate_uuid7
+    )
+    drawing_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("drawings.id", ondelete="SET NULL"),
+        nullable=True,
     )
     part_number: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -93,6 +101,9 @@ class PartRevision(TenantBase):
         nullable=True,
     )
     # Part 전체 컬럼 스냅샷
+    drawing_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
     part_number: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str | None] = mapped_column(String(500), nullable=True)
     revision: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -158,6 +169,52 @@ class BomLink(TenantBase):
     )
 
 
+class PartSupplier(TenantBase):
+    """Part → Supplier 공급 관계 (M:N)."""
+
+    __tablename__ = "part_suppliers"
+
+    __table_args__ = (
+        # 동일 Part-Supplier 관계 중복 방지
+        UniqueConstraint(
+            "part_id",
+            "supplier_id",
+            name="uq_part_suppliers_part_id_supplier_id",
+        ),
+        # Part 기준 공급사 조회 최적화
+        Index("ix_part_suppliers_part_id", "part_id"),
+        # Supplier 기준 Part 조회 최적화 (역추적)
+        Index("ix_part_suppliers_supplier_id", "supplier_id"),
+        # 확장 속성 필터링 최적화 (GIN)
+        Index(
+            "ix_part_suppliers_extended_properties",
+            "extended_properties",
+            postgresql_using="gin",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=generate_uuid7
+    )
+    part_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("parts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    supplier_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("suppliers.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    unit_cost: Mapped[float | None] = mapped_column(Float, nullable=True)
+    extended_properties: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default="{}"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class ExtendedPropertyDefinition(TenantBase):
     """확장 속성 메타데이터 레지스트리.
 
@@ -185,7 +242,7 @@ class ExtendedPropertyDefinition(TenantBase):
     display_name: Mapped[str] = mapped_column(String(200), nullable=False)
     # 값 타입: string / integer / float / boolean
     data_type: Mapped[str] = mapped_column(String(20), nullable=False, default="string")
-    # 소속 엔티티: Part / BomLink
+    # 소속 엔티티: Part / BomLink / Drawing / Supplier
     target_entity: Mapped[str] = mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

@@ -498,11 +498,11 @@ MANUFACTURING_ONTOLOGY = BaseOntology(
             ),
             properties=(
                 PropertyDef(
-                    name="project_code",
+                    name="name",
                     description=(
-                        "프로젝트 코드. 프로젝트의 고유 식별자. "
-                        "예: 'PRJ-2024-001', 'EV-MOTOR-V2', 'NPI-BRACKET'. "
-                        "Excel에서 '프로젝트코드', '프로젝트번호', 'Project Code' 등으로 표기될 수 있음."
+                        "프로젝트명. 프로젝트의 고유 식별자이자 이름. "
+                        "예: 'EV 모터 하우징 개발', '2024년 신규 브라켓 양산'. "
+                        "Excel에서 '프로젝트명', 'Project Name' 등으로 표기될 수 있음."
                     ),
                     data_type="string",
                     required=True,
@@ -510,14 +510,14 @@ MANUFACTURING_ONTOLOGY = BaseOntology(
                     is_merge_key=True,
                 ),
                 PropertyDef(
-                    name="name",
+                    name="project_code",
                     description=(
-                        "프로젝트명. 사람이 읽을 수 있는 프로젝트의 이름. "
-                        "예: 'EV 모터 하우징 개발', '2024년 신규 브라켓 양산'. "
-                        "Excel에서 '프로젝트명', 'Project Name' 등으로 표기될 수 있음."
+                        "프로젝트 코드. 사내 시스템에서 사용하는 프로젝트 고유 코드. "
+                        "예: 'PRJ-2024-001', 'EV-MOTOR-V2', 'NPI-BRACKET'. "
+                        "Excel에서 '프로젝트코드', '프로젝트번호', 'Project Code' 등으로 표기될 수 있음."
                     ),
                     data_type="string",
-                    required=True,
+                    is_indexed=True,
                 ),
                 PropertyDef(
                     name="manager",

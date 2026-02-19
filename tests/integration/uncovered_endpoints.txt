@@ -1,10 +1,13 @@
-# 미테스트 API 엔드포인트 (12/52)
+# 미테스트 API 엔드포인트 (15/55)
 
 DELETE /api/v1/mappings/{mapping_id}
 GET    /api/v1/dashboard/stats
+GET    /api/v1/drawings
 GET    /api/v1/drawings/analyses
 GET    /api/v1/drawings/analyses/{analysis_id}
 GET    /api/v1/drawings/synthesis/{job_id}
+GET    /api/v1/ontology/nodes/search
+GET    /api/v1/suppliers
 POST   /api/v1/activation/query
 POST   /api/v1/drawings/analyze
 POST   /api/v1/drawings/confirm

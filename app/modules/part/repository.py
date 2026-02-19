@@ -10,8 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.core.database import generate_uuid7
 from app.infrastructure.age_client import execute_cypher, execute_cypher_raw
+from app.modules.document.models import Drawing
 from app.modules.ontology.cypher_utils import escape_cypher_value
-from app.modules.part.models import BomLink, Part, PartRevision
+from app.modules.part.models import BomLink, Part, PartRevision, PartSupplier
+from app.modules.supplier.models import Supplier
 
 # Part 모델의 표준 속성 (온톨로지 정의 속성 중 RDS 컬럼에 매핑되는 것)
 _PART_STANDARD_ATTRS = {
@@ -95,7 +97,7 @@ def upsert_part(
     db: Session,
     part_number: str,
     props: dict,
-    job_id: uuid.UUID,
+    job_id: uuid.UUID | None,
     graph_name: str,
     *,
     overwrite: bool = False,
@@ -133,7 +135,8 @@ def upsert_part(
         )
         db.add(part)
         db.flush()
-        _create_revision_snapshot(db, part, job_id)
+        if job_id is not None:
+            _create_revision_snapshot(db, part, job_id)
     else:
         changed = False
         for key, value in standard.items():
@@ -157,7 +160,8 @@ def upsert_part(
 
         if changed:
             db.flush()
-            _create_revision_snapshot(db, existing, job_id)
+            if job_id is not None:
+                _create_revision_snapshot(db, existing, job_id)
 
     # ── Graph MERGE (part_number만) ──
     escaped = escape_cypher_value(part_number)
@@ -331,32 +335,166 @@ def get_bom_paths(db: Session, part_number: str, graph_name: str) -> list[dict]:
     return results
 
 
-# ── 비-BOM 관계 (Graph only — 향후 drawing/, supplier/ 모듈로 분리 예정) ──
+# ── 비-BOM 관계 (RDS + Graph dual-write) ──
 
 
-def get_drawings(db: Session, graph_name: str, part_number: str) -> list[dict]:
-    """DEFINED_BY 도면 (Graph)."""
-    escaped = escape_cypher_value(part_number)
-    query = (
-        f"MATCH (p:Part {{part_number: '{escaped}'}})-[:DEFINED_BY]->(d:Drawing) "
-        f"RETURN d.drawing_number, d.name, d.version, d.status "
-        f"ORDER BY d.drawing_number"
+def get_drawings(db: Session, part_id: uuid.UUID) -> list[dict]:
+    """Part.drawing_id로 연결된 Drawing 조회 (RDS)."""
+    part = db.query(Part).filter(Part.id == part_id).first()
+    if not part or not part.drawing_id:
+        return []
+    drawing = db.query(Drawing).filter(Drawing.id == part.drawing_id).first()
+    if not drawing:
+        return []
+    return [
+        {
+            "drawing_number": drawing.drawing_number,
+            "name": drawing.name,
+            "version": drawing.version,
+            "status": drawing.status,
+        }
+    ]
+
+
+def get_suppliers(db: Session, part_id: uuid.UUID) -> list[dict]:
+    """PartSupplier 조인 테이블로 공급사 조회 (RDS)."""
+    rows = (
+        db.query(
+            PartSupplier.unit_cost,
+            PartSupplier.extended_properties,
+            Supplier.company_name,
+            Supplier.code,
+            Supplier.country,
+        )
+        .join(Supplier, PartSupplier.supplier_id == Supplier.id)
+        .filter(PartSupplier.part_id == part_id)
+        .order_by(Supplier.company_name)
+        .all()
     )
-    return execute_cypher(db, query, graph_name)
+    return [
+        {
+            "company_name": r.company_name,
+            "code": r.code,
+            "country": r.country,
+            "unit_cost": r.unit_cost,
+            "extended_properties": r.extended_properties or {},
+        }
+        for r in rows
+    ]
 
 
-def get_suppliers(db: Session, graph_name: str, part_number: str) -> list[dict]:
-    """SUPPLIED_BY 공급사 (Graph)."""
-    escaped = escape_cypher_value(part_number)
-    query = (
-        f"MATCH (p:Part {{part_number: '{escaped}'}})-[r:SUPPLIED_BY]->(s:Supplier) "
-        f"RETURN s.company_name, s.code, s.country, r.unit_cost "
-        f"ORDER BY s.company_name"
+def link_part_to_drawing(
+    db: Session,
+    graph_name: str,
+    part_number: str,
+    drawing_number: str,
+) -> None:
+    """Part.drawing_id 설정 + Graph DEFINED_BY MERGE."""
+    part = db.query(Part).filter(Part.part_number == part_number).first()
+    drawing = (
+        db.query(Drawing).filter(Drawing.drawing_number == drawing_number).first()
     )
-    return execute_cypher(db, query, graph_name)
+    if not part or not drawing:
+        return
+
+    part.drawing_id = drawing.id
+    db.flush()
+
+    # Graph MERGE
+    esc_pn = escape_cypher_value(part_number)
+    esc_dn = escape_cypher_value(drawing_number)
+    cypher = (
+        f"MATCH (p:Part {{part_number: '{esc_pn}'}}), "
+        f"(d:Drawing {{drawing_number: '{esc_dn}'}}) "
+        f"MERGE (p)-[:DEFINED_BY]->(d)"
+    )
+    execute_cypher_raw(db, cypher, graph_name)
+
+
+def link_part_to_supplier(
+    db: Session,
+    graph_name: str,
+    part_number: str,
+    company_name: str,
+    *,
+    unit_cost: float | None = None,
+    extended_properties: dict | None = None,
+    overwrite: bool = False,
+) -> None:
+    """PartSupplier 생성/갱신 + Graph SUPPLIED_BY MERGE."""
+    part = db.query(Part).filter(Part.part_number == part_number).first()
+    supplier = (
+        db.query(Supplier).filter(Supplier.company_name == company_name).first()
+    )
+    if not part or not supplier:
+        return
+
+    # RDS: upsert
+    existing = (
+        db.query(PartSupplier)
+        .filter(
+            PartSupplier.part_id == part.id,
+            PartSupplier.supplier_id == supplier.id,
+        )
+        .first()
+    )
+
+    if existing:
+        if overwrite and unit_cost is not None:
+            existing.unit_cost = unit_cost
+        elif existing.unit_cost is None and unit_cost is not None:
+            existing.unit_cost = unit_cost
+
+        if extended_properties:
+            merged = dict(existing.extended_properties or {})
+            for key, value in extended_properties.items():
+                if overwrite or merged.get(key) is None:
+                    merged[key] = value
+            existing.extended_properties = merged
+    else:
+        link = PartSupplier(
+            part_id=part.id,
+            supplier_id=supplier.id,
+            unit_cost=unit_cost,
+            extended_properties=extended_properties or {},
+        )
+        db.add(link)
+
+    db.flush()
+
+    # Graph: MERGE SUPPLIED_BY
+    esc_pn = escape_cypher_value(part_number)
+    esc_cn = escape_cypher_value(company_name)
+    if unit_cost is not None:
+        cypher = (
+            f"MATCH (p:Part {{part_number: '{esc_pn}'}}), "
+            f"(s:Supplier {{company_name: '{esc_cn}'}}) "
+            f"MERGE (p)-[r:SUPPLIED_BY]->(s) "
+            f"SET r.unit_cost = {float(unit_cost)}"
+        )
+    else:
+        cypher = (
+            f"MATCH (p:Part {{part_number: '{esc_pn}'}}), "
+            f"(s:Supplier {{company_name: '{esc_cn}'}}) "
+            f"MERGE (p)-[:SUPPLIED_BY]->(s)"
+        )
+    execute_cypher_raw(db, cypher, graph_name)
 
 
 # ── 내부 헬퍼 ──
+
+
+def search_merge_key(
+    db: Session,
+    search: str,
+    limit: int = 10,
+) -> list[dict]:
+    """root_context 자동완성용 merge key 검색 (part_number, label=name)."""
+    query = db.query(Part.part_number, Part.name).filter(
+        Part.part_number.ilike(f"%{search}%")
+    )
+    rows = query.order_by(Part.part_number).limit(limit).all()
+    return [{"value": r.part_number, "label": r.name} for r in rows]
 
 
 def _create_revision_snapshot(db: Session, part: Part, job_id: uuid.UUID) -> None:
@@ -365,6 +503,7 @@ def _create_revision_snapshot(db: Session, part: Part, job_id: uuid.UUID) -> Non
         id=generate_uuid7(),
         part_id=part.id,
         synthesis_job_id=job_id,
+        drawing_id=part.drawing_id,
         part_number=part.part_number,
         name=part.name,
         revision=part.revision,

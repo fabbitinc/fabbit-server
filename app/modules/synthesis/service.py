@@ -19,7 +19,9 @@ from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
 from app.modules.ontology.cypher_utils import format_cypher_value
 from app.modules.ontology.schemas import MappingResult, RelationMapping
+from app.modules.drawing import repository as drawing_repo
 from app.modules.part import repository as part_repo
+from app.modules.supplier import repository as supplier_repo
 from app.modules.synthesis import repository as repo
 from app.modules.synthesis.models import SynthesisJob
 from app.modules.mapping.constants import MappingScope
@@ -420,16 +422,49 @@ def _extract_bom_data(
     return entries
 
 
-def _process_row_nodes(row: dict, mapping: MappingResult) -> list[str]:
-    """행에서 비-Part 노드 MERGE Cypher 생성.
+def _extract_drawing_supplier_nodes(
+    row: dict, mapping: MappingResult
+) -> tuple[dict[str, dict], dict[str, dict]]:
+    """행에서 Drawing/Supplier 노드 속성 추출.
 
-    Part 노드는 RDS에서 처리하므로 여기서는 Supplier, Drawing 등만 처리합니다.
+    Returns:
+        (drawing_props, supplier_props) — {merge_key_value: {속성dict}}
+    """
+    drawing_props: dict[str, dict] = {}
+    supplier_props: dict[str, dict] = {}
+
+    for rm in mapping.relation_mappings:
+        if rm.target_label not in ("Drawing", "Supplier"):
+            continue
+
+        props: dict = {}
+        for prop_name, src_col in rm.node_columns.items():
+            val = _cast_python_value(row.get(src_col), "string")
+            if val is not None:
+                props[prop_name] = val
+
+        if rm.target_label == "Drawing":
+            dn = props.get("drawing_number")
+            if dn:
+                drawing_props[str(dn)] = props
+        elif rm.target_label == "Supplier":
+            cn = props.get("company_name")
+            if cn:
+                supplier_props[str(cn)] = props
+
+    return drawing_props, supplier_props
+
+
+def _process_row_nodes(row: dict, mapping: MappingResult) -> list[str]:
+    """행에서 비-Part/Drawing/Supplier 노드 MERGE Cypher 생성.
+
+    Part, Drawing, Supplier는 RDS dual-write 경로에서 처리합니다.
     """
     cyphers: list[str] = []
     seen: set[tuple] = set()
 
     for rm in mapping.relation_mappings:
-        if rm.target_label == "Part":
+        if rm.target_label in ("Part", "Drawing", "Supplier"):
             continue
 
         node_def = MANUFACTURING_ONTOLOGY.get_node_label(rm.target_label)
@@ -465,10 +500,10 @@ def _process_row_nodes(row: dict, mapping: MappingResult) -> list[str]:
 def _process_row_relationships(
     row: dict, mapping: MappingResult, part_pn: str
 ) -> list[str]:
-    """행에서 비-CONSISTS_OF 관계 MERGE Cypher 생성.
+    """행에서 비-CONSISTS_OF/DEFINED_BY/SUPPLIED_BY 관계 MERGE Cypher 생성.
 
-    CONSISTS_OF는 part_repo.upsert_bom_link에서 처리하므로 제외합니다.
-    from = 주인공 Part, to = 상대방 노드 (Supplier, Drawing 등)
+    CONSISTS_OF는 part_repo.upsert_bom_link에서 처리합니다.
+    DEFINED_BY/SUPPLIED_BY는 dual-write 경로에서 처리합니다.
     """
     cyphers: list[str] = []
 
@@ -477,7 +512,7 @@ def _process_row_relationships(
         return []
 
     for rm in mapping.relation_mappings:
-        if rm.rel_type == "CONSISTS_OF":
+        if rm.rel_type in ("CONSISTS_OF", "DEFINED_BY", "SUPPLIED_BY"):
             continue
 
         target_def = MANUFACTURING_ONTOLOGY.get_node_label(rm.target_label)
@@ -513,6 +548,55 @@ def _process_row_relationships(
             )
         )
     return cyphers
+
+
+def _extract_defined_by(
+    row: dict, mapping: MappingResult
+) -> dict[str, str]:
+    """행에서 DEFINED_BY 관계 데이터 추출.
+
+    Returns:
+        {part_number: drawing_number} — 관계가 없으면 빈 dict
+    """
+    result: dict[str, str] = {}
+    for rm in mapping.relation_mappings:
+        if rm.rel_type != "DEFINED_BY" or rm.target_label != "Drawing":
+            continue
+        dn_col = rm.node_columns.get("drawing_number")
+        if not dn_col:
+            continue
+        dn = _cast_python_value(row.get(dn_col), "string")
+        if dn:
+            result["drawing_number"] = str(dn)
+    return result
+
+
+def _extract_supplied_by(
+    row: dict, mapping: MappingResult
+) -> list[dict]:
+    """행에서 SUPPLIED_BY 관계 데이터 추출.
+
+    Returns:
+        [{"company_name": "...", "unit_cost": ..., ...}]
+    """
+    entries: list[dict] = []
+    for rm in mapping.relation_mappings:
+        if rm.rel_type != "SUPPLIED_BY" or rm.target_label != "Supplier":
+            continue
+        cn_col = rm.node_columns.get("company_name")
+        if not cn_col:
+            continue
+        cn = _cast_python_value(row.get(cn_col), "string")
+        if not cn:
+            continue
+        entry: dict = {"company_name": str(cn)}
+        for rel_prop, src_col in rm.rel_columns.items():
+            data_type = rm.rel_column_types.get(rel_prop, "string")
+            val = _cast_python_value(row.get(src_col), data_type)
+            if val is not None:
+                entry[rel_prop] = val
+        entries.append(entry)
+    return entries
 
 
 # ── 백그라운드 합성 ──
@@ -598,9 +682,13 @@ def _run_synthesis(
             chunk = df.iloc[chunk_start:chunk_end]
             t_chunk = time.perf_counter()
 
-            # === Phase 1: 데이터 수집 및 Part별 집계 (first-non-null) ===
+            # === Phase 1: 데이터 수집 및 노드별 집계 (first-non-null) ===
             part_data: dict[str, dict] = {}
+            drawing_data: dict[str, dict] = {}
+            supplier_data: dict[str, dict] = {}
             bom_entries: list[dict] = []
+            part_drawing_map: dict[str, str] = {}
+            part_supplier_entries: list[dict] = []
             all_node_cyphers: list[str] = []
             all_rel_cyphers: list[str] = []
 
@@ -639,8 +727,20 @@ def _run_synthesis(
                                     if val is not None:
                                         entry[rel_prop] = val
                                 bom_entries.append(entry)
+                        elif rm.rel_type == "DEFINED_BY":
+                            # DEFINED_BY dual-write 경로
+                            part_drawing_map[pn] = root_value
+                        elif rm.rel_type == "SUPPLIED_BY":
+                            # SUPPLIED_BY dual-write 경로
+                            sup_entry: dict = {"part_pn": pn, "company_name": root_value}
+                            for rel_prop, src_col in rm.rel_columns.items():
+                                data_type = rm.rel_column_types.get(rel_prop, "string")
+                                val = _cast_python_value(row.get(src_col), data_type)
+                                if val is not None:
+                                    sup_entry[rel_prop] = val
+                            part_supplier_entries.append(sup_entry)
                         else:
-                            # non-CONSISTS_OF: Graph Cypher 경로
+                            # 기타 관계: Graph Cypher 폴백
                             target_def = MANUFACTURING_ONTOLOGY.get_node_label(rm.target_label)
                             if not target_def:
                                 continue
@@ -657,10 +757,28 @@ def _run_synthesis(
                                 _build_merge_rel("Part", from_keys, rm.target_label, to_keys, rm.rel_type, rel_props)
                             )
 
-                    # 비-Part 노드 Cypher 수집
+                    # Drawing/Supplier 속성 수집 (RDS dual-write 경로)
+                    row_drawing, row_supplier = _extract_drawing_supplier_nodes(row, mapping)
+                    for dn, d_props in row_drawing.items():
+                        _merge_part_props(drawing_data, dn, d_props)
+                    for cn, s_props in row_supplier.items():
+                        _merge_part_props(supplier_data, cn, s_props)
+
+                    # DEFINED_BY / SUPPLIED_BY 관계 데이터 수집 (dual-write 경로)
+                    if pn:
+                        defined_by = _extract_defined_by(row, mapping)
+                        if defined_by.get("drawing_number"):
+                            part_drawing_map[pn] = defined_by["drawing_number"]
+
+                        for se in _extract_supplied_by(row, mapping):
+                            part_supplier_entries.append(
+                                {"part_pn": pn, **se}
+                            )
+
+                    # 미지 노드 Cypher 수집 (Drawing/Supplier 제외)
                     all_node_cyphers.extend(_process_row_nodes(row, mapping))
 
-                    # 비-CONSISTS_OF 관계 Cypher 수집
+                    # 비-CONSISTS_OF/DEFINED_BY/SUPPLIED_BY 관계 Cypher 수집
                     if pn:
                         all_rel_cyphers.extend(
                             _process_row_relationships(row, mapping, pn)
@@ -681,8 +799,12 @@ def _run_synthesis(
                     if rm.rel_type == "CONSISTS_OF":
                         # Part는 RDS dual-write 경로
                         _merge_part_props(part_data, root_value, {"part_number": root_value})
+                    elif rm.target_label == "Drawing":
+                        _merge_part_props(drawing_data, root_value, {"drawing_number": root_value})
+                    elif rm.target_label == "Supplier":
+                        _merge_part_props(supplier_data, root_value, {"company_name": root_value})
                     else:
-                        # non-Part 노드: Graph MERGE
+                        # 미지 노드: Graph MERGE 폴백
                         target_def = MANUFACTURING_ONTOLOGY.get_node_label(rm.target_label)
                         if target_def:
                             merge_key = target_def.merge_keys[0]
@@ -703,7 +825,33 @@ def _run_synthesis(
                         "Part upsert 오류: pn={pn} error={err}", pn=pn, err=error
                     )
 
-            # === Phase 3: 비-Part 노드 (Graph only) ===
+            # === Phase 3a: Drawing upsert (RDS + Graph dual-write) ===
+            for dn, d_props in drawing_data.items():
+                try:
+                    drawing_repo.upsert_drawing(
+                        db, dn, d_props, graph_name, overwrite=overwrite
+                    )
+                    nodes_created += 1
+                except Exception as error:
+                    errors.append(f"Drawing upsert 실패 ({dn}): {error}")
+                    logger.warning(
+                        "Drawing upsert 오류: dn={dn} error={err}", dn=dn, err=error
+                    )
+
+            # === Phase 3b: Supplier upsert (RDS + Graph dual-write) ===
+            for cn, s_props in supplier_data.items():
+                try:
+                    supplier_repo.upsert_supplier(
+                        db, cn, s_props, graph_name, overwrite=overwrite
+                    )
+                    nodes_created += 1
+                except Exception as error:
+                    errors.append(f"Supplier upsert 실패 ({cn}): {error}")
+                    logger.warning(
+                        "Supplier upsert 오류: cn={cn} error={err}", cn=cn, err=error
+                    )
+
+            # === Phase 3c: 미지 노드 (Graph only 폴백) ===
             if all_node_cyphers:
                 unique_node_cyphers = list(dict.fromkeys(all_node_cyphers))
                 repo.execute_graph_cyphers(db, graph_name, unique_node_cyphers)
@@ -732,7 +880,37 @@ def _run_synthesis(
                         child=error.child_pn,
                     )
 
-            # === Phase 5: 비-CONSISTS_OF 관계 (Graph only) ===
+            # === Phase 5a: DEFINED_BY (RDS + Graph dual-write) ===
+            for pn, dn in part_drawing_map.items():
+                try:
+                    part_repo.link_part_to_drawing(db, graph_name, pn, dn)
+                    rels_created += 1
+                except Exception as error:
+                    errors.append(f"DEFINED_BY 실패 ({pn}→{dn}): {error}")
+
+            # === Phase 5b: SUPPLIED_BY (RDS + Graph dual-write) ===
+            for s_entry in part_supplier_entries:
+                try:
+                    part_repo.link_part_to_supplier(
+                        db,
+                        graph_name,
+                        s_entry["part_pn"],
+                        s_entry["company_name"],
+                        unit_cost=s_entry.get("unit_cost"),
+                        extended_properties={
+                            k: v
+                            for k, v in s_entry.items()
+                            if k not in {"part_pn", "company_name", "unit_cost"}
+                        } or None,
+                        overwrite=overwrite,
+                    )
+                    rels_created += 1
+                except Exception as error:
+                    errors.append(
+                        f"SUPPLIED_BY 실패 ({s_entry['part_pn']}→{s_entry['company_name']}): {error}"
+                    )
+
+            # === Phase 5c: 기타 관계 (Graph only 폴백) ===
             if all_rel_cyphers:
                 unique_rel_cyphers = list(dict.fromkeys(all_rel_cyphers))
                 repo.execute_graph_cyphers(db, graph_name, unique_rel_cyphers)

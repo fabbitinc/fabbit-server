@@ -23,6 +23,7 @@ from app.infrastructure.s3_client import S3Client
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.drawing import repository as repo
 from app.modules.drawing.models import DrawingAnalysisRecord
+from app.modules.part import repository as part_repo
 from app.modules.drawing.prompts import (
     DRAWING_ANALYSIS_SYSTEM_PROMPT,
     DRAWING_ANALYSIS_USER_MESSAGE,
@@ -45,9 +46,42 @@ from app.modules.drawing.schemas import (
     PartMatch,
 )
 from app.modules.ai_usage.service import log_ai_usage
-from app.modules.ontology.cypher_utils import escape_cypher_value
-
+from app.modules.drawing.schemas import (
+    DrawingListResponse,
+    DrawingSummary,
+)
 _s3 = S3Client()
+
+
+# ── Drawing 목록 검색 ──
+
+
+@transactional(read_only=True)
+def list_drawings(
+    db: Session,
+    auth: AuthContext,
+    *,
+    search: str | None = None,
+    offset: int = 0,
+    limit: int = 20,
+) -> DrawingListResponse:
+    """Drawing 목록 페이징 조회."""
+    drawings, total = repo.list_drawings_paginated(
+        db, search=search, offset=offset, limit=limit
+    )
+
+    items = [
+        DrawingSummary(
+            id=d.id,
+            drawing_number=d.drawing_number,
+            name=d.name,
+            version=d.version,
+            status=d.status,
+        )
+        for d in drawings
+    ]
+
+    return DrawingListResponse(total=total, offset=offset, limit=limit, items=items)
 
 
 @transactional(read_only=True)
@@ -387,7 +421,7 @@ def _run_drawing_synthesis(
         rels_created = 0
         errors: list[str] = []
 
-        # 1. Drawing 노드 MERGE
+        # 1. Drawing 노드 upsert (RDS + Graph dual-write)
         tb = analysis.title_block
         drawing_number = tb.drawing_number
         if not drawing_number:
@@ -397,31 +431,39 @@ def _run_drawing_synthesis(
         drawing_props = _build_drawing_props(tb, file_key)
 
         try:
-            repo.merge_drawing_node(db, graph_name, drawing_number, drawing_props)
+            repo.upsert_drawing(db, drawing_number, drawing_props, graph_name)
             nodes_created += 1
         except Exception as e:
-            errors.append(f"Drawing 노드 MERGE 실패: {e}")
-            logger.error("Drawing MERGE 실패: {err}", err=e)
+            errors.append(f"Drawing upsert 실패: {e}")
+            logger.error("Drawing upsert 실패: {err}", err=e)
 
-        # 2. Part 노드 MERGE + DEFINED_BY 관계
+        # 2. Part 노드 upsert + DEFINED_BY 관계 (RDS + Graph dual-write)
         for part in analysis.parts:
             if not part.part_number:
                 continue
 
             try:
-                part_props = _build_part_props(part)
-                repo.merge_part_node(db, graph_name, part.part_number, part_props)
+                p_props = _build_part_props(part)
+                part_repo.upsert_part(
+                    db, part.part_number, p_props, None, graph_name
+                )
                 nodes_created += 1
             except Exception as e:
-                errors.append(f"Part MERGE 실패 ({part.part_number}): {e}")
-                logger.warning("Part MERGE 실패: {pn} - {err}", pn=part.part_number, err=e)
+                errors.append(f"Part upsert 실패 ({part.part_number}): {e}")
+                logger.warning(
+                    "Part upsert 실패: {pn} - {err}",
+                    pn=part.part_number,
+                    err=e,
+                )
                 continue
 
             try:
-                repo.merge_defined_by(db, graph_name, part.part_number, drawing_number)
+                part_repo.link_part_to_drawing(
+                    db, graph_name, part.part_number, drawing_number
+                )
                 rels_created += 1
             except Exception as e:
-                errors.append(f"DEFINED_BY 관계 실패 ({part.part_number}): {e}")
+                errors.append(f"DEFINED_BY 실패 ({part.part_number}): {e}")
                 logger.warning(
                     "DEFINED_BY 실패: {pn} → {dn} - {err}",
                     pn=part.part_number,
@@ -462,38 +504,38 @@ def _run_drawing_synthesis(
         db.close()
 
 
-def _build_drawing_props(tb, file_key: str) -> dict[str, str]:
-    """표제란 데이터 → Cypher SET 절용 속성 딕셔너리."""
-    props: dict[str, str] = {}
+def _build_drawing_props(tb, file_key: str) -> dict:
+    """표제란 데이터 → Python dict (RDS upsert용)."""
+    props: dict = {}
     if tb.name:
-        props["name"] = f"'{escape_cypher_value(tb.name)}'"
+        props["name"] = tb.name
     if tb.version:
-        props["version"] = f"'{escape_cypher_value(tb.version)}'"
+        props["version"] = tb.version
     if file_key:
-        props["file_path"] = f"'{escape_cypher_value(file_key)}'"
+        props["file_path"] = file_key
     if tb.author:
-        props["_ext_author"] = f"'{escape_cypher_value(tb.author)}'"
+        props["_ext_author"] = tb.author
     if tb.date:
-        props["_ext_date"] = f"'{escape_cypher_value(tb.date)}'"
+        props["_ext_date"] = tb.date
     if tb.sheet_info:
-        props["_ext_sheet_info"] = f"'{escape_cypher_value(tb.sheet_info)}'"
+        props["_ext_sheet_info"] = tb.sheet_info
     for key, val in tb.additional.items():
         safe_key = key.lower().replace(" ", "_")
-        props[f"_ext_{safe_key}"] = f"'{escape_cypher_value(val)}'"
+        props[f"_ext_{safe_key}"] = val
     return props
 
 
-def _build_part_props(part: ExtractedPart) -> dict[str, str]:
-    """추출된 부품 데이터 → Cypher SET 절용 속성 딕셔너리."""
-    props: dict[str, str] = {}
+def _build_part_props(part: ExtractedPart) -> dict:
+    """추출된 부품 데이터 → Python dict (RDS upsert용)."""
+    props: dict = {}
     if part.name:
-        props["name"] = f"'{escape_cypher_value(part.name)}'"
+        props["name"] = part.name
     if part.value:
-        props["_ext_value"] = f"'{escape_cypher_value(part.value)}'"
+        props["_ext_value"] = part.value
     if part.package:
-        props["_ext_package"] = f"'{escape_cypher_value(part.package)}'"
+        props["_ext_package"] = part.package
     if part.reference_designator:
-        props["_ext_reference_designator"] = f"'{escape_cypher_value(part.reference_designator)}'"
+        props["_ext_reference_designator"] = part.reference_designator
     return props
 
 

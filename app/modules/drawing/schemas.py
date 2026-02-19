@@ -133,3 +133,21 @@ class DrawingSynthesisJobResponse(BaseModel):
     started_at: datetime | None = None
     completed_at: datetime | None = None
     created_at: datetime
+
+
+# ── Drawing 검색 (온톨로지 dual-write) ──
+
+
+class DrawingSummary(BaseModel):
+    id: uuid.UUID
+    drawing_number: str
+    name: str
+    version: str | None = None
+    status: str | None = None
+
+
+class DrawingListResponse(BaseModel):
+    total: int
+    offset: int
+    limit: int
+    items: list[DrawingSummary]

@@ -11,7 +11,8 @@
 
 - **RDS**: 전체 속성 저장 (조회/필터링/정합성 보장)
 - **Graph**: merge key만 유지 (관계 탐색/시각화용)
-- 적용 대상: Part upsert, BOM 관계 (`CONSISTS_OF`), Project-Part 연결
+- 노드 적용 대상: Part, Drawing, Supplier upsert
+- 관계 적용 대상: `CONSISTS_OF`, `HAS_ITEM`, `DEFINED_BY`, `SUPPLIED_BY`
 - service는 듀얼라이트 여부를 알 필요 없음 — repository가 내부적으로 관리
 
 ## 예외 처리

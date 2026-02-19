@@ -476,6 +476,90 @@
                 ]
             }
         },
+        "/api/v1/drawings": {
+            "get": {
+                "tags": [
+                    "drawings"
+                ],
+                "summary": "List Drawings",
+                "description": "\ub3c4\uba74 \ubaa9\ub85d \uc870\ud68c.\n\ndrawing_number, name\uc73c\ub85c ILIKE \uac80\uc0c9\uc744 \uc9c0\uc6d0\ud569\ub2c8\ub2e4.",
+                "operationId": "list_drawings_api_v1_drawings_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "drawing_number \ub610\ub294 name \uac80\uc0c9",
+                            "title": "Search"
+                        },
+                        "description": "drawing_number \ub610\ub294 name \uac80\uc0c9"
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "\uc2dc\uc791 \uc704\uce58",
+                            "default": 0,
+                            "title": "Offset"
+                        },
+                        "description": "\uc2dc\uc791 \uc704\uce58"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "description": "\uc870\ud68c \uac74\uc218",
+                            "default": 20,
+                            "title": "Limit"
+                        },
+                        "description": "\uc870\ud68c \uac74\uc218"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DrawingListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/drawings/analyze": {
             "post": {
                 "tags": [
@@ -1607,12 +1691,97 @@
                 }
             }
         },
+        "/api/v1/suppliers": {
+            "get": {
+                "tags": [
+                    "suppliers"
+                ],
+                "summary": "List Suppliers",
+                "description": "\uacf5\uae09\uc0ac \ubaa9\ub85d \uc870\ud68c.\n\ncompany_name, code\ub85c ILIKE \uac80\uc0c9\uc744 \uc9c0\uc6d0\ud569\ub2c8\ub2e4.",
+                "operationId": "list_suppliers_api_v1_suppliers_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "company_name \ub610\ub294 code \uac80\uc0c9",
+                            "title": "Search"
+                        },
+                        "description": "company_name \ub610\ub294 code \uac80\uc0c9"
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "\uc2dc\uc791 \uc704\uce58",
+                            "default": 0,
+                            "title": "Offset"
+                        },
+                        "description": "\uc2dc\uc791 \uc704\uce58"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "description": "\uc870\ud68c \uac74\uc218",
+                            "default": 20,
+                            "title": "Limit"
+                        },
+                        "description": "\uc870\ud68c \uac74\uc218"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SupplierListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/synthesis": {
             "get": {
                 "tags": [
                     "synthesis"
                 ],
                 "summary": "List Synthesis Jobs",
+                "description": "\uc804\uccb4 \ud569\uc131 \uc791\uc5c5 \uc774\ub825\uc744 \uc870\ud68c\ud55c\ub2e4.\n\n\ud14c\ub10c\ud2b8 \ub0b4 \ubaa8\ub4e0 \ud569\uc131 \uc791\uc5c5\uc744 \ucd5c\uc2e0\uc21c\uc73c\ub85c \ubc18\ud658\ud55c\ub2e4.\n\ud569\uc131 \uc774\ub825 \uad00\ub9ac \ud654\uba74\uc5d0\uc11c \uc0ac\uc6a9\ud55c\ub2e4.",
                 "operationId": "list_synthesis_jobs_api_v1_synthesis_get",
                 "responses": {
                     "200": {
@@ -1637,6 +1806,7 @@
                     "synthesis"
                 ],
                 "summary": "Start Synthesis",
+                "description": "\ub9e4\ud551 \uae30\ubc18 \ud569\uc131 \ubc30\uce58\ub97c \uc2dc\uc791\ud55c\ub2e4.\n\n\uc5c5\ub85c\ub4dc \ud30c\uc77c \ubaa9\ub85d\uc744 \ubc1b\uc544 \uac01\uac01\uc5d0 \ub300\ud574 \ubc31\uadf8\ub77c\uc6b4\ub4dc \ud569\uc131 \uc791\uc5c5\uc744 \ub4f1\ub85d\ud558\uace0,\n\ubc30\uce58 \uc815\ubcf4\ub97c \uc989\uc2dc \ubc18\ud658\ud55c\ub2e4. \uc2e4\uc81c \ud569\uc131(S3 \ub2e4\uc6b4\ub85c\ub4dc \u2192 Excel \ud30c\uc2f1 \u2192 Part/BOM \uc801\uc7ac)\uc740\n\uc751\ub2f5 \uc774\ud6c4 \ubc31\uadf8\ub77c\uc6b4\ub4dc\uc5d0\uc11c \uc9c4\ud589\ub41c\ub2e4.\n\n- **scope \uac80\uc99d**: \ub9e4\ud551\uc758 scope(PART_LIST, FULL_BOM, ROOT_BOM)\uc5d0 \ub530\ub77c\n  `root_context` \ud544\uc218/\uae08\uc9c0 \uc5ec\ubd80\uac00 \uacb0\uc815\ub41c\ub2e4.\n- **overwrite**: `false`(\uae30\ubcf8\uac12)\uc774\uba74 \uae30\uc874 \ub370\uc774\ud130 \uc720\uc9c0\ud558\uace0 \ube48 \ud544\ub4dc\ub9cc \ucc44\uc6c0.\n  `true`\uc774\uba74 \uc5d1\uc140 \ub370\uc774\ud130\ub85c \ub36e\uc5b4\uc4f0\uae30.\n- \uc9c4\ud589 \uc0c1\ud669\uc740 `GET /synthesis/batches/{batch_id}`\ub85c \ud3f4\ub9c1.",
                 "operationId": "start_synthesis_api_v1_synthesis_post",
                 "requestBody": {
                     "content": {
@@ -1683,6 +1853,7 @@
                     "synthesis"
                 ],
                 "summary": "Get Synthesis Batch",
+                "description": "\ubc30\uce58 \uc9c4\ud589 \uc0c1\ud669\uc744 \uc870\ud68c\ud55c\ub2e4.\n\n\ubc30\uce58\uc5d0 \ud3ec\ud568\ub41c \ubaa8\ub4e0 \uc791\uc5c5\uc758 \uc0c1\ud0dc\ub97c \uc9d1\uacc4\ud558\uc5ec \ubc18\ud658\ud55c\ub2e4.\n\ud504\ub860\ud2b8\uc5d4\ub4dc\uc5d0\uc11c \uc8fc\uae30\uc801\uc73c\ub85c \ud3f4\ub9c1\ud558\uc5ec \uc9c4\ud589\ub960\uc744 \ud45c\uc2dc\ud558\ub294 \ub370 \uc0ac\uc6a9\ud55c\ub2e4.\n\n- **status**: `PENDING` \u2192 `PROCESSING` \u2192 `COMPLETED` / `COMPLETED_WITH_ERRORS` / `FAILED`\n- \uac1c\ubcc4 \uc791\uc5c5\ubcc4 \ucc98\ub9ac \ud589 \uc218, \uc0dd\uc131\ub41c \ub178\ub4dc/\uad00\uacc4 \uc218, \uc5d0\ub7ec \ubaa9\ub85d \ud3ec\ud568.",
                 "operationId": "get_synthesis_batch_api_v1_synthesis_batches__batch_id__get",
                 "security": [
                     {
@@ -1731,6 +1902,7 @@
                     "synthesis"
                 ],
                 "summary": "Get Synthesis Job",
+                "description": "\uac1c\ubcc4 \ud569\uc131 \uc791\uc5c5 \uc0c1\uc138\ub97c \uc870\ud68c\ud55c\ub2e4.\n\n\ubc30\uce58 \ub0b4 \ud2b9\uc815 \uc5c5\ub85c\ub4dc \ud30c\uc77c\uc5d0 \ub300\ud55c \ud569\uc131 \uc791\uc5c5\uc758 \uc0c1\ud0dc, \ucc98\ub9ac \ud589 \uc218,\n\uc0dd\uc131\ub41c \ub178\ub4dc/\uad00\uacc4 \uc218, \uc5d0\ub7ec \ubaa9\ub85d \ub4f1\uc744 \ubc18\ud658\ud55c\ub2e4.",
                 "operationId": "get_synthesis_job_api_v1_synthesis__job_id__get",
                 "security": [
                     {
@@ -2161,6 +2333,82 @@
                         "HTTPBearer": []
                     }
                 ]
+            }
+        },
+        "/api/v1/ontology/nodes/search": {
+            "get": {
+                "tags": [
+                    "ontology"
+                ],
+                "summary": "Search Nodes",
+                "description": "\ub178\ub4dc \ub77c\ubca8\ubcc4 merge key \uac80\uc0c9.\n\nroot_context \uc790\ub3d9\uc644\uc131\uc5d0 \uc0ac\uc6a9\ub429\ub2c8\ub2e4.\n\uc9c0\uc6d0 \ub77c\ubca8: Part(part_number), Drawing(drawing_number), Supplier(company_name), Project(name)",
+                "operationId": "search_nodes_api_v1_ontology_nodes_search_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "label",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "\ub178\ub4dc \ub77c\ubca8 (Part, Drawing, Supplier, Project)",
+                            "title": "Label"
+                        },
+                        "description": "\ub178\ub4dc \ub77c\ubca8 (Part, Drawing, Supplier, Project)"
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "\uac80\uc0c9\uc5b4",
+                            "title": "Search"
+                        },
+                        "description": "\uac80\uc0c9\uc5b4"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 50,
+                            "minimum": 1,
+                            "description": "\ucd5c\ub300 \uacb0\uacfc \uc218",
+                            "default": 10,
+                            "title": "Limit"
+                        },
+                        "description": "\ucd5c\ub300 \uacb0\uacfc \uc218"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NodeSearchResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/health": {
@@ -2832,6 +3080,89 @@
                 ],
                 "title": "DrawingConfirmRequest",
                 "description": "\ubd84\uc11d \uacb0\uacfc \ud655\uc815 \uc694\uccad."
+            },
+            "DrawingListResponse": {
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "title": "Total"
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "title": "Offset"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "title": "Limit"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/DrawingSummary"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "total",
+                    "offset",
+                    "limit",
+                    "items"
+                ],
+                "title": "DrawingListResponse"
+            },
+            "DrawingSummary": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "drawing_number": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Drawing Number"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Version"
+                    },
+                    "status": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Status"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "DrawingSummary"
             },
             "DrawingSynthesisJobResponse": {
                 "properties": {
@@ -3845,6 +4176,51 @@
                     "merge_keys"
                 ],
                 "title": "NodeLabelSchema"
+            },
+            "NodeSearchItem": {
+                "properties": {
+                    "value": {
+                        "type": "string",
+                        "title": "Value"
+                    },
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Label"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "value"
+                ],
+                "title": "NodeSearchItem"
+            },
+            "NodeSearchResponse": {
+                "properties": {
+                    "node_label": {
+                        "type": "string",
+                        "title": "Node Label"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/NodeSearchItem"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "node_label",
+                    "items"
+                ],
+                "title": "NodeSearchResponse"
             },
             "OntologySchemaResponse": {
                 "properties": {
@@ -5064,6 +5440,78 @@
                 ],
                 "title": "StartersResponse"
             },
+            "SupplierListResponse": {
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "title": "Total"
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "title": "Offset"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "title": "Limit"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/SupplierSummary"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "total",
+                    "offset",
+                    "limit",
+                    "items"
+                ],
+                "title": "SupplierListResponse"
+            },
+            "SupplierSummary": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "company_name": {
+                        "type": "string",
+                        "title": "Company Name"
+                    },
+                    "code": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Code"
+                    },
+                    "country": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Country"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "company_name"
+                ],
+                "title": "SupplierSummary"
+            },
             "SynthesisBatchFailure": {
                 "properties": {
                     "upload_id": {
@@ -5391,15 +5839,8 @@
             "SynthesisStartRequest": {
                 "properties": {
                     "mapping_id": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uuid"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
+                        "format": "uuid",
                         "title": "Mapping Id"
                     },
                     "project_id": {
@@ -5431,6 +5872,7 @@
                 },
                 "type": "object",
                 "required": [
+                    "mapping_id",
                     "uploads"
                 ],
                 "title": "SynthesisStartRequest",

@@ -228,6 +228,19 @@ def get_project_parts(db: Session, project_id: uuid.UUID) -> list[Part]:
     )
 
 
+def search_merge_key(
+    db: Session,
+    search: str,
+    limit: int = 10,
+) -> list[dict]:
+    """root_context 자동완성용 merge key 검색 (name ILIKE)."""
+    query = db.query(Project.name, Project.description).filter(
+        Project.name.ilike(f"%{search}%")
+    )
+    rows = query.order_by(Project.name).limit(limit).all()
+    return [{"value": r.name, "label": r.description} for r in rows]
+
+
 def get_project_part_count(db: Session, project_id: uuid.UUID) -> int:
     return (
         db.query(func.count(ProjectPart.id))

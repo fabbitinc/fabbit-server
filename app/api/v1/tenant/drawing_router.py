@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth
@@ -14,11 +14,27 @@ from app.modules.drawing.schemas import (
     DrawingAnalyzeRequest,
     DrawingAnalyzeResponse,
     DrawingConfirmRequest,
+    DrawingListResponse,
     DrawingSynthesisJobResponse,
     DrawingSynthesisStartRequest,
 )
 
 router = APIRouter(prefix="/api/v1/drawings", tags=["drawings"])
+
+
+@router.get("", response_model=DrawingListResponse)
+def list_drawings(
+    search: str | None = Query(None, description="drawing_number 또는 name 검색"),
+    offset: int = Query(0, ge=0, description="시작 위치"),
+    limit: int = Query(20, ge=1, le=100, description="조회 건수"),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """도면 목록 조회.
+
+    drawing_number, name으로 ILIKE 검색을 지원합니다.
+    """
+    return service.list_drawings(db, auth, search=search, offset=offset, limit=limit)
 
 
 @router.post("/analyze", response_model=DrawingAnalyzeResponse)
