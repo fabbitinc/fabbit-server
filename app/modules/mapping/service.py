@@ -17,7 +17,7 @@ from app.infrastructure.excel_parser import (
 from app.infrastructure.s3_client import S3Client
 from app.modules.ai_usage.service import log_ai_usage
 from app.modules.mapping import repository as repo
-from app.modules.mapping.models import MappingRecord
+from app.modules.mapping.models import MappingRecord, MappingRevision
 from app.modules.mapping.schemas import (
     MappingConfirmRequest,
     MappingListResponse,
@@ -25,6 +25,7 @@ from app.modules.mapping.schemas import (
     MappingPreviewResponse,
     MappingResponse,
     MappingImpactSummary,
+    MappingUpdateRequest,
     MappingValidateRequest,
     MappingValidateResponse,
     SheetPreview,
@@ -362,6 +363,13 @@ def confirm_mapping(
             code="INVALID_MAPPING",
         )
 
+    # 이름 중복 검사
+    if repo.exists_by_name(db, req.name):
+        raise AppError(
+            message=f"이미 동일한 이름의 매핑이 존재합니다: '{req.name}'",
+            code="DUPLICATE_NAME",
+        )
+
     upload = repo.get_upload_by_id(db, req.upload_id)
     if upload is None:
         raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
@@ -387,17 +395,24 @@ def confirm_mapping(
 
     record = MappingRecord(
         id=generate_uuid7(),
-        upload_id=req.upload_id,
         name=req.name,
-        sheet_name=req.sheet_name,
-        original_headers=headers,
-        mapping=validation.normalized_mapping.model_dump(),
         scope=req.scope,
         usage_count=0,
     )
-    repo.create_mapping_record(db, record)
+    revision = MappingRevision(
+        id=generate_uuid7(),
+        record_id=record.id,
+        upload_id=req.upload_id,
+        version=1,
+        sheet_name=req.sheet_name,
+        original_headers=headers,
+        mapping=validation.normalized_mapping.model_dump(),
+        usage_count=0,
+    )
+    repo.create_mapping_record(db, record, revision)
     db.flush()
     db.refresh(record)
+    db.refresh(revision)
 
     logger.info(
         "매핑 확정: mapping_id={mapping_id} name={name} scope={scope}",
@@ -405,44 +420,146 @@ def confirm_mapping(
         name=record.name,
         scope=record.scope,
     )
-    return _to_mapping_response(record)
+    return _to_mapping_response(record, revision)
 
 
 @transactional(read_only=True)
 def list_mappings(db: Session) -> MappingListResponse:
-    records = repo.list_mappings(db)
-    return MappingListResponse(items=[_to_mapping_response(r) for r in records])
+    pairs = repo.list_mappings(db)
+    return MappingListResponse(
+        items=[_to_mapping_response(r, rev) for r, rev in pairs]
+    )
 
 
 @transactional(read_only=True)
 def get_mapping(db: Session, mapping_id: uuid.UUID) -> MappingResponse:
-    record = repo.get_mapping_by_id(db, mapping_id)
-    if record is None:
+    result = repo.get_mapping_by_id(db, mapping_id)
+    if result is None:
         raise AppError(message="매핑을 찾을 수 없습니다", code="NOT_FOUND")
-    return _to_mapping_response(record)
+    record, revision = result
+    return _to_mapping_response(record, revision)
 
 
-def _to_mapping_response(record: MappingRecord) -> MappingResponse:
+@transactional
+def update_mapping(
+    db: Session,
+    mapping_id: uuid.UUID,
+    req: MappingUpdateRequest,
+) -> MappingResponse:
+    """새 리비전 생성 (name 변경 시 Record도 업데이트)."""
+    result = repo.get_mapping_by_id(db, mapping_id)
+    if result is None:
+        raise AppError(message="매핑을 찾을 수 없습니다", code="NOT_FOUND")
+    record, latest_rev = result
+
+    if not record.is_active:
+        raise AppError(message="비활성화된 매핑은 수정할 수 없습니다", code="PRECONDITION_FAILED")
+
+    # 매핑 검증
+    validation = validate_mapping(
+        db,
+        MappingValidateRequest(
+            upload_id=req.upload_id,
+            sheet_name=req.sheet_name,
+            mapping=req.mapping,
+        ),
+    )
+    if validation.errors:
+        detail = "; ".join(issue.message for issue in validation.errors[:3])
+        raise AppError(
+            message=f"매핑 검증에 실패했습니다: {detail}",
+            code="INVALID_MAPPING",
+        )
+
+    upload = repo.get_upload_by_id(db, req.upload_id)
+    if upload is None:
+        raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
+
+    content = _s3.get_object(upload.file_key)
+    sheet_names = get_sheet_names(content, upload.original_name)
+    is_excel = len(sheet_names) > 0
+
+    if req.sheet_name is not None:
+        target_sheet = req.sheet_name
+    elif is_excel:
+        target_sheet = sheet_names[0]
+    else:
+        target_sheet = None
+
+    headers, _ = extract_headers_and_rows(
+        content,
+        upload.original_name,
+        sheet_name=target_sheet,
+        max_rows=0,
+    )
+
+    # name 변경 시 중복 검사 후 Record 업데이트
+    if req.name is not None and req.name != record.name:
+        if repo.exists_by_name(db, req.name, exclude_id=record.id):
+            raise AppError(
+                message=f"이미 동일한 이름의 매핑이 존재합니다: '{req.name}'",
+                code="DUPLICATE_NAME",
+            )
+        record.name = req.name
+
+    new_revision = MappingRevision(
+        id=generate_uuid7(),
+        record_id=record.id,
+        upload_id=req.upload_id,
+        version=latest_rev.version + 1,
+        sheet_name=req.sheet_name,
+        original_headers=headers,
+        mapping=validation.normalized_mapping.model_dump(),
+        usage_count=0,
+    )
+    repo.create_revision(db, new_revision)
+    db.flush()
+    db.refresh(record)
+    db.refresh(new_revision)
+
+    logger.info(
+        "매핑 업데이트: mapping_id={mapping_id} version={version}",
+        mapping_id=record.id,
+        version=new_revision.version,
+    )
+    return _to_mapping_response(record, new_revision)
+
+
+@transactional
+def deactivate_mapping(db: Session, mapping_id: uuid.UUID) -> None:
+    """매핑 비활성화 (soft-delete)."""
+    result = repo.get_mapping_by_id(db, mapping_id)
+    if result is None:
+        raise AppError(message="매핑을 찾을 수 없습니다", code="NOT_FOUND")
+    record, _ = result
+    record.is_active = False
+    logger.info("매핑 비활성화: mapping_id={mapping_id}", mapping_id=record.id)
+
+
+def _to_mapping_response(
+    record: MappingRecord, revision: MappingRevision
+) -> MappingResponse:
     original_headers: list[str] = []
-    if isinstance(record.original_headers, list):
-        original_headers = [str(header) for header in record.original_headers]
+    if isinstance(revision.original_headers, list):
+        original_headers = [str(header) for header in revision.original_headers]
 
     mapping_payload = MappingResult(
         property_mappings=[],
         relation_mappings=[],
     )
-    if isinstance(record.mapping, dict):
-        mapping_payload = MappingResult.model_validate(record.mapping)
+    if isinstance(revision.mapping, dict):
+        mapping_payload = MappingResult.model_validate(revision.mapping)
     return MappingResponse(
         id=record.id,
-        upload_id=record.upload_id,
+        upload_id=revision.upload_id,
         name=record.name,
-        sheet_name=record.sheet_name,
+        sheet_name=revision.sheet_name,
         original_headers=original_headers,
         mapping=mapping_payload,
         scope=record.scope,
         is_active=record.is_active,
         usage_count=record.usage_count,
+        version=revision.version,
         created_at=record.created_at,
     )
 

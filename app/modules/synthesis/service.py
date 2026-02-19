@@ -65,8 +65,12 @@ def start_synthesis(
                 code="NOT_FOUND",
             )
 
+    revision = repo.get_latest_revision(db, record.id)
+    if revision is None:
+        raise AppError(message="매핑 리비전을 찾을 수 없습니다", code="NOT_FOUND")
+
     # Root-Specified BOM 검증
-    if _has_rootless_consists_of(record.mapping) and not req.root_part_number:
+    if _has_rootless_consists_of(revision.mapping) and not req.root_part_number:
         raise AppError(
             message="이 매핑은 Root-Specified BOM입니다. root_part_number를 지정해주세요.",
             code="INVALID_INPUT",
@@ -87,7 +91,7 @@ def start_synthesis(
         mapping_id=record.id,
         upload_id=upload.id,
     )
-    repo.increment_mapping_usage(db, record)
+    repo.increment_mapping_usage(db, record, revision)
     db.flush()
     db.refresh(job)
 
@@ -99,8 +103,8 @@ def start_synthesis(
         graph_name=schema_name,
         file_key=upload.file_key,
         filename=upload.original_name,
-        sheet_name=record.sheet_name,
-        mapping_json=record.mapping,
+        sheet_name=revision.sheet_name,
+        mapping_json=revision.mapping,
         root_part_number=req.root_part_number,
     )
 
@@ -139,8 +143,12 @@ def start_synthesis_batch(
                 code="NOT_FOUND",
             )
 
+    revision = repo.get_latest_revision(db, record.id)
+    if revision is None:
+        raise AppError(message="매핑 리비전을 찾을 수 없습니다", code="NOT_FOUND")
+
     # Root-Specified BOM 검증
-    if _has_rootless_consists_of(record.mapping) and not req.root_part_number:
+    if _has_rootless_consists_of(revision.mapping) and not req.root_part_number:
         raise AppError(
             message="이 매핑은 Root-Specified BOM입니다. root_part_number를 지정해주세요.",
             code="INVALID_INPUT",
@@ -203,7 +211,7 @@ def start_synthesis_batch(
         job.batch_id = batch.id
 
     if accepted_jobs:
-        repo.increment_mapping_usage(db, record, len(accepted_jobs))
+        repo.increment_mapping_usage(db, record, revision, len(accepted_jobs))
 
     db.flush()
     db.refresh(batch)
@@ -218,8 +226,8 @@ def start_synthesis_batch(
             graph_name=schema_name,
             file_key=upload.file_key,
             filename=upload.original_name,
-            sheet_name=record.sheet_name,
-            mapping_json=record.mapping,
+            sheet_name=revision.sheet_name,
+            mapping_json=revision.mapping,
             root_part_number=req.root_part_number,
         )
 

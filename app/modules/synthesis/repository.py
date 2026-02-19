@@ -5,29 +5,56 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.infrastructure.age_client import execute_cypher_raw
-from app.modules.mapping.models import MappingRecord
+from app.modules.mapping.models import MappingRecord, MappingRevision
 from app.modules.project.models import Project
 from app.modules.synthesis.models import SynthesisBatch, SynthesisJob
 from app.modules.upload.models import Upload
 
 
 def get_mapping_by_id(db: Session, mapping_id: uuid.UUID) -> MappingRecord | None:
-    return db.query(MappingRecord).filter(MappingRecord.id == mapping_id).first()
+    return (
+        db.query(MappingRecord)
+        .filter(MappingRecord.id == mapping_id, MappingRecord.is_active.is_(True))
+        .first()
+    )
 
 
 def get_latest_mapping(db: Session) -> MappingRecord | None:
-    return db.query(MappingRecord).order_by(MappingRecord.created_at.desc()).first()
+    return (
+        db.query(MappingRecord)
+        .filter(MappingRecord.is_active.is_(True))
+        .order_by(MappingRecord.created_at.desc())
+        .first()
+    )
 
 
 def get_latest_mapping_by_project(
     db: Session,
     project_id: uuid.UUID,
 ) -> MappingRecord | None:
+    """프로젝트에 속한 업로드를 참조하는 최신 활성 매핑 조회.
+
+    MappingRevision → Upload 경유로 프로젝트 소속 여부를 판단합니다.
+    """
     return (
         db.query(MappingRecord)
-        .join(Upload, Upload.id == MappingRecord.upload_id)
-        .filter(Upload.owner_type == "project", Upload.owner_id == project_id)
+        .join(MappingRevision, MappingRevision.record_id == MappingRecord.id)
+        .join(Upload, Upload.id == MappingRevision.upload_id)
+        .filter(
+            Upload.owner_type == "project",
+            Upload.owner_id == project_id,
+            MappingRecord.is_active.is_(True),
+        )
         .order_by(MappingRecord.created_at.desc())
+        .first()
+    )
+
+
+def get_latest_revision(db: Session, record_id: uuid.UUID) -> MappingRevision | None:
+    return (
+        db.query(MappingRevision)
+        .filter(MappingRevision.record_id == record_id)
+        .order_by(MappingRevision.version.desc())
         .first()
     )
 
@@ -58,8 +85,14 @@ def create_synthesis_job(
     return job
 
 
-def increment_mapping_usage(db: Session, record: MappingRecord, amount: int = 1) -> None:
+def increment_mapping_usage(
+    db: Session,
+    record: MappingRecord,
+    revision: MappingRevision,
+    amount: int = 1,
+) -> None:
     record.usage_count += amount
+    revision.usage_count += amount
 
 
 def create_synthesis_batch(

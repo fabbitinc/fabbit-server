@@ -54,7 +54,9 @@ class SynthesisStartServiceTests(unittest.TestCase):
         req = SynthesisStartRequest(upload_id=uuid.uuid4())
         mapping_record = types.SimpleNamespace(
             id=uuid.uuid4(),
-            upload_id=uuid.uuid4(),
+        )
+        revision = types.SimpleNamespace(
+            id=uuid.uuid4(),
             sheet_name="Sheet1",
             mapping={
                 "column_mappings": [],
@@ -90,6 +92,10 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 return_value=mapping_record,
             ),
             patch(
+                "app.modules.synthesis.service.repo.get_latest_revision",
+                return_value=revision,
+            ),
+            patch(
                 "app.modules.synthesis.service.repo.get_upload_by_id",
                 return_value=upload,
             ),
@@ -118,7 +124,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
         create_job.assert_called_once()
         self.assertEqual(create_job.call_args.kwargs["mapping_id"], mapping_record.id)
         self.assertEqual(create_job.call_args.kwargs["upload_id"], upload.id)
-        inc_usage.assert_called_once_with(db, mapping_record)
+        inc_usage.assert_called_once_with(db, mapping_record, revision)
         add_background_task.assert_called_once()
 
     def test_start_synthesis_raises_when_latest_mapping_missing(self) -> None:
@@ -138,7 +144,9 @@ class SynthesisStartServiceTests(unittest.TestCase):
         req = SynthesisStartRequest(upload_id=uuid.uuid4())
         mapping_record = types.SimpleNamespace(
             id=uuid.uuid4(),
-            upload_id=uuid.uuid4(),
+        )
+        revision = types.SimpleNamespace(
+            id=uuid.uuid4(),
             sheet_name=None,
             mapping={
                 "column_mappings": [],
@@ -157,6 +165,10 @@ class SynthesisStartServiceTests(unittest.TestCase):
             patch(
                 "app.modules.synthesis.service.repo.get_latest_mapping",
                 return_value=mapping_record,
+            ),
+            patch(
+                "app.modules.synthesis.service.repo.get_latest_revision",
+                return_value=revision,
             ),
             patch(
                 "app.modules.synthesis.service.repo.get_upload_by_id",
@@ -179,6 +191,9 @@ class SynthesisStartServiceTests(unittest.TestCase):
         )
 
         mapping_record = types.SimpleNamespace(
+            id=uuid.uuid4(),
+        )
+        revision = types.SimpleNamespace(
             id=uuid.uuid4(),
             sheet_name="Sheet1",
             mapping={
@@ -261,6 +276,10 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 return_value=None,
             ) as get_org_mapping,
             patch(
+                "app.modules.synthesis.service.repo.get_latest_revision",
+                return_value=revision,
+            ),
+            patch(
                 "app.modules.synthesis.service.repo.get_upload_by_id",
                 side_effect=_get_upload,
             ),
@@ -297,7 +316,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
         self.assertEqual(len(res.failed), 0)
         self.assertEqual(db.commit_count, 1)
         self.assertEqual(add_background_task.call_count, 2)
-        inc_usage.assert_called_once_with(db, mapping_record, 2)
+        inc_usage.assert_called_once_with(db, mapping_record, revision, 2)
         get_project_mapping.assert_called_once_with(db, project_id)
         get_org_mapping.assert_not_called()
 
@@ -312,6 +331,9 @@ class SynthesisStartServiceTests(unittest.TestCase):
         )
 
         mapping_record = types.SimpleNamespace(
+            id=uuid.uuid4(),
+        )
+        revision = types.SimpleNamespace(
             id=uuid.uuid4(),
             sheet_name=None,
             mapping={
@@ -367,6 +389,10 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 return_value=None,
             ),
             patch(
+                "app.modules.synthesis.service.repo.get_latest_revision",
+                return_value=revision,
+            ),
+            patch(
                 "app.modules.synthesis.service.repo.get_upload_by_id",
                 side_effect=_get_upload,
             ),
@@ -407,6 +433,9 @@ class SynthesisStartServiceTests(unittest.TestCase):
         req = SynthesisBatchStartRequest(upload_ids=[upload_id], mapping_id=None)
 
         org_mapping = types.SimpleNamespace(
+            id=uuid.uuid4(),
+        )
+        org_revision = types.SimpleNamespace(
             id=uuid.uuid4(),
             sheet_name=None,
             mapping={
@@ -457,6 +486,10 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 return_value=org_mapping,
             ) as get_org_mapping,
             patch(
+                "app.modules.synthesis.service.repo.get_latest_revision",
+                return_value=org_revision,
+            ),
+            patch(
                 "app.modules.synthesis.service.repo.get_upload_by_id",
                 return_value=upload,
             ),
@@ -492,6 +525,9 @@ class SynthesisStartServiceTests(unittest.TestCase):
 
         mapping_record = types.SimpleNamespace(
             id=uuid.uuid4(),
+        )
+        revision = types.SimpleNamespace(
+            id=uuid.uuid4(),
             sheet_name=None,
             mapping={
                 "column_mappings": [],
@@ -525,6 +561,10 @@ class SynthesisStartServiceTests(unittest.TestCase):
             patch(
                 "app.modules.synthesis.service.repo.get_latest_mapping",
                 return_value=None,
+            ),
+            patch(
+                "app.modules.synthesis.service.repo.get_latest_revision",
+                return_value=revision,
             ),
             patch(
                 "app.modules.synthesis.service.repo.get_upload_by_id",

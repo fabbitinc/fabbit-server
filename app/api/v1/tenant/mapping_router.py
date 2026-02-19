@@ -14,6 +14,7 @@ from app.modules.mapping.schemas import (
     MappingPreviewRequest,
     MappingPreviewResponse,
     MappingResponse,
+    MappingUpdateRequest,
     MappingValidateRequest,
     MappingValidateResponse,
 )
@@ -65,3 +66,20 @@ def get_mapping(
     db: Session = Depends(get_tenant_db),
 ):
     return service.get_mapping(db, mapping_id)
+
+
+@router.put("/{mapping_id}", response_model=MappingResponse)
+def update_mapping(
+    mapping_id: uuid.UUID,
+    req: MappingUpdateRequest,
+    db: Session = Depends(get_tenant_db),
+):
+    return service.update_mapping(db, mapping_id, req)
+
+
+@router.delete("/{mapping_id}", status_code=204)
+def delete_mapping(
+    mapping_id: uuid.UUID,
+    db: Session = Depends(get_tenant_db),
+):
+    service.deactivate_mapping(db, mapping_id)

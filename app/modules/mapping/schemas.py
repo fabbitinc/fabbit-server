@@ -52,6 +52,15 @@ class MappingConfirmRequest(BaseModel):
     scope: str = "master"  # "master" | "part_detail"
 
 
+class MappingUpdateRequest(BaseModel):
+    """매핑 업데이트 요청 — 새 리비전 생성"""
+
+    upload_id: uuid.UUID
+    name: str | None = None
+    sheet_name: str | None = None
+    mapping: MappingResult
+
+
 class MappingResponse(BaseModel):
     """매핑 레코드 응답"""
 
@@ -64,6 +73,7 @@ class MappingResponse(BaseModel):
     scope: str = "master"
     is_active: bool = True
     usage_count: int
+    version: int
     created_at: datetime
 
     model_config = {"from_attributes": True}

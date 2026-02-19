@@ -946,6 +946,101 @@
                         }
                     }
                 }
+            },
+            "put": {
+                "tags": [
+                    "mappings"
+                ],
+                "summary": "Update Mapping",
+                "operationId": "update_mapping_api_v1_mappings__mapping_id__put",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "mapping_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Mapping Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MappingUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MappingResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "mappings"
+                ],
+                "summary": "Delete Mapping",
+                "operationId": "delete_mapping_api_v1_mappings__mapping_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "mapping_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Mapping Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/projects/tree": {
@@ -3519,6 +3614,10 @@
                         "type": "integer",
                         "title": "Usage Count"
                     },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version"
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -3533,6 +3632,7 @@
                     "original_headers",
                     "mapping",
                     "usage_count",
+                    "version",
                     "created_at"
                 ],
                 "title": "MappingResponse",
@@ -3562,6 +3662,47 @@
                 ],
                 "title": "MappingResult",
                 "description": "LLM \ub9e4\ud551 \uacb0\uacfc \uc804\uccb4"
+            },
+            "MappingUpdateRequest": {
+                "properties": {
+                    "upload_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Upload Id"
+                    },
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name"
+                    },
+                    "sheet_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Sheet Name"
+                    },
+                    "mapping": {
+                        "$ref": "#/components/schemas/MappingResult"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "upload_id",
+                    "mapping"
+                ],
+                "title": "MappingUpdateRequest",
+                "description": "\ub9e4\ud551 \uc5c5\ub370\uc774\ud2b8 \uc694\uccad \u2014 \uc0c8 \ub9ac\ube44\uc804 \uc0dd\uc131"
             },
             "MappingValidateRequest": {
                 "properties": {
