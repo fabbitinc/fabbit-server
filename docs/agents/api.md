@@ -18,6 +18,13 @@
 - `get_tenant_db` → `Session` (테넌트 격리 세션, 인증 포함)
 - `get_db` → `Session` (public 스키마, 인증 불필요)
 
+## Docstring (OpenAPI 문서)
+
+- 모든 엔드포인트 함수에 docstring 필수 — Swagger UI 설명으로 자동 반영
+- 첫 줄: 한 문장 요약 (무엇을 하는지)
+- 본문: 동작 방식, 주요 파라미터 설명, 상태 흐름 등 프론트엔드 개발자가 참고할 내용
+- 마크다운 지원 — `**bold**`, 리스트(`-`), 코드(`backtick`) 활용 가능
+
 ## 규칙
 
 - service를 모듈로 import: `from app.modules.{domain} import service`

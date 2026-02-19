@@ -6,28 +6,20 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-class SynthesisStartRequest(BaseModel):
-    """합성 작업 시작 요청."""
+class SynthesisUploadItem(BaseModel):
+    """합성 대상 업로드 항목."""
 
     upload_id: uuid.UUID
-    mapping_id: uuid.UUID | None = None
-    root_part_number: str | None = None  # Root-Specified BOM일 때 상위 Part 품번
+    root_context: dict[str, str] | None = None  # ROOT_BOM: {"Part": "ASM-001"}
 
 
-class SynthesisBatchStartRequest(BaseModel):
-    """합성 배치 작업 시작 요청."""
+class SynthesisStartRequest(BaseModel):
+    """통합 합성 시작 요청."""
 
-    upload_ids: list[uuid.UUID] = Field(
-        ...,
-        min_length=1,
-        max_length=100,
-        description="합성할 업로드 ID 목록",
-    )
-    mapping_id: uuid.UUID | None = Field(
-        None,
-        description="사용할 매핑 ID (미지정 시 프로젝트/조직 최신 매핑 자동 선택)",
-    )
-    root_part_number: str | None = None  # Root-Specified BOM일 때 상위 Part 품번
+    mapping_id: uuid.UUID
+    project_id: uuid.UUID | None = None  # 프로젝트 소속 검증 (선택)
+    overwrite: bool = False  # 기존 데이터 덮어쓰기 (엑셀에 값이 있는 필드만)
+    uploads: list[SynthesisUploadItem] = Field(..., min_length=1, max_length=100)
 
 
 class SynthesisBatchFailure(BaseModel):

@@ -22,15 +22,16 @@ from app.modules.ontology.schemas import MappingResult, RelationMapping
 from app.modules.part import repository as part_repo
 from app.modules.synthesis import repository as repo
 from app.modules.synthesis.models import SynthesisJob
+from app.modules.mapping.constants import MappingScope
 from app.modules.synthesis.schemas import (
     SynthesisBatchFailure,
     SynthesisBatchItemStatus,
-    SynthesisBatchStartRequest,
     SynthesisBatchStartResponse,
     SynthesisBatchStatusResponse,
     SynthesisJobResponse,
     SynthesisListResponse,
     SynthesisStartRequest,
+    SynthesisUploadItem,
 )
 
 _s3 = S3Client()
@@ -38,12 +39,27 @@ _s3 = S3Client()
 CHUNK_SIZE = 500
 
 
-def _has_rootless_consists_of(mapping_dict: dict) -> bool:
-    """매핑 dict에 node_columns가 비어있는 CONSISTS_OF가 있는지 확인."""
-    for rm in mapping_dict.get("relation_mappings", []):
-        if rm.get("rel_type") == "CONSISTS_OF" and not rm.get("node_columns"):
-            return True
-    return False
+def _validate_root_context(scope: str, root_context: dict[str, str] | None) -> None:
+    """scope 기반 root_context 검증."""
+    if scope in (MappingScope.PART_LIST, MappingScope.FULL_BOM):
+        if root_context:
+            raise AppError(
+                message="이 매핑은 root_context가 필요하지 않습니다.",
+                code="UNEXPECTED_ROOT_CONTEXT",
+            )
+    elif scope == MappingScope.ROOT_BOM:
+        if not root_context or "Part" not in root_context:
+            raise AppError(
+                message="이 매핑은 ROOT_BOM입니다. root_context에 Part 키를 지정해주세요.",
+                code="MISSING_ROOT_CONTEXT",
+            )
+
+
+def _resolve_root_part_number(root_context: dict[str, str] | None) -> str | None:
+    """root_context에서 root_part_number 추출."""
+    if not root_context:
+        return None
+    return root_context.get("Part")
 
 
 @transactional
@@ -52,119 +68,38 @@ def start_synthesis(
     auth: AuthContext,
     req: SynthesisStartRequest,
     add_background_task,
-) -> SynthesisJobResponse:
-    if req.mapping_id is not None:
-        record = repo.get_mapping_by_id(db, req.mapping_id)
-        if record is None:
-            raise AppError(message="매핑을 찾을 수 없습니다", code="NOT_FOUND")
-    else:
-        record = repo.get_latest_mapping(db)
-        if record is None:
-            raise AppError(
-                message="조직에 등록된 매핑이 없습니다. 먼저 매핑을 확정해주세요.",
-                code="NOT_FOUND",
-            )
-
-    revision = repo.get_latest_revision(db, record.id)
-    if revision is None:
-        raise AppError(message="매핑 리비전을 찾을 수 없습니다", code="NOT_FOUND")
-
-    # Root-Specified BOM 검증
-    if _has_rootless_consists_of(revision.mapping) and not req.root_part_number:
-        raise AppError(
-            message="이 매핑은 Root-Specified BOM입니다. root_part_number를 지정해주세요.",
-            code="INVALID_INPUT",
-        )
-
-    upload = repo.get_upload_by_id(db, req.upload_id)
-    if upload is None:
-        raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
-    if upload.status != "UPLOADED":
-        raise AppError(
-            message="업로드가 완료되지 않은 파일입니다. 먼저 업로드를 완료해주세요.",
-            code="PRECONDITION_FAILED",
-        )
-
-    job = repo.create_synthesis_job(
-        db=db,
-        job_id=generate_uuid7(),
-        mapping_id=record.id,
-        upload_id=upload.id,
-    )
-    repo.increment_mapping_usage(db, record, revision)
-    db.flush()
-    db.refresh(job)
-
-    schema_name = org_id_to_schema(auth.org_id)
-    add_background_task(
-        guarded(_run_synthesis),
-        job_id=job.id,
-        schema_name=schema_name,
-        graph_name=schema_name,
-        file_key=upload.file_key,
-        filename=upload.original_name,
-        sheet_name=revision.sheet_name,
-        mapping_json=revision.mapping,
-        root_part_number=req.root_part_number,
-    )
-
-    logger.info(
-        "합성 작업 시작: job_id={job_id} mapping_id={mapping_id} upload_id={upload_id}",
-        job_id=job.id,
-        mapping_id=record.id,
-        upload_id=upload.id,
-    )
-    return _to_job_response(job)
-
-
-@transactional
-def start_synthesis_batch(
-    db: Session,
-    auth: AuthContext,
-    project_id: uuid.UUID,
-    req: SynthesisBatchStartRequest,
-    add_background_task,
 ) -> SynthesisBatchStartResponse:
-    project = repo.get_project_by_id(db, project_id)
-    if project is None:
-        raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
+    # 1. 매핑 조회
+    record = repo.get_mapping_by_id(db, req.mapping_id)
+    if record is None:
+        raise AppError(message="매핑을 찾을 수 없습니다", code="NOT_FOUND")
 
-    if req.mapping_id is not None:
-        record = repo.get_mapping_by_id(db, req.mapping_id)
-        if record is None:
-            raise AppError(message="매핑을 찾을 수 없습니다", code="NOT_FOUND")
-    else:
-        record = repo.get_latest_mapping_by_project(db, project_id)
-        if record is None:
-            record = repo.get_latest_mapping(db)
-        if record is None:
-            raise AppError(
-                message="조직에 등록된 매핑이 없습니다. 먼저 매핑을 확정해주세요.",
-                code="NOT_FOUND",
-            )
-
+    # 2. 최신 리비전 조회
     revision = repo.get_latest_revision(db, record.id)
     if revision is None:
         raise AppError(message="매핑 리비전을 찾을 수 없습니다", code="NOT_FOUND")
 
-    # Root-Specified BOM 검증
-    if _has_rootless_consists_of(revision.mapping) and not req.root_part_number:
-        raise AppError(
-            message="이 매핑은 Root-Specified BOM입니다. root_part_number를 지정해주세요.",
-            code="INVALID_INPUT",
-        )
+    # 3. 프로젝트 존재 검증
+    if req.project_id is not None:
+        project = repo.get_project_by_id(db, req.project_id)
+        if project is None:
+            raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
 
+    # 4. 모든 upload에 대해 root_context 검증 (scope 기반)
+    for item in req.uploads:
+        _validate_root_context(record.scope, item.root_context)
+
+    # 5. upload 루프
     schema_name = org_id_to_schema(auth.org_id)
-    accepted_jobs = []
-    failed = []
-    upload_ids = list(dict.fromkeys(req.upload_ids))
+    accepted_jobs: list[tuple[SynthesisJob, object, SynthesisUploadItem]] = []
+    failed: list[SynthesisBatchFailure] = []
 
-    for upload_id in upload_ids:
-        upload = repo.get_upload_by_id(db, upload_id)
+    for item in req.uploads:
+        upload = repo.get_upload_by_id(db, item.upload_id)
         if upload is None:
             failed.append(
                 SynthesisBatchFailure(
-                    upload_id=upload_id,
+                    upload_id=item.upload_id,
                     reason="업로드를 찾을 수 없습니다",
                 )
             )
@@ -173,16 +108,18 @@ def start_synthesis_batch(
         if upload.status != "UPLOADED":
             failed.append(
                 SynthesisBatchFailure(
-                    upload_id=upload_id,
+                    upload_id=item.upload_id,
                     reason="업로드가 완료되지 않은 파일입니다",
                 )
             )
             continue
 
-        if upload.owner_type != "project" or upload.owner_id != project_id:
+        if req.project_id is not None and (
+            upload.owner_type != "project" or upload.owner_id != req.project_id
+        ):
             failed.append(
                 SynthesisBatchFailure(
-                    upload_id=upload_id,
+                    upload_id=item.upload_id,
                     reason="해당 프로젝트에 속하지 않은 업로드입니다",
                 )
             )
@@ -195,30 +132,34 @@ def start_synthesis_batch(
             mapping_id=record.id,
             upload_id=upload.id,
         )
-        accepted_jobs.append((job, upload))
+        accepted_jobs.append((job, upload, item))
 
+    # 6. SynthesisBatch 생성
     batch = repo.create_synthesis_batch(
         db=db,
         batch_id=generate_uuid7(),
-        project_id=project_id,
+        project_id=req.project_id,
         mapping_id=record.id,
-        requested_count=len(req.upload_ids),
+        requested_count=len(req.uploads),
         accepted_count=len(accepted_jobs),
-        failed_uploads=[item.model_dump(mode="json") for item in failed],
+        failed_uploads=[f.model_dump(mode="json") for f in failed],
     )
 
-    for job, _upload in accepted_jobs:
+    # 7. 성공 job들에 batch_id 할당
+    for job, _upload, _item in accepted_jobs:
         job.batch_id = batch.id
 
+    # 8. usage_count 일괄 증가
     if accepted_jobs:
         repo.increment_mapping_usage(db, record, revision, len(accepted_jobs))
 
     db.flush()
     db.refresh(batch)
-    for job, _upload in accepted_jobs:
+    for job, _upload, _item in accepted_jobs:
         db.refresh(job)
 
-    for job, upload in accepted_jobs:
+    # 9. 각 job에 대해 background task 등록
+    for job, upload, item in accepted_jobs:
         add_background_task(
             guarded(_run_synthesis),
             job_id=job.id,
@@ -228,22 +169,23 @@ def start_synthesis_batch(
             filename=upload.original_name,
             sheet_name=revision.sheet_name,
             mapping_json=revision.mapping,
-            root_part_number=req.root_part_number,
+            root_part_number=_resolve_root_part_number(item.root_context),
+            overwrite=req.overwrite,
         )
 
     logger.info(
-        "합성 배치 시작: batch_id={batch_id} project_id={project_id} mapping_id={mapping_id} accepted={accepted} failed={failed}",
+        "합성 시작: batch_id={batch_id} mapping_id={mapping_id} accepted={accepted} failed={failed}",
         batch_id=batch.id,
-        project_id=project_id,
         mapping_id=record.id,
         accepted=len(accepted_jobs),
         failed=len(failed),
     )
+    # 10. 항상 배치 응답 반환
     return SynthesisBatchStartResponse(
         batch_id=batch.id,
         requested_count=batch.requested_count,
         accepted_count=batch.accepted_count,
-        items=[_to_job_response(job) for job, _upload in accepted_jobs],
+        items=[_to_job_response(job) for job, _upload, _item in accepted_jobs],
         failed=failed,
     )
 
@@ -571,6 +513,7 @@ def _run_synthesis(
     sheet_name: str | None,
     mapping_json: dict,
     root_part_number: str | None = None,
+    overwrite: bool = False,
 ) -> None:
     db = create_tenant_session(schema_name)
     try:
@@ -697,7 +640,9 @@ def _run_synthesis(
             # === Phase 2: Part upsert (RDS + Graph dual-write) ===
             for pn, props in part_data.items():
                 try:
-                    part_repo.upsert_part(db, pn, props, job_id, graph_name)
+                    part_repo.upsert_part(
+                        db, pn, props, job_id, graph_name, overwrite=overwrite
+                    )
                     nodes_created += 1
                 except Exception as error:
                     errors.append(f"Part upsert 실패 ({pn}): {error}")
@@ -707,8 +652,9 @@ def _run_synthesis(
 
             # === Phase 3: 비-Part 노드 (Graph only) ===
             if all_node_cyphers:
-                repo.execute_graph_cyphers(db, graph_name, all_node_cyphers)
-                nodes_created += len(all_node_cyphers)
+                unique_node_cyphers = list(dict.fromkeys(all_node_cyphers))
+                repo.execute_graph_cyphers(db, graph_name, unique_node_cyphers)
+                nodes_created += len(unique_node_cyphers)
 
             # === Phase 4: BOM 링크 (RDS + Graph dual-write) ===
             for entry in bom_entries:
@@ -723,6 +669,7 @@ def _run_synthesis(
                         entry["parent_pn"], entry["child_pn"],
                         quantity,
                         extended_properties=ext_props if ext_props else None,
+                        overwrite=overwrite,
                     )
                     rels_created += 1
                 except part_repo.MissingPartForBomError as error:
@@ -734,8 +681,9 @@ def _run_synthesis(
 
             # === Phase 5: 비-CONSISTS_OF 관계 (Graph only) ===
             if all_rel_cyphers:
-                repo.execute_graph_cyphers(db, graph_name, all_rel_cyphers)
-                rels_created += len(all_rel_cyphers)
+                unique_rel_cyphers = list(dict.fromkeys(all_rel_cyphers))
+                repo.execute_graph_cyphers(db, graph_name, unique_rel_cyphers)
+                rels_created += len(unique_rel_cyphers)
 
             db.commit()
             chunk_elapsed = time.perf_counter() - t_chunk

@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth
@@ -18,10 +18,6 @@ from app.modules.project.schemas import (
     ProjectTreeResponse,
     UpdateFolderRequest,
     UpdateProjectRequest,
-)
-from app.modules.synthesis.schemas import (
-    SynthesisBatchStartRequest,
-    SynthesisBatchStartResponse,
 )
 
 router = APIRouter(prefix="/api/v1/projects", tags=["projects"])
@@ -114,28 +110,6 @@ def delete_project(
     db: Session = Depends(get_tenant_db),
 ):
     service.delete_project(db, auth, project_id)
-
-
-# ── 합성 배치 ──
-
-
-@router.post(
-    "/{project_id}/synthesis/batch", response_model=SynthesisBatchStartResponse
-)
-def start_project_synthesis_batch(
-    project_id: uuid.UUID,
-    req: SynthesisBatchStartRequest,
-    background_tasks: BackgroundTasks,
-    auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(get_tenant_db),
-):
-    return service.start_synthesis_batch(
-        db,
-        auth,
-        project_id,
-        req,
-        background_tasks.add_task,
-    )
 
 
 # ── ProjectPart (프로젝트-파트 연결) ──

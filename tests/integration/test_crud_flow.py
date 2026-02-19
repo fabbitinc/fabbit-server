@@ -323,7 +323,7 @@ class TestCRUDFlow:
     # ── 합성 ──
 
     def test_start_synthesis(self, client: TestClient):
-        """POST /synthesis → 합성 시작.
+        """POST /synthesis → 합성 시작 (통합 배치 응답).
 
         TestClient에서 BackgroundTask는 동기적으로 실행되므로,
         응답 반환 시점에 합성이 이미 완료됩니다.
@@ -332,15 +332,17 @@ class TestCRUDFlow:
             "/api/v1/synthesis",
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
             json={
-                "upload_id": TestCRUDFlow.upload_id,
                 "mapping_id": TestCRUDFlow.mapping_id,
+                "uploads": [{"upload_id": TestCRUDFlow.upload_id}],
             },
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert data["id"]
+        assert data["batch_id"]
+        assert data["accepted_count"] == 1
+        assert len(data["items"]) == 1
 
-        TestCRUDFlow.synthesis_job_id = data["id"]
+        TestCRUDFlow.synthesis_job_id = data["items"][0]["id"]
 
     def test_synthesis_completed(self, client: TestClient):
         """GET /synthesis/{id} → status=COMPLETED 확인."""
@@ -601,13 +603,16 @@ class TestCRUDFlow:
             assert item["status"] == "UPLOADED"
 
     def test_start_synthesis_batch(self, client: TestClient):
-        """POST /projects/{project_id}/synthesis/batch → 배치 합성 시작."""
+        """POST /synthesis → 배치 합성 시작 (project_id 지정)."""
         resp = client.post(
-            f"/api/v1/projects/{TestCRUDFlow.project_id}/synthesis/batch",
+            "/api/v1/synthesis",
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
             json={
-                "upload_ids": TestCRUDFlow.batch_upload_ids,
+                "project_id": TestCRUDFlow.project_id,
                 "mapping_id": TestCRUDFlow.mapping_id,
+                "uploads": [
+                    {"upload_id": uid} for uid in TestCRUDFlow.batch_upload_ids
+                ],
             },
         )
         assert resp.status_code == 200, resp.text

@@ -97,11 +97,16 @@ def upsert_part(
     props: dict,
     job_id: uuid.UUID,
     graph_name: str,
+    *,
+    overwrite: bool = False,
 ) -> None:
     """Part를 RDS에 INSERT/UPDATE하고, Graph에 MERGE.
 
     RDS: 전체 속성 저장 + PartRevision 스냅샷
     Graph: part_number만 유지 (merge key)
+
+    overwrite=False: DB에 이미 값이 있는 필드는 유지 (빈 필드만 채움)
+    overwrite=True: 엑셀 값으로 덮어쓰기
     """
     # ── RDS upsert ──
     standard: dict = {}
@@ -132,13 +137,18 @@ def upsert_part(
     else:
         changed = False
         for key, value in standard.items():
-            if getattr(existing, key) != value:
+            current = getattr(existing, key)
+            if not overwrite and current is not None:
+                continue
+            if current != value:
                 setattr(existing, key, value)
                 changed = True
 
         if extended:
             merged_ext = dict(existing.extended_properties or {})
             for key, value in extended.items():
+                if not overwrite and merged_ext.get(key) is not None:
+                    continue
                 if merged_ext.get(key) != value:
                     merged_ext[key] = value
                     changed = True
@@ -166,8 +176,13 @@ def upsert_bom_link(
     quantity: int = 1,
     *,
     extended_properties: dict | None = None,
+    overwrite: bool = False,
 ) -> None:
-    """BOM 관계를 RDS(bom_links)와 Graph(CONSISTS_OF)에 동시 저장."""
+    """BOM 관계를 RDS(bom_links)와 Graph(CONSISTS_OF)에 동시 저장.
+
+    overwrite=False: 기존 값 유지, 빈 필드만 엑셀 값으로 채움
+    overwrite=True: 엑셀 값으로 덮어쓰기 (엑셀에 없는 기존 확장 속성은 유지)
+    """
     # ── RDS ──
     parent = db.query(Part).filter(Part.part_number == parent_pn).first()
     child = db.query(Part).filter(Part.part_number == child_pn).first()
@@ -184,10 +199,13 @@ def upsert_bom_link(
     )
 
     if existing:
-        existing.quantity = quantity
+        if overwrite:
+            existing.quantity = quantity
         if extended_properties:
             merged = dict(existing.extended_properties or {})
-            merged.update(extended_properties)
+            for key, value in extended_properties.items():
+                if overwrite or merged.get(key) is None:
+                    merged[key] = value
             existing.extended_properties = merged
     else:
         link = BomLink(

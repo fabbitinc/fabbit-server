@@ -440,21 +440,3 @@ def remove_part_from_project(
         project_id=project_id,
         part_id=part_id,
     )
-
-
-# ── 합성 배치 (cross-domain 래퍼) ──
-
-
-def start_synthesis_batch(
-    db: Session,
-    auth: AuthContext,
-    project_id: uuid.UUID,
-    req,
-    add_background_task,
-):
-    """합성 배치 시작을 synthesis 서비스에 위임."""
-    from app.modules.synthesis import service as synthesis_service
-
-    return synthesis_service.start_synthesis_batch(
-        db, auth, project_id, req, add_background_task
-    )

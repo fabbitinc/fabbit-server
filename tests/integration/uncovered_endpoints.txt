@@ -1,4 +1,4 @@
-# 미테스트 API 엔드포인트 (12/53)
+# 미테스트 API 엔드포인트 (12/52)
 
 DELETE /api/v1/mappings/{mapping_id}
 GET    /api/v1/dashboard/stats

@@ -1,11 +1,8 @@
 """매핑 API 라우터."""
 
-import json
 import uuid
-from pathlib import Path
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth
@@ -31,12 +28,6 @@ def preview_mapping(
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    # TODO: 프론트 개발용 임시 스텁 — 완료 후 제거
-    _STUB_PREVIEW = (
-        Path(__file__).resolve().parents[4] / "sample" / "mapping_preview_response.json"
-    )
-    if _STUB_PREVIEW.exists():
-        return JSONResponse(content=json.loads(_STUB_PREVIEW.read_text()))
     return service.preview_mapping(db, auth, req)
 
 

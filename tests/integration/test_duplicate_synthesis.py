@@ -205,12 +205,14 @@ class TestDuplicateSynthesis:
                     "Authorization": f"Bearer {TestDuplicateSynthesis.access_token}"
                 },
                 json={
-                    "upload_id": upload_id,
                     "mapping_id": TestDuplicateSynthesis.mapping_id,
+                    "uploads": [{"upload_id": upload_id}],
                 },
             )
             assert resp.status_code == 200, f"합성 #{i+1} 시작 실패: {resp.text}"
-            job_id = resp.json()["id"]
+            batch_data = resp.json()
+            assert batch_data["accepted_count"] == 1
+            job_id = batch_data["items"][0]["id"]
 
             # BackgroundTask는 TestClient에서 동기 실행 → 응답 시점에 완료
             resp = client.get(

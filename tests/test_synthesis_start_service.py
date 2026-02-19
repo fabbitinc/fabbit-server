@@ -1,4 +1,4 @@
-"""합성 시작/배치 서비스 회귀 테스트."""
+"""합성 시작 서비스 회귀 테스트."""
 
 import types
 import unittest
@@ -10,10 +10,11 @@ import pandas as pd
 
 from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
+from app.modules.mapping.constants import MappingScope
 from app.modules.part import repository as part_repo
 from app.modules.synthesis.schemas import (
-    SynthesisBatchStartRequest,
     SynthesisStartRequest,
+    SynthesisUploadItem,
 )
 from app.modules.synthesis import service
 
@@ -41,6 +42,50 @@ class _FakeSession:
         self.refreshed.append(obj)
 
 
+def _make_mapping_record(scope: str = MappingScope.PART_LIST):
+    return types.SimpleNamespace(id=uuid.uuid4(), scope=scope)
+
+
+def _make_revision(sheet_name: str | None = "Sheet1"):
+    return types.SimpleNamespace(
+        id=uuid.uuid4(),
+        sheet_name=sheet_name,
+        mapping={
+            "column_mappings": [],
+            "relation_mappings": [],
+            "extended_properties": [],
+        },
+    )
+
+
+def _make_upload(upload_id, owner_type="project", owner_id=None, status="UPLOADED"):
+    return types.SimpleNamespace(
+        id=upload_id,
+        owner_type=owner_type,
+        owner_id=owner_id,
+        status=status,
+        file_key=f"tenants/org/raw_data/{upload_id}.xlsx",
+        original_name=f"{upload_id}.xlsx",
+    )
+
+
+def _make_job(mapping_id, upload_id):
+    return types.SimpleNamespace(
+        id=uuid.uuid4(),
+        mapping_id=mapping_id,
+        upload_id=upload_id,
+        status="PENDING",
+        total_rows=0,
+        processed_rows=0,
+        nodes_created=0,
+        relationships_created=0,
+        errors=[],
+        started_at=None,
+        completed_at=None,
+        created_at=datetime.now(timezone.utc),
+    )
+
+
 class SynthesisStartServiceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.auth = AuthContext(
@@ -49,46 +94,26 @@ class SynthesisStartServiceTests(unittest.TestCase):
             org_id=uuid.uuid4(),
         )
 
-    def test_start_synthesis_uses_org_latest_mapping(self) -> None:
+    def test_start_synthesis_single_upload(self) -> None:
+        """단건 업로드 — mapping_id 지정."""
         db = _FakeSession()
-        req = SynthesisStartRequest(upload_id=uuid.uuid4())
-        mapping_record = types.SimpleNamespace(
-            id=uuid.uuid4(),
-        )
-        revision = types.SimpleNamespace(
-            id=uuid.uuid4(),
-            sheet_name="Sheet1",
-            mapping={
-                "column_mappings": [],
-                "relation_mappings": [],
-                "extended_properties": [],
-            },
-        )
-        upload = types.SimpleNamespace(
-            id=req.upload_id,
-            status="UPLOADED",
-            file_key="tenants/org/raw_data/file.xlsx",
-            original_name="file.xlsx",
-        )
-        job = types.SimpleNamespace(
-            id=uuid.uuid4(),
+        upload_id = uuid.uuid4()
+        mapping_record = _make_mapping_record()
+        req = SynthesisStartRequest(
             mapping_id=mapping_record.id,
-            upload_id=req.upload_id,
-            status="PENDING",
-            total_rows=0,
-            processed_rows=0,
-            nodes_created=0,
-            relationships_created=0,
-            errors=[],
-            started_at=None,
-            completed_at=None,
-            created_at=datetime.now(timezone.utc),
+            uploads=[SynthesisUploadItem(upload_id=upload_id)],
+        )
+        revision = _make_revision()
+        upload = _make_upload(upload_id)
+        job = _make_job(mapping_record.id, upload_id)
+        batch = types.SimpleNamespace(
+            id=uuid.uuid4(), requested_count=1, accepted_count=1
         )
         add_background_task = Mock()
 
         with (
             patch(
-                "app.modules.synthesis.service.repo.get_latest_mapping",
+                "app.modules.synthesis.service.repo.get_mapping_by_id",
                 return_value=mapping_record,
             ),
             patch(
@@ -104,66 +129,62 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 return_value=job,
             ) as create_job,
             patch(
+                "app.modules.synthesis.service.repo.create_synthesis_batch",
+                return_value=batch,
+            ),
+            patch(
                 "app.modules.synthesis.service.repo.increment_mapping_usage"
             ) as inc_usage,
             patch(
                 "app.modules.synthesis.service.generate_uuid7",
-                return_value=uuid.uuid4(),
+                side_effect=[uuid.uuid4(), batch.id],
             ),
             patch(
                 "app.modules.synthesis.service.org_id_to_schema",
                 return_value="tenant_org",
             ),
-            patch("app.modules.synthesis.service._to_job_response", return_value="ok"),
         ):
             result = service.start_synthesis(db, self.auth, req, add_background_task)
 
-        self.assertEqual(result, "ok")
-        self.assertEqual(db.commit_count, 1)
-        self.assertEqual(db.refreshed, [job])
+        self.assertEqual(result.accepted_count, 1)
+        self.assertEqual(result.batch_id, batch.id)
         create_job.assert_called_once()
         self.assertEqual(create_job.call_args.kwargs["mapping_id"], mapping_record.id)
-        self.assertEqual(create_job.call_args.kwargs["upload_id"], upload.id)
-        inc_usage.assert_called_once_with(db, mapping_record, revision)
+        inc_usage.assert_called_once_with(db, mapping_record, revision, 1)
         add_background_task.assert_called_once()
 
-    def test_start_synthesis_raises_when_latest_mapping_missing(self) -> None:
+    def test_start_synthesis_raises_when_mapping_not_found(self) -> None:
         db = _FakeSession()
-        req = SynthesisStartRequest(upload_id=uuid.uuid4())
+        req = SynthesisStartRequest(
+            mapping_id=uuid.uuid4(),
+            uploads=[SynthesisUploadItem(upload_id=uuid.uuid4())],
+        )
 
         with patch(
-            "app.modules.synthesis.service.repo.get_latest_mapping", return_value=None
+            "app.modules.synthesis.service.repo.get_mapping_by_id", return_value=None
         ):
             with self.assertRaises(AppError) as ctx:
                 service.start_synthesis(db, self.auth, req, Mock())
 
         self.assertEqual(ctx.exception.code, "NOT_FOUND")
 
-    def test_start_synthesis_raises_when_upload_not_completed(self) -> None:
+    def test_start_synthesis_collects_incomplete_upload_as_failed(self) -> None:
         db = _FakeSession()
-        req = SynthesisStartRequest(upload_id=uuid.uuid4())
-        mapping_record = types.SimpleNamespace(
-            id=uuid.uuid4(),
+        upload_id = uuid.uuid4()
+        mapping_record = _make_mapping_record()
+        req = SynthesisStartRequest(
+            mapping_id=mapping_record.id,
+            uploads=[SynthesisUploadItem(upload_id=upload_id)],
         )
-        revision = types.SimpleNamespace(
-            id=uuid.uuid4(),
-            sheet_name=None,
-            mapping={
-                "column_mappings": [],
-                "relation_mappings": [],
-                "extended_properties": [],
-            },
-        )
-        upload = types.SimpleNamespace(
-            id=req.upload_id,
-            status="PENDING",
-            file_key="tenants/org/raw_data/file.xlsx",
-            original_name="file.xlsx",
+        revision = _make_revision(sheet_name=None)
+        upload = _make_upload(upload_id, status="PENDING")
+        batch = types.SimpleNamespace(
+            id=uuid.uuid4(), requested_count=1, accepted_count=0
         )
 
         with (
             patch(
-                "app.modules.synthesis.service.repo.get_latest_mapping",
+                "app.modules.synthesis.service.repo.get_mapping_by_id",
                 return_value=mapping_record,
             ),
             patch(
@@ -174,107 +195,68 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 "app.modules.synthesis.service.repo.get_upload_by_id",
                 return_value=upload,
             ),
+            patch(
+                "app.modules.synthesis.service.repo.create_synthesis_batch",
+                return_value=batch,
+            ),
+            patch(
+                "app.modules.synthesis.service.generate_uuid7",
+                return_value=batch.id,
+            ),
+            patch(
+                "app.modules.synthesis.service.org_id_to_schema",
+                return_value="tenant_org",
+            ),
         ):
-            with self.assertRaises(AppError) as ctx:
-                service.start_synthesis(db, self.auth, req, Mock())
+            result = service.start_synthesis(db, self.auth, req, Mock())
 
-        self.assertEqual(ctx.exception.code, "PRECONDITION_FAILED")
+        self.assertEqual(result.accepted_count, 0)
+        self.assertEqual(len(result.failed), 1)
+        self.assertIn("완료되지 않은", result.failed[0].reason)
 
     def test_start_synthesis_batch_creates_jobs_and_batch(self) -> None:
         db = _FakeSession()
         project_id = uuid.uuid4()
         upload_id_1 = uuid.uuid4()
         upload_id_2 = uuid.uuid4()
-        req = SynthesisBatchStartRequest(
-            upload_ids=[upload_id_1, upload_id_2],
-            mapping_id=None,
+        mapping_record = _make_mapping_record()
+        req = SynthesisStartRequest(
+            mapping_id=mapping_record.id,
+            project_id=project_id,
+            uploads=[
+                SynthesisUploadItem(upload_id=upload_id_1),
+                SynthesisUploadItem(upload_id=upload_id_2),
+            ],
         )
 
-        mapping_record = types.SimpleNamespace(
-            id=uuid.uuid4(),
-        )
-        revision = types.SimpleNamespace(
-            id=uuid.uuid4(),
-            sheet_name="Sheet1",
-            mapping={
-                "column_mappings": [],
-                "relation_mappings": [],
-                "extended_properties": [],
-            },
-        )
-        upload_1 = types.SimpleNamespace(
-            id=upload_id_1,
-            owner_type="project",
-            owner_id=project_id,
-            status="UPLOADED",
-            file_key="k1",
-            original_name="a.xlsx",
-        )
-        upload_2 = types.SimpleNamespace(
-            id=upload_id_2,
-            owner_type="project",
-            owner_id=project_id,
-            status="UPLOADED",
-            file_key="k2",
-            original_name="b.xlsx",
-        )
+        revision = _make_revision()
+        upload_1 = _make_upload(upload_id_1, owner_id=project_id)
+        upload_2 = _make_upload(upload_id_2, owner_id=project_id)
         batch = types.SimpleNamespace(
-            id=uuid.uuid4(),
-            requested_count=2,
-            accepted_count=2,
+            id=uuid.uuid4(), requested_count=2, accepted_count=2
         )
         jobs = [
-            types.SimpleNamespace(
-                id=uuid.uuid4(),
-                mapping_id=mapping_record.id,
-                upload_id=upload_id_1,
-                status="PENDING",
-                total_rows=0,
-                processed_rows=0,
-                nodes_created=0,
-                relationships_created=0,
-                errors=[],
-                started_at=None,
-                completed_at=None,
-                created_at=datetime.now(timezone.utc),
-            ),
-            types.SimpleNamespace(
-                id=uuid.uuid4(),
-                mapping_id=mapping_record.id,
-                upload_id=upload_id_2,
-                status="PENDING",
-                total_rows=0,
-                processed_rows=0,
-                nodes_created=0,
-                relationships_created=0,
-                errors=[],
-                started_at=None,
-                completed_at=None,
-                created_at=datetime.now(timezone.utc),
-            ),
+            _make_job(mapping_record.id, upload_id_1),
+            _make_job(mapping_record.id, upload_id_2),
         ]
         add_background_task = Mock()
 
-        def _get_upload(_db, upload_id):
-            if upload_id == upload_id_1:
+        def _get_upload(_db, uid):
+            if uid == upload_id_1:
                 return upload_1
-            if upload_id == upload_id_2:
+            if uid == upload_id_2:
                 return upload_2
             return None
 
         with (
             patch(
+                "app.modules.synthesis.service.repo.get_mapping_by_id",
+                return_value=mapping_record,
+            ),
+            patch(
                 "app.modules.synthesis.service.repo.get_project_by_id",
                 return_value=types.SimpleNamespace(id=project_id),
             ),
-            patch(
-                "app.modules.synthesis.service.repo.get_latest_mapping_by_project",
-                return_value=mapping_record,
-            ) as get_project_mapping,
-            patch(
-                "app.modules.synthesis.service.repo.get_latest_mapping",
-                return_value=None,
-            ) as get_org_mapping,
             patch(
                 "app.modules.synthesis.service.repo.get_latest_revision",
                 return_value=revision,
@@ -303,13 +285,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 return_value="tenant_org",
             ),
         ):
-            res = service.start_synthesis_batch(
-                db,
-                self.auth,
-                project_id,
-                req,
-                add_background_task,
-            )
+            res = service.start_synthesis(db, self.auth, req, add_background_task)
 
         self.assertEqual(res.accepted_count, 2)
         self.assertEqual(len(res.items), 2)
@@ -317,76 +293,42 @@ class SynthesisStartServiceTests(unittest.TestCase):
         self.assertEqual(db.commit_count, 1)
         self.assertEqual(add_background_task.call_count, 2)
         inc_usage.assert_called_once_with(db, mapping_record, revision, 2)
-        get_project_mapping.assert_called_once_with(db, project_id)
-        get_org_mapping.assert_not_called()
 
     def test_start_synthesis_batch_collects_failed_uploads(self) -> None:
         db = _FakeSession()
         project_id = uuid.uuid4()
         ok_upload_id = uuid.uuid4()
         bad_upload_id = uuid.uuid4()
-        req = SynthesisBatchStartRequest(
-            upload_ids=[ok_upload_id, bad_upload_id],
-            mapping_id=None,
-        )
-
-        mapping_record = types.SimpleNamespace(
-            id=uuid.uuid4(),
-        )
-        revision = types.SimpleNamespace(
-            id=uuid.uuid4(),
-            sheet_name=None,
-            mapping={
-                "column_mappings": [],
-                "relation_mappings": [],
-                "extended_properties": [],
-            },
-        )
-        ok_upload = types.SimpleNamespace(
-            id=ok_upload_id,
-            owner_type="project",
-            owner_id=project_id,
-            status="UPLOADED",
-            file_key="k1",
-            original_name="a.xlsx",
-        )
-        batch = types.SimpleNamespace(
-            id=uuid.uuid4(),
-            requested_count=2,
-            accepted_count=1,
-        )
-        job = types.SimpleNamespace(
-            id=uuid.uuid4(),
+        mapping_record = _make_mapping_record()
+        req = SynthesisStartRequest(
             mapping_id=mapping_record.id,
-            upload_id=ok_upload_id,
-            status="PENDING",
-            total_rows=0,
-            processed_rows=0,
-            nodes_created=0,
-            relationships_created=0,
-            errors=[],
-            started_at=None,
-            completed_at=None,
-            created_at=datetime.now(timezone.utc),
+            project_id=project_id,
+            uploads=[
+                SynthesisUploadItem(upload_id=ok_upload_id),
+                SynthesisUploadItem(upload_id=bad_upload_id),
+            ],
         )
 
-        def _get_upload(_db, upload_id):
-            if upload_id == ok_upload_id:
+        revision = _make_revision(sheet_name=None)
+        ok_upload = _make_upload(ok_upload_id, owner_id=project_id)
+        batch = types.SimpleNamespace(
+            id=uuid.uuid4(), requested_count=2, accepted_count=1
+        )
+        job = _make_job(mapping_record.id, ok_upload_id)
+
+        def _get_upload(_db, uid):
+            if uid == ok_upload_id:
                 return ok_upload
             return None
 
         with (
             patch(
-                "app.modules.synthesis.service.repo.get_project_by_id",
-                return_value=types.SimpleNamespace(id=project_id),
-            ),
-            patch(
-                "app.modules.synthesis.service.repo.get_latest_mapping_by_project",
+                "app.modules.synthesis.service.repo.get_mapping_by_id",
                 return_value=mapping_record,
             ),
             patch(
-                "app.modules.synthesis.service.repo.get_latest_mapping",
-                return_value=None,
+                "app.modules.synthesis.service.repo.get_project_by_id",
+                return_value=types.SimpleNamespace(id=project_id),
             ),
             patch(
                 "app.modules.synthesis.service.repo.get_latest_revision",
@@ -414,80 +356,123 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 return_value="tenant_org",
             ),
         ):
-            res = service.start_synthesis_batch(
-                db,
-                self.auth,
-                project_id,
-                req,
-                Mock(),
-            )
+            res = service.start_synthesis(db, self.auth, req, Mock())
 
         self.assertEqual(res.accepted_count, 1)
         self.assertEqual(len(res.failed), 1)
         self.assertEqual(res.failed[0].upload_id, bad_upload_id)
 
-    def test_start_synthesis_batch_falls_back_to_org_mapping(self) -> None:
+    def test_start_synthesis_rejects_upload_from_other_project(self) -> None:
         db = _FakeSession()
         project_id = uuid.uuid4()
+        other_project_id = uuid.uuid4()
         upload_id = uuid.uuid4()
-        req = SynthesisBatchStartRequest(upload_ids=[upload_id], mapping_id=None)
+        mapping_record = _make_mapping_record()
+        req = SynthesisStartRequest(
+            mapping_id=mapping_record.id,
+            project_id=project_id,
+            uploads=[SynthesisUploadItem(upload_id=upload_id)],
+        )
 
-        org_mapping = types.SimpleNamespace(
-            id=uuid.uuid4(),
-        )
-        org_revision = types.SimpleNamespace(
-            id=uuid.uuid4(),
-            sheet_name=None,
-            mapping={
-                "column_mappings": [],
-                "relation_mappings": [],
-                "extended_properties": [],
-            },
-        )
-        upload = types.SimpleNamespace(
-            id=upload_id,
-            owner_type="project",
-            owner_id=project_id,
-            status="UPLOADED",
-            file_key="k1",
-            original_name="a.xlsx",
-        )
+        revision = _make_revision(sheet_name=None)
+        upload = _make_upload(upload_id, owner_id=other_project_id)
         batch = types.SimpleNamespace(
-            id=uuid.uuid4(),
-            requested_count=1,
-            accepted_count=1,
-        )
-        job = types.SimpleNamespace(
-            id=uuid.uuid4(),
-            mapping_id=org_mapping.id,
-            upload_id=upload_id,
-            status="PENDING",
-            total_rows=0,
-            processed_rows=0,
-            nodes_created=0,
-            relationships_created=0,
-            errors=[],
-            started_at=None,
-            completed_at=None,
-            created_at=datetime.now(timezone.utc),
+            id=uuid.uuid4(), requested_count=1, accepted_count=0
         )
 
         with (
+            patch(
+                "app.modules.synthesis.service.repo.get_mapping_by_id",
+                return_value=mapping_record,
+            ),
             patch(
                 "app.modules.synthesis.service.repo.get_project_by_id",
                 return_value=types.SimpleNamespace(id=project_id),
             ),
             patch(
-                "app.modules.synthesis.service.repo.get_latest_mapping_by_project",
-                return_value=None,
+                "app.modules.synthesis.service.repo.get_latest_revision",
+                return_value=revision,
             ),
             patch(
-                "app.modules.synthesis.service.repo.get_latest_mapping",
-                return_value=org_mapping,
-            ) as get_org_mapping,
+                "app.modules.synthesis.service.repo.get_upload_by_id",
+                return_value=upload,
+            ),
+            patch(
+                "app.modules.synthesis.service.repo.create_synthesis_batch",
+                return_value=batch,
+            ),
+            patch(
+                "app.modules.synthesis.service.generate_uuid7", return_value=batch.id
+            ),
+            patch(
+                "app.modules.synthesis.service.org_id_to_schema",
+                return_value="tenant_org",
+            ),
+        ):
+            res = service.start_synthesis(db, self.auth, req, Mock())
+
+        self.assertEqual(res.accepted_count, 0)
+        self.assertEqual(len(res.failed), 1)
+        self.assertEqual(
+            res.failed[0].reason, "해당 프로젝트에 속하지 않은 업로드입니다"
+        )
+
+    # ── root_context 검증 테스트 ──
+
+    def test_root_bom_requires_root_context(self) -> None:
+        """ROOT_BOM scope에서 root_context 없으면 MISSING_ROOT_CONTEXT 에러."""
+        db = _FakeSession()
+        mapping_record = _make_mapping_record(scope=MappingScope.ROOT_BOM)
+        req = SynthesisStartRequest(
+            mapping_id=mapping_record.id,
+            uploads=[SynthesisUploadItem(upload_id=uuid.uuid4())],
+        )
+        revision = _make_revision()
+
+        with (
+            patch(
+                "app.modules.synthesis.service.repo.get_mapping_by_id",
+                return_value=mapping_record,
+            ),
             patch(
                 "app.modules.synthesis.service.repo.get_latest_revision",
-                return_value=org_revision,
+                return_value=revision,
+            ),
+        ):
+            with self.assertRaises(AppError) as ctx:
+                service.start_synthesis(db, self.auth, req, Mock())
+
+        self.assertEqual(ctx.exception.code, "MISSING_ROOT_CONTEXT")
+
+    def test_root_bom_with_root_context_succeeds(self) -> None:
+        """ROOT_BOM scope에서 root_context 있으면 정상 처리."""
+        db = _FakeSession()
+        upload_id = uuid.uuid4()
+        mapping_record = _make_mapping_record(scope=MappingScope.ROOT_BOM)
+        req = SynthesisStartRequest(
+            mapping_id=mapping_record.id,
+            uploads=[
+                SynthesisUploadItem(
+                    upload_id=upload_id,
+                    root_context={"Part": "ASM-001"},
+                ),
+            ],
+        )
+        revision = _make_revision()
+        upload = _make_upload(upload_id)
+        job = _make_job(mapping_record.id, upload_id)
+        batch = types.SimpleNamespace(
+            id=uuid.uuid4(), requested_count=1, accepted_count=1
+        )
+
+        with (
+            patch(
+                "app.modules.synthesis.service.repo.get_mapping_by_id",
+                return_value=mapping_record,
+            ),
+            patch(
+                "app.modules.synthesis.service.repo.get_latest_revision",
+                return_value=revision,
             ),
             patch(
                 "app.modules.synthesis.service.repo.get_upload_by_id",
@@ -511,84 +496,71 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 return_value="tenant_org",
             ),
         ):
-            res = service.start_synthesis_batch(db, self.auth, project_id, req, Mock())
+            res = service.start_synthesis(db, self.auth, req, Mock())
 
         self.assertEqual(res.accepted_count, 1)
-        get_org_mapping.assert_called_once_with(db)
 
-    def test_start_synthesis_batch_rejects_upload_from_other_project(self) -> None:
+    def test_part_list_rejects_unexpected_root_context(self) -> None:
+        """PART_LIST scope에서 root_context 있으면 UNEXPECTED_ROOT_CONTEXT 에러."""
         db = _FakeSession()
-        project_id = uuid.uuid4()
-        other_project_id = uuid.uuid4()
-        upload_id = uuid.uuid4()
-        req = SynthesisBatchStartRequest(upload_ids=[upload_id], mapping_id=None)
-
-        mapping_record = types.SimpleNamespace(
-            id=uuid.uuid4(),
+        mapping_record = _make_mapping_record(scope=MappingScope.PART_LIST)
+        req = SynthesisStartRequest(
+            mapping_id=mapping_record.id,
+            uploads=[
+                SynthesisUploadItem(
+                    upload_id=uuid.uuid4(),
+                    root_context={"Part": "ASM-001"},
+                ),
+            ],
         )
-        revision = types.SimpleNamespace(
-            id=uuid.uuid4(),
-            sheet_name=None,
-            mapping={
-                "column_mappings": [],
-                "relation_mappings": [],
-                "extended_properties": [],
-            },
-        )
-        upload = types.SimpleNamespace(
-            id=upload_id,
-            owner_type="project",
-            owner_id=other_project_id,
-            status="UPLOADED",
-            file_key="k1",
-            original_name="a.xlsx",
-        )
-        batch = types.SimpleNamespace(
-            id=uuid.uuid4(),
-            requested_count=1,
-            accepted_count=0,
-        )
+        revision = _make_revision()
 
         with (
             patch(
-                "app.modules.synthesis.service.repo.get_project_by_id",
-                return_value=types.SimpleNamespace(id=project_id),
-            ),
-            patch(
-                "app.modules.synthesis.service.repo.get_latest_mapping_by_project",
+                "app.modules.synthesis.service.repo.get_mapping_by_id",
                 return_value=mapping_record,
-            ),
-            patch(
-                "app.modules.synthesis.service.repo.get_latest_mapping",
-                return_value=None,
             ),
             patch(
                 "app.modules.synthesis.service.repo.get_latest_revision",
                 return_value=revision,
             ),
+        ):
+            with self.assertRaises(AppError) as ctx:
+                service.start_synthesis(db, self.auth, req, Mock())
+
+        self.assertEqual(ctx.exception.code, "UNEXPECTED_ROOT_CONTEXT")
+
+    def test_full_bom_rejects_unexpected_root_context(self) -> None:
+        """FULL_BOM scope에서 root_context 있으면 UNEXPECTED_ROOT_CONTEXT 에러."""
+        db = _FakeSession()
+        mapping_record = _make_mapping_record(scope=MappingScope.FULL_BOM)
+        req = SynthesisStartRequest(
+            mapping_id=mapping_record.id,
+            uploads=[
+                SynthesisUploadItem(
+                    upload_id=uuid.uuid4(),
+                    root_context={"Part": "ASM-001"},
+                ),
+            ],
+        )
+        revision = _make_revision()
+
+        with (
             patch(
-                "app.modules.synthesis.service.repo.get_upload_by_id",
-                return_value=upload,
+                "app.modules.synthesis.service.repo.get_mapping_by_id",
+                return_value=mapping_record,
             ),
             patch(
-                "app.modules.synthesis.service.repo.create_synthesis_batch",
-                return_value=batch,
-            ),
-            patch(
-                "app.modules.synthesis.service.generate_uuid7", return_value=batch.id
-            ),
-            patch(
-                "app.modules.synthesis.service.org_id_to_schema",
-                return_value="tenant_org",
+                "app.modules.synthesis.service.repo.get_latest_revision",
+                return_value=revision,
             ),
         ):
-            res = service.start_synthesis_batch(db, self.auth, project_id, req, Mock())
+            with self.assertRaises(AppError) as ctx:
+                service.start_synthesis(db, self.auth, req, Mock())
 
-        self.assertEqual(res.accepted_count, 0)
-        self.assertEqual(len(res.failed), 1)
-        self.assertEqual(
-            res.failed[0].reason, "해당 프로젝트에 속하지 않은 업로드입니다"
-        )
+        self.assertEqual(ctx.exception.code, "UNEXPECTED_ROOT_CONTEXT")
+
+    # ── 배치 상태 조회 ──
 
     def test_get_synthesis_batch_returns_aggregated_progress(self) -> None:
         db = _FakeSession()
@@ -646,6 +618,8 @@ class SynthesisStartServiceTests(unittest.TestCase):
         self.assertEqual(res.failed_job_count, 1)
         self.assertEqual(res.failed_count, 1)
         self.assertEqual(res.status, "COMPLETED_WITH_ERRORS")
+
+    # ── _run_synthesis 백그라운드 태스크 ──
 
     def test_run_synthesis_skips_missing_bom_part_in_service(self) -> None:
         db = _FakeSession()

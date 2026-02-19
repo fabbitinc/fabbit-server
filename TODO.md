@@ -1,1 +1,3 @@
 - [ ] 멀티테넌트 디비 마이그레이션 방법은?
+- [ ] 모든 릴레이션 RDS + Graph (현재 part만 되어있음)
+- [ ] scope_root_bom2 mapping llm 이 좀 별로임 (외부 관계 추론)

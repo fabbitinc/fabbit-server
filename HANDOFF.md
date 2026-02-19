@@ -49,11 +49,10 @@ MappingRecord + MappingRevision 분리를 통해 매핑 업데이트 이력 추�
 - scope가 동일 값으로 재할당되면 dirty 감지 안 됨 → `updated_at` null로 남는 버그
 - `update_mapping`에서 `record.updated_at = datetime.now(timezone.utc)` 명시적 설정
 
-### 5. Preview 스텁 — 주석 처리됨
+### 5. Preview 스텁 — 제거
 
-- `mapping_router.py`의 `preview_mapping` 스텁 코드가 주석 처리된 상태
-- `Path`, `json`, `JSONResponse` import 제거됨 (스텁 비활성화에 따라 불필요)
-- `sample/mapping_preview_response.json` 파일은 유지 (프론트 참고용)
+- `mapping_router.py`의 `preview_mapping` 임시 스텁이 제거되어 실제 LLM 기반 미리보기 서비스로 항상 라우팅
+- `sample/mapping_preview_response.json` 파일은 프론트 참고용 샘플로 유지
 
 ## What Worked
 
