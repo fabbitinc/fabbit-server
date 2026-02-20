@@ -5,7 +5,7 @@ Service는 저장 위치(RDS/Graph)를 모르고, Repository가 dual-write를 �
 
 import uuid
 
-from sqlalchemy import func
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import generate_uuid7
@@ -57,18 +57,108 @@ def list_parts_paginated(
     db: Session,
     *,
     search: str | None = None,
+    category: str | None = None,
+    lifecycle_state: str | None = None,
+    has_drawing: bool | None = None,
+    has_children: bool | None = None,
     offset: int = 0,
     limit: int = 20,
-) -> tuple[list[Part], int]:
-    """Part 목록 페이징 조회 (RDS)."""
-    query = db.query(Part)
+) -> tuple[list[dict], int]:
+    """Part 목록 페이징 조회 (Drawing JOIN + 하위부품 수 포함).
+
+    Returns:
+        (items, total) — items는 PartSummary 필드를 포함하는 dict 리스트
+    """
+    # 필터 조건 조립
+    conditions = []
     if search:
-        query = query.filter(
+        conditions.append(
             Part.part_number.ilike(f"%{search}%") | Part.name.ilike(f"%{search}%")
         )
-    total = query.count()
-    parts = query.order_by(Part.part_number).offset(offset).limit(limit).all()
-    return parts, total
+    if category:
+        conditions.append(Part.category == category)
+    if lifecycle_state:
+        conditions.append(Part.lifecycle_state == lifecycle_state)
+    if has_drawing is True:
+        conditions.append(Part.drawing_id.isnot(None))
+    elif has_drawing is False:
+        conditions.append(Part.drawing_id.is_(None))
+    if has_children is True:
+        conditions.append(exists().where(BomLink.parent_part_id == Part.id))
+    elif has_children is False:
+        conditions.append(~exists().where(BomLink.parent_part_id == Part.id))
+
+    # 총 건수 (JOIN 없이)
+    count_query = db.query(func.count(Part.id))
+    for cond in conditions:
+        count_query = count_query.filter(cond)
+    total = count_query.scalar() or 0
+
+    # 데이터 (Drawing LEFT JOIN + 하위부품 수 서브쿼리)
+    children_count_subq = (
+        select(func.count(BomLink.id))
+        .where(BomLink.parent_part_id == Part.id)
+        .correlate(Part)
+        .scalar_subquery()
+        .label("children_count")
+    )
+
+    data_query = (
+        db.query(
+            Part.id,
+            Part.part_number,
+            Part.name,
+            Part.category,
+            Part.revision,
+            Part.lifecycle_state,
+            Drawing.drawing_number,
+            children_count_subq,
+        )
+        .outerjoin(Drawing, Part.drawing_id == Drawing.id)
+    )
+    for cond in conditions:
+        data_query = data_query.filter(cond)
+
+    rows = data_query.order_by(Part.part_number).offset(offset).limit(limit).all()
+
+    items = [
+        {
+            "id": r.id,
+            "part_number": r.part_number,
+            "name": r.name,
+            "category": r.category,
+            "revision": r.revision,
+            "lifecycle_state": r.lifecycle_state,
+            "drawing_number": r.drawing_number,
+            "children_count": r.children_count or 0,
+        }
+        for r in rows
+    ]
+    return items, total
+
+
+def get_distinct_categories(db: Session) -> list[str]:
+    """Part category DISTINCT 값 목록 (NULL 제외)."""
+    rows = (
+        db.query(Part.category)
+        .filter(Part.category.isnot(None))
+        .distinct()
+        .order_by(Part.category)
+        .all()
+    )
+    return [r[0] for r in rows]
+
+
+def get_distinct_lifecycle_states(db: Session) -> list[str]:
+    """Part lifecycle_state DISTINCT 값 목록 (NULL 제외)."""
+    rows = (
+        db.query(Part.lifecycle_state)
+        .filter(Part.lifecycle_state.isnot(None))
+        .distinct()
+        .order_by(Part.lifecycle_state)
+        .all()
+    )
+    return [r[0] for r in rows]
 
 
 def count_all(db: Session) -> int:

@@ -2,113 +2,143 @@
 
 ## Goal
 
-MappingRecord + MappingRevision 분리를 통해 매핑 업데이트 이력 추적 기능 구현.
-기존 단일 `mapping_records` 테이블을 identity(Record) + versioned content(Revision)으로 분리하되, API 표면은 기존과 호환 유지.
+DEFINED_BY / SUPPLIED_BY 관계를 Graph-only에서 RDS+Graph dual-write로 전환 완료 후,
+Part 목록 검색/필터 기능을 설계·구현하는 단계.
 
 ## Current Progress
 
-### 1. MappingRecord + MappingRevision 분리 — 완료
+### 완료: DEFINED_BY / SUPPLIED_BY dual-write
 
-**MappingRecord** (identity):
-- `id`, `name`, `scope`, `is_active`, `usage_count`, `created_at`, `updated_at`
-- `upload_id`, `sheet_name`, `original_headers`, `mapping`, `version` 제거 → Revision으로 이동
+**모델 변경 (`app/modules/part/models.py`):**
+- `Part.drawing_id` FK 추가 (→ `drawings.id`, `SET NULL`) — N:1 관계
+- `PartRevision.drawing_id` 스냅샷 컬럼 추가 (FK 없음)
+- `PartSupplier` 조인 테이블 신규 — M:N 관계 (`part_id`, `supplier_id`, `unit_cost`, `extended_properties`)
 
-**MappingRevision** (versioned content):
-- `id`, `record_id` (FK), `upload_id` (FK), `version`, `sheet_name`, `original_headers`, `mapping` (JSONB), `usage_count`, `created_at`
-- 인덱스: `ix_mapping_revisions_record_id`, `uq_mapping_revisions_record_version` (unique), `ix_mapping_revisions_upload_id`
+**Repository 변경 (`app/modules/part/repository.py`):**
+- `link_part_to_drawing()` — Part.drawing_id 설정 + Graph DEFINED_BY MERGE
+- `link_part_to_supplier()` — PartSupplier upsert + Graph SUPPLIED_BY MERGE
+- `get_drawings(db, part_id)` — Graph Cypher → RDS JOIN 전환
+- `get_suppliers(db, part_id)` — Graph Cypher → RDS JOIN 전환
+- `upsert_part()` — `job_id` Optional 전환 (Drawing 합성에서 `None` 전달)
+- `_create_revision_snapshot()` — `drawing_id` 포함
 
-**변경 파일:**
-- `app/modules/mapping/models.py` — Record 축소 + Revision 신규
-- `app/modules/mapping/schemas.py` — `MappingUpdateRequest` 추가, `MappingResponse`에 `version` 추가
-- `app/modules/mapping/repository.py` — `(record, revision)` 튜플 반환 패턴
-- `app/modules/mapping/service.py` — `confirm_mapping`, `update_mapping`, `deactivate_mapping`, `_to_mapping_response`
-- `app/api/v1/tenant/mapping_router.py` — `PUT /{id}`, `DELETE /{id}` 추가
-- `app/modules/synthesis/repository.py` — MappingRevision JOIN 경유 조회
-- `app/modules/synthesis/service.py` — `revision.mapping`/`revision.sheet_name` 사용
-- `tests/test_synthesis_start_service.py` — 모킹 업데이트
+**Service 변경:**
+- `app/modules/part/service.py` — drawings/suppliers 조회를 RDS dict 직접 접근으로 변경, Graph 파싱 헬퍼(`_safe_float`) 제거
+- `app/modules/synthesis/service.py` — Phase 5를 DEFINED_BY/SUPPLIED_BY dual-write로 분리 (5a/5b/5c)
+  - `_process_row_relationships()`에서 DEFINED_BY/SUPPLIED_BY 제외
+  - `_extract_defined_by()`, `_extract_supplied_by()` 함수 추가
+  - Rootless relation도 DEFINED_BY/SUPPLIED_BY는 구조화 경로로 처리
+- `app/modules/drawing/service.py` — `_run_drawing_synthesis`를 `upsert_drawing` + `part_repo.upsert_part` + `link_part_to_drawing` 호출로 전환
+  - `_build_drawing_props`, `_build_part_props` — Cypher format → Python dict 반환
 
-### 2. Name 유니크 제약 — 완료
+**Drawing repository 정리 (`app/modules/drawing/repository.py`):**
+- Graph-only 함수 3개 제거: `merge_drawing_node`, `merge_part_node`, `merge_defined_by`
 
-- `uq_mapping_records_name` unique index (비활성 포함)
-- `repo.exists_by_name()` + `confirm_mapping`/`update_mapping`에서 중복 검사
-- 에러 코드: `DUPLICATE_NAME`
+**문서 업데이트:**
+- `docs/agents/project.md` — 관계 저장 위치: `DEFINED_BY` → RDS FK + Graph, `SUPPLIED_BY` → RDS 조인 테이블 + Graph
+- `docs/agents/repository.md` — dual-write 대상에 DEFINED_BY, SUPPLIED_BY 추가
 
-### 3. Scope 자동 판별 — 완료
+### 완료: nodes/search 검색 범위 확장
 
-- 프론트에서 scope를 지정하지 않고, 서버가 매핑 내용 기반으로 자동 판별
-- `MappingScope(StrEnum)` 정의 (`app/modules/mapping/constants.py`)
-  - `PART_LIST`: relation 없음. 파일 업로드만으로 합성 가능
-  - `FULL_BOM`: relation 존재 + 모든 대상 노드 merge key 매핑됨. 파일만으로 합성 가능
-  - `ROOT_BOM`: relation 존재 + 대상 노드 merge key 미할당. 합성 시 root_part_number 등 추가 입력 필요
-- `_determine_scope(mapping)` 함수가 `relation_mappings` + `merge_keys_by_label` 기반 판별
-- `MappingConfirmRequest`에서 `scope` 필드 제거
+`search_merge_key()` 검색 필드 확장 (반환값은 merge key 유지):
+- Part: `part_number OR name`
+- Drawing: `drawing_number OR name`
+- Supplier: `company_name OR code`
+- `ontology_router.py` docstring에 검색 범위 명세 추가
 
-### 4. updated_at 명시적 갱신 — 완료
+### 완료: Supplier repository value/label 수정
 
-- `onupdate=func.now()`는 SQLAlchemy가 실제 UPDATE SQL을 발행할 때만 동작
-- scope가 동일 값으로 재할당되면 dirty 감지 안 됨 → `updated_at` null로 남는 버그
-- `update_mapping`에서 `record.updated_at = datetime.now(timezone.utc)` 명시적 설정
-
-### 5. Preview 스텁 — 제거
-
-- `mapping_router.py`의 `preview_mapping` 임시 스텁이 제거되어 실제 LLM 기반 미리보기 서비스로 항상 라우팅
-- `sample/mapping_preview_response.json` 파일은 프론트 참고용 샘플로 유지
+- `search_merge_key()` 반환에서 `value`(merge key)와 `label`이 뒤바뀌어 있던 버그 수정
+- `Supplier.code`가 nullable이라 `value`에 들어가면 Pydantic 검증 에러 발생했음
 
 ## What Worked
 
-- `_validate_and_fix_mapping()`이 모든 매핑 정규화의 최종 관문 → `is_extended` 세팅을 여기서만 처리
-- `_determine_scope()`를 온톨로지의 `MANUFACTURING_ONTOLOGY.node_labels`에서 merge key를 동적으로 읽음 → 온톨로지 변경 시 자동 반영
-- Repository가 `(record, revision)` 튜플을 반환하는 패턴으로 호출자가 명확하게 두 모델 접근
+- `upsert_bom_link` 패턴을 그대로 `link_part_to_supplier`에 적용 — 일관성 유지
+- Drawing은 N:1이므로 `Part.drawing_id` FK로 충분, 별도 조인 테이블 불필요
+- `_process_row_relationships`에서 DEFINED_BY/SUPPLIED_BY를 스킵하고 별도 추출 함수로 분리하는 접근이 깔끔
 
 ## What Didn't Work / 주의사항
 
-- **린터가 mapping_router.py 변경을 반복 리버트**: import 추가 + PUT/DELETE 엔드포인트를 3회 재적용해야 했음. 린터가 "미사용 import" 또는 스텁 코드 패턴으로 자동 수정하는 것으로 추정
-- **`server_onupdate=func.now()`는 DB 트리거를 생성하지 않음**: SQLAlchemy가 "서버에 트리거가 있다"고 가정만 할 뿐 — 실제 트리거 없으면 무의미
-- **`onupdate=func.now()`의 한계**: 같은 값 재할당 시 dirty 감지 안 됨 → 명시적 설정 필요
-- **TenantBase 모델은 Alembic이 아닌 provisioning의 `create_all()`로 관리**: 개발 환경에서는 `docker compose down -v && docker compose up -d` 후 `alembic upgrade head`
-
-## 프론트 매핑 UI 설계 방향 (이전 세션에서 합의)
-
-칸반 보드 방식:
-```
-[부품]              [상위 부품]         [공급사]          [도면]
- 품번 *              품번 *              업체명 *          도면번호 *
- 품명                품명               ─ 관계 속성 ─
- 재질               ─ 관계 속성 ─        단가
- 단위                수량
- ...                 순서
-─ 확장 속성 ─
- (드롭 시 자동생성)
-```
-
-프론트가 참고할 API 데이터:
-- `editable_constraints.allowed_part_properties` → 부품 레인 슬롯 목록
-- `editable_constraints.merge_keys_by_label` → 각 레인의 필수 슬롯
-- `editable_constraints.relation_catalog` → 관계 타입별 from/to 라벨
-- `editable_constraints.relation_property_catalog` → 관계 속성 슬롯 목록
+- **TenantBase 모델 변경은 Alembic이 빈 마이그레이션 생성**: `Base`(public)만 추적하므로 autogenerate가 감지 못함. 개발 환경에서는 DB 재생성 필요: `docker compose down -v && docker compose up -d` → `uv run alembic upgrade head`
+- **Supplier.code는 nullable**: merge key가 아닌 필드를 `value`로 반환하면 Pydantic `string` 검증 실패
 
 ## 테스트 상태
 
-- 71 passed, 6 skipped (LLM 의존 테스트)
+- 74 passed, 6 skipped
 - `uv run pytest tests/ -v`
 
-## 전체 파이프라인 현황
+## 관계 저장 현황 (모두 RDS+Graph dual-write 완료)
 
-```
-1. 업로드        → 파일 S3 저장                              ✅ 완료
-2. 매핑 미리보기  → LLM 헤더 분석 → MappingResult 반환         ✅ 완료
-3. 매핑 확정      → MappingRecord + MappingRevision 저장       ✅ 완료
-4. 매핑 수정/삭제 → 리비전 관리, soft-delete                   ✅ 완료
-5. 합성(인제스션) → 확정된 매핑 기반 Excel 파싱 → AGE 그래프 적재  🔜 다음 작업
-```
+| 관계 | 방식 | RDS 저장 |
+|------|------|----------|
+| `CONSISTS_OF` (Part→Part) | `upsert_bom_link` | `bom_links` 테이블 |
+| `HAS_ITEM` (Project→Part) | project_repo | `project_parts` 테이블 |
+| `DEFINED_BY` (Part→Drawing) | `link_part_to_drawing` | `parts.drawing_id` FK (N:1) |
+| `SUPPLIED_BY` (Part→Supplier) | `link_part_to_supplier` | `part_suppliers` 테이블 (M:N) |
 
 ## Next Steps
 
-1. **합성(인제스션) 파이프라인 구현** — 확정된 매핑(`MappingRevision.mapping`)을 기반으로 Excel 행을 파싱하여 AGE 그래프에 노드/관계 배치 적재. 기존 `app/modules/synthesis/` 모듈 위에 구현
-   - scope별 분기: `PART_LIST`(Part 노드만), `FULL_BOM`(파일만으로 전체 BOM), `ROOT_BOM`(root_part_number 추가 입력 필요)
-   - `property_mappings` → Part 노드 속성, `relation_mappings` → 관계 + 대상 노드 생성
-   - 확장 속성(`is_extended=true`) → `_ext_` 프리픽스로 노드 속성 저장
-2. **DB 재생성 후 검증** — `docker compose down -v && docker compose up -d && uv run alembic upgrade head`
-3. **커밋** — Record/Revision 분리 + scope 자동 판별 + updated_at 수정
-4. **프론트 매핑 UI** — 칸반 보드 방식으로 재구현 (v2 스키마 기반)
-5. **E2E 검증** — 매핑 preview → confirm → update → 합성 → 대시보드 흐름 테스트
+### 1. Part 목록 검색/필터 구현 (설계 합의 완료)
+
+**API 설계:**
+
+#### `GET /api/v1/parts/filter-options` — 필터 옵션 조회
+프론트가 필터 UI를 동적으로 구성하기 위한 메타데이터 반환.
+
+```json
+{
+  "basic": [
+    {"key": "category", "display_name": "분류", "data_type": "string",
+     "values": ["기구부품", "전자부품"]},
+    {"key": "is_phantom", "display_name": "팬텀 여부", "data_type": "boolean"},
+    {"key": "lead_time_days", "display_name": "리드타임(일)", "data_type": "integer",
+     "min": 1, "max": 90}
+  ],
+  "extended": [
+    {"key": "_ext_color", "display_name": "색상", "data_type": "string",
+     "values": ["RED", "BLUE"]},
+    {"key": "_ext_weight", "display_name": "중량", "data_type": "float",
+     "min": 0.1, "max": 150.0}
+  ]
+}
+```
+
+- `string` → `values` (DISTINCT 쿼리)
+- `integer`/`float` → `min`, `max`
+- `boolean` → 필드만 (값 고정)
+- 확장 속성 정의는 `ExtendedPropertyDefinition` 테이블에서 조회 (이미 모델 존재)
+
+#### `GET /api/v1/parts` — 목록 조회 (필터 확장)
+
+```
+GET /api/v1/parts?search=BRK
+    &category=기구부품
+    &lifecycle_state=ACTIVE
+    &ext=_ext_color:eq:RED
+    &ext=_ext_weight:like:100
+```
+
+- `search`: `part_number OR name` ILIKE (기존)
+- 기본 속성 필터: 쿼리 파라미터 직접 (`eq` 고정)
+- 확장 속성 필터: `ext` 반복 파라미터, `key:op:value` 형식
+  - `eq` → `extended_properties->>'key' = 'value'`
+  - `like` → `extended_properties->>'key' ILIKE '%value%'`
+
+**구현 순서:**
+1. `ExtendedPropertyDefinition` 등록 로직 확인 (합성 시 자동 등록되는지)
+2. `GET /api/v1/parts/filter-options` 엔드포인트 구현
+3. `GET /api/v1/parts` 필터 파라미터 확장
+4. 테스트
+
+### 2. DB 재생성 (dual-write 모델 반영)
+
+```bash
+docker compose down -v && docker compose up -d
+uv run alembic upgrade head
+```
+
+### 3. 커밋
+
+- DEFINED_BY / SUPPLIED_BY dual-write 전환
+- nodes/search 검색 범위 확장
+- Part 목록 필터 (구현 후)

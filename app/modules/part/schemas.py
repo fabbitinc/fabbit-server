@@ -57,7 +57,10 @@ class PartSummary(BaseModel):
     part_number: str
     name: str | None = None
     category: str | None = None
+    revision: str | None = None
     lifecycle_state: str | None = None
+    drawing_number: str | None = None
+    children_count: int = 0
 
 
 class PartListResponse(BaseModel):
@@ -67,6 +70,13 @@ class PartListResponse(BaseModel):
     offset: int
     limit: int
     items: list[PartSummary]
+
+
+class PartFilterOptions(BaseModel):
+    """Part 필터 옵션 응답"""
+
+    categories: list[str]
+    lifecycle_states: list[str]
 
 
 # ── 상세 ──

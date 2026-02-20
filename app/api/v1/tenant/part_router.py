@@ -9,21 +9,56 @@ from app.modules.part import service
 from app.modules.part.schemas import (
     BomTreeResponse,
     PartDetailResponse,
+    PartFilterOptions,
     PartListResponse,
 )
 
 router = APIRouter(prefix="/api/v1/parts", tags=["parts"])
 
 
+@router.get("/filter-options", response_model=PartFilterOptions)
+def get_filter_options(
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """Part 필터 옵션 조회.
+
+    카테고리, 수명주기 상태의 DISTINCT 값 목록을 반환합니다.
+    프론트엔드에서 필터 UI의 선택지를 동적으로 구성하는 데 사용됩니다.
+    """
+    return service.get_filter_options(db, auth)
+
+
 @router.get("", response_model=PartListResponse)
 def list_parts(
-    search: str | None = Query(None, description="part_number 또는 name 검색"),
+    search: str | None = Query(None, description="품번 또는 품명 검색 (ILIKE)"),
+    category: str | None = Query(None, description="카테고리 필터 (정확 일치)"),
+    lifecycle_state: str | None = Query(None, description="수명주기 상태 필터 (정확 일치)"),
+    has_drawing: bool | None = Query(None, description="도면 연결 여부 필터"),
+    has_children: bool | None = Query(None, description="하위 부품 보유 여부 필터"),
     offset: int = Query(0, ge=0, description="시작 위치"),
     limit: int = Query(20, ge=1, le=100, description="조회 건수"),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    return service.list_parts(db, auth, search=search, offset=offset, limit=limit)
+    """Part 목록 조회.
+
+    각 Part에 연결된 도면번호(`drawing_number`)와 하위 부품 수(`children_count`)를 포함합니다.
+
+    **검색**: `search` 파라미터로 품번/품명 ILIKE 검색
+    **필터**: `category`, `lifecycle_state`(정확 일치), `has_drawing`, `has_children`(boolean)
+    """
+    return service.list_parts(
+        db,
+        auth,
+        search=search,
+        category=category,
+        lifecycle_state=lifecycle_state,
+        has_drawing=has_drawing,
+        has_children=has_children,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.get("/{part_number}", response_model=PartDetailResponse)

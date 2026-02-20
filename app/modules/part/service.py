@@ -16,6 +16,7 @@ from app.modules.part.schemas import (
     BomTreeNode,
     BomTreeResponse,
     PartDetailResponse,
+    PartFilterOptions,
     PartListResponse,
     PartSummary,
     RelatedDrawing,
@@ -49,25 +50,36 @@ def list_parts(
     auth: AuthContext,
     *,
     search: str | None = None,
+    category: str | None = None,
+    lifecycle_state: str | None = None,
+    has_drawing: bool | None = None,
+    has_children: bool | None = None,
     offset: int = 0,
     limit: int = 20,
 ) -> PartListResponse:
-    parts, total = repo.list_parts_paginated(
-        db, search=search, offset=offset, limit=limit
+    rows, total = repo.list_parts_paginated(
+        db,
+        search=search,
+        category=category,
+        lifecycle_state=lifecycle_state,
+        has_drawing=has_drawing,
+        has_children=has_children,
+        offset=offset,
+        limit=limit,
     )
 
-    items = [
-        PartSummary(
-            id=p.id,
-            part_number=p.part_number,
-            name=p.name,
-            category=p.category,
-            lifecycle_state=p.lifecycle_state,
-        )
-        for p in parts
-    ]
+    items = [PartSummary(**r) for r in rows]
 
     return PartListResponse(total=total, offset=offset, limit=limit, items=items)
+
+
+@transactional(read_only=True)
+def get_filter_options(db: Session, auth: AuthContext) -> PartFilterOptions:
+    """Part 필터 옵션 조회 — 카테고리, 수명주기 상태의 DISTINCT 값."""
+    return PartFilterOptions(
+        categories=repo.get_distinct_categories(db),
+        lifecycle_states=repo.get_distinct_lifecycle_states(db),
+    )
 
 
 # ── Part 상세 ──
