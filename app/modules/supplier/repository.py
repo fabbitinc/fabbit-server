@@ -43,9 +43,7 @@ def upsert_supplier(
         else:
             extended[key] = value
 
-    existing = (
-        db.query(Supplier).filter(Supplier.company_name == company_name).first()
-    )
+    existing = db.query(Supplier).filter(Supplier.company_name == company_name).first()
 
     if existing is None:
         supplier = Supplier(
@@ -101,9 +99,7 @@ def list_suppliers_paginated(
             | Supplier.code.ilike(f"%{search}%")
         )
     total = query.count()
-    suppliers = (
-        query.order_by(Supplier.company_name).offset(offset).limit(limit).all()
-    )
+    suppliers = query.order_by(Supplier.company_name).offset(offset).limit(limit).all()
     return suppliers, total
 
 
@@ -112,9 +108,9 @@ def search_merge_key(
     search: str,
     limit: int = 10,
 ) -> list[dict]:
-    """root_context 자동완성용 merge key 검색 (company_name, label=code)."""
+    """root_context 자동완성용 merge key 검색 (company_name OR code, label=code)."""
     query = db.query(Supplier.company_name, Supplier.code).filter(
-        Supplier.company_name.ilike(f"%{search}%")
+        Supplier.company_name.ilike(f"%{search}%") | Supplier.code.ilike(f"%{search}%")
     )
     rows = query.order_by(Supplier.company_name).limit(limit).all()
-    return [{"value": r.company_name, "label": r.code} for r in rows]
+    return [{"value": r.company_name, "label": r.company_name} for r in rows]

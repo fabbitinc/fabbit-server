@@ -12,7 +12,6 @@ from app.modules.part.models import Part
 from app.modules.project.models import Folder, Project, ProjectPart
 from app.modules.upload.models import Upload
 
-
 # ── 트리 조회 (기존) ──
 
 
@@ -153,9 +152,7 @@ def get_descendant_folder_ids(db: Session, folder_id: uuid.UUID) -> list[uuid.UU
     queue = [folder_id]
     while queue:
         current = queue.pop(0)
-        children = (
-            db.query(Folder.id).filter(Folder.parent_id == current).all()
-        )
+        children = db.query(Folder.id).filter(Folder.parent_id == current).all()
         for (child_id,) in children:
             result.append(child_id)
             queue.append(child_id)
@@ -238,7 +235,7 @@ def search_merge_key(
         Project.name.ilike(f"%{search}%")
     )
     rows = query.order_by(Project.name).limit(limit).all()
-    return [{"value": r.name, "label": r.description} for r in rows]
+    return [{"value": r.name, "label": r.name} for r in rows]
 
 
 def get_project_part_count(db: Session, project_id: uuid.UUID) -> int:

@@ -489,9 +489,9 @@ def search_merge_key(
     search: str,
     limit: int = 10,
 ) -> list[dict]:
-    """root_context 자동완성용 merge key 검색 (part_number, label=name)."""
+    """root_context 자동완성용 merge key 검색 (part_number OR name, label=name)."""
     query = db.query(Part.part_number, Part.name).filter(
-        Part.part_number.ilike(f"%{search}%")
+        Part.part_number.ilike(f"%{search}%") | Part.name.ilike(f"%{search}%")
     )
     rows = query.order_by(Part.part_number).limit(limit).all()
     return [{"value": r.part_number, "label": r.name} for r in rows]

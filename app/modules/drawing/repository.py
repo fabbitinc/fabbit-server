@@ -236,9 +236,10 @@ def search_merge_key(
     search: str,
     limit: int = 10,
 ) -> list[dict]:
-    """root_context 자동완성용 merge key 검색 (drawing_number, label=name)."""
+    """root_context 자동완성용 merge key 검색 (drawing_number OR name, label=name)."""
     query = db.query(Drawing.drawing_number, Drawing.name).filter(
-        Drawing.drawing_number.ilike(f"%{search}%"),
+        Drawing.drawing_number.ilike(f"%{search}%")
+        | Drawing.name.ilike(f"%{search}%")
     )
     rows = query.order_by(Drawing.drawing_number).limit(limit).all()
     return [{"value": r.drawing_number, "label": r.name} for r in rows]

@@ -28,6 +28,11 @@ def search_nodes(
     """노드 라벨별 merge key 검색.
 
     root_context 자동완성에 사용됩니다.
-    지원 라벨: Part(part_number), Drawing(drawing_number), Supplier(company_name), Project(name)
+    반환값은 항상 merge key이며, 검색은 아래 필드에 대해 ILIKE로 수행됩니다.
+
+    - **Part**: `part_number`, `name` → value=part_number
+    - **Drawing**: `drawing_number`, `name` → value=drawing_number
+    - **Supplier**: `company_name`, `code` → value=company_name
+    - **Project**: `name` → value=name
     """
     return service.search_nodes(db, label, search, limit)
