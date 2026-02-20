@@ -129,6 +129,13 @@ class BaseOntology:
         """정의된 모든 관계 타입명 목록"""
         return [rt.rel_type for rt in self.relationship_types]
 
+    def get_relationship_type(self, rel_type: str) -> RelationshipType | None:
+        """관계 타입명으로 RelationshipType 조회"""
+        for rt in self.relationship_types:
+            if rt.rel_type == rel_type:
+                return rt
+        return None
+
     def get_all_indexed_properties(self) -> list[tuple[str, str]]:
         """인덱스가 필요한 (라벨, 속성명) 쌍 목록. DB 인덱스 자동 생성에 사용."""
         result = []
@@ -244,13 +251,24 @@ class BaseOntology:
             lines.append("")
 
         lines.append("## 관계 타입")
+        lines.append("")
         for rt in self.relationship_types:
+            # 대상 노드의 merge key 조회
+            target_node = self.get_node_label(rt.to_label)
+            merge_keys = target_node.merge_keys if target_node else []
+
+            lines.append(f"### {rt.from_label} -[{rt.rel_type}]-> {rt.to_label}")
+            lines.append(f"설명: {rt.description}")
             lines.append(
-                f"- {rt.from_label} -[{rt.rel_type}]-> {rt.to_label}: {rt.description}"
+                f"대상 노드 MERGE KEY: {', '.join(merge_keys) if merge_keys else '없음'}"
             )
             if rt.properties:
+                lines.append("관계 속성 (rel_columns 매핑 대상):")
                 for p in rt.properties:
                     lines.append(f"  - {p.name} ({p.data_type}): {p.description}")
+            else:
+                lines.append("관계 속성: 없음")
+            lines.append("")
         return "\n".join(lines)
 
 

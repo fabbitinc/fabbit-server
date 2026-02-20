@@ -142,6 +142,7 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
 - 품번(part_number), 품명(name), 재질(material), 단위(unit) 등
 - 온톨로지에 없는 추가 속성은 `_ext_` 접두사 + 영문 snake_case로 작성
   예: "탄소배출량" → "_ext_carbon_emission"
+- **관계에 정의된 속성(quantity, unit_cost 등)은 여기에 넣지 마세요.** 반드시 relation_mappings의 rel_columns에 매핑하세요.
 
 ### 2. relation_mappings — 외부 관계 매핑
 행의 주인공 Part와 다른 노드(상위 Part, Supplier, Drawing 등)의 관계입니다.
@@ -152,32 +153,31 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
 - `rel_columns`: 관계 자체의 속성 → 소스 컬럼 매핑
 - `rel_column_types`: 관계 속성의 데이터 타입
 
-## 관계 매핑 규칙
+## 관계 매핑 원칙
 
-### CONSISTS_OF (BOM 관계, Part → Part)
-- 상위품번/하위품번이 별도 컬럼으로 존재하는 경우에만 생성
-- `target_label`: "Part" (상위 Part)
-- `node_columns`: 상위 Part의 merge key → 소스 컬럼
-  예: {{"part_number": "상위품번", "name": "상위품명"}}
-- `rel_columns`: 관계 속성 → 소스 컬럼
-  예: {{"quantity": "수량"}}
-- **주의**: 품번 컬럼이 1개뿐인 flat BOM에서는 CONSISTS_OF를 생성하지 마세요.
+아래 4가지 원칙을 순서대로 적용하세요. 관계별 하드코딩된 규칙 대신 온톨로지 스키마를 참조합니다.
 
-### SUPPLIED_BY (Part → Supplier)
-- `target_label`: "Supplier"
-- `node_columns`: Supplier의 merge key → 소스 컬럼
-  예: {{"company_name": "공급업체"}}
+### 원칙 1. 온톨로지 스키마 참조
+위 "관계 타입" 섹션에서 각 관계의 **방향**, **대상 노드 MERGE KEY**, **관계 속성**을 확인하세요.
+- `node_columns`에는 대상 노드의 속성(특히 MERGE KEY)을 매핑
+- `rel_columns`에는 해당 관계에 정의된 속성만 매핑
 
-### DEFINED_BY (Part → Drawing)
-- `target_label`: "Drawing"
-- `node_columns`: Drawing의 merge key → 소스 컬럼
-  예: {{"drawing_number": "도면번호"}}
+### 원칙 2. 관계 속성은 반드시 rel_columns에
+온톨로지에서 관계 속성으로 정의된 컬럼(예: quantity → CONSISTS_OF, unit_cost → SUPPLIED_BY)은
+**절대 property_mappings에 넣지 말고** 해당 관계의 `rel_columns`에 매핑하세요.
 
-## 수량/단가 매핑 주의
-- **수량(Qty/Quantity/소요량)**은 절대 Part 속성(property_mappings)으로 매핑하지 마세요.
-  반드시 CONSISTS_OF 관계의 `rel_columns`에 `quantity`로 매핑하세요.
-- **단가(Unit Price/Cost)**는 SUPPLIED_BY 관계의 `rel_columns`에 `unit_cost`로 매핑하세요.
-- **단위(Unit/UOM)**는 Part 속성(property_mappings)의 `unit`으로 매핑하세요.
+### 원칙 3. Rootless relation — 대상 노드 컬럼이 없어도 관계 생성
+데이터에 **관계 속성에 해당하는 컬럼은 있지만** 대상 노드를 식별할 컬럼이 없는 경우:
+- `node_columns`: {{}} (빈 딕셔너리)
+- `rel_columns`: 관계 속성만 매핑
+- 예: 수량 컬럼은 있지만 상위품번 컬럼이 없는 경우 → CONSISTS_OF rootless
+  `{{"rel_type": "CONSISTS_OF", "target_label": "Part", "node_columns": {{}}, "rel_columns": {{"quantity": "수량"}}, "rel_column_types": {{"quantity": "integer"}}}}`
+- 예: 단가 컬럼은 있지만 공급업체 컬럼이 없는 경우 → SUPPLIED_BY rootless
+  `{{"rel_type": "SUPPLIED_BY", "target_label": "Supplier", "node_columns": {{}}, "rel_columns": {{"unit_cost": "단가"}}, "rel_column_types": {{"unit_cost": "float"}}}}`
+
+### 원칙 4. 관계 생성 기준
+관계 속성(`rel_columns`) 또는 대상 노드 컬럼(`node_columns`)이 **하나라도** 매핑 가능하면 해당 관계를 생성하세요.
+둘 다 매핑할 컬럼이 없으면 관계를 생성하지 마세요.
 
 ## 품질 가드레일
 - 샘플 행 기준으로 **값이 전부 비어 있는 컬럼은 절대 매핑하지 마세요**.
@@ -199,7 +199,8 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
     {{"source_column": "품번", "target_property": "part_number", "data_type": "string", "confidence": 95, "reason": "Column header directly translates to part number"}}
   ],
   "relation_mappings": [
-    {{"rel_type": "SUPPLIED_BY", "target_label": "Supplier", "node_columns": {{"company_name": "업체명"}}, "rel_columns": {{}}, "rel_column_types": {{}}, "confidence": 85, "reason": "Supplier column maps to SUPPLIED_BY relationship"}}
+    {{"rel_type": "SUPPLIED_BY", "target_label": "Supplier", "node_columns": {{"company_name": "업체명"}}, "rel_columns": {{}}, "rel_column_types": {{}}, "confidence": 85, "reason": "Supplier column maps to SUPPLIED_BY relationship"}},
+    {{"rel_type": "CONSISTS_OF", "target_label": "Part", "node_columns": {{}}, "rel_columns": {{"quantity": "수량"}}, "rel_column_types": {{"quantity": "integer"}}, "confidence": 80, "reason": "Quantity column without parent part number - rootless BOM relation"}}
   ]
 }}
 ```
@@ -257,13 +258,33 @@ def normalize_mapping(mapping: MappingResult) -> MappingResult:
 def _normalize_ext_property_name(name: str) -> str:
     normalized = (name or "").strip()
     while normalized.startswith("_ext__ext_"):
-        normalized = normalized[len("_ext_"):]
+        normalized = normalized[len("_ext_") :]
     if normalized.startswith("_ext_"):
-        core = normalized[len("_ext_"):]
+        core = normalized[len("_ext_") :]
     else:
         core = normalized
     core = core.strip("_")
     return f"_ext_{core}" if core else "_ext_unknown"
+
+
+def _fix_rel_column_types(rm: RelationMapping) -> RelationMapping:
+    """rel_column_types 누락 시 온톨로지 관계 속성 정의에서 자동 보정"""
+    if not rm.rel_columns:
+        return rm
+    rel_def = MANUFACTURING_ONTOLOGY.get_relationship_type(rm.rel_type)
+    if rel_def is None:
+        return rm
+    # 온톨로지에 정의된 관계 속성의 타입 맵
+    ontology_types = {p.name: p.data_type for p in rel_def.properties}
+    fixed_types = dict(rm.rel_column_types)
+    changed = False
+    for rel_key in rm.rel_columns:
+        if rel_key not in fixed_types and rel_key in ontology_types:
+            fixed_types[rel_key] = ontology_types[rel_key]
+            changed = True
+    if not changed:
+        return rm
+    return rm.model_copy(update={"rel_column_types": fixed_types})
 
 
 def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
@@ -292,9 +313,7 @@ def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
             )
         elif pm.target_property in valid_part_props:
             # 표준 속성: is_extended=False 보장
-            verified_props.append(
-                pm.model_copy(update={"is_extended": False})
-            )
+            verified_props.append(pm.model_copy(update={"is_extended": False}))
         else:
             # 온톨로지에 없는 속성 → 확장 속성으로 변환
             verified_props.append(
@@ -317,6 +336,7 @@ def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
             continue
         # Rootless relation: node_columns 없이 rel_columns만 있는 관계 허용
         if not rm.node_columns and rm.rel_columns:
+            rm = _fix_rel_column_types(rm)
             verified_rels.append(rm)
             continue
         if not rm.node_columns:
@@ -326,12 +346,11 @@ def _validate_and_fix_mapping(result: MappingResult) -> MappingResult:
         target_node = MANUFACTURING_ONTOLOGY.get_node_label(rm.target_label)
         if target_node is None:
             continue
-        has_merge_key = any(
-            mk in rm.node_columns for mk in target_node.merge_keys
-        )
+        has_merge_key = any(mk in rm.node_columns for mk in target_node.merge_keys)
         if not has_merge_key:
             continue
 
+        rm = _fix_rel_column_types(rm)
         verified_rels.append(rm)
 
     # 중복 제거
