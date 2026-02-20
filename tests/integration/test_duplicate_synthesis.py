@@ -249,21 +249,27 @@ class TestDuplicateSynthesis:
             f"품번 불일치.\n기대: {EXPECTED_PART_NUMBERS}\n실제: {actual_pns}"
         )
 
+        # 이후 테스트에서 사용할 part_number → id 맵 저장
+        TestDuplicateSynthesis.part_id_map = {
+            item["part_number"]: item["id"] for item in data["items"]
+        }
+
     def test_parent_parts_exist(self, client: TestClient):
         """상위 Part(ASM-001, ASM-002)가 정확히 존재하고 속성이 올바른지 확인."""
         headers = {
             "Authorization": f"Bearer {TestDuplicateSynthesis.access_token}"
         }
+        pid = TestDuplicateSynthesis.part_id_map
 
         # ASM-001 상세
-        resp = client.get("/api/v1/parts/ASM-001", headers=headers)
+        resp = client.get(f"/api/v1/parts/{pid['ASM-001']}", headers=headers)
         assert resp.status_code == 200, resp.text
         asm001 = resp.json()
         assert asm001["part_number"] == "ASM-001"
         assert asm001["name"] == "메인 프레임 조립품"
 
         # ASM-002 상세
-        resp = client.get("/api/v1/parts/ASM-002", headers=headers)
+        resp = client.get(f"/api/v1/parts/{pid['ASM-002']}", headers=headers)
         assert resp.status_code == 200, resp.text
         asm002 = resp.json()
         assert asm002["part_number"] == "ASM-002"
@@ -271,8 +277,9 @@ class TestDuplicateSynthesis:
 
     def test_asm001_children(self, client: TestClient):
         """ASM-001의 자식이 정확히 4건 (PRT-001~004)."""
+        pid = TestDuplicateSynthesis.part_id_map
         resp = client.get(
-            "/api/v1/parts/ASM-001",
+            f"/api/v1/parts/{pid['ASM-001']}",
             headers={"Authorization": f"Bearer {TestDuplicateSynthesis.access_token}"},
         )
         assert resp.status_code == 200
@@ -292,8 +299,9 @@ class TestDuplicateSynthesis:
 
     def test_asm002_children(self, client: TestClient):
         """ASM-002의 자식이 정확히 2건 (PRT-008, PRT-003)."""
+        pid = TestDuplicateSynthesis.part_id_map
         resp = client.get(
-            "/api/v1/parts/ASM-002",
+            f"/api/v1/parts/{pid['ASM-002']}",
             headers={"Authorization": f"Bearer {TestDuplicateSynthesis.access_token}"},
         )
         assert resp.status_code == 200
@@ -306,8 +314,9 @@ class TestDuplicateSynthesis:
 
     def test_prt001_children(self, client: TestClient):
         """PRT-001의 자식이 정확히 2건 (PRT-005, PRT-006)."""
+        pid = TestDuplicateSynthesis.part_id_map
         resp = client.get(
-            "/api/v1/parts/PRT-001",
+            f"/api/v1/parts/{pid['PRT-001']}",
             headers={"Authorization": f"Bearer {TestDuplicateSynthesis.access_token}"},
         )
         assert resp.status_code == 200
@@ -320,8 +329,9 @@ class TestDuplicateSynthesis:
 
     def test_prt001_has_parent_asm001(self, client: TestClient):
         """PRT-001의 부모가 ASM-001."""
+        pid = TestDuplicateSynthesis.part_id_map
         resp = client.get(
-            "/api/v1/parts/PRT-001",
+            f"/api/v1/parts/{pid['PRT-001']}",
             headers={"Authorization": f"Bearer {TestDuplicateSynthesis.access_token}"},
         )
         assert resp.status_code == 200
@@ -334,8 +344,9 @@ class TestDuplicateSynthesis:
 
     def test_prt003_has_two_parents(self, client: TestClient):
         """PRT-003(볼베어링)은 ASM-001과 ASM-002 두 곳의 자식."""
+        pid = TestDuplicateSynthesis.part_id_map
         resp = client.get(
-            "/api/v1/parts/PRT-003",
+            f"/api/v1/parts/{pid['PRT-003']}",
             headers={"Authorization": f"Bearer {TestDuplicateSynthesis.access_token}"},
         )
         assert resp.status_code == 200
@@ -357,8 +368,9 @@ class TestDuplicateSynthesis:
 
     def test_bom_tree_structure(self, client: TestClient):
         """ASM-001 BOM 트리 — 3단계 구조 확인."""
+        pid = TestDuplicateSynthesis.part_id_map
         resp = client.get(
-            "/api/v1/parts/ASM-001/bom-tree",
+            f"/api/v1/parts/{pid['ASM-001']}/bom-tree",
             headers={"Authorization": f"Bearer {TestDuplicateSynthesis.access_token}"},
         )
         assert resp.status_code == 200, resp.text
@@ -386,9 +398,10 @@ class TestDuplicateSynthesis:
         headers = {
             "Authorization": f"Bearer {TestDuplicateSynthesis.access_token}"
         }
+        pid = TestDuplicateSynthesis.part_id_map
         leaf_parts = EXPECTED_PART_NUMBERS - PARENT_PARTS
         for pn in sorted(leaf_parts):
-            resp = client.get(f"/api/v1/parts/{pn}", headers=headers)
+            resp = client.get(f"/api/v1/parts/{pid[pn]}", headers=headers)
             assert resp.status_code == 200
             data = resp.json()
             assert len(data["children"]) == 0, (

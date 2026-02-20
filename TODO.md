@@ -1,2 +1,2 @@
 - [ ] 멀티테넌트 디비 마이그레이션 방법은?
-- [ ] scope_root_bom2 mapping llm 이 좀 별로임 (외부 관계 추론)
+- [ ] part, part_revision에 status 없음 <- 승인 관리 워크플로우가 있어야함 (draft, released 등) (lifecycle_state 는 제품 수명 주기)

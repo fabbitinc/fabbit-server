@@ -57,7 +57,7 @@ class PartSummary(BaseModel):
     part_number: str
     name: str | None = None
     category: str | None = None
-    revision: str | None = None
+    revision: str = "1"
     lifecycle_state: str | None = None
     drawing_number: str | None = None
     children_count: int = 0
@@ -88,7 +88,7 @@ class PartDetailResponse(BaseModel):
     id: uuid.UUID
     part_number: str
     name: str | None = None
-    revision: str | None = None
+    revision: str = "1"
     material: str | None = None
     unit: str | None = None
     description: str | None = None

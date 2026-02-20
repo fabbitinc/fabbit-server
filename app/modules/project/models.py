@@ -16,7 +16,7 @@ from sqlalchemy.sql import func
 from app.core.database import TenantBase, generate_uuid7
 
 if TYPE_CHECKING:
-    from app.modules.document.models import Drawing
+    from app.modules.drawing.models import Drawing
 
 
 class Project(TenantBase):

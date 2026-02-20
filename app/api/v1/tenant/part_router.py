@@ -1,5 +1,7 @@
 """부품(Part) 조회 API 라우터."""
 
+import uuid
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -61,19 +63,27 @@ def list_parts(
     )
 
 
-@router.get("/{part_number}", response_model=PartDetailResponse)
+@router.get("/{part_id}", response_model=PartDetailResponse)
 def get_part(
-    part_number: str,
+    part_id: uuid.UUID,
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    return service.get_part(db, auth, part_number)
+    """Part 상세 조회.
+
+    Part의 전체 속성, BOM 관계(부모/자식), 도면, 공급사 정보를 포함합니다.
+    """
+    return service.get_part(db, auth, part_id)
 
 
-@router.get("/{part_number}/bom-tree", response_model=BomTreeResponse)
+@router.get("/{part_id}/bom-tree", response_model=BomTreeResponse)
 def get_part_bom_tree(
-    part_number: str,
+    part_id: uuid.UUID,
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    return service.get_part_bom_tree(db, auth, part_number)
+    """Part BOM 트리 조회.
+
+    해당 Part를 루트로 하는 전체 BOM 계층 구조를 트리 형태로 반환합니다.
+    """
+    return service.get_part_bom_tree(db, auth, part_id)

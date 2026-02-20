@@ -384,16 +384,15 @@ class TestCRUDFlow:
         assert "ASM-001" in part_numbers
         assert "PRT-001" in part_numbers
 
-        # 프로젝트 테스트에서 사용할 part_id 저장
-        for item in data["items"]:
-            if item["part_number"] == "PRT-001":
-                TestCRUDFlow.part_id = item["id"]
-                break
+        # 이후 테스트에서 사용할 part_id 저장
+        part_id_map = {item["part_number"]: item["id"] for item in data["items"]}
+        TestCRUDFlow.part_id = part_id_map["PRT-001"]
+        TestCRUDFlow.asm001_id = part_id_map["ASM-001"]
 
     def test_part_detail(self, client: TestClient):
-        """GET /parts/{part_number} → Part 상세 + 관계 확인."""
+        """GET /parts/{part_id} → Part 상세 + 관계 확인."""
         resp = client.get(
-            "/api/v1/parts/ASM-001",
+            f"/api/v1/parts/{TestCRUDFlow.asm001_id}",
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
         )
         assert resp.status_code == 200, resp.text
@@ -403,9 +402,9 @@ class TestCRUDFlow:
         assert len(data["children"]) >= 4
 
     def test_bom_tree(self, client: TestClient):
-        """GET /parts/{pn}/bom-tree → BOM 트리 구조 확인."""
+        """GET /parts/{part_id}/bom-tree → BOM 트리 구조 확인."""
         resp = client.get(
-            "/api/v1/parts/ASM-001/bom-tree",
+            f"/api/v1/parts/{TestCRUDFlow.asm001_id}/bom-tree",
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
         )
         assert resp.status_code == 200, resp.text

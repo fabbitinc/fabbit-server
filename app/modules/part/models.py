@@ -55,7 +55,9 @@ class Part(TenantBase):
     )
     part_number: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    revision: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    revision: Mapped[str] = mapped_column(
+        String(50), nullable=False, server_default="1"
+    )
     material: Mapped[str | None] = mapped_column(String(200), nullable=True)
     unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -81,6 +83,8 @@ class PartRevision(TenantBase):
     __tablename__ = "part_revisions"
 
     __table_args__ = (
+        # 동일 부품의 리비전 번호 중복 방지
+        UniqueConstraint("part_id", "revision", name="uq_part_revisions_part_id_revision"),
         # 부품별 리비전 조회 최적화
         Index("ix_part_revisions_part_id", "part_id"),
         # 합성 작업별 리비전 조회 최적화
@@ -106,7 +110,7 @@ class PartRevision(TenantBase):
     )
     part_number: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    revision: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    revision: Mapped[str] = mapped_column(String(50), nullable=False)
     material: Mapped[str | None] = mapped_column(String(200), nullable=True)
     unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)

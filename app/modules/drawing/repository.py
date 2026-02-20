@@ -6,8 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import generate_uuid7
 from app.infrastructure.age_client import execute_cypher, execute_cypher_raw
-from app.modules.document.models import Drawing
-from app.modules.drawing.models import DrawingAnalysisRecord, DrawingSynthesisJob
+from app.modules.drawing.models import Drawing, DrawingAnalysisRecord, DrawingSynthesisJob
 from app.modules.ontology.cypher_utils import escape_cypher_value
 from app.modules.upload.models import Upload
 

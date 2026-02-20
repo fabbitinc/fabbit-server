@@ -3,6 +3,7 @@
 Service는 저장 위치(RDS/Graph)를 모르고, Repository가 dual-write를 내부적으로 관리합니다.
 """
 
+import re
 import uuid
 
 from sqlalchemy import exists, func, select
@@ -10,15 +11,15 @@ from sqlalchemy.orm import Session
 
 from app.core.database import generate_uuid7
 from app.infrastructure.age_client import execute_cypher, execute_cypher_raw
-from app.modules.document.models import Drawing
+from app.modules.drawing.models import Drawing
 from app.modules.ontology.cypher_utils import escape_cypher_value
 from app.modules.part.models import BomLink, Part, PartRevision, PartSupplier
 from app.modules.supplier.models import Supplier
 
 # Part 모델의 표준 속성 (온톨로지 정의 속성 중 RDS 컬럼에 매핑되는 것)
+# revision은 별도 관리하므로 제외
 _PART_STANDARD_ATTRS = {
     "name",
-    "revision",
     "material",
     "unit",
     "description",
@@ -27,6 +28,36 @@ _PART_STANDARD_ATTRS = {
     "lifecycle_state",
     "lead_time_days",
 }
+
+# 리비전 접미사 패턴 (정규식) — 숫자/알파벳 접미사를 탐지하여 자동 증분
+_REVISION_SUFFIX_RE = re.compile(r"^(.*?)(\d+|[A-Z])$", re.IGNORECASE)
+
+
+def next_revision(current: str) -> str:
+    """현재 리비전에서 다음 리비전을 자동 생성.
+
+    패턴 감지 규칙:
+    - 숫자 접미사: "1" → "2", "Rev.3" → "Rev.4", "003" → "004" (자릿수 유지)
+    - 알파벳 접미사: "A" → "B", "Rev.A" → "Rev.B"
+    - Z 도달 시: "Z" → "AA" (단독), "Rev.Z" → "Rev.AA"
+    """
+    m = _REVISION_SUFFIX_RE.match(current)
+    if not m:
+        # 패턴 감지 실패 → 숫자 1부터 이어붙임
+        return current + ".1"
+
+    prefix, suffix = m.group(1), m.group(2)
+
+    if suffix.isdigit():
+        # 숫자 접미사: 자릿수 유지하며 +1
+        width = len(suffix)
+        return prefix + str(int(suffix) + 1).zfill(width)
+
+    # 알파벳 접미사 (단일 문자)
+    if suffix.upper() == "Z":
+        return prefix + ("AA" if suffix.isupper() else "aa")
+    next_char = chr(ord(suffix) + 1)
+    return prefix + next_char
 
 
 class MissingPartForBomError(Exception):
@@ -194,64 +225,91 @@ def upsert_part(
 ) -> None:
     """Part를 RDS에 INSERT/UPDATE하고, Graph에 MERGE.
 
-    RDS: 전체 속성 저장 + PartRevision 스냅샷
+    RDS: 전체 속성 저장 + PartRevision 기록
     Graph: part_number만 유지 (merge key)
+
+    리비전 관리 (PartRevision = SoT, Part = 최신 비정규화):
+    - 신규 Part: incoming revision 사용 (없으면 "1") → PartRevision 첫 기록
+    - 기존 Part: 변경 감지 → 적용 → revision 증분 → PartRevision 새 기록
+    - revision은 standard 속성과 별도로 관리 (incoming revision은 신규에서만 사용)
 
     overwrite=False: DB에 이미 값이 있는 필드는 유지 (빈 필드만 채움)
     overwrite=True: 엑셀 값으로 덮어쓰기
     """
-    # ── RDS upsert ──
+    # ── 속성 분류 ──
     standard: dict = {}
     extended: dict = {}
+    incoming_revision: str | None = None
     for key, value in props.items():
         if key == "part_number":
+            continue
+        if key == "revision":
+            incoming_revision = str(value) if value is not None else None
             continue
         if key.startswith("_ext_"):
             extended[key] = value
         elif key in _PART_STANDARD_ATTRS:
             standard[key] = value
         else:
-            # 온톨로지에 정의되었지만 Part 컬럼에 없는 속성 → 확장 속성으로 저장
             extended[key] = value
 
     existing = db.query(Part).filter(Part.part_number == part_number).first()
 
     if existing is None:
+        # ── 신규 Part: 생성 + 첫 리비전 기록 ──
         part = Part(
             id=generate_uuid7(),
             part_number=part_number,
+            revision=incoming_revision or "1",
             extended_properties=extended if extended else {},
             **standard,
         )
         db.add(part)
         db.flush()
-        if job_id is not None:
-            _create_revision_snapshot(db, part, job_id)
+        _create_revision_snapshot(db, part, job_id)
     else:
+        # ── 기존 Part: 변경 감지 → 적용 → 증분 → 리비전 기록 ──
         changed = False
         for key, value in standard.items():
             current = getattr(existing, key)
             if not overwrite and current is not None:
                 continue
             if current != value:
-                setattr(existing, key, value)
                 changed = True
+                break
 
-        if extended:
+        if not changed and extended:
             merged_ext = dict(existing.extended_properties or {})
             for key, value in extended.items():
                 if not overwrite and merged_ext.get(key) is not None:
                     continue
                 if merged_ext.get(key) != value:
-                    merged_ext[key] = value
                     changed = True
-            if changed:
-                existing.extended_properties = merged_ext
+                    break
 
         if changed:
+            # 1) 속성 적용
+            for key, value in standard.items():
+                current = getattr(existing, key)
+                if not overwrite and current is not None:
+                    continue
+                if current != value:
+                    setattr(existing, key, value)
+
+            if extended:
+                merged_ext = dict(existing.extended_properties or {})
+                for key, value in extended.items():
+                    if not overwrite and merged_ext.get(key) is not None:
+                        continue
+                    merged_ext[key] = value
+                existing.extended_properties = merged_ext
+
+            # 2) 리비전 증분
+            existing.revision = next_revision(existing.revision)
             db.flush()
-            if job_id is not None:
-                _create_revision_snapshot(db, existing, job_id)
+
+            # 3) 변경 후 상태를 새 리비전으로 기록
+            _create_revision_snapshot(db, existing, job_id)
 
     # ── Graph MERGE (part_number만) ──
     escaped = escape_cypher_value(part_number)
@@ -587,8 +645,10 @@ def search_merge_key(
     return [{"value": r.part_number, "label": r.name} for r in rows]
 
 
-def _create_revision_snapshot(db: Session, part: Part, job_id: uuid.UUID) -> None:
-    """Part의 현재 상태를 PartRevision으로 스냅샷."""
+def _create_revision_snapshot(
+    db: Session, part: Part, job_id: uuid.UUID | None
+) -> None:
+    """Part의 현재 상태를 PartRevision으로 아카이브 (변경 전 스냅샷)."""
     revision = PartRevision(
         id=generate_uuid7(),
         part_id=part.id,

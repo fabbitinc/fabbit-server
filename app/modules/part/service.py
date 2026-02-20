@@ -3,6 +3,8 @@
 속성, BOM 관계, Drawing/Supplier 관계 모두 RDS에서 읽습니다.
 """
 
+import uuid
+
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
@@ -86,11 +88,11 @@ def get_filter_options(db: Session, auth: AuthContext) -> PartFilterOptions:
 
 
 @transactional(read_only=True)
-def get_part(db: Session, auth: AuthContext, part_number: str) -> PartDetailResponse:
+def get_part(db: Session, auth: AuthContext, part_id: uuid.UUID) -> PartDetailResponse:
     # 속성: RDS
-    part = repo.get_by_part_number(db, part_number)
+    part = repo.get_by_id(db, part_id)
     if not part:
-        raise AppError(message=f"Part '{part_number}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
+        raise AppError(message=f"Part '{part_id}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
 
     # BOM 관계: RDS JOIN (name 포함)
     children_rows = repo.get_children(db, part.id)
@@ -221,19 +223,19 @@ def _build_bom_tree(
 def get_part_bom_tree(
     db: Session,
     auth: AuthContext,
-    part_number: str,
+    part_id: uuid.UUID,
 ) -> BomTreeResponse:
     graph_name = org_id_to_schema(auth.org_id)
 
     # 루트 Part 존재 확인 (RDS)
-    part = repo.get_by_part_number(db, part_number)
+    part = repo.get_by_id(db, part_id)
     if not part:
-        raise AppError(message=f"Part '{part_number}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
+        raise AppError(message=f"Part '{part_id}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
 
-    paths = repo.get_bom_paths(db, part_number, graph_name)
+    paths = repo.get_bom_paths(db, part.part_number, graph_name)
 
     # paths에서 모든 part_number 추출하여 name 일괄 조회
-    all_pns: set[str] = {part_number}
+    all_pns: set[str] = {part.part_number}
     for row in paths:
         for pn in (row["c0"] or []):
             if pn:
@@ -241,7 +243,7 @@ def get_part_bom_tree(
     name_map = repo.bulk_get_names(db, list(all_pns))
 
     root = _build_bom_tree(
-        root_pn=part_number,
+        root_pn=part.part_number,
         root_name=part.name,
         paths=paths,
         name_map=name_map,
