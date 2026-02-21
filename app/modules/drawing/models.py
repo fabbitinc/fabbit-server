@@ -16,6 +16,7 @@ from app.core.database import TenantBase, generate_uuid7
 
 if TYPE_CHECKING:
     from app.modules.project.models import Folder, Project
+    from app.modules.upload.models import Upload
 
 
 class Drawing(TenantBase):
@@ -32,6 +33,8 @@ class Drawing(TenantBase):
         Index("ix_drawings_folder_id", "folder_id"),
         # 프로젝트별 도면 조회 최적화
         Index("ix_drawings_project_id", "project_id"),
+        # 업로드 파일 역추적 최적화
+        Index("ix_drawings_upload_id", "upload_id"),
         # 확장 속성 필터링 최적화 (GIN)
         Index(
             "ix_drawings_extended_properties",
@@ -51,6 +54,11 @@ class Drawing(TenantBase):
     project_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    upload_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("uploads.id", ondelete="SET NULL"),
         nullable=True,
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -76,6 +84,7 @@ class Drawing(TenantBase):
         "Project", back_populates="drawings"
     )
     folder: Mapped["Folder | None"] = relationship("Folder")
+    upload: Mapped["Upload | None"] = relationship("Upload")
 
 
 class DrawingAnalysisRecord(TenantBase):

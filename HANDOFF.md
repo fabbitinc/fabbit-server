@@ -2,72 +2,98 @@
 
 ## Goal
 
-DEFINED_BY / SUPPLIED_BY 관계를 Graph-only에서 RDS+Graph dual-write로 전환 완료 후,
-Part 목록 검색/필터 기능을 설계·구현하는 단계.
+Part 도메인 조회 API 완성 + 리비전 시스템 구축 + 모듈 구조 정리.
+이전 세션에서 dual-write 전환이 완료된 상태에서, Part 목록/상세/필터 API와 리비전 관리를 구현하는 단계.
 
 ## Current Progress
 
-### 완료: DEFINED_BY / SUPPLIED_BY dual-write
+### 완료: Part 목록 검색/필터 API
+
+**`GET /api/v1/parts`** — 목록 조회 (페이징 + 필터):
+- 필드: `id`, `part_number`, `name`, `category`, `revision`, `lifecycle_state`, `drawing_number`, `children_count`
+- Drawing LEFT JOIN (`Part.drawing_id` → `Drawing.drawing_number`)
+- BomLink COUNT 상관 서브쿼리 (`children_count`)
+- 필터: `search` (품번/품명 ILIKE), `category`, `lifecycle_state` (정확 일치), `has_drawing`, `has_children` (boolean)
+- offset/limit 페이징 + total 카운트
+
+**`GET /api/v1/parts/filter-options`** — 필터 옵션 조회:
+- `categories`: Part.category DISTINCT 값
+- `lifecycle_states`: Part.lifecycle_state DISTINCT 값
+
+**변경 파일:**
+- `app/modules/part/schemas.py` — `PartSummary` 필드 확장, `PartFilterOptions` 추가
+- `app/modules/part/repository.py` — `list_parts_paginated()` 재작성 (JOIN + 서브쿼리), `get_distinct_categories()`, `get_distinct_lifecycle_states()` 추가
+- `app/modules/part/service.py` — `list_parts()` 필터 파라미터 확장, `get_filter_options()` 추가
+- `app/api/v1/tenant/part_router.py` — `filter-options` 엔드포인트, 필터 쿼리 파라미터 추가
+
+### 완료: Part 상세/BOM 트리 API — path param을 id(UUID)로 전환
+
+- `GET /api/v1/parts/{part_id}` (기존 `{part_number}` → `{part_id}`)
+- `GET /api/v1/parts/{part_id}/bom-tree` (동일)
+- service에서 `repo.get_by_id()` 사용, bom-tree는 내부에서 `part.part_number`로 Graph 쿼리
+- 테스트 2개 파일 업데이트 (목록에서 id 맵 구축 후 상세 호출)
+
+### 완료: 리비전 시스템 (PartRevision = SoT, Part = 최신 비정규화)
+
+**설계 결정:**
+- PartRevision이 SoT (모든 변경 기록), Part는 최신 리비전의 비정규화
+- 모든 속성 변경 = 새 리비전 생성
+- revision 초기값: incoming(엑셀) 또는 "1", 이후 패턴 감지 기반 자동 증분
+- revision status(draft/released)는 향후 추가 예정 (현재 미구현)
+- `lifecycle_state`와 revision status는 별개 개념 (전자=제품 수명, 후자=변경 승인)
+- `lifecycle_state`는 enum 아닌 자유 문자열 유지 (고객마다 값 상이)
 
 **모델 변경 (`app/modules/part/models.py`):**
-- `Part.drawing_id` FK 추가 (→ `drawings.id`, `SET NULL`) — N:1 관계
-- `PartRevision.drawing_id` 스냅샷 컬럼 추가 (FK 없음)
-- `PartSupplier` 조인 테이블 신규 — M:N 관계 (`part_id`, `supplier_id`, `unit_cost`, `extended_properties`)
+- `Part.revision`: `nullable=True` → `nullable=False, server_default="1"`
+- `PartRevision.revision`: `nullable=True` → `nullable=False`
+- `PartRevision.__table_args__`: `UniqueConstraint("part_id", "revision")` 추가
 
 **Repository 변경 (`app/modules/part/repository.py`):**
-- `link_part_to_drawing()` — Part.drawing_id 설정 + Graph DEFINED_BY MERGE
-- `link_part_to_supplier()` — PartSupplier upsert + Graph SUPPLIED_BY MERGE
-- `get_drawings(db, part_id)` — Graph Cypher → RDS JOIN 전환
-- `get_suppliers(db, part_id)` — Graph Cypher → RDS JOIN 전환
-- `upsert_part()` — `job_id` Optional 전환 (Drawing 합성에서 `None` 전달)
-- `_create_revision_snapshot()` — `drawing_id` 포함
+- `next_revision(current: str) -> str` 추가 — 패턴 감지 기반 자동 증분
+  - 숫자: `"1"→"2"`, `"003"→"004"`, `"Rev.3"→"Rev.4"`
+  - 알파벳: `"A"→"B"`, `"Rev.A"→"Rev.B"`, `"Z"→"AA"`
+  - 구분자 무관: `.`, `-`, 공백 등 모두 지원
+- `_PART_STANDARD_ATTRS`에서 `"revision"` 제거 (시스템이 별도 관리)
+- `upsert_part()` 리스트럭처링:
+  - 신규 Part: 생성 + `_create_revision_snapshot()` (첫 리비전 기록)
+  - 기존 Part+변경: 적용 → `next_revision()` 증분 → `_create_revision_snapshot()` (새 리비전 기록)
+- `_create_revision_snapshot()`: `job_id: uuid.UUID | None`으로 변경
 
-**Service 변경:**
-- `app/modules/part/service.py` — drawings/suppliers 조회를 RDS dict 직접 접근으로 변경, Graph 파싱 헬퍼(`_safe_float`) 제거
-- `app/modules/synthesis/service.py` — Phase 5를 DEFINED_BY/SUPPLIED_BY dual-write로 분리 (5a/5b/5c)
-  - `_process_row_relationships()`에서 DEFINED_BY/SUPPLIED_BY 제외
-  - `_extract_defined_by()`, `_extract_supplied_by()` 함수 추가
-  - Rootless relation도 DEFINED_BY/SUPPLIED_BY는 구조화 경로로 처리
-- `app/modules/drawing/service.py` — `_run_drawing_synthesis`를 `upsert_drawing` + `part_repo.upsert_part` + `link_part_to_drawing` 호출로 전환
-  - `_build_drawing_props`, `_build_part_props` — Cypher format → Python dict 반환
+**스키마 변경 (`app/modules/part/schemas.py`):**
+- `PartSummary.revision`, `PartDetailResponse.revision`: `str | None` → `str = "1"`
 
-**Drawing repository 정리 (`app/modules/drawing/repository.py`):**
-- Graph-only 함수 3개 제거: `merge_drawing_node`, `merge_part_node`, `merge_defined_by`
+### 완료: Drawing 모델 모듈 이동
 
-**문서 업데이트:**
-- `docs/agents/project.md` — 관계 저장 위치: `DEFINED_BY` → RDS FK + Graph, `SUPPLIED_BY` → RDS 조인 테이블 + Graph
-- `docs/agents/repository.md` — dual-write 대상에 DEFINED_BY, SUPPLIED_BY 추가
+- `app/modules/document/models.py`의 `Drawing` 클래스 → `app/modules/drawing/models.py`로 이동
+- import 경로 4개 업데이트: `drawing/repository.py`, `part/repository.py`, `project/repository.py`, `project/models.py`
+- `app/modules/document/` 디렉토리 삭제
 
-### 완료: nodes/search 검색 범위 확장
+### 이전 세션 완료 항목 (요약)
 
-`search_merge_key()` 검색 필드 확장 (반환값은 merge key 유지):
-- Part: `part_number OR name`
-- Drawing: `drawing_number OR name`
-- Supplier: `company_name OR code`
-- `ontology_router.py` docstring에 검색 범위 명세 추가
-
-### 완료: Supplier repository value/label 수정
-
-- `search_merge_key()` 반환에서 `value`(merge key)와 `label`이 뒤바뀌어 있던 버그 수정
-- `Supplier.code`가 nullable이라 `value`에 들어가면 Pydantic 검증 에러 발생했음
+- DEFINED_BY / SUPPLIED_BY dual-write 전환
+- nodes/search 검색 범위 확장
+- Supplier repository value/label 버그 수정
 
 ## What Worked
 
-- `upsert_bom_link` 패턴을 그대로 `link_part_to_supplier`에 적용 — 일관성 유지
-- Drawing은 N:1이므로 `Part.drawing_id` FK로 충분, 별도 조인 테이블 불필요
-- `_process_row_relationships`에서 DEFINED_BY/SUPPLIED_BY를 스킵하고 별도 추출 함수로 분리하는 접근이 깔끔
+- conditions 리스트 패턴으로 count/data 쿼리 간 필터 로직 중복 방지
+- 상관 서브쿼리(`scalar_subquery`)로 children_count를 N+1 없이 해결
+- `next_revision()`의 정규식 `^(.*?)(\d+|[A-Z])$` — 구분자 무관하게 접미사만 증분, 프리픽스 보존
+- 리비전 시스템을 B방식(리비전 우선)으로 전환 — A방식(아카이브) 대비 이력 완전성 확보
+- Drawing 모델 이동 시 `drawing/models.py`에 이미 다른 모델(DrawingAnalysisRecord, DrawingSynthesisJob)이 있어 합치기만 하면 됨
 
 ## What Didn't Work / 주의사항
 
-- **TenantBase 모델 변경은 Alembic이 빈 마이그레이션 생성**: `Base`(public)만 추적하므로 autogenerate가 감지 못함. 개발 환경에서는 DB 재생성 필요: `docker compose down -v && docker compose up -d` → `uv run alembic upgrade head`
-- **Supplier.code는 nullable**: merge key가 아닌 필드를 `value`로 반환하면 Pydantic `string` 검증 실패
+- **TenantBase 모델 변경은 Alembic이 감지 못함**: DB 재생성 필요 (`docker compose down -v && docker compose up -d` → `uv run alembic upgrade head`)
+- **Part.revision NOT NULL 전환**: 기존 데이터가 있으면 마이그레이션 필요하지만, 현재 개발 단계라 DB 재생성으로 해결
+- **Part JSONB 통합 계획은 폐기됨**: material, category 등 전용 컬럼을 extended_properties로 통합하는 계획이 있었으나 "현재 상태 유지"로 결정
 
 ## 테스트 상태
 
 - 74 passed, 6 skipped
 - `uv run pytest tests/ -v`
 
-## 관계 저장 현황 (모두 RDS+Graph dual-write 완료)
+## 관계 저장 현황
 
 | 관계 | 방식 | RDS 저장 |
 |------|------|----------|
@@ -78,67 +104,32 @@ Part 목록 검색/필터 기능을 설계·구현하는 단계.
 
 ## Next Steps
 
-### 1. Part 목록 검색/필터 구현 (설계 합의 완료)
-
-**API 설계:**
-
-#### `GET /api/v1/parts/filter-options` — 필터 옵션 조회
-프론트가 필터 UI를 동적으로 구성하기 위한 메타데이터 반환.
-
-```json
-{
-  "basic": [
-    {"key": "category", "display_name": "분류", "data_type": "string",
-     "values": ["기구부품", "전자부품"]},
-    {"key": "is_phantom", "display_name": "팬텀 여부", "data_type": "boolean"},
-    {"key": "lead_time_days", "display_name": "리드타임(일)", "data_type": "integer",
-     "min": 1, "max": 90}
-  ],
-  "extended": [
-    {"key": "_ext_color", "display_name": "색상", "data_type": "string",
-     "values": ["RED", "BLUE"]},
-    {"key": "_ext_weight", "display_name": "중량", "data_type": "float",
-     "min": 0.1, "max": 150.0}
-  ]
-}
-```
-
-- `string` → `values` (DISTINCT 쿼리)
-- `integer`/`float` → `min`, `max`
-- `boolean` → 필드만 (값 고정)
-- 확장 속성 정의는 `ExtendedPropertyDefinition` 테이블에서 조회 (이미 모델 존재)
-
-#### `GET /api/v1/parts` — 목록 조회 (필터 확장)
-
-```
-GET /api/v1/parts?search=BRK
-    &category=기구부품
-    &lifecycle_state=ACTIVE
-    &ext=_ext_color:eq:RED
-    &ext=_ext_weight:like:100
-```
-
-- `search`: `part_number OR name` ILIKE (기존)
-- 기본 속성 필터: 쿼리 파라미터 직접 (`eq` 고정)
-- 확장 속성 필터: `ext` 반복 파라미터, `key:op:value` 형식
-  - `eq` → `extended_properties->>'key' = 'value'`
-  - `like` → `extended_properties->>'key' ILIKE '%value%'`
-
-**구현 순서:**
-1. `ExtendedPropertyDefinition` 등록 로직 확인 (합성 시 자동 등록되는지)
-2. `GET /api/v1/parts/filter-options` 엔드포인트 구현
-3. `GET /api/v1/parts` 필터 파라미터 확장
-4. 테스트
-
-### 2. DB 재생성 (dual-write 모델 반영)
+### 1. DB 재생성 (모델 변경 반영)
 
 ```bash
 docker compose down -v && docker compose up -d
 uv run alembic upgrade head
 ```
 
-### 3. 커밋
+### 2. 커밋
 
-- DEFINED_BY / SUPPLIED_BY dual-write 전환
-- nodes/search 검색 범위 확장
-- Part 목록 필터 (구현 후)
+미커밋 변경사항:
+- Part 목록 검색/필터 API
+- 리비전 시스템 (PartRevision = SoT)
+- Drawing 모델 모듈 이동 (document → drawing)
+- Part 상세/BOM 트리 path param UUID 전환
+- Supplier 모듈 신규 (untracked)
+
+### 3. 확장 속성 필터 (미구현)
+
+HANDOFF.md 이전 버전에 설계가 있었던 항목:
+- `GET /api/v1/parts?ext=material:eq:SUS304` — JSONB 기반 확장 속성 필터
+- `ExtendedPropertyDefinition` 자동 등록 (합성 시)
+- `GET /api/v1/parts/filter-options` 확장 (extended 속성의 select/range/toggle 옵션)
+- 현재는 기본 속성(category, lifecycle_state) 필터만 구현됨
+
+### 4. 리비전 Status 워크플로우 (향후)
+
+- PartRevision에 `status` 필드 추가 (draft → in_review → released)
+- 승인 워크플로우 구현 시 함께 도입
+- `lifecycle_state`(제품 수명)와는 별개 개념

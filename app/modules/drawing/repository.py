@@ -138,6 +138,7 @@ def upsert_drawing(
     graph_name: str,
     *,
     overwrite: bool = False,
+    upload_id: uuid.UUID | None = None,
 ) -> None:
     """Drawing을 RDS에 INSERT/UPDATE하고, Graph에 MERGE.
 
@@ -172,6 +173,7 @@ def upsert_drawing(
         drawing = Drawing(
             id=generate_uuid7(),
             drawing_number=drawing_number,
+            upload_id=upload_id,
             # name은 필수 컬럼이므로 기본값 제공
             name=standard.pop("name", drawing_number),
             extended_properties=extended if extended else {},
@@ -181,6 +183,10 @@ def upsert_drawing(
         db.flush()
     else:
         changed = False
+        # upload_id가 비어 있으면 채움
+        if upload_id and existing.upload_id is None:
+            existing.upload_id = upload_id
+            changed = True
         for key, value in standard.items():
             current = getattr(existing, key)
             if not overwrite and current is not None:

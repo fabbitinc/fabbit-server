@@ -281,6 +281,7 @@ def start_drawing_synthesis(
         graph_name=schema_name,
         analysis_json=record.analysis,
         file_key=upload.file_key,
+        upload_id=upload.id,
     )
 
     logger.info(
@@ -407,6 +408,7 @@ def _run_drawing_synthesis(
     graph_name: str,
     analysis_json: dict,
     file_key: str,
+    upload_id: uuid.UUID | None = None,
 ) -> None:
     """Background task — 도면 분석 결과를 AGE 그래프에 적재."""
     db = create_tenant_session(schema_name)
@@ -431,7 +433,10 @@ def _run_drawing_synthesis(
         drawing_props = _build_drawing_props(tb, file_key)
 
         try:
-            repo.upsert_drawing(db, drawing_number, drawing_props, graph_name)
+            repo.upsert_drawing(
+                db, drawing_number, drawing_props, graph_name,
+                upload_id=upload_id,
+            )
             nodes_created += 1
         except Exception as e:
             errors.append(f"Drawing upsert 실패: {e}")
