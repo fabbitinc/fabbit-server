@@ -99,7 +99,7 @@ def get_part(db: Session, auth: AuthContext, part_id: uuid.UUID) -> PartDetailRe
     parents_rows = repo.get_parents(db, part.id)
 
     # Drawing/Supplier 관계: RDS
-    drawings_rows = repo.get_drawings(db, part.id)
+    drawing_row = repo.get_drawing(db, part.id)
     suppliers_rows = repo.get_suppliers(db, part.id)
 
     children = [
@@ -122,15 +122,16 @@ def get_part(db: Session, auth: AuthContext, part_id: uuid.UUID) -> PartDetailRe
         for r in parents_rows
     ]
 
-    drawings = [
+    drawing = (
         RelatedDrawing(
-            drawing_number=r["drawing_number"],
-            name=r["name"],
-            version=r["version"],
-            status=r["status"],
+            drawing_number=drawing_row["drawing_number"],
+            name=drawing_row["name"],
+            version=drawing_row["version"],
+            status=drawing_row["status"],
         )
-        for r in drawings_rows
-    ]
+        if drawing_row
+        else None
+    )
 
     suppliers = [
         RelatedSupplier(
@@ -159,7 +160,7 @@ def get_part(db: Session, auth: AuthContext, part_id: uuid.UUID) -> PartDetailRe
         extended_properties=extended,
         children=children,
         parents=parents,
-        drawings=drawings,
+        drawing=drawing,
         suppliers=suppliers,
     )
 

@@ -6,10 +6,13 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
-from app.core.database import generate_uuid7
+from app.core.config import settings
+from app.core.database import create_tenant_session, generate_uuid7
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
+from app.infrastructure.drawing_converter_client import DrawingConverterClient
 from app.infrastructure.s3_client import S3Client
+from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.upload import repository as repo
 from app.modules.upload.models import Upload
 from app.modules.upload.schemas import (
@@ -18,12 +21,17 @@ from app.modules.upload.schemas import (
     BatchCompleteResponse,
     BatchCreateUploadRequest,
     BatchCreateUploadResponse,
+    ConversionResultRequest,
     CreateUploadRequest,
     CreateUploadResponse,
     UploadCompleteResponse,
 )
 
 _s3 = S3Client()
+_converter = DrawingConverterClient()
+
+# DWG 확장자 (대소문자 무시)
+_DWG_EXTENSIONS = {".dwg"}
 
 
 @transactional
@@ -159,6 +167,7 @@ def batch_complete_uploads(
 def complete_upload(
     db: Session,
     upload_id: uuid.UUID,
+    auth: AuthContext,
 ) -> UploadCompleteResponse:
     upload = repo.get_upload_by_id(db, upload_id)
     if upload is None:
@@ -176,12 +185,80 @@ def complete_upload(
 
     upload.status = "UPLOADED"
 
+    # DWG 파일이면 변환 요청 트리거
+    if _is_dwg_file(upload.original_name) and _converter.enabled:
+        upload.conversion_status = "PENDING"
+        tenant_schema = org_id_to_schema(auth.org_id)
+        callback_url = (
+            f"{settings.base_api_url}/api/v1/internal/webhooks/drawing-converter"
+        )
+        try:
+            _converter.request_conversion(
+                upload_id=upload.id,
+                tenant_schema=tenant_schema,
+                file_key=upload.file_key,
+                callback_url=callback_url,
+            )
+        except Exception:
+            logger.warning(
+                "변환 요청 실패 — 업로드는 정상 처리: upload_id={upload_id}",
+                upload_id=upload.id,
+            )
+            upload.conversion_status = "FAILED"
+
     logger.info(
         "업로드 완료: upload_id={upload_id} size={size}",
         upload_id=upload.id,
         size=obj_meta["content_length"],
     )
     return _to_upload_complete_response(upload)
+
+
+def handle_conversion_result(req: ConversionResultRequest) -> None:
+    """Webhook으로 수신한 변환 결과를 Upload에 반영.
+
+    webhook은 테넌트 인증 없이 호출되므로 create_tenant_session을 사용합니다.
+    """
+    db = create_tenant_session(req.tenant_schema)
+    try:
+        upload = repo.get_upload_by_id(db, req.upload_id)
+        if upload is None:
+            logger.warning(
+                "변환 결과 수신 — 업로드 없음: upload_id={upload_id}",
+                upload_id=req.upload_id,
+            )
+            return
+
+        upload.conversion_status = req.status
+        if req.status == "COMPLETED":
+            upload.pdf_key = req.pdf_key
+            upload.thumbnail_key = req.thumbnail_key
+        else:
+            logger.warning(
+                "변환 실패: upload_id={upload_id} error={error}",
+                upload_id=req.upload_id,
+                error=req.error,
+            )
+
+        db.commit()
+        logger.info(
+            "변환 결과 반영: upload_id={upload_id} status={status}",
+            upload_id=req.upload_id,
+            status=req.status,
+        )
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+def _is_dwg_file(filename: str) -> bool:
+    """파일명이 DWG 확장자인지 판별."""
+    import os
+
+    _, ext = os.path.splitext(filename)
+    return ext.lower() in _DWG_EXTENSIONS
 
 
 def _to_upload_complete_response(upload: Upload) -> UploadCompleteResponse:
@@ -192,5 +269,6 @@ def _to_upload_complete_response(upload: Upload) -> UploadCompleteResponse:
         file_key=upload.file_key,
         file_size=upload.file_size,
         content_type=upload.content_type,
+        conversion_status=upload.conversion_status,
         created_at=upload.created_at,
     )

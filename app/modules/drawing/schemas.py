@@ -144,6 +144,10 @@ class DrawingSummary(BaseModel):
     name: str
     version: str | None = None
     status: str | None = None
+    file_key: str | None = None
+    pdf_key: str | None = None
+    thumbnail_key: str | None = None
+    conversion_status: str | None = None
 
 
 class DrawingListResponse(BaseModel):

@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     # Background Worker
     background_max_workers: int = 3
 
+    # Drawing Converter MSA
+    drawing_converter_url: str = ""  # 빈 문자열이면 비활성화
+    drawing_converter_secret: str = ""
+    base_api_url: str = "http://localhost:8000"  # webhook callback URL 구성용
+
     # S3 호환 스토리지 (Cloudflare R2 / MinIO)
     storage_endpoint: str = "http://localhost:9000"
     storage_access_key: str = "minioadmin"

@@ -50,6 +50,7 @@ def batch_complete_uploads(
 @router.post("/{upload_id}/complete", response_model=UploadCompleteResponse)
 def complete_upload(
     upload_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    return service.complete_upload(db, upload_id)
+    return service.complete_upload(db, upload_id, auth)

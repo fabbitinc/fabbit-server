@@ -77,6 +77,10 @@ def list_drawings(
             name=d.name,
             version=d.version,
             status=d.status,
+            file_key=d.file_key,
+            pdf_key=d.pdf_key,
+            thumbnail_key=d.thumbnail_key,
+            conversion_status=d.conversion_status,
         )
         for d in drawings
     ]
@@ -408,7 +412,7 @@ def _run_drawing_synthesis(
     graph_name: str,
     analysis_json: dict,
     file_key: str,
-    upload_id: uuid.UUID | None = None,
+    upload_id: uuid.UUID,
 ) -> None:
     """Background task — 도면 분석 결과를 AGE 그래프에 적재."""
     db = create_tenant_session(schema_name)

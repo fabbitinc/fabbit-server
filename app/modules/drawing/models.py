@@ -62,7 +62,14 @@ class Drawing(TenantBase):
         nullable=True,
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    # 원본 파일 경로 (DWG, PDF 등)
     file_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # 뷰어용 PDF 경로 (DWG→변환본, PDF→원본과 동일)
+    pdf_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # 썸네일 WebP 경로
+    thumbnail_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # 파일 변환 상태 (PENDING, COMPLETED, FAILED)
+    conversion_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # 온톨로지 merge key (업로드 시 자동 생성, 합성 시 엑셀 값 사용)
     drawing_number: Mapped[str] = mapped_column(String(100), nullable=False)
     version: Mapped[str | None] = mapped_column(String(50), nullable=True)

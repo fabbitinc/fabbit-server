@@ -99,7 +99,7 @@ class PartDetailResponse(BaseModel):
     extended_properties: dict[str, Any] = {}
     children: list[BomChild] = []
     parents: list[BomParent] = []
-    drawings: list[RelatedDrawing] = []
+    drawing: RelatedDrawing | None = None
     suppliers: list[RelatedSupplier] = []
 
 

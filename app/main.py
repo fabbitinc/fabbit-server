@@ -34,6 +34,7 @@ from app.api.v1.tenant.supplier_router import (  # noqa: E402
     router as supplier_router,
 )
 from app.api.v1.tenant.upload_router import router as upload_router  # noqa: E402
+from app.api.v1.internal.webhook_router import router as webhook_router  # noqa: E402
 from app.core.auth_context import AuthContext  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.database import (
@@ -71,6 +72,7 @@ _PUBLIC_PATHS = frozenset(
         "/docs",
         "/openapi.json",
         "/redoc",
+        "/api/v1/internal/webhooks/drawing-converter",
     }
 )
 
@@ -144,6 +146,7 @@ app.include_router(synthesis_router)
 app.include_router(part_router)
 app.include_router(upload_router)
 app.include_router(ontology_router)
+app.include_router(webhook_router)
 
 
 # TODO 삭제

@@ -486,22 +486,20 @@ def get_bom_paths(db: Session, part_number: str, graph_name: str) -> list[dict]:
 # ── 비-BOM 관계 (RDS + Graph dual-write) ──
 
 
-def get_drawings(db: Session, part_id: uuid.UUID) -> list[dict]:
-    """Part.drawing_id로 연결된 Drawing 조회 (RDS)."""
+def get_drawing(db: Session, part_id: uuid.UUID) -> dict | None:
+    """Part.drawing_id FK로 연결된 Drawing 단건 조회 (RDS)."""
     part = db.query(Part).filter(Part.id == part_id).first()
     if not part or not part.drawing_id:
-        return []
+        return None
     drawing = db.query(Drawing).filter(Drawing.id == part.drawing_id).first()
     if not drawing:
-        return []
-    return [
-        {
-            "drawing_number": drawing.drawing_number,
-            "name": drawing.name,
-            "version": drawing.version,
-            "status": drawing.status,
-        }
-    ]
+        return None
+    return {
+        "drawing_number": drawing.drawing_number,
+        "name": drawing.name,
+        "version": drawing.version,
+        "status": drawing.status,
+    }
 
 
 def get_suppliers(db: Session, part_id: uuid.UUID) -> list[dict]:

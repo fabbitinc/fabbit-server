@@ -37,6 +37,13 @@ class Upload(TenantBase):
     owner_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), nullable=True
     )
+    # DWG → PDF/썸네일 변환 상태 (None: 비대상, PENDING/COMPLETED/FAILED)
+    conversion_status: Mapped[str | None] = mapped_column(
+        String(20), nullable=True
+    )
+    pdf_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    thumbnail_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
