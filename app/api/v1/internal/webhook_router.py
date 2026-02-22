@@ -4,8 +4,8 @@ from fastapi import APIRouter, Header
 
 from app.core.exceptions import AppError
 from app.infrastructure.drawing_converter_client import DrawingConverterClient
-from app.modules.file.schemas import ConversionResultRequest
-from app.modules.file import service
+from app.modules.drawing.schemas import ConversionResultRequest
+from app.modules.drawing import service as drawing_service
 
 router = APIRouter(
     prefix="/api/v1/internal/webhooks",
@@ -22,11 +22,11 @@ def receive_drawing_conversion(
 ):
     """Drawing Converter MSA의 변환 완료 webhook을 수신.
 
-    shared secret으로 인증하며, 변환 결과를 Upload 레코드에 반영합니다.
+    shared secret으로 인증하며, 변환 결과를 Drawing 레코드에 반영합니다.
     """
     token = authorization.removeprefix("Bearer ").strip()
     if not _converter.verify_secret(token):
         raise AppError(message="인증 실패", code="UNAUTHENTICATED")
 
-    service.handle_conversion_result(req)
+    drawing_service.handle_conversion_result(req)
     return {"status": "ok"}

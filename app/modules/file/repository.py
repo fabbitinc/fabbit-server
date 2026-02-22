@@ -3,7 +3,6 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import union_all
 from sqlalchemy.orm import Session
 
 from app.modules.file.models import File
@@ -89,11 +88,9 @@ def get_stale_files(
 
 
 def get_all_file_keys(db: Session) -> set[str]:
-    """DB에 등록된 모든 S3 키(file_key, pdf_key, thumbnail_key) 집합 반환."""
-    q = union_all(
-        db.query(File.file_key).filter(File.file_key.isnot(None)),
-        db.query(File.pdf_key).filter(File.pdf_key.isnot(None)),
-        db.query(File.thumbnail_key).filter(File.thumbnail_key.isnot(None)),
-    )
-    rows = db.execute(q).all()
+    """DB에 등록된 모든 S3 키 집합 반환.
+
+    PDF/썸네일은 독립 File 레코드로 관리되므로 file_key만 조회.
+    """
+    rows = db.query(File.file_key).filter(File.file_key.isnot(None)).all()
     return {row[0] for row in rows}

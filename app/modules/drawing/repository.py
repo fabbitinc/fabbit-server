@@ -19,6 +19,11 @@ def get_file_by_id(db: Session, file_id: uuid.UUID) -> File | None:
     return db.query(File).filter(File.id == file_id).first()
 
 
+def get_drawing_by_original_file_id(db: Session, file_id: uuid.UUID) -> Drawing | None:
+    """원본 파일 ID로 Drawing 조회."""
+    return db.query(Drawing).filter(Drawing.original_file_id == file_id).first()
+
+
 # ── DrawingAnalysisRecord CRUD ──
 
 
@@ -138,12 +143,15 @@ def upsert_drawing(
     graph_name: str,
     *,
     overwrite: bool = False,
-    file_id: uuid.UUID | None = None,
+    original_file_id: uuid.UUID | None = None,
 ) -> None:
     """Drawing을 RDS에 INSERT/UPDATE하고, Graph에 MERGE.
 
     RDS: 전체 속성 저장
     Graph: drawing_number만 유지 (merge key)
+
+    검색 순서: (1) original_file_id로 기존 Drawing 검색, (2) drawing_number로 검색.
+    original_file_id로 찾은 경우 drawing_number도 업데이트.
 
     overwrite=False: DB에 이미 값이 있는 필드는 유지 (빈 필드만 채움)
     overwrite=True: 엑셀 값으로 덮어쓰기
@@ -165,15 +173,26 @@ def upsert_drawing(
     if "file_path" in standard:
         standard["file_key"] = standard.pop("file_path")
 
-    existing = (
-        db.query(Drawing).filter(Drawing.drawing_number == drawing_number).first()
-    )
+    # 기존 Drawing 검색: original_file_id 우선, 없으면 drawing_number
+    existing = None
+    if original_file_id:
+        existing = (
+            db.query(Drawing)
+            .filter(Drawing.original_file_id == original_file_id)
+            .first()
+        )
+    if existing is None:
+        existing = (
+            db.query(Drawing)
+            .filter(Drawing.drawing_number == drawing_number)
+            .first()
+        )
 
     if existing is None:
         drawing = Drawing(
             id=generate_uuid7(),
             drawing_number=drawing_number,
-            file_id=file_id,
+            original_file_id=original_file_id,
             # name은 필수 컬럼이므로 기본값 제공
             name=standard.pop("name", drawing_number),
             extended_properties=extended if extended else {},
@@ -183,9 +202,13 @@ def upsert_drawing(
         db.flush()
     else:
         changed = False
-        # file_id가 비어 있으면 채움
-        if file_id and existing.file_id is None:
-            existing.file_id = file_id
+        # original_file_id로 찾은 경우 drawing_number 업데이트
+        if existing.drawing_number != drawing_number:
+            existing.drawing_number = drawing_number
+            changed = True
+        # original_file_id가 비어 있으면 채움
+        if original_file_id and existing.original_file_id is None:
+            existing.original_file_id = original_file_id
             changed = True
         for key, value in standard.items():
             current = getattr(existing, key)

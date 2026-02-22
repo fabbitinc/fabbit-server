@@ -53,16 +53,4 @@ class FileCompleteResponse(BaseModel):
     file_key: str
     file_size: int
     content_type: str
-    conversion_status: str | None = None
     created_at: datetime
-
-
-class ConversionResultRequest(BaseModel):
-    """Drawing Converter webhook 수신 페이로드."""
-
-    file_id: uuid.UUID
-    tenant_schema: str
-    status: str = Field(..., description="COMPLETED 또는 FAILED")
-    pdf_key: str | None = None
-    thumbnail_key: str | None = None
-    error: str | None = None

@@ -8,15 +8,13 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
-from app.core.config import settings
 from app.core.database import create_tenant_session, generate_uuid7
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
 from app.infrastructure.drawing_converter_client import DrawingConverterClient
 from app.infrastructure.s3_client import S3Client
-from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.file import repository as repo
-from app.modules.file.constants import ConversionStatus, FileStatus
+from app.modules.file.constants import FileStatus
 from app.modules.file.models import File
 from app.modules.file.schemas import (
     BatchCompleteFailure,
@@ -24,7 +22,6 @@ from app.modules.file.schemas import (
     BatchCompleteResponse,
     BatchCreateFileRequest,
     BatchCreateFileResponse,
-    ConversionResultRequest,
     CreateFileRequest,
     CreateFileResponse,
     FileCompleteResponse,
@@ -188,26 +185,11 @@ def complete_file(
 
     file.mark_uploaded()
 
-    # DWG 파일이면 변환 요청 트리거
+    # DWG 파일이면 예비 Drawing 생성 + 변환 트리거
     if _is_dwg_file(file.original_name) and _converter.enabled:
-        file.request_conversion()
-        tenant_schema = org_id_to_schema(auth.org_id)
-        callback_url = (
-            f"{settings.base_api_url}/api/v1/internal/webhooks/drawing-converter"
-        )
-        try:
-            _converter.request_conversion(
-                upload_id=file.id,
-                tenant_schema=tenant_schema,
-                file_key=file.file_key,
-                callback_url=callback_url,
-            )
-        except Exception:
-            logger.warning(
-                "변환 요청 실패 — 업로드는 정상 처리: file_id={file_id}",
-                file_id=file.id,
-            )
-            file.fail_conversion()
+        from app.modules.drawing import service as drawing_service
+
+        drawing_service.create_pending_drawing(db, file, auth)
 
     logger.info(
         "업로드 완료: file_id={file_id} size={size}",
@@ -215,44 +197,6 @@ def complete_file(
         size=obj_meta["content_length"],
     )
     return _to_file_complete_response(file)
-
-
-def handle_conversion_result(req: ConversionResultRequest) -> None:
-    """Webhook으로 수신한 변환 결과를 File에 반영.
-
-    webhook은 테넌트 인증 없이 호출되므로 create_tenant_session을 사용합니다.
-    """
-    db = create_tenant_session(req.tenant_schema)
-    try:
-        file = repo.get_file_by_id(db, req.file_id)
-        if file is None:
-            logger.warning(
-                "변환 결과 수신 — 파일 없음: file_id={file_id}",
-                file_id=req.file_id,
-            )
-            return
-
-        if req.status == ConversionStatus.COMPLETED:
-            file.complete_conversion(req.pdf_key, req.thumbnail_key)
-        else:
-            file.fail_conversion()
-            logger.warning(
-                "변환 실패: file_id={file_id} error={error}",
-                file_id=req.file_id,
-                error=req.error,
-            )
-
-        db.commit()
-        logger.info(
-            "변환 결과 반영: file_id={file_id} status={status}",
-            file_id=req.file_id,
-            status=req.status,
-        )
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
 
 
 @transactional
@@ -382,17 +326,16 @@ def _cleanup_batch(
 
 
 def _delete_s3_files(file: File) -> None:
-    """파일에 연결된 모든 S3 파일 삭제 (원본 + pdf + 썸네일)."""
-    for key in [file.file_key, file.pdf_key, file.thumbnail_key]:
-        if key:
-            try:
-                _s3.delete_object(key)
-            except Exception:
-                logger.warning(
-                    "S3 파일 삭제 실패: key={key} file_id={file_id}",
-                    key=key,
-                    file_id=file.id,
-                )
+    """파일의 S3 오브젝트 삭제."""
+    if file.file_key:
+        try:
+            _s3.delete_object(file.file_key)
+        except Exception:
+            logger.warning(
+                "S3 파일 삭제 실패: key={key} file_id={file_id}",
+                key=file.file_key,
+                file_id=file.id,
+            )
 
 
 def _is_dwg_file(filename: str) -> bool:
@@ -409,6 +352,5 @@ def _to_file_complete_response(file: File) -> FileCompleteResponse:
         file_key=file.file_key,
         file_size=file.file_size,
         content_type=file.content_type,
-        conversion_status=file.conversion_status,
         created_at=file.created_at,
     )

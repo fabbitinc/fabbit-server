@@ -13,10 +13,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.database import TenantBase, generate_uuid7
+from app.modules.drawing.constants import ConversionStatus
 
 if TYPE_CHECKING:
-    from app.modules.project.models import Folder, Project
     from app.modules.file.models import File
+    from app.modules.project.models import Folder, Project
 
 
 class Drawing(TenantBase):
@@ -33,8 +34,12 @@ class Drawing(TenantBase):
         Index("ix_drawings_folder_id", "folder_id"),
         # 프로젝트별 도면 조회 최적화
         Index("ix_drawings_project_id", "project_id"),
-        # 업로드 파일 역추적 최적화
-        Index("ix_drawings_file_id", "file_id"),
+        # 원본 파일 역추적 최적화
+        Index("ix_drawings_original_file_id", "original_file_id"),
+        # 변환 PDF 파일 역추적
+        Index("ix_drawings_pdf_file_id", "pdf_file_id"),
+        # 썸네일 파일 역추적
+        Index("ix_drawings_thumbnail_file_id", "thumbnail_file_id"),
         # 확장 속성 필터링 최적화 (GIN)
         Index(
             "ix_drawings_extended_properties",
@@ -56,14 +61,26 @@ class Drawing(TenantBase):
         ForeignKey("projects.id", ondelete="CASCADE"),
         nullable=True,
     )
-    file_id: Mapped[uuid.UUID | None] = mapped_column(
+    original_file_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("files.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    # 변환된 PDF File 참조
+    pdf_file_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("files.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    # 썸네일 File 참조
+    thumbnail_file_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("files.id", ondelete="SET NULL"),
         nullable=True,
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     # 원본 파일 경로 (DWG, PDF 등)
-    file_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    original_file_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # 뷰어용 PDF 경로 (DWG→변환본, PDF→원본과 동일)
     pdf_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # 썸네일 WebP 경로
@@ -91,7 +108,58 @@ class Drawing(TenantBase):
         "Project", back_populates="drawings"
     )
     folder: Mapped["Folder | None"] = relationship("Folder")
-    file: Mapped["File | None"] = relationship("File")
+    original_file: Mapped["File | None"] = relationship(
+        "File", foreign_keys=[original_file_id]
+    )
+    pdf_file: Mapped["File | None"] = relationship(
+        "File", foreign_keys=[pdf_file_id]
+    )
+    thumbnail_file: Mapped["File | None"] = relationship(
+        "File", foreign_keys=[thumbnail_file_id]
+    )
+
+    # ── 팩토리 메서드 ──
+
+    @classmethod
+    def create_pending(
+        cls,
+        drawing_id: uuid.UUID,
+        original_file_id: uuid.UUID,
+        file_key: str,
+        original_name: str,
+    ) -> "Drawing":
+        """DWG 업로드 완료 시 예비 Drawing 생성.
+
+        drawing_number는 합성 시 실제 값으로 갱신됨.
+        """
+        return cls(
+            id=drawing_id,
+            drawing_number=f"PENDING-{drawing_id.hex[:8]}",
+            name=original_name,
+            original_file_id=original_file_id,
+            file_key=file_key,
+            conversion_status=ConversionStatus.PENDING,
+        )
+
+    # ── 상태 전이 메서드 ──
+
+    def complete_conversion(
+        self,
+        pdf_file_id: uuid.UUID | None,
+        pdf_key: str | None,
+        thumbnail_file_id: uuid.UUID | None,
+        thumbnail_key: str | None,
+    ) -> None:
+        """DWG 변환 완료 — PDF/썸네일 파일 연결 + 반정규화 키 설정."""
+        self.conversion_status = ConversionStatus.COMPLETED
+        self.pdf_file_id = pdf_file_id
+        self.pdf_key = pdf_key
+        self.thumbnail_file_id = thumbnail_file_id
+        self.thumbnail_key = thumbnail_key
+
+    def fail_conversion(self) -> None:
+        """DWG 변환 실패."""
+        self.conversion_status = ConversionStatus.FAILED
 
 
 class DrawingAnalysisRecord(TenantBase):

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from app.core.database import TenantBase, generate_uuid7
-from app.modules.file.constants import ConversionStatus, FileStatus
+from app.modules.file.constants import FileStatus
 
 
 class File(TenantBase):
@@ -40,13 +40,6 @@ class File(TenantBase):
     owner_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), nullable=True
     )
-    # DWG → PDF/썸네일 변환 상태 (None: 비대상)
-    conversion_status: Mapped[str | None] = mapped_column(
-        String(20), nullable=True
-    )
-    pdf_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    thumbnail_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
-
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -67,16 +60,3 @@ class File(TenantBase):
         """stale 업로드 만료 처리."""
         self.status = FileStatus.EXPIRED
 
-    def request_conversion(self) -> None:
-        """DWG 변환 요청 상태 설정."""
-        self.conversion_status = ConversionStatus.PENDING
-
-    def fail_conversion(self) -> None:
-        """DWG 변환 실패 상태 설정."""
-        self.conversion_status = ConversionStatus.FAILED
-
-    def complete_conversion(self, pdf_key: str | None, thumbnail_key: str | None) -> None:
-        """DWG 변환 완료 결과 반영."""
-        self.conversion_status = ConversionStatus.COMPLETED
-        self.pdf_key = pdf_key
-        self.thumbnail_key = thumbnail_key

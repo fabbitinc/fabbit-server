@@ -9,9 +9,11 @@ from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
 from app.core.background_worker import guarded
+from app.core.config import settings
 from app.core.database import create_tenant_session, generate_uuid7
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
+from app.infrastructure.drawing_converter_client import DrawingConverterClient
 from app.infrastructure.image_converter import (
     detect_drawing_type,
     ensure_webp,
@@ -20,10 +22,11 @@ from app.infrastructure.image_converter import (
 )
 from app.infrastructure.llm_client import vision_completion_with_usage
 from app.infrastructure.s3_client import S3Client
+from app.modules.ai_usage.service import log_ai_usage
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.drawing import repository as repo
-from app.modules.drawing.models import DrawingAnalysisRecord
-from app.modules.part import repository as part_repo
+from app.modules.drawing.constants import ConversionStatus
+from app.modules.drawing.models import Drawing, DrawingAnalysisRecord
 from app.modules.drawing.prompts import (
     DRAWING_ANALYSIS_SYSTEM_PROMPT,
     DRAWING_ANALYSIS_USER_MESSAGE,
@@ -32,12 +35,15 @@ from app.modules.drawing.prompts import (
     TEXT_ASSISTED_USER_MESSAGE,
 )
 from app.modules.drawing.schemas import (
-    DrawingAnalysisResponse,
+    ConversionResultRequest,
     DrawingAnalysisListResponse,
+    DrawingAnalysisResponse,
+    DrawingAnalysisResult,
     DrawingAnalyzeRequest,
     DrawingAnalyzeResponse,
-    DrawingAnalysisResult,
     DrawingConfirmRequest,
+    DrawingListResponse,
+    DrawingSummary,
     DrawingSynthesisJobResponse,
     DrawingSynthesisStartRequest,
     ExtractedPart,
@@ -45,12 +51,123 @@ from app.modules.drawing.schemas import (
     PartConflict,
     PartMatch,
 )
-from app.modules.ai_usage.service import log_ai_usage
-from app.modules.drawing.schemas import (
-    DrawingListResponse,
-    DrawingSummary,
-)
+from app.modules.file import repository as file_repo
+from app.modules.file.models import File
+from app.modules.part import repository as part_repo
+
 _s3 = S3Client()
+_converter = DrawingConverterClient()
+
+
+# ── DWG 변환 관리 ──
+
+
+def create_pending_drawing(db: Session, file: File, auth: AuthContext) -> None:
+    """DWG 업로드 완료 시 예비 Drawing 생성 + 변환 트리거."""
+    schema_name = org_id_to_schema(auth.org_id)
+
+    drawing = Drawing.create_pending(
+        drawing_id=generate_uuid7(),
+        original_file_id=file.id,
+        file_key=file.file_key,
+        original_name=file.original_name,
+    )
+    db.add(drawing)
+    db.flush()
+
+    # Converter 요청 (fire-and-forget)
+    callback_url = (
+        f"{settings.base_api_url}/api/v1/internal/webhooks/drawing-converter"
+    )
+    try:
+        _converter.request_conversion(
+            upload_id=file.id,
+            tenant_schema=schema_name,
+            file_key=file.file_key,
+            callback_url=callback_url,
+        )
+    except Exception:
+        drawing.fail_conversion()
+        logger.warning(
+            "변환 요청 실패: file_id={file_id}",
+            file_id=file.id,
+        )
+
+
+def handle_conversion_result(req: ConversionResultRequest) -> None:
+    """Webhook 변환 결과를 Drawing에 반영.
+
+    PDF/thumbnail은 각각 독립 File 레코드로 생성.
+    webhook은 테넌트 인증 없이 호출되므로 create_tenant_session을 사용합니다.
+    """
+    db = create_tenant_session(req.tenant_schema)
+    try:
+        drawing = repo.get_drawing_by_original_file_id(db, req.file_id)
+        if drawing is None:
+            logger.warning(
+                "변환 결과 수신 — Drawing 없음: file_id={file_id}",
+                file_id=req.file_id,
+            )
+            return
+
+        if req.status == ConversionStatus.COMPLETED:
+            # PDF File 레코드 생성
+            pdf_file_id = None
+            if req.pdf_key:
+                pdf_file = file_repo.create_file_record(
+                    db,
+                    file_id=generate_uuid7(),
+                    original_name=f"{drawing.name}.pdf",
+                    file_key=req.pdf_key,
+                    content_type="application/pdf",
+                    file_size=0,
+                    owner_type="drawing",
+                    owner_id=drawing.id,
+                )
+                pdf_file.mark_uploaded()
+                pdf_file_id = pdf_file.id
+
+            # Thumbnail File 레코드 생성
+            thumbnail_file_id = None
+            if req.thumbnail_key:
+                thumb_file = file_repo.create_file_record(
+                    db,
+                    file_id=generate_uuid7(),
+                    original_name=f"{drawing.name}_thumb.webp",
+                    file_key=req.thumbnail_key,
+                    content_type="image/webp",
+                    file_size=0,
+                    owner_type="drawing",
+                    owner_id=drawing.id,
+                )
+                thumb_file.mark_uploaded()
+                thumbnail_file_id = thumb_file.id
+
+            drawing.complete_conversion(
+                pdf_file_id=pdf_file_id,
+                pdf_key=req.pdf_key,
+                thumbnail_file_id=thumbnail_file_id,
+                thumbnail_key=req.thumbnail_key,
+            )
+        else:
+            drawing.fail_conversion()
+            logger.warning(
+                "변환 실패: file_id={file_id} error={error}",
+                file_id=req.file_id,
+                error=req.error,
+            )
+
+        db.commit()
+        logger.info(
+            "변환 결과 반영: file_id={file_id} status={status}",
+            file_id=req.file_id,
+            status=req.status,
+        )
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
 
 # ── Drawing 목록 검색 ──
@@ -77,7 +194,7 @@ def list_drawings(
             name=d.name,
             version=d.version,
             status=d.status,
-            file_key=d.file_key,
+            original_file_key=d.original_file_key,
             pdf_key=d.pdf_key,
             thumbnail_key=d.thumbnail_key,
             conversion_status=d.conversion_status,
@@ -439,7 +556,7 @@ def _run_drawing_synthesis(
         try:
             repo.upsert_drawing(
                 db, drawing_number, drawing_props, graph_name,
-                file_id=file_id,
+                original_file_id=file_id,
             )
             nodes_created += 1
         except Exception as e:

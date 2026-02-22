@@ -10,11 +10,3 @@ class FileStatus(str, Enum):
     UPLOADED = "UPLOADED"    # S3 업로드 확인 완료
     DELETED = "DELETED"      # 소프트 삭제 (보존 기간 후 물리 삭제)
     EXPIRED = "EXPIRED"      # stale 업로드 만료 처리
-
-
-class ConversionStatus(str, Enum):
-    """DWG → PDF/썸네일 변환 상태."""
-
-    PENDING = "PENDING"
-    COMPLETED = "COMPLETED"
-    FAILED = "FAILED"

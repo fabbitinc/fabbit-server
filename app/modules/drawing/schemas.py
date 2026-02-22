@@ -3,7 +3,20 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+# ── Webhook 요청 ──
+
+
+class ConversionResultRequest(BaseModel):
+    """Drawing Converter webhook 수신 페이로드."""
+
+    file_id: uuid.UUID
+    tenant_schema: str
+    status: str = Field(..., description="COMPLETED 또는 FAILED")
+    pdf_key: str | None = None
+    thumbnail_key: str | None = None
+    error: str | None = None
 
 
 # ── LLM 추출 결과 ──
@@ -144,7 +157,7 @@ class DrawingSummary(BaseModel):
     name: str
     version: str | None = None
     status: str | None = None
-    file_key: str | None = None
+    original_file_key: str | None = None
     pdf_key: str | None = None
     thumbnail_key: str | None = None
     conversion_status: str | None = None
