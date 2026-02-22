@@ -2226,18 +2226,18 @@
                 }
             }
         },
-        "/api/v1/uploads": {
+        "/api/v1/files/upload": {
             "post": {
                 "tags": [
-                    "uploads"
+                    "files"
                 ],
-                "summary": "Create Upload",
-                "operationId": "create_upload_api_v1_uploads_post",
+                "summary": "Create File",
+                "operationId": "create_file_api_v1_files_upload_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/CreateUploadRequest"
+                                "$ref": "#/components/schemas/CreateFileRequest"
                             }
                         }
                     },
@@ -2249,7 +2249,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/CreateUploadResponse"
+                                    "$ref": "#/components/schemas/CreateFileResponse"
                                 }
                             }
                         }
@@ -2272,18 +2272,18 @@
                 ]
             }
         },
-        "/api/v1/uploads/batch": {
+        "/api/v1/files/upload/batch": {
             "post": {
                 "tags": [
-                    "uploads"
+                    "files"
                 ],
-                "summary": "Batch Create Uploads",
-                "operationId": "batch_create_uploads_api_v1_uploads_batch_post",
+                "summary": "Batch Create Files",
+                "operationId": "batch_create_files_api_v1_files_upload_batch_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/BatchCreateUploadRequest"
+                                "$ref": "#/components/schemas/BatchCreateFileRequest"
                             }
                         }
                     },
@@ -2295,7 +2295,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/BatchCreateUploadResponse"
+                                    "$ref": "#/components/schemas/BatchCreateFileResponse"
                                 }
                             }
                         }
@@ -2318,13 +2318,13 @@
                 ]
             }
         },
-        "/api/v1/uploads/batch/complete": {
+        "/api/v1/files/upload/batch/complete": {
             "post": {
                 "tags": [
-                    "uploads"
+                    "files"
                 ],
-                "summary": "Batch Complete Uploads",
-                "operationId": "batch_complete_uploads_api_v1_uploads_batch_complete_post",
+                "summary": "Batch Complete Files",
+                "operationId": "batch_complete_files_api_v1_files_upload_batch_complete_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -2364,13 +2364,13 @@
                 ]
             }
         },
-        "/api/v1/uploads/{upload_id}/complete": {
+        "/api/v1/files/upload/{file_id}/complete": {
             "post": {
                 "tags": [
-                    "uploads"
+                    "files"
                 ],
-                "summary": "Complete Upload",
-                "operationId": "complete_upload_api_v1_uploads__upload_id__complete_post",
+                "summary": "Complete File",
+                "operationId": "complete_file_api_v1_files_upload__file_id__complete_post",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -2378,13 +2378,13 @@
                 ],
                 "parameters": [
                     {
-                        "name": "upload_id",
+                        "name": "file_id",
                         "in": "path",
                         "required": true,
                         "schema": {
                             "type": "string",
                             "format": "uuid",
-                            "title": "Upload Id"
+                            "title": "File Id"
                         }
                     }
                 ],
@@ -2394,7 +2394,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/UploadCompleteResponse"
+                                    "$ref": "#/components/schemas/FileCompleteResponse"
                                 }
                             }
                         }
@@ -2587,10 +2587,10 @@
         "schemas": {
             "BatchCompleteFailure": {
                 "properties": {
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "reason": {
                         "type": "string",
@@ -2599,14 +2599,14 @@
                 },
                 "type": "object",
                 "required": [
-                    "upload_id",
+                    "file_id",
                     "reason"
                 ],
                 "title": "BatchCompleteFailure"
             },
             "BatchCompleteRequest": {
                 "properties": {
-                    "upload_ids": {
+                    "file_ids": {
                         "items": {
                             "type": "string",
                             "format": "uuid"
@@ -2614,13 +2614,13 @@
                         "type": "array",
                         "maxItems": 100,
                         "minItems": 1,
-                        "title": "Upload Ids",
-                        "description": "\uc644\ub8cc \ud655\uc778\ud560 \uc5c5\ub85c\ub4dc ID \ubaa9\ub85d"
+                        "title": "File Ids",
+                        "description": "\uc644\ub8cc \ud655\uc778\ud560 \ud30c\uc77c ID \ubaa9\ub85d"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "upload_ids"
+                    "file_ids"
                 ],
                 "title": "BatchCompleteRequest"
             },
@@ -2628,7 +2628,7 @@
                 "properties": {
                     "items": {
                         "items": {
-                            "$ref": "#/components/schemas/UploadCompleteResponse"
+                            "$ref": "#/components/schemas/FileCompleteResponse"
                         },
                         "type": "array",
                         "title": "Items"
@@ -2648,11 +2648,11 @@
                 ],
                 "title": "BatchCompleteResponse"
             },
-            "BatchCreateUploadRequest": {
+            "BatchCreateFileRequest": {
                 "properties": {
                     "items": {
                         "items": {
-                            "$ref": "#/components/schemas/CreateUploadRequest"
+                            "$ref": "#/components/schemas/CreateFileRequest"
                         },
                         "type": "array",
                         "maxItems": 100,
@@ -2665,13 +2665,13 @@
                 "required": [
                     "items"
                 ],
-                "title": "BatchCreateUploadRequest"
+                "title": "BatchCreateFileRequest"
             },
-            "BatchCreateUploadResponse": {
+            "BatchCreateFileResponse": {
                 "properties": {
                     "items": {
                         "items": {
-                            "$ref": "#/components/schemas/CreateUploadResponse"
+                            "$ref": "#/components/schemas/CreateFileResponse"
                         },
                         "type": "array",
                         "title": "Items"
@@ -2681,10 +2681,15 @@
                 "required": [
                     "items"
                 ],
-                "title": "BatchCreateUploadResponse"
+                "title": "BatchCreateFileResponse"
             },
             "BomChild": {
                 "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
                     "part_number": {
                         "type": "string",
                         "title": "Part Number"
@@ -2714,6 +2719,7 @@
                 },
                 "type": "object",
                 "required": [
+                    "id",
                     "part_number"
                 ],
                 "title": "BomChild",
@@ -2721,6 +2727,11 @@
             },
             "BomParent": {
                 "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
                     "part_number": {
                         "type": "string",
                         "title": "Part Number"
@@ -2750,6 +2761,7 @@
                 },
                 "type": "object",
                 "required": [
+                    "id",
                     "part_number"
                 ],
                 "title": "BomParent",
@@ -2891,10 +2903,10 @@
             },
             "ConversionResultRequest": {
                 "properties": {
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "tenant_schema": {
                         "type": "string",
@@ -2941,12 +2953,90 @@
                 },
                 "type": "object",
                 "required": [
-                    "upload_id",
+                    "file_id",
                     "tenant_schema",
                     "status"
                 ],
                 "title": "ConversionResultRequest",
                 "description": "Drawing Converter webhook \uc218\uc2e0 \ud398\uc774\ub85c\ub4dc."
+            },
+            "CreateFileRequest": {
+                "properties": {
+                    "original_name": {
+                        "type": "string",
+                        "maxLength": 500,
+                        "title": "Original Name",
+                        "description": "\uc6d0\ubcf8 \ud30c\uc77c\uba85"
+                    },
+                    "content_type": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "title": "Content Type",
+                        "description": "MIME \ud0c0\uc785"
+                    },
+                    "file_size": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "File Size",
+                        "description": "\ud30c\uc77c \ud06c\uae30 (\ubc14\uc774\ud2b8)"
+                    },
+                    "owner_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Owner Type",
+                        "description": "\uc18c\uc720\uc790 \ud0c0\uc785 (project, folder, part, ...)"
+                    },
+                    "owner_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Owner Id",
+                        "description": "\uc18c\uc720\uc790 \uc5d4\ud2f0\ud2f0 ID"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "original_name",
+                    "content_type",
+                    "file_size"
+                ],
+                "title": "CreateFileRequest"
+            },
+            "CreateFileResponse": {
+                "properties": {
+                    "file_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "File Id"
+                    },
+                    "upload_url": {
+                        "type": "string",
+                        "title": "Upload Url"
+                    },
+                    "file_key": {
+                        "type": "string",
+                        "title": "File Key"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file_id",
+                    "upload_url",
+                    "file_key"
+                ],
+                "title": "CreateFileResponse"
             },
             "CreateFolderRequest": {
                 "properties": {
@@ -3005,84 +3095,6 @@
                 ],
                 "title": "CreateProjectRequest"
             },
-            "CreateUploadRequest": {
-                "properties": {
-                    "original_name": {
-                        "type": "string",
-                        "maxLength": 500,
-                        "title": "Original Name",
-                        "description": "\uc6d0\ubcf8 \ud30c\uc77c\uba85"
-                    },
-                    "content_type": {
-                        "type": "string",
-                        "maxLength": 100,
-                        "title": "Content Type",
-                        "description": "MIME \ud0c0\uc785"
-                    },
-                    "file_size": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0.0,
-                        "title": "File Size",
-                        "description": "\ud30c\uc77c \ud06c\uae30 (\ubc14\uc774\ud2b8)"
-                    },
-                    "owner_type": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Owner Type",
-                        "description": "\uc18c\uc720\uc790 \ud0c0\uc785 (project, folder, part, ...)"
-                    },
-                    "owner_id": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uuid"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Owner Id",
-                        "description": "\uc18c\uc720\uc790 \uc5d4\ud2f0\ud2f0 ID"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "original_name",
-                    "content_type",
-                    "file_size"
-                ],
-                "title": "CreateUploadRequest"
-            },
-            "CreateUploadResponse": {
-                "properties": {
-                    "upload_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Upload Id"
-                    },
-                    "upload_url": {
-                        "type": "string",
-                        "title": "Upload Url"
-                    },
-                    "file_key": {
-                        "type": "string",
-                        "title": "File Key"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "upload_id",
-                    "upload_url",
-                    "file_key"
-                ],
-                "title": "CreateUploadResponse"
-            },
             "DashboardStatsResponse": {
                 "properties": {
                     "parts": {
@@ -3134,10 +3146,10 @@
                         "format": "uuid",
                         "title": "Id"
                     },
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "name": {
                         "type": "string",
@@ -3161,7 +3173,7 @@
                 "type": "object",
                 "required": [
                     "id",
-                    "upload_id",
+                    "file_id",
                     "name",
                     "analysis",
                     "page_count",
@@ -3208,10 +3220,10 @@
             },
             "DrawingAnalyzeRequest": {
                 "properties": {
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "page_range": {
                         "anyOf": [
@@ -3227,17 +3239,17 @@
                 },
                 "type": "object",
                 "required": [
-                    "upload_id"
+                    "file_id"
                 ],
                 "title": "DrawingAnalyzeRequest",
                 "description": "\ub3c4\uba74 \ubd84\uc11d \uc694\uccad."
             },
             "DrawingAnalyzeResponse": {
                 "properties": {
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "page_count": {
                         "type": "integer",
@@ -3264,7 +3276,7 @@
                 },
                 "type": "object",
                 "required": [
-                    "upload_id",
+                    "file_id",
                     "page_count",
                     "analysis"
                 ],
@@ -3273,10 +3285,10 @@
             },
             "DrawingConfirmRequest": {
                 "properties": {
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "name": {
                         "type": "string",
@@ -3288,7 +3300,7 @@
                 },
                 "type": "object",
                 "required": [
-                    "upload_id",
+                    "file_id",
                     "name",
                     "analysis"
                 ],
@@ -3653,6 +3665,62 @@
                 "title": "ExtractedTitleBlock",
                 "description": "\ud45c\uc81c\ub780 \ucd94\ucd9c \uacb0\uacfc."
             },
+            "FileCompleteResponse": {
+                "properties": {
+                    "file_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "File Id"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "original_name": {
+                        "type": "string",
+                        "title": "Original Name"
+                    },
+                    "file_key": {
+                        "type": "string",
+                        "title": "File Key"
+                    },
+                    "file_size": {
+                        "type": "integer",
+                        "title": "File Size"
+                    },
+                    "content_type": {
+                        "type": "string",
+                        "title": "Content Type"
+                    },
+                    "conversion_status": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Conversion Status"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file_id",
+                    "status",
+                    "original_name",
+                    "file_key",
+                    "file_size",
+                    "content_type",
+                    "created_at"
+                ],
+                "title": "FileCompleteResponse"
+            },
             "FolderResponse": {
                 "properties": {
                     "id": {
@@ -3949,10 +4017,10 @@
             },
             "MappingConfirmRequest": {
                 "properties": {
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "name": {
                         "type": "string",
@@ -3975,7 +4043,7 @@
                 },
                 "type": "object",
                 "required": [
-                    "upload_id",
+                    "file_id",
                     "name",
                     "mapping"
                 ],
@@ -4013,10 +4081,10 @@
             },
             "MappingPreviewRequest": {
                 "properties": {
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "sheet_name": {
                         "anyOf": [
@@ -4032,7 +4100,7 @@
                 },
                 "type": "object",
                 "required": [
-                    "upload_id"
+                    "file_id"
                 ],
                 "title": "MappingPreviewRequest",
                 "description": "\ub9e4\ud551 \ubbf8\ub9ac\ubcf4\uae30 \uc694\uccad"
@@ -4090,10 +4158,10 @@
                         "format": "uuid",
                         "title": "Id"
                     },
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "name": {
                         "type": "string",
@@ -4153,7 +4221,7 @@
                 "type": "object",
                 "required": [
                     "id",
-                    "upload_id",
+                    "file_id",
                     "name",
                     "original_headers",
                     "mapped_headers",
@@ -4193,10 +4261,10 @@
             },
             "MappingUpdateRequest": {
                 "properties": {
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "name": {
                         "anyOf": [
@@ -4226,7 +4294,7 @@
                 },
                 "type": "object",
                 "required": [
-                    "upload_id",
+                    "file_id",
                     "mapping"
                 ],
                 "title": "MappingUpdateRequest",
@@ -4234,10 +4302,10 @@
             },
             "MappingValidateRequest": {
                 "properties": {
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "sheet_name": {
                         "anyOf": [
@@ -4256,7 +4324,7 @@
                 },
                 "type": "object",
                 "required": [
-                    "upload_id",
+                    "file_id",
                     "mapping"
                 ],
                 "title": "MappingValidateRequest",
@@ -4710,6 +4778,16 @@
                         "title": "Extended Properties",
                         "default": {}
                     },
+                    "drawing": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/RelatedDrawing"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
                     "children": {
                         "items": {
                             "$ref": "#/components/schemas/BomChild"
@@ -4725,16 +4803,6 @@
                         "type": "array",
                         "title": "Parents",
                         "default": []
-                    },
-                    "drawing": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/RelatedDrawing"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
                     },
                     "suppliers": {
                         "items": {
@@ -5446,6 +5514,11 @@
             },
             "RelatedDrawing": {
                 "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
                     "drawing_number": {
                         "type": "string",
                         "title": "Drawing Number"
@@ -5486,6 +5559,7 @@
                 },
                 "type": "object",
                 "required": [
+                    "id",
                     "drawing_number"
                 ],
                 "title": "RelatedDrawing",
@@ -5493,6 +5567,11 @@
             },
             "RelatedSupplier": {
                 "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
                     "company_name": {
                         "type": "string",
                         "title": "Company Name"
@@ -5533,6 +5612,7 @@
                 },
                 "type": "object",
                 "required": [
+                    "id",
                     "company_name"
                 ],
                 "title": "RelatedSupplier",
@@ -5808,10 +5888,10 @@
             },
             "SynthesisBatchFailure": {
                 "properties": {
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "reason": {
                         "type": "string",
@@ -5820,7 +5900,7 @@
                 },
                 "type": "object",
                 "required": [
-                    "upload_id",
+                    "file_id",
                     "reason"
                 ],
                 "title": "SynthesisBatchFailure",
@@ -5833,10 +5913,10 @@
                         "format": "uuid",
                         "title": "Job Id"
                     },
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "status": {
                         "type": "string",
@@ -5890,7 +5970,7 @@
                 "type": "object",
                 "required": [
                     "job_id",
-                    "upload_id",
+                    "file_id",
                     "status",
                     "total_rows",
                     "processed_rows",
@@ -6033,10 +6113,10 @@
                         "format": "uuid",
                         "title": "Mapping Id"
                     },
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "status": {
                         "type": "string",
@@ -6099,7 +6179,7 @@
                 "required": [
                     "id",
                     "mapping_id",
-                    "upload_id",
+                    "file_id",
                     "status",
                     "total_rows",
                     "processed_rows",
@@ -6174,10 +6254,10 @@
             },
             "SynthesisUploadItem": {
                 "properties": {
-                    "upload_id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Upload Id"
+                        "title": "File Id"
                     },
                     "root_context": {
                         "anyOf": [
@@ -6196,10 +6276,10 @@
                 },
                 "type": "object",
                 "required": [
-                    "upload_id"
+                    "file_id"
                 ],
                 "title": "SynthesisUploadItem",
-                "description": "\ud569\uc131 \ub300\uc0c1 \uc5c5\ub85c\ub4dc \ud56d\ubaa9."
+                "description": "\ud569\uc131 \ub300\uc0c1 \ud30c\uc77c \ud56d\ubaa9."
             },
             "TokenResponse": {
                 "properties": {
@@ -6270,62 +6350,6 @@
                 },
                 "type": "object",
                 "title": "UpdateProjectRequest"
-            },
-            "UploadCompleteResponse": {
-                "properties": {
-                    "upload_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Upload Id"
-                    },
-                    "status": {
-                        "type": "string",
-                        "title": "Status"
-                    },
-                    "original_name": {
-                        "type": "string",
-                        "title": "Original Name"
-                    },
-                    "file_key": {
-                        "type": "string",
-                        "title": "File Key"
-                    },
-                    "file_size": {
-                        "type": "integer",
-                        "title": "File Size"
-                    },
-                    "content_type": {
-                        "type": "string",
-                        "title": "Content Type"
-                    },
-                    "conversion_status": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Conversion Status"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "upload_id",
-                    "status",
-                    "original_name",
-                    "file_key",
-                    "file_size",
-                    "content_type",
-                    "created_at"
-                ],
-                "title": "UploadCompleteResponse"
             },
             "UserResponse": {
                 "properties": {

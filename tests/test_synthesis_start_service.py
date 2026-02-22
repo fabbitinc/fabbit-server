@@ -72,7 +72,7 @@ def _make_job(mapping_id, upload_id):
     return types.SimpleNamespace(
         id=uuid.uuid4(),
         mapping_id=mapping_id,
-        upload_id=upload_id,
+        file_id=upload_id,
         status="PENDING",
         total_rows=0,
         processed_rows=0,
@@ -100,7 +100,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
         mapping_record = _make_mapping_record()
         req = SynthesisStartRequest(
             mapping_id=mapping_record.id,
-            uploads=[SynthesisUploadItem(upload_id=upload_id)],
+            uploads=[SynthesisUploadItem(file_id=upload_id)],
         )
         revision = _make_revision()
         upload = _make_upload(upload_id)
@@ -120,7 +120,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 return_value=revision,
             ),
             patch(
-                "app.modules.synthesis.service.repo.get_upload_by_id",
+                "app.modules.synthesis.service.repo.get_file_by_id",
                 return_value=upload,
             ),
             patch(
@@ -156,7 +156,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
         db = _FakeSession()
         req = SynthesisStartRequest(
             mapping_id=uuid.uuid4(),
-            uploads=[SynthesisUploadItem(upload_id=uuid.uuid4())],
+            uploads=[SynthesisUploadItem(file_id=uuid.uuid4())],
         )
 
         with patch(
@@ -173,7 +173,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
         mapping_record = _make_mapping_record()
         req = SynthesisStartRequest(
             mapping_id=mapping_record.id,
-            uploads=[SynthesisUploadItem(upload_id=upload_id)],
+            uploads=[SynthesisUploadItem(file_id=upload_id)],
         )
         revision = _make_revision(sheet_name=None)
         upload = _make_upload(upload_id, status="PENDING")
@@ -191,7 +191,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 return_value=revision,
             ),
             patch(
-                "app.modules.synthesis.service.repo.get_upload_by_id",
+                "app.modules.synthesis.service.repo.get_file_by_id",
                 return_value=upload,
             ),
             patch(
@@ -223,8 +223,8 @@ class SynthesisStartServiceTests(unittest.TestCase):
             mapping_id=mapping_record.id,
             project_id=project_id,
             uploads=[
-                SynthesisUploadItem(upload_id=upload_id_1),
-                SynthesisUploadItem(upload_id=upload_id_2),
+                SynthesisUploadItem(file_id=upload_id_1),
+                SynthesisUploadItem(file_id=upload_id_2),
             ],
         )
 
@@ -261,7 +261,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 return_value=revision,
             ),
             patch(
-                "app.modules.synthesis.service.repo.get_upload_by_id",
+                "app.modules.synthesis.service.repo.get_file_by_id",
                 side_effect=_get_upload,
             ),
             patch(
@@ -303,8 +303,8 @@ class SynthesisStartServiceTests(unittest.TestCase):
             mapping_id=mapping_record.id,
             project_id=project_id,
             uploads=[
-                SynthesisUploadItem(upload_id=ok_upload_id),
-                SynthesisUploadItem(upload_id=bad_upload_id),
+                SynthesisUploadItem(file_id=ok_upload_id),
+                SynthesisUploadItem(file_id=bad_upload_id),
             ],
         )
 
@@ -334,7 +334,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 return_value=revision,
             ),
             patch(
-                "app.modules.synthesis.service.repo.get_upload_by_id",
+                "app.modules.synthesis.service.repo.get_file_by_id",
                 side_effect=_get_upload,
             ),
             patch(
@@ -359,7 +359,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
 
         self.assertEqual(res.accepted_count, 1)
         self.assertEqual(len(res.failed), 1)
-        self.assertEqual(res.failed[0].upload_id, bad_upload_id)
+        self.assertEqual(res.failed[0].file_id, bad_upload_id)
 
     def test_start_synthesis_rejects_upload_from_other_project(self) -> None:
         db = _FakeSession()
@@ -370,7 +370,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
         req = SynthesisStartRequest(
             mapping_id=mapping_record.id,
             project_id=project_id,
-            uploads=[SynthesisUploadItem(upload_id=upload_id)],
+            uploads=[SynthesisUploadItem(file_id=upload_id)],
         )
 
         revision = _make_revision(sheet_name=None)
@@ -393,7 +393,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 return_value=revision,
             ),
             patch(
-                "app.modules.synthesis.service.repo.get_upload_by_id",
+                "app.modules.synthesis.service.repo.get_file_by_id",
                 return_value=upload,
             ),
             patch(
@@ -413,7 +413,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
         self.assertEqual(res.accepted_count, 0)
         self.assertEqual(len(res.failed), 1)
         self.assertEqual(
-            res.failed[0].reason, "해당 프로젝트에 속하지 않은 업로드입니다"
+            res.failed[0].reason, "해당 프로젝트에 속하지 않은 파일입니다"
         )
 
     # ── root_context 검증 테스트 ──
@@ -424,7 +424,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
         mapping_record = _make_mapping_record(scope=MappingScope.ROOT_BOM)
         req = SynthesisStartRequest(
             mapping_id=mapping_record.id,
-            uploads=[SynthesisUploadItem(upload_id=uuid.uuid4())],
+            uploads=[SynthesisUploadItem(file_id=uuid.uuid4())],
         )
         # rootless CONSISTS_OF → required_labels={"Part"}
         revision = _make_revision(mapping={
@@ -462,7 +462,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
             mapping_id=mapping_record.id,
             uploads=[
                 SynthesisUploadItem(
-                    upload_id=upload_id,
+                    file_id=upload_id,
                     root_context={"Part": "ASM-001"},
                 ),
             ],
@@ -494,7 +494,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
                 return_value=revision,
             ),
             patch(
-                "app.modules.synthesis.service.repo.get_upload_by_id",
+                "app.modules.synthesis.service.repo.get_file_by_id",
                 return_value=upload,
             ),
             patch(
@@ -527,7 +527,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
             mapping_id=mapping_record.id,
             uploads=[
                 SynthesisUploadItem(
-                    upload_id=uuid.uuid4(),
+                    file_id=uuid.uuid4(),
                     root_context={"Part": "ASM-001"},
                 ),
             ],
@@ -557,7 +557,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
             mapping_id=mapping_record.id,
             uploads=[
                 SynthesisUploadItem(
-                    upload_id=uuid.uuid4(),
+                    file_id=uuid.uuid4(),
                     root_context={"Part": "ASM-001"},
                 ),
             ],
@@ -589,14 +589,14 @@ class SynthesisStartServiceTests(unittest.TestCase):
             requested_count=3,
             accepted_count=2,
             failed_uploads=[
-                {"upload_id": str(uuid.uuid4()), "reason": "업로드를 찾을 수 없습니다"}
+                {"file_id": str(uuid.uuid4()), "reason": "파일을 찾을 수 없습니다"}
             ],
             created_at=datetime.now(timezone.utc),
         )
         jobs = [
             types.SimpleNamespace(
                 id=uuid.uuid4(),
-                upload_id=uuid.uuid4(),
+                file_id=uuid.uuid4(),
                 status="COMPLETED",
                 total_rows=10,
                 processed_rows=10,
@@ -608,7 +608,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
             ),
             types.SimpleNamespace(
                 id=uuid.uuid4(),
-                upload_id=uuid.uuid4(),
+                file_id=uuid.uuid4(),
                 status="FAILED",
                 total_rows=8,
                 processed_rows=6,

@@ -35,7 +35,7 @@ from app.api.v1.tenant.supplier_router import (  # noqa: E402
     router as supplier_router,
 )
 from app.api.v1.tenant.synthesis_router import router as synthesis_router  # noqa: E402
-from app.api.v1.tenant.upload_router import router as upload_router  # noqa: E402
+from app.api.v1.tenant.file_router import router as file_router  # noqa: E402
 from app.core.auth_context import AuthContext  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.database import (
@@ -145,7 +145,7 @@ app.include_router(project_router)
 app.include_router(supplier_router)
 app.include_router(synthesis_router)
 app.include_router(part_router)
-app.include_router(upload_router)
+app.include_router(file_router)
 app.include_router(ontology_router)
 app.include_router(webhook_router)
 

@@ -104,6 +104,7 @@ def get_part(db: Session, auth: AuthContext, part_id: uuid.UUID) -> PartDetailRe
 
     children = [
         BomChild(
+            id=r["id"],
             part_number=r["part_number"],
             name=r["name"],
             quantity=r["quantity"],
@@ -114,6 +115,7 @@ def get_part(db: Session, auth: AuthContext, part_id: uuid.UUID) -> PartDetailRe
 
     parents = [
         BomParent(
+            id=r["id"],
             part_number=r["part_number"],
             name=r["name"],
             quantity=r["quantity"],
@@ -124,6 +126,7 @@ def get_part(db: Session, auth: AuthContext, part_id: uuid.UUID) -> PartDetailRe
 
     drawing = (
         RelatedDrawing(
+            id=drawing_row["id"],
             drawing_number=drawing_row["drawing_number"],
             name=drawing_row["name"],
             version=drawing_row["version"],
@@ -135,6 +138,7 @@ def get_part(db: Session, auth: AuthContext, part_id: uuid.UUID) -> PartDetailRe
 
     suppliers = [
         RelatedSupplier(
+            id=r["id"],
             company_name=r["company_name"],
             code=r["code"],
             country=r["country"],

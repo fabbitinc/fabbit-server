@@ -16,7 +16,7 @@ from app.core.database import TenantBase, generate_uuid7
 
 if TYPE_CHECKING:
     from app.modules.project.models import Folder, Project
-    from app.modules.upload.models import Upload
+    from app.modules.file.models import File
 
 
 class Drawing(TenantBase):
@@ -34,7 +34,7 @@ class Drawing(TenantBase):
         # 프로젝트별 도면 조회 최적화
         Index("ix_drawings_project_id", "project_id"),
         # 업로드 파일 역추적 최적화
-        Index("ix_drawings_upload_id", "upload_id"),
+        Index("ix_drawings_file_id", "file_id"),
         # 확장 속성 필터링 최적화 (GIN)
         Index(
             "ix_drawings_extended_properties",
@@ -56,9 +56,9 @@ class Drawing(TenantBase):
         ForeignKey("projects.id", ondelete="CASCADE"),
         nullable=True,
     )
-    upload_id: Mapped[uuid.UUID | None] = mapped_column(
+    file_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("uploads.id", ondelete="SET NULL"),
+        ForeignKey("files.id", ondelete="SET NULL"),
         nullable=True,
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -91,23 +91,23 @@ class Drawing(TenantBase):
         "Project", back_populates="drawings"
     )
     folder: Mapped["Folder | None"] = relationship("Folder")
-    upload: Mapped["Upload | None"] = relationship("Upload")
+    file: Mapped["File | None"] = relationship("File")
 
 
 class DrawingAnalysisRecord(TenantBase):
     __tablename__ = "drawing_analysis_records"
 
     __table_args__ = (
-        # 업로드별 분석 레코드 조회 최적화
-        Index("ix_drawing_analysis_records_upload_id", "upload_id"),
+        # 파일별 분석 레코드 조회 최적화
+        Index("ix_drawing_analysis_records_file_id", "file_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=generate_uuid7
     )
-    upload_id: Mapped[uuid.UUID] = mapped_column(
+    file_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("uploads.id", ondelete="CASCADE"),
+        ForeignKey("files.id", ondelete="CASCADE"),
         nullable=False,
     )
     name: Mapped[str] = mapped_column(String(500), nullable=False)

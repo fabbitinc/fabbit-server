@@ -8,7 +8,7 @@ from app.infrastructure.age_client import execute_cypher_raw
 from app.modules.mapping.models import MappingRecord, MappingRevision
 from app.modules.project.models import Project
 from app.modules.synthesis.models import SynthesisBatch, SynthesisJob
-from app.modules.upload.models import Upload
+from app.modules.file.models import File
 
 
 def get_mapping_by_id(db: Session, mapping_id: uuid.UUID) -> MappingRecord | None:
@@ -32,22 +32,22 @@ def get_project_by_id(db: Session, project_id: uuid.UUID) -> Project | None:
     return db.query(Project).filter(Project.id == project_id).first()
 
 
-def get_upload_by_id(db: Session, upload_id: uuid.UUID) -> Upload | None:
-    return db.query(Upload).filter(Upload.id == upload_id).first()
+def get_file_by_id(db: Session, file_id: uuid.UUID) -> File | None:
+    return db.query(File).filter(File.id == file_id).first()
 
 
 def create_synthesis_job(
     db: Session,
     job_id: uuid.UUID,
     mapping_id: uuid.UUID,
-    upload_id: uuid.UUID,
+    file_id: uuid.UUID,
     batch_id: uuid.UUID | None = None,
 ) -> SynthesisJob:
     job = SynthesisJob(
         id=job_id,
         batch_id=batch_id,
         mapping_id=mapping_id,
-        upload_id=upload_id,
+        file_id=file_id,
         status="PENDING",
     )
     db.add(job)

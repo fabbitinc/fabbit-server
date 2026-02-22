@@ -12,7 +12,7 @@ from app.modules.ontology.schemas import MappingResult
 class MappingPreviewRequest(BaseModel):
     """매핑 미리보기 요청"""
 
-    upload_id: uuid.UUID
+    file_id: uuid.UUID
     sheet_name: str | None = None  # Excel 시트명 (None이면 모든 시트)
 
 
@@ -45,7 +45,7 @@ class MappingPreviewResponse(BaseModel):
 class MappingConfirmRequest(BaseModel):
     """매핑 확정 요청 — 사용자 검토 후 확인"""
 
-    upload_id: uuid.UUID
+    file_id: uuid.UUID
     name: str
     sheet_name: str | None = None  # Excel 시트명 (None이면 모든 시트)
     mapping: MappingResult
@@ -54,7 +54,7 @@ class MappingConfirmRequest(BaseModel):
 class MappingUpdateRequest(BaseModel):
     """매핑 업데이트 요청 — 새 리비전 생성"""
 
-    upload_id: uuid.UUID
+    file_id: uuid.UUID
     name: str | None = None
     sheet_name: str | None = None
     mapping: MappingResult
@@ -64,7 +64,7 @@ class MappingResponse(BaseModel):
     """매핑 레코드 응답"""
 
     id: uuid.UUID
-    upload_id: uuid.UUID
+    file_id: uuid.UUID
     name: str
     sheet_name: str | None = None
     original_headers: list[str]
@@ -104,7 +104,7 @@ class MappingImpactSummary(BaseModel):
 class MappingValidateRequest(BaseModel):
     """매핑 검증 요청"""
 
-    upload_id: uuid.UUID
+    file_id: uuid.UUID
     sheet_name: str | None = None
     mapping: MappingResult
 

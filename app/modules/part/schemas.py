@@ -13,6 +13,7 @@ from pydantic import BaseModel
 class BomChild(BaseModel):
     """CONSISTS_OF 자식 (depth 1)"""
 
+    id: uuid.UUID
     part_number: str
     name: str | None = None
     quantity: int = 1
@@ -22,6 +23,7 @@ class BomChild(BaseModel):
 class BomParent(BaseModel):
     """CONSISTS_OF 부모 (depth 1)"""
 
+    id: uuid.UUID
     part_number: str
     name: str | None = None
     quantity: int = 1
@@ -31,6 +33,7 @@ class BomParent(BaseModel):
 class RelatedDrawing(BaseModel):
     """DEFINED_BY 도면"""
 
+    id: uuid.UUID
     drawing_number: str
     name: str | None = None
     version: str | None = None
@@ -40,6 +43,7 @@ class RelatedDrawing(BaseModel):
 class RelatedSupplier(BaseModel):
     """SUPPLIED_BY 공급사"""
 
+    id: uuid.UUID
     company_name: str
     code: str | None = None
     country: str | None = None

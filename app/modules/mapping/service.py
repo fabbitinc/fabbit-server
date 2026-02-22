@@ -67,18 +67,18 @@ def preview_mapping(
     req: MappingPreviewRequest,
 ) -> MappingPreviewResponse:
     t_total = time.perf_counter()
-    upload = repo.get_upload_by_id(db, req.upload_id)
-    if upload is None:
+    file = repo.get_file_by_id(db, req.file_id)
+    if file is None:
         raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
-    if upload.status != "UPLOADED":
+    if file.status != "UPLOADED":
         raise AppError(
             message="업로드가 완료되지 않은 파일입니다. 먼저 업로드를 완료해주세요.",
             code="PRECONDITION_FAILED",
         )
 
-    content = _s3.get_object(upload.file_key)
+    content = _s3.get_object(file.file_key)
 
-    sheet_names = get_sheet_names(content, upload.original_name)
+    sheet_names = get_sheet_names(content, file.original_name)
     is_excel = len(sheet_names) > 0
 
     if req.sheet_name is not None:
@@ -95,12 +95,12 @@ def preview_mapping(
     first_mapping = None
 
     for sheet in target_sheets:
-        sheet_label = sheet or upload.original_name
+        sheet_label = sheet or file.original_name
         try:
             t_parse = time.perf_counter()
             headers, sample_rows = extract_headers_and_rows(
                 content,
-                upload.original_name,
+                file.original_name,
                 sheet_name=sheet,
                 max_rows=5,
             )
@@ -181,8 +181,8 @@ def preview_mapping(
 
     total_elapsed = time.perf_counter() - t_total
     logger.info(
-        "매핑 미리보기 완료: upload_id={upload_id} sheets={sheet_count}개 skipped={skipped_count}개 총 {elapsed:.1f}s",
-        upload_id=req.upload_id,
+        "매핑 미리보기 완료: file_id={file_id} sheets={sheet_count}개 skipped={skipped_count}개 총 {elapsed:.1f}s",
+        file_id=req.file_id,
         sheet_count=len(sheets),
         skipped_count=len(skipped_sheets),
         elapsed=total_elapsed,
@@ -201,12 +201,12 @@ def validate_mapping(
     db: Session,
     req: MappingValidateRequest,
 ) -> MappingValidateResponse:
-    upload = repo.get_upload_by_id(db, req.upload_id)
-    if upload is None:
+    file = repo.get_file_by_id(db, req.file_id)
+    if file is None:
         raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
 
-    content = _s3.get_object(upload.file_key)
-    sheet_names = get_sheet_names(content, upload.original_name)
+    content = _s3.get_object(file.file_key)
+    sheet_names = get_sheet_names(content, file.original_name)
     is_excel = len(sheet_names) > 0
 
     if req.sheet_name is not None:
@@ -218,7 +218,7 @@ def validate_mapping(
 
     headers, sample_rows = extract_headers_and_rows(
         content,
-        upload.original_name,
+        file.original_name,
         sheet_name=target_sheet,
         max_rows=30,
     )
@@ -370,7 +370,7 @@ def confirm_mapping(
     validation = validate_mapping(
         db,
         MappingValidateRequest(
-            upload_id=req.upload_id,
+            file_id=req.file_id,
             sheet_name=req.sheet_name,
             mapping=req.mapping,
         ),
@@ -389,13 +389,13 @@ def confirm_mapping(
             code="DUPLICATE_NAME",
         )
 
-    upload = repo.get_upload_by_id(db, req.upload_id)
-    if upload is None:
+    file = repo.get_file_by_id(db, req.file_id)
+    if file is None:
         raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
 
-    content = _s3.get_object(upload.file_key)
+    content = _s3.get_object(file.file_key)
 
-    sheet_names = get_sheet_names(content, upload.original_name)
+    sheet_names = get_sheet_names(content, file.original_name)
     is_excel = len(sheet_names) > 0
 
     if req.sheet_name is not None:
@@ -407,7 +407,7 @@ def confirm_mapping(
 
     headers, _ = extract_headers_and_rows(
         content,
-        upload.original_name,
+        file.original_name,
         sheet_name=target_sheet,
         max_rows=0,
     )
@@ -423,7 +423,7 @@ def confirm_mapping(
     revision = MappingRevision(
         id=generate_uuid7(),
         record_id=record.id,
-        upload_id=req.upload_id,
+        file_id=req.file_id,
         version=1,
         sheet_name=req.sheet_name,
         original_headers=headers,
@@ -480,7 +480,7 @@ def update_mapping(
     validation = validate_mapping(
         db,
         MappingValidateRequest(
-            upload_id=req.upload_id,
+            file_id=req.file_id,
             sheet_name=req.sheet_name,
             mapping=req.mapping,
         ),
@@ -492,12 +492,12 @@ def update_mapping(
             code="INVALID_MAPPING",
         )
 
-    upload = repo.get_upload_by_id(db, req.upload_id)
-    if upload is None:
+    file = repo.get_file_by_id(db, req.file_id)
+    if file is None:
         raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
 
-    content = _s3.get_object(upload.file_key)
-    sheet_names = get_sheet_names(content, upload.original_name)
+    content = _s3.get_object(file.file_key)
+    sheet_names = get_sheet_names(content, file.original_name)
     is_excel = len(sheet_names) > 0
 
     if req.sheet_name is not None:
@@ -509,7 +509,7 @@ def update_mapping(
 
     headers, _ = extract_headers_and_rows(
         content,
-        upload.original_name,
+        file.original_name,
         sheet_name=target_sheet,
         max_rows=0,
     )
@@ -530,7 +530,7 @@ def update_mapping(
     new_revision = MappingRevision(
         id=generate_uuid7(),
         record_id=record.id,
-        upload_id=req.upload_id,
+        file_id=req.file_id,
         version=latest_rev.version + 1,
         sheet_name=req.sheet_name,
         original_headers=headers,
@@ -576,7 +576,7 @@ def _to_mapping_response(
         mapping_payload = MappingResult.model_validate(revision.mapping)
     return MappingResponse(
         id=record.id,
-        upload_id=revision.upload_id,
+        file_id=revision.file_id,
         name=record.name,
         sheet_name=revision.sheet_name,
         original_headers=original_headers,

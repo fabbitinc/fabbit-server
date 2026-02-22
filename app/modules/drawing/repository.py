@@ -8,15 +8,15 @@ from app.core.database import generate_uuid7
 from app.infrastructure.age_client import execute_cypher, execute_cypher_raw
 from app.modules.drawing.models import Drawing, DrawingAnalysisRecord, DrawingSynthesisJob
 from app.modules.ontology.cypher_utils import escape_cypher_value
-from app.modules.upload.models import Upload
+from app.modules.file.models import File
 
 # Drawing 모델의 표준 속성 (온톨로지 정의 속성 중 RDS 컬럼에 매핑되는 것)
 # 온톨로지의 file_path → RDS의 file_key로 매핑
 _DRAWING_STANDARD_ATTRS = {"name", "file_path", "version", "status"}
 
 
-def get_upload_by_id(db: Session, upload_id: uuid.UUID) -> Upload | None:
-    return db.query(Upload).filter(Upload.id == upload_id).first()
+def get_file_by_id(db: Session, file_id: uuid.UUID) -> File | None:
+    return db.query(File).filter(File.id == file_id).first()
 
 
 # ── DrawingAnalysisRecord CRUD ──
@@ -25,14 +25,14 @@ def get_upload_by_id(db: Session, upload_id: uuid.UUID) -> Upload | None:
 def create_analysis_record(
     db: Session,
     record_id: uuid.UUID,
-    upload_id: uuid.UUID,
+    file_id: uuid.UUID,
     name: str,
     analysis: dict,
     page_count: int,
 ) -> DrawingAnalysisRecord:
     record = DrawingAnalysisRecord(
         id=record_id,
-        upload_id=upload_id,
+        file_id=file_id,
         name=name,
         analysis=analysis,
         page_count=page_count,
@@ -138,7 +138,7 @@ def upsert_drawing(
     graph_name: str,
     *,
     overwrite: bool = False,
-    upload_id: uuid.UUID | None = None,
+    file_id: uuid.UUID | None = None,
 ) -> None:
     """Drawing을 RDS에 INSERT/UPDATE하고, Graph에 MERGE.
 
@@ -173,7 +173,7 @@ def upsert_drawing(
         drawing = Drawing(
             id=generate_uuid7(),
             drawing_number=drawing_number,
-            upload_id=upload_id,
+            file_id=file_id,
             # name은 필수 컬럼이므로 기본값 제공
             name=standard.pop("name", drawing_number),
             extended_properties=extended if extended else {},
@@ -183,9 +183,9 @@ def upsert_drawing(
         db.flush()
     else:
         changed = False
-        # upload_id가 비어 있으면 채움
-        if upload_id and existing.upload_id is None:
-            existing.upload_id = upload_id
+        # file_id가 비어 있으면 채움
+        if file_id and existing.file_id is None:
+            existing.file_id = file_id
             changed = True
         for key, value in standard.items():
             current = getattr(existing, key)

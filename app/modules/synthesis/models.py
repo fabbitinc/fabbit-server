@@ -23,8 +23,8 @@ class SynthesisJob(TenantBase):
         Index("ix_synthesis_jobs_batch_id", "batch_id"),
         # 매핑별 합성 작업 조회 최적화
         Index("ix_synthesis_jobs_mapping_id", "mapping_id"),
-        # 업로드별 합성 작업 조회 최적화
-        Index("ix_synthesis_jobs_upload_id", "upload_id"),
+        # 파일별 합성 작업 조회 최적화
+        Index("ix_synthesis_jobs_file_id", "file_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -40,9 +40,9 @@ class SynthesisJob(TenantBase):
         ForeignKey("mapping_records.id", ondelete="CASCADE"),
         nullable=False,
     )
-    upload_id: Mapped[uuid.UUID] = mapped_column(
+    file_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("uploads.id", ondelete="CASCADE"),
+        ForeignKey("files.id", ondelete="CASCADE"),
         nullable=False,
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING")

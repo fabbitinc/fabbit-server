@@ -28,6 +28,13 @@
 - 다른 도메인 service import 허용 (cross-domain 호출)
 - **API layer를 import하지 않을 것**
 
+## 모델 필드 조작 금지
+
+- 모델 필드를 직접 대입(`entity.status = "UPLOADED"`)하지 않는다
+- 모델이 제공하는 도메인 메서드(`entity.mark_uploaded()`)를 호출한다
+- 모델이 팩토리 메서드를 제공하면 직접 생성(`Model(field=...)`) 대신 팩토리를 사용한다
+- 모델에 적합한 메서드가 없으면 **모델에 메서드를 추가**한 뒤 service에서 호출한다
+
 ## 에러 처리
 
 - 비즈니스 에러는 `AppError` 사용 (`app.core.exceptions`)

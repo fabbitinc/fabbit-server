@@ -403,10 +403,11 @@ def get_children(db: Session, parent_part_id: uuid.UUID) -> list[dict]:
     """부모 Part의 CONSISTS_OF 자식 목록 (depth 1, RDS JOIN)."""
     rows = (
         db.query(
-            BomLink.quantity,
-            BomLink.extended_properties,
+            Part.id,
             Part.part_number,
             Part.name,
+            BomLink.quantity,
+            BomLink.extended_properties,
         )
         .join(Part, BomLink.child_part_id == Part.id)
         .filter(BomLink.parent_part_id == parent_part_id)
@@ -415,6 +416,7 @@ def get_children(db: Session, parent_part_id: uuid.UUID) -> list[dict]:
     )
     return [
         {
+            "id": r.id,
             "part_number": r.part_number,
             "name": r.name,
             "quantity": r.quantity or 1,
@@ -428,10 +430,11 @@ def get_parents(db: Session, child_part_id: uuid.UUID) -> list[dict]:
     """자식 Part의 CONSISTS_OF 부모 목록 (depth 1, RDS JOIN)."""
     rows = (
         db.query(
-            BomLink.quantity,
-            BomLink.extended_properties,
+            Part.id,
             Part.part_number,
             Part.name,
+            BomLink.quantity,
+            BomLink.extended_properties,
         )
         .join(Part, BomLink.parent_part_id == Part.id)
         .filter(BomLink.child_part_id == child_part_id)
@@ -440,6 +443,7 @@ def get_parents(db: Session, child_part_id: uuid.UUID) -> list[dict]:
     )
     return [
         {
+            "id": r.id,
             "part_number": r.part_number,
             "name": r.name,
             "quantity": r.quantity or 1,
@@ -495,6 +499,7 @@ def get_drawing(db: Session, part_id: uuid.UUID) -> dict | None:
     if not drawing:
         return None
     return {
+        "id": drawing.id,
         "drawing_number": drawing.drawing_number,
         "name": drawing.name,
         "version": drawing.version,
@@ -506,11 +511,12 @@ def get_suppliers(db: Session, part_id: uuid.UUID) -> list[dict]:
     """PartSupplier 조인 테이블로 공급사 조회 (RDS)."""
     rows = (
         db.query(
-            PartSupplier.unit_cost,
-            PartSupplier.extended_properties,
+            Supplier.id,
             Supplier.company_name,
             Supplier.code,
             Supplier.country,
+            PartSupplier.unit_cost,
+            PartSupplier.extended_properties,
         )
         .join(Supplier, PartSupplier.supplier_id == Supplier.id)
         .filter(PartSupplier.part_id == part_id)
@@ -519,6 +525,7 @@ def get_suppliers(db: Session, part_id: uuid.UUID) -> list[dict]:
     )
     return [
         {
+            "id": r.id,
             "company_name": r.company_name,
             "code": r.code,
             "country": r.country,

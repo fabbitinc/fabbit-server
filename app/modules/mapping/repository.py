@@ -5,11 +5,11 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.modules.mapping.models import MappingRecord, MappingRevision
-from app.modules.upload.models import Upload
+from app.modules.file.models import File
 
 
-def get_upload_by_id(db: Session, upload_id: uuid.UUID) -> Upload | None:
-    return db.query(Upload).filter(Upload.id == upload_id).first()
+def get_file_by_id(db: Session, file_id: uuid.UUID) -> File | None:
+    return db.query(File).filter(File.id == file_id).first()
 
 
 def exists_by_name(

@@ -95,17 +95,17 @@ def analyze_drawing(
     req: DrawingAnalyzeRequest,
 ) -> DrawingAnalyzeResponse:
     """도면 분석 미리보기 — Vision LLM으로 표제란 + 부품 목록 추출."""
-    upload = repo.get_upload_by_id(db, req.upload_id)
-    if upload is None:
-        raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
-    if upload.status != "UPLOADED":
+    file = repo.get_file_by_id(db, req.file_id)
+    if file is None:
+        raise AppError(message="파일을 찾을 수 없습니다", code="NOT_FOUND")
+    if file.status != "UPLOADED":
         raise AppError(message="업로드가 완료되지 않았습니다", code="PRECONDITION_FAILED")
 
     # S3에서 파일 다운로드
-    content = _s3.get_object(upload.file_key)
+    content = _s3.get_object(file.file_key)
 
     # 파일 타입 감지 + 이미지 변환
-    file_type = detect_drawing_type(upload.original_name)
+    file_type = detect_drawing_type(file.original_name)
     if file_type == "unsupported":
         raise AppError(
             message="지원하지 않는 파일 형식입니다. PDF, PNG, JPG만 지원합니다.",
@@ -185,10 +185,10 @@ def analyze_drawing(
     )
 
     logger.info(
-        "도면 분석 완료: upload_id={uid} pages={pages} parts={parts} "
+        "도면 분석 완료: file_id={fid} pages={pages} parts={parts} "
         "matched={matched} new={new} conflicts={conflicts} "
         "method={method} tokens=in:{in_tok}/out:{out_tok}",
-        uid=req.upload_id,
+        fid=req.file_id,
         pages=page_count,
         parts=len(analysis.parts),
         matched=len(matching_report.matched_parts),
@@ -200,7 +200,7 @@ def analyze_drawing(
     )
 
     return DrawingAnalyzeResponse(
-        upload_id=req.upload_id,
+        file_id=req.file_id,
         page_count=page_count,
         analysis=analysis,
         matching_report=matching_report,
@@ -214,15 +214,15 @@ def confirm_analysis(
     req: DrawingConfirmRequest,
 ) -> DrawingAnalysisResponse:
     """분석 결과를 확정하고 DB에 저장."""
-    upload = repo.get_upload_by_id(db, req.upload_id)
-    if upload is None:
-        raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
+    file = repo.get_file_by_id(db, req.file_id)
+    if file is None:
+        raise AppError(message="파일을 찾을 수 없습니다", code="NOT_FOUND")
 
     record_id = generate_uuid7()
     record = repo.create_analysis_record(
         db=db,
         record_id=record_id,
-        upload_id=req.upload_id,
+        file_id=req.file_id,
         name=req.name,
         analysis=req.analysis.model_dump(),
         page_count=1,  # 확정 시점에는 분석 결과만 저장
@@ -265,9 +265,9 @@ def start_drawing_synthesis(
     if record is None:
         raise AppError(message="분석 레코드를 찾을 수 없습니다", code="NOT_FOUND")
 
-    upload = repo.get_upload_by_id(db, record.upload_id)
-    if upload is None:
-        raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
+    file = repo.get_file_by_id(db, record.file_id)
+    if file is None:
+        raise AppError(message="파일을 찾을 수 없습니다", code="NOT_FOUND")
 
     job = repo.create_synthesis_job(
         db=db,
@@ -284,8 +284,8 @@ def start_drawing_synthesis(
         schema_name=schema_name,
         graph_name=schema_name,
         analysis_json=record.analysis,
-        file_key=upload.file_key,
-        upload_id=upload.id,
+        file_key=file.file_key,
+        file_id=file.id,
     )
 
     logger.info(
@@ -412,7 +412,7 @@ def _run_drawing_synthesis(
     graph_name: str,
     analysis_json: dict,
     file_key: str,
-    upload_id: uuid.UUID,
+    file_id: uuid.UUID,
 ) -> None:
     """Background task — 도면 분석 결과를 AGE 그래프에 적재."""
     db = create_tenant_session(schema_name)
@@ -439,7 +439,7 @@ def _run_drawing_synthesis(
         try:
             repo.upsert_drawing(
                 db, drawing_number, drawing_props, graph_name,
-                upload_id=upload_id,
+                file_id=file_id,
             )
             nodes_created += 1
         except Exception as e:
@@ -551,7 +551,7 @@ def _build_part_props(part: ExtractedPart) -> dict:
 def _to_analysis_response(record: DrawingAnalysisRecord) -> DrawingAnalysisResponse:
     return DrawingAnalysisResponse(
         id=record.id,
-        upload_id=record.upload_id,
+        file_id=record.file_id,
         name=record.name,
         analysis=record.analysis,
         page_count=record.page_count,

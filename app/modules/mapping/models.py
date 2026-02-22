@@ -62,8 +62,8 @@ class MappingRevision(TenantBase):
             "version",
             unique=True,
         ),
-        # 업로드별 리비전 조회 최적화
-        Index("ix_mapping_revisions_upload_id", "upload_id"),
+        # 파일별 리비전 조회 최적화
+        Index("ix_mapping_revisions_file_id", "file_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -74,9 +74,9 @@ class MappingRevision(TenantBase):
         ForeignKey("mapping_records.id", ondelete="CASCADE"),
         nullable=False,
     )
-    upload_id: Mapped[uuid.UUID] = mapped_column(
+    file_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("uploads.id", ondelete="CASCADE"),
+        ForeignKey("files.id", ondelete="CASCADE"),
         nullable=False,
     )
     # record 내 auto-increment 버전

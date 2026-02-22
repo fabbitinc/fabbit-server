@@ -76,14 +76,14 @@ class MatchingReport(BaseModel):
 class DrawingAnalyzeRequest(BaseModel):
     """도면 분석 요청."""
 
-    upload_id: uuid.UUID
+    file_id: uuid.UUID
     page_range: str | None = None
 
 
 class DrawingAnalyzeResponse(BaseModel):
     """도면 분석 미리보기 응답."""
 
-    upload_id: uuid.UUID
+    file_id: uuid.UUID
     page_count: int
     analysis: DrawingAnalysisResult
     matching_report: MatchingReport | None = None
@@ -93,7 +93,7 @@ class DrawingAnalyzeResponse(BaseModel):
 class DrawingConfirmRequest(BaseModel):
     """분석 결과 확정 요청."""
 
-    upload_id: uuid.UUID
+    file_id: uuid.UUID
     name: str
     analysis: DrawingAnalysisResult
 
@@ -102,7 +102,7 @@ class DrawingAnalysisResponse(BaseModel):
     """분석 레코드 응답 (DB 저장 후)."""
 
     id: uuid.UUID
-    upload_id: uuid.UUID
+    file_id: uuid.UUID
     name: str
     analysis: dict
     page_count: int

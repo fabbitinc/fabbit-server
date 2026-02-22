@@ -10,7 +10,7 @@ from app.modules.drawing.models import Drawing
 from app.modules.ontology.cypher_utils import escape_cypher_value
 from app.modules.part.models import Part
 from app.modules.project.models import Folder, Project, ProjectPart
-from app.modules.upload.models import Upload
+from app.modules.file.models import File
 
 # ── 트리 조회 (기존) ──
 
@@ -23,12 +23,12 @@ def list_folders(db: Session) -> list[Folder]:
     return db.query(Folder).order_by(Folder.name.asc()).all()
 
 
-def get_project_upload_counts(db: Session) -> dict[uuid.UUID, int]:
-    """프로젝트별 업로드 수 (다형성 owner_type 기반)."""
+def get_project_file_counts(db: Session) -> dict[uuid.UUID, int]:
+    """프로젝트별 파일 수 (다형성 owner_type 기반)."""
     rows = (
-        db.query(Upload.owner_id, func.count(Upload.id))
-        .filter(Upload.owner_type == "project", Upload.owner_id.isnot(None))
-        .group_by(Upload.owner_id)
+        db.query(File.owner_id, func.count(File.id))
+        .filter(File.owner_type == "project", File.owner_id.isnot(None))
+        .group_by(File.owner_id)
         .all()
     )
     return {owner_id: int(count) for owner_id, count in rows if owner_id is not None}

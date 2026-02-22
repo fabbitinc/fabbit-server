@@ -29,7 +29,7 @@ from app.modules.project.schemas import (
     UpdateFolderRequest,
     UpdateProjectRequest,
 )
-from app.modules.upload import repository as upload_repo
+from app.modules.file import repository as file_repo
 
 
 # ── 트리 조회 (기존) ──
@@ -77,7 +77,7 @@ def get_projects_tree(db: Session, _auth: AuthContext) -> ProjectTreeResponse:
     projects = repo.list_projects(db)
     folders = repo.list_folders(db)
 
-    project_upload_counts = repo.get_project_upload_counts(db)
+    project_file_counts = repo.get_project_file_counts(db)
     project_drawing_counts = repo.get_project_drawing_counts(db)
     project_folder_counts = repo.get_project_folder_counts(db)
     folder_drawing_counts = repo.get_folder_drawing_counts(db)
@@ -93,7 +93,7 @@ def get_projects_tree(db: Session, _auth: AuthContext) -> ProjectTreeResponse:
             created_at=project.created_at,
             updated_at=project.updated_at,
             stats=ProjectStats(
-                upload_count=project_upload_counts.get(project.id, 0),
+                upload_count=project_file_counts.get(project.id, 0),
                 drawing_count=project_drawing_counts.get(project.id, 0),
                 folder_count=project_folder_counts.get(project.id, 0),
             ),
@@ -221,10 +221,10 @@ def delete_project(
     # 프로젝트 소속 폴더의 Upload cascade 삭제
     all_folder_ids = repo.get_folder_ids_by_project(db, project_id)
     for fid in all_folder_ids:
-        upload_repo.delete_uploads_by_owner(db, "folder", fid)
+        file_repo.delete_files_by_owner(db, "folder", fid)
 
     # 프로젝트 소속 Upload cascade 삭제
-    upload_repo.delete_uploads_by_owner(db, "project", project_id)
+    file_repo.delete_files_by_owner(db, "project", project_id)
     # 프로젝트 삭제 (Folder, ProjectPart는 DB CASCADE로 자동 삭제)
     repo.delete_project(db, project_id)
     logger.info("프로젝트 삭제: id={id}", id=project_id)
@@ -338,10 +338,10 @@ def delete_folder(
     # 하위 폴더의 Upload cascade 삭제
     descendant_ids = repo.get_descendant_folder_ids(db, folder_id)
     for fid in descendant_ids:
-        upload_repo.delete_uploads_by_owner(db, "folder", fid)
+        file_repo.delete_files_by_owner(db, "folder", fid)
 
     # 현재 폴더의 Upload 삭제
-    upload_repo.delete_uploads_by_owner(db, "folder", folder_id)
+    file_repo.delete_files_by_owner(db, "folder", folder_id)
     # 폴더 삭제 (하위 폴더는 DB CASCADE)
     repo.delete_folder(db, folder_id)
     logger.info("폴더 삭제: id={id}", id=folder_id)

@@ -1,6 +1,6 @@
-"""업로드 도메인 ORM 모델.
+"""파일 도메인 ORM 모델.
 
-테넌트 스키마에 생성되는 파일 업로드 메타데이터 테이블입니다.
+테넌트 스키마에 생성되는 파일 메타데이터 테이블입니다.
 """
 
 import uuid
@@ -12,17 +12,17 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from app.core.database import TenantBase, generate_uuid7
-from app.modules.upload.constants import ConversionStatus, UploadStatus
+from app.modules.file.constants import ConversionStatus, FileStatus
 
 
-class Upload(TenantBase):
-    __tablename__ = "uploads"
+class File(TenantBase):
+    __tablename__ = "files"
 
     __table_args__ = (
         # 소유자별 파일 조회 최적화 (owner_type + owner_id 복합)
-        Index("ix_uploads_owner_type_owner_id", "owner_type", "owner_id"),
+        Index("ix_files_owner_type_owner_id", "owner_type", "owner_id"),
         # 파일 키 유일성 보장
-        UniqueConstraint("file_key", name="uq_uploads_file_key"),
+        UniqueConstraint("file_key", name="uq_files_file_key"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -33,7 +33,7 @@ class Upload(TenantBase):
     content_type: Mapped[str] = mapped_column(String(100), nullable=False)
     file_size: Mapped[int] = mapped_column(BigInteger, nullable=False)
     status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default=UploadStatus.PENDING
+        String(20), nullable=False, default=FileStatus.PENDING
     )
     # 다형성 소유권: "project", "folder", "part", "supplier" 등
     owner_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -56,16 +56,16 @@ class Upload(TenantBase):
 
     def mark_uploaded(self) -> None:
         """S3 업로드 확인 완료."""
-        self.status = UploadStatus.UPLOADED
+        self.status = FileStatus.UPLOADED
 
     def mark_deleted(self) -> None:
         """소프트 삭제 처리."""
-        self.status = UploadStatus.DELETED
+        self.status = FileStatus.DELETED
         self.deleted_at = datetime.now(timezone.utc)
 
     def mark_expired(self) -> None:
         """stale 업로드 만료 처리."""
-        self.status = UploadStatus.EXPIRED
+        self.status = FileStatus.EXPIRED
 
     def request_conversion(self) -> None:
         """DWG 변환 요청 상태 설정."""

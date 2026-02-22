@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field
 
 
 class SynthesisUploadItem(BaseModel):
-    """합성 대상 업로드 항목."""
+    """합성 대상 파일 항목."""
 
-    upload_id: uuid.UUID
+    file_id: uuid.UUID
     root_context: dict[str, str] | None = None  # ROOT_BOM: {"Part": "ASM-001", "Supplier": "ACME"}
 
 
@@ -25,7 +25,7 @@ class SynthesisStartRequest(BaseModel):
 class SynthesisBatchFailure(BaseModel):
     """배치 시작 실패 항목."""
 
-    upload_id: uuid.UUID
+    file_id: uuid.UUID
     reason: str
 
 
@@ -34,7 +34,7 @@ class SynthesisJobResponse(BaseModel):
 
     id: uuid.UUID
     mapping_id: uuid.UUID
-    upload_id: uuid.UUID
+    file_id: uuid.UUID
     status: str
     total_rows: int
     processed_rows: int
@@ -66,7 +66,7 @@ class SynthesisBatchItemStatus(BaseModel):
     """배치 내 개별 작업 상태."""
 
     job_id: uuid.UUID
-    upload_id: uuid.UUID
+    file_id: uuid.UUID
     status: str
     total_rows: int
     processed_rows: int

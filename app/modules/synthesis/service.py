@@ -111,32 +111,32 @@ def start_synthesis(
     failed: list[SynthesisBatchFailure] = []
 
     for item in req.uploads:
-        upload = repo.get_upload_by_id(db, item.upload_id)
-        if upload is None:
+        file = repo.get_file_by_id(db, item.file_id)
+        if file is None:
             failed.append(
                 SynthesisBatchFailure(
-                    upload_id=item.upload_id,
-                    reason="업로드를 찾을 수 없습니다",
+                    file_id=item.file_id,
+                    reason="파일을 찾을 수 없습니다",
                 )
             )
             continue
 
-        if upload.status != "UPLOADED":
+        if file.status != "UPLOADED":
             failed.append(
                 SynthesisBatchFailure(
-                    upload_id=item.upload_id,
+                    file_id=item.file_id,
                     reason="업로드가 완료되지 않은 파일입니다",
                 )
             )
             continue
 
         if req.project_id is not None and (
-            upload.owner_type != "project" or upload.owner_id != req.project_id
+            file.owner_type != "project" or file.owner_id != req.project_id
         ):
             failed.append(
                 SynthesisBatchFailure(
-                    upload_id=item.upload_id,
-                    reason="해당 프로젝트에 속하지 않은 업로드입니다",
+                    file_id=item.file_id,
+                    reason="해당 프로젝트에 속하지 않은 파일입니다",
                 )
             )
             continue
@@ -146,9 +146,9 @@ def start_synthesis(
             job_id=generate_uuid7(),
             batch_id=None,
             mapping_id=record.id,
-            upload_id=upload.id,
+            file_id=file.id,
         )
-        accepted_jobs.append((job, upload, item))
+        accepted_jobs.append((job, file, item))
 
     # 6. SynthesisBatch 생성
     batch = repo.create_synthesis_batch(
@@ -162,7 +162,7 @@ def start_synthesis(
     )
 
     # 7. 성공 job들에 batch_id 할당
-    for job, _upload, _item in accepted_jobs:
+    for job, _file, _item in accepted_jobs:
         job.batch_id = batch.id
 
     # 8. usage_count 일괄 증가
@@ -171,18 +171,18 @@ def start_synthesis(
 
     db.flush()
     db.refresh(batch)
-    for job, _upload, _item in accepted_jobs:
+    for job, _file, _item in accepted_jobs:
         db.refresh(job)
 
     # 9. 각 job에 대해 background task 등록
-    for job, upload, item in accepted_jobs:
+    for job, file, item in accepted_jobs:
         add_background_task(
             guarded(_run_synthesis),
             job_id=job.id,
             schema_name=schema_name,
             graph_name=schema_name,
-            file_key=upload.file_key,
-            filename=upload.original_name,
+            file_key=file.file_key,
+            filename=file.original_name,
             sheet_name=revision.sheet_name,
             mapping_json=revision.mapping,
             root_context=item.root_context,
@@ -201,7 +201,7 @@ def start_synthesis(
         batch_id=batch.id,
         requested_count=batch.requested_count,
         accepted_count=batch.accepted_count,
-        items=[_to_job_response(job) for job, _upload, _item in accepted_jobs],
+        items=[_to_job_response(job) for job, _file, _item in accepted_jobs],
         failed=failed,
     )
 
@@ -249,7 +249,7 @@ def get_synthesis_batch(
         items.append(
             SynthesisBatchItemStatus(
                 job_id=job.id,
-                upload_id=job.upload_id,
+                file_id=job.file_id,
                 status=job.status,
                 total_rows=job.total_rows,
                 processed_rows=job.processed_rows,
@@ -966,7 +966,7 @@ def _to_job_response(job: SynthesisJob) -> SynthesisJobResponse:
     return SynthesisJobResponse(
         id=job.id,
         mapping_id=job.mapping_id,
-        upload_id=job.upload_id,
+        file_id=job.file_id,
         status=job.status,
         total_rows=job.total_rows,
         processed_rows=job.processed_rows,

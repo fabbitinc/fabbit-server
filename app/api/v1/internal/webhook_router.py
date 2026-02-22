@@ -4,8 +4,8 @@ from fastapi import APIRouter, Header
 
 from app.core.exceptions import AppError
 from app.infrastructure.drawing_converter_client import DrawingConverterClient
-from app.modules.upload.schemas import ConversionResultRequest
-from app.modules.upload import service
+from app.modules.file.schemas import ConversionResultRequest
+from app.modules.file import service
 
 router = APIRouter(
     prefix="/api/v1/internal/webhooks",
