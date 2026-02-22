@@ -58,6 +58,7 @@ from app.modules.drawing.schemas import (
     RegisterDrawingResponse,
 )
 from app.modules.file import repository as file_repo
+from app.modules.file import service as file_service
 from app.modules.file.constants import FileStatus
 from app.modules.file.models import File
 from app.modules.part import repository as part_repo
@@ -210,6 +211,44 @@ def bulk_register_drawings(
         fail=len(failed),
     )
     return BulkRegisterDrawingResponse(items=items, failed=failed)
+
+
+@transactional
+def delete_drawing(db: Session, auth: AuthContext, part_id: uuid.UUID) -> None:
+    """Part에 연결된 도면 삭제.
+
+    Drawing 레코드 삭제 + 연결 파일 소프트 삭제.
+    """
+    part = part_repo.get_by_id(db, part_id)
+    if part is None:
+        raise AppError(message="Part를 찾을 수 없습니다", code="NOT_FOUND")
+    if part.drawing_id is None:
+        raise AppError(message="연결된 도면이 없습니다", code="NOT_FOUND")
+
+    drawing = repo.get_drawing_by_id(db, part.drawing_id)
+    if drawing is None:
+        raise AppError(message="도면을 찾을 수 없습니다", code="NOT_FOUND")
+
+    # 1. Part 연결 해제
+    part.unassign_drawing()
+
+    # 2. 연결 파일 소프트 삭제 (original, pdf, thumbnail)
+    file_ids = [
+        fid
+        for fid in [
+            drawing.original_file_id,
+            drawing.pdf_file_id,
+            drawing.thumbnail_file_id,
+        ]
+        if fid is not None
+    ]
+    # 중복 제거 (pdf_file_id == original_file_id인 경우)
+    unique_file_ids = list(set(file_ids))
+    if unique_file_ids:
+        file_service.soft_delete_files(db, unique_file_ids)
+
+    # 3. Drawing 레코드 삭제 (hard delete)
+    db.delete(drawing)
 
 
 def _validate_drawing_file(file: File) -> None:

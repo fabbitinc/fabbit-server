@@ -91,6 +91,20 @@ def get_part_bom_tree(
     return service.get_part_bom_tree(db, auth, part_id)
 
 
+@router.delete("/{part_id}/drawings", status_code=204)
+def delete_drawing_from_part(
+    part_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """Part에 연결된 도면을 삭제합니다.
+
+    Drawing 레코드와 연결된 파일(원본, PDF, 썸네일)이 함께 삭제됩니다.
+    파일은 소프트 삭제되며, S3 파일은 보존 기간 후 배치 정리됩니다.
+    """
+    drawing_service.delete_drawing(db, auth, part_id)
+
+
 @router.post("/{part_id}/drawings", response_model=RegisterDrawingResponse)
 def register_drawing_for_part(
     part_id: uuid.UUID,

@@ -26,7 +26,7 @@ class TestCRUDFlow:
     access_token: str = ""
     refresh_token: str = ""
     slug: str = ""
-    upload_id: str = ""
+    file_id: str = ""
     upload_url: str = ""
     file_key: str = ""
     mapping_id: str = ""
@@ -34,7 +34,7 @@ class TestCRUDFlow:
     project_id: str = ""
     folder_id: str = ""
     part_id: str = ""
-    batch_upload_ids: list[str] = []
+    batch_file_ids: list[str] = []
     batch_upload_urls: list[str] = []
     batch_id: str = ""
 
@@ -181,12 +181,12 @@ class TestCRUDFlow:
     # ── 업로드 ──
 
     def test_create_upload(self, client: TestClient, fixtures_dir):
-        """POST /uploads → presigned URL 발급."""
+        """POST /files/upload → presigned URL 발급."""
         csv_path = fixtures_dir / "hierarchical_bom.csv"
         file_size = csv_path.stat().st_size
 
         resp = client.post(
-            "/api/v1/uploads",
+            "/api/v1/files/upload",
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
             json={
                 "original_name": "hierarchical_bom.csv",
@@ -196,10 +196,10 @@ class TestCRUDFlow:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert data["upload_id"]
+        assert data["file_id"]
         assert data["upload_url"]
 
-        TestCRUDFlow.upload_id = data["upload_id"]
+        TestCRUDFlow.file_id = data["file_id"]
         TestCRUDFlow.upload_url = data["upload_url"]
         TestCRUDFlow.file_key = data["file_key"]
 
@@ -220,9 +220,9 @@ class TestCRUDFlow:
         assert resp.status_code == 200, f"MinIO PUT 실패: {resp.status_code}"
 
     def test_complete_upload(self, client: TestClient):
-        """POST /uploads/{id}/complete → status=UPLOADED."""
+        """POST /files/upload/{id}/complete → status=UPLOADED."""
         resp = client.post(
-            f"/api/v1/uploads/{TestCRUDFlow.upload_id}/complete",
+            f"/api/v1/files/upload/{TestCRUDFlow.file_id}/complete",
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
         )
         assert resp.status_code == 200, resp.text
@@ -238,7 +238,7 @@ class TestCRUDFlow:
         resp = client.post(
             "/api/v1/mappings/preview",
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-            json={"upload_id": TestCRUDFlow.upload_id},
+            json={"file_id": TestCRUDFlow.file_id},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -260,7 +260,7 @@ class TestCRUDFlow:
             "/api/v1/mappings/validate",
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
             json={
-                "upload_id": TestCRUDFlow.upload_id,
+                "file_id": TestCRUDFlow.file_id,
                 "mapping": mapping,
             },
         )
@@ -286,7 +286,7 @@ class TestCRUDFlow:
             "/api/v1/mappings/confirm",
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
             json={
-                "upload_id": TestCRUDFlow.upload_id,
+                "file_id": TestCRUDFlow.file_id,
                 "name": "통합 테스트 매핑",
                 "mapping": mapping,
             },
@@ -294,7 +294,7 @@ class TestCRUDFlow:
         assert resp.status_code == 200, resp.text
         data = resp.json()
         assert data["id"]
-        assert data["upload_id"] == TestCRUDFlow.upload_id
+        assert data["file_id"] == TestCRUDFlow.file_id
 
         TestCRUDFlow.mapping_id = data["id"]
 
@@ -333,7 +333,7 @@ class TestCRUDFlow:
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
             json={
                 "mapping_id": TestCRUDFlow.mapping_id,
-                "uploads": [{"upload_id": TestCRUDFlow.upload_id}],
+                "uploads": [{"file_id": TestCRUDFlow.file_id}],
             },
         )
         assert resp.status_code == 200, resp.text
@@ -538,12 +538,12 @@ class TestCRUDFlow:
     # ── 배치 업로드 + 합성 ──
 
     def test_batch_upload(self, client: TestClient, fixtures_dir):
-        """POST /uploads/batch → 배치 presigned URL 발급."""
+        """POST /files/upload/batch → 배치 presigned URL 발급."""
         csv_path = fixtures_dir / "hierarchical_bom.csv"
         file_size = csv_path.stat().st_size
 
         resp = client.post(
-            "/api/v1/uploads/batch",
+            "/api/v1/files/upload/batch",
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
             json={
                 "items": [
@@ -568,7 +568,7 @@ class TestCRUDFlow:
         data = resp.json()
         assert len(data["items"]) == 2
 
-        TestCRUDFlow.batch_upload_ids = [item["upload_id"] for item in data["items"]]
+        TestCRUDFlow.batch_file_ids = [item["file_id"] for item in data["items"]]
         TestCRUDFlow.batch_upload_urls = [item["upload_url"] for item in data["items"]]
 
     def test_batch_upload_to_s3(self, fixtures_dir):
@@ -589,11 +589,11 @@ class TestCRUDFlow:
                 assert resp.status_code == 200, f"MinIO PUT 실패: {resp.status_code}"
 
     def test_batch_complete(self, client: TestClient):
-        """POST /uploads/batch/complete → 배치 업로드 완료."""
+        """POST /files/upload/batch/complete → 배치 업로드 완료."""
         resp = client.post(
-            "/api/v1/uploads/batch/complete",
+            "/api/v1/files/upload/batch/complete",
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-            json={"upload_ids": TestCRUDFlow.batch_upload_ids},
+            json={"file_ids": TestCRUDFlow.batch_file_ids},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -610,7 +610,7 @@ class TestCRUDFlow:
                 "project_id": TestCRUDFlow.project_id,
                 "mapping_id": TestCRUDFlow.mapping_id,
                 "uploads": [
-                    {"upload_id": uid} for uid in TestCRUDFlow.batch_upload_ids
+                    {"file_id": uid} for uid in TestCRUDFlow.batch_file_ids
                 ],
             },
         )

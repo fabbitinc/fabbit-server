@@ -84,6 +84,10 @@ class Part(TenantBase):
         """도면 연결."""
         self.drawing_id = drawing_id
 
+    def unassign_drawing(self) -> None:
+        """도면 연결 해제."""
+        self.drawing_id = None
+
 
 class PartRevision(TenantBase):
     __tablename__ = "part_revisions"

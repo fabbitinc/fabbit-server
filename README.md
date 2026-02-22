@@ -103,12 +103,6 @@ uv run python -m unittest tests.test_tenant_db_dependency.TenantDependencyTests
 uv run python -m unittest tests.test_tenant_db_dependency.TenantDependencyTests.test_get_tenant_db_sets_search_path_from_auth_org_id
 ```
 
-E2E 스모크:
-
-```bash
-bash scripts/test_full_flow.sh
-```
-
 최소 정적 검증:
 
 ```bash
