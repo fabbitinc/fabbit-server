@@ -10,7 +10,10 @@ from app.core.config import settings
 
 
 class S3Client:
-    """S3 호환 스토리지 클라이언트."""
+    """S3 호환 스토리지 클라이언트.
+
+    모듈 하단의 ``s3_client`` 인스턴스를 import 하여 사용하세요.
+    """
 
     def __init__(self) -> None:
         self._client = boto3.client(
@@ -29,6 +32,12 @@ class S3Client:
         if self._public_url:
             return f"{self._public_url.rstrip('/')}/{file_key}"
         return f"{settings.storage_endpoint}/{self._bucket}/{file_key}"
+
+    def get_file_url(self, file_key: str | None) -> str | None:
+        """파일 공개 URL 생성 (None-safe). key가 없으면 None 반환."""
+        if not file_key:
+            return None
+        return self._get_file_url(file_key)
 
     def generate_upload_presigned_url(
         self,
@@ -114,3 +123,6 @@ class S3Client:
                 break
             params["ContinuationToken"] = resp["NextContinuationToken"]
         return keys
+
+
+s3_client = S3Client()

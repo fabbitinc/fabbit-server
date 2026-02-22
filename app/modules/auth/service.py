@@ -12,7 +12,7 @@ from app.core.exceptions import AppError
 from app.core.transactional import transactional
 from app.infrastructure.password_hasher import hash_password, verify_password
 from app.infrastructure.turnstile import verify_turnstile_token
-from app.infrastructure.token_provider import TokenProvider
+from app.infrastructure.token_provider import token_provider
 from app.modules.auth import repository as repo
 from app.modules.auth.constants import PLAN_LIMITS, PlanType, RESERVED_SLUGS, validate_slug_format
 from app.modules.auth.provisioning import provision_tenant
@@ -32,7 +32,6 @@ from app.modules.auth.schemas import (
     UserResponse,
 )
 
-token_provider = TokenProvider()
 
 
 def _slugify(name: str) -> str:

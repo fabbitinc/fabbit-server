@@ -78,6 +78,12 @@ class Part(TenantBase):
         nullable=False,
     )
 
+    # ── 도메인 메서드 ──
+
+    def assign_drawing(self, drawing_id: uuid.UUID) -> None:
+        """도면 연결."""
+        self.drawing_id = drawing_id
+
 
 class PartRevision(TenantBase):
     __tablename__ = "part_revisions"

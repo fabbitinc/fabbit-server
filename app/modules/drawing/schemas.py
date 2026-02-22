@@ -5,18 +5,47 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.modules.drawing.constants import ConversionStatus
+
 # ── Webhook 요청 ──
 
 
 class ConversionResultRequest(BaseModel):
-    """Drawing Converter webhook 수신 페이로드."""
+    """Drawing Converter webhook 단건 수신 페이로드."""
 
+    drawing_id: uuid.UUID
     file_id: uuid.UUID
     tenant_schema: str
     status: str = Field(..., description="COMPLETED 또는 FAILED")
     pdf_key: str | None = None
+    pdf_content_type: str | None = None
+    pdf_size: int | None = None
     thumbnail_key: str | None = None
+    thumbnail_content_type: str | None = None
+    thumbnail_size: int | None = None
     error: str | None = None
+
+
+class BatchConversionResultItem(BaseModel):
+    """배치 변환 결과 개별 항목."""
+
+    drawing_id: uuid.UUID
+    file_id: uuid.UUID
+    status: str = Field(..., description="COMPLETED 또는 FAILED")
+    pdf_key: str | None = None
+    pdf_content_type: str | None = None
+    pdf_size: int | None = None
+    thumbnail_key: str | None = None
+    thumbnail_content_type: str | None = None
+    thumbnail_size: int | None = None
+    error: str | None = None
+
+
+class BatchConversionResultRequest(BaseModel):
+    """Drawing Converter webhook 배치 수신 페이로드."""
+
+    tenant_schema: str
+    items: list[BatchConversionResultItem]
 
 
 # ── LLM 추출 결과 ──
@@ -151,6 +180,54 @@ class DrawingSynthesisJobResponse(BaseModel):
 # ── Drawing 검색 (온톨로지 dual-write) ──
 
 
+# ── Drawing 등록 ──
+
+
+class RegisterDrawingRequest(BaseModel):
+    """단건 도면 등록 요청."""
+
+    file_id: uuid.UUID
+
+
+class RegisterDrawingResponse(BaseModel):
+    """도면 등록 응답."""
+
+    drawing_id: uuid.UUID
+    drawing_number: str
+    name: str
+    conversion_status: ConversionStatus | None = None
+
+
+class BulkRegisterDrawingItem(BaseModel):
+    """대량 도면 등록 개별 항목."""
+
+    file_id: uuid.UUID
+    part_id: uuid.UUID | None = None
+
+
+class BulkRegisterDrawingRequest(BaseModel):
+    """대량 도면 등록 요청."""
+
+    items: list[BulkRegisterDrawingItem] = Field(..., min_length=1, max_length=100)
+
+
+class BulkRegisterDrawingFailure(BaseModel):
+    """대량 도면 등록 실패 항목."""
+
+    file_id: uuid.UUID
+    reason: str
+
+
+class BulkRegisterDrawingResponse(BaseModel):
+    """대량 도면 등록 응답."""
+
+    items: list[RegisterDrawingResponse]
+    failed: list[BulkRegisterDrawingFailure]
+
+
+# ── Drawing 검색 (온톨로지 dual-write) ──
+
+
 class DrawingSummary(BaseModel):
     id: uuid.UUID
     drawing_number: str
@@ -160,7 +237,7 @@ class DrawingSummary(BaseModel):
     original_file_key: str | None = None
     pdf_key: str | None = None
     thumbnail_key: str | None = None
-    conversion_status: str | None = None
+    conversion_status: ConversionStatus | None = None
 
 
 class DrawingListResponse(BaseModel):

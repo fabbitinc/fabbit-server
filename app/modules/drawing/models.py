@@ -111,9 +111,7 @@ class Drawing(TenantBase):
     original_file: Mapped["File | None"] = relationship(
         "File", foreign_keys=[original_file_id]
     )
-    pdf_file: Mapped["File | None"] = relationship(
-        "File", foreign_keys=[pdf_file_id]
-    )
+    pdf_file: Mapped["File | None"] = relationship("File", foreign_keys=[pdf_file_id])
     thumbnail_file: Mapped["File | None"] = relationship(
         "File", foreign_keys=[thumbnail_file_id]
     )
@@ -123,21 +121,21 @@ class Drawing(TenantBase):
     @classmethod
     def create_pending(
         cls,
-        drawing_id: uuid.UUID,
         original_file_id: uuid.UUID,
-        file_key: str,
+        original_file_key: str,
         original_name: str,
     ) -> "Drawing":
         """DWG 업로드 완료 시 예비 Drawing 생성.
 
         drawing_number는 합성 시 실제 값으로 갱신됨.
         """
+        drawing_id = generate_uuid7()
         return cls(
             id=drawing_id,
             drawing_number=f"PENDING-{drawing_id.hex[:8]}",
             name=original_name,
             original_file_id=original_file_id,
-            file_key=file_key,
+            original_file_key=original_file_key,
             conversion_status=ConversionStatus.PENDING,
         )
 
@@ -202,9 +200,7 @@ class DrawingSynthesisJob(TenantBase):
         ForeignKey("drawing_analysis_records.id", ondelete="CASCADE"),
         nullable=False,
     )
-    status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="PENDING"
-    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING")
     nodes_created: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     relationships_created: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0

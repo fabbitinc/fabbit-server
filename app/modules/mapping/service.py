@@ -15,7 +15,7 @@ from app.infrastructure.excel_parser import (
     extract_headers_and_rows,
     get_sheet_names,
 )
-from app.infrastructure.s3_client import S3Client
+from app.infrastructure.s3_client import s3_client
 from app.modules.ai_usage.service import log_ai_usage
 from app.modules.mapping import repository as repo
 from app.modules.mapping.constants import MappingScope
@@ -38,7 +38,7 @@ from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
 from app.modules.ontology.schemas import MappingResult
 from app.modules.ontology import service as ontology_service
 
-_s3 = S3Client()
+_s3 = s3_client
 
 # merge key 캐시: {label: {merge_key_name, ...}}
 _MERGE_KEYS_BY_LABEL = {

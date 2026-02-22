@@ -504,6 +504,10 @@ def get_drawing(db: Session, part_id: uuid.UUID) -> dict | None:
         "name": drawing.name,
         "version": drawing.version,
         "status": drawing.status,
+        "conversion_status": drawing.conversion_status,
+        "original_file_key": drawing.original_file_key,
+        "pdf_key": drawing.pdf_key,
+        "thumbnail_key": drawing.thumbnail_key,
     }
 
 

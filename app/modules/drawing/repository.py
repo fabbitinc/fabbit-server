@@ -19,6 +19,11 @@ def get_file_by_id(db: Session, file_id: uuid.UUID) -> File | None:
     return db.query(File).filter(File.id == file_id).first()
 
 
+def get_drawing_by_id(db: Session, drawing_id: uuid.UUID) -> Drawing | None:
+    """Drawing PK 조회."""
+    return db.query(Drawing).filter(Drawing.id == drawing_id).first()
+
+
 def get_drawing_by_original_file_id(db: Session, file_id: uuid.UUID) -> Drawing | None:
     """원본 파일 ID로 Drawing 조회."""
     return db.query(Drawing).filter(Drawing.original_file_id == file_id).first()

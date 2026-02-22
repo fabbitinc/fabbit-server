@@ -1,6 +1,5 @@
 """파일 도메인 서비스 레이어."""
 
-import os
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -11,8 +10,7 @@ from app.core.auth_context import AuthContext
 from app.core.database import create_tenant_session, generate_uuid7
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
-from app.infrastructure.drawing_converter_client import DrawingConverterClient
-from app.infrastructure.s3_client import S3Client
+from app.infrastructure.s3_client import s3_client
 from app.modules.file import repository as repo
 from app.modules.file.constants import FileStatus
 from app.modules.file.models import File
@@ -27,11 +25,7 @@ from app.modules.file.schemas import (
     FileCompleteResponse,
 )
 
-_s3 = S3Client()
-_converter = DrawingConverterClient()
-
-# DWG 확장자 (대소문자 무시)
-_DWG_EXTENSIONS = {".dwg"}
+_s3 = s3_client
 
 
 @transactional
@@ -185,12 +179,6 @@ def complete_file(
 
     file.mark_uploaded()
 
-    # DWG 파일이면 예비 Drawing 생성 + 변환 트리거
-    if _is_dwg_file(file.original_name) and _converter.enabled:
-        from app.modules.drawing import service as drawing_service
-
-        drawing_service.create_pending_drawing(db, file, auth)
-
     logger.info(
         "업로드 완료: file_id={file_id} size={size}",
         file_id=file.id,
@@ -336,12 +324,6 @@ def _delete_s3_files(file: File) -> None:
                 key=file.file_key,
                 file_id=file.id,
             )
-
-
-def _is_dwg_file(filename: str) -> bool:
-    """파일명이 DWG 확장자인지 판별."""
-    _, ext = os.path.splitext(filename)
-    return ext.lower() in _DWG_EXTENSIONS
 
 
 def _to_file_complete_response(file: File) -> FileCompleteResponse:

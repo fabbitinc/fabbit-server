@@ -9,6 +9,8 @@ from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
 from app.modules.drawing import service
 from app.modules.drawing.schemas import (
+    BulkRegisterDrawingRequest,
+    BulkRegisterDrawingResponse,
     DrawingAnalysisListResponse,
     DrawingAnalysisResponse,
     DrawingAnalyzeRequest,
@@ -35,6 +37,28 @@ def list_drawings(
     drawing_number, name으로 ILIKE 검색을 지원합니다.
     """
     return service.list_drawings(db, auth, search=search, offset=offset, limit=limit)
+
+
+@router.post("/bulk", response_model=BulkRegisterDrawingResponse)
+def bulk_register_drawings(
+    req: BulkRegisterDrawingRequest,
+    background_tasks: BackgroundTasks,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """도면 대량 등록.
+
+    ## 업로드 흐름
+
+    1. `POST /api/v1/files/upload/batch` — presigned URL 일괄 발급
+    2. S3에 파일 업로드 (각 presigned URL PUT)
+    3. `POST /api/v1/files/upload/batch/complete` — 업로드 일괄 확인
+    4. **이 엔드포인트** — Drawing 일괄 생성
+
+    각 항목에 `part_id`를 포함하면 해당 Part에 도면이 연결됩니다.
+    DWG 파일은 자동으로 PDF/썸네일 변환이 트리거됩니다.
+    """
+    return service.bulk_register_drawings(db, auth, req, background_tasks.add_task)
 
 
 @router.post("/analyze", response_model=DrawingAnalyzeResponse)

@@ -84,3 +84,6 @@ class TokenProvider:
             raise AppError(message="토큰이 만료되었습니다", code="TOKEN_EXPIRED")
         except jwt.InvalidTokenError:
             raise AppError(message="유효하지 않은 토큰입니다", code="TOKEN_INVALID")
+
+
+token_provider = TokenProvider()

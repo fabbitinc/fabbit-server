@@ -23,10 +23,11 @@ class DrawingConverterClient:
 
     def request_conversion(
         self,
-        upload_id: uuid.UUID,
         tenant_schema: str,
-        file_key: str,
         callback_url: str,
+        file_id: uuid.UUID,
+        file_key: str,
+        drawing_id: uuid.UUID,
     ) -> None:
         """Converter에 변환 요청 전송. url 미설정 시 스킵."""
         if not self._enabled:
@@ -35,7 +36,8 @@ class DrawingConverterClient:
 
         payload = {
             "file_key": file_key,
-            "upload_id": str(upload_id),
+            "file_id": str(file_id),
+            "drawing_id": str(drawing_id),
             "tenant_schema": tenant_schema,
             "callback_url": callback_url,
         }
@@ -47,8 +49,46 @@ class DrawingConverterClient:
         )
         resp.raise_for_status()
         logger.info(
-            "변환 요청 전송: upload_id={upload_id}",
-            upload_id=upload_id,
+            "변환 요청 전송: file_id={file_id}",
+            file_id=file_id,
+        )
+
+    def request_batch_conversion(
+        self,
+        tenant_schema: str,
+        callback_url: str,
+        items: list[dict],
+    ) -> None:
+        """Converter에 배치 변환 요청 전송.
+
+        items: [{"file_id": uuid, "file_key": str, "drawing_id": uuid}, ...]
+        """
+        if not self._enabled:
+            logger.debug("Drawing Converter 비활성화 — 배치 변환 요청 스킵")
+            return
+
+        payload = {
+            "items": [
+                {
+                    "file_key": item["file_key"],
+                    "file_id": str(item["file_id"]),
+                    "drawing_id": str(item["drawing_id"]),
+                }
+                for item in items
+            ],
+            "tenant_schema": tenant_schema,
+            "callback_url": callback_url,
+        }
+        resp = httpx.post(
+            f"{self._url}/api/v1/convert/batch",
+            json=payload,
+            headers={"Authorization": f"Bearer {self._secret}"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        logger.info(
+            "배치 변환 요청 전송: count={count}",
+            count=len(items),
         )
 
     def verify_secret(self, token: str) -> bool:
@@ -56,3 +96,6 @@ class DrawingConverterClient:
         if not self._secret:
             return False
         return hmac.compare_digest(token, self._secret)
+
+
+drawing_converter_client = DrawingConverterClient()

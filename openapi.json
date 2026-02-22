@@ -560,6 +560,53 @@
                 }
             }
         },
+        "/api/v1/drawings/bulk": {
+            "post": {
+                "tags": [
+                    "drawings"
+                ],
+                "summary": "Bulk Register Drawings",
+                "description": "\ub3c4\uba74 \ub300\ub7c9 \ub4f1\ub85d.\n\n## \uc5c5\ub85c\ub4dc \ud750\ub984\n\n1. `POST /api/v1/files/upload/batch` \u2014 presigned URL \uc77c\uad04 \ubc1c\uae09\n2. S3\uc5d0 \ud30c\uc77c \uc5c5\ub85c\ub4dc (\uac01 presigned URL PUT)\n3. `POST /api/v1/files/upload/batch/complete` \u2014 \uc5c5\ub85c\ub4dc \uc77c\uad04 \ud655\uc778\n4. **\uc774 \uc5d4\ub4dc\ud3ec\uc778\ud2b8** \u2014 Drawing \uc77c\uad04 \uc0dd\uc131\n\n\uac01 \ud56d\ubaa9\uc5d0 `part_id`\ub97c \ud3ec\ud568\ud558\uba74 \ud574\ub2f9 Part\uc5d0 \ub3c4\uba74\uc774 \uc5f0\uacb0\ub429\ub2c8\ub2e4.\nDWG \ud30c\uc77c\uc740 \uc790\ub3d9\uc73c\ub85c PDF/\uc378\ub124\uc77c \ubcc0\ud658\uc774 \ud2b8\ub9ac\uac70\ub429\ub2c8\ub2e4.",
+                "operationId": "bulk_register_drawings_api_v1_drawings_bulk_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BulkRegisterDrawingRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BulkRegisterDrawingResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
         "/api/v1/drawings/analyze": {
             "post": {
                 "tags": [
@@ -2226,6 +2273,65 @@
                 }
             }
         },
+        "/api/v1/parts/{part_id}/drawings": {
+            "post": {
+                "tags": [
+                    "parts"
+                ],
+                "summary": "Register Drawing For Part",
+                "description": "Part\uc5d0 \ub3c4\uba74 \ub4f1\ub85d.\n\n## \uc5c5\ub85c\ub4dc \ud750\ub984\n\n1. `POST /api/v1/files` \u2014 presigned URL \ubc1c\uae09\n2. S3\uc5d0 \ud30c\uc77c \uc5c5\ub85c\ub4dc (presigned URL PUT)\n3. `POST /api/v1/files/{file_id}/complete` \u2014 \uc5c5\ub85c\ub4dc \ud655\uc778\n4. **\uc774 \uc5d4\ub4dc\ud3ec\uc778\ud2b8** \u2014 Drawing \uc0dd\uc131 + Part \uc5f0\uacb0\n\nDWG \ud30c\uc77c\uc740 \uc790\ub3d9\uc73c\ub85c PDF/\uc378\ub124\uc77c \ubcc0\ud658\uc774 \ud2b8\ub9ac\uac70\ub429\ub2c8\ub2e4.\n\ubcc0\ud658 \uc0c1\ud0dc\ub294 `GET /api/v1/drawings` \ubaa9\ub85d\uc5d0\uc11c `conversion_status`\ub85c \ud655\uc778 \uac00\ub2a5\ud569\ub2c8\ub2e4.",
+                "operationId": "register_drawing_for_part_api_v1_parts__part_id__drawings_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegisterDrawingRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegisterDrawingResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/files/upload": {
             "post": {
                 "tags": [
@@ -2521,7 +2627,7 @@
                     "webhooks"
                 ],
                 "summary": "Receive Drawing Conversion",
-                "description": "Drawing Converter MSA\uc758 \ubcc0\ud658 \uc644\ub8cc webhook\uc744 \uc218\uc2e0.\n\nshared secret\uc73c\ub85c \uc778\uc99d\ud558\uba70, \ubcc0\ud658 \uacb0\uacfc\ub97c Upload \ub808\ucf54\ub4dc\uc5d0 \ubc18\uc601\ud569\ub2c8\ub2e4.",
+                "description": "Drawing Converter MSA\uc758 \ubcc0\ud658 \uc644\ub8cc webhook\uc744 \uc218\uc2e0.\n\nshared secret\uc73c\ub85c \uc778\uc99d\ud558\uba70, \ubcc0\ud658 \uacb0\uacfc\ub97c Drawing \ub808\ucf54\ub4dc\uc5d0 \ubc18\uc601\ud569\ub2c8\ub2e4.",
                 "operationId": "receive_drawing_conversion_api_v1_internal_webhooks_drawing_converter_post",
                 "parameters": [
                     {
@@ -2540,6 +2646,57 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/ConversionResultRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/internal/webhooks/drawing-converter/batch": {
+            "post": {
+                "tags": [
+                    "webhooks"
+                ],
+                "summary": "Receive Batch Drawing Conversion",
+                "description": "Drawing Converter MSA\uc758 \ubc30\uce58 \ubcc0\ud658 \uc644\ub8cc webhook\uc744 \uc218\uc2e0.\n\n\ubc30\uce58 \ubcc0\ud658 \uc694\uccad\uc5d0 \ub300\ud55c \uacb0\uacfc\ub97c \uc77c\uad04 \uc218\uc2e0\ud558\uc5ec \uac01 Drawing \ub808\ucf54\ub4dc\uc5d0 \ubc18\uc601\ud569\ub2c8\ub2e4.",
+                "operationId": "receive_batch_drawing_conversion_api_v1_internal_webhooks_drawing_converter_batch_post",
+                "parameters": [
+                    {
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BatchConversionResultRequest"
                             }
                         }
                     }
@@ -2647,6 +2804,132 @@
                     "failed"
                 ],
                 "title": "BatchCompleteResponse"
+            },
+            "BatchConversionResultItem": {
+                "properties": {
+                    "drawing_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Drawing Id"
+                    },
+                    "file_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "File Id"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status",
+                        "description": "COMPLETED \ub610\ub294 FAILED"
+                    },
+                    "pdf_key": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pdf Key"
+                    },
+                    "pdf_content_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pdf Content Type"
+                    },
+                    "pdf_size": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pdf Size"
+                    },
+                    "thumbnail_key": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Thumbnail Key"
+                    },
+                    "thumbnail_content_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Thumbnail Content Type"
+                    },
+                    "thumbnail_size": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Thumbnail Size"
+                    },
+                    "error": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Error"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "drawing_id",
+                    "file_id",
+                    "status"
+                ],
+                "title": "BatchConversionResultItem",
+                "description": "\ubc30\uce58 \ubcc0\ud658 \uacb0\uacfc \uac1c\ubcc4 \ud56d\ubaa9."
+            },
+            "BatchConversionResultRequest": {
+                "properties": {
+                    "tenant_schema": {
+                        "type": "string",
+                        "title": "Tenant Schema"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/BatchConversionResultItem"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "tenant_schema",
+                    "items"
+                ],
+                "title": "BatchConversionResultRequest",
+                "description": "Drawing Converter webhook \ubc30\uce58 \uc218\uc2e0 \ud398\uc774\ub85c\ub4dc."
             },
             "BatchCreateFileRequest": {
                 "properties": {
@@ -2842,6 +3125,97 @@
                 "title": "BomTreeResponse",
                 "description": "BOM \ud2b8\ub9ac \uc751\ub2f5"
             },
+            "BulkRegisterDrawingFailure": {
+                "properties": {
+                    "file_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "File Id"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "title": "Reason"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file_id",
+                    "reason"
+                ],
+                "title": "BulkRegisterDrawingFailure",
+                "description": "\ub300\ub7c9 \ub3c4\uba74 \ub4f1\ub85d \uc2e4\ud328 \ud56d\ubaa9."
+            },
+            "BulkRegisterDrawingItem": {
+                "properties": {
+                    "file_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "File Id"
+                    },
+                    "part_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Part Id"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file_id"
+                ],
+                "title": "BulkRegisterDrawingItem",
+                "description": "\ub300\ub7c9 \ub3c4\uba74 \ub4f1\ub85d \uac1c\ubcc4 \ud56d\ubaa9."
+            },
+            "BulkRegisterDrawingRequest": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/BulkRegisterDrawingItem"
+                        },
+                        "type": "array",
+                        "maxItems": 100,
+                        "minItems": 1,
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "title": "BulkRegisterDrawingRequest",
+                "description": "\ub300\ub7c9 \ub3c4\uba74 \ub4f1\ub85d \uc694\uccad."
+            },
+            "BulkRegisterDrawingResponse": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/RegisterDrawingResponse"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    },
+                    "failed": {
+                        "items": {
+                            "$ref": "#/components/schemas/BulkRegisterDrawingFailure"
+                        },
+                        "type": "array",
+                        "title": "Failed"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "items",
+                    "failed"
+                ],
+                "title": "BulkRegisterDrawingResponse",
+                "description": "\ub300\ub7c9 \ub3c4\uba74 \ub4f1\ub85d \uc751\ub2f5."
+            },
             "CheckEmailResponse": {
                 "properties": {
                     "available": {
@@ -2903,6 +3277,11 @@
             },
             "ConversionResultRequest": {
                 "properties": {
+                    "drawing_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Drawing Id"
+                    },
                     "file_id": {
                         "type": "string",
                         "format": "uuid",
@@ -2928,6 +3307,28 @@
                         ],
                         "title": "Pdf Key"
                     },
+                    "pdf_content_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pdf Content Type"
+                    },
+                    "pdf_size": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pdf Size"
+                    },
                     "thumbnail_key": {
                         "anyOf": [
                             {
@@ -2938,6 +3339,28 @@
                             }
                         ],
                         "title": "Thumbnail Key"
+                    },
+                    "thumbnail_content_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Thumbnail Content Type"
+                    },
+                    "thumbnail_size": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Thumbnail Size"
                     },
                     "error": {
                         "anyOf": [
@@ -2953,12 +3376,13 @@
                 },
                 "type": "object",
                 "required": [
+                    "drawing_id",
                     "file_id",
                     "tenant_schema",
                     "status"
                 ],
                 "title": "ConversionResultRequest",
-                "description": "Drawing Converter webhook \uc218\uc2e0 \ud398\uc774\ub85c\ub4dc."
+                "description": "Drawing Converter webhook \ub2e8\uac74 \uc218\uc2e0 \ud398\uc774\ub85c\ub4dc."
             },
             "CreateFileRequest": {
                 "properties": {
@@ -3375,7 +3799,7 @@
                         ],
                         "title": "Status"
                     },
-                    "file_key": {
+                    "original_file_key": {
                         "anyOf": [
                             {
                                 "type": "string"
@@ -3384,7 +3808,7 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "File Key"
+                        "title": "Original File Key"
                     },
                     "pdf_key": {
                         "anyOf": [
@@ -3691,17 +4115,6 @@
                     "content_type": {
                         "type": "string",
                         "title": "Content Type"
-                    },
-                    "conversion_status": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Conversion Status"
                     },
                     "created_at": {
                         "type": "string",
@@ -5386,6 +5799,57 @@
                 ],
                 "title": "RefreshRequest"
             },
+            "RegisterDrawingRequest": {
+                "properties": {
+                    "file_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "File Id"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file_id"
+                ],
+                "title": "RegisterDrawingRequest",
+                "description": "\ub2e8\uac74 \ub3c4\uba74 \ub4f1\ub85d \uc694\uccad."
+            },
+            "RegisterDrawingResponse": {
+                "properties": {
+                    "drawing_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Drawing Id"
+                    },
+                    "drawing_number": {
+                        "type": "string",
+                        "title": "Drawing Number"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "conversion_status": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Conversion Status"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "drawing_id",
+                    "drawing_number",
+                    "name"
+                ],
+                "title": "RegisterDrawingResponse",
+                "description": "\ub3c4\uba74 \ub4f1\ub85d \uc751\ub2f5."
+            },
             "RegisterRequest": {
                 "properties": {
                     "email": {
@@ -5555,6 +6019,50 @@
                             }
                         ],
                         "title": "Status"
+                    },
+                    "conversion_status": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Conversion Status"
+                    },
+                    "thumbnail_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Thumbnail Url"
+                    },
+                    "pdf_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pdf Url"
+                    },
+                    "original_file_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Original File Url"
                     }
                 },
                 "type": "object",

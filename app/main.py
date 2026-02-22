@@ -44,7 +44,7 @@ from app.core.database import (
 )
 from app.core.exceptions import register_exception_handlers  # noqa: E402
 from app.infrastructure.password_hasher import hash_password  # noqa: E402
-from app.infrastructure.token_provider import TokenProvider  # noqa: E402
+from app.infrastructure.token_provider import token_provider  # noqa: E402
 from app.modules.auth import repository as auth_repo  # noqa: E402
 from app.modules.auth.provisioning import provision_tenant  # noqa: E402
 
@@ -57,7 +57,7 @@ instrument_database(engine)
 # 예외 핸들러
 register_exception_handlers(app)
 
-_token_provider = TokenProvider()
+_token_provider = token_provider
 
 # 인증이 불필요한 경로
 _PUBLIC_PATHS = frozenset(

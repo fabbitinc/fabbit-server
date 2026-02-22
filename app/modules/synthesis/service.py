@@ -14,7 +14,7 @@ from app.core.database import create_tenant_session, generate_uuid7
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
 from app.infrastructure.excel_parser import get_sheet_names, read_to_dataframe
-from app.infrastructure.s3_client import S3Client
+from app.infrastructure.s3_client import s3_client
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
 from app.modules.ontology.cypher_utils import format_cypher_value
@@ -36,7 +36,7 @@ from app.modules.synthesis.schemas import (
     SynthesisUploadItem,
 )
 
-_s3 = S3Client()
+_s3 = s3_client
 
 CHUNK_SIZE = 500
 

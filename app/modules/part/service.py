@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
+from app.infrastructure.s3_client import s3_client
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.part import repository as repo
 from app.modules.part.schemas import (
@@ -24,6 +25,9 @@ from app.modules.part.schemas import (
     RelatedDrawing,
     RelatedSupplier,
 )
+
+
+_s3 = s3_client
 
 
 def _safe_int(val, default: int = 0) -> int:
@@ -131,6 +135,10 @@ def get_part(db: Session, auth: AuthContext, part_id: uuid.UUID) -> PartDetailRe
             name=drawing_row["name"],
             version=drawing_row["version"],
             status=drawing_row["status"],
+            conversion_status=drawing_row["conversion_status"],
+            thumbnail_url=_s3.get_file_url(drawing_row["thumbnail_key"]),
+            pdf_url=_s3.get_file_url(drawing_row["pdf_key"]),
+            original_file_url=_s3.get_file_url(drawing_row["original_file_key"]),
         )
         if drawing_row
         else None

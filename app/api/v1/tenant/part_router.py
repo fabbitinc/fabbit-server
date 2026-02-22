@@ -2,11 +2,13 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
+from app.modules.drawing import service as drawing_service
+from app.modules.drawing.schemas import RegisterDrawingRequest, RegisterDrawingResponse
 from app.modules.part import service
 from app.modules.part.schemas import (
     BomTreeResponse,
@@ -87,3 +89,28 @@ def get_part_bom_tree(
     해당 Part를 루트로 하는 전체 BOM 계층 구조를 트리 형태로 반환합니다.
     """
     return service.get_part_bom_tree(db, auth, part_id)
+
+
+@router.post("/{part_id}/drawings", response_model=RegisterDrawingResponse)
+def register_drawing_for_part(
+    part_id: uuid.UUID,
+    req: RegisterDrawingRequest,
+    background_tasks: BackgroundTasks,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """Part에 도면 등록.
+
+    ## 업로드 흐름
+
+    1. `POST /api/v1/files` — presigned URL 발급
+    2. S3에 파일 업로드 (presigned URL PUT)
+    3. `POST /api/v1/files/{file_id}/complete` — 업로드 확인
+    4. **이 엔드포인트** — Drawing 생성 + Part 연결
+
+    DWG 파일은 자동으로 PDF/썸네일 변환이 트리거됩니다.
+    변환 상태는 `GET /api/v1/drawings` 목록에서 `conversion_status`로 확인 가능합니다.
+    """
+    return drawing_service.register_drawing(
+        db, auth, req.file_id, part_id, background_tasks.add_task
+    )

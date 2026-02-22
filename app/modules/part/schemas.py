@@ -7,6 +7,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from app.modules.drawing.constants import ConversionStatus
+
 # ── 관계 서브 모델 ──
 
 
@@ -38,6 +40,10 @@ class RelatedDrawing(BaseModel):
     name: str | None = None
     version: str | None = None
     status: str | None = None
+    conversion_status: ConversionStatus | None = None
+    thumbnail_url: str | None = None
+    pdf_url: str | None = None
+    original_file_url: str | None = None
 
 
 class RelatedSupplier(BaseModel):
