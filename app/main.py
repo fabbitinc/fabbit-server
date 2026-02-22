@@ -17,8 +17,9 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from loguru import logger  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
+from app import scheduler  # noqa: E402
+from app.api.v1.internal.webhook_router import router as webhook_router  # noqa: E402
 from app.api.v1.public.auth_router import router as auth_router  # noqa: E402
-from app.api.v1.tenant.ontology_router import router as ontology_router  # noqa: E402
 from app.api.v1.tenant.activation_router import (
     router as activation_router,  # noqa: E402
 )
@@ -26,15 +27,15 @@ from app.api.v1.tenant.dashboard_router import (
     router as dashboard_router,  # noqa: E402
 )
 from app.api.v1.tenant.drawing_router import router as drawing_router  # noqa: E402
-from app.api.v1.tenant.part_router import router as part_router  # noqa: E402
 from app.api.v1.tenant.mapping_router import router as mapping_router  # noqa: E402
+from app.api.v1.tenant.ontology_router import router as ontology_router  # noqa: E402
+from app.api.v1.tenant.part_router import router as part_router  # noqa: E402
 from app.api.v1.tenant.project_router import router as project_router  # noqa: E402
-from app.api.v1.tenant.synthesis_router import router as synthesis_router  # noqa: E402
 from app.api.v1.tenant.supplier_router import (  # noqa: E402
     router as supplier_router,
 )
+from app.api.v1.tenant.synthesis_router import router as synthesis_router  # noqa: E402
 from app.api.v1.tenant.upload_router import router as upload_router  # noqa: E402
-from app.api.v1.internal.webhook_router import router as webhook_router  # noqa: E402
 from app.core.auth_context import AuthContext  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.database import (
@@ -208,10 +209,16 @@ def _bootstrap_test_account_once() -> None:
         db.close()
 
 
-# TODO 삭제
 @app.on_event("startup")
 def _startup_bootstrap() -> None:
+    # TODO 삭제
     _bootstrap_test_account_once()
+    scheduler.start()
+
+
+@app.on_event("shutdown")
+def _shutdown_scheduler() -> None:
+    scheduler.shutdown()
 
 
 @app.get("/health")

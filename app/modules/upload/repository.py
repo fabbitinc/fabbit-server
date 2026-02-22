@@ -1,7 +1,9 @@
 """업로드 도메인 데이터 접근 레이어."""
 
 import uuid
+from datetime import datetime
 
+from sqlalchemy import union_all
 from sqlalchemy.orm import Session
 
 from app.modules.upload.models import Upload
@@ -63,3 +65,35 @@ def delete_uploads_by_owner(
         .delete()
     )
     return count
+
+
+def get_stale_uploads(
+    db: Session,
+    status: str,
+    cutoff: datetime,
+    limit: int = 100,
+    cursor: uuid.UUID | None = None,
+) -> list[Upload]:
+    """정리 대상 업로드 조회 (cursor 기반 페이지네이션).
+
+    - status="PENDING", cutoff 이전 → orphan
+    - status="DELETED", cutoff 이전 → soft delete 만료
+    """
+    q = db.query(Upload).filter(
+        Upload.status == status,
+        Upload.created_at < cutoff,
+    )
+    if cursor:
+        q = q.filter(Upload.id > cursor)
+    return q.order_by(Upload.id).limit(limit).all()
+
+
+def get_all_file_keys(db: Session) -> set[str]:
+    """DB에 등록된 모든 S3 키(file_key, pdf_key, thumbnail_key) 집합 반환."""
+    q = union_all(
+        db.query(Upload.file_key).filter(Upload.file_key.isnot(None)),
+        db.query(Upload.pdf_key).filter(Upload.pdf_key.isnot(None)),
+        db.query(Upload.thumbnail_key).filter(Upload.thumbnail_key.isnot(None)),
+    )
+    rows = db.execute(q).all()
+    return {row[0] for row in rows}

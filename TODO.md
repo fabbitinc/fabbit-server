@@ -1,2 +1,5 @@
 - [ ] 멀티테넌트 디비 마이그레이션 방법은?
 - [ ] part, part_revision에 status 없음 <- 승인 관리 워크플로우가 있어야함 (draft, released 등) (lifecycle_state 는 제품 수명 주기)
+- [ ] 도면 업로드 분리 및 업로드 url 관리 방안 (part 상세에서 업로드, part 목록화면에서 업로드)
+- [ ] 도면 client 에 batch 생성
+- [ ] 도면 client 연결

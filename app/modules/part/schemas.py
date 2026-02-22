@@ -7,7 +7,6 @@ from typing import Any
 
 from pydantic import BaseModel
 
-
 # ── 관계 서브 모델 ──
 
 
@@ -97,9 +96,10 @@ class PartDetailResponse(BaseModel):
     is_phantom: bool | None = None
     lead_time_days: int | None = None
     extended_properties: dict[str, Any] = {}
+
+    drawing: RelatedDrawing | None = None
     children: list[BomChild] = []
     parents: list[BomParent] = []
-    drawing: RelatedDrawing | None = None
     suppliers: list[RelatedSupplier] = []
 
 

@@ -40,6 +40,7 @@ dependencies = [
     "PyMuPDF>=1.24.0",
     "Pillow>=10.0.0",
     "ruff>=0.15.1",
+    "apscheduler>=3.11.2",
 ]
 
 [dependency-groups]

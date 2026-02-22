@@ -1,6 +1,7 @@
 """업로드 도메인 서비스 레이어."""
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from loguru import logger
 from sqlalchemy.orm import Session
@@ -14,6 +15,7 @@ from app.infrastructure.drawing_converter_client import DrawingConverterClient
 from app.infrastructure.s3_client import S3Client
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.upload import repository as repo
+from app.modules.upload.constants import ConversionStatus, UploadStatus
 from app.modules.upload.models import Upload
 from app.modules.upload.schemas import (
     BatchCompleteFailure,
@@ -133,7 +135,7 @@ def batch_complete_uploads(
             )
             continue
 
-        if upload.status == "UPLOADED":
+        if upload.status == UploadStatus.UPLOADED:
             failed.append(
                 BatchCompleteFailure(
                     upload_id=upload_id,
@@ -152,7 +154,7 @@ def batch_complete_uploads(
             )
             continue
 
-        upload.status = "UPLOADED"
+        upload.mark_uploaded()
         completed.append(_to_upload_complete_response(upload))
 
     logger.info(
@@ -173,7 +175,7 @@ def complete_upload(
     if upload is None:
         raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
 
-    if upload.status == "UPLOADED":
+    if upload.status == UploadStatus.UPLOADED:
         raise AppError(message="이미 완료된 업로드입니다", code="CONFLICT")
 
     obj_meta = _s3.head_object(upload.file_key)
@@ -183,11 +185,11 @@ def complete_upload(
             code="PRECONDITION_FAILED",
         )
 
-    upload.status = "UPLOADED"
+    upload.mark_uploaded()
 
     # DWG 파일이면 변환 요청 트리거
     if _is_dwg_file(upload.original_name) and _converter.enabled:
-        upload.conversion_status = "PENDING"
+        upload.request_conversion()
         tenant_schema = org_id_to_schema(auth.org_id)
         callback_url = (
             f"{settings.base_api_url}/api/v1/internal/webhooks/drawing-converter"
@@ -204,7 +206,7 @@ def complete_upload(
                 "변환 요청 실패 — 업로드는 정상 처리: upload_id={upload_id}",
                 upload_id=upload.id,
             )
-            upload.conversion_status = "FAILED"
+            upload.fail_conversion()
 
     logger.info(
         "업로드 완료: upload_id={upload_id} size={size}",
@@ -229,11 +231,10 @@ def handle_conversion_result(req: ConversionResultRequest) -> None:
             )
             return
 
-        upload.conversion_status = req.status
-        if req.status == "COMPLETED":
-            upload.pdf_key = req.pdf_key
-            upload.thumbnail_key = req.thumbnail_key
+        if req.status == ConversionStatus.COMPLETED:
+            upload.complete_conversion(req.pdf_key, req.thumbnail_key)
         else:
+            upload.fail_conversion()
             logger.warning(
                 "변환 실패: upload_id={upload_id} error={error}",
                 upload_id=req.upload_id,
@@ -251,6 +252,146 @@ def handle_conversion_result(req: ConversionResultRequest) -> None:
         raise
     finally:
         db.close()
+
+
+@transactional
+def soft_delete_upload(db: Session, upload_id: uuid.UUID) -> None:
+    """업로드를 소프트 삭제 처리. S3 파일은 cleanup 배치에서 제거."""
+    upload = repo.get_upload_by_id(db, upload_id)
+    if upload is None:
+        raise AppError(message="업로드를 찾을 수 없습니다", code="NOT_FOUND")
+
+    upload.mark_deleted()
+
+
+@transactional
+def soft_delete_uploads(db: Session, upload_ids: list[uuid.UUID]) -> int:
+    """여러 업로드를 소프트 삭제 처리. 삭제된 건수 반환."""
+    uploads = repo.get_uploads_by_ids(db, upload_ids)
+    count = 0
+    for upload in uploads:
+        if upload.status != UploadStatus.DELETED:
+            upload.mark_deleted()
+            count += 1
+    return count
+
+
+def cleanup_stale_uploads(
+    tenant_schema: str,
+    days: int = 1,
+    batch_size: int = 100,
+) -> int:
+    """PENDING 상태로 오래된 업로드 정리. S3 삭제 + EXPIRED 처리."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    db = create_tenant_session(tenant_schema)
+    try:
+        count = _cleanup_batch(db, UploadStatus.PENDING, cutoff, batch_size, expire=True)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+    if count:
+        logger.info(
+            "stale 정리: schema={schema} count={count}",
+            schema=tenant_schema,
+            count=count,
+        )
+    return count
+
+
+def cleanup_orphan_files(s3_prefix: str, tenant_schema: str) -> int:
+    """S3에 존재하지만 DB에 레코드가 없는 고아 파일 삭제."""
+    db = create_tenant_session(tenant_schema)
+    try:
+        known_keys = repo.get_all_file_keys(db)
+    finally:
+        db.close()
+
+    s3_keys = _s3.list_keys(s3_prefix)
+
+    orphan_keys = [k for k in s3_keys if k not in known_keys]
+    for key in orphan_keys:
+        try:
+            _s3.delete_object(key)
+        except Exception:
+            logger.warning("S3 orphan 삭제 실패: key={key}", key=key)
+
+    if orphan_keys:
+        logger.info(
+            "orphan 파일 정리: prefix={prefix} count={count}",
+            prefix=s3_prefix,
+            count=len(orphan_keys),
+        )
+    return len(orphan_keys)
+
+
+def cleanup_deleted_uploads(
+    tenant_schema: str,
+    days: int = 7,
+    batch_size: int = 100,
+) -> int:
+    """DELETED 상태로 보존 기간 만료된 업로드 물리 삭제. S3 삭제 + 레코드 삭제."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    db = create_tenant_session(tenant_schema)
+    try:
+        count = _cleanup_batch(db, UploadStatus.DELETED, cutoff, batch_size, expire=False)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+    if count:
+        logger.info(
+            "deleted 정리: schema={schema} count={count}",
+            schema=tenant_schema,
+            count=count,
+        )
+    return count
+
+
+def _cleanup_batch(
+    db: Session,
+    status: str,
+    cutoff: datetime,
+    batch_size: int,
+    expire: bool,
+) -> int:
+    """배치 단위로 S3 삭제 + DB 상태 변경/레코드 삭제."""
+    count = 0
+    cursor = None
+    while True:
+        uploads = repo.get_stale_uploads(db, status, cutoff, batch_size, cursor)
+        if not uploads:
+            break
+
+        for upload in uploads:
+            _delete_s3_files(upload)
+            if expire:
+                upload.mark_expired()
+            else:
+                db.delete(upload)
+            count += 1
+
+        cursor = uploads[-1].id
+
+    return count
+
+
+def _delete_s3_files(upload: Upload) -> None:
+    """업로드에 연결된 모든 S3 파일 삭제 (원본 + pdf + 썸네일)."""
+    for key in [upload.file_key, upload.pdf_key, upload.thumbnail_key]:
+        if key:
+            try:
+                _s3.delete_object(key)
+            except Exception:
+                logger.warning(
+                    "S3 파일 삭제 실패: key={key} upload_id={upload_id}",
+                    key=key,
+                    upload_id=upload.id,
+                )
 
 
 def _is_dwg_file(filename: str) -> bool:

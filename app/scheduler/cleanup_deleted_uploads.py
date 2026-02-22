@@ -1,0 +1,28 @@
+"""Soft-deleted 업로드 정리 job.
+
+DELETED 상태로 보존 기간이 만료된 업로드의 S3 파일과 DB 레코드를 삭제합니다.
+"""
+
+from loguru import logger
+from sqlalchemy import select
+
+from app.core.database import SessionLocal
+from app.modules.auth.models import Organization
+from app.modules.auth.provisioning import org_id_to_schema
+from app.modules.upload import service as upload_service
+
+
+def job() -> None:
+    """모든 테넌트의 soft-deleted 업로드 정리."""
+    db = SessionLocal()
+    try:
+        orgs = db.execute(select(Organization)).scalars().all()
+    finally:
+        db.close()
+
+    for org in orgs:
+        schema = org_id_to_schema(org.id)
+        try:
+            upload_service.cleanup_deleted_uploads(tenant_schema=schema)
+        except Exception:
+            logger.exception("deleted 정리 실패: {schema}", schema=schema)

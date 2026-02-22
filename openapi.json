@@ -2128,13 +2128,14 @@
                 }
             }
         },
-        "/api/v1/parts/{part_number}": {
+        "/api/v1/parts/{part_id}": {
             "get": {
                 "tags": [
                     "parts"
                 ],
                 "summary": "Get Part",
-                "operationId": "get_part_api_v1_parts__part_number__get",
+                "description": "Part \uc0c1\uc138 \uc870\ud68c.\n\nPart\uc758 \uc804\uccb4 \uc18d\uc131, BOM \uad00\uacc4(\ubd80\ubaa8/\uc790\uc2dd), \ub3c4\uba74, \uacf5\uae09\uc0ac \uc815\ubcf4\ub97c \ud3ec\ud568\ud569\ub2c8\ub2e4.",
+                "operationId": "get_part_api_v1_parts__part_id__get",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -2142,12 +2143,13 @@
                 ],
                 "parameters": [
                     {
-                        "name": "part_number",
+                        "name": "part_id",
                         "in": "path",
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Part Number"
+                            "format": "uuid",
+                            "title": "Part Id"
                         }
                     }
                 ],
@@ -2175,13 +2177,14 @@
                 }
             }
         },
-        "/api/v1/parts/{part_number}/bom-tree": {
+        "/api/v1/parts/{part_id}/bom-tree": {
             "get": {
                 "tags": [
                     "parts"
                 ],
                 "summary": "Get Part Bom Tree",
-                "operationId": "get_part_bom_tree_api_v1_parts__part_number__bom_tree_get",
+                "description": "Part BOM \ud2b8\ub9ac \uc870\ud68c.\n\n\ud574\ub2f9 Part\ub97c \ub8e8\ud2b8\ub85c \ud558\ub294 \uc804\uccb4 BOM \uacc4\uce35 \uad6c\uc870\ub97c \ud2b8\ub9ac \ud615\ud0dc\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "get_part_bom_tree_api_v1_parts__part_id__bom_tree_get",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -2189,12 +2192,13 @@
                 ],
                 "parameters": [
                     {
-                        "name": "part_number",
+                        "name": "part_id",
                         "in": "path",
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Part Number"
+                            "format": "uuid",
+                            "title": "Part Id"
                         }
                     }
                 ],
@@ -2495,6 +2499,57 @@
                                 "schema": {
                                     "$ref": "#/components/schemas/NodeSearchResponse"
                                 }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/internal/webhooks/drawing-converter": {
+            "post": {
+                "tags": [
+                    "webhooks"
+                ],
+                "summary": "Receive Drawing Conversion",
+                "description": "Drawing Converter MSA\uc758 \ubcc0\ud658 \uc644\ub8cc webhook\uc744 \uc218\uc2e0.\n\nshared secret\uc73c\ub85c \uc778\uc99d\ud558\uba70, \ubcc0\ud658 \uacb0\uacfc\ub97c Upload \ub808\ucf54\ub4dc\uc5d0 \ubc18\uc601\ud569\ub2c8\ub2e4.",
+                "operationId": "receive_drawing_conversion_api_v1_internal_webhooks_drawing_converter_post",
+                "parameters": [
+                    {
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConversionResultRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
                             }
                         }
                     },
@@ -2833,6 +2888,65 @@
                     "available"
                 ],
                 "title": "CheckSlugResponse"
+            },
+            "ConversionResultRequest": {
+                "properties": {
+                    "upload_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Upload Id"
+                    },
+                    "tenant_schema": {
+                        "type": "string",
+                        "title": "Tenant Schema"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status",
+                        "description": "COMPLETED \ub610\ub294 FAILED"
+                    },
+                    "pdf_key": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pdf Key"
+                    },
+                    "thumbnail_key": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Thumbnail Key"
+                    },
+                    "error": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Error"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "upload_id",
+                    "tenant_schema",
+                    "status"
+                ],
+                "title": "ConversionResultRequest",
+                "description": "Drawing Converter webhook \uc218\uc2e0 \ud398\uc774\ub85c\ub4dc."
             },
             "CreateFolderRequest": {
                 "properties": {
@@ -3248,6 +3362,50 @@
                             }
                         ],
                         "title": "Status"
+                    },
+                    "file_key": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "File Key"
+                    },
+                    "pdf_key": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pdf Key"
+                    },
+                    "thumbnail_key": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Thumbnail Key"
+                    },
+                    "conversion_status": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Conversion Status"
                     }
                 },
                 "type": "object",
@@ -4465,15 +4623,9 @@
                         "title": "Name"
                     },
                     "revision": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Revision"
+                        "type": "string",
+                        "title": "Revision",
+                        "default": "1"
                     },
                     "material": {
                         "anyOf": [
@@ -4574,13 +4726,15 @@
                         "title": "Parents",
                         "default": []
                     },
-                    "drawings": {
-                        "items": {
-                            "$ref": "#/components/schemas/RelatedDrawing"
-                        },
-                        "type": "array",
-                        "title": "Drawings",
-                        "default": []
+                    "drawing": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/RelatedDrawing"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     },
                     "suppliers": {
                         "items": {
@@ -4737,15 +4891,9 @@
                         "title": "Category"
                     },
                     "revision": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Revision"
+                        "type": "string",
+                        "title": "Revision",
+                        "default": "1"
                     },
                     "lifecycle_state": {
                         "anyOf": [
@@ -6149,6 +6297,17 @@
                     "content_type": {
                         "type": "string",
                         "title": "Content Type"
+                    },
+                    "conversion_status": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Conversion Status"
                     },
                     "created_at": {
                         "type": "string",

@@ -99,3 +99,18 @@ class S3Client:
     def delete_object(self, file_key: str) -> None:
         """S3 객체 삭제."""
         self._client.delete_object(Bucket=self._bucket, Key=file_key)
+
+    def list_keys(
+        self, prefix: str, max_keys: int = 1000
+    ) -> list[str]:
+        """prefix 하위의 모든 S3 키를 페이지네이션으로 수집."""
+        keys: list[str] = []
+        params = {"Bucket": self._bucket, "Prefix": prefix, "MaxKeys": max_keys}
+        while True:
+            resp = self._client.list_objects_v2(**params)
+            for obj in resp.get("Contents", []):
+                keys.append(obj["Key"])
+            if not resp.get("IsTruncated"):
+                break
+            params["ContinuationToken"] = resp["NextContinuationToken"]
+        return keys
