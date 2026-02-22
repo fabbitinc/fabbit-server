@@ -14,7 +14,7 @@ from loguru import logger
 
 from app.core.config import settings
 
-DEFAULT_MODEL = "gpt-5-mini"
+DEFAULT_MODEL = "openai/gpt-5-mini"
 
 
 @dataclass
@@ -38,7 +38,8 @@ def _create_llm(
     kwargs = {
         "model": model,
         "temperature": temperature,
-        "api_key": settings.openai_api_key,
+        "api_key": settings.llm_api_key,
+        "base_url": settings.llm_base_url,
     }
     if max_tokens is not None:
         kwargs["max_tokens"] = max_tokens

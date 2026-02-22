@@ -228,13 +228,15 @@ def generate_mapping(
 {json.dumps(sample_rows, ensure_ascii=False, indent=2)}
 """
 
-    llm_resp = chat_completion_with_usage(
+    kwargs = dict(
         system_prompt=MAPPING_SYSTEM_PROMPT,
         user_message=user_message,
-        model=model if model else "gpt-5-mini",
         reasoning_effort="low",
         response_format={"type": "json_object"},
     )
+    if model is not None:
+        kwargs["model"] = model
+    llm_resp = chat_completion_with_usage(**kwargs)
     raw = json.loads(llm_resp.content)
 
     result = MappingResult(

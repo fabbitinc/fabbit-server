@@ -51,6 +51,12 @@ uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+### 모델 테스트
+
+```bash
+uv run pytest tests/llm/ -v -s --use-llm --llm-model=minimax/minimax-m2.5 --llm-runs=3
+```
+
 또는:
 
 ```bash

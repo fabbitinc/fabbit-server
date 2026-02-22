@@ -1,0 +1,19 @@
+{
+  "description": "부품 목록. 공급업체+단가로 SUPPLIED_BY 관계 생성",
+  "expected_scope": "full_bom",
+  "required_property_mappings": {
+    "품번": "part_number",
+    "품명": "name",
+    "재질": "material",
+    "단위": "unit",
+    "리드타임(일)": "lead_time_days",
+    "비고": "description"
+  },
+  "required_relations": [
+    {
+      "rel_type": "SUPPLIED_BY",
+      "node_columns": {"company_name": "공급업체"},
+      "rel_columns": {"unit_cost": "단가"}
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "description": "상위-하위 구조의 Full BOM. CONSISTS_OF + SUPPLIED_BY 관계 포함",
+  "expected_scope": "full_bom",
+  "required_property_mappings": {
+    "하위품번": "part_number",
+    "하위품명": "name",
+    "단위": "unit",
+    "재질": "material",
+    "비고": "description"
+  },
+  "required_relations": [
+    {
+      "rel_type": "CONSISTS_OF",
+      "node_columns": {"part_number": "상위품번", "name": "상위품명"},
+      "rel_columns": {"quantity": "수량"}
+    },
+    {
+      "rel_type": "SUPPLIED_BY",
+      "node_columns": {"company_name": "공급업체"},
+      "rel_columns": {}
+    }
+  ]
+}

@@ -9,7 +9,7 @@
 | FastAPI + Pydantic | API 서버, 요청/응답 검증 |
 | PostgreSQL + Apache AGE | 관계형 DB + 그래프 DB (Cypher 쿼리) |
 | SQLAlchemy + Alembic | ORM, 세션 관리, 스키마 마이그레이션 |
-| LangChain + OpenAI (gpt-5-mini) | LLM 추상화 (매핑 분석, 자연어 질의) |
+| LangChain + OpenRouter (openai/gpt-5-mini) | LLM 추상화 (매핑 분석, 자연어 질의) |
 | pandas + openpyxl | Excel/CSV 파싱 |
 | uv | 패키지 관리 |
 

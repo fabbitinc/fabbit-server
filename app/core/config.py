@@ -38,8 +38,9 @@ class Settings(BaseSettings):
     drawing_converter_url: str = ""  # 빈 문자열이면 비활성화
     drawing_converter_secret: str = ""
 
-    # ── OpenAI ──
-    openai_api_key: str = ""
+    # ── LLM (OpenRouter) ──
+    llm_api_key: str = ""
+    llm_base_url: str = "https://openrouter.ai/api/v1"
 
     # ── Cloudflare Turnstile (봇 방지) ──
     turnstile_secret_key: str = ""
