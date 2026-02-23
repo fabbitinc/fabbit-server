@@ -49,6 +49,7 @@ jobs:
           username: ec2-user
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set -e
             cd ${{ env.DEPLOY_DIR }}
 
             # .env 파일 생성
@@ -57,7 +58,7 @@ jobs:
             ENVEOF
 
             # GHCR 로그인 + 전체 이미지 pull
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo ${{ secrets.GH_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose -f docker-compose.prod.yml pull
 
             # 배포
