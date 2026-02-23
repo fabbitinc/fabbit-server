@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from app.infrastructure.llm_client import LLMModel
+
 REPORT_DIR = Path(__file__).parent / "reports"
 
 
@@ -19,11 +21,13 @@ def pytest_addoption(parser):
         default=5,
         help="LLM 매핑 품질 테스트 반복 횟수 (기본값: 5)",
     )
+    model_names = [m.name for m in LLMModel]
     parser.addoption(
         "--llm-model",
         type=str,
         default=None,
-        help="LLM 모델 지정 (미지정 시 DEFAULT_MODEL 사용)",
+        choices=model_names,
+        help=f"LLM 모델 지정: {', '.join(model_names)} (미지정 시 DEFAULT_MODEL 사용)",
     )
 
 
@@ -34,9 +38,12 @@ def llm_runs(request):
 
 
 @pytest.fixture(scope="session")
-def llm_model(request):
-    """LLM 모델명 (None이면 generate_mapping 기본값 사용)."""
-    return request.config.getoption("--llm-model")
+def llm_model(request) -> LLMModel | None:
+    """LLM 모델 (None이면 generate_mapping 기본값 사용)."""
+    name = request.config.getoption("--llm-model")
+    if name is None:
+        return None
+    return LLMModel[name]
 
 
 @pytest.fixture(autouse=True)

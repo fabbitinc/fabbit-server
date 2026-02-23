@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
-from app.infrastructure.llm_client import LLMResponse, chat_completion_with_usage
+from app.infrastructure.llm_client import LLMModel, LLMResponse, chat_completion_with_usage
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
 from app.modules.ontology.schemas import (
     MappingResult,
@@ -212,7 +212,7 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
 def generate_mapping(
     headers: list[str],
     sample_rows: list[dict],
-    model: str | None = None,
+    model: LLMModel | None = None,
 ) -> tuple[MappingResult, LLMResponse]:
     """Excel 헤더 + 샘플 데이터로 매핑 생성 (LLM 1회 호출 + 검증).
 
@@ -231,13 +231,22 @@ def generate_mapping(
     kwargs = dict(
         system_prompt=MAPPING_SYSTEM_PROMPT,
         user_message=user_message,
-        reasoning_effort="low",
+        max_tokens=2000,
         response_format={"type": "json_object"},
     )
     if model is not None:
         kwargs["model"] = model
     llm_resp = chat_completion_with_usage(**kwargs)
     raw = json.loads(llm_resp.content)
+
+    # LLM이 배열로 감싸서 반환하는 경우 언래핑
+    if isinstance(raw, list):
+        if len(raw) == 1 and isinstance(raw[0], dict):
+            raw = raw[0]
+        else:
+            raise AppError("LLM이 올바른 JSON 형식을 반환하지 않았습니다")
+    if not isinstance(raw, dict):
+        raise AppError("LLM이 올바른 JSON 형식을 반환하지 않았습니다")
 
     result = MappingResult(
         property_mappings=[

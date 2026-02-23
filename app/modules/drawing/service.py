@@ -573,7 +573,6 @@ def analyze_drawing(
         system_prompt=DRAWING_ANALYSIS_SYSTEM_PROMPT,
         user_message=user_msg,
         images=images,
-        reasoning_effort="low",
         response_format={"type": "json_object"},
     )
 

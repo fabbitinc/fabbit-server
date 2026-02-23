@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from app.infrastructure.excel_parser import extract_headers_and_rows
+from app.infrastructure.llm_client import LLMModel
 from app.modules.mapping.service import _determine_scope
 from app.modules.ontology import service as ontology_service
 from app.modules.ontology.service import MAPPING_SYSTEM_PROMPT
@@ -88,7 +89,7 @@ def _check_single_run(mapping_result, expected: dict) -> list[str]:
 
 @pytest.mark.parametrize("csv_file", CSV_FILES)
 def test_mapping_quality(
-    csv_file: str, llm_runs: int, llm_model: str | None, report_collector: dict,
+    csv_file: str, llm_runs: int, llm_model: LLMModel | None, report_collector: dict,
 ):
     """LLM 매핑 품질 테스트 -- N회 실행 후 pass rate 검증."""
     csv_path = FIXTURES_DIR / csv_file
@@ -99,9 +100,19 @@ def test_mapping_quality(
     details: list[dict] = []
     for i in range(llm_runs):
         start = time.perf_counter()
-        mapping_result, llm_resp = ontology_service.generate_mapping(
-            headers, sample_rows, model=llm_model,
-        )
+        try:
+            mapping_result, llm_resp = ontology_service.generate_mapping(
+                headers, sample_rows, model=llm_model,
+            )
+        except Exception as exc:
+            elapsed = round(time.perf_counter() - start, 2)
+            details.append({
+                "run": i + 1,
+                "passed": False,
+                "elapsed_s": elapsed,
+                "failures": [f"error: {exc}"],
+            })
+            continue
         elapsed = round(time.perf_counter() - start, 2)
         failures = _check_single_run(mapping_result, expected)
         details.append({
@@ -111,13 +122,14 @@ def test_mapping_quality(
             "failures": failures,
         })
 
-        # 첫 실행에서 메타 정보 수집 (모델명, 프롬프트)
+        # 첫 성공 실행에서 메타 정보 수집 (모델명, 프롬프트)
         if not report_collector["meta"]:
             report_collector["meta"].update(
                 model=llm_resp.model,
                 system_prompt=MAPPING_SYSTEM_PROMPT,
                 llm_runs=llm_runs,
             )
+
 
     # 결과 집계
     pass_count = sum(1 for d in details if d["passed"])

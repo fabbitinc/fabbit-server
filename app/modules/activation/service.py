@@ -170,7 +170,6 @@ def query_graph(
         system_prompt=system_prompt,
         user_message=question,
         max_tokens=800,
-        reasoning_effort="low",
     )
     raw_plan = plan_resp.content
     _log_cypher(stage="initial", query=raw_plan)
@@ -195,7 +194,6 @@ def query_graph(
             system_prompt=system_prompt,
             user_message=_build_zero_result_retry_prompt(question, raw_plan),
             max_tokens=800,
-            reasoning_effort="low",
         )
         retry_raw = retry_resp.content
 
@@ -249,7 +247,6 @@ def query_graph(
             system_prompt=ANSWER_SYSTEM_PROMPT,
             user_message=answer_input,
             max_tokens=500,
-            reasoning_effort="low",
         )
         answer = answer_resp.content
         log_ai_usage(
