@@ -2,7 +2,7 @@
 
 # 개발환경 시작 (PostgreSQL + API 서버)
 dev-start:
-	docker compose up -d
+	docker compose -f docker-compose.dev.yml up -d 
 	@echo "PostgreSQL 준비 대기..."
 	@until docker exec fabbit-db pg_isready -U fabbit -q 2>/dev/null; do sleep 0.5; done
 	@echo "PostgreSQL 준비 완료"
@@ -13,11 +13,11 @@ dev-start:
 # 개발환경 종료
 dev-stop:
 	-@lsof -ti:8000 | xargs kill 2>/dev/null || true
-	docker compose down
+	docker compose -f docker-compose.dev.yml down
 
 # DB 초기화 (볼륨 삭제)
 dev-db-reset:
-	docker compose down -v
+	docker compose -f docker-compose.dev.yml down -v
 	@echo "DB 볼륨 삭제 완료. make dev-start로 재시작하세요."
 
 # OpenAPI 스펙 파일 생성

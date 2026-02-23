@@ -32,6 +32,11 @@ services:
     volumes:
       - ./initdb.d:/docker-entrypoint-initdb.d
       - fabbit-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-fabbit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   fabbit-minio:
     image: minio/minio:latest

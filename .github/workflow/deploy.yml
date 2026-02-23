@@ -1,0 +1,73 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+env:
+  DEPLOY_DIR: /home/ec2-user/app
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-northeast-2
+
+      # SG에 러너 IP 임시 추가
+      - name: Open SSH
+        run: |
+          MY_IP=$(curl -s ifconfig.me)/32
+          echo "MY_IP=$MY_IP" >> $GITHUB_ENV
+          aws ec2 authorize-security-group-ingress \
+            --group-id ${{ secrets.EC2_SG_ID }} \
+            --protocol tcp --port 22 --cidr $MY_IP
+
+      # docker-compose.prod.yml + initdb.d 전송
+      - name: Copy files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.prod.yml,initdb.d"
+          target: ${{ env.DEPLOY_DIR }}
+
+      # EC2에 배포
+      - name: Deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ${{ env.DEPLOY_DIR }}
+
+            # .env 파일 생성
+            cat <<'ENVEOF' > .env
+            ${{ secrets.ENV }}
+            ENVEOF
+
+            # GHCR 로그인 + 전체 이미지 pull
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose -f docker-compose.prod.yml pull
+
+            # 배포
+            docker compose -f docker-compose.prod.yml up -d
+            docker image prune -f
+
+      # SG에서 러너 IP 제거
+      - name: Close SSH
+        if: always()
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id ${{ secrets.EC2_SG_ID }} \
+            --protocol tcp --port 22 --cidr ${{ env.MY_IP }}

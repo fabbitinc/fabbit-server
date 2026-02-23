@@ -1,0 +1,101 @@
+services:
+  fabbit-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fabbit-server
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      fabbit-db:
+        condition: service_healthy
+
+  fabbit-drawing-converter:
+    platform: linux/amd64
+    image: drawing-converter:latest
+    container_name: fabbit-drawing-converter
+    ports:
+      - "18100:8100"
+    environment:
+      CONVERTER_SECRET: Y1dSfkjOM60wn/B6IyBBo7GesDkqWnjUvYk5eZe1bG0=
+
+      # S3 호환 스토리지 (Cloudflare R2 / MinIO)
+      CONVERTER_S3_ENDPOINT: http://fabbit-minio:9000
+      CONVERTER_S3_ACCESS_KEY: minioadmin
+      CONVERTER_S3_SECRET_KEY: minioadmin
+      CONVERTER_S3_BUCKET: fabbit
+      CONVERTER_S3_REGION: auto
+
+      # 변환 설정
+      CONVERTER_MAX_CONCURRENT: 2
+      CONVERTER_CLEANUP_AFTER_HOURS: 1
+      CONVERTER_LOG_RETENTION_DAYS: 7
+
+  fabbit-db:
+    image: apache/age:latest
+    container_name: fabbit-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: fabbit
+      POSTGRES_PASSWORD: fabbit
+      POSTGRES_DB: fabbit
+    volumes:
+      - ./initdb.d:/docker-entrypoint-initdb.d
+      - fabbit-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-fabbit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  fabbit-minio:
+    image: minio/minio:latest
+    container_name: fabbit-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - fabbit-minio-data:/data
+
+  # MinIO 초기화 — 기본 버킷 자동 생성
+  fabbit-minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - fabbit-minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://fabbit-minio:9000 minioadmin minioadmin;
+      mc mb local/fabbit --ignore-existing;
+      mc anonymous set download local/fabbit;
+      echo 'Bucket fabbit ready (public download)';
+      "
+
+  fabbit-redis:
+    image: redis:8-alpine
+    container_name: fabbit-redis
+    command: redis-server --requirepass fabbit
+    environment:
+      REDIS_PASSWORD: fabbit
+    ports:
+      - "6379:6379"
+    volumes:
+      - fabbit-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "fabbit", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  fabbit-db-data:
+  fabbit-minio-data:
+  fabbit-redis-data:

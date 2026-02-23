@@ -1,0 +1,41 @@
+services:
+  fabbit-server:
+    image: ghcr.io/fabbitinc/fabbit-server:latest
+    container_name: fabbit-server
+    restart: unless-stopped
+    ports:
+      - "80:8000"
+    env_file:
+      - .env
+    depends_on:
+      fabbit-db:
+        condition: service_healthy
+
+  fabbit-drawing-converter:
+    image: ghcr.io/fabbitinc/fabbit-drawing-converter:latest
+    container_name: fabbit-drawing-converter
+    restart: unless-stopped
+    ports:
+      - "18100:8100"
+    env_file:
+      - .env
+
+  fabbit-db:
+    image: apache/age:latest
+    container_name: fabbit-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    volumes:
+      - ./initdb.d:/docker-entrypoint-initdb.d
+      - fabbit-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-fabbit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  fabbit-db-data:
