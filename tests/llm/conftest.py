@@ -66,6 +66,13 @@ def pytest_sessionfinish(session, exitstatus):
 
     total_runs = sum(c["runs"] for c in _report_cases)
     total_passed = sum(c["passed"] for c in _report_cases)
+    all_elapsed = [
+        d["elapsed_s"]
+        for c in _report_cases
+        for d in c.get("details", [])
+    ]
+    total_elapsed = round(sum(all_elapsed), 2)
+    avg_elapsed = round(total_elapsed / len(all_elapsed), 2) if all_elapsed else 0
 
     report = {
         "timestamp": datetime.now().isoformat(timespec="seconds"),
@@ -77,6 +84,8 @@ def pytest_sessionfinish(session, exitstatus):
             "total_runs": total_runs,
             "total_passed": total_passed,
             "pass_rate": round(total_passed / total_runs, 2) if total_runs else 0,
+            "total_elapsed_s": total_elapsed,
+            "avg_elapsed_s": avg_elapsed,
         },
         "cases": _report_cases,
     }

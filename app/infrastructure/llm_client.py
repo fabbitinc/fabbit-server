@@ -22,6 +22,7 @@ class LLMModel(str, Enum):
     GPT_5_MINI = "openai/gpt-5-mini"  # 범용 텍스트/비전
     MINIMAX_M2_5 = "minimax/minimax-m2.5"  # 고속 텍스트
     GROK_4_1_FAST = "x-ai/grok-4.1-fast"  # 고속 추론
+    QWEN3_32B = "qwen/qwen3-32b"
 
 
 @dataclass(frozen=True)
@@ -43,6 +44,10 @@ LLM_MODEL_CONFIGS: dict[LLMModel, LLMModelConfig] = {
     ),
     LLMModel.GROK_4_1_FAST: LLMModelConfig(
         providers=["xai"],
+        reasoning_effort=None,
+    ),
+    LLMModel.QWEN3_32B: LLMModelConfig(
+        providers=["deepinfra"],
         reasoning_effort=None,
     ),
 }

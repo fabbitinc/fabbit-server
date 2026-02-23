@@ -139,6 +139,7 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
 
 ### 1. property_mappings — Part 속성 매핑
 행의 주인공(대상 Part)에 귀속되는 속성입니다.
+- 같은 노드 라벨의 컬럼이 두 세트 있으면(예: Part 관련 컬럼이 2그룹), **더 많은 속성을 가진 쪽이 주인공**이고 나머지는 관계(relation_mappings)의 상대방 노드입니다.
 - 품번(part_number), 품명(name), 재질(material), 단위(unit) 등
 - 온톨로지에 없는 추가 속성은 `_ext_` 접두사 + 영문 snake_case로 작성
   예: "탄소배출량" → "_ext_carbon_emission"
@@ -159,7 +160,7 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
 
 ### 원칙 1. 온톨로지 스키마 참조
 위 "관계 타입" 섹션에서 각 관계의 **방향**, **대상 노드 MERGE KEY**, **관계 속성**을 확인하세요.
-- `node_columns`에는 대상 노드의 속성(특히 MERGE KEY)을 매핑
+- `node_columns`에는 대상 노드의 속성을 매핑합니다. MERGE KEY는 필수이며, **해당 노드의 다른 속성에 매핑 가능한 컬럼이 있으면 함께 포함**하세요.
 - `rel_columns`에는 해당 관계에 정의된 속성만 매핑
 
 ### 원칙 2. 관계 속성은 반드시 rel_columns에
@@ -193,6 +194,22 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
 - reason (영문 1줄): 해당 매핑을 선택한 근거
 
 ## 출력 형식 (JSON)
+
+### 예시 A: 상위/하위 Part 컬럼이 모두 있는 경우 (Full BOM)
+주인공 Part(속성이 더 많은 쪽)의 품번/품명은 property_mappings에, 상대방 Part의 품번/품명은 CONSISTS_OF의 node_columns에 매핑합니다.
+```json
+{{
+  "property_mappings": [
+    {{"source_column": "하위품번", "target_property": "part_number", "data_type": "string", "confidence": 95, "reason": "Child part has more attributes - main Part"}},
+    {{"source_column": "하위품명", "target_property": "name", "data_type": "string", "confidence": 95, "reason": "Child part name"}}
+  ],
+  "relation_mappings": [
+    {{"rel_type": "CONSISTS_OF", "target_label": "Part", "node_columns": {{"part_number": "상위품번", "name": "상위품명"}}, "rel_columns": {{"quantity": "수량"}}, "rel_column_types": {{"quantity": "integer"}}, "confidence": 90, "reason": "Parent-child BOM with both part identifiers"}}
+  ]
+}}
+```
+
+### 예시 B: 일반적인 부품 목록
 ```json
 {{
   "property_mappings": [
@@ -206,6 +223,7 @@ Excel 스프레드시트의 컬럼 헤더와 샘플 데이터를 분석하여,
 ```
 
 반드시 위 JSON 형식만 출력하세요. 설명이나 마크다운 없이 순수 JSON만 출력하세요.
+JSON은 들여쓰기 없이 한 줄로 compact하게 출력하세요. reason은 30자 이내로 작성하세요.
 """
 
 

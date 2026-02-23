@@ -111,6 +111,7 @@ def test_mapping_quality(
                 "passed": False,
                 "elapsed_s": elapsed,
                 "failures": [f"error: {exc}"],
+                "raw_response": None,
             })
             continue
         elapsed = round(time.perf_counter() - start, 2)
@@ -120,6 +121,7 @@ def test_mapping_quality(
             "passed": len(failures) == 0,
             "elapsed_s": elapsed,
             "failures": failures,
+            "raw_response": llm_resp.content,
         })
 
         # 첫 성공 실행에서 메타 정보 수집 (모델명, 프롬프트)
@@ -137,12 +139,15 @@ def test_mapping_quality(
     pass_rate = round(pass_count / total, 2) if total else 0
 
     # 리포트 데이터 수집
+    elapsed_values = [d["elapsed_s"] for d in details]
+    avg_elapsed = round(sum(elapsed_values) / len(elapsed_values), 2) if elapsed_values else 0
     report_collector["cases"].append(
         {
             "csv_file": csv_file,
             "runs": total,
             "passed": pass_count,
             "pass_rate": pass_rate,
+            "avg_elapsed_s": avg_elapsed,
             "details": details,
         }
     )
