@@ -48,7 +48,14 @@ from app.infrastructure.token_provider import token_provider  # noqa: E402
 from app.modules.auth import repository as auth_repo  # noqa: E402
 from app.modules.auth.provisioning import provision_tenant  # noqa: E402
 
-app = FastAPI(title=settings.app_name, version="0.1.0", debug=settings.debug)
+app = FastAPI(
+    title=settings.app_name,
+    version="0.1.0",
+    debug=settings.debug,
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
+    openapi_url="/openapi.json" if settings.debug else None,
+)
 
 # OTel 자동 계측
 instrument_app(app)
