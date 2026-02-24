@@ -10,7 +10,7 @@ services:
     depends_on:
       fabbit-db:
         condition: service_healthy
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    command: ["sh", "-c", "alembic upgrade head && alembic -c alembic_tenant.ini upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
 
   fabbit-drawing-converter:
     image: ghcr.io/fabbitinc/fabbit-drawing-converter:latest

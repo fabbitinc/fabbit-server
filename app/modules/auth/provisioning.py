@@ -2,6 +2,8 @@
 
 import uuid
 
+from alembic.config import Config as AlembicConfig
+from alembic.script import ScriptDirectory
 from loguru import logger
 from sqlalchemy.orm import Session
 
@@ -41,6 +43,9 @@ def provision_tenant(db: Session, org_id: uuid.UUID) -> str:
     conn.exec_driver_sql(f"SET search_path = {graph_name}, ag_catalog, public")
     TenantBase.metadata.create_all(bind=conn)
 
+    # ── 2-1. 현재 tenant 마이그레이션 head를 스탬프 ──
+    _stamp_tenant_alembic_version(conn, graph_name)
+
     # search_path 복원 (이후 작업이 ag_catalog를 참조하므로)
     conn.exec_driver_sql("SET search_path = ag_catalog, public")
 
@@ -48,6 +53,38 @@ def provision_tenant(db: Session, org_id: uuid.UUID) -> str:
     _create_ontology_indexes(conn, graph_name)
 
     return graph_name
+
+
+def _stamp_tenant_alembic_version(conn, schema_name: str) -> None:
+    """테넌트 스키마에 현재 tenant 마이그레이션 head revision을 기록.
+
+    create_all()로 테이블을 생성한 직후 호출하여,
+    이후 upgrade head 실행 시 이미 적용된 것으로 인식시킵니다.
+    """
+    alembic_cfg = AlembicConfig("alembic_tenant.ini")
+    script = ScriptDirectory.from_config(alembic_cfg)
+    head = script.get_current_head()
+
+    if head is None:
+        # 마이그레이션 파일이 아직 없으면 skip
+        return
+
+    # search_path가 이미 tenant 스키마로 설정된 상태
+    conn.exec_driver_sql(
+        f"CREATE TABLE IF NOT EXISTS {schema_name}.alembic_version ("
+        "version_num VARCHAR(32) NOT NULL, "
+        "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+    )
+    conn.exec_driver_sql(
+        f"INSERT INTO {schema_name}.alembic_version (version_num) "
+        f"VALUES (%s) ON CONFLICT DO NOTHING",
+        (head,),
+    )
+    logger.info(
+        "테넌트 alembic_version 스탬프: {schema} → {rev}",
+        schema=schema_name,
+        rev=head,
+    )
 
 
 def _create_ontology_indexes(conn, graph_name: str) -> None:

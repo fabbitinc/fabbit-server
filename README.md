@@ -42,7 +42,11 @@ docker compose up -d
 ### 3) DB 마이그레이션
 
 ```bash
+# public 스키마
 uv run alembic upgrade head
+
+# 테넌트 스키마 (모든 tenant_* 순회)
+uv run alembic -c alembic_tenant.ini upgrade head
 ```
 
 ### 4) 서버 실행
@@ -80,6 +84,37 @@ make dev-start
 Swagger 문서:
 
 - `http://localhost:8000/docs`
+
+---
+
+## 마이그레이션
+
+Alembic 트랙이 2개로 분리되어 있습니다.
+
+| 트랙 | 설정 파일 | 대상 |
+|------|-----------|------|
+| public | `alembic.ini` | `Base` 모델 (organizations, users 등) |
+| tenant | `alembic_tenant.ini` | `TenantBase` 모델 (projects, column_mappings 등) |
+
+### revision 생성
+
+```bash
+# public
+uv run alembic revision --autogenerate -m "설명"
+
+# tenant
+uv run alembic -c alembic_tenant.ini revision --autogenerate -m "설명"
+```
+
+### 마이그레이션 적용
+
+```bash
+# public
+uv run alembic upgrade head
+
+# tenant (모든 tenant_* 스키마 순회)
+uv run alembic -c alembic_tenant.ini upgrade head
+```
 
 ---
 

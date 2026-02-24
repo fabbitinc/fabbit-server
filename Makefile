@@ -1,4 +1,4 @@
-.PHONY: dev-start dev-stop dev-db-reset openapi test test-e2e
+.PHONY: dev-start dev-stop dev-db-reset openapi test test-e2e migrate-public migrate-tenant migrate-all revision-public revision-tenant
 
 # 개발환경 시작 (PostgreSQL + API 서버)
 dev-start:
@@ -7,6 +7,7 @@ dev-start:
 	@until docker exec fabbit-db pg_isready -U fabbit -q 2>/dev/null; do sleep 0.5; done
 	@echo "PostgreSQL 준비 완료"
 	uv run alembic upgrade head
+	uv run alembic -c alembic_tenant.ini upgrade head
 	@echo "마이그레이션 완료"
 	uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
@@ -31,6 +32,31 @@ dev-reset:
 	$(MAKE) dev-stop
 	$(MAKE) dev-db-reset
 	$(MAKE) dev-start
+
+# ── 마이그레이션 ──
+
+# public 마이그레이션 적용
+migrate-public:
+	uv run alembic upgrade head
+
+# tenant 마이그레이션 적용 (모든 tenant_* 스키마 순회)
+migrate-tenant:
+	uv run alembic -c alembic_tenant.ini upgrade head
+
+# public + tenant 마이그레이션 적용
+migrate-all:
+	uv run alembic upgrade head
+	uv run alembic -c alembic_tenant.ini upgrade head
+
+# public revision 자동 생성 (사용: make revision-public m="설명")
+revision-public:
+	uv run alembic revision --autogenerate -m "$(m)"
+
+# tenant revision 자동 생성 (사용: make revision-tenant m="설명")
+revision-tenant:
+	uv run alembic -c alembic_tenant.ini revision --autogenerate -m "$(m)"
+
+# ── 테스트 ──
 
 # 통합 테스트 — fixture 매핑 (LLM 없이, 빠름)
 test:
