@@ -39,7 +39,7 @@ COPY --from=deps /app/.venv .venv
 COPY app/ app/
 COPY alembic/ alembic/
 COPY alembic_tenant/ alembic_tenant/
-COPY alembic.ini .
+COPY alembic.ini alembic_tenant.ini ./
 
 ENV PATH="/app/.venv/bin:$PATH"
 

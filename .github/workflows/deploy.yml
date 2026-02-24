@@ -59,10 +59,10 @@ jobs:
 
             # GHCR 로그인 + 앱 이미지만 pull
             echo ${{ secrets.GH_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker compose -f docker-compose.prod.yml pull fabbit-server fabbit-drawing-converter
+            docker compose -f docker-compose.prod.yml pull fabbit-server
 
             # 앱 서비스만 재시작 (DB 유지)
-            docker compose -f docker-compose.prod.yml up -d fabbit-server fabbit-drawing-converter
+            docker compose -f docker-compose.prod.yml up -d fabbit-server
             docker image prune -f
 
       # SG에서 러너 IP 제거
