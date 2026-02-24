@@ -36,7 +36,7 @@ class RelatedDrawing(BaseModel):
     """DEFINED_BY 도면"""
 
     id: uuid.UUID
-    drawing_number: str
+    drawing_number: str | None = None
     name: str | None = None
     version: str | None = None
     status: str | None = None
