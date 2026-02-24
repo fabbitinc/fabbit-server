@@ -30,6 +30,8 @@ _STATUS_MAP: dict[str, int] = {
     "ALREADY_EXISTS": 409,
     # 입력 검증
     "VALIDATION_ERROR": 422,
+    # 사용량 한도 초과
+    "QUOTA_EXCEEDED": 429,
 }
 
 _DEFAULT_STATUS = 400

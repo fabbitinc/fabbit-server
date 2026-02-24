@@ -16,7 +16,7 @@ from app.infrastructure.excel_parser import (
     get_sheet_names,
 )
 from app.infrastructure.s3_client import s3_client
-from app.modules.ai_usage.service import log_ai_usage
+from app.modules.ai_usage.service import check_bom_quota, log_ai_usage
 from app.modules.mapping import repository as repo
 from app.modules.mapping.constants import MappingScope
 from app.modules.mapping.models import MappingRecord, MappingRevision
@@ -66,6 +66,8 @@ def preview_mapping(
     auth: AuthContext,
     req: MappingPreviewRequest,
 ) -> MappingPreviewResponse:
+    check_bom_quota(auth.org_id)
+
     t_total = time.perf_counter()
     file = repo.get_file_by_id(db, req.file_id)
     if file is None:

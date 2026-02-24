@@ -18,7 +18,6 @@ from loguru import logger  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
 from app import scheduler  # noqa: E402
-from app.api.v1.internal.webhook_router import router as webhook_router  # noqa: E402
 from app.api.v1.public.auth_router import router as auth_router  # noqa: E402
 from app.api.v1.tenant.activation_router import (
     router as activation_router,  # noqa: E402
@@ -80,7 +79,6 @@ _PUBLIC_PATHS = frozenset(
         "/docs",
         "/openapi.json",
         "/redoc",
-        "/api/v1/internal/webhooks/drawing-converter",
     }
 )
 
@@ -154,7 +152,6 @@ app.include_router(synthesis_router)
 app.include_router(part_router)
 app.include_router(file_router)
 app.include_router(ontology_router)
-app.include_router(webhook_router)
 
 
 # TODO 삭제

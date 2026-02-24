@@ -143,7 +143,7 @@ def find_existing_parts_by_numbers(
 
 def upsert_drawing(
     db: Session,
-    drawing_number: str,
+    drawing_number: str | None,
     props: dict,
     graph_name: str,
     *,
@@ -153,7 +153,7 @@ def upsert_drawing(
     """Drawing을 RDS에 INSERT/UPDATE하고, Graph에 MERGE.
 
     RDS: 전체 속성 저장
-    Graph: drawing_number만 유지 (merge key)
+    Graph: drawing_number가 있을 때만 MERGE (merge key)
 
     검색 순서: (1) original_file_id로 기존 Drawing 검색, (2) drawing_number로 검색.
     original_file_id로 찾은 경우 drawing_number도 업데이트.
@@ -186,7 +186,7 @@ def upsert_drawing(
             .filter(Drawing.original_file_id == original_file_id)
             .first()
         )
-    if existing is None:
+    if existing is None and drawing_number:
         existing = (
             db.query(Drawing)
             .filter(Drawing.drawing_number == drawing_number)
@@ -199,7 +199,7 @@ def upsert_drawing(
             drawing_number=drawing_number,
             original_file_id=original_file_id,
             # name은 필수 컬럼이므로 기본값 제공
-            name=standard.pop("name", drawing_number),
+            name=standard.pop("name", drawing_number or "Untitled"),
             extended_properties=extended if extended else {},
             **standard,
         )
@@ -207,8 +207,8 @@ def upsert_drawing(
         db.flush()
     else:
         changed = False
-        # original_file_id로 찾은 경우 drawing_number 업데이트
-        if existing.drawing_number != drawing_number:
+        # drawing_number 업데이트 (None → 값, 값 변경 모두 포함)
+        if drawing_number and existing.drawing_number != drawing_number:
             existing.drawing_number = drawing_number
             changed = True
         # original_file_id가 비어 있으면 채움
@@ -237,10 +237,11 @@ def upsert_drawing(
         if changed:
             db.flush()
 
-    # ── Graph MERGE (drawing_number만) ──
-    escaped = escape_cypher_value(drawing_number)
-    cypher = f"MERGE (n:Drawing {{drawing_number: '{escaped}'}})"
-    execute_cypher_raw(db, cypher, graph_name)
+    # ── Graph MERGE (drawing_number가 있을 때만) ──
+    if drawing_number:
+        escaped = escape_cypher_value(drawing_number)
+        cypher = f"MERGE (n:Drawing {{drawing_number: '{escaped}'}})"
+        execute_cypher_raw(db, cypher, graph_name)
 
 
 def list_drawings_paginated(
@@ -271,8 +272,9 @@ def search_merge_key(
 ) -> list[dict]:
     """root_context 자동완성용 merge key 검색 (drawing_number OR name, label=name)."""
     query = db.query(Drawing.drawing_number, Drawing.name).filter(
+        Drawing.drawing_number.isnot(None),
         Drawing.drawing_number.ilike(f"%{search}%")
-        | Drawing.name.ilike(f"%{search}%")
+        | Drawing.name.ilike(f"%{search}%"),
     )
     rows = query.order_by(Drawing.drawing_number).limit(limit).all()
     return [{"value": r.drawing_number, "label": r.name} for r in rows]

@@ -1,25 +1,4 @@
 services:
-  fabbit-drawing-converter:
-    platform: linux/amd64
-    image: drawing-converter:latest
-    container_name: fabbit-drawing-converter
-    ports:
-      - "18100:8100"
-    environment:
-      CONVERTER_SECRET: Y1dSfkjOM60wn/B6IyBBo7GesDkqWnjUvYk5eZe1bG0=
-
-      # S3 호환 스토리지 (Cloudflare R2 / MinIO)
-      CONVERTER_S3_ENDPOINT: http://fabbit-minio:9000
-      CONVERTER_S3_ACCESS_KEY: minioadmin
-      CONVERTER_S3_SECRET_KEY: minioadmin
-      CONVERTER_S3_BUCKET: fabbit
-      CONVERTER_S3_REGION: auto
-
-      # 변환 설정
-      CONVERTER_MAX_CONCURRENT: 2
-      CONVERTER_CLEANUP_AFTER_HOURS: 1
-      CONVERTER_LOG_RETENTION_DAYS: 7
-
   fabbit-db:
     image: apache/age:latest
     container_name: fabbit-db
@@ -65,23 +44,23 @@ services:
       echo 'Bucket fabbit ready (public download)';
       "
 
-  fabbit-redis:
-    image: redis:8-alpine
-    container_name: fabbit-redis
-    command: redis-server --requirepass fabbit
-    environment:
-      REDIS_PASSWORD: fabbit
-    ports:
-      - "6379:6379"
-    volumes:
-      - fabbit-redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "fabbit", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+  # fabbit-redis:
+  #   image: redis:8-alpine
+  #   container_name: fabbit-redis
+  #   command: redis-server --requirepass fabbit
+  #   environment:
+  #     REDIS_PASSWORD: fabbit
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - fabbit-redis-data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "-a", "fabbit", "ping"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
 
 volumes:
   fabbit-db-data:
   fabbit-minio-data:
-  fabbit-redis-data:
+  # fabbit-redis-data:

@@ -87,8 +87,8 @@ class Drawing(TenantBase):
     thumbnail_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # 파일 변환 상태 (PENDING, COMPLETED, FAILED)
     conversion_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    # 온톨로지 merge key (업로드 시 자동 생성, 합성 시 엑셀 값 사용)
-    drawing_number: Mapped[str] = mapped_column(String(100), nullable=False)
+    # 온톨로지 merge key (LLM 추출 또는 사용자 입력)
+    drawing_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
     version: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     extended_properties: Mapped[dict] = mapped_column(
@@ -127,12 +127,10 @@ class Drawing(TenantBase):
     ) -> "Drawing":
         """DWG 업로드 완료 시 예비 Drawing 생성.
 
-        drawing_number는 합성 시 실제 값으로 갱신됨.
+        drawing_number는 LLM 추출 또는 사용자 입력으로 설정됨.
         """
-        drawing_id = generate_uuid7()
         return cls(
-            id=drawing_id,
-            drawing_number=f"PENDING-{drawing_id.hex[:8]}",
+            id=generate_uuid7(),
             name=original_name,
             original_file_id=original_file_id,
             original_file_key=original_file_key,

@@ -34,9 +34,10 @@ class Settings(BaseSettings):
     storage_bucket: str = "fabbit"
     storage_public_url: str = ""
 
-    # ── Drawing Converter MSA ──
-    drawing_converter_url: str = ""  # 빈 문자열이면 비활성화
-    drawing_converter_secret: str = ""
+    # ── Drawing Converter (로컬 통합) ──
+    qcad_path: str = "/opt/qcad"  # Mac: /Applications/QCAD-Pro.app/Contents/Resources
+    converter_max_concurrent: int = 2  # QCAD 동시 변환 제한
+    converter_temp_dir: str = "/tmp/drawing-converter"  # 임시 파일 디렉토리
 
     # ── LLM (OpenRouter) ──
     llm_api_key: str = ""

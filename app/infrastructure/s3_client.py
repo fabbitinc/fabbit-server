@@ -105,6 +105,24 @@ class S3Client:
         logger.info("[S3] 다운로드: {key} ({size} bytes, {elapsed:.1f}s)", key=file_key, size=len(data), elapsed=elapsed)
         return data
 
+    def put_object(self, file_key: str, data: bytes, content_type: str) -> int:
+        """S3에 바이트 데이터 업로드. 크기 반환."""
+        t0 = time.perf_counter()
+        self._client.put_object(
+            Bucket=self._bucket,
+            Key=file_key,
+            Body=data,
+            ContentType=content_type,
+        )
+        elapsed = time.perf_counter() - t0
+        logger.info(
+            "[S3] 업로드: {key} ({size} bytes, {elapsed:.1f}s)",
+            key=file_key,
+            size=len(data),
+            elapsed=elapsed,
+        )
+        return len(data)
+
     def delete_object(self, file_key: str) -> None:
         """S3 객체 삭제."""
         self._client.delete_object(Bucket=self._bucket, Key=file_key)

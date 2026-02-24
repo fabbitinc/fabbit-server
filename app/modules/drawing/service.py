@@ -10,11 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
 from app.core.background_worker import guarded
-from app.core.config import settings
 from app.core.database import create_tenant_session, generate_uuid7
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
-from app.infrastructure.drawing_converter_client import drawing_converter_client
+from app.infrastructure.drawing_converter import convert_drawing
 from app.infrastructure.image_converter import (
     detect_drawing_type,
     ensure_webp,
@@ -36,11 +35,9 @@ from app.modules.drawing.prompts import (
     TEXT_ASSISTED_USER_MESSAGE,
 )
 from app.modules.drawing.schemas import (
-    BatchConversionResultRequest,
     BulkRegisterDrawingFailure,
     BulkRegisterDrawingRequest,
     BulkRegisterDrawingResponse,
-    ConversionResultRequest,
     DrawingAnalysisListResponse,
     DrawingAnalysisResponse,
     DrawingAnalysisResult,
@@ -64,7 +61,6 @@ from app.modules.file.models import File
 from app.modules.part import repository as part_repo
 
 _s3 = s3_client
-_converter = drawing_converter_client
 
 # ── Drawing 등록 ──
 
@@ -99,14 +95,13 @@ def register_drawing(
     part.assign_drawing(drawing.id)
     db.flush()
 
-    if _converter.enabled:
-        add_background_task(
-            _request_conversion,
-            file_id=file.id,
-            file_key=file.file_key,
-            drawing_id=drawing.id,
-            tenant_schema=org_id_to_schema(auth.org_id),
-        )
+    add_background_task(
+        guarded(_run_conversion),
+        file_key=file.file_key,
+        drawing_id=drawing.id,
+        file_id=file.id,
+        tenant_schema=org_id_to_schema(auth.org_id),
+    )
 
     return RegisterDrawingResponse(
         drawing_id=drawing.id,
@@ -197,12 +192,15 @@ def bulk_register_drawings(
                 )
             )
 
-    # 변환 요청은 커밋 후 background task로 배치 실행
-    if _converter.enabled and pending_conversions:
+    # 변환 요청은 커밋 후 background task로 개별 실행
+    tenant_schema = org_id_to_schema(auth.org_id)
+    for conv in pending_conversions:
         add_background_task(
-            _request_batch_conversion,
-            items=pending_conversions,
-            tenant_schema=org_id_to_schema(auth.org_id),
+            guarded(_run_conversion),
+            file_key=conv["file_key"],
+            drawing_id=conv["drawing_id"],
+            file_id=conv["file_id"],
+            tenant_schema=tenant_schema,
         )
 
     logger.info(
@@ -274,110 +272,55 @@ def _create_drawing(db: Session, file: File) -> Drawing:
     return drawing
 
 
-def _request_conversion(
-    file_id: uuid.UUID,
+def _run_conversion(
     file_key: str,
     drawing_id: uuid.UUID,
+    file_id: uuid.UUID,
     tenant_schema: str,
 ) -> None:
-    """Converter에 단건 변환 요청 (BackgroundTask에서 실행)."""
-    callback_url = f"{settings.base_api_url}/api/v1/internal/webhooks/drawing-converter"
+    """BackgroundTask — 도면 변환 실행 후 Drawing에 결과 반영."""
+    status = ConversionStatus.FAILED
+    pdf_key = None
+    pdf_content_type = None
+    pdf_size = None
+    thumbnail_key = None
+    thumbnail_content_type = None
+    thumbnail_size = None
+    error = None
+
     try:
-        _converter.request_conversion(
-            tenant_schema=tenant_schema,
-            callback_url=callback_url,
-            file_id=file_id,
+        result = convert_drawing(file_key, _s3)
+        status = ConversionStatus.COMPLETED
+        pdf_key = result.pdf_key
+        pdf_content_type = result.pdf_content_type
+        pdf_size = result.pdf_size
+        thumbnail_key = result.thumbnail_key
+        thumbnail_content_type = result.thumbnail_content_type
+        thumbnail_size = result.thumbnail_size
+    except Exception as exc:
+        error = str(exc)
+        logger.error(
+            "도면 변환 실패: drawing_id={drawing_id} file_key={file_key} error={error}",
+            drawing_id=drawing_id,
             file_key=file_key,
-            drawing_id=drawing_id,
-        )
-    except Exception:
-        logger.warning(
-            "변환 요청 실패: file_id={file_id} drawing_id={drawing_id}",
-            file_id=file_id,
-            drawing_id=drawing_id,
+            error=error,
         )
 
-
-def _request_batch_conversion(
-    items: list[dict],
-    tenant_schema: str,
-) -> None:
-    """Converter에 배치 변환 요청 (BackgroundTask에서 실행)."""
-    callback_url = (
-        f"{settings.base_api_url}/api/v1/internal/webhooks/drawing-converter/batch"
-    )
-    try:
-        _converter.request_batch_conversion(
-            items=items,
-            tenant_schema=tenant_schema,
-            callback_url=callback_url,
-        )
-    except Exception:
-        logger.warning(
-            "배치 변환 요청 실패: count={count}",
-            count=len(items),
-        )
-
-
-# ── 변환 결과 처리 ──
-
-
-def handle_conversion_result(req: ConversionResultRequest) -> None:
-    """Webhook 단건 변환 결과를 Drawing에 반영.
-
-    PDF/thumbnail은 각각 독립 File 레코드로 생성.
-    webhook은 테넌트 인증 없이 호출되므로 create_tenant_session을 사용합니다.
-    """
-    db = create_tenant_session(req.tenant_schema)
+    db = create_tenant_session(tenant_schema)
     try:
         _apply_conversion_result(
             db,
-            drawing_id=req.drawing_id,
-            file_id=req.file_id,
-            status=req.status,
-            pdf_key=req.pdf_key,
-            pdf_content_type=req.pdf_content_type,
-            pdf_size=req.pdf_size,
-            thumbnail_key=req.thumbnail_key,
-            thumbnail_content_type=req.thumbnail_content_type,
-            thumbnail_size=req.thumbnail_size,
-            error=req.error,
+            drawing_id=drawing_id,
+            file_id=file_id,
+            status=status,
+            pdf_key=pdf_key,
+            pdf_content_type=pdf_content_type,
+            pdf_size=pdf_size,
+            thumbnail_key=thumbnail_key,
+            thumbnail_content_type=thumbnail_content_type,
+            thumbnail_size=thumbnail_size,
+            error=error,
         )
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
-
-
-def handle_batch_conversion_result(req: BatchConversionResultRequest) -> None:
-    """Webhook 배치 변환 결과를 Drawing에 반영.
-
-    각 항목을 개별 처리하며, 하나가 실패해도 나머지는 반영합니다.
-    """
-    db = create_tenant_session(req.tenant_schema)
-    try:
-        for item in req.items:
-            try:
-                _apply_conversion_result(
-                    db,
-                    drawing_id=item.drawing_id,
-                    file_id=item.file_id,
-                    status=item.status,
-                    pdf_key=item.pdf_key,
-                    pdf_content_type=item.pdf_content_type,
-                    pdf_size=item.pdf_size,
-                    thumbnail_key=item.thumbnail_key,
-                    thumbnail_content_type=item.thumbnail_content_type,
-                    thumbnail_size=item.thumbnail_size,
-                    error=item.error,
-                )
-            except Exception:
-                logger.error(
-                    "배치 변환 결과 개별 반영 실패: drawing_id={drawing_id}",
-                    drawing_id=item.drawing_id,
-                )
         db.commit()
     except Exception:
         db.rollback()
@@ -843,11 +786,7 @@ def _run_drawing_synthesis(
 
         # 1. Drawing 노드 upsert (RDS + Graph dual-write)
         tb = analysis.title_block
-        drawing_number = tb.drawing_number
-        if not drawing_number:
-            drawing_number = f"DWG-{job_id.hex[:8]}"
-            logger.warning("도면번호 없음, 자동 생성: {dn}", dn=drawing_number)
-
+        drawing_number = tb.drawing_number or None
         drawing_props = _build_drawing_props(tb, file_key)
 
         try:
@@ -881,19 +820,21 @@ def _run_drawing_synthesis(
                 )
                 continue
 
-            try:
-                part_repo.link_part_to_drawing(
-                    db, graph_name, part.part_number, drawing_number
-                )
-                rels_created += 1
-            except Exception as e:
-                errors.append(f"DEFINED_BY 실패 ({part.part_number}): {e}")
-                logger.warning(
-                    "DEFINED_BY 실패: {pn} → {dn} - {err}",
-                    pn=part.part_number,
-                    dn=drawing_number,
-                    err=e,
-                )
+            # drawing_number가 있을 때만 DEFINED_BY 관계 생성
+            if drawing_number:
+                try:
+                    part_repo.link_part_to_drawing(
+                        db, graph_name, part.part_number, drawing_number
+                    )
+                    rels_created += 1
+                except Exception as e:
+                    errors.append(f"DEFINED_BY 실패 ({part.part_number}): {e}")
+                    logger.warning(
+                        "DEFINED_BY 실패: {pn} → {dn} - {err}",
+                        pn=part.part_number,
+                        dn=drawing_number,
+                        err=e,
+                    )
 
         db.commit()
 

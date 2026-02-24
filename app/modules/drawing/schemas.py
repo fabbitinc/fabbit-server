@@ -7,47 +7,6 @@ from pydantic import BaseModel, Field
 
 from app.modules.drawing.constants import ConversionStatus
 
-# ── Webhook 요청 ──
-
-
-class ConversionResultRequest(BaseModel):
-    """Drawing Converter webhook 단건 수신 페이로드."""
-
-    drawing_id: uuid.UUID
-    file_id: uuid.UUID
-    tenant_schema: str
-    status: str = Field(..., description="COMPLETED 또는 FAILED")
-    pdf_key: str | None = None
-    pdf_content_type: str | None = None
-    pdf_size: int | None = None
-    thumbnail_key: str | None = None
-    thumbnail_content_type: str | None = None
-    thumbnail_size: int | None = None
-    error: str | None = None
-
-
-class BatchConversionResultItem(BaseModel):
-    """배치 변환 결과 개별 항목."""
-
-    drawing_id: uuid.UUID
-    file_id: uuid.UUID
-    status: str = Field(..., description="COMPLETED 또는 FAILED")
-    pdf_key: str | None = None
-    pdf_content_type: str | None = None
-    pdf_size: int | None = None
-    thumbnail_key: str | None = None
-    thumbnail_content_type: str | None = None
-    thumbnail_size: int | None = None
-    error: str | None = None
-
-
-class BatchConversionResultRequest(BaseModel):
-    """Drawing Converter webhook 배치 수신 페이로드."""
-
-    tenant_schema: str
-    items: list[BatchConversionResultItem]
-
-
 # ── LLM 추출 결과 ──
 
 
@@ -193,7 +152,7 @@ class RegisterDrawingResponse(BaseModel):
     """도면 등록 응답."""
 
     drawing_id: uuid.UUID
-    drawing_number: str
+    drawing_number: str | None = None
     name: str
     conversion_status: ConversionStatus | None = None
 
@@ -230,7 +189,7 @@ class BulkRegisterDrawingResponse(BaseModel):
 
 class DrawingSummary(BaseModel):
     id: uuid.UUID
-    drawing_number: str
+    drawing_number: str | None = None
     name: str
     version: str | None = None
     status: str | None = None

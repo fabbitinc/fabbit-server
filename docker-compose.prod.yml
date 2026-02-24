@@ -10,16 +10,12 @@ services:
     depends_on:
       fabbit-db:
         condition: service_healthy
-    command: ["sh", "-c", "alembic upgrade head && alembic -c alembic_tenant.ini upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
-
-  fabbit-drawing-converter:
-    image: ghcr.io/fabbitinc/fabbit-drawing-converter:latest
-    container_name: fabbit-drawing-converter
-    restart: unless-stopped
-    ports:
-      - "18100:8100"
-    env_file:
-      - .env
+    command:
+      [
+        "sh",
+        "-c",
+        "alembic upgrade head && alembic -c alembic_tenant.ini upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000",
+      ]
 
   fabbit-db:
     image: apache/age:latest
