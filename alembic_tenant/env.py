@@ -3,6 +3,7 @@
 모든 tenant_* 스키마를 순회하며 TenantBase 모델 기반 마이그레이션을 적용합니다.
 """
 
+import re
 from logging.config import fileConfig
 
 from sqlalchemy import create_engine, pool, text
@@ -34,12 +35,20 @@ def _include_object(object, name, type_, reflected, compare_to):
     return True
 
 
+_TENANT_SCHEMA_RE = re.compile(r"^tenant_[0-9a-f]{32}$")
+
+
 def _get_tenant_schemas(connection) -> list[str]:
     """pg_namespace에서 tenant_* 스키마 목록 조회."""
     result = connection.execute(
         text("SELECT nspname FROM pg_namespace WHERE nspname LIKE 'tenant_%' ORDER BY nspname")
     )
-    return [row[0] for row in result]
+    schemas = [row[0] for row in result]
+    # SQL 구성에 사용되므로 스키마명 형식을 검증
+    for schema in schemas:
+        if not _TENANT_SCHEMA_RE.match(schema):
+            raise ValueError(f"예상하지 못한 테넌트 스키마명: {schema}")
+    return schemas
 
 
 def run_migrations_offline() -> None:
