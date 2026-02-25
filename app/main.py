@@ -216,6 +216,9 @@ def _bootstrap_test_account_once() -> None:
 
 @app.on_event("startup")
 def _startup_bootstrap() -> None:
+    from app.core.event_registry import register_event_handlers
+
+    register_event_handlers()
     # TODO 삭제
     _bootstrap_test_account_once()
     scheduler.start()

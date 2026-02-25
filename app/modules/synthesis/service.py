@@ -11,6 +11,7 @@ from app.core.background_worker import guarded
 from app.core.database import create_tenant_session, generate_uuid7
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
+from app.core.uow import UnitOfWork
 from app.infrastructure.excel_parser import get_sheet_names, read_to_dataframe
 from app.infrastructure.s3_client import s3_client
 from app.modules.auth.provisioning import org_id_to_schema
@@ -928,7 +929,7 @@ def _run_synthesis(
             )
 
         job.complete()
-        db.commit()
+        UnitOfWork(db).commit()
         logger.info(
             "합성 완료: job_id={job_id} 노드={nodes} 관계={rels} 에러={errs}",
             job_id=job_id,
@@ -943,7 +944,7 @@ def _run_synthesis(
             db.rollback()
             job = repo.get_synthesis_job_required(db, job_id)
             job.fail(errors=[str(error)])
-            db.commit()
+            UnitOfWork(db).commit()
         except Exception:
             logger.error("합성 실패 상태 저장 오류: job_id={job_id}", job_id=job_id)
     finally:

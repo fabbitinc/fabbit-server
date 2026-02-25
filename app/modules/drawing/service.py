@@ -11,6 +11,7 @@ from app.core.background_worker import guarded
 from app.core.database import create_tenant_session, generate_uuid7
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
+from app.core.uow import UnitOfWork
 from app.infrastructure.drawing_converter import convert_drawing
 from app.infrastructure.image_converter import (
     detect_drawing_type,
@@ -319,7 +320,7 @@ def _run_conversion(
             thumbnail_size=thumbnail_size,
             error=error,
         )
-        db.commit()
+        UnitOfWork(db).commit()
     except Exception:
         db.rollback()
         raise
@@ -840,7 +841,7 @@ def _run_drawing_synthesis(
             relationships_created=rels_created,
             errors=errors,
         )
-        db.commit()
+        UnitOfWork(db).commit()
 
         logger.info(
             "도면 합성 완료: job_id={jid} 노드={nodes} 관계={rels} 에러={errs}",
@@ -856,7 +857,7 @@ def _run_drawing_synthesis(
             db.rollback()
             job = repo.get_synthesis_job_required(db, job_id)
             job.fail(errors=[str(error)])
-            db.commit()
+            UnitOfWork(db).commit()
         except Exception:
             logger.error("도면 합성 실패 상태 저장 오류: job_id={jid}", jid=job_id)
     finally:

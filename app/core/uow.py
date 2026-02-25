@@ -43,9 +43,9 @@ class UnitOfWork:
         self.db.rollback()
 
     def _collect_aggregate_events(self) -> list[DomainEvent]:
-        """Session의 new/dirty 객체에서 AggregateRoot 이벤트를 수집."""
+        """Session의 new/dirty/deleted 객체에서 AggregateRoot 이벤트를 수집."""
         events: list[DomainEvent] = []
-        for obj in self.db.new | self.db.dirty:
+        for obj in self.db.new | self.db.dirty | self.db.deleted:
             if isinstance(obj, AggregateRoot):
                 events.extend(obj.collect_events())
         return events

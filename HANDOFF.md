@@ -9,20 +9,12 @@
 
 **Service-Repository 패턴 → DDD + Aggregate + Domain Event 패턴으로 점진적 전환**
 
-### 전환 동기 (사용자 확인 완료)
+### 전환 동기
 
 - 모듈 간 결합도 해소 (service가 타 모듈 repository를 직접 import하는 문제)
 - 트랜잭션 일관성 (dual-write RDS+Graph 부분 실패 처리)
 - LLM 코딩 품질 ("Aggregate 밖은 Event로만 통신"이라는 단순 규칙으로 가드)
 - 확장성/유지보수 (새 도메인 추가 시 기존 코드 수정 최소화)
-
-### 전환 범위
-
-**점진적 전환** (사용자 선택):
-- Phase 1: Aggregate Base + Event Infra (뼈대 구축, 기존 코드 변경 없이 추가만) ✅
-- Phase 2: Part Aggregate 전환 (핵심 도메인) ✅
-- Phase 3: 나머지 Aggregate 전환 ✅
-- Phase 4: import-linter CI 강제
 
 ---
 
@@ -31,80 +23,107 @@
 ### 완료된 작업
 
 1. **통합 테스트 안전망 확보** (커밋 `c835ad5`)
-   - 미테스트 엔드포인트: 24/63 → 9/63 (15개 신규 커버)
-   - 남은 9개는 LLM 전용(7) + Drawing 의존(2) — 의도적 제외
-   - 72개 테스트 전체 통과 (`make test`)
-   - 예외 테스트 10개 추가 (404, 중복 가입, 잘못된 비밀번호, 미인증)
+   - 72개 통합 테스트 + 12개 유닛 테스트 전체 통과 (`make test`)
 
-2. **아키텍처 분석 및 전환 전략 합의**
-   - Python에서의 DDD 강제 수단 분석 완료 (import-linter CI + model_validator 런타임)
-   - Java 전환 불필요 결론 (Python으로 충분히 강제 가능)
-   - 4-Phase 점진적 전환 전략 합의
+2. **Phase 1: DDD 인프라 뼈대 구축** ✅
+   - `app/core/aggregate.py` — AggregateRoot mixin (`register_event()` / `collect_events()`)
+   - `app/core/domain_event.py` — DomainEvent base class (Pydantic `frozen=True`)
+   - `app/core/event_bus.py` — 동기 EventBus (in-process 싱글턴, `subscribe()` / `publish()`)
+   - `app/core/uow.py` — commit 후 Session의 new/dirty에서 AggregateRoot 이벤트 수집 → EventBus 발행
+   - `app/core/mixins.py` — PkMixin, TimestampMixin, UpdatableMixin, SoftDeleteMixin (미적용)
 
-3. **Phase 1: DDD 인프라 뼈대 구축** 완료
-   - `app/core/mixins.py` — PkMixin, TimestampMixin, UpdatableMixin, SoftDeleteMixin
-   - `app/core/domain_event.py` — DomainEvent base class (Pydantic frozen)
-   - `app/core/aggregate.py` — AggregateRoot mixin (이벤트 수집)
-   - `app/core/event_bus.py` — 동기 EventBus (in-process 싱글턴)
-   - `app/core/uow.py` 수정 — commit 후 Aggregate 이벤트 수집 → EventBus 발행
-   - 기존 모델은 AggregateRoot를 상속하지 않으므로 기존 코드 영향 없음
+3. **Phase 2: Part Aggregate 전환** ✅
+   - `Part(AggregateRoot, TenantBase)` — `create()` 팩토리, `update_properties()`, `assign_drawing()`/`unassign_drawing()`
+   - `app/modules/part/events.py` — 6개 이벤트 (PartCreated, PartPropertiesUpdated, PartDrawingLinked/Unlinked, PartFileAttached/Detached)
 
-4. **Phase 2: Part Aggregate 전환** 완료
-   - Part를 AggregateRoot로 전환 (`AggregateRoot, TenantBase` MRO)
-   - `app/modules/part/events.py` — 6개 도메인 이벤트 정의 (PartCreated, PartPropertiesUpdated, PartDrawingLinked/Unlinked, PartFileAttached/Detached)
-   - `Part.create()` 팩토리 메서드 — 직접 생성 대신 사용, PartCreated 이벤트 발행
-   - `Part.update_properties()` 도메인 메서드 — 표준+확장 속성 갱신, PartPropertiesUpdated 이벤트 발행
-   - `Part.assign_drawing()` / `unassign_drawing()` — PartDrawingLinked/Unlinked 이벤트 발행 추가
-   - `File.assign_owner()` 도메인 메서드 추가 — 직접 필드 대입 대신 사용
-   - `_STANDARD_ATTRS` 상수를 `repository.py` → `models.py`로 이동 (SSoT)
-   - `repository.upsert_part()` — Part.create(), update_properties() 활용으로 전환
-   - `repository.link_part_to_drawing()` — assign_drawing() 도메인 메서드 사용
-   - `service.attach_files_to_part()` — File.assign_owner() + PartFileAttached 이벤트 발행
-   - `service.detach_file_from_part()` — PartFileDetached 이벤트 발행 추가
-   - 이벤트는 발행만, 핸들러는 Phase 3에서 등록 예정
-   - 72개 테스트 전체 통과 (`make test`)
+4. **Phase 3: 나머지 Aggregate 전환** ✅
+   - **Drawing** — `create_from_upsert()` 팩토리, `update_properties()`, `complete_conversion()`/`fail_conversion()` + 이벤트 3개
+   - **DrawingSynthesisJob** — `create()` 팩토리, `start_processing()`/`complete()`/`fail()`, `DrawingSynthesisJobStatus` Enum
+   - **SynthesisJob** — `create()` 팩토리, `assign_batch()`/`start_processing()`/`set_total_rows()`/`update_progress()`/`complete()`/`complete_empty()`/`fail()` + 이벤트 3개, `SynthesisJobStatus` Enum
+   - **MappingRecord** — `rename()`/`update_scope()`/`deactivate()`/`increment_usage()` + MappingDeactivated 이벤트
+   - **File** — `mark_uploaded()`/`mark_deleted()`/`mark_expired()`에 이벤트 발행 추가 (FileUploaded/FileDeleted/FileExpired)
+   - Service: 모든 직접 필드 대입 → 도메인 메서드 호출로 전환
 
-5. **Phase 3: 나머지 Aggregate 전환** 완료
-   - **Drawing**: AggregateRoot 전환, `create_from_upsert()` 팩토리, `update_properties()` 도메인 메서드, `complete_conversion()`/`fail_conversion()` 이벤트 발행
-   - **DrawingSynthesisJob**: AggregateRoot 전환, `create()` 팩토리, `start_processing()`/`complete()`/`fail()` 도메인 메서드, `DrawingSynthesisJobStatus` Enum 추가
-   - **SynthesisJob**: AggregateRoot 전환, `create()` 팩토리, `assign_batch()`/`start_processing()`/`set_total_rows()`/`update_progress()`/`complete()`/`complete_empty()`/`fail()` 도메인 메서드, `SynthesisJobStatus` Enum 추가, 이벤트 발행 (Started/Completed/Failed)
-   - **MappingRecord**: AggregateRoot 전환, `rename()`/`update_scope()`/`deactivate()`/`increment_usage()` 도메인 메서드, MappingDeactivated 이벤트 발행
-   - **File**: AggregateRoot 전환, `mark_uploaded()`/`mark_deleted()`/`mark_expired()` 이벤트 발행 추가 (FileUploaded/FileDeleted/FileExpired)
-   - 이벤트 파일 신규 생성: `drawing/events.py`, `synthesis/events.py`, `file/events.py`, `mapping/events.py`
-   - 상수 파일: `synthesis/constants.py` 신규, `drawing/constants.py`에 DrawingSynthesisJobStatus 추가
-   - Repository: 팩토리 메서드 활용, `increment_mapping_usage()` → `record.increment_usage()` 전환
-   - Service: 모든 직접 필드 대입 → 도메인 메서드 호출로 전환, `datetime` import 제거
-   - 테스트: `_FakeJob` 클래스 도입 (도메인 메서드 구현), `_FakeSession`에 `new`/`dirty` 속성 추가
-   - 이벤트는 발행만, 핸들러 등록 없음 (Phase 2 동일 원칙)
-   - 72개 통합 + 12개 유닛 테스트 전체 통과
+5. **Phase 4: 이벤트 핸들러 인프라 완성 + 첫 핸들러 등록** ✅
+   - **버그 수정**: `UnitOfWork._collect_aggregate_events()`에서 `session.deleted` 누락 → `new | dirty | deleted` 수정
+   - **Background task에서 UoW 사용**: 이벤트 발행이 필요한 최종 상태 전이 commit에서 `UnitOfWork(db).commit()` 직접 사용 — `@transactional`과 동일한 UoW 기반, 새 컨벤션 없음
+   - **이벤트 레지스트리**: `app/core/event_registry.py` — 명시적 import로 핸들러 등록, `main.py` startup에서 호출
+   - **첫 핸들러**: `synthesis/handlers.py` (SynthesisJobCompleted/Failed 로깅), `drawing/handlers.py` (DrawingConversionCompleted/Failed 로깅)
+   - **Background task 적용**: `synthesis/service.py`, `drawing/service.py`의 최종 상태 전이 commit → `commit_and_publish(db)` 교체
+
+### 정의된 이벤트 목록
+
+| 모듈 | 이벤트 | 핸들러 |
+|------|--------|--------|
+| part | PartCreated | — |
+| part | PartPropertiesUpdated | — |
+| part | PartDrawingLinked | — |
+| part | PartDrawingUnlinked | — |
+| part | PartFileAttached | — |
+| part | PartFileDetached | — |
+| drawing | DrawingConversionCompleted | ✅ 로깅 |
+| drawing | DrawingConversionFailed | ✅ 로깅 |
+| drawing | DrawingPropertiesUpdated | — |
+| synthesis | SynthesisJobStarted | — |
+| synthesis | SynthesisJobCompleted | ✅ 로깅 |
+| synthesis | SynthesisJobFailed | ✅ 로깅 |
+| file | FileUploaded | — |
+| file | FileDeleted | — |
+| file | FileExpired | — |
+| mapping | MappingDeactivated | — |
 
 ### 아직 시작하지 않은 작업
 
-- [ ] Phase 4: import-linter CI 강제
+- [ ] **DB-mutating 핸들러** — 핸들러에서 DB 변경이 필요한 경우의 세션 전략 (tenant_schema 전달 방식) 확정 필요
+- [ ] **Cross-module import 정리** — 구체적 비즈니스 요구에 따라 이벤트 기반 side-effect로 전환
+- [ ] import-linter CI 강제
+
+---
+
+## Cross-module Import 분석 결론
+
+상세 분석 결과, 즉시 이벤트로 대체할 수 있는 side-effect는 **매우 제한적**이다:
+
+| 유형 | 개수 | 판단 |
+|------|------|------|
+| **Orchestration** (조회 후 분기) | 9개 | 유지 — 이벤트 대체 불가 |
+| **Application Service** (synthesis 다중 Aggregate 조율) | 5개 | 유지 — orchestrator 패턴 |
+| **Same-transaction cascade** (삭제 시 파일 정리) | 4개 | 유지 — 트랜잭션 일관성 필요 |
+| **Read-only** (상수/Enum) | 3개 | 유지 — 결합도 문제 아님 |
+| **자체 세션 로깅** (ai_usage) | 2개 | 보류 — ROI 낮음, 자체 세션 사용 |
+
+→ **cross-module import 제거보다 "인프라 완성 + 확장 기반 마련"이 우선이었고, Phase 4에서 달성.**
 
 ---
 
 ## What Worked
 
-- **테스트 커버리지 보강 방식**: 기존 sequential flow 테스트에 새 테스트를 흐름 순서에 맞게 삽입
-- **파일 연결 테스트**: 배치 파일(owner_type=project)은 Part에 attach 불가 → 별도 owner 없는 파일을 업로드하여 해결
-- **예외 테스트**: logout 이후에도 JWT access_token은 만료 전까지 유효하므로, 예외 테스트를 logout 뒤에 배치해도 정상 동작
-
----
+- **Phase 2 Part 패턴**: `AggregateRoot, TenantBase` MRO 순서, `_STANDARD_ATTRS`를 models.py에 SSoT로 배치, 팩토리+도메인 메서드 패턴 — 나머지 Phase 3에 동일하게 적용 성공
+- **테스트 대역**: `_FakeJob` 클래스 (도메인 메서드 구현), `_FakeSession`에 `new`/`dirty` 속성 추가 — UnitOfWork 이벤트 수집과 호환
+- **Background task UoW 직접 사용**: `commit_and_publish` 헬퍼 대신 `UnitOfWork(db).commit()`으로 통일 — 새 컨벤션 없이 기존 UoW 메커니즘 재사용
 
 ## What Didn't Work
 
-- **배치 파일을 Part attach에 재사용 시도**: `owner_id`가 이미 설정된 파일은 `CONFLICT` 에러 발생 (`service.py:222` — "이미 다른 리소스에 연결된 파일" 검증). 반드시 owner가 없는 파일이 필요함.
+- **git stash pop 실패**: 편집 중 `git stash` 후 `git stash pop`에서 충돌 → stash drop으로 모든 수정 유실. 새 파일(events.py 등)은 untracked라 생존. **편집 중에는 stash 사용 금지**
+- **Phase 플랜 설계 미스**: 가장 중요한 "이벤트 핸들러 등록 + cross-module import 제거" 단계가 Phase에 빠져 있었음. Phase 1~3은 인프라+발행 구조만 만들고, 실제 결합도 해소는 미수행
 
 ---
 
-## Next Steps — Phase 4: import-linter CI 강제
+## Next Steps
 
-### 1. Python 강제 수단 도입
+### 1. DB-Mutating 핸들러 세션 전략
 
-- `import-linter` 패키지 설치 및 설정 (`pyproject.toml` 또는 `.importlinter`)
-- 규칙 예: "modules.part.service → modules.project.repository import 금지"
-- CI/CD 파이프라인에 `lint-imports` 단계 추가
+현재 핸들러는 로깅만 수행. DB 변경이 필요한 핸들러를 도입하려면:
+- 핸들러에 tenant_schema를 어떻게 전달할지 결정 (이벤트에 포함 vs context)
+- 핸들러 전용 세션 생성 vs 기존 세션 재사용
+- 실패 시 보상 트랜잭션 전략
+
+### 2. import-linter CI 도입
+
+핸들러 등록 후 import 규칙을 강제:
+- `import-linter` 패키지 설치 (`pyproject.toml`)
+- 모듈 간 허용/금지 규칙 정의
+- `make lint` 또는 CI에 `lint-imports` 단계 추가
 
 ---
 
@@ -123,7 +142,7 @@
 - **Schema-per-Tenant**: `public` + `tenant_{org_id}` 스키마 격리
 - **RDS-Graph 듀얼라이트**: Part/Drawing/Supplier는 RDS 전체 속성 + Graph merge key
 - **@transactional 데코레이터**: `app/core/transactional.py` (contextvars 기반 세션 스택)
-- **Rich Domain Model**: 상태 전이 메서드, 팩토리 메서드 (참고: `app/modules/file/models.py`)
+- **Rich Domain Model**: 상태 전이 메서드, 팩토리 메서드
 - **온톨로지 SSoT**: `app/modules/ontology/base_ontology.py`
 
 ### 주요 명령어
@@ -134,29 +153,19 @@ uv sync                                 # 의존성 설치
 uv run alembic upgrade head             # DB 마이그레이션
 uv run uvicorn app.main:app --reload    # 서버 실행
 make test                               # 통합 테스트 (LLM 제외)
-make test-e2e                           # 전체 테스트 (LLM 포함)
 ```
 
-### 디렉토리 구조
+### DDD 인프라 파일 구조
 
 ```
-app/
-├── api/v1/          # 라우터 (public/ + tenant/)
-├── core/            # database, transactional, uow, exceptions, config
-├── infrastructure/  # age_client, llm_client, s3_client, token_provider
-└── modules/         # 11개 도메인 모듈 (activation, auth, dashboard, drawing,
-                     #   file, mapping, ontology, part, project, supplier, synthesis)
-tests/
-├── integration/     # CRUD flow 통합 테스트 (72개)
-├── fixtures/        # 테스트 데이터 (CSV, JSON)
-└── llm/             # LLM 품질 테스트
+app/core/
+├── aggregate.py         # AggregateRoot mixin (register_event / collect_events)
+├── domain_event.py      # DomainEvent base class (Pydantic frozen)
+├── event_bus.py         # EventBus 동기 싱글턴 (subscribe / publish)
+├── event_registry.py    # 핸들러 등록 레지스트리 (startup 시 호출)
+├── uow.py              # UnitOfWork (commit 시 이벤트 수집→발행)
+└── mixins.py            # PkMixin, TimestampMixin 등 (미적용)
+
+app/modules/*/events.py    # 모듈별 도메인 이벤트 정의
+app/modules/*/handlers.py  # 모듈별 이벤트 핸들러 (synthesis, drawing)
 ```
-
-### Cross-module 의존성 현황 (전환 시 해소 대상)
-
-- `part/service.py` → `file/repository`, `ontology/`, `mapping/repository` import
-- `synthesis/service.py` → `part/repository`, `ontology/`, `mapping/repository` import
-- `drawing/service.py` → `part/service`, `file/repository` import
-- `project/service.py` → `part/repository` import
-
-이 cross-module import들이 DDD 전환 시 Event로 대체될 주요 후보입니다.
