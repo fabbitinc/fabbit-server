@@ -1,65 +1,164 @@
-# Handoff: Part/BOM Excel Export 기능
+# HANDOFF — Fabbit Server DDD 전환
+
+> 이 문서는 다음 에이전트가 fresh context로 작업을 이어갈 수 있도록 작성되었습니다.
+> **마지막 업데이트**: 2026-02-25
+
+---
 
 ## Goal
 
-부품 마스터 화면에서 Part 목록과 BOM 트리를 Excel(.xlsx)로 내보내는 기능 구현.
-ERP 자재마스터 등록용이 주 용도이며, 매핑이 있으면 원본 헤더명을 사용한다.
+**Service-Repository 패턴 → DDD + Aggregate + Domain Event 패턴으로 점진적 전환**
+
+### 전환 동기 (사용자 확인 완료)
+
+- 모듈 간 결합도 해소 (service가 타 모듈 repository를 직접 import하는 문제)
+- 트랜잭션 일관성 (dual-write RDS+Graph 부분 실패 처리)
+- LLM 코딩 품질 ("Aggregate 밖은 Event로만 통신"이라는 단순 규칙으로 가드)
+- 확장성/유지보수 (새 도메인 추가 시 기존 코드 수정 최소화)
+
+### 전환 범위
+
+**점진적 전환** (사용자 선택):
+- Phase 1: Aggregate Base + Event Infra (뼈대 구축, 기존 코드 변경 없이 추가만) ✅
+- Phase 2: Part Aggregate 전환 (핵심 도메인)
+- Phase 3: 나머지 Aggregate 전환
+- Phase 4: import-linter CI 강제
+
+---
 
 ## Current Progress
 
 ### 완료된 작업
 
-**1. Part 목록 Export — `GET /api/v1/parts/export`**
-- `app/modules/part/repository.py` — `list_parts_for_export()` 추가
-- `app/modules/part/service.py` — `export_parts_excel()` 추가
-- `app/api/v1/tenant/part_router.py` — 엔드포인트 추가
-- 필터: search, category, lifecycle_state, has_drawing, has_children, part_ids
-- `mapping_id` optional — 있으면 property_mappings 역매핑으로 원본 헤더명 사용
-- 확장 속성: Part들의 extended_properties 키 합집합 수집 → ExtendedPropertyDefinition.display_name 사용
-- 매핑 있을 때 컬럼 순서: mapping의 property_mappings 순서 → 나머지 확장 속성
-- 매핑 없을 때 컬럼 순서: part_number → name → revision → ... → 확장 속성 알파벳순
+1. **통합 테스트 안전망 확보** (커밋 `c835ad5`)
+   - 미테스트 엔드포인트: 24/63 → 9/63 (15개 신규 커버)
+   - 남은 9개는 LLM 전용(7) + Drawing 의존(2) — 의도적 제외
+   - 72개 테스트 전체 통과 (`make test`)
+   - 예외 테스트 10개 추가 (404, 중복 가입, 잘못된 비밀번호, 미인증)
 
-**2. BOM 트리 Export — `GET /api/v1/parts/{part_id}/bom/export`**
-- `app/modules/part/service.py` — `export_bom_excel()`, `_flatten_bom_tree()` 추가
-- `app/api/v1/tenant/part_router.py` — 엔드포인트 추가
-- `get_bom_tree()`와 동일한 Graph 경로 조회 → 트리 빌드 로직 재사용
-- `_flatten_bom_tree()`로 트리를 level 포함 flat rows로 재귀 펼침
-- 파라미터: part_id (path), direction (forward/reverse), mapping_id (optional)
-- 컬럼: level, part_number, name, revision, quantity, material, unit, category, lifecycle_state
-- 매핑 역매핑: property_mappings + CONSISTS_OF rel_columns
+2. **아키텍처 분석 및 전환 전략 합의**
+   - Python에서의 DDD 강제 수단 분석 완료 (import-linter CI + model_validator 런타임)
+   - Java 전환 불필요 결론 (Python으로 충분히 강제 가능)
+   - 4-Phase 점진적 전환 전략 합의
 
-**3. 공통 — 열 너비 자동 조정**
-- `_auto_fit_columns(ws)` 헬퍼 — 데이터 최대 길이 기반 너비 설정 (min 8, max 50)
-- Part export, BOM export 양쪽에 적용
+3. **Phase 1: DDD 인프라 뼈대 구축** 완료
+   - `app/core/mixins.py` — PkMixin, TimestampMixin, UpdatableMixin, SoftDeleteMixin
+   - `app/core/domain_event.py` — DomainEvent base class (Pydantic frozen)
+   - `app/core/aggregate.py` — AggregateRoot mixin (이벤트 수집)
+   - `app/core/event_bus.py` — 동기 EventBus (in-process 싱글턴)
+   - `app/core/uow.py` 수정 — commit 후 Aggregate 이벤트 수집 → EventBus 발행
+   - 기존 모델은 AggregateRoot를 상속하지 않으므로 기존 코드 영향 없음
 
-**4. 한글 파일명 처리**
-- `Content-Disposition` 헤더에 한글 파일명 → RFC 5987 방식 (`filename*=UTF-8''...`) 사용
-- `urllib.parse.quote()` 적용
+### 아직 시작하지 않은 작업
+
+- [ ] Aggregate 경계 정의 (어떤 엔티티가 어떤 Aggregate에 속하는지)
+- [ ] Domain Event 목록 정의
+
+---
 
 ## What Worked
 
-- 기존 `list_parts_paginated()`의 필터 조건을 `list_parts_for_export()`에 중복 작성 (단순하고 독립적)
-- BOM export에서 `get_bom_tree()`의 내부 함수(`_build_bom_tree`, `repo.get_bom_paths` 등)를 직접 재사용
-- openpyxl의 `column_dimensions[letter].width`로 열 너비 수동 설정 (autofit 미지원)
+- **테스트 커버리지 보강 방식**: 기존 sequential flow 테스트에 새 테스트를 흐름 순서에 맞게 삽입
+- **파일 연결 테스트**: 배치 파일(owner_type=project)은 Part에 attach 불가 → 별도 owner 없는 파일을 업로드하여 해결
+- **예외 테스트**: logout 이후에도 JWT access_token은 만료 전까지 유효하므로, 예외 테스트를 logout 뒤에 배치해도 정상 동작
+
+---
 
 ## What Didn't Work
 
-- **전역 BOM 링크 export (`/bom/export`)**: 처음에 전체 bom_links를 search/part_ids로 필터하는 방식으로 구현했으나, 사용자 의도는 특정 Part의 BOM 트리 export (`/{part_id}/bom/export`)였음. `list_bom_links_for_export()` 포함 전부 제거하고 재구현함.
-- **`.limit(10_000)` 안전장치**: 사용자가 모르는 암묵적 상한은 혼란만 줌. 제거함.
-- **한글 filename 직접 사용**: `Content-Disposition` 헤더는 latin-1 인코딩만 허용. RFC 5987 `filename*` 필요.
+- **배치 파일을 Part attach에 재사용 시도**: `owner_id`가 이미 설정된 파일은 `CONFLICT` 에러 발생 (`service.py:222` — "이미 다른 리소스에 연결된 파일" 검증). 반드시 owner가 없는 파일이 필요함.
 
-## Next Steps
+---
 
-- [ ] Swagger UI에서 실제 데이터로 두 엔드포인트 테스트
-  - Part export: 파라미터 없이 / category 필터 / mapping_id 포함
-  - BOM export: 특정 part_id / direction=reverse / mapping_id 포함
-- [ ] 다운로드된 엑셀 열어서 확장 속성 컬럼, 한글 헤더, 열 너비 확인
-- [ ] 프론트엔드에서 export 버튼 연결 (Part 목록 화면, BOM 트리 화면)
+## Next Steps — Phase 2: Part Aggregate 전환
 
-## 관련 파일
+### 1. Aggregate 경계 정의 (설계 먼저)
 
-| 파일 | 변경 내용 |
-|------|-----------|
-| `app/modules/part/repository.py` | `list_parts_for_export()` 추가 |
-| `app/modules/part/service.py` | `export_parts_excel()`, `export_bom_excel()`, `_flatten_bom_tree()`, `_auto_fit_columns()` 추가 |
-| `app/api/v1/tenant/part_router.py` | `GET /parts/export`, `GET /parts/{part_id}/bom/export` 추가 |
+현재 모듈 구조를 기반으로 Aggregate 후보:
+
+| Aggregate Root | 내부 엔티티 후보 | 논의 필요 |
+|---|---|---|
+| **Part** | BomLink, PartFile, PartSupplier | BomLink가 Part 안인지 독립 Aggregate인지 |
+| **Project** | Folder, ProjectPart | ProjectPart는 Part Aggregate와 겹침 |
+| **Drawing** | DrawingAnalysis | DrawingSynthesis는? |
+| **Mapping** | MappingRevision(현재 없음) | PUT 시 revision 생성 여부 |
+| **Synthesis** | SynthesisJob | 배치와의 관계 |
+| **Organization** (public) | User, Membership | auth 모듈 내부 |
+
+### 2. Phase 1 완료 — 생성된 인프라 파일
+
+```
+app/core/
+├── mixins.py            # PkMixin, TimestampMixin, UpdatableMixin, SoftDeleteMixin
+├── aggregate.py         # AggregateRoot mixin (_events 수집)
+├── domain_event.py      # DomainEvent base class (Pydantic frozen)
+├── event_bus.py          # EventBus (동기 in-process 싱글턴)
+└── uow.py               # commit 후 이벤트 수집 → EventBus 발행 (수정)
+```
+
+**MRO 규칙 (Phase 2 모델 적용 시):**
+```python
+class Part(AggregateRoot, UpdatableMixin, PkMixin, TenantBase):  # Mixin → Base 순서
+    __tablename__ = "parts"
+```
+
+### 3. Python 강제 수단 도입 (Phase 4)
+
+- `import-linter` 패키지 설치 및 설정 (`pyproject.toml` 또는 `.importlinter`)
+- 규칙 예: "modules.part.service → modules.project.repository import 금지"
+- CI/CD 파이프라인에 `lint-imports` 단계 추가
+
+---
+
+## 프로젝트 핵심 정보
+
+### 기술 스택
+
+- FastAPI + Pydantic, Python 3.12+
+- PostgreSQL + Apache AGE (Cypher 그래프 쿼리)
+- SQLAlchemy (sync) + Alembic (public/tenant 분리 트랙)
+- LangChain + OpenRouter (GPT-5-mini)
+- 패키지 관리: uv
+
+### 핵심 패턴
+
+- **Schema-per-Tenant**: `public` + `tenant_{org_id}` 스키마 격리
+- **RDS-Graph 듀얼라이트**: Part/Drawing/Supplier는 RDS 전체 속성 + Graph merge key
+- **@transactional 데코레이터**: `app/core/transactional.py` (contextvars 기반 세션 스택)
+- **Rich Domain Model**: 상태 전이 메서드, 팩토리 메서드 (참고: `app/modules/file/models.py`)
+- **온톨로지 SSoT**: `app/modules/ontology/base_ontology.py`
+
+### 주요 명령어
+
+```bash
+docker compose up -d                    # PostgreSQL + AGE + MinIO
+uv sync                                 # 의존성 설치
+uv run alembic upgrade head             # DB 마이그레이션
+uv run uvicorn app.main:app --reload    # 서버 실행
+make test                               # 통합 테스트 (LLM 제외)
+make test-e2e                           # 전체 테스트 (LLM 포함)
+```
+
+### 디렉토리 구조
+
+```
+app/
+├── api/v1/          # 라우터 (public/ + tenant/)
+├── core/            # database, transactional, uow, exceptions, config
+├── infrastructure/  # age_client, llm_client, s3_client, token_provider
+└── modules/         # 11개 도메인 모듈 (activation, auth, dashboard, drawing,
+                     #   file, mapping, ontology, part, project, supplier, synthesis)
+tests/
+├── integration/     # CRUD flow 통합 테스트 (72개)
+├── fixtures/        # 테스트 데이터 (CSV, JSON)
+└── llm/             # LLM 품질 테스트
+```
+
+### Cross-module 의존성 현황 (전환 시 해소 대상)
+
+- `part/service.py` → `file/repository`, `ontology/`, `mapping/repository` import
+- `synthesis/service.py` → `part/repository`, `ontology/`, `mapping/repository` import
+- `drawing/service.py` → `part/service`, `file/repository` import
+- `project/service.py` → `part/repository` import
+
+이 cross-module import들이 DDD 전환 시 Event로 대체될 주요 후보입니다.
