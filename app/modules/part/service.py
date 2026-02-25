@@ -4,16 +4,20 @@
 """
 
 import uuid
+from io import BytesIO
 
+from openpyxl import Workbook
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
 from app.infrastructure.s3_client import s3_client
-from app.modules.auth.provisioning import org_id_to_schema
+from app.modules.mapping import repository as mapping_repo
+from app.modules.ontology.schemas import MappingResult
 from app.modules.part import repository as repo
 from app.modules.part.constants import BomDirection
+from app.modules.part.models import ExtendedPropertyDefinition
 from app.modules.part.schemas import (
     BomChild,
     BomParent,
@@ -29,16 +33,6 @@ from app.modules.part.schemas import (
 
 
 _s3 = s3_client
-
-
-def _safe_int(val, default: int = 0) -> int:
-    """agtype에서 파싱된 값을 int로 변환"""
-    if val is None:
-        return default
-    try:
-        return int(val)
-    except (ValueError, TypeError):
-        return default
 
 
 # ── Part 목록 ──
@@ -191,43 +185,37 @@ def _make_node(part_info: dict, *, quantity: int = 1) -> BomTreeNode:
 
 def _build_bom_tree(
     root_pn: str,
-    paths: list[dict],
+    edges: list[dict],
     parts_map: dict[str, dict],
 ) -> BomTreeNode:
-    """경로 리스트를 트리 구조로 조립.
+    """간선 리스트를 트리 구조로 조립.
 
-    각 path row는:
-      c0: [root_pn, child1_pn, child2_pn, ...]  (nodes의 part_number)
-      c1: [qty1, qty2, ...]                       (relationships의 quantity)
+    각 edge는: {"parent_pn": str, "child_pn": str, "quantity": int}
     """
     root_info = parts_map.get(root_pn, {"id": None, "part_number": root_pn})
     root = _make_node(root_info)
     node_cache: dict[str, BomTreeNode] = {root_pn: root}
 
-    for row in paths:
-        pn_path = row["c0"] or []
-        qty_path = row["c1"] or []
+    for edge in edges:
+        parent_pn = edge["parent_pn"]
+        child_pn = edge["child_pn"]
+        qty = edge["quantity"]
 
-        for i in range(len(pn_path) - 1):
-            parent_pn = pn_path[i]
-            child_pn = pn_path[i + 1]
-            qty = _safe_int(qty_path[i] if i < len(qty_path) else None, 1)
+        if parent_pn not in node_cache:
+            p_info = parts_map.get(parent_pn, {"id": None, "part_number": parent_pn})
+            node_cache[parent_pn] = _make_node(p_info)
 
-            if parent_pn not in node_cache:
-                p_info = parts_map.get(parent_pn, {"id": None, "part_number": parent_pn})
-                node_cache[parent_pn] = _make_node(p_info)
+        parent_node = node_cache[parent_pn]
 
-            parent_node = node_cache[parent_pn]
-
-            # 동일 부모-자식 간선 중복 방지
-            child_key = f"{parent_pn}->{child_pn}"
-            if child_key not in node_cache:
-                c_info = parts_map.get(child_pn, {"id": None, "part_number": child_pn})
-                child_node = _make_node(c_info, quantity=qty)
-                node_cache[child_key] = child_node
-                if child_pn not in node_cache:
-                    node_cache[child_pn] = child_node
-                parent_node.children.append(child_node)
+        # 동일 부모-자식 간선 중복 방지
+        child_key = f"{parent_pn}->{child_pn}"
+        if child_key not in node_cache:
+            c_info = parts_map.get(child_pn, {"id": None, "part_number": child_pn})
+            child_node = _make_node(c_info, quantity=qty)
+            node_cache[child_key] = child_node
+            if child_pn not in node_cache:
+                node_cache[child_pn] = child_node
+            parent_node.children.append(child_node)
 
     return root
 
@@ -240,27 +228,23 @@ def get_bom_tree(
     direction: BomDirection = BomDirection.FORWARD,
 ) -> BomTreeResponse:
     """BOM 트리 조회 (정전개/역전개)."""
-    graph_name = org_id_to_schema(auth.org_id)
-
-    # 루트 Part 존재 확인 (RDS)
     part = repo.get_by_id(db, part_id)
     if not part:
         raise AppError(message=f"Part '{part_id}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
 
     reverse = direction == BomDirection.REVERSE
-    paths = repo.get_bom_paths(db, part.part_number, graph_name, reverse=reverse)
+    edges = repo.get_bom_edges(db, part.id, reverse=reverse)
 
-    # paths에서 모든 part_number 추출하여 상세 필드 일괄 조회
+    # 모든 part_number 수집하여 상세 필드 일괄 조회
     all_pns: set[str] = {part.part_number}
-    for row in paths:
-        for pn in row["c0"] or []:
-            if pn:
-                all_pns.add(pn)
+    for edge in edges:
+        all_pns.add(edge["parent_pn"])
+        all_pns.add(edge["child_pn"])
     parts_map = repo.bulk_get_parts(db, list(all_pns))
 
     root = _build_bom_tree(
         root_pn=part.part_number,
-        paths=paths,
+        edges=edges,
         parts_map=parts_map,
     )
 
@@ -269,5 +253,239 @@ def get_bom_tree(
         direction=direction.value,
         total_count=len(all_pns),
     )
+
+
+# ── Excel 내보내기 ──
+
+# 한글/영문 혼용 시 글자당 대략적인 폭 비율
+_CHAR_WIDTH = 1.2
+_MIN_COL_WIDTH = 8
+_MAX_COL_WIDTH = 50
+
+
+def _auto_fit_columns(ws) -> None:
+    """워크시트 각 컬럼의 너비를 데이터 최대 길이에 맞춤."""
+    for col_cells in ws.columns:
+        max_len = 0
+        for cell in col_cells:
+            if cell.value is not None:
+                max_len = max(max_len, len(str(cell.value)))
+        width = min(max(int(max_len * _CHAR_WIDTH) + 2, _MIN_COL_WIDTH), _MAX_COL_WIDTH)
+        ws.column_dimensions[col_cells[0].column_letter].width = width
+
+
+# 매핑 없을 때 고정 컬럼 순서
+_EXPORT_COLUMN_ORDER = [
+    "part_number",
+    "name",
+    "revision",
+    "material",
+    "unit",
+    "description",
+    "category",
+    "is_phantom",
+    "lifecycle_state",
+    "lead_time_days",
+]
+
+
+@transactional(read_only=True)
+def export_parts_excel(
+    db: Session,
+    auth: AuthContext,
+    *,
+    search: str | None = None,
+    category: str | None = None,
+    lifecycle_state: str | None = None,
+    has_drawing: bool | None = None,
+    has_children: bool | None = None,
+    part_ids: list[uuid.UUID] | None = None,
+    mapping_id: uuid.UUID | None = None,
+) -> bytes:
+    """Part 목록을 Excel(xlsx)로 내보내기.
+
+    매핑이 존재하면 원본 엑셀 헤더명을 사용하고, 없으면 온톨로지 속성명을 그대로 사용합니다.
+    """
+    parts = repo.list_parts_for_export(
+        db,
+        search=search,
+        category=category,
+        lifecycle_state=lifecycle_state,
+        has_drawing=has_drawing,
+        has_children=has_children,
+        part_ids=part_ids,
+    )
+
+    # 확장 속성 키 합집합 수집
+    ext_keys: set[str] = set()
+    for part in parts:
+        if part.extended_properties:
+            ext_keys.update(part.extended_properties.keys())
+    sorted_ext_keys = sorted(ext_keys)
+
+    # 매핑 역방향 딕셔너리 구성
+    reverse_map: dict[str, str] = {}  # {target_property: source_column}
+    mapping_order: list[str] | None = None  # 매핑 순서 기반 컬럼 키 리스트
+
+    if mapping_id:
+        result = mapping_repo.get_mapping_by_id(db, mapping_id)
+        if result:
+            _, revision = result
+            mapping_result = MappingResult.model_validate(revision.mapping)
+            # property_mappings 순서대로 컬럼 키 + 역방향 매핑
+            mapping_order = []
+            for pm in mapping_result.property_mappings:
+                reverse_map[pm.target_property] = pm.source_column
+                mapping_order.append(pm.target_property)
+
+    # 확장 속성 display_name 조회 (매핑에 없는 확장 속성용)
+    ext_display_names: dict[str, str] = {}
+    if sorted_ext_keys:
+        defs = (
+            db.query(ExtendedPropertyDefinition)
+            .filter(
+                ExtendedPropertyDefinition.key.in_(sorted_ext_keys),
+                ExtendedPropertyDefinition.target_entity == "Part",
+            )
+            .all()
+        )
+        ext_display_names = {d.key: d.display_name for d in defs}
+
+    # 컬럼 키 순서 결정
+    if mapping_order is not None:
+        # 매핑에 포함된 확장 속성은 이미 mapping_order에 있으므로 나머지만 추가
+        mapped_keys = set(mapping_order)
+        extra_ext = [k for k in sorted_ext_keys if k not in mapped_keys]
+        columns = mapping_order + extra_ext
+    else:
+        columns = _EXPORT_COLUMN_ORDER + sorted_ext_keys
+
+    # 헤더명 결정
+    def _header_name(key: str) -> str:
+        if key in reverse_map:
+            return reverse_map[key]
+        if key in ext_display_names:
+            return ext_display_names[key]
+        return key
+
+    headers = [_header_name(col) for col in columns]
+
+    # Excel 생성
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "부품목록"
+    ws.append(headers)
+
+    standard_attrs = repo._PART_STANDARD_ATTRS | {"part_number", "revision"}
+    for part in parts:
+        row = []
+        for col in columns:
+            if col in standard_attrs:
+                row.append(getattr(part, col, None))
+            else:
+                row.append((part.extended_properties or {}).get(col))
+        ws.append(row)
+
+    _auto_fit_columns(ws)
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+# ── BOM Excel 내보내기 ──
+
+# BOM 트리 펼침 시 고정 컬럼 순서
+_BOM_EXPORT_COLUMNS = [
+    "level",
+    "part_number",
+    "name",
+    "revision",
+    "quantity",
+    "material",
+    "unit",
+    "category",
+    "lifecycle_state",
+]
+
+
+def _flatten_bom_tree(node: BomTreeNode, level: int = 0) -> list[dict]:
+    """BomTreeNode를 flat rows로 재귀 펼침."""
+    row = {
+        "level": level,
+        "part_number": node.part_number,
+        "name": node.name,
+        "revision": node.revision,
+        "quantity": node.quantity,
+        "material": node.material,
+        "unit": node.unit,
+        "category": node.category,
+        "lifecycle_state": node.lifecycle_state,
+    }
+    rows = [row]
+    for child in node.children:
+        rows.extend(_flatten_bom_tree(child, level + 1))
+    return rows
+
+
+@transactional(read_only=True)
+def export_bom_excel(
+    db: Session,
+    auth: AuthContext,
+    part_id: uuid.UUID,
+    *,
+    direction: BomDirection = BomDirection.FORWARD,
+    mapping_id: uuid.UUID | None = None,
+) -> bytes:
+    """특정 Part의 BOM 트리를 Excel(xlsx)로 내보내기.
+
+    get_bom_tree와 동일한 트리를 flat rows로 펼쳐서 Excel로 반환합니다.
+    매핑이 존재하면 원본 엑셀 헤더명을 사용합니다.
+    """
+    part = repo.get_by_id(db, part_id)
+    if not part:
+        raise AppError(message=f"Part '{part_id}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
+
+    reverse = direction == BomDirection.REVERSE
+    edges = repo.get_bom_edges(db, part.id, reverse=reverse)
+
+    all_pns: set[str] = {part.part_number}
+    for edge in edges:
+        all_pns.add(edge["parent_pn"])
+        all_pns.add(edge["child_pn"])
+    parts_map = repo.bulk_get_parts(db, list(all_pns))
+
+    root = _build_bom_tree(root_pn=part.part_number, edges=edges, parts_map=parts_map)
+    flat_rows = _flatten_bom_tree(root)
+
+    # 매핑 역방향 딕셔너리 구성
+    reverse_map: dict[str, str] = {}
+    if mapping_id:
+        result = mapping_repo.get_mapping_by_id(db, mapping_id)
+        if result:
+            _, revision = result
+            mapping_result = MappingResult.model_validate(revision.mapping)
+            for pm in mapping_result.property_mappings:
+                reverse_map[pm.target_property] = pm.source_column
+            for rm in mapping_result.relation_mappings:
+                if rm.rel_type == "CONSISTS_OF":
+                    for prop, col in rm.rel_columns.items():
+                        reverse_map[prop] = col
+
+    columns = _BOM_EXPORT_COLUMNS
+    headers = [reverse_map.get(col, col) for col in columns]
+
+    # Excel 생성
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "BOM"
+    ws.append(headers)
+
+    for row in flat_rows:
+        ws.append([row.get(col) for col in columns])
+
+    _auto_fit_columns(ws)
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
 
 

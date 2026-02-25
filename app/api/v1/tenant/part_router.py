@@ -1,8 +1,11 @@
 """부품(Part) 조회 API 라우터."""
 
 import uuid
+from io import BytesIO
+from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth
@@ -19,6 +22,48 @@ from app.modules.part.schemas import (
 )
 
 router = APIRouter(prefix="/api/v1/parts", tags=["parts"])
+
+
+@router.get("/export")
+def export_parts(
+    search: str | None = Query(None, description="품번 또는 품명 검색 (ILIKE)"),
+    category: str | None = Query(None, description="카테고리 필터 (정확 일치)"),
+    lifecycle_state: str | None = Query(
+        None, description="수명주기 상태 필터 (정확 일치)"
+    ),
+    has_drawing: bool | None = Query(None, description="도면 연결 여부 필터"),
+    has_children: bool | None = Query(None, description="하위 부품 보유 여부 필터"),
+    mapping_id: uuid.UUID | None = Query(
+        None, description="매핑 ID (원본 헤더명 사용)"
+    ),
+    part_ids: list[uuid.UUID] | None = Query(None, description="선택 부품 ID 목록"),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """Part 목록 Excel 내보내기.
+
+    전체 또는 필터링된 부품 목록을 xlsx 파일로 반환합니다.
+    `mapping_id`를 지정하면 원본 엑셀 헤더명(예: "품번", "품명")을 사용합니다.
+    `part_ids`로 선택한 부품만 내보낼 수 있습니다.
+    """
+    content = service.export_parts_excel(
+        db,
+        auth,
+        search=search,
+        category=category,
+        lifecycle_state=lifecycle_state,
+        has_drawing=has_drawing,
+        has_children=has_children,
+        part_ids=part_ids,
+        mapping_id=mapping_id,
+    )
+    return StreamingResponse(
+        BytesIO(content),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{quote('부품목록.xlsx')}"
+        },
+    )
 
 
 @router.get("/filter-options", response_model=PartFilterOptions)
@@ -38,7 +83,9 @@ def get_filter_options(
 def list_parts(
     search: str | None = Query(None, description="품번 또는 품명 검색 (ILIKE)"),
     category: str | None = Query(None, description="카테고리 필터 (정확 일치)"),
-    lifecycle_state: str | None = Query(None, description="수명주기 상태 필터 (정확 일치)"),
+    lifecycle_state: str | None = Query(
+        None, description="수명주기 상태 필터 (정확 일치)"
+    ),
     has_drawing: bool | None = Query(None, description="도면 연결 여부 필터"),
     has_children: bool | None = Query(None, description="하위 부품 보유 여부 필터"),
     offset: int = Query(0, ge=0, description="시작 위치"),
@@ -79,7 +126,7 @@ def get_part(
     return service.get_part(db, auth, part_id)
 
 
-@router.get("/{part_id}/bom-tree", response_model=BomTreeResponse)
+@router.get("/{part_id}/bom", response_model=BomTreeResponse)
 def get_bom_tree(
     part_id: uuid.UUID,
     direction: BomDirection = Query(
@@ -96,6 +143,35 @@ def get_bom_tree(
     - **reverse**: 역전개 — 상위 부품(where-used) 탐색
     """
     return service.get_bom_tree(db, auth, part_id, direction)
+
+
+@router.get("/{part_id}/bom/export")
+def export_bom(
+    part_id: uuid.UUID,
+    direction: BomDirection = Query(
+        BomDirection.FORWARD, description="전개 방향: forward(정전개) | reverse(역전개)"
+    ),
+    mapping_id: uuid.UUID | None = Query(None, description="매핑 ID (원본 헤더명 사용)"),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """Part BOM 트리 Excel 내보내기.
+
+    `GET /{part_id}/bom`과 동일한 BOM 트리를 flat rows로 펼쳐서 xlsx 파일로 반환합니다.
+    `mapping_id`를 지정하면 원본 엑셀 헤더명(예: "품번", "수량")을 사용합니다.
+    """
+    content = service.export_bom_excel(
+        db,
+        auth,
+        part_id,
+        direction=direction,
+        mapping_id=mapping_id,
+    )
+    return StreamingResponse(
+        BytesIO(content),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=BOM.xlsx"},
+    )
 
 
 @router.delete("/{part_id}/drawings", status_code=204)

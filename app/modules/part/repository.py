@@ -6,11 +6,11 @@ Service는 저장 위치(RDS/Graph)를 모르고, Repository가 dual-write를 �
 import re
 import uuid
 
-from sqlalchemy import exists, func, select
+from sqlalchemy import exists, func, select, text
 from sqlalchemy.orm import Session
 
 from app.core.database import generate_uuid7
-from app.infrastructure.age_client import execute_cypher, execute_cypher_raw
+from app.infrastructure.age_client import execute_cypher_raw
 from app.modules.drawing.models import Drawing
 from app.modules.ontology.cypher_utils import escape_cypher_value
 from app.modules.part.models import BomLink, Part, PartRevision, PartSupplier
@@ -166,6 +166,44 @@ def list_parts_paginated(
         for r in rows
     ]
     return items, total
+
+
+def list_parts_for_export(
+    db: Session,
+    *,
+    search: str | None = None,
+    category: str | None = None,
+    lifecycle_state: str | None = None,
+    has_drawing: bool | None = None,
+    has_children: bool | None = None,
+    part_ids: list[uuid.UUID] | None = None,
+) -> list[Part]:
+    """Part 목록 전체 조회 (Excel 내보내기용, pagination 없음, 최대 10,000건)."""
+    conditions = []
+    if search:
+        conditions.append(
+            Part.part_number.ilike(f"%{search}%") | Part.name.ilike(f"%{search}%")
+        )
+    if category:
+        conditions.append(Part.category == category)
+    if lifecycle_state:
+        conditions.append(Part.lifecycle_state == lifecycle_state)
+    if has_drawing is True:
+        conditions.append(Part.drawing_id.isnot(None))
+    elif has_drawing is False:
+        conditions.append(Part.drawing_id.is_(None))
+    if has_children is True:
+        conditions.append(exists().where(BomLink.parent_part_id == Part.id))
+    elif has_children is False:
+        conditions.append(~exists().where(BomLink.parent_part_id == Part.id))
+    if part_ids:
+        conditions.append(Part.id.in_(part_ids))
+
+    query = db.query(Part)
+    for cond in conditions:
+        query = query.filter(cond)
+
+    return query.order_by(Part.part_number).all()
 
 
 def get_distinct_categories(db: Session) -> list[str]:
@@ -478,54 +516,93 @@ def get_parents(db: Session, child_part_id: uuid.UUID) -> list[dict]:
     ]
 
 
-# ── BOM 트리 (Graph — 다단계 탐색) ──
+# ── BOM 트리 (RDS Recursive CTE) ──
+
+# 순환 참조 방지용 최대 탐색 깊이
+_MAX_BOM_DEPTH = 50
 
 
-def get_bom_paths(
+def get_bom_edges(
     db: Session,
-    part_number: str,
-    graph_name: str,
+    root_part_id: uuid.UUID,
     *,
     reverse: bool = False,
 ) -> list[dict]:
-    """BOM 전체 경로 (가변 길이 CONSISTS_OF).
+    """BOM 간선 목록 조회 (Recursive CTE).
 
-    reverse=False: 정전개 (root)-[:CONSISTS_OF*]->(child)
-    reverse=True:  역전개 (root)<-[:CONSISTS_OF*]-(ancestor)
+    reverse=False: 정전개 — root의 하위 부품 간선
+    reverse=True:  역전개 — root를 사용하는 상위 부품 간선 (quantity=1 고정)
 
-    AGE는 list comprehension 내 property 접근(n.prop)을 지원하지 않으므로
-    nodes(path)/relationships(path)를 반환 후 Python에서 파싱합니다.
+    Returns:
+        [{"parent_pn": str, "child_pn": str, "quantity": int}, ...]
+        parent_pn은 트리에서 루트에 가까운 쪽, child_pn은 먼 쪽
     """
-    escaped = escape_cypher_value(part_number)
     if reverse:
-        query = (
-            f"MATCH path = (root:Part {{part_number: '{escaped}'}})"
-            f"<-[:CONSISTS_OF*]-(ancestor:Part) "
-            f"RETURN nodes(path), relationships(path)"
-        )
+        sql = text("""
+            WITH RECURSIVE bom_cte(parent_pn, child_pn, quantity, next_id, depth) AS (
+                SELECT
+                    cp.part_number,
+                    pp.part_number,
+                    1,
+                    bl.parent_part_id,
+                    1
+                FROM bom_links bl
+                JOIN parts cp ON cp.id = bl.child_part_id
+                JOIN parts pp ON pp.id = bl.parent_part_id
+                WHERE bl.child_part_id = :root_id
+
+                UNION ALL
+
+                SELECT
+                    cp.part_number,
+                    pp.part_number,
+                    1,
+                    bl.parent_part_id,
+                    bc.depth + 1
+                FROM bom_cte bc
+                JOIN bom_links bl ON bl.child_part_id = bc.next_id
+                JOIN parts cp ON cp.id = bl.child_part_id
+                JOIN parts pp ON pp.id = bl.parent_part_id
+                WHERE bc.depth < :max_depth
+            )
+            SELECT parent_pn, child_pn, quantity FROM bom_cte
+        """)
     else:
-        query = (
-            f"MATCH path = (root:Part {{part_number: '{escaped}'}})"
-            f"-[:CONSISTS_OF*]->(child:Part) "
-            f"RETURN nodes(path), relationships(path)"
-        )
-    raw = execute_cypher(db, query, graph_name)
-    results = []
-    for row in raw:
-        nodes = row["c0"] if isinstance(row, dict) else row[0]
-        rels = row["c1"] if isinstance(row, dict) else row[1]
-        pn_list = []
-        for v in nodes or []:
-            props = v.get("properties", {}) if isinstance(v, dict) else {}
-            pn_list.append(props.get("part_number"))
-        qty_list = []
-        ref_list = []
-        for e in rels or []:
-            props = e.get("properties", {}) if isinstance(e, dict) else {}
-            qty_list.append(props.get("quantity"))
-            ref_list.append(props.get("reference_designator"))
-        results.append({"c0": pn_list, "c1": qty_list, "c2": ref_list})
-    return results
+        sql = text("""
+            WITH RECURSIVE bom_cte(parent_pn, child_pn, quantity, next_id, depth) AS (
+                SELECT
+                    pp.part_number,
+                    cp.part_number,
+                    bl.quantity,
+                    bl.child_part_id,
+                    1
+                FROM bom_links bl
+                JOIN parts pp ON pp.id = bl.parent_part_id
+                JOIN parts cp ON cp.id = bl.child_part_id
+                WHERE bl.parent_part_id = :root_id
+
+                UNION ALL
+
+                SELECT
+                    pp.part_number,
+                    cp.part_number,
+                    bl.quantity,
+                    bl.child_part_id,
+                    bc.depth + 1
+                FROM bom_cte bc
+                JOIN bom_links bl ON bl.parent_part_id = bc.next_id
+                JOIN parts pp ON pp.id = bl.parent_part_id
+                JOIN parts cp ON cp.id = bl.child_part_id
+                WHERE bc.depth < :max_depth
+            )
+            SELECT parent_pn, child_pn, quantity FROM bom_cte
+        """)
+
+    rows = db.execute(sql, {"root_id": root_part_id, "max_depth": _MAX_BOM_DEPTH}).fetchall()
+    return [
+        {"parent_pn": r.parent_pn, "child_pn": r.child_pn, "quantity": r.quantity}
+        for r in rows
+    ]
 
 
 # ── 비-BOM 관계 (RDS + Graph dual-write) ──
