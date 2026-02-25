@@ -21,7 +21,8 @@ from app.infrastructure.image_converter import (
 )
 from app.infrastructure.llm_client import vision_completion_with_usage
 from app.infrastructure.s3_client import s3_client
-from app.modules.ai_usage.service import log_ai_usage
+from app.core.event_bus import event_bus
+from app.modules.ai_usage.events import AiUsageLogged
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.drawing import repository as repo
 from app.modules.drawing.constants import ALLOWED_DRAWING_EXTENSIONS, ConversionStatus
@@ -529,14 +530,14 @@ def analyze_drawing(
             code="LLM_PARSE_ERROR",
         )
 
-    log_ai_usage(
+    event_bus.publish(AiUsageLogged(
         org_id=auth.org_id,
         user_id=auth.account_id,
         feature="drawing:analyze",
         model=llm_resp.model,
         input_tokens=llm_resp.input_tokens,
         output_tokens=llm_resp.output_tokens,
-    )
+    ))
 
     # 기존 BOM 데이터와 매칭
     schema_name = org_id_to_schema(auth.org_id)

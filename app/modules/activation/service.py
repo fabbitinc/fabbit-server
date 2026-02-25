@@ -25,7 +25,8 @@ from app.modules.activation.schemas import (
     StarterQuestion,
     StartersResponse,
 )
-from app.modules.ai_usage.service import log_ai_usage
+from app.core.event_bus import event_bus
+from app.modules.ai_usage.events import AiUsageLogged
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
 from app.modules.part import repository as part_repo
@@ -174,14 +175,14 @@ def query_graph(
     raw_plan = plan_resp.content
     _log_cypher(stage="initial", query=raw_plan)
 
-    log_ai_usage(
+    event_bus.publish(AiUsageLogged(
         org_id=auth.org_id,
         user_id=auth.account_id,
         feature="activation:query_plan",
         model=plan_resp.model,
         input_tokens=plan_resp.input_tokens,
         output_tokens=plan_resp.output_tokens,
-    )
+    ))
 
     query_plan = _parse_query_plan(raw_plan)
 
@@ -197,14 +198,14 @@ def query_graph(
         )
         retry_raw = retry_resp.content
 
-        log_ai_usage(
+        event_bus.publish(AiUsageLogged(
             org_id=auth.org_id,
             user_id=auth.account_id,
             feature="activation:query_plan_retry",
             model=retry_resp.model,
             input_tokens=retry_resp.input_tokens,
             output_tokens=retry_resp.output_tokens,
-        )
+        ))
 
         if _normalize_query(raw_plan) != _normalize_query(retry_raw):
             _log_cypher(stage="retry", query=retry_raw)
@@ -249,14 +250,14 @@ def query_graph(
             max_tokens=500,
         )
         answer = answer_resp.content
-        log_ai_usage(
+        event_bus.publish(AiUsageLogged(
             org_id=auth.org_id,
             user_id=auth.account_id,
             feature="activation:answer",
             model=answer_resp.model,
             input_tokens=answer_resp.input_tokens,
             output_tokens=answer_resp.output_tokens,
-        )
+        ))
     except Exception:
         answer = "쿼리 결과를 확인해주세요."
 

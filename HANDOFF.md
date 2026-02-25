@@ -51,6 +51,13 @@
    - **첫 핸들러**: `synthesis/handlers.py` (SynthesisJobCompleted/Failed 로깅), `drawing/handlers.py` (DrawingConversionCompleted/Failed 로깅)
    - **Background task 적용**: `synthesis/service.py`, `drawing/service.py`의 최종 상태 전이 commit → `commit_and_publish(db)` 교체
 
+6. **Phase 5: AI Usage 로깅 이벤트 전환** ✅
+   - **`AiUsageLogged` 이벤트**: `app/modules/ai_usage/events.py` — fire-and-forget side-effect 이벤트
+   - **DB-mutating 핸들러**: `app/modules/ai_usage/handlers.py` — 자체 SessionLocal로 public 스키마에 기록 (테넌트 트랜잭션과 독립)
+   - **호출부 전환**: 3개 모듈(drawing, mapping, activation) 5개 지점에서 `log_ai_usage()` → `event_bus.publish(AiUsageLogged(...))` 교체
+   - **`log_ai_usage()` 함수 삭제**: `ai_usage/service.py`에서 제거, `check_bom_quota()`만 유지
+   - **설계 판단**: Aggregate 상태 변경이 아닌 application-level side-effect이므로 `event_bus.publish()` 직접 호출 (register_event→UoW 패턴과 별개)
+
 ### 정의된 이벤트 목록
 
 | 모듈 | 이벤트 | 핸들러 |
@@ -71,6 +78,7 @@
 | file | FileDeleted | — |
 | file | FileExpired | — |
 | mapping | MappingDeactivated | — |
+| ai_usage | AiUsageLogged | ✅ DB 기록 (자체 SessionLocal) |
 
 ### 아직 시작하지 않은 작업
 
@@ -90,7 +98,7 @@
 | **Application Service** (synthesis 다중 Aggregate 조율) | 5개 | 유지 — orchestrator 패턴 |
 | **Same-transaction cascade** (삭제 시 파일 정리) | 4개 | 유지 — 트랜잭션 일관성 필요 |
 | **Read-only** (상수/Enum) | 3개 | 유지 — 결합도 문제 아님 |
-| **자체 세션 로깅** (ai_usage) | 2개 | 보류 — ROI 낮음, 자체 세션 사용 |
+| **자체 세션 로깅** (ai_usage) | 2개 | ✅ Phase 5에서 이벤트 전환 완료 |
 
 → **cross-module import 제거보다 "인프라 완성 + 확장 기반 마련"이 우선이었고, Phase 4에서 달성.**
 
@@ -167,5 +175,5 @@ app/core/
 └── mixins.py            # PkMixin, TimestampMixin 등 (미적용)
 
 app/modules/*/events.py    # 모듈별 도메인 이벤트 정의
-app/modules/*/handlers.py  # 모듈별 이벤트 핸들러 (synthesis, drawing)
+app/modules/*/handlers.py  # 모듈별 이벤트 핸들러 (ai_usage, synthesis, drawing)
 ```
