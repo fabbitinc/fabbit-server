@@ -18,6 +18,7 @@ from app.modules.ontology.schemas import MappingResult
 from app.modules.file import repository as file_repo
 from app.modules.file.constants import FileStatus
 from app.modules.part import repository as repo
+from app.modules.part.events import PartFileAttached, PartFileDetached
 from app.modules.part.constants import BomDirection
 from app.modules.part.models import ExtendedPropertyDefinition
 from app.modules.part.schemas import (
@@ -228,8 +229,7 @@ def attach_files_to_part(
 
     result = []
     for f in files:
-        f.owner_type = "part"
-        f.owner_id = part.id
+        f.assign_owner("part", part.id)
         result.append(
             PartFileItem(
                 file_id=f.id,
@@ -241,6 +241,7 @@ def attach_files_to_part(
             )
         )
 
+    part.register_event(PartFileAttached(part_id=part.id, file_ids=file_ids))
     return result
 
 
@@ -264,6 +265,7 @@ def detach_file_from_part(
         )
 
     file.mark_deleted()
+    part.register_event(PartFileDetached(part_id=part.id, file_id=file_id))
 
 
 # ── BOM 트리 ──

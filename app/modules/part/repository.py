@@ -13,21 +13,11 @@ from app.core.database import generate_uuid7
 from app.infrastructure.age_client import execute_cypher_raw
 from app.modules.drawing.models import Drawing
 from app.modules.ontology.cypher_utils import escape_cypher_value
-from app.modules.part.models import BomLink, Part, PartRevision, PartSupplier
+from app.modules.part.models import BomLink, Part, PartRevision, PartSupplier, _STANDARD_ATTRS
 from app.modules.supplier.models import Supplier
 
-# Part 모델의 표준 속성 (온톨로지 정의 속성 중 RDS 컬럼에 매핑되는 것)
-# revision은 별도 관리하므로 제외
-_PART_STANDARD_ATTRS = {
-    "name",
-    "material",
-    "unit",
-    "description",
-    "category",
-    "is_phantom",
-    "lifecycle_state",
-    "lead_time_days",
-}
+# models.py에서 이동된 상수를 re-export (service.py 호환)
+_PART_STANDARD_ATTRS = _STANDARD_ATTRS
 
 # 리비전 접미사 패턴 (정규식) — 숫자/알파벳 접미사를 탐지하여 자동 증분
 _REVISION_SUFFIX_RE = re.compile(r"^(.*?)(\d+|[A-Z])$", re.IGNORECASE)
@@ -311,7 +301,7 @@ def upsert_part(
             continue
         if key.startswith("_ext_"):
             extended[key] = value
-        elif key in _PART_STANDARD_ATTRS:
+        elif key in _STANDARD_ATTRS:
             standard[key] = value
         else:
             extended[key] = value
@@ -319,59 +309,29 @@ def upsert_part(
     existing = db.query(Part).filter(Part.part_number == part_number).first()
 
     if existing is None:
-        # ── 신규 Part: 생성 + 첫 리비전 기록 ──
-        part = Part(
-            id=generate_uuid7(),
-            part_number=part_number,
-            revision=incoming_revision or "1",
-            extended_properties=extended if extended else {},
-            **standard,
-        )
+        # ── 신규 Part: 팩토리 메서드로 생성 + 첫 리비전 기록 ──
+        all_props = {**standard}
+        all_props["id"] = generate_uuid7()
+        all_props["revision"] = incoming_revision or "1"
+        if extended:
+            all_props["extended_properties"] = extended
+        part = Part.create(part_number, **all_props)
         db.add(part)
         db.flush()
         _create_revision_snapshot(db, part, job_id)
     else:
-        # ── 기존 Part: 변경 감지 → 적용 → 증분 → 리비전 기록 ──
-        changed = False
-        for key, value in standard.items():
-            current = getattr(existing, key)
-            if not overwrite and current is not None:
-                continue
-            if current != value:
-                changed = True
-                break
-
-        if not changed and extended:
-            merged_ext = dict(existing.extended_properties or {})
-            for key, value in extended.items():
-                if not overwrite and merged_ext.get(key) is not None:
-                    continue
-                if merged_ext.get(key) != value:
-                    changed = True
-                    break
+        # ── 기존 Part: 도메인 메서드로 속성 갱신 → 증분 → 리비전 기록 ──
+        update_props = {**standard}
+        if extended:
+            update_props["extended_properties"] = extended
+        changed = existing.update_properties(update_props, overwrite=overwrite)
 
         if changed:
-            # 1) 속성 적용
-            for key, value in standard.items():
-                current = getattr(existing, key)
-                if not overwrite and current is not None:
-                    continue
-                if current != value:
-                    setattr(existing, key, value)
-
-            if extended:
-                merged_ext = dict(existing.extended_properties or {})
-                for key, value in extended.items():
-                    if not overwrite and merged_ext.get(key) is not None:
-                        continue
-                    merged_ext[key] = value
-                existing.extended_properties = merged_ext
-
-            # 2) 리비전 증분
+            # 리비전 증분
             existing.revision = next_revision(existing.revision)
             db.flush()
 
-            # 3) 변경 후 상태를 새 리비전으로 기록
+            # 변경 후 상태를 새 리비전으로 기록
             _create_revision_snapshot(db, existing, job_id)
 
     # ── Graph MERGE (part_number만) ──
@@ -672,7 +632,7 @@ def link_part_to_drawing(
     if not part or not drawing:
         return
 
-    part.drawing_id = drawing.id
+    part.assign_drawing(drawing.id)
     db.flush()
 
     # Graph MERGE

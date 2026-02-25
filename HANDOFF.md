@@ -20,7 +20,7 @@
 
 **점진적 전환** (사용자 선택):
 - Phase 1: Aggregate Base + Event Infra (뼈대 구축, 기존 코드 변경 없이 추가만) ✅
-- Phase 2: Part Aggregate 전환 (핵심 도메인)
+- Phase 2: Part Aggregate 전환 (핵심 도메인) ✅
 - Phase 3: 나머지 Aggregate 전환
 - Phase 4: import-linter CI 강제
 
@@ -49,10 +49,25 @@
    - `app/core/uow.py` 수정 — commit 후 Aggregate 이벤트 수집 → EventBus 발행
    - 기존 모델은 AggregateRoot를 상속하지 않으므로 기존 코드 영향 없음
 
+4. **Phase 2: Part Aggregate 전환** 완료
+   - Part를 AggregateRoot로 전환 (`AggregateRoot, TenantBase` MRO)
+   - `app/modules/part/events.py` — 6개 도메인 이벤트 정의 (PartCreated, PartPropertiesUpdated, PartDrawingLinked/Unlinked, PartFileAttached/Detached)
+   - `Part.create()` 팩토리 메서드 — 직접 생성 대신 사용, PartCreated 이벤트 발행
+   - `Part.update_properties()` 도메인 메서드 — 표준+확장 속성 갱신, PartPropertiesUpdated 이벤트 발행
+   - `Part.assign_drawing()` / `unassign_drawing()` — PartDrawingLinked/Unlinked 이벤트 발행 추가
+   - `File.assign_owner()` 도메인 메서드 추가 — 직접 필드 대입 대신 사용
+   - `_STANDARD_ATTRS` 상수를 `repository.py` → `models.py`로 이동 (SSoT)
+   - `repository.upsert_part()` — Part.create(), update_properties() 활용으로 전환
+   - `repository.link_part_to_drawing()` — assign_drawing() 도메인 메서드 사용
+   - `service.attach_files_to_part()` — File.assign_owner() + PartFileAttached 이벤트 발행
+   - `service.detach_file_from_part()` — PartFileDetached 이벤트 발행 추가
+   - 이벤트는 발행만, 핸들러는 Phase 3에서 등록 예정
+   - 72개 테스트 전체 통과 (`make test`)
+
 ### 아직 시작하지 않은 작업
 
-- [ ] Aggregate 경계 정의 (어떤 엔티티가 어떤 Aggregate에 속하는지)
-- [ ] Domain Event 목록 정의
+- [ ] Phase 3: 나머지 Aggregate 전환 (Drawing, Supplier, Project 등)
+- [ ] Phase 4: import-linter CI 강제
 
 ---
 
@@ -70,39 +85,35 @@
 
 ---
 
-## Next Steps — Phase 2: Part Aggregate 전환
+## Next Steps — Phase 3: 나머지 Aggregate 전환
 
-### 1. Aggregate 경계 정의 (설계 먼저)
-
-현재 모듈 구조를 기반으로 Aggregate 후보:
+### 1. Aggregate 후보
 
 | Aggregate Root | 내부 엔티티 후보 | 논의 필요 |
 |---|---|---|
-| **Part** | BomLink, PartFile, PartSupplier | BomLink가 Part 안인지 독립 Aggregate인지 |
 | **Project** | Folder, ProjectPart | ProjectPart는 Part Aggregate와 겹침 |
 | **Drawing** | DrawingAnalysis | DrawingSynthesis는? |
 | **Mapping** | MappingRevision(현재 없음) | PUT 시 revision 생성 여부 |
 | **Synthesis** | SynthesisJob | 배치와의 관계 |
 | **Organization** (public) | User, Membership | auth 모듈 내부 |
 
-### 2. Phase 1 완료 — 생성된 인프라 파일
+### 2. Part Aggregate 참고 패턴
 
-```
-app/core/
-├── mixins.py            # PkMixin, TimestampMixin, UpdatableMixin, SoftDeleteMixin
-├── aggregate.py         # AggregateRoot mixin (_events 수집)
-├── domain_event.py      # DomainEvent base class (Pydantic frozen)
-├── event_bus.py          # EventBus (동기 in-process 싱글턴)
-└── uow.py               # commit 후 이벤트 수집 → EventBus 발행 (수정)
-```
+Phase 2에서 확립된 Part Aggregate 패턴을 나머지 도메인에 적용:
+- AggregateRoot mixin 상속 (`AggregateRoot, TenantBase` MRO)
+- 팩토리 메서드 `@classmethod create()` + PartCreated 이벤트
+- 도메인 메서드 (`update_properties()`, `assign_drawing()`)로 필드 조작 캡슐화
+- 이벤트 발행 → Phase 3에서 핸들러 등록 (cross-module import 제거)
 
-**MRO 규칙 (Phase 2 모델 적용 시):**
-```python
-class Part(AggregateRoot, UpdatableMixin, PkMixin, TenantBase):  # Mixin → Base 순서
-    __tablename__ = "parts"
-```
+### 3. Phase 3 핵심 과제: 이벤트 핸들러 등록
 
-### 3. Python 강제 수단 도입 (Phase 4)
+Part 이벤트 핸들러를 등록하여 cross-module import 해소:
+- `synthesis/service.py` → `part/repository` 직접 호출 → 이벤트 기반으로 전환
+- `drawing/service.py` → `part/service` 직접 호출 → 이벤트 기반으로 전환
+- `project/service.py` → `part/repository` 직접 호출 → 이벤트 기반으로 전환
+- Graph dual-write를 이벤트 핸들러로 분리 검토
+
+### 4. Python 강제 수단 도입 (Phase 4)
 
 - `import-linter` 패키지 설치 및 설정 (`pyproject.toml` 또는 `.importlinter`)
 - 규칙 예: "modules.part.service → modules.project.repository import 금지"

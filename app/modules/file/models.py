@@ -47,6 +47,11 @@ class File(TenantBase):
         DateTime(timezone=True), nullable=True
     )
 
+    def assign_owner(self, owner_type: str, owner_id: uuid.UUID) -> None:
+        """파일 소유권 설정."""
+        self.owner_type = owner_type
+        self.owner_id = owner_id
+
     def mark_uploaded(self) -> None:
         """S3 업로드 확인 완료."""
         self.status = FileStatus.UPLOADED

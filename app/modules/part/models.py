@@ -22,10 +22,30 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
+from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase, generate_uuid7
+from app.modules.part.events import (
+    PartCreated,
+    PartDrawingLinked,
+    PartDrawingUnlinked,
+    PartPropertiesUpdated,
+)
+
+# Part 모델의 표준 속성 (온톨로지 정의 속성 중 RDS 컬럼에 매핑되는 것)
+# revision은 별도 관리하므로 제외
+_STANDARD_ATTRS = {
+    "name",
+    "material",
+    "unit",
+    "description",
+    "category",
+    "is_phantom",
+    "lifecycle_state",
+    "lead_time_days",
+}
 
 
-class Part(TenantBase):
+class Part(AggregateRoot, TenantBase):
     __tablename__ = "parts"
 
     __table_args__ = (
@@ -78,15 +98,70 @@ class Part(TenantBase):
         nullable=False,
     )
 
+    # ── 팩토리 메서드 ──
+
+    @classmethod
+    def create(cls, part_number: str, **props) -> "Part":
+        """Part 신규 생성 팩토리."""
+        part = cls(part_number=part_number)
+        # id는 default로 생성되지만, 명시적으로 전달된 경우 사용
+        if "id" in props:
+            part.id = props["id"]
+        # revision (별도 관리)
+        if "revision" in props and props["revision"] is not None:
+            part.revision = props["revision"]
+        # 표준 속성 설정
+        for attr in _STANDARD_ATTRS:
+            if attr in props and props[attr] is not None:
+                setattr(part, attr, props[attr])
+        # 확장 속성 설정
+        if "extended_properties" in props:
+            part.extended_properties = props["extended_properties"]
+        part.register_event(PartCreated(part_id=part.id, part_number=part_number))
+        return part
+
     # ── 도메인 메서드 ──
+
+    def update_properties(self, props: dict, *, overwrite: bool = False) -> list[str]:
+        """표준+확장 속성을 갱신하고 변경된 필드명 목록을 반환."""
+        changed: list[str] = []
+        for attr in _STANDARD_ATTRS:
+            if attr not in props:
+                continue
+            current = getattr(self, attr)
+            new_val = props[attr]
+            if not overwrite and current is not None:
+                continue
+            if current != new_val:
+                setattr(self, attr, new_val)
+                changed.append(attr)
+        # 확장 속성
+        ext = props.get("extended_properties")
+        if ext:
+            merged = dict(self.extended_properties or {})
+            for k, v in ext.items():
+                if not overwrite and merged.get(k) is not None:
+                    continue
+                if merged.get(k) != v:
+                    merged[k] = v
+                    changed.append(k)
+            if changed:
+                self.extended_properties = merged
+        if changed:
+            self.register_event(PartPropertiesUpdated(
+                part_id=self.id, part_number=self.part_number, changed_fields=changed,
+            ))
+        return changed
 
     def assign_drawing(self, drawing_id: uuid.UUID) -> None:
         """도면 연결."""
         self.drawing_id = drawing_id
+        self.register_event(PartDrawingLinked(part_id=self.id, drawing_id=drawing_id))
 
     def unassign_drawing(self) -> None:
         """도면 연결 해제."""
         self.drawing_id = None
+        self.register_event(PartDrawingUnlinked(part_id=self.id))
 
 
 class PartRevision(TenantBase):
