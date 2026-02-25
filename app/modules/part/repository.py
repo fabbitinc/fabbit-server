@@ -197,16 +197,41 @@ def count_all(db: Session) -> int:
     return db.query(func.count(Part.id)).scalar() or 0
 
 
-def bulk_get_names(db: Session, part_numbers: list[str]) -> dict[str, str | None]:
-    """품번 목록에 대한 이름 일괄 조회 (RDS)."""
+def bulk_get_parts(db: Session, part_numbers: list[str]) -> dict[str, dict]:
+    """품번 목록에 대한 Part 상세 필드 일괄 조회 (RDS).
+
+    Returns:
+        part_number → {id, part_number, name, revision, material, unit, category, lifecycle_state}
+    """
     if not part_numbers:
         return {}
     rows = (
-        db.query(Part.part_number, Part.name)
+        db.query(
+            Part.id,
+            Part.part_number,
+            Part.name,
+            Part.revision,
+            Part.material,
+            Part.unit,
+            Part.category,
+            Part.lifecycle_state,
+        )
         .filter(Part.part_number.in_(part_numbers))
         .all()
     )
-    return {pn: name for pn, name in rows}
+    return {
+        r.part_number: {
+            "id": r.id,
+            "part_number": r.part_number,
+            "name": r.name,
+            "revision": r.revision or "1",
+            "material": r.material,
+            "unit": r.unit,
+            "category": r.category,
+            "lifecycle_state": r.lifecycle_state,
+        }
+        for r in rows
+    }
 
 
 def get_by_part_numbers(db: Session, part_numbers: list[str]) -> list[Part]:
@@ -456,18 +481,34 @@ def get_parents(db: Session, child_part_id: uuid.UUID) -> list[dict]:
 # ── BOM 트리 (Graph — 다단계 탐색) ──
 
 
-def get_bom_paths(db: Session, part_number: str, graph_name: str) -> list[dict]:
+def get_bom_paths(
+    db: Session,
+    part_number: str,
+    graph_name: str,
+    *,
+    reverse: bool = False,
+) -> list[dict]:
     """BOM 전체 경로 (가변 길이 CONSISTS_OF).
+
+    reverse=False: 정전개 (root)-[:CONSISTS_OF*]->(child)
+    reverse=True:  역전개 (root)<-[:CONSISTS_OF*]-(ancestor)
 
     AGE는 list comprehension 내 property 접근(n.prop)을 지원하지 않으므로
     nodes(path)/relationships(path)를 반환 후 Python에서 파싱합니다.
     """
     escaped = escape_cypher_value(part_number)
-    query = (
-        f"MATCH path = (root:Part {{part_number: '{escaped}'}})"
-        f"-[:CONSISTS_OF*]->(child:Part) "
-        f"RETURN nodes(path), relationships(path)"
-    )
+    if reverse:
+        query = (
+            f"MATCH path = (root:Part {{part_number: '{escaped}'}})"
+            f"<-[:CONSISTS_OF*]-(ancestor:Part) "
+            f"RETURN nodes(path), relationships(path)"
+        )
+    else:
+        query = (
+            f"MATCH path = (root:Part {{part_number: '{escaped}'}})"
+            f"-[:CONSISTS_OF*]->(child:Part) "
+            f"RETURN nodes(path), relationships(path)"
+        )
     raw = execute_cypher(db, query, graph_name)
     results = []
     for row in raw:

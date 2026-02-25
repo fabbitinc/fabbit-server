@@ -119,10 +119,15 @@ class PartDetailResponse(BaseModel):
 class BomTreeNode(BaseModel):
     """BOM 트리 노드 (재귀)"""
 
+    id: uuid.UUID
     part_number: str
     name: str | None = None
+    revision: str = "1"
+    material: str | None = None
+    unit: str | None = None
+    category: str | None = None
+    lifecycle_state: str | None = None
     quantity: int = 1
-    reference_designator: str | None = None
     children: list[BomTreeNode] = []
 
 
@@ -130,3 +135,5 @@ class BomTreeResponse(BaseModel):
     """BOM 트리 응답"""
 
     root: BomTreeNode
+    direction: str
+    total_count: int

@@ -10,6 +10,7 @@ from app.core.auth_context import AuthContext
 from app.modules.drawing import service as drawing_service
 from app.modules.drawing.schemas import RegisterDrawingRequest, RegisterDrawingResponse
 from app.modules.part import service
+from app.modules.part.constants import BomDirection
 from app.modules.part.schemas import (
     BomTreeResponse,
     PartDetailResponse,
@@ -79,16 +80,22 @@ def get_part(
 
 
 @router.get("/{part_id}/bom-tree", response_model=BomTreeResponse)
-def get_part_bom_tree(
+def get_bom_tree(
     part_id: uuid.UUID,
+    direction: BomDirection = Query(
+        BomDirection.FORWARD, description="전개 방향: forward(정전개) | reverse(역전개)"
+    ),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """Part BOM 트리 조회.
 
-    해당 Part를 루트로 하는 전체 BOM 계층 구조를 트리 형태로 반환합니다.
+    해당 Part를 기준으로 BOM 계층 구조를 트리 형태로 반환합니다.
+
+    - **forward**(기본값): 정전개 — 하위 부품 탐색
+    - **reverse**: 역전개 — 상위 부품(where-used) 탐색
     """
-    return service.get_part_bom_tree(db, auth, part_id)
+    return service.get_bom_tree(db, auth, part_id, direction)
 
 
 @router.delete("/{part_id}/drawings", status_code=204)

@@ -13,6 +13,7 @@ from app.core.transactional import transactional
 from app.infrastructure.s3_client import s3_client
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.part import repository as repo
+from app.modules.part.constants import BomDirection
 from app.modules.part.schemas import (
     BomChild,
     BomParent,
@@ -38,13 +39,6 @@ def _safe_int(val, default: int = 0) -> int:
         return int(val)
     except (ValueError, TypeError):
         return default
-
-
-def _safe_str(val) -> str | None:
-    if val is None:
-        return None
-    s = str(val).strip()
-    return s if s else None
 
 
 # ── Part 목록 ──
@@ -180,51 +174,57 @@ def get_part(db: Session, auth: AuthContext, part_id: uuid.UUID) -> PartDetailRe
 # ── BOM 트리 ──
 
 
+def _make_node(part_info: dict, *, quantity: int = 1) -> BomTreeNode:
+    """Part 정보 dict로 BomTreeNode 생성."""
+    return BomTreeNode(
+        id=part_info["id"],
+        part_number=part_info["part_number"],
+        name=part_info.get("name"),
+        revision=part_info.get("revision", "1"),
+        material=part_info.get("material"),
+        unit=part_info.get("unit"),
+        category=part_info.get("category"),
+        lifecycle_state=part_info.get("lifecycle_state"),
+        quantity=quantity,
+    )
+
+
 def _build_bom_tree(
     root_pn: str,
-    root_name: str | None,
     paths: list[dict],
-    name_map: dict[str, str | None],
+    parts_map: dict[str, dict],
 ) -> BomTreeNode:
     """경로 리스트를 트리 구조로 조립.
 
     각 path row는:
       c0: [root_pn, child1_pn, child2_pn, ...]  (nodes의 part_number)
       c1: [qty1, qty2, ...]                       (relationships의 quantity)
-      c2: [ref1, ref2, ...]                       (relationships의 reference_designator)
     """
-    node_cache: dict[str, BomTreeNode] = {}
-    root = BomTreeNode(part_number=root_pn, name=root_name)
-    node_cache[root_pn] = root
+    root_info = parts_map.get(root_pn, {"id": None, "part_number": root_pn})
+    root = _make_node(root_info)
+    node_cache: dict[str, BomTreeNode] = {root_pn: root}
 
     for row in paths:
         pn_path = row["c0"] or []
         qty_path = row["c1"] or []
-        ref_path = row["c2"] or []
 
         for i in range(len(pn_path) - 1):
             parent_pn = pn_path[i]
             child_pn = pn_path[i + 1]
             qty = _safe_int(qty_path[i] if i < len(qty_path) else None, 1)
-            ref = _safe_str(ref_path[i] if i < len(ref_path) else None)
 
             if parent_pn not in node_cache:
-                node_cache[parent_pn] = BomTreeNode(
-                    part_number=parent_pn, name=name_map.get(parent_pn)
-                )
+                p_info = parts_map.get(parent_pn, {"id": None, "part_number": parent_pn})
+                node_cache[parent_pn] = _make_node(p_info)
 
             parent_node = node_cache[parent_pn]
 
+            # 동일 부모-자식 간선 중복 방지
             child_key = f"{parent_pn}->{child_pn}"
             if child_key not in node_cache:
-                child_node = BomTreeNode(
-                    part_number=child_pn,
-                    name=name_map.get(child_pn),
-                    quantity=qty,
-                    reference_designator=ref,
-                )
+                c_info = parts_map.get(child_pn, {"id": None, "part_number": child_pn})
+                child_node = _make_node(c_info, quantity=qty)
                 node_cache[child_key] = child_node
-                # 부모로 재조회될 수 있도록 단순 키로도 등록
                 if child_pn not in node_cache:
                     node_cache[child_pn] = child_node
                 parent_node.children.append(child_node)
@@ -233,11 +233,13 @@ def _build_bom_tree(
 
 
 @transactional(read_only=True)
-def get_part_bom_tree(
+def get_bom_tree(
     db: Session,
     auth: AuthContext,
     part_id: uuid.UUID,
+    direction: BomDirection = BomDirection.FORWARD,
 ) -> BomTreeResponse:
+    """BOM 트리 조회 (정전개/역전개)."""
     graph_name = org_id_to_schema(auth.org_id)
 
     # 루트 Part 존재 확인 (RDS)
@@ -245,23 +247,27 @@ def get_part_bom_tree(
     if not part:
         raise AppError(message=f"Part '{part_id}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
 
-    paths = repo.get_bom_paths(db, part.part_number, graph_name)
+    reverse = direction == BomDirection.REVERSE
+    paths = repo.get_bom_paths(db, part.part_number, graph_name, reverse=reverse)
 
-    # paths에서 모든 part_number 추출하여 name 일괄 조회
+    # paths에서 모든 part_number 추출하여 상세 필드 일괄 조회
     all_pns: set[str] = {part.part_number}
     for row in paths:
-        for pn in (row["c0"] or []):
+        for pn in row["c0"] or []:
             if pn:
                 all_pns.add(pn)
-    name_map = repo.bulk_get_names(db, list(all_pns))
+    parts_map = repo.bulk_get_parts(db, list(all_pns))
 
     root = _build_bom_tree(
         root_pn=part.part_number,
-        root_name=part.name,
         paths=paths,
-        name_map=name_map,
+        parts_map=parts_map,
     )
 
-    return BomTreeResponse(root=root)
+    return BomTreeResponse(
+        root=root,
+        direction=direction.value,
+        total_count=len(all_pns),
+    )
 
 
