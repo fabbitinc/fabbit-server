@@ -79,23 +79,6 @@ services:
       echo 'Bucket fabbit ready (public download)';
       "
 
-  fabbit-redis:
-    image: redis:8-alpine
-    container_name: fabbit-redis
-    command: redis-server --requirepass fabbit
-    environment:
-      REDIS_PASSWORD: fabbit
-    ports:
-      - "6379:6379"
-    volumes:
-      - fabbit-redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "fabbit", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
 volumes:
   fabbit-db-data:
   fabbit-minio-data:
-  fabbit-redis-data:
