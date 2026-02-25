@@ -1,19 +1,6 @@
-# 미테스트 API 엔드포인트 (24/63)
+# 미테스트 API 엔드포인트 (9/63)
 
-DELETE /api/v1/mappings/{mapping_id}
 DELETE /api/v1/parts/{part_id}/drawings
-DELETE /api/v1/parts/{part_id}/files/{file_id}
-GET    /api/v1/dashboard/stats
-GET    /api/v1/drawings
-GET    /api/v1/drawings/analyses
-GET    /api/v1/drawings/analyses/{analysis_id}
-GET    /api/v1/drawings/synthesis/{job_id}
-GET    /api/v1/ontology/nodes/search
-GET    /api/v1/parts/export
-GET    /api/v1/parts/filter-options
-GET    /api/v1/parts/{part_id}/bom
-GET    /api/v1/parts/{part_id}/bom/export
-GET    /api/v1/suppliers
 POST   /api/v1/activation/query
 POST   /api/v1/drawings/analyze
 POST   /api/v1/drawings/bulk
@@ -22,5 +9,3 @@ POST   /api/v1/drawings/synthesis
 POST   /api/v1/mappings/preview
 POST   /api/v1/mappings/validate
 POST   /api/v1/parts/{part_id}/drawings
-POST   /api/v1/parts/{part_id}/files
-PUT    /api/v1/mappings/{mapping_id}

@@ -11,6 +11,8 @@
   make test-e2e          # 실제 LLM 호출 포함 (매핑 미리보기, AI 질의)
 """
 
+import uuid
+
 import httpx
 import pytest
 from fastapi.testclient import TestClient
@@ -369,6 +371,30 @@ class TestCRUDFlow:
         assert len(data["items"]) == 1, f"합성 1건 기대, 실제 {len(data['items'])}건"
         assert data["items"][0]["id"] == TestCRUDFlow.synthesis_job_id
 
+    # ── 합성 후 대시보드/검색 ──
+
+    def test_dashboard_stats(self, client: TestClient):
+        """GET /dashboard/stats → 합성 후 Part/Supplier 수 확인."""
+        resp = client.get(
+            "/api/v1/dashboard/stats",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["parts"]["total"] > 0
+        assert data["last_synthesis"] is not None
+
+    def test_ontology_nodes_search(self, client: TestClient):
+        """GET /ontology/nodes/search → Part 노드 검색."""
+        resp = client.get(
+            "/api/v1/ontology/nodes/search",
+            params={"label": "Part", "search": "ASM"},
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data["items"]) > 0
+
     # ── 조회 ──
 
     def test_list_parts(self, client: TestClient):
@@ -402,9 +428,9 @@ class TestCRUDFlow:
         assert len(data["children"]) >= 4
 
     def test_bom_tree(self, client: TestClient):
-        """GET /parts/{part_id}/bom-tree → BOM 트리 구조 확인."""
+        """GET /parts/{part_id}/bom → BOM 트리 구조 확인."""
         resp = client.get(
-            f"/api/v1/parts/{TestCRUDFlow.asm001_id}/bom-tree",
+            f"/api/v1/parts/{TestCRUDFlow.asm001_id}/bom",
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
         )
         assert resp.status_code == 200, resp.text
@@ -420,6 +446,62 @@ class TestCRUDFlow:
         prt001_child_pns = {c["part_number"] for c in prt001["children"]}
         assert "PRT-005" in prt001_child_pns
         assert "PRT-006" in prt001_child_pns
+
+    def test_filter_options(self, client: TestClient):
+        """GET /parts/filter-options → 필터 옵션 조회."""
+        resp = client.get(
+            "/api/v1/parts/filter-options",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 200, resp.text
+
+    def test_export_parts(self, client: TestClient):
+        """GET /parts/export → Excel 내보내기 (200 + content-type)."""
+        resp = client.get(
+            "/api/v1/parts/export",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 200, resp.text
+        assert "spreadsheet" in resp.headers["content-type"]
+
+    def test_export_bom(self, client: TestClient):
+        """GET /parts/{part_id}/bom/export → BOM Excel 내보내기."""
+        resp = client.get(
+            f"/api/v1/parts/{TestCRUDFlow.asm001_id}/bom/export",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 200, resp.text
+        assert "spreadsheet" in resp.headers["content-type"]
+
+    def test_list_suppliers(self, client: TestClient):
+        """GET /suppliers → 공급사 목록 조회."""
+        resp = client.get(
+            "/api/v1/suppliers",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert "items" in data
+
+    def test_list_drawings(self, client: TestClient):
+        """GET /drawings → 도면 목록 조회 (빈 목록)."""
+        resp = client.get(
+            "/api/v1/drawings",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["total"] == 0
+
+    def test_list_drawing_analyses(self, client: TestClient):
+        """GET /drawings/analyses → 분석 목록 조회 (빈 목록)."""
+        resp = client.get(
+            "/api/v1/drawings/analyses",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["items"] == []
 
     # ── 프로젝트 CRUD ──
 
@@ -631,7 +713,98 @@ class TestCRUDFlow:
         data = resp.json()
         assert data["batch_id"] == TestCRUDFlow.batch_id
 
+    # ── 파일 연결/해제 ──
+
+    def test_create_attach_file(self, client: TestClient, fixtures_dir):
+        """파일 업로드 → complete → Part에 연결할 파일 준비."""
+        csv_path = fixtures_dir / "hierarchical_bom.csv"
+        file_size = csv_path.stat().st_size
+
+        # presigned URL 발급
+        resp = client.post(
+            "/api/v1/files/upload",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+            json={
+                "original_name": "attach_test.csv",
+                "content_type": "text/csv",
+                "file_size": file_size,
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        attach_file_id = data["file_id"]
+        upload_url = data["upload_url"]
+
+        # S3 업로드
+        with httpx.Client() as http:
+            put_resp = http.put(
+                upload_url,
+                content=csv_path.read_bytes(),
+                headers={
+                    "Content-Type": "text/csv",
+                    "Content-Length": str(file_size),
+                },
+            )
+        assert put_resp.status_code == 200
+
+        # 업로드 완료
+        resp = client.post(
+            f"/api/v1/files/upload/{attach_file_id}/complete",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 200, resp.text
+
+        TestCRUDFlow._attach_file_id = attach_file_id
+
+    def test_attach_file_to_part(self, client: TestClient):
+        """POST /parts/{part_id}/files → Part에 파일 연결."""
+        attach_file_id = getattr(TestCRUDFlow, "_attach_file_id", None)
+        assert attach_file_id, "test_create_attach_file가 선행되어야 합니다"
+        resp = client.post(
+            f"/api/v1/parts/{TestCRUDFlow.part_id}/files",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+            json={"file_ids": [attach_file_id]},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data) >= 1
+
+    def test_detach_file_from_part(self, client: TestClient):
+        """DELETE /parts/{part_id}/files/{file_id} → Part에서 파일 제거."""
+        attach_file_id = getattr(TestCRUDFlow, "_attach_file_id", None)
+        assert attach_file_id, "test_attach_file_to_part가 선행되어야 합니다"
+        resp = client.delete(
+            f"/api/v1/parts/{TestCRUDFlow.part_id}/files/{attach_file_id}",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 204, resp.text
+
+    # ── 매핑 수정 ──
+
+    def test_update_mapping(self, client: TestClient, mapping_fixture: dict):
+        """PUT /mappings/{mapping_id} → 매핑 이름 수정."""
+        resp = client.put(
+            f"/api/v1/mappings/{TestCRUDFlow.mapping_id}",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+            json={
+                "file_id": TestCRUDFlow.file_id,
+                "name": "수정된 매핑",
+                "mapping": mapping_fixture,
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["name"] == "수정된 매핑"
+
     # ── 정리 ──
+
+    def test_delete_mapping(self, client: TestClient):
+        """DELETE /mappings/{mapping_id} → 매핑 삭제."""
+        resp = client.delete(
+            f"/api/v1/mappings/{TestCRUDFlow.mapping_id}",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 204, resp.text
 
     def test_delete_folder(self, client: TestClient):
         """DELETE /projects/folders/{folder_id} → 폴더 삭제."""
@@ -737,3 +910,100 @@ class TestCRUDFlow:
             json={"refresh_token": TestCRUDFlow.refresh_token},
         )
         assert resp.status_code == 204, resp.text
+
+    # ── 예외 테스트 ──
+
+    def test_get_part_not_found(self, client: TestClient):
+        """GET /parts/{non-existent} → 404."""
+        resp = client.get(
+            f"/api/v1/parts/{uuid.uuid4()}",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 404, resp.text
+
+    def test_get_project_not_found(self, client: TestClient):
+        """GET /projects/{non-existent} → 404."""
+        resp = client.get(
+            f"/api/v1/projects/{uuid.uuid4()}",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 404, resp.text
+
+    def test_get_mapping_not_found(self, client: TestClient):
+        """GET /mappings/{non-existent} → 404."""
+        resp = client.get(
+            f"/api/v1/mappings/{uuid.uuid4()}",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 404, resp.text
+
+    def test_get_synthesis_not_found(self, client: TestClient):
+        """GET /synthesis/{non-existent} → 404."""
+        resp = client.get(
+            f"/api/v1/synthesis/{uuid.uuid4()}",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 404, resp.text
+
+    def test_get_drawing_analysis_not_found(self, client: TestClient):
+        """GET /drawings/analyses/{non-existent} → 404."""
+        resp = client.get(
+            f"/api/v1/drawings/analyses/{uuid.uuid4()}",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 404, resp.text
+
+    def test_get_drawing_synthesis_not_found(self, client: TestClient):
+        """GET /drawings/synthesis/{non-existent} → 404."""
+        resp = client.get(
+            f"/api/v1/drawings/synthesis/{uuid.uuid4()}",
+            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
+        )
+        assert resp.status_code == 404, resp.text
+
+    def test_register_duplicate_email(self, client: TestClient, unique_suffix: str):
+        """POST /auth/register → 중복 이메일로 가입 시 에러."""
+        resp = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": f"crud_{unique_suffix}@test.com",
+                "password": "TestPass1234",
+                "full_name": "중복 테스트",
+                "org_name": "DupOrg",
+                "slug": f"dup-email-{unique_suffix}",
+                "plan_type": "STARTER",
+            },
+        )
+        assert resp.status_code in (400, 409), f"기대: 400 또는 409, 실제: {resp.status_code}"
+
+    def test_register_duplicate_slug(self, client: TestClient, unique_suffix: str):
+        """POST /auth/register → 중복 slug로 가입 시 에러."""
+        resp = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": f"newuser_{unique_suffix}@test.com",
+                "password": "TestPass1234",
+                "full_name": "중복 테스트",
+                "org_name": "DupSlugOrg",
+                "slug": TestCRUDFlow.slug,
+                "plan_type": "STARTER",
+            },
+        )
+        assert resp.status_code in (400, 409), f"기대: 400 또는 409, 실제: {resp.status_code}"
+
+    def test_login_wrong_password(self, client: TestClient, unique_suffix: str):
+        """POST /auth/login → 잘못된 비밀번호로 로그인 시 401."""
+        resp = client.post(
+            "/api/v1/auth/login",
+            json={
+                "email": f"crud_{unique_suffix}@test.com",
+                "password": "WrongPassword",
+            },
+            headers={"Origin": f"http://{TestCRUDFlow.slug}.lvh.me"},
+        )
+        assert resp.status_code == 401, f"기대: 401, 실제: {resp.status_code}"
+
+    def test_parts_without_auth(self, client: TestClient):
+        """GET /parts → 인증 없이 요청 시 401."""
+        resp = client.get("/api/v1/parts")
+        assert resp.status_code == 401, f"기대: 401, 실제: {resp.status_code}"
