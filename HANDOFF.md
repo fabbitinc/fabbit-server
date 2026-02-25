@@ -1,135 +1,65 @@
-# HANDOFF
+# Handoff: Part/BOM Excel Export 기능
 
 ## Goal
 
-Part 도메인 조회 API 완성 + 리비전 시스템 구축 + 모듈 구조 정리.
-이전 세션에서 dual-write 전환이 완료된 상태에서, Part 목록/상세/필터 API와 리비전 관리를 구현하는 단계.
+부품 마스터 화면에서 Part 목록과 BOM 트리를 Excel(.xlsx)로 내보내는 기능 구현.
+ERP 자재마스터 등록용이 주 용도이며, 매핑이 있으면 원본 헤더명을 사용한다.
 
 ## Current Progress
 
-### 완료: Part 목록 검색/필터 API
+### 완료된 작업
 
-**`GET /api/v1/parts`** — 목록 조회 (페이징 + 필터):
-- 필드: `id`, `part_number`, `name`, `category`, `revision`, `lifecycle_state`, `drawing_number`, `children_count`
-- Drawing LEFT JOIN (`Part.drawing_id` → `Drawing.drawing_number`)
-- BomLink COUNT 상관 서브쿼리 (`children_count`)
-- 필터: `search` (품번/품명 ILIKE), `category`, `lifecycle_state` (정확 일치), `has_drawing`, `has_children` (boolean)
-- offset/limit 페이징 + total 카운트
+**1. Part 목록 Export — `GET /api/v1/parts/export`**
+- `app/modules/part/repository.py` — `list_parts_for_export()` 추가
+- `app/modules/part/service.py` — `export_parts_excel()` 추가
+- `app/api/v1/tenant/part_router.py` — 엔드포인트 추가
+- 필터: search, category, lifecycle_state, has_drawing, has_children, part_ids
+- `mapping_id` optional — 있으면 property_mappings 역매핑으로 원본 헤더명 사용
+- 확장 속성: Part들의 extended_properties 키 합집합 수집 → ExtendedPropertyDefinition.display_name 사용
+- 매핑 있을 때 컬럼 순서: mapping의 property_mappings 순서 → 나머지 확장 속성
+- 매핑 없을 때 컬럼 순서: part_number → name → revision → ... → 확장 속성 알파벳순
 
-**`GET /api/v1/parts/filter-options`** — 필터 옵션 조회:
-- `categories`: Part.category DISTINCT 값
-- `lifecycle_states`: Part.lifecycle_state DISTINCT 값
+**2. BOM 트리 Export — `GET /api/v1/parts/{part_id}/bom/export`**
+- `app/modules/part/service.py` — `export_bom_excel()`, `_flatten_bom_tree()` 추가
+- `app/api/v1/tenant/part_router.py` — 엔드포인트 추가
+- `get_bom_tree()`와 동일한 Graph 경로 조회 → 트리 빌드 로직 재사용
+- `_flatten_bom_tree()`로 트리를 level 포함 flat rows로 재귀 펼침
+- 파라미터: part_id (path), direction (forward/reverse), mapping_id (optional)
+- 컬럼: level, part_number, name, revision, quantity, material, unit, category, lifecycle_state
+- 매핑 역매핑: property_mappings + CONSISTS_OF rel_columns
 
-**변경 파일:**
-- `app/modules/part/schemas.py` — `PartSummary` 필드 확장, `PartFilterOptions` 추가
-- `app/modules/part/repository.py` — `list_parts_paginated()` 재작성 (JOIN + 서브쿼리), `get_distinct_categories()`, `get_distinct_lifecycle_states()` 추가
-- `app/modules/part/service.py` — `list_parts()` 필터 파라미터 확장, `get_filter_options()` 추가
-- `app/api/v1/tenant/part_router.py` — `filter-options` 엔드포인트, 필터 쿼리 파라미터 추가
+**3. 공통 — 열 너비 자동 조정**
+- `_auto_fit_columns(ws)` 헬퍼 — 데이터 최대 길이 기반 너비 설정 (min 8, max 50)
+- Part export, BOM export 양쪽에 적용
 
-### 완료: Part 상세/BOM 트리 API — path param을 id(UUID)로 전환
-
-- `GET /api/v1/parts/{part_id}` (기존 `{part_number}` → `{part_id}`)
-- `GET /api/v1/parts/{part_id}/bom-tree` (동일)
-- service에서 `repo.get_by_id()` 사용, bom-tree는 내부에서 `part.part_number`로 Graph 쿼리
-- 테스트 2개 파일 업데이트 (목록에서 id 맵 구축 후 상세 호출)
-
-### 완료: 리비전 시스템 (PartRevision = SoT, Part = 최신 비정규화)
-
-**설계 결정:**
-- PartRevision이 SoT (모든 변경 기록), Part는 최신 리비전의 비정규화
-- 모든 속성 변경 = 새 리비전 생성
-- revision 초기값: incoming(엑셀) 또는 "1", 이후 패턴 감지 기반 자동 증분
-- revision status(draft/released)는 향후 추가 예정 (현재 미구현)
-- `lifecycle_state`와 revision status는 별개 개념 (전자=제품 수명, 후자=변경 승인)
-- `lifecycle_state`는 enum 아닌 자유 문자열 유지 (고객마다 값 상이)
-
-**모델 변경 (`app/modules/part/models.py`):**
-- `Part.revision`: `nullable=True` → `nullable=False, server_default="1"`
-- `PartRevision.revision`: `nullable=True` → `nullable=False`
-- `PartRevision.__table_args__`: `UniqueConstraint("part_id", "revision")` 추가
-
-**Repository 변경 (`app/modules/part/repository.py`):**
-- `next_revision(current: str) -> str` 추가 — 패턴 감지 기반 자동 증분
-  - 숫자: `"1"→"2"`, `"003"→"004"`, `"Rev.3"→"Rev.4"`
-  - 알파벳: `"A"→"B"`, `"Rev.A"→"Rev.B"`, `"Z"→"AA"`
-  - 구분자 무관: `.`, `-`, 공백 등 모두 지원
-- `_PART_STANDARD_ATTRS`에서 `"revision"` 제거 (시스템이 별도 관리)
-- `upsert_part()` 리스트럭처링:
-  - 신규 Part: 생성 + `_create_revision_snapshot()` (첫 리비전 기록)
-  - 기존 Part+변경: 적용 → `next_revision()` 증분 → `_create_revision_snapshot()` (새 리비전 기록)
-- `_create_revision_snapshot()`: `job_id: uuid.UUID | None`으로 변경
-
-**스키마 변경 (`app/modules/part/schemas.py`):**
-- `PartSummary.revision`, `PartDetailResponse.revision`: `str | None` → `str = "1"`
-
-### 완료: Drawing 모델 모듈 이동
-
-- `app/modules/document/models.py`의 `Drawing` 클래스 → `app/modules/drawing/models.py`로 이동
-- import 경로 4개 업데이트: `drawing/repository.py`, `part/repository.py`, `project/repository.py`, `project/models.py`
-- `app/modules/document/` 디렉토리 삭제
-
-### 이전 세션 완료 항목 (요약)
-
-- DEFINED_BY / SUPPLIED_BY dual-write 전환
-- nodes/search 검색 범위 확장
-- Supplier repository value/label 버그 수정
+**4. 한글 파일명 처리**
+- `Content-Disposition` 헤더에 한글 파일명 → RFC 5987 방식 (`filename*=UTF-8''...`) 사용
+- `urllib.parse.quote()` 적용
 
 ## What Worked
 
-- conditions 리스트 패턴으로 count/data 쿼리 간 필터 로직 중복 방지
-- 상관 서브쿼리(`scalar_subquery`)로 children_count를 N+1 없이 해결
-- `next_revision()`의 정규식 `^(.*?)(\d+|[A-Z])$` — 구분자 무관하게 접미사만 증분, 프리픽스 보존
-- 리비전 시스템을 B방식(리비전 우선)으로 전환 — A방식(아카이브) 대비 이력 완전성 확보
-- Drawing 모델 이동 시 `drawing/models.py`에 이미 다른 모델(DrawingAnalysisRecord, DrawingSynthesisJob)이 있어 합치기만 하면 됨
+- 기존 `list_parts_paginated()`의 필터 조건을 `list_parts_for_export()`에 중복 작성 (단순하고 독립적)
+- BOM export에서 `get_bom_tree()`의 내부 함수(`_build_bom_tree`, `repo.get_bom_paths` 등)를 직접 재사용
+- openpyxl의 `column_dimensions[letter].width`로 열 너비 수동 설정 (autofit 미지원)
 
-## What Didn't Work / 주의사항
+## What Didn't Work
 
-- **TenantBase 모델 변경은 Alembic이 감지 못함**: DB 재생성 필요 (`docker compose down -v && docker compose up -d` → `uv run alembic upgrade head`)
-- **Part.revision NOT NULL 전환**: 기존 데이터가 있으면 마이그레이션 필요하지만, 현재 개발 단계라 DB 재생성으로 해결
-- **Part JSONB 통합 계획은 폐기됨**: material, category 등 전용 컬럼을 extended_properties로 통합하는 계획이 있었으나 "현재 상태 유지"로 결정
-
-## 테스트 상태
-
-- 74 passed, 6 skipped
-- `uv run pytest tests/ -v`
-
-## 관계 저장 현황
-
-| 관계 | 방식 | RDS 저장 |
-|------|------|----------|
-| `CONSISTS_OF` (Part→Part) | `upsert_bom_link` | `bom_links` 테이블 |
-| `HAS_ITEM` (Project→Part) | project_repo | `project_parts` 테이블 |
-| `DEFINED_BY` (Part→Drawing) | `link_part_to_drawing` | `parts.drawing_id` FK (N:1) |
-| `SUPPLIED_BY` (Part→Supplier) | `link_part_to_supplier` | `part_suppliers` 테이블 (M:N) |
+- **전역 BOM 링크 export (`/bom/export`)**: 처음에 전체 bom_links를 search/part_ids로 필터하는 방식으로 구현했으나, 사용자 의도는 특정 Part의 BOM 트리 export (`/{part_id}/bom/export`)였음. `list_bom_links_for_export()` 포함 전부 제거하고 재구현함.
+- **`.limit(10_000)` 안전장치**: 사용자가 모르는 암묵적 상한은 혼란만 줌. 제거함.
+- **한글 filename 직접 사용**: `Content-Disposition` 헤더는 latin-1 인코딩만 허용. RFC 5987 `filename*` 필요.
 
 ## Next Steps
 
-### 1. DB 재생성 (모델 변경 반영)
+- [ ] Swagger UI에서 실제 데이터로 두 엔드포인트 테스트
+  - Part export: 파라미터 없이 / category 필터 / mapping_id 포함
+  - BOM export: 특정 part_id / direction=reverse / mapping_id 포함
+- [ ] 다운로드된 엑셀 열어서 확장 속성 컬럼, 한글 헤더, 열 너비 확인
+- [ ] 프론트엔드에서 export 버튼 연결 (Part 목록 화면, BOM 트리 화면)
 
-```bash
-docker compose down -v && docker compose up -d
-uv run alembic upgrade head
-```
+## 관련 파일
 
-### 2. 커밋
-
-미커밋 변경사항:
-- Part 목록 검색/필터 API
-- 리비전 시스템 (PartRevision = SoT)
-- Drawing 모델 모듈 이동 (document → drawing)
-- Part 상세/BOM 트리 path param UUID 전환
-- Supplier 모듈 신규 (untracked)
-
-### 3. 확장 속성 필터 (미구현)
-
-HANDOFF.md 이전 버전에 설계가 있었던 항목:
-- `GET /api/v1/parts?ext=material:eq:SUS304` — JSONB 기반 확장 속성 필터
-- `ExtendedPropertyDefinition` 자동 등록 (합성 시)
-- `GET /api/v1/parts/filter-options` 확장 (extended 속성의 select/range/toggle 옵션)
-- 현재는 기본 속성(category, lifecycle_state) 필터만 구현됨
-
-### 4. 리비전 Status 워크플로우 (향후)
-
-- PartRevision에 `status` 필드 추가 (draft → in_review → released)
-- 승인 워크플로우 구현 시 함께 도입
-- `lifecycle_state`(제품 수명)와는 별개 개념
+| 파일 | 변경 내용 |
+|------|-----------|
+| `app/modules/part/repository.py` | `list_parts_for_export()` 추가 |
+| `app/modules/part/service.py` | `export_parts_excel()`, `export_bom_excel()`, `_flatten_bom_tree()`, `_auto_fit_columns()` 추가 |
+| `app/api/v1/tenant/part_router.py` | `GET /parts/export`, `GET /parts/{part_id}/bom/export` 추가 |

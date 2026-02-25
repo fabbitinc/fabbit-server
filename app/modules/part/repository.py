@@ -531,7 +531,7 @@ def get_bom_edges(
     """BOM 간선 목록 조회 (Recursive CTE).
 
     reverse=False: 정전개 — root의 하위 부품 간선
-    reverse=True:  역전개 — root를 사용하는 상위 부품 간선 (quantity=1 고정)
+    reverse=True:  역전개 — root를 사용하는 상위 부품 간선 (quantity=BomLink 사용 수량)
 
     Returns:
         [{"parent_pn": str, "child_pn": str, "quantity": int}, ...]
@@ -543,7 +543,7 @@ def get_bom_edges(
                 SELECT
                     cp.part_number,
                     pp.part_number,
-                    1,
+                    bl.quantity,
                     bl.parent_part_id,
                     1
                 FROM bom_links bl
@@ -556,7 +556,7 @@ def get_bom_edges(
                 SELECT
                     cp.part_number,
                     pp.part_number,
-                    1,
+                    bl.quantity,
                     bl.parent_part_id,
                     bc.depth + 1
                 FROM bom_cte bc

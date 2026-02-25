@@ -26,6 +26,7 @@ from app.api.v1.tenant.dashboard_router import (
     router as dashboard_router,  # noqa: E402
 )
 from app.api.v1.tenant.drawing_router import router as drawing_router  # noqa: E402
+from app.api.v1.tenant.file_router import router as file_router  # noqa: E402
 from app.api.v1.tenant.mapping_router import router as mapping_router  # noqa: E402
 from app.api.v1.tenant.ontology_router import router as ontology_router  # noqa: E402
 from app.api.v1.tenant.part_router import router as part_router  # noqa: E402
@@ -34,7 +35,6 @@ from app.api.v1.tenant.supplier_router import (  # noqa: E402
     router as supplier_router,
 )
 from app.api.v1.tenant.synthesis_router import router as synthesis_router  # noqa: E402
-from app.api.v1.tenant.file_router import router as file_router  # noqa: E402
 from app.core.auth_context import AuthContext  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.database import (
@@ -188,7 +188,7 @@ def _bootstrap_test_account_once() -> None:
                 slug=test_org_slug,
                 name=test_org_name,
                 owner_id=user.id,
-                plan_type="FREE",
+                plan_type="STARTER",
             )
             provision_tenant(db, org.id)
 
