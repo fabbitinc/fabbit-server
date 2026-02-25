@@ -1,4 +1,4 @@
-.PHONY: dev-start dev-stop dev-db-reset openapi test test-e2e migrate-public migrate-tenant migrate-all revision-public revision-tenant
+.PHONY: dev-start dev-stop dev-db-reset openapi test test-e2e migrate-public migrate-tenant migrate-all revision-public revision-tenant lint
 
 # 개발환경 시작 (PostgreSQL + API 서버)
 dev-start:
@@ -65,3 +65,10 @@ test:
 # 통합 테스트 — 실제 LLM 호출 포함 (매핑 미리보기, AI 질의)
 test-e2e:
 	uv run pytest tests/integration/test_crud_flow.py -v -s --use-llm
+
+# ── 린트 ──
+
+# 아키텍처 규칙 검증 (DB 불필요)
+lint:
+	uv run ruff check .
+	uv run pytest linter/ --confcutdir=linter -o "python_files=check_*.py" -o "python_functions=check_*" -v

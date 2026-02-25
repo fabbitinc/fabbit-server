@@ -45,3 +45,12 @@ dependencies = [
 
 [dependency-groups]
 dev = ["pytest>=8.0.0"]
+
+[tool.ruff]
+exclude = ["alembic*/versions/"]
+
+[tool.ruff.lint.per-file-ignores]
+# 의도적 지연 import (OTel/로깅 초기화 후 모듈 로드)
+"app/main.py" = ["E402"]
+# discover_models() 호출 후 온톨로지 import 필요
+"app/modules/auth/provisioning.py" = ["E402"]

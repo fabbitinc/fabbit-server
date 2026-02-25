@@ -860,7 +860,7 @@ class TestCRUDFlow:
         assert resp.status_code == 200, resp.text
         data = resp.json()
         print(f"\n{'='*60}")
-        print(f"[AI 질의] 전체 부품 목록")
+        print("[AI 질의] 전체 부품 목록")
         print(f"  결과: {len(data['results'])}건")
         print(f"  답변: {data['answer'][:300]}")
         print(f"{'='*60}")
@@ -881,7 +881,7 @@ class TestCRUDFlow:
         assert resp.status_code == 200, resp.text
         data = resp.json()
         print(f"\n{'='*60}")
-        print(f"[AI 질의] BOM 관계")
+        print("[AI 질의] BOM 관계")
         print(f"  결과: {len(data['results'])}건")
         print(f"  답변: {data['answer'][:300]}")
         print(f"{'='*60}")
