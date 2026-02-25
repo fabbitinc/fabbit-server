@@ -50,6 +50,10 @@ def _folder(
 
 class ProjectTreeServiceTests(unittest.TestCase):
     class _FakeSession:
+        new: set = set()
+        dirty: set = set()
+        deleted: set = set()
+
         def commit(self) -> None:
             return None
 

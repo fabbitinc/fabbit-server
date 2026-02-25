@@ -14,6 +14,7 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
+from app.core.event_bus import event_bus
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
 from app.infrastructure.llm_client import chat_completion_with_usage
@@ -25,7 +26,6 @@ from app.modules.activation.schemas import (
     StarterQuestion,
     StartersResponse,
 )
-from app.core.event_bus import event_bus
 from app.modules.ai_usage.events import AiUsageLogged
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
@@ -175,14 +175,16 @@ def query_graph(
     raw_plan = plan_resp.content
     _log_cypher(stage="initial", query=raw_plan)
 
-    event_bus.publish(AiUsageLogged(
-        org_id=auth.org_id,
-        user_id=auth.account_id,
-        feature="activation:query_plan",
-        model=plan_resp.model,
-        input_tokens=plan_resp.input_tokens,
-        output_tokens=plan_resp.output_tokens,
-    ))
+    event_bus.publish(
+        AiUsageLogged(
+            org_id=auth.org_id,
+            user_id=auth.account_id,
+            feature="activation:query_plan",
+            model=plan_resp.model,
+            input_tokens=plan_resp.input_tokens,
+            output_tokens=plan_resp.output_tokens,
+        )
+    )
 
     query_plan = _parse_query_plan(raw_plan)
 
@@ -198,14 +200,16 @@ def query_graph(
         )
         retry_raw = retry_resp.content
 
-        event_bus.publish(AiUsageLogged(
-            org_id=auth.org_id,
-            user_id=auth.account_id,
-            feature="activation:query_plan_retry",
-            model=retry_resp.model,
-            input_tokens=retry_resp.input_tokens,
-            output_tokens=retry_resp.output_tokens,
-        ))
+        event_bus.publish(
+            AiUsageLogged(
+                org_id=auth.org_id,
+                user_id=auth.account_id,
+                feature="activation:query_plan_retry",
+                model=retry_resp.model,
+                input_tokens=retry_resp.input_tokens,
+                output_tokens=retry_resp.output_tokens,
+            )
+        )
 
         if _normalize_query(raw_plan) != _normalize_query(retry_raw):
             _log_cypher(stage="retry", query=retry_raw)
@@ -250,14 +254,16 @@ def query_graph(
             max_tokens=500,
         )
         answer = answer_resp.content
-        event_bus.publish(AiUsageLogged(
-            org_id=auth.org_id,
-            user_id=auth.account_id,
-            feature="activation:answer",
-            model=answer_resp.model,
-            input_tokens=answer_resp.input_tokens,
-            output_tokens=answer_resp.output_tokens,
-        ))
+        event_bus.publish(
+            AiUsageLogged(
+                org_id=auth.org_id,
+                user_id=auth.account_id,
+                feature="activation:answer",
+                model=answer_resp.model,
+                input_tokens=answer_resp.input_tokens,
+                output_tokens=answer_resp.output_tokens,
+            )
+        )
     except Exception:
         answer = "쿼리 결과를 확인해주세요."
 
@@ -328,7 +334,9 @@ def _execute_plan(db: Session, graph_name: str, plan: dict) -> list[dict]:
         # SQL pre-filter로 후보 part_numbers 확보
         if where:
             candidates = _execute_sql_query(db, where)
-            candidate_pns = [r["part_number"] for r in candidates if r.get("part_number")]
+            candidate_pns = [
+                r["part_number"] for r in candidates if r.get("part_number")
+            ]
             if not candidate_pns:
                 return []
         else:
@@ -475,7 +483,7 @@ def _inject_part_filter(cypher: str, part_numbers: list[str]) -> str:
     if not part_numbers:
         return cypher
 
-    escaped_pns = [f"'{pn.replace(chr(39), chr(92)+chr(39))}'" for pn in part_numbers]
+    escaped_pns = [f"'{pn.replace(chr(39), chr(92) + chr(39))}'" for pn in part_numbers]
     in_clause = f"[{', '.join(escaped_pns)}]"
 
     # 기존 WHERE가 있으면 AND로 연결, 없으면 WHERE 추가
@@ -510,10 +518,7 @@ def _count_nodes_by_labels(
     db: Session, graph_name: str, labels: list[str]
 ) -> dict[str, int]:
     """각 라벨별 노드 수 조회."""
-    return {
-        label: repo.count_nodes_by_label(db, graph_name, label)
-        for label in labels
-    }
+    return {label: repo.count_nodes_by_label(db, graph_name, label) for label in labels}
 
 
 def _count_relationships_by_types(

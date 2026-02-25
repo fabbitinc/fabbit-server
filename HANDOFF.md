@@ -119,19 +119,17 @@
 
 ## Next Steps
 
-### 1. DB-Mutating 핸들러 세션 전략
-
-현재 핸들러는 로깅만 수행. DB 변경이 필요한 핸들러를 도입하려면:
-- 핸들러에 tenant_schema를 어떻게 전달할지 결정 (이벤트에 포함 vs context)
-- 핸들러 전용 세션 생성 vs 기존 세션 재사용
-- 실패 시 보상 트랜잭션 전략
-
-### 2. import-linter CI 도입
+### 1. import-linter CI 도입
 
 핸들러 등록 후 import 규칙을 강제:
 - `import-linter` 패키지 설치 (`pyproject.toml`)
 - 모듈 간 허용/금지 규칙 정의
 - `make lint` 또는 CI에 `lint-imports` 단계 추가
+
+### 2. 기존 실패 테스트 수정 (13개, DDD 전환과 무관)
+
+- `test_duplicate_synthesis` 10개 — API 엔드포인트 404 (fixture 기반 통합 테스트, 라우터 미등록 문제)
+- `test_project_tree_service` 3개 — `repo.get_project_upload_counts` 함수 미구현
 
 ---
 

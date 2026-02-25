@@ -28,6 +28,7 @@ class _FakeSession:
         # UnitOfWork._collect_aggregate_events()가 참조하는 속성
         self.new: set = set()
         self.dirty: set = set()
+        self.deleted: set = set()
 
     def commit(self) -> None:
         self.commit_count += 1
