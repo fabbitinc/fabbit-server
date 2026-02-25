@@ -4,15 +4,18 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.core.database import generate_uuid7
 from app.infrastructure.age_client import execute_cypher, execute_cypher_raw
-from app.modules.drawing.models import Drawing, DrawingAnalysisRecord, DrawingSynthesisJob
+from app.modules.drawing.models import (
+    Drawing,
+    DrawingAnalysisRecord,
+    DrawingSynthesisJob,
+    _STANDARD_ATTRS,
+)
 from app.modules.ontology.cypher_utils import escape_cypher_value
 from app.modules.file.models import File
 
-# Drawing 모델의 표준 속성 (온톨로지 정의 속성 중 RDS 컬럼에 매핑되는 것)
 # 온톨로지의 file_path → RDS의 file_key로 매핑
-_DRAWING_STANDARD_ATTRS = {"name", "file_path", "version", "status"}
+_DRAWING_STANDARD_ATTRS = _STANDARD_ATTRS | {"file_path"}
 
 
 def get_file_by_id(db: Session, file_id: uuid.UUID) -> File | None:
@@ -74,14 +77,9 @@ def list_analysis_records(db: Session) -> list[DrawingAnalysisRecord]:
 
 def create_synthesis_job(
     db: Session,
-    job_id: uuid.UUID,
     analysis_id: uuid.UUID,
 ) -> DrawingSynthesisJob:
-    job = DrawingSynthesisJob(
-        id=job_id,
-        analysis_id=analysis_id,
-        status="PENDING",
-    )
+    job = DrawingSynthesisJob.create(analysis_id=analysis_id)
     db.add(job)
     return job
 
@@ -194,46 +192,23 @@ def upsert_drawing(
         )
 
     if existing is None:
-        drawing = Drawing(
-            id=generate_uuid7(),
+        drawing = Drawing.create_from_upsert(
             drawing_number=drawing_number,
             original_file_id=original_file_id,
-            # name은 필수 컬럼이므로 기본값 제공
-            name=standard.pop("name", drawing_number or "Untitled"),
+            name=standard.pop("name", None),
+            standard_props=standard,
             extended_properties=extended if extended else {},
-            **standard,
         )
         db.add(drawing)
         db.flush()
     else:
-        changed = False
-        # drawing_number 업데이트 (None → 값, 값 변경 모두 포함)
-        if drawing_number and existing.drawing_number != drawing_number:
-            existing.drawing_number = drawing_number
-            changed = True
-        # original_file_id가 비어 있으면 채움
-        if original_file_id and existing.original_file_id is None:
-            existing.original_file_id = original_file_id
-            changed = True
-        for key, value in standard.items():
-            current = getattr(existing, key)
-            if not overwrite and current is not None:
-                continue
-            if current != value:
-                setattr(existing, key, value)
-                changed = True
-
-        if extended:
-            merged_ext = dict(existing.extended_properties or {})
-            for key, value in extended.items():
-                if not overwrite and merged_ext.get(key) is not None:
-                    continue
-                if merged_ext.get(key) != value:
-                    merged_ext[key] = value
-                    changed = True
-            if changed:
-                existing.extended_properties = merged_ext
-
+        changed = existing.update_properties(
+            drawing_number=drawing_number,
+            original_file_id=original_file_id,
+            standard_props=standard,
+            extended_props=extended,
+            overwrite=overwrite,
+        )
         if changed:
             db.flush()
 

@@ -4,7 +4,7 @@
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
@@ -12,15 +12,27 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
+from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase, generate_uuid7
-from app.modules.drawing.constants import ConversionStatus
+from app.modules.drawing.constants import (
+    ConversionStatus,
+    DrawingSynthesisJobStatus,
+)
+from app.modules.drawing.events import (
+    DrawingConversionCompleted,
+    DrawingConversionFailed,
+    DrawingPropertiesUpdated,
+)
 
 if TYPE_CHECKING:
     from app.modules.file.models import File
     from app.modules.project.models import Folder, Project
 
+# Drawing 모델의 표준 속성 (온톨로지 정의 속성 중 RDS 컬럼에 매핑되는 것)
+_STANDARD_ATTRS = {"name", "version", "status"}
 
-class Drawing(TenantBase):
+
+class Drawing(AggregateRoot, TenantBase):
     __tablename__ = "drawings"
 
     __table_args__ = (
@@ -137,6 +149,26 @@ class Drawing(TenantBase):
             conversion_status=ConversionStatus.PENDING,
         )
 
+    @classmethod
+    def create_from_upsert(
+        cls,
+        *,
+        drawing_number: str | None,
+        original_file_id: uuid.UUID | None,
+        name: str | None,
+        standard_props: dict,
+        extended_properties: dict,
+    ) -> "Drawing":
+        """합성(upsert) 경로에서 Drawing 신규 생성 팩토리."""
+        return cls(
+            id=generate_uuid7(),
+            drawing_number=drawing_number,
+            original_file_id=original_file_id,
+            name=name or drawing_number or "Untitled",
+            extended_properties=extended_properties or {},
+            **standard_props,
+        )
+
     # ── 상태 전이 메서드 ──
 
     def complete_conversion(
@@ -152,10 +184,65 @@ class Drawing(TenantBase):
         self.pdf_key = pdf_key
         self.thumbnail_file_id = thumbnail_file_id
         self.thumbnail_key = thumbnail_key
+        self.register_event(DrawingConversionCompleted(drawing_id=self.id))
 
     def fail_conversion(self) -> None:
         """DWG 변환 실패."""
         self.conversion_status = ConversionStatus.FAILED
+        self.register_event(DrawingConversionFailed(drawing_id=self.id))
+
+    def update_properties(
+        self,
+        *,
+        drawing_number: str | None,
+        original_file_id: uuid.UUID | None,
+        standard_props: dict,
+        extended_props: dict,
+        overwrite: bool,
+    ) -> list[str]:
+        """기존 Drawing 속성 갱신 (upsert 업데이트 경로).
+
+        Returns:
+            변경된 필드명 목록.
+        """
+        changed: list[str] = []
+
+        if drawing_number and self.drawing_number != drawing_number:
+            self.drawing_number = drawing_number
+            changed.append("drawing_number")
+
+        if original_file_id and self.original_file_id is None:
+            self.original_file_id = original_file_id
+            changed.append("original_file_id")
+
+        for key, value in standard_props.items():
+            current = getattr(self, key)
+            if not overwrite and current is not None:
+                continue
+            if current != value:
+                setattr(self, key, value)
+                changed.append(key)
+
+        if extended_props:
+            merged_ext = dict(self.extended_properties or {})
+            for key, value in extended_props.items():
+                if not overwrite and merged_ext.get(key) is not None:
+                    continue
+                if merged_ext.get(key) != value:
+                    merged_ext[key] = value
+                    changed.append(key)
+            if changed:
+                self.extended_properties = merged_ext
+
+        if changed:
+            self.register_event(
+                DrawingPropertiesUpdated(
+                    drawing_id=self.id,
+                    changed_fields=changed,
+                )
+            )
+
+        return changed
 
 
 class DrawingAnalysisRecord(TenantBase):
@@ -182,7 +269,7 @@ class DrawingAnalysisRecord(TenantBase):
     )
 
 
-class DrawingSynthesisJob(TenantBase):
+class DrawingSynthesisJob(AggregateRoot, TenantBase):
     __tablename__ = "drawing_synthesis_jobs"
 
     __table_args__ = (
@@ -198,7 +285,9 @@ class DrawingSynthesisJob(TenantBase):
         ForeignKey("drawing_analysis_records.id", ondelete="CASCADE"),
         nullable=False,
     )
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING")
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=DrawingSynthesisJobStatus.PENDING
+    )
     nodes_created: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     relationships_created: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
@@ -213,3 +302,41 @@ class DrawingSynthesisJob(TenantBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+    # ── 팩토리 메서드 ──
+
+    @classmethod
+    def create(cls, *, analysis_id: uuid.UUID) -> "DrawingSynthesisJob":
+        """도면 합성 작업 생성."""
+        return cls(
+            id=generate_uuid7(),
+            analysis_id=analysis_id,
+            status=DrawingSynthesisJobStatus.PENDING,
+        )
+
+    # ── 상태 전이 메서드 ──
+
+    def start_processing(self) -> None:
+        """합성 실행 시작."""
+        self.status = DrawingSynthesisJobStatus.PROCESSING
+        self.started_at = datetime.now(timezone.utc)
+
+    def complete(
+        self,
+        *,
+        nodes_created: int,
+        relationships_created: int,
+        errors: list[str],
+    ) -> None:
+        """합성 완료."""
+        self.status = DrawingSynthesisJobStatus.COMPLETED
+        self.nodes_created = nodes_created
+        self.relationships_created = relationships_created
+        self.errors = errors[:100]
+        self.completed_at = datetime.now(timezone.utc)
+
+    def fail(self, errors: list[str]) -> None:
+        """합성 실패."""
+        self.status = DrawingSynthesisJobStatus.FAILED
+        self.errors = errors[:100]
+        self.completed_at = datetime.now(timezone.utc)

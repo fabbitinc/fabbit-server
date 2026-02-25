@@ -25,6 +25,9 @@ class _FakeSession:
         self.rollback_count = 0
         self.close_count = 0
         self.refreshed: list[object] = []
+        # UnitOfWork._collect_aggregate_events()가 참조하는 속성
+        self.new: set = set()
+        self.dirty: set = set()
 
     def commit(self) -> None:
         self.commit_count += 1
@@ -68,21 +71,57 @@ def _make_upload(upload_id, owner_type="project", owner_id=None, status="UPLOADE
     )
 
 
+class _FakeJob:
+    """SynthesisJob 도메인 메서드를 구현하는 테스트용 대역."""
+
+    def __init__(self, mapping_id, file_id) -> None:
+        self.id = uuid.uuid4()
+        self.mapping_id = mapping_id
+        self.file_id = file_id
+        self.batch_id = None
+        self.status = "PENDING"
+        self.total_rows = 0
+        self.processed_rows = 0
+        self.nodes_created = 0
+        self.relationships_created = 0
+        self.errors: list = []
+        self.started_at = None
+        self.completed_at = None
+        self.created_at = datetime.now(timezone.utc)
+
+    def assign_batch(self, batch_id) -> None:
+        self.batch_id = batch_id
+
+    def start_processing(self) -> None:
+        self.status = "PROCESSING"
+        self.started_at = datetime.now(timezone.utc)
+
+    def set_total_rows(self, total_rows) -> None:
+        self.total_rows = total_rows
+
+    def update_progress(self, *, processed_rows, nodes_created, relationships_created, errors) -> None:
+        self.processed_rows = processed_rows
+        self.nodes_created = nodes_created
+        self.relationships_created = relationships_created
+        self.errors = errors[:100]
+
+    def complete(self) -> None:
+        self.status = "COMPLETED"
+        self.completed_at = datetime.now(timezone.utc)
+
+    def complete_empty(self) -> None:
+        self.total_rows = 0
+        self.status = "COMPLETED"
+        self.completed_at = datetime.now(timezone.utc)
+
+    def fail(self, errors) -> None:
+        self.status = "FAILED"
+        self.errors = errors[:100]
+        self.completed_at = datetime.now(timezone.utc)
+
+
 def _make_job(mapping_id, upload_id):
-    return types.SimpleNamespace(
-        id=uuid.uuid4(),
-        mapping_id=mapping_id,
-        file_id=upload_id,
-        status="PENDING",
-        total_rows=0,
-        processed_rows=0,
-        nodes_created=0,
-        relationships_created=0,
-        errors=[],
-        started_at=None,
-        completed_at=None,
-        created_at=datetime.now(timezone.utc),
-    )
+    return _FakeJob(mapping_id, upload_id)
 
 
 class SynthesisStartServiceTests(unittest.TestCase):
@@ -136,7 +175,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
             ) as inc_usage,
             patch(
                 "app.modules.synthesis.service.generate_uuid7",
-                side_effect=[uuid.uuid4(), batch.id],
+                return_value=batch.id,
             ),
             patch(
                 "app.modules.synthesis.service.org_id_to_schema",
@@ -277,7 +316,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
             ) as inc_usage,
             patch(
                 "app.modules.synthesis.service.generate_uuid7",
-                side_effect=[uuid.uuid4(), uuid.uuid4(), batch.id],
+                return_value=batch.id,
             ),
             patch(
                 "app.modules.synthesis.service.org_id_to_schema",
@@ -348,7 +387,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
             patch("app.modules.synthesis.service.repo.increment_mapping_usage"),
             patch(
                 "app.modules.synthesis.service.generate_uuid7",
-                side_effect=[uuid.uuid4(), batch.id],
+                return_value=batch.id,
             ),
             patch(
                 "app.modules.synthesis.service.org_id_to_schema",
@@ -508,7 +547,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
             patch("app.modules.synthesis.service.repo.increment_mapping_usage"),
             patch(
                 "app.modules.synthesis.service.generate_uuid7",
-                side_effect=[uuid.uuid4(), batch.id],
+                return_value=batch.id,
             ),
             patch(
                 "app.modules.synthesis.service.org_id_to_schema",
@@ -643,18 +682,8 @@ class SynthesisStartServiceTests(unittest.TestCase):
     def test_run_synthesis_skips_missing_bom_part_in_service(self) -> None:
         db = _FakeSession()
         job_id = uuid.uuid4()
-        job = types.SimpleNamespace(
-            id=job_id,
-            status="PENDING",
-            total_rows=0,
-            processed_rows=0,
-            nodes_created=0,
-            relationships_created=0,
-            errors=[],
-            started_at=None,
-            completed_at=None,
-            created_at=datetime.now(timezone.utc),
-        )
+        job = _FakeJob(mapping_id=uuid.uuid4(), file_id=uuid.uuid4())
+        job.id = job_id
 
         bom_entries = [
             {"parent_pn": "ASM-001", "child_pn": "COMP-001", "quantity": 1},

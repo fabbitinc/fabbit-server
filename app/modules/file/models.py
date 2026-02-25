@@ -11,11 +11,13 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
+from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase, generate_uuid7
 from app.modules.file.constants import FileStatus
+from app.modules.file.events import FileDeleted, FileExpired, FileUploaded
 
 
-class File(TenantBase):
+class File(AggregateRoot, TenantBase):
     __tablename__ = "files"
 
     __table_args__ = (
@@ -55,13 +57,16 @@ class File(TenantBase):
     def mark_uploaded(self) -> None:
         """S3 업로드 확인 완료."""
         self.status = FileStatus.UPLOADED
+        self.register_event(FileUploaded(file_id=self.id))
 
     def mark_deleted(self) -> None:
         """소프트 삭제 처리."""
         self.status = FileStatus.DELETED
         self.deleted_at = datetime.now(timezone.utc)
+        self.register_event(FileDeleted(file_id=self.id))
 
     def mark_expired(self) -> None:
         """stale 업로드 만료 처리."""
         self.status = FileStatus.EXPIRED
+        self.register_event(FileExpired(file_id=self.id))
 

@@ -38,17 +38,14 @@ def get_file_by_id(db: Session, file_id: uuid.UUID) -> File | None:
 
 def create_synthesis_job(
     db: Session,
-    job_id: uuid.UUID,
     mapping_id: uuid.UUID,
     file_id: uuid.UUID,
     batch_id: uuid.UUID | None = None,
 ) -> SynthesisJob:
-    job = SynthesisJob(
-        id=job_id,
-        batch_id=batch_id,
+    job = SynthesisJob.create(
         mapping_id=mapping_id,
         file_id=file_id,
-        status="PENDING",
+        batch_id=batch_id,
     )
     db.add(job)
     return job
@@ -60,7 +57,7 @@ def increment_mapping_usage(
     revision: MappingRevision,
     amount: int = 1,
 ) -> None:
-    record.usage_count += amount
+    record.increment_usage(amount)
     revision.usage_count += amount
 
 

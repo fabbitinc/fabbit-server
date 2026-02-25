@@ -3,8 +3,6 @@
 import json
 import os
 import uuid
-from datetime import datetime, timezone
-
 from loguru import logger
 from sqlalchemy.orm import Session
 
@@ -630,7 +628,6 @@ def start_drawing_synthesis(
 
     job = repo.create_synthesis_job(
         db=db,
-        job_id=generate_uuid7(),
         analysis_id=record.id,
     )
     db.flush()
@@ -775,8 +772,7 @@ def _run_drawing_synthesis(
     db = create_tenant_session(schema_name)
     try:
         job = repo.get_synthesis_job_required(db, job_id)
-        job.status = "PROCESSING"
-        job.started_at = datetime.now(timezone.utc)
+        job.start_processing()
         db.commit()
 
         analysis = DrawingAnalysisResult(**analysis_json)
@@ -839,11 +835,11 @@ def _run_drawing_synthesis(
         db.commit()
 
         # 작업 완료 상태 업데이트
-        job.status = "COMPLETED"
-        job.nodes_created = nodes_created
-        job.relationships_created = rels_created
-        job.errors = errors[:100]
-        job.completed_at = datetime.now(timezone.utc)
+        job.complete(
+            nodes_created=nodes_created,
+            relationships_created=rels_created,
+            errors=errors,
+        )
         db.commit()
 
         logger.info(
@@ -859,9 +855,7 @@ def _run_drawing_synthesis(
         try:
             db.rollback()
             job = repo.get_synthesis_job_required(db, job_id)
-            job.status = "FAILED"
-            job.errors = [str(error)]
-            job.completed_at = datetime.now(timezone.utc)
+            job.fail(errors=[str(error)])
             db.commit()
         except Exception:
             logger.error("도면 합성 실패 상태 저장 오류: job_id={jid}", jid=job_id)

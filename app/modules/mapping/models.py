@@ -5,18 +5,20 @@ MappingRecord(identity) + MappingRevision(versioned content)으로 분리하여
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
+from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase, generate_uuid7
 from app.modules.mapping.constants import MappingScope
+from app.modules.mapping.events import MappingDeactivated
 
 
-class MappingRecord(TenantBase):
+class MappingRecord(AggregateRoot, TenantBase):
     __tablename__ = "mapping_records"
 
     __table_args__ = (
@@ -47,6 +49,26 @@ class MappingRecord(TenantBase):
     revisions: Mapped[list["MappingRevision"]] = relationship(
         "MappingRevision", back_populates="record", order_by="MappingRevision.version"
     )
+
+    # ── 도메인 메서드 ──
+
+    def rename(self, name: str) -> None:
+        """매핑 이름 변경."""
+        self.name = name
+
+    def update_scope(self, scope: str) -> None:
+        """매핑 스코프 갱신."""
+        self.scope = scope
+        self.updated_at = datetime.now(timezone.utc)
+
+    def deactivate(self) -> None:
+        """매핑 비활성화 (soft-delete)."""
+        self.is_active = False
+        self.register_event(MappingDeactivated(mapping_id=self.id))
+
+    def increment_usage(self, amount: int = 1) -> None:
+        """사용 횟수 증가."""
+        self.usage_count += amount
 
 
 class MappingRevision(TenantBase):

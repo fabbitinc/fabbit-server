@@ -11,6 +11,15 @@ class ConversionStatus(str, Enum):
     FAILED = "FAILED"        # 변환 실패
 
 
+class DrawingSynthesisJobStatus(str, Enum):
+    """도면 합성 작업 상태."""
+
+    PENDING = "PENDING"        # 생성됨, 실행 대기
+    PROCESSING = "PROCESSING"  # 실행 중
+    COMPLETED = "COMPLETED"    # 완료
+    FAILED = "FAILED"          # 실패
+
+
 # 도면 등록 허용 확장자 (대소문자 무시)
 ALLOWED_DRAWING_EXTENSIONS = {
     ".dwg",   # AutoCAD

@@ -2,8 +2,6 @@
 
 import time
 import uuid
-from datetime import datetime, timezone
-
 import pandas as pd
 from loguru import logger
 from sqlalchemy.orm import Session
@@ -143,8 +141,6 @@ def start_synthesis(
 
         job = repo.create_synthesis_job(
             db=db,
-            job_id=generate_uuid7(),
-            batch_id=None,
             mapping_id=record.id,
             file_id=file.id,
         )
@@ -163,7 +159,7 @@ def start_synthesis(
 
     # 7. 성공 job들에 batch_id 할당
     for job, _file, _item in accepted_jobs:
-        job.batch_id = batch.id
+        job.assign_batch(batch.id)
 
     # 8. usage_count 일괄 증가
     if accepted_jobs:
@@ -616,8 +612,7 @@ def _run_synthesis(
     db = create_tenant_session(schema_name)
     try:
         job = repo.get_synthesis_job_required(db, job_id)
-        job.status = "PROCESSING"
-        job.started_at = datetime.now(timezone.utc)
+        job.start_processing()
         db.commit()
 
         content = _s3.get_object(file_key)
@@ -645,21 +640,18 @@ def _run_synthesis(
                 logger.warning("시트 스킵: {sheet} - {err}", sheet=sheet_label, err=e)
 
         if not dfs:
-            job.total_rows = 0
-            job.status = "COMPLETED"
-            job.completed_at = datetime.now(timezone.utc)
+            job.complete_empty()
             db.commit()
             return
 
         df = pd.concat(dfs, ignore_index=True)
 
         total_rows = len(df)
-        job.total_rows = total_rows
+        job.set_total_rows(total_rows)
         db.commit()
 
         if total_rows == 0:
-            job.status = "COMPLETED"
-            job.completed_at = datetime.now(timezone.utc)
+            job.complete_empty()
             db.commit()
             return
 
@@ -918,10 +910,12 @@ def _run_synthesis(
 
             db.commit()
             chunk_elapsed = time.perf_counter() - t_chunk
-            job.processed_rows = processed
-            job.nodes_created = nodes_created
-            job.relationships_created = rels_created
-            job.errors = errors[:100]
+            job.update_progress(
+                processed_rows=processed,
+                nodes_created=nodes_created,
+                relationships_created=rels_created,
+                errors=errors,
+            )
             db.commit()
 
             logger.info(
@@ -933,8 +927,7 @@ def _run_synthesis(
                 rate=len(chunk) / chunk_elapsed if chunk_elapsed > 0 else 0,
             )
 
-        job.status = "COMPLETED"
-        job.completed_at = datetime.now(timezone.utc)
+        job.complete()
         db.commit()
         logger.info(
             "합성 완료: job_id={job_id} 노드={nodes} 관계={rels} 에러={errs}",
@@ -949,9 +942,7 @@ def _run_synthesis(
         try:
             db.rollback()
             job = repo.get_synthesis_job_required(db, job_id)
-            job.status = "FAILED"
-            job.errors = [str(error)]
-            job.completed_at = datetime.now(timezone.utc)
+            job.fail(errors=[str(error)])
             db.commit()
         except Exception:
             logger.error("합성 실패 상태 저장 오류: job_id={job_id}", job_id=job_id)

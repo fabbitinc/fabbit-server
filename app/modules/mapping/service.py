@@ -2,8 +2,6 @@
 
 import time
 import uuid
-from datetime import datetime, timezone
-
 from loguru import logger
 from sqlalchemy.orm import Session
 
@@ -523,11 +521,10 @@ def update_mapping(
                 message=f"이미 동일한 이름의 매핑이 존재합니다: '{req.name}'",
                 code="DUPLICATE_NAME",
             )
-        record.name = req.name
+        record.rename(req.name)
 
     # 새 매핑 내용에 따라 scope 재판별
-    record.scope = _determine_scope(validation.normalized_mapping)
-    record.updated_at = datetime.now(timezone.utc)
+    record.update_scope(_determine_scope(validation.normalized_mapping))
 
     new_revision = MappingRevision(
         id=generate_uuid7(),
@@ -559,7 +556,7 @@ def deactivate_mapping(db: Session, mapping_id: uuid.UUID) -> None:
     if result is None:
         raise AppError(message="매핑을 찾을 수 없습니다", code="NOT_FOUND")
     record, _ = result
-    record.is_active = False
+    record.deactivate()
     logger.info("매핑 비활성화: mapping_id={mapping_id}", mapping_id=record.id)
 
 

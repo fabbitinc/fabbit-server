@@ -21,7 +21,7 @@
 **점진적 전환** (사용자 선택):
 - Phase 1: Aggregate Base + Event Infra (뼈대 구축, 기존 코드 변경 없이 추가만) ✅
 - Phase 2: Part Aggregate 전환 (핵심 도메인) ✅
-- Phase 3: 나머지 Aggregate 전환
+- Phase 3: 나머지 Aggregate 전환 ✅
 - Phase 4: import-linter CI 강제
 
 ---
@@ -64,9 +64,22 @@
    - 이벤트는 발행만, 핸들러는 Phase 3에서 등록 예정
    - 72개 테스트 전체 통과 (`make test`)
 
+5. **Phase 3: 나머지 Aggregate 전환** 완료
+   - **Drawing**: AggregateRoot 전환, `create_from_upsert()` 팩토리, `update_properties()` 도메인 메서드, `complete_conversion()`/`fail_conversion()` 이벤트 발행
+   - **DrawingSynthesisJob**: AggregateRoot 전환, `create()` 팩토리, `start_processing()`/`complete()`/`fail()` 도메인 메서드, `DrawingSynthesisJobStatus` Enum 추가
+   - **SynthesisJob**: AggregateRoot 전환, `create()` 팩토리, `assign_batch()`/`start_processing()`/`set_total_rows()`/`update_progress()`/`complete()`/`complete_empty()`/`fail()` 도메인 메서드, `SynthesisJobStatus` Enum 추가, 이벤트 발행 (Started/Completed/Failed)
+   - **MappingRecord**: AggregateRoot 전환, `rename()`/`update_scope()`/`deactivate()`/`increment_usage()` 도메인 메서드, MappingDeactivated 이벤트 발행
+   - **File**: AggregateRoot 전환, `mark_uploaded()`/`mark_deleted()`/`mark_expired()` 이벤트 발행 추가 (FileUploaded/FileDeleted/FileExpired)
+   - 이벤트 파일 신규 생성: `drawing/events.py`, `synthesis/events.py`, `file/events.py`, `mapping/events.py`
+   - 상수 파일: `synthesis/constants.py` 신규, `drawing/constants.py`에 DrawingSynthesisJobStatus 추가
+   - Repository: 팩토리 메서드 활용, `increment_mapping_usage()` → `record.increment_usage()` 전환
+   - Service: 모든 직접 필드 대입 → 도메인 메서드 호출로 전환, `datetime` import 제거
+   - 테스트: `_FakeJob` 클래스 도입 (도메인 메서드 구현), `_FakeSession`에 `new`/`dirty` 속성 추가
+   - 이벤트는 발행만, 핸들러 등록 없음 (Phase 2 동일 원칙)
+   - 72개 통합 + 12개 유닛 테스트 전체 통과
+
 ### 아직 시작하지 않은 작업
 
-- [ ] Phase 3: 나머지 Aggregate 전환 (Drawing, Supplier, Project 등)
 - [ ] Phase 4: import-linter CI 강제
 
 ---
@@ -85,35 +98,9 @@
 
 ---
 
-## Next Steps — Phase 3: 나머지 Aggregate 전환
+## Next Steps — Phase 4: import-linter CI 강제
 
-### 1. Aggregate 후보
-
-| Aggregate Root | 내부 엔티티 후보 | 논의 필요 |
-|---|---|---|
-| **Project** | Folder, ProjectPart | ProjectPart는 Part Aggregate와 겹침 |
-| **Drawing** | DrawingAnalysis | DrawingSynthesis는? |
-| **Mapping** | MappingRevision(현재 없음) | PUT 시 revision 생성 여부 |
-| **Synthesis** | SynthesisJob | 배치와의 관계 |
-| **Organization** (public) | User, Membership | auth 모듈 내부 |
-
-### 2. Part Aggregate 참고 패턴
-
-Phase 2에서 확립된 Part Aggregate 패턴을 나머지 도메인에 적용:
-- AggregateRoot mixin 상속 (`AggregateRoot, TenantBase` MRO)
-- 팩토리 메서드 `@classmethod create()` + PartCreated 이벤트
-- 도메인 메서드 (`update_properties()`, `assign_drawing()`)로 필드 조작 캡슐화
-- 이벤트 발행 → Phase 3에서 핸들러 등록 (cross-module import 제거)
-
-### 3. Phase 3 핵심 과제: 이벤트 핸들러 등록
-
-Part 이벤트 핸들러를 등록하여 cross-module import 해소:
-- `synthesis/service.py` → `part/repository` 직접 호출 → 이벤트 기반으로 전환
-- `drawing/service.py` → `part/service` 직접 호출 → 이벤트 기반으로 전환
-- `project/service.py` → `part/repository` 직접 호출 → 이벤트 기반으로 전환
-- Graph dual-write를 이벤트 핸들러로 분리 검토
-
-### 4. Python 강제 수단 도입 (Phase 4)
+### 1. Python 강제 수단 도입
 
 - `import-linter` 패키지 설치 및 설정 (`pyproject.toml` 또는 `.importlinter`)
 - 규칙 예: "modules.part.service → modules.project.repository import 금지"
