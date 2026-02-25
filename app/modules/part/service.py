@@ -15,6 +15,8 @@ from app.core.transactional import transactional
 from app.infrastructure.s3_client import s3_client
 from app.modules.mapping import repository as mapping_repo
 from app.modules.ontology.schemas import MappingResult
+from app.modules.file import repository as file_repo
+from app.modules.file.constants import FileStatus
 from app.modules.part import repository as repo
 from app.modules.part.constants import BomDirection
 from app.modules.part.models import ExtendedPropertyDefinition
@@ -24,6 +26,7 @@ from app.modules.part.schemas import (
     BomTreeNode,
     BomTreeResponse,
     PartDetailResponse,
+    PartFileItem,
     PartFilterOptions,
     PartListResponse,
     PartSummary,
@@ -145,6 +148,21 @@ def get_part(db: Session, auth: AuthContext, part_id: uuid.UUID) -> PartDetailRe
 
     extended = {k: v for k, v in (part.extended_properties or {}).items() if v is not None}
 
+    # 첨부파일: UPLOADED 상태만
+    all_files = file_repo.get_files_by_owner(db, "part", part.id)
+    files = [
+        PartFileItem(
+            file_id=f.id,
+            original_name=f.original_name,
+            content_type=f.content_type,
+            file_size=f.file_size,
+            file_url=_s3.get_file_url(f.file_key),
+            created_at=f.created_at,
+        )
+        for f in all_files
+        if f.status == FileStatus.UPLOADED
+    ]
+
     return PartDetailResponse(
         id=part.id,
         part_number=part.part_number,
@@ -162,7 +180,90 @@ def get_part(db: Session, auth: AuthContext, part_id: uuid.UUID) -> PartDetailRe
         parents=parents,
         drawing=drawing,
         suppliers=suppliers,
+        files=files,
     )
+
+
+# ── 첨부파일 ──
+
+
+@transactional()
+def attach_files_to_part(
+    db: Session,
+    auth: AuthContext,
+    part_id: uuid.UUID,
+    file_ids: list[uuid.UUID],
+) -> list[PartFileItem]:
+    """완료된 파일들을 Part에 배치 연결."""
+    part = repo.get_by_id(db, part_id)
+    if not part:
+        raise AppError(message=f"Part '{part_id}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
+
+    files = file_repo.get_files_by_ids(db, file_ids)
+
+    # 요청한 ID와 실제 조회 결과 비교
+    found_ids = {f.id for f in files}
+    missing = set(file_ids) - found_ids
+    if missing:
+        raise AppError(
+            message=f"파일을 찾을 수 없습니다: {missing}",
+            code="NOT_FOUND",
+        )
+
+    # UPLOADED 상태 검증
+    not_uploaded = [f.id for f in files if f.status != FileStatus.UPLOADED]
+    if not_uploaded:
+        raise AppError(
+            message=f"업로드 완료되지 않은 파일이 있습니다: {not_uploaded}",
+            code="INVALID_STATE",
+        )
+
+    # 이미 다른 소유자에 연결된 파일 검증
+    already_owned = [f.id for f in files if f.owner_id is not None]
+    if already_owned:
+        raise AppError(
+            message=f"이미 다른 리소스에 연결된 파일이 있습니다: {already_owned}",
+            code="CONFLICT",
+        )
+
+    result = []
+    for f in files:
+        f.owner_type = "part"
+        f.owner_id = part.id
+        result.append(
+            PartFileItem(
+                file_id=f.id,
+                original_name=f.original_name,
+                content_type=f.content_type,
+                file_size=f.file_size,
+                file_url=_s3.get_file_url(f.file_key),
+                created_at=f.created_at,
+            )
+        )
+
+    return result
+
+
+@transactional()
+def detach_file_from_part(
+    db: Session,
+    auth: AuthContext,
+    part_id: uuid.UUID,
+    file_id: uuid.UUID,
+) -> None:
+    """Part 첨부파일 1건 소프트 삭제."""
+    part = repo.get_by_id(db, part_id)
+    if not part:
+        raise AppError(message=f"Part '{part_id}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
+
+    file = file_repo.get_file_by_id(db, file_id)
+    if not file or file.owner_type != "part" or file.owner_id != part.id:
+        raise AppError(
+            message=f"Part '{part_id}'에 연결된 파일 '{file_id}'을(를) 찾을 수 없습니다",
+            code="NOT_FOUND",
+        )
+
+    file.mark_deleted()
 
 
 # ── BOM 트리 ──

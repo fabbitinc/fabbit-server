@@ -15,8 +15,10 @@ from app.modules.drawing.schemas import RegisterDrawingRequest, RegisterDrawingR
 from app.modules.part import service
 from app.modules.part.constants import BomDirection
 from app.modules.part.schemas import (
+    AttachFilesRequest,
     BomTreeResponse,
     PartDetailResponse,
+    PartFileItem,
     PartFilterOptions,
     PartListResponse,
 )
@@ -124,6 +126,41 @@ def get_part(
     Part의 전체 속성, BOM 관계(부모/자식), 도면, 공급사 정보를 포함합니다.
     """
     return service.get_part(db, auth, part_id)
+
+
+@router.post("/{part_id}/files", response_model=list[PartFileItem])
+def attach_files(
+    part_id: uuid.UUID,
+    req: AttachFilesRequest,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """Part에 첨부파일 배치 연결.
+
+    업로드 완료(`UPLOADED`) 상태인 파일만 연결할 수 있습니다.
+
+    ## 업로드 흐름
+
+    1. `POST /api/v1/files` — presigned URL 발급
+    2. S3에 파일 업로드 (presigned URL PUT)
+    3. `POST /api/v1/files/{file_id}/complete` — 업로드 확인
+    4. **이 엔드포인트** — Part에 파일 연결
+    """
+    return service.attach_files_to_part(db, auth, part_id, req.file_ids)
+
+
+@router.delete("/{part_id}/files/{file_id}", status_code=204)
+def detach_file(
+    part_id: uuid.UUID,
+    file_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """Part 첨부파일 1건 제거.
+
+    파일은 소프트 삭제되며, S3 파일은 보존 기간 후 배치 정리됩니다.
+    """
+    service.detach_file_from_part(db, auth, part_id, file_id)
 
 
 @router.get("/{part_id}/bom", response_model=BomTreeResponse)

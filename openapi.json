@@ -2392,6 +2392,121 @@
                 }
             }
         },
+        "/api/v1/parts/{part_id}/files": {
+            "post": {
+                "tags": [
+                    "parts"
+                ],
+                "summary": "Attach Files",
+                "description": "Part\uc5d0 \ucca8\ubd80\ud30c\uc77c \ubc30\uce58 \uc5f0\uacb0.\n\n\uc5c5\ub85c\ub4dc \uc644\ub8cc(`UPLOADED`) \uc0c1\ud0dc\uc778 \ud30c\uc77c\ub9cc \uc5f0\uacb0\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\n## \uc5c5\ub85c\ub4dc \ud750\ub984\n\n1. `POST /api/v1/files` \u2014 presigned URL \ubc1c\uae09\n2. S3\uc5d0 \ud30c\uc77c \uc5c5\ub85c\ub4dc (presigned URL PUT)\n3. `POST /api/v1/files/{file_id}/complete` \u2014 \uc5c5\ub85c\ub4dc \ud655\uc778\n4. **\uc774 \uc5d4\ub4dc\ud3ec\uc778\ud2b8** \u2014 Part\uc5d0 \ud30c\uc77c \uc5f0\uacb0",
+                "operationId": "attach_files_api_v1_parts__part_id__files_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AttachFilesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PartFileItem"
+                                    },
+                                    "title": "Response Attach Files Api V1 Parts  Part Id  Files Post"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/parts/{part_id}/files/{file_id}": {
+            "delete": {
+                "tags": [
+                    "parts"
+                ],
+                "summary": "Detach File",
+                "description": "Part \ucca8\ubd80\ud30c\uc77c 1\uac74 \uc81c\uac70.\n\n\ud30c\uc77c\uc740 \uc18c\ud504\ud2b8 \uc0ad\uc81c\ub418\uba70, S3 \ud30c\uc77c\uc740 \ubcf4\uc874 \uae30\uac04 \ud6c4 \ubc30\uce58 \uc815\ub9ac\ub429\ub2c8\ub2e4.",
+                "operationId": "detach_file_api_v1_parts__part_id__files__file_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    },
+                    {
+                        "name": "file_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "File Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/parts/{part_id}/bom": {
             "get": {
                 "tags": [
@@ -2936,6 +3051,26 @@
     },
     "components": {
         "schemas": {
+            "AttachFilesRequest": {
+                "properties": {
+                    "file_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "maxItems": 20,
+                        "minItems": 1,
+                        "title": "File Ids"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file_ids"
+                ],
+                "title": "AttachFilesRequest",
+                "description": "Part \ucca8\ubd80\ud30c\uc77c \ubc30\uce58 \uc5f0\uacb0 \uc694\uccad"
+            },
             "BatchCompleteFailure": {
                 "properties": {
                     "file_id": {
@@ -5261,6 +5396,14 @@
                         "type": "array",
                         "title": "Suppliers",
                         "default": []
+                    },
+                    "files": {
+                        "items": {
+                            "$ref": "#/components/schemas/PartFileItem"
+                        },
+                        "type": "array",
+                        "title": "Files",
+                        "default": []
                     }
                 },
                 "type": "object",
@@ -5270,6 +5413,53 @@
                 ],
                 "title": "PartDetailResponse",
                 "description": "Part \uc0c1\uc138 \uc751\ub2f5"
+            },
+            "PartFileItem": {
+                "properties": {
+                    "file_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "File Id"
+                    },
+                    "original_name": {
+                        "type": "string",
+                        "title": "Original Name"
+                    },
+                    "content_type": {
+                        "type": "string",
+                        "title": "Content Type"
+                    },
+                    "file_size": {
+                        "type": "integer",
+                        "title": "File Size"
+                    },
+                    "file_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "File Url"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file_id",
+                    "original_name",
+                    "content_type",
+                    "file_size",
+                    "created_at"
+                ],
+                "title": "PartFileItem",
+                "description": "Part \ucca8\ubd80\ud30c\uc77c \ud56d\ubaa9"
             },
             "PartFilterOptions": {
                 "properties": {
