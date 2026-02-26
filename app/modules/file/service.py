@@ -22,7 +22,6 @@ from app.modules.file.schemas import (
     CreateFileRequest,
     CreateFileResponse,
     FileCompleteResponse,
-    FileItem,
 )
 
 _s3 = s3_client
@@ -332,19 +331,6 @@ def get_uploaded_or_raise(db: Session, file_id: uuid.UUID) -> File:
     return file
 
 
-def to_file_items(files: list[File]) -> list[FileItem]:
-    """File 목록을 프론트 응답용 FileItem으로 변환."""
-    return [
-        FileItem(
-            file_id=f.id,
-            original_name=f.original_name,
-            content_type=f.content_type,
-            file_size=f.file_size,
-            file_url=_s3.get_file_url(f.file_key),
-            created_at=f.created_at,
-        )
-        for f in files
-    ]
 
 
 def validate_attachable(

@@ -13,6 +13,7 @@
 10. queries/: infrastructure import 금지 (repo만 호출)
 11. handlers.py: service import 금지 (순환 의존 방지)
 12. service.py: use_case import 금지 (역방향 의존)
+13. repository.py: age_client 외 infrastructure import 금지 (URL 변환 등은 mapper로)
 """
 
 import ast
@@ -120,8 +121,7 @@ def check_repository_no_cross_repo_import():
                     continue
                 rel = repo_file.relative_to(_ROOT)
                 violations.append(
-                    f"  {rel}:{node.lineno} — "
-                    f"{target_module}.repository import 금지"
+                    f"  {rel}:{node.lineno} — {target_module}.repository import 금지"
                 )
 
     assert not violations, (
@@ -150,8 +150,8 @@ def check_api_no_direct_repository_import():
                         f"api에서 repository 직접 import 금지 (service를 사용하세요)"
                     )
 
-    assert not violations, (
-        "api/ 레이어 repository import 위반:\n" + "\n".join(violations)
+    assert not violations, "api/ 레이어 repository import 위반:\n" + "\n".join(
+        violations
     )
 
 
@@ -176,8 +176,8 @@ def check_modules_no_api_import():
                         f"modules에서 api import 금지 (역방향 의존)"
                     )
 
-    assert not violations, (
-        "modules/ → api/ 역방향 import 위반:\n" + "\n".join(violations)
+    assert not violations, "modules/ → api/ 역방향 import 위반:\n" + "\n".join(
+        violations
     )
 
 
@@ -210,9 +210,7 @@ def check_use_cases_no_infra_or_repo_import():
                         f"use_cases에서 repository import 금지 (service를 사용하세요)"
                     )
 
-    assert not violations, (
-        "use_cases/ 의존성 위반:\n" + "\n".join(violations)
-    )
+    assert not violations, "use_cases/ 의존성 위반:\n" + "\n".join(violations)
 
 
 # --- 규칙 6: service.py — 타 모듈 service import 금지 ---
@@ -242,8 +240,8 @@ def check_service_no_cross_service_import():
                     f"{target_module}.service import 금지 (크로스 도메인은 use_case에서 조합)"
                 )
 
-    assert not violations, (
-        "service.py 타 모듈 service import 위반:\n" + "\n".join(violations)
+    assert not violations, "service.py 타 모듈 service import 위반:\n" + "\n".join(
+        violations
     )
 
 
@@ -274,8 +272,8 @@ def check_service_no_cross_repo_import():
                     f"{target_module}.repository import 금지 (자기 도메인 repo만 허용)"
                 )
 
-    assert not violations, (
-        "service.py 타 모듈 repository import 위반:\n" + "\n".join(violations)
+    assert not violations, "service.py 타 모듈 repository import 위반:\n" + "\n".join(
+        violations
     )
 
 
@@ -302,9 +300,7 @@ def check_queries_no_service_import():
                         f"queries에서 service import 금지 (repo를 직접 사용하세요)"
                     )
 
-    assert not violations, (
-        "queries/ → service import 위반:\n" + "\n".join(violations)
-    )
+    assert not violations, "queries/ → service import 위반:\n" + "\n".join(violations)
 
 
 # --- 규칙 9: api/ — service 직접 import 금지 (queries/use_cases 경유) ---
@@ -328,17 +324,10 @@ def check_api_no_direct_service_import():
                         f"api에서 service 직접 import 금지 (queries/use_cases를 사용하세요)"
                     )
 
-    assert not violations, (
-        "api/ 레이어 service import 위반:\n" + "\n".join(violations)
-    )
+    assert not violations, "api/ 레이어 service import 위반:\n" + "\n".join(violations)
 
 
 # --- 규칙 10: queries/ — infrastructure import 금지 (repo만 호출) ---
-
-# TODO: get_part_detail.py의 s3_client 의존 제거 후 허용 목록 삭제
-_QUERIES_INFRA_ALLOWLIST = {
-    "app/queries/part/get_part_detail.py",
-}
 
 
 def check_queries_no_infrastructure_import():
@@ -350,8 +339,6 @@ def check_queries_no_infrastructure_import():
         if py_file.name == "__init__.py":
             continue
         rel = str(py_file.relative_to(_ROOT))
-        if rel in _QUERIES_INFRA_ALLOWLIST:
-            continue
         source = py_file.read_text()
         tree = ast.parse(source, filename=str(py_file))
 
@@ -363,8 +350,8 @@ def check_queries_no_infrastructure_import():
                         f"queries에서 infrastructure import 금지 (repo를 사용하세요)"
                     )
 
-    assert not violations, (
-        "queries/ → infrastructure import 위반:\n" + "\n".join(violations)
+    assert not violations, "queries/ → infrastructure import 위반:\n" + "\n".join(
+        violations
     )
 
 
@@ -389,8 +376,8 @@ def check_handlers_no_service_import():
                         f"handlers에서 service import 금지 (순환 의존 방지)"
                     )
 
-    assert not violations, (
-        "handlers.py → service import 위반:\n" + "\n".join(violations)
+    assert not violations, "handlers.py → service import 위반:\n" + "\n".join(
+        violations
     )
 
 
@@ -415,6 +402,42 @@ def check_service_no_use_case_import():
                         f"service에서 use_cases import 금지 (역방향 의존)"
                     )
 
+    assert not violations, "service.py → use_cases import 위반:\n" + "\n".join(
+        violations
+    )
+
+
+# --- 규칙 13: repository.py — age_client 외 infrastructure import 금지 ---
+
+# age_client는 DB 접근이므로 허용
+_REPO_INFRA_ALLOWLIST = {"app.infrastructure.age_client"}
+
+
+def check_repository_no_non_db_infra_import():
+    """repository.py에서 age_client 외의 infrastructure를 import하면 위반."""
+    violations = []
+    pattern = re.compile(r"app\.infrastructure\.\w+")
+
+    for repo_file in _MODULES_DIR.glob("*/repository.py"):
+        source = repo_file.read_text()
+        tree = ast.parse(source, filename=str(repo_file))
+
+        for node in ast.walk(tree):
+            for mod_name in _get_import_module_names(node):
+                m = pattern.search(mod_name)
+                if not m:
+                    continue
+                infra_module = m.group(0)
+                if infra_module in _REPO_INFRA_ALLOWLIST:
+                    continue
+                rel = repo_file.relative_to(_ROOT)
+                violations.append(
+                    f"  {rel}:{node.lineno} — "
+                    f"repository에서 {infra_module} import 금지 "
+                    f"(age_client만 허용, URL 변환은 mapper로)"
+                )
+
     assert not violations, (
-        "service.py → use_cases import 위반:\n" + "\n".join(violations)
+        "repository.py → non-DB infrastructure import 위반:\n"
+        + "\n".join(violations)
     )

@@ -2,6 +2,7 @@
 
 import os
 import uuid
+from typing import cast
 
 from loguru import logger
 from sqlalchemy.orm import Session
@@ -18,7 +19,6 @@ from app.modules.drawing import repository as repo
 from app.modules.drawing.constants import ALLOWED_DRAWING_EXTENSIONS, ConversionStatus
 from app.modules.drawing.models import Drawing
 from app.modules.drawing.schemas import RegisterDrawingResponse
-from app.modules.file import repository as file_repo
 from app.modules.file.models import File
 
 _s3 = s3_client
@@ -65,7 +65,7 @@ def to_register_response(drawing: Drawing) -> RegisterDrawingResponse:
         drawing_id=drawing.id,
         drawing_number=drawing.drawing_number,
         name=drawing.name,
-        conversion_status=drawing.conversion_status,
+        conversion_status=cast(ConversionStatus | None, drawing.conversion_status),
     )
 
 
@@ -143,7 +143,7 @@ def _apply_conversion_result(
     db: Session,
     drawing_id: uuid.UUID,
     file_id: uuid.UUID,
-    status: str,
+    status: ConversionStatus,
     pdf_key: str | None,
     pdf_content_type: str | None,
     pdf_size: int | None,
@@ -169,7 +169,7 @@ def _apply_conversion_result(
             if pdf_key == drawing.original_file_key:
                 pdf_file_id = drawing.original_file_id
             else:
-                pdf_file = file_repo.create_file_record(
+                pdf_file = repo.create_file_record(
                     db,
                     file_id=generate_uuid7(),
                     original_name=f"{drawing.name}.pdf",
@@ -188,7 +188,7 @@ def _apply_conversion_result(
             if thumbnail_key == drawing.original_file_key:
                 thumbnail_file_id = drawing.original_file_id
             else:
-                thumb_file = file_repo.create_file_record(
+                thumb_file = repo.create_file_record(
                     db,
                     file_id=generate_uuid7(),
                     original_name=f"{drawing.name}_thumb.webp",

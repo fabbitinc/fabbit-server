@@ -22,6 +22,29 @@ def get_file_by_id(db: Session, file_id: uuid.UUID) -> File | None:
     return db.query(File).filter(File.id == file_id).first()
 
 
+def create_file_record(
+    db: Session,
+    file_id: uuid.UUID,
+    original_name: str,
+    file_key: str,
+    content_type: str,
+    file_size: int,
+    owner_type: str | None,
+    owner_id: uuid.UUID | None,
+) -> File:
+    file = File(
+        id=file_id,
+        original_name=original_name,
+        file_key=file_key,
+        content_type=content_type,
+        file_size=file_size,
+        owner_type=owner_type,
+        owner_id=owner_id,
+    )
+    db.add(file)
+    return file
+
+
 def get_drawing_by_id(db: Session, drawing_id: uuid.UUID) -> Drawing | None:
     """Drawing PK 조회."""
     return db.query(Drawing).filter(Drawing.id == drawing_id).first()
@@ -88,20 +111,12 @@ def get_synthesis_job_by_id(
     db: Session, job_id: uuid.UUID
 ) -> DrawingSynthesisJob | None:
     return (
-        db.query(DrawingSynthesisJob)
-        .filter(DrawingSynthesisJob.id == job_id)
-        .first()
+        db.query(DrawingSynthesisJob).filter(DrawingSynthesisJob.id == job_id).first()
     )
 
 
-def get_synthesis_job_required(
-    db: Session, job_id: uuid.UUID
-) -> DrawingSynthesisJob:
-    return (
-        db.query(DrawingSynthesisJob)
-        .filter(DrawingSynthesisJob.id == job_id)
-        .one()
-    )
+def get_synthesis_job_required(db: Session, job_id: uuid.UUID) -> DrawingSynthesisJob:
+    return db.query(DrawingSynthesisJob).filter(DrawingSynthesisJob.id == job_id).one()
 
 
 # ── AGE 그래프 조회 ──
@@ -121,7 +136,7 @@ def find_existing_parts_by_numbers(
         return {}
 
     # Cypher IN 절용 리스트 생성
-    escaped = [f"'{pn.replace(chr(39), chr(39)+chr(39))}'" for pn in part_numbers]
+    escaped = [f"'{pn.replace(chr(39), chr(39) + chr(39))}'" for pn in part_numbers]
     in_list = ", ".join(escaped)
 
     query = f"MATCH (p:Part) WHERE p.part_number IN [{in_list}] RETURN p.part_number, p.name"
@@ -186,9 +201,7 @@ def upsert_drawing(
         )
     if existing is None and drawing_number:
         existing = (
-            db.query(Drawing)
-            .filter(Drawing.drawing_number == drawing_number)
-            .first()
+            db.query(Drawing).filter(Drawing.drawing_number == drawing_number).first()
         )
 
     if existing is None:
@@ -234,9 +247,7 @@ def list_drawings_paginated(
             | Drawing.name.ilike(f"%{search}%")
         )
     total = query.count()
-    drawings = (
-        query.order_by(Drawing.drawing_number).offset(offset).limit(limit).all()
-    )
+    drawings = query.order_by(Drawing.drawing_number).offset(offset).limit(limit).all()
     return drawings, total
 
 
@@ -248,8 +259,7 @@ def search_merge_key(
     """root_context 자동완성용 merge key 검색 (drawing_number OR name, label=name)."""
     query = db.query(Drawing.drawing_number, Drawing.name).filter(
         Drawing.drawing_number.isnot(None),
-        Drawing.drawing_number.ilike(f"%{search}%")
-        | Drawing.name.ilike(f"%{search}%"),
+        Drawing.drawing_number.ilike(f"%{search}%") | Drawing.name.ilike(f"%{search}%"),
     )
     rows = query.order_by(Drawing.drawing_number).limit(limit).all()
     return [{"value": r.drawing_number, "label": r.name} for r in rows]

@@ -14,7 +14,9 @@ user-invocable: false
 ## 의존성
 
 - 자기 도메인 models + 타 도메인 models (FK/JOIN 관계 시 허용)
+- `age_client` — DB 접근이므로 허용
 - 타 도메인 repository import 금지
+- `age_client` 외 infrastructure import 금지 (URL 변환 등 응답 가공은 `mapper.py`로)
 
 ## RDS-Graph 듀얼라이트
 

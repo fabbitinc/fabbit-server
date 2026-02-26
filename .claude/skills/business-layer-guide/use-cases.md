@@ -25,12 +25,12 @@
 - 검증, 상태 전이 등은 service/도메인 모델에 위임
 - 도메인 모델 메서드 직접 호출 금지 — service 메서드를 통해 간접 호출
 - infrastructure(s3_client 등) 직접 import 금지 — service가 infrastructure를 감싸서 제공
-- 응답 매핑(schema 변환, URL 생성 등)은 해당 도메인 service에 위임
+- 응답 매핑(schema 변환, URL 생성 등)은 해당 도메인 mapper에 위임
 
 ```
 ✓ files = file_service.validate(db, file_ids)
   part_service.attach_files(db, part_id, files)
-  return file_service.to_file_items(files)
+  return to_file_items(files)                     ← mapper 함수 사용
 
 ✗ part = part_service.get_or_raise(db, part_id)
   part.attach_files(files)                        ← 도메인 메서드 직접 호출

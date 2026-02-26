@@ -62,7 +62,7 @@ router → use_cases/    (쓰기) → service → repo
 
 | 항목 | 상태 |
 |------|------|
-| 아키텍처 린터 규칙 | ✅ `linter/check_import_rules.py` (12개 규칙, 전부 PASS) |
+| 아키텍처 린터 규칙 | ✅ `linter/check_import_rules.py` (13개 규칙, 전부 PASS) |
 | 스킬 문서 보강 | ✅ `.claude/skills/business-layer-guide/` (mapper.py 규칙 포함) |
 
 ---
@@ -186,15 +186,12 @@ router → use_cases/    (쓰기) → service → repo
 
 ---
 
-### 🟡 잔존 위반: queries → infrastructure
+### ✅ 완료: queries → infrastructure 위반 해결
 
-**현황**: `app/queries/part/get_part_detail.py`에서 `s3_client` 직접 import.
-
-presigned URL 생성을 위해 `s3_client.get_file_url()`을 사용 중. 린터 규칙 10에서 허용 목록으로 예외 처리됨.
-
-**작업 체크리스트**:
-- [ ] URL 생성 로직을 repo 또는 mapper로 이동하여 infrastructure 직접 의존 제거
-- [ ] 린터 허용 목록(`_QUERIES_INFRA_ALLOWLIST`) 삭제
+- `app/modules/file/mapper.py` 생성 — `get_file_url(file_key)` (s3_client 래핑)
+- `app/queries/part/get_part_detail.py` — `file/mapper` import으로 전환
+- `app/modules/part/repository.py` — `s3_client` import + `get_file_url` 제거
+- 린터 규칙 13 추가: `repository.py`에서 `age_client` 외 infrastructure import 금지
 
 ---
 
@@ -208,14 +205,14 @@ presigned URL 생성을 위해 `s3_client.get_file_url()`을 사용 중. 린터 
 6. ~~**Synthesis**~~ — ✅ 완료 (pipeline.py 분리로 cross-domain 격리)
 7. **Auth** — 적용 범위 결정 필요
 8. **Drawing** — file_repo 위반만 남음
-9. **queries/part** — s3_client 직접 의존 제거
+9. ~~**queries/part**~~ — ✅ 완료 (file/mapper.py + 린터 규칙 13)
 
 ---
 
 ## 참고: 기존 위반 검출 도구
 
 ```bash
-# 아키텍처 import 규칙 검증 (12개 규칙)
+# 아키텍처 import 규칙 검증 (13개 규칙)
 uv run pytest linter/ --confcutdir=linter -o "python_files=check_*.py" -o "python_functions=check_*" -v
 
 # 또는 단축 실행
@@ -226,5 +223,5 @@ uv run python linter/check_import_rules.py
 
 - 비즈니스 레이어 가이드: `.claude/skills/business-layer-guide/`
 - 이벤트 목록: `EVENTS.md`
-- 린터: `linter/check_import_rules.py` (12개 규칙)
+- 린터: `linter/check_import_rules.py` (13개 규칙)
 - mapper 컨벤션: `modules/*/mapper.py` — 도메인 모델→응답 변환 (queries 내부 X)

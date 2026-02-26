@@ -65,7 +65,7 @@ model.register_event(Event)  →  UoW 수집  →  EventBus.publish()  →  db.c
 ✓ query     → repo (여러 도메인 repo 가능), mapper
 ✓ use_case  → service (여러 도메인 조합 가능), mapper
 ✓ service   → 자기 도메인 repo, infrastructure, 도메인 모델 메서드, mapper
-✓ repo      → 자기 도메인 models + 타 도메인 models (FK/JOIN 허용)
+✓ repo      → 자기 도메인 models + 타 도메인 models (FK/JOIN 허용), age_client (DB 접근)
 ✓ handler   → get_active_session() + 자기 도메인 모델/repo
 
 ✗ use_case  → infrastructure, repo, 도메인 모델 메서드 직접 호출
@@ -73,6 +73,7 @@ model.register_event(Event)  →  UoW 수집  →  EventBus.publish()  →  db.c
 ✗ router    → service 직접 import (queries/use_cases 경유)
 ✗ service   → 타 도메인 service, 타 도메인 repo
 ✗ service   → use_case
+✗ repo      → age_client 외 infrastructure (URL 변환 등은 mapper로)
 ✗ handler   → service
 ```
 

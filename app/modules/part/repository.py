@@ -13,7 +13,13 @@ from app.core.database import generate_uuid7
 from app.infrastructure.age_client import execute_cypher_raw
 from app.modules.drawing.models import Drawing
 from app.modules.ontology.cypher_utils import escape_cypher_value
-from app.modules.part.models import BomLink, Part, PartRevision, PartSupplier, _STANDARD_ATTRS
+from app.modules.part.models import (
+    BomLink,
+    Part,
+    PartRevision,
+    PartSupplier,
+    _STANDARD_ATTRS,
+)
 from app.modules.supplier.models import Supplier
 
 # models.py에서 이동된 상수를 re-export (service.py 호환)
@@ -124,19 +130,16 @@ def list_parts_paginated(
         .label("children_count")
     )
 
-    data_query = (
-        db.query(
-            Part.id,
-            Part.part_number,
-            Part.name,
-            Part.category,
-            Part.revision,
-            Part.lifecycle_state,
-            Drawing.drawing_number,
-            children_count_subq,
-        )
-        .outerjoin(Drawing, Part.drawing_id == Drawing.id)
-    )
+    data_query = db.query(
+        Part.id,
+        Part.part_number,
+        Part.name,
+        Part.category,
+        Part.revision,
+        Part.lifecycle_state,
+        Drawing.drawing_number,
+        children_count_subq,
+    ).outerjoin(Drawing, Part.drawing_id == Drawing.id)
     for cond in conditions:
         data_query = data_query.filter(cond)
 
@@ -558,7 +561,9 @@ def get_bom_edges(
             SELECT parent_pn, child_pn, quantity FROM bom_cte
         """)
 
-    rows = db.execute(sql, {"root_id": root_part_id, "max_depth": _MAX_BOM_DEPTH}).fetchall()
+    rows = db.execute(
+        sql, {"root_id": root_part_id, "max_depth": _MAX_BOM_DEPTH}
+    ).fetchall()
     return [
         {"parent_pn": r.parent_pn, "child_pn": r.child_pn, "quantity": r.quantity}
         for r in rows
@@ -626,9 +631,7 @@ def link_part_to_drawing(
 ) -> None:
     """Part.drawing_id 설정 + Graph DEFINED_BY MERGE."""
     part = db.query(Part).filter(Part.part_number == part_number).first()
-    drawing = (
-        db.query(Drawing).filter(Drawing.drawing_number == drawing_number).first()
-    )
+    drawing = db.query(Drawing).filter(Drawing.drawing_number == drawing_number).first()
     if not part or not drawing:
         return
 
@@ -658,9 +661,7 @@ def link_part_to_supplier(
 ) -> None:
     """PartSupplier 생성/갱신 + Graph SUPPLIED_BY MERGE."""
     part = db.query(Part).filter(Part.part_number == part_number).first()
-    supplier = (
-        db.query(Supplier).filter(Supplier.company_name == company_name).first()
-    )
+    supplier = db.query(Supplier).filter(Supplier.company_name == company_name).first()
     if not part or not supplier:
         return
 

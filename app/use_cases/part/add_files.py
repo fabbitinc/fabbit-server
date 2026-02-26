@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.transactional import transactional
 from app.modules.file import service as file_service
+from app.modules.file.mapper import to_file_items
 from app.modules.file.schemas import FileItem
 from app.modules.part import service as part_service
 
@@ -21,4 +22,4 @@ def add_files(
     """완료된 파일들을 Part에 배치 추가."""
     files = file_service.validate_attachable(db, file_ids)
     part_service.attach_files(db, part_id, files)
-    return file_service.to_file_items(files)
+    return to_file_items(files)
