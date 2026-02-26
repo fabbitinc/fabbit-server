@@ -244,7 +244,7 @@ class TestCRUDFlow:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert len(data["mapping"]["column_mappings"]) > 0
+        assert len(data["mapping"]["property_mappings"]) > 0
         assert len(data["mapping"]["relation_mappings"]) > 0
 
         # LLM 결과를 매핑 fixture 대신 사용
@@ -274,7 +274,10 @@ class TestCRUDFlow:
         TestCRUDFlow._llm_mapping = data["normalized_mapping"]
 
     def test_confirm_mapping(
-        self, client: TestClient, use_llm: bool, mapping_fixture: dict
+        self,
+        client: TestClient,
+        use_llm: bool,
+        mapping_fixture: dict[str, object],
     ):
         """POST /mappings/confirm → 매핑 확정."""
         # --use-llm이면 LLM 결과, 아니면 fixture 사용
@@ -761,7 +764,11 @@ class TestCRUDFlow:
 
     # ── 매핑 수정 ──
 
-    def test_update_mapping(self, client: TestClient, mapping_fixture: dict):
+    def test_update_mapping(
+        self,
+        client: TestClient,
+        mapping_fixture: dict[str, object],
+    ):
         """PUT /mappings/{mapping_id} → 매핑 이름 수정."""
         resp = client.put(
             f"/api/v1/mappings/{TestCRUDFlow.mapping_id}",

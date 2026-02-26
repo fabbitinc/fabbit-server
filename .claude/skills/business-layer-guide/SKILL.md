@@ -9,8 +9,8 @@ user-invocable: false
 ## 호출 흐름
 
 ```
-router → queries/      (읽기) → repo
-router → use_cases/    (쓰기) → service → repo
+router → queries/      (단순 읽기) → repo
+router → use_cases/    (쓰기 / 복잡한 읽기) → service → repo
                                    ↓
                             model.register_event()
                                    ↓
@@ -24,7 +24,7 @@ router → use_cases/    (쓰기) → service → repo
 | 레이어 | 위치 | 역할 | 트랜잭션 |
 |--------|------|------|----------|
 | queries | `app/queries/{domain}/` | 읽기 전용 조회 | `@transactional(read_only=True)` |
-| use_cases | `app/use_cases/{domain}/` | 쓰기 오케스트레이션 | `@transactional` |
+| use_cases | `app/use_cases/{domain}/` | 쓰기 / 복잡한 읽기 오케스트레이션 | `@transactional` 또는 `@transactional(read_only=True)` |
 | service | `app/modules/*/service.py` | 쓰기 비즈니스 로직 | 없음 (use_case가 관리) |
 | handlers | `app/modules/*/handlers.py` | 이벤트 반응 부수효과 | 없음 (발행자와 같은 트랜잭션) |
 

@@ -2,7 +2,7 @@
 
 ## 역할
 
-- 쓰기 오케스트레이션 — router의 유일한 쓰기 진입점
+- 오케스트레이션 — router의 쓰기 진입점 + 복잡한 읽기(서비스 조합, LLM 호출 등)
 
 ## 위치
 
@@ -10,7 +10,8 @@
 
 ## 트랜잭션
 
-- `@transactional` — 트랜잭션 경계의 소유자
+- `@transactional` — 트랜잭션 경계의 소유자 (쓰기)
+- `@transactional(read_only=True)` — 복잡한 읽기 오케스트레이션 허용
 - UnitOfWork로 commit/rollback 자동 관리
 
 ## 호출 대상

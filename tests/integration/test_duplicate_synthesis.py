@@ -74,7 +74,7 @@ class TestDuplicateSynthesis:
             pytest.skip("LLM 비활성 (--use-llm 없음)")
 
         # 업로드
-        upload_id, _ = _upload_csv(
+        file_id, _ = _upload_csv(
             client, TestDuplicateSynthesis.access_token, fixtures_dir
         )
 
@@ -82,7 +82,7 @@ class TestDuplicateSynthesis:
         resp = client.post(
             "/api/v1/mappings/preview",
             headers={"Authorization": f"Bearer {TestDuplicateSynthesis.access_token}"},
-            json={"upload_id": upload_id},
+            json={"file_id": file_id},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -122,7 +122,7 @@ class TestDuplicateSynthesis:
             "/api/v1/mappings/confirm",
             headers={"Authorization": f"Bearer {TestDuplicateSynthesis.access_token}"},
             json={
-                "upload_id": upload_id,
+                "file_id": file_id,
                 "name": "LLM 매핑 (중복 합성 테스트)",
                 "mapping": mapping,
             },
@@ -137,7 +137,7 @@ class TestDuplicateSynthesis:
         if not use_llm:
             pytest.skip("LLM 비활성 (--use-llm 없음)")
 
-        upload_id, _ = _upload_csv(
+        file_id, _ = _upload_csv(
             client, TestDuplicateSynthesis.access_token, fixtures_dir
         )
 
@@ -148,7 +148,7 @@ class TestDuplicateSynthesis:
                 headers={
                     "Authorization": f"Bearer {TestDuplicateSynthesis.access_token}"
                 },
-                json={"upload_id": upload_id},
+                json={"file_id": file_id},
             )
             assert resp.status_code == 200, f"프리뷰 #{i+1} 실패: {resp.text}"
             results.append(resp.json()["mapping"])
@@ -176,7 +176,7 @@ class TestDuplicateSynthesis:
         # LLM 매핑이 확정되었으면 그것을 사용, 아니면 fixture 사용
         if not TestDuplicateSynthesis.mapping_id:
             # fixture 매핑 확정
-            upload_id, _ = _upload_csv(
+            file_id, _ = _upload_csv(
                 client, TestDuplicateSynthesis.access_token, fixtures_dir
             )
             resp = client.post(
@@ -185,7 +185,7 @@ class TestDuplicateSynthesis:
                     "Authorization": f"Bearer {TestDuplicateSynthesis.access_token}"
                 },
                 json={
-                    "upload_id": upload_id,
+                    "file_id": file_id,
                     "name": "fixture 매핑 (중복 합성 테스트)",
                     "mapping": mapping_fixture,
                 },
@@ -195,7 +195,7 @@ class TestDuplicateSynthesis:
 
         # 3회 반복 업로드 + 합성
         for i in range(REPEAT_COUNT):
-            upload_id, _ = _upload_csv(
+            file_id, _ = _upload_csv(
                 client, TestDuplicateSynthesis.access_token, fixtures_dir
             )
 
@@ -206,7 +206,7 @@ class TestDuplicateSynthesis:
                 },
                 json={
                     "mapping_id": TestDuplicateSynthesis.mapping_id,
-                    "uploads": [{"upload_id": upload_id}],
+                    "uploads": [{"file_id": file_id}],
                 },
             )
             assert resp.status_code == 200, f"합성 #{i+1} 시작 실패: {resp.text}"
@@ -370,7 +370,7 @@ class TestDuplicateSynthesis:
         """ASM-001 BOM 트리 — 3단계 구조 확인."""
         pid = TestDuplicateSynthesis.part_id_map
         resp = client.get(
-            f"/api/v1/parts/{pid['ASM-001']}/bom-tree",
+            f"/api/v1/parts/{pid['ASM-001']}/bom",
             headers={"Authorization": f"Bearer {TestDuplicateSynthesis.access_token}"},
         )
         assert resp.status_code == 200, resp.text
@@ -416,14 +416,14 @@ class TestDuplicateSynthesis:
 def _upload_csv(
     client: TestClient, token: str, fixtures_dir
 ) -> tuple[str, str]:
-    """CSV 업로드 → (upload_id, file_key) 반환."""
+    """CSV 업로드 → (file_id, file_key) 반환."""
     csv_path = fixtures_dir / "hierarchical_bom.csv"
     file_size = csv_path.stat().st_size
     content = csv_path.read_bytes()
 
     # presigned URL 발급
     resp = client.post(
-        "/api/v1/uploads",
+        "/api/v1/files/upload",
         headers={"Authorization": f"Bearer {token}"},
         json={
             "original_name": "hierarchical_bom.csv",
@@ -433,7 +433,7 @@ def _upload_csv(
     )
     assert resp.status_code == 200, resp.text
     data = resp.json()
-    upload_id = data["upload_id"]
+    file_id = data["file_id"]
     upload_url = data["upload_url"]
 
     # MinIO PUT
@@ -450,9 +450,9 @@ def _upload_csv(
 
     # 업로드 완료
     resp = client.post(
-        f"/api/v1/uploads/{upload_id}/complete",
+        f"/api/v1/files/upload/{file_id}/complete",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200, resp.text
 
-    return upload_id, data["file_key"]
+    return file_id, data["file_key"]

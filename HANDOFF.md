@@ -76,31 +76,15 @@ router → use_cases/    (쓰기) → service → repo
 
 ---
 
-### 🔴 Mapping 도메인
+### ✅ 완료: Mapping 도메인
 
-**현황**: router → service 직접 호출, service에 @transactional 다수, **cross-domain 위반** (ontology_service, ai_usage.service 직접 import)
-
-**router 엔드포인트** (`mapping_router.py`):
-| 엔드포인트 | 현재 | 전환 |
-|------------|------|------|
-| `POST /preview` → `service.preview_mapping()` | 읽기 | → query |
-| `POST /validate` → `service.validate_mapping()` | 읽기 | → query |
-| `GET /` → `service.list_mappings()` | 읽기 | → query |
-| `GET /{id}` → `service.get_mapping()` | 읽기 | → query |
-| `POST /confirm` → `service.confirm_mapping()` | 쓰기 | → use_case |
-| `PUT /{id}` → `service.update_mapping()` | 쓰기 | → use_case |
-| `DELETE /{id}` → `service.deactivate_mapping()` | 쓰기 | → use_case |
-
-**cross-domain 위반**:
-- `mapping/service.py:19` → `from app.modules.ai_usage.service import check_bom_quota`
-- `mapping/service.py:39` → `from app.modules.ontology import service as ontology_service`
-
-**작업 체크리스트**:
-- [ ] `app/queries/mapping/` 생성 (4개 query: preview, validate, list, get)
-- [ ] `app/use_cases/mapping/` 생성 (3개: confirm, update, deactivate)
-- [ ] `mapping/service.py`에서 @transactional 제거
-- [ ] cross-domain 위반 해결 (ontology_service, ai_usage.service)
-- [ ] `mapping_router.py`에서 service → queries + use_cases 전환
+| 항목 | 상태 | 파일 |
+|------|------|------|
+| queries 분리 | ✅ | `app/queries/mapping/` (4개: preview, validate, list, get) |
+| use_cases 분리 | ✅ | `app/use_cases/mapping/` (3개: confirm, update, deactivate) |
+| service 정리 | ✅ | `app/modules/mapping/service.py` — @transactional 제거, 쓰기 비즈니스 로직만 유지 |
+| cross-domain 위반 해결 | ✅ | `mapping/service.py`에서 `ontology_service`, `ai_usage.service` 직접 import 제거 |
+| router 전환 | ✅ | `app/api/v1/tenant/mapping_router.py` — queries + use_cases 패턴 |
 
 ---
 
