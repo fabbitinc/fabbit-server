@@ -165,32 +165,33 @@ router → use_cases/    (쓰기) → service → repo
 
 ---
 
-### 🟡 단순 도메인 (읽기 전용 또는 소규모)
+### ✅ 완료: Dashboard 도메인
 
-#### Dashboard
-| 항목 | 상태 | 비고 |
+| 항목 | 상태 | 파일 |
 |------|------|------|
-| `GET /stats` → `service.get_stats()` | 읽기 전용 | → query로 이동 |
-| **작업**: | | |
-| `app/queries/dashboard/` 생성 | [ ] | 1개 query |
-| `dashboard_router.py` 전환 | [ ] | |
+| queries 분리 | ✅ | `app/queries/dashboard/` (1개: get_stats) |
+| router 전환 | ✅ | `dashboard_router.py` — queries 패턴 |
+| service 정리 | ✅ | `app/modules/dashboard/service.py` — 읽기 함수 제거 (쓰기 로직 없음) |
 
-#### Supplier
-| 항목 | 상태 | 비고 |
-|------|------|------|
-| `GET /` → `service.list_suppliers()` | 읽기 전용 | → query로 이동 |
-| **작업**: | | |
-| `app/queries/supplier/` 생성 | [ ] | 1개 query |
-| `supplier_router.py` 전환 | [ ] | |
+### ✅ 완료: Supplier 도메인
 
-#### Ontology
-| 항목 | 상태 | 비고 |
+| 항목 | 상태 | 파일 |
 |------|------|------|
-| `GET /schema` → `service.get_ontology_schema()` | 정적 캐시 | → query 또는 유지 |
-| `GET /nodes/search` → `service.search_nodes()` | 읽기 전용 | → query로 이동 |
-| **작업**: | | |
-| `app/queries/ontology/` 생성 | [ ] | 2개 query |
-| `ontology_router.py` 전환 | [ ] | |
+| queries 분리 | ✅ | `app/queries/supplier/` (1개: list_suppliers) |
+| router 전환 | ✅ | `supplier_router.py` — queries 패턴 |
+| service 정리 | ✅ | `app/modules/supplier/service.py` — 읽기 함수 제거 (쓰기 로직 없음) |
+
+### ✅ 완료: Ontology 도메인
+
+| 항목 | 상태 | 파일 |
+|------|------|------|
+| queries 분리 | ✅ | `app/queries/ontology/` (2개: get_ontology_schema, search_nodes) |
+| router 전환 | ✅ | `ontology_router.py` — queries 패턴 |
+| service 정리 | ✅ | `app/modules/ontology/service.py` — 읽기 함수 제거, 매핑 로직만 유지 |
+
+---
+
+### 🟡 단순 도메인 (소규모)
 
 #### Activation
 | 항목 | 상태 | 비고 |
@@ -237,8 +238,8 @@ router → use_cases/    (쓰기) → service → repo
 
 ## 우선순위 제안
 
-1. **File** — Part use_case에서 이미 의존 중, 비교적 단순
-2. **Dashboard, Supplier, Ontology** — 읽기 전용, 빠르게 완료 가능
+1. ~~**File**~~ — ✅ 완료
+2. ~~**Dashboard, Supplier, Ontology**~~ — ✅ 완료
 3. **Mapping** — 중간 복잡도, cross-domain 위반 해결 필요
 4. **Project** — 엔드포인트 많음, cross-domain 위반 해결 필요
 5. **Activation** — cross-domain 위반 포함

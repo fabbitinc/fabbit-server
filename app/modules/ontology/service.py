@@ -1,128 +1,22 @@
 """온톨로지 비즈니스 로직.
 
 LLM 매핑 생성 + 검증을 담당합니다.
+읽기 전용 함수(get_ontology_schema, search_nodes)는 app/queries/ontology/로 이동됨.
 """
 
 import json
 import re
 
-from sqlalchemy.orm import Session
-
 from app.core.exceptions import AppError
-from app.core.transactional import transactional
 from app.infrastructure.llm_client import LLMModel, LLMResponse, chat_completion_with_usage
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
 from app.modules.ontology.schemas import (
     MappingResult,
-    NodeLabelSchema,
-    NodeSearchItem,
-    NodeSearchResponse,
-    OntologySchemaResponse,
     PropertyMapping,
-    PropertySchema,
     RelationMapping,
-    RelationshipTypeSchema,
 )
 
 _EXT_NAME_RE = re.compile(r"^_ext_[a-z0-9_]+$")
-
-# 라벨 → repository 매핑 (lazy import 방지용 dict)
-_LABEL_SEARCH_REPOS: dict[str, str] = {
-    "Part": "app.modules.part.repository",
-    "Drawing": "app.modules.drawing.repository",
-    "Supplier": "app.modules.supplier.repository",
-    "Project": "app.modules.project.repository",
-}
-
-# === 온톨로지 스키마 조회 ===
-
-_cached_schema: OntologySchemaResponse | None = None
-
-
-def get_ontology_schema() -> OntologySchemaResponse:
-    """온톨로지 스키마 조회 (정적 데이터, 1회 빌드 후 캐싱)."""
-    global _cached_schema
-    if _cached_schema is not None:
-        return _cached_schema
-
-    ont = MANUFACTURING_ONTOLOGY
-
-    node_labels = []
-    for nl in ont.node_labels:
-        props = [
-            PropertySchema(
-                name=p.name,
-                description=p.description,
-                data_type=p.data_type,
-                required=p.required,
-                is_merge_key=p.is_merge_key,
-            )
-            for p in nl.properties
-        ]
-        node_labels.append(
-            NodeLabelSchema(
-                label=nl.label,
-                description=nl.description,
-                properties=props,
-                merge_keys=nl.merge_keys,
-            )
-        )
-
-    relationship_types = []
-    for rt in ont.relationship_types:
-        props = [
-            PropertySchema(
-                name=p.name,
-                description=p.description,
-                data_type=p.data_type,
-                required=p.required,
-                is_merge_key=p.is_merge_key,
-            )
-            for p in rt.properties
-        ]
-        relationship_types.append(
-            RelationshipTypeSchema(
-                rel_type=rt.rel_type,
-                description=rt.description,
-                from_label=rt.from_label,
-                to_label=rt.to_label,
-                properties=props,
-            )
-        )
-
-    _cached_schema = OntologySchemaResponse(
-        name=ont.name,
-        description=ont.description,
-        node_labels=node_labels,
-        relationship_types=relationship_types,
-    )
-    return _cached_schema
-
-
-# === 노드 merge key 검색 ===
-
-
-@transactional(read_only=True)
-def search_nodes(
-    db: Session,
-    label: str,
-    search: str,
-    limit: int = 10,
-) -> NodeSearchResponse:
-    """노드 라벨별 merge key 검색 (RDS)."""
-    if label not in _LABEL_SEARCH_REPOS:
-        raise AppError(
-            message=f"지원하지 않는 노드 라벨입니다: {label}",
-            code="INVALID_LABEL",
-        )
-
-    import importlib
-
-    repo_module = importlib.import_module(_LABEL_SEARCH_REPOS[label])
-    rows = repo_module.search_merge_key(db, search, limit)
-
-    items = [NodeSearchItem(value=r["value"], label=r["label"]) for r in rows]
-    return NodeSearchResponse(node_label=label, items=items)
 
 
 # === 매핑 생성 ===

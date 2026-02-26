@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
-from app.modules.supplier import service
 from app.modules.supplier.schemas import SupplierListResponse
+from app.queries import supplier as supplier_queries
 
 router = APIRouter(prefix="/api/v1/suppliers", tags=["suppliers"])
 
@@ -23,4 +23,4 @@ def list_suppliers(
 
     company_name, code로 ILIKE 검색을 지원합니다.
     """
-    return service.list_suppliers(db, auth, search=search, offset=offset, limit=limit)
+    return supplier_queries.list_suppliers(db, auth, search=search, offset=offset, limit=limit)

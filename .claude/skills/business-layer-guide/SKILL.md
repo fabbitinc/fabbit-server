@@ -72,3 +72,4 @@ model.register_event(Event)  →  UoW 수집  →  EventBus.publish()  →  db.c
 - use_cases 규칙: [use-cases.md](use-cases.md)
 - service 규칙: [service.md](service.md)
 - handlers 규칙: [handlers.md](handlers.md)
+- **router 수정 시**: 반드시 `api-guide` 스킬도 함께 참조 (import alias, docstring 등 코드 스타일 규칙)

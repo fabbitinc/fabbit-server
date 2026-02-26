@@ -1,4 +1,4 @@
-"""대시보드 통계 비즈니스 로직."""
+"""대시보드 통계 조회."""
 
 from datetime import UTC, datetime, timedelta
 
