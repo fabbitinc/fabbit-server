@@ -15,7 +15,6 @@ from sqlalchemy.sql import func
 from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase, generate_uuid7
 from app.modules.mapping.constants import MappingScope
-from app.modules.mapping.events import MappingDeactivated
 
 
 class MappingRecord(AggregateRoot, TenantBase):
@@ -64,7 +63,6 @@ class MappingRecord(AggregateRoot, TenantBase):
     def deactivate(self) -> None:
         """매핑 비활성화 (soft-delete)."""
         self.is_active = False
-        self.register_event(MappingDeactivated(mapping_id=self.id))
 
     def increment_usage(self, amount: int = 1) -> None:
         """사용 횟수 증가."""

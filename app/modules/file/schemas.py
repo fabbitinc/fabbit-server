@@ -54,3 +54,14 @@ class FileCompleteResponse(BaseModel):
     file_size: int
     content_type: str
     created_at: datetime
+
+
+class FileItem(BaseModel):
+    """프론트 응답용 파일 항목"""
+
+    file_id: uuid.UUID
+    original_name: str
+    content_type: str
+    file_size: int
+    file_url: str | None = None
+    created_at: datetime

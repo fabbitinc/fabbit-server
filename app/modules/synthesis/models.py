@@ -15,11 +15,6 @@ from sqlalchemy.sql import func
 from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase, generate_uuid7
 from app.modules.synthesis.constants import SynthesisJobStatus
-from app.modules.synthesis.events import (
-    SynthesisJobCompleted,
-    SynthesisJobFailed,
-    SynthesisJobStarted,
-)
 
 
 class SynthesisJob(AggregateRoot, TenantBase):
@@ -101,7 +96,6 @@ class SynthesisJob(AggregateRoot, TenantBase):
         """합성 실행 시작."""
         self.status = SynthesisJobStatus.PROCESSING
         self.started_at = datetime.now(timezone.utc)
-        self.register_event(SynthesisJobStarted(job_id=self.id))
 
     def set_total_rows(self, total_rows: int) -> None:
         """전체 행 수 설정."""
@@ -125,13 +119,6 @@ class SynthesisJob(AggregateRoot, TenantBase):
         """합성 완료."""
         self.status = SynthesisJobStatus.COMPLETED
         self.completed_at = datetime.now(timezone.utc)
-        self.register_event(
-            SynthesisJobCompleted(
-                job_id=self.id,
-                nodes_created=self.nodes_created,
-                relationships_created=self.relationships_created,
-            )
-        )
 
     def complete_empty(self) -> None:
         """빈 파일 즉시 완료 (데이터 없음)."""
@@ -144,9 +131,6 @@ class SynthesisJob(AggregateRoot, TenantBase):
         self.status = SynthesisJobStatus.FAILED
         self.errors = errors[:100]
         self.completed_at = datetime.now(timezone.utc)
-        self.register_event(
-            SynthesisJobFailed(job_id=self.id, errors=errors[:10])
-        )
 
 
 class SynthesisBatch(TenantBase):

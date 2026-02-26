@@ -10,7 +10,6 @@ from loguru import logger
 def register_event_handlers() -> None:
     """모든 도메인 모듈의 이벤트 핸들러를 등록."""
     import app.modules.ai_usage.handlers  # noqa: F401
-    import app.modules.synthesis.handlers  # noqa: F401
-    import app.modules.drawing.handlers  # noqa: F401
+    import app.modules.file.handlers  # noqa: F401
 
     logger.info("이벤트 핸들러 등록 완료")

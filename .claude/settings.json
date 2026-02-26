@@ -3,10 +3,10 @@
     "Stop": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "make lint 2>&1"
-          }
+          // {
+          //   "type": "command",
+          //   "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/stop-lint.sh\""
+          // }
         ]
       }
     ]

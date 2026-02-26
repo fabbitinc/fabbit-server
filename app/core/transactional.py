@@ -5,6 +5,8 @@ import functools
 import inspect
 from typing import Any, Callable, TypeVar, cast
 
+from sqlalchemy.orm import Session
+
 from app.core.uow import UnitOfWork
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -13,6 +15,18 @@ _active_db: contextvars.ContextVar[Any | None] = contextvars.ContextVar(
     "active_db",
     default=None,
 )
+
+
+def get_active_session() -> Session:
+    """현재 @transactional 컨텍스트의 Session을 반환.
+
+    이벤트 핸들러에서 현재 트랜잭션의 Session에 접근할 때 사용한다.
+    @transactional 컨텍스트 밖에서 호출하면 RuntimeError.
+    """
+    db = _active_db.get()
+    if db is None:
+        raise RuntimeError("get_active_session은 @transactional 컨텍스트 안에서만 호출할 수 있습니다")
+    return db
 
 
 def _resolve_db(
@@ -34,6 +48,7 @@ def transactional(
 
     - 동일 Session으로 중첩 호출되면 외부 트랜잭션을 재사용합니다.
     - read_only=True면 커밋하지 않습니다.
+    - commit 전 Aggregate Event를 발행하여 핸들러가 같은 트랜잭션에서 실행됩니다.
     """
 
     def decorator(method: F) -> F:
@@ -47,7 +62,7 @@ def transactional(
             if active_db is db:
                 return method(*args, **kwargs)
 
-            token = _active_db.set(db)
+            token_db = _active_db.set(db)
             try:
                 with UnitOfWork(db) as uow:
                     result = method(*args, **kwargs)
@@ -55,7 +70,7 @@ def transactional(
                         uow.commit()
                     return result
             finally:
-                _active_db.reset(token)
+                _active_db.reset(token_db)
 
         return cast(F, wrapper)
 

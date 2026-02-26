@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 from app.modules.drawing.constants import ConversionStatus
+from app.modules.file.schemas import FileItem
 
 # ── 관계 서브 모델 ──
 
@@ -66,17 +66,6 @@ class AttachFilesRequest(BaseModel):
     file_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=20)
 
 
-class PartFileItem(BaseModel):
-    """Part 첨부파일 항목"""
-
-    file_id: uuid.UUID
-    original_name: str
-    content_type: str
-    file_size: int
-    file_url: str | None = None
-    created_at: datetime
-
-
 # ── 목록 ──
 
 
@@ -132,7 +121,7 @@ class PartDetailResponse(BaseModel):
     children: list[BomChild] = []
     parents: list[BomParent] = []
     suppliers: list[RelatedSupplier] = []
-    files: list[PartFileItem] = []
+    files: list[FileItem] = []
 
 
 # ── BOM 트리 ──

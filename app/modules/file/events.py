@@ -1,26 +1,21 @@
-"""File Aggregate 도메인 이벤트.
-
-Phase 3에서는 이벤트를 발행만 하고, 핸들러는 등록하지 않는다.
-"""
+"""File Aggregate 도메인 이벤트."""
 
 from uuid import UUID
 
 from app.core.domain_event import DomainEvent
 
 
-class FileUploaded(DomainEvent):
-    """파일 S3 업로드 확인 완료."""
+class FileAttached(DomainEvent):
+    """파일을 소유자에 연결."""
 
-    file_id: UUID
-
-
-class FileDeleted(DomainEvent):
-    """파일 소프트 삭제."""
-
-    file_id: UUID
+    owner_type: str
+    owner_id: UUID
+    file_ids: list[UUID]
 
 
-class FileExpired(DomainEvent):
-    """파일 stale 업로드 만료."""
+class FileDetached(DomainEvent):
+    """파일을 소유자에서 분리."""
 
+    owner_type: str
+    owner_id: UUID
     file_id: UUID

@@ -14,14 +14,10 @@ from sqlalchemy.sql import func
 
 from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase, generate_uuid7
+from app.core.mixins import SoftDeleteMixin
 from app.modules.drawing.constants import (
     ConversionStatus,
     DrawingSynthesisJobStatus,
-)
-from app.modules.drawing.events import (
-    DrawingConversionCompleted,
-    DrawingConversionFailed,
-    DrawingPropertiesUpdated,
 )
 
 if TYPE_CHECKING:
@@ -32,7 +28,7 @@ if TYPE_CHECKING:
 _STANDARD_ATTRS = {"name", "version", "status"}
 
 
-class Drawing(AggregateRoot, TenantBase):
+class Drawing(SoftDeleteMixin, AggregateRoot, TenantBase):
     __tablename__ = "drawings"
 
     __table_args__ = (
@@ -184,12 +180,10 @@ class Drawing(AggregateRoot, TenantBase):
         self.pdf_key = pdf_key
         self.thumbnail_file_id = thumbnail_file_id
         self.thumbnail_key = thumbnail_key
-        self.register_event(DrawingConversionCompleted(drawing_id=self.id))
 
     def fail_conversion(self) -> None:
         """DWG 변환 실패."""
         self.conversion_status = ConversionStatus.FAILED
-        self.register_event(DrawingConversionFailed(drawing_id=self.id))
 
     def update_properties(
         self,
@@ -233,14 +227,6 @@ class Drawing(AggregateRoot, TenantBase):
                     changed.append(key)
             if changed:
                 self.extended_properties = merged_ext
-
-        if changed:
-            self.register_event(
-                DrawingPropertiesUpdated(
-                    drawing_id=self.id,
-                    changed_fields=changed,
-                )
-            )
 
         return changed
 

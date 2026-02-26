@@ -5,6 +5,9 @@
 2. repository.py: 타 모듈 repository import 금지
 3. api/: repository 직접 import 금지 (service만 호출)
 4. modules/: api layer import 금지 (역방향 의존)
+5. use_cases/: infrastructure, repository import 금지 (service만 호출)
+6. service.py: 타 모듈 service import 금지
+7. service.py: 타 모듈 repository import 금지
 """
 
 import ast
@@ -14,6 +17,7 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent
 _MODULES_DIR = _ROOT / "app" / "modules"
 _API_DIR = _ROOT / "app" / "api"
+_USE_CASES_DIR = _ROOT / "app" / "use_cases"
 
 
 def _get_import_module_names(node: ast.AST) -> list[str]:
@@ -168,4 +172,102 @@ def check_modules_no_api_import():
 
     assert not violations, (
         "modules/ → api/ 역방향 import 위반:\n" + "\n".join(violations)
+    )
+
+
+# --- 규칙 5: use_cases/ — infrastructure, repository import 금지 ---
+
+
+def check_use_cases_no_infra_or_repo_import():
+    """use_cases/에서 infrastructure 또는 repository를 직접 import하면 위반."""
+    violations = []
+    infra_pattern = re.compile(r"app\.infrastructure\b")
+    repo_pattern = re.compile(r"app\.modules\.\w+\.repository")
+
+    for py_file in _USE_CASES_DIR.rglob("*.py"):
+        if py_file.name == "__init__.py":
+            continue
+        source = py_file.read_text()
+        tree = ast.parse(source, filename=str(py_file))
+
+        for node in ast.walk(tree):
+            for mod_name in _get_import_module_names(node):
+                rel = py_file.relative_to(_ROOT)
+                if infra_pattern.search(mod_name):
+                    violations.append(
+                        f"  {rel}:{node.lineno} — "
+                        f"use_cases에서 infrastructure import 금지 (service를 사용하세요)"
+                    )
+                if repo_pattern.search(mod_name):
+                    violations.append(
+                        f"  {rel}:{node.lineno} — "
+                        f"use_cases에서 repository import 금지 (service를 사용하세요)"
+                    )
+
+    assert not violations, (
+        "use_cases/ 의존성 위반:\n" + "\n".join(violations)
+    )
+
+
+# --- 규칙 6: service.py — 타 모듈 service import 금지 ---
+
+
+def check_service_no_cross_service_import():
+    """service.py에서 타 모듈 service를 import하면 위반."""
+    violations = []
+    pattern = re.compile(r"app\.modules\.(\w+)\.service")
+
+    for svc_file in _MODULES_DIR.glob("*/service.py"):
+        own_module = _extract_module_name(svc_file)
+        source = svc_file.read_text()
+        tree = ast.parse(source, filename=str(svc_file))
+
+        for node in ast.walk(tree):
+            for mod_name in _get_import_module_names(node):
+                m = pattern.search(mod_name)
+                if not m:
+                    continue
+                target_module = m.group(1)
+                if target_module == own_module:
+                    continue
+                rel = svc_file.relative_to(_ROOT)
+                violations.append(
+                    f"  {rel}:{node.lineno} — "
+                    f"{target_module}.service import 금지 (크로스 도메인은 use_case에서 조합)"
+                )
+
+    assert not violations, (
+        "service.py 타 모듈 service import 위반:\n" + "\n".join(violations)
+    )
+
+
+# --- 규칙 7: service.py — 타 모듈 repository import 금지 ---
+
+
+def check_service_no_cross_repo_import():
+    """service.py에서 타 모듈 repository를 import하면 위반."""
+    violations = []
+    pattern = re.compile(r"app\.modules\.(\w+)\.repository")
+
+    for svc_file in _MODULES_DIR.glob("*/service.py"):
+        own_module = _extract_module_name(svc_file)
+        source = svc_file.read_text()
+        tree = ast.parse(source, filename=str(svc_file))
+
+        for node in ast.walk(tree):
+            for mod_name in _get_import_module_names(node):
+                m = pattern.search(mod_name)
+                if not m:
+                    continue
+                target_module = m.group(1)
+                if target_module == own_module:
+                    continue
+                rel = svc_file.relative_to(_ROOT)
+                violations.append(
+                    f"  {rel}:{node.lineno} — "
+                    f"{target_module}.repository import 금지 (자기 도메인 repo만 허용)"
+                )
+
+    assert not violations, (
+        "service.py 타 모듈 repository import 위반:\n" + "\n".join(violations)
     )

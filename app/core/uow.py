@@ -15,7 +15,7 @@ class UnitOfWork:
     """요청에서 주입된 Session의 트랜잭션 경계를 제어합니다.
 
     commit 시 AggregateRoot에서 도메인 이벤트를 수집하고,
-    commit 성공 후 EventBus로 발행합니다.
+    commit 전에 EventBus로 발행하여 핸들러가 같은 트랜잭션에서 실행됩니다.
     """
 
     def __init__(self, db: Session) -> None:
@@ -35,9 +35,9 @@ class UnitOfWork:
 
     def commit(self) -> None:
         events = self._collect_aggregate_events()
-        self.db.commit()
         if events:
             event_bus.publish_all(events)
+        self.db.commit()
 
     def rollback(self) -> None:
         self.db.rollback()

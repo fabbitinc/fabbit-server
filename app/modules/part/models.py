@@ -7,6 +7,8 @@ SoT(Single Source of Truth) 역할을 하며, Graph Part 노드에는 part_numbe
 import uuid
 from datetime import datetime
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -19,17 +21,16 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase, generate_uuid7
-from app.modules.part.events import (
-    PartCreated,
-    PartDrawingLinked,
-    PartDrawingUnlinked,
-    PartPropertiesUpdated,
-)
+from app.core.exceptions import AppError
+from app.modules.file.events import FileAttached, FileDetached
+
+if TYPE_CHECKING:
+    from app.modules.file.models import File
 
 # Part 모델의 표준 속성 (온톨로지 정의 속성 중 RDS 컬럼에 매핑되는 것)
 # revision은 별도 관리하므로 제외
@@ -98,6 +99,20 @@ class Part(AggregateRoot, TenantBase):
         nullable=False,
     )
 
+    # ── Relationships ──
+
+    # 다형성 소유권 기반 (File.owner_type='part', File.owner_id=Part.id)
+    # 삭제된 파일 제외
+    files: Mapped[list["File"]] = relationship(
+        "File",
+        primaryjoin=(
+            "and_(Part.id == foreign(File.owner_id),"
+            " File.owner_type == 'part',"
+            " File.status != 'DELETED')"
+        ),
+        viewonly=True,
+    )
+
     # ── 팩토리 메서드 ──
 
     @classmethod
@@ -117,7 +132,6 @@ class Part(AggregateRoot, TenantBase):
         # 확장 속성 설정
         if "extended_properties" in props:
             part.extended_properties = props["extended_properties"]
-        part.register_event(PartCreated(part_id=part.id, part_number=part_number))
         return part
 
     # ── 도메인 메서드 ──
@@ -147,21 +161,31 @@ class Part(AggregateRoot, TenantBase):
                     changed.append(k)
             if changed:
                 self.extended_properties = merged
-        if changed:
-            self.register_event(PartPropertiesUpdated(
-                part_id=self.id, part_number=self.part_number, changed_fields=changed,
-            ))
         return changed
 
     def assign_drawing(self, drawing_id: uuid.UUID) -> None:
         """도면 연결."""
         self.drawing_id = drawing_id
-        self.register_event(PartDrawingLinked(part_id=self.id, drawing_id=drawing_id))
 
     def unassign_drawing(self) -> None:
         """도면 연결 해제."""
         self.drawing_id = None
-        self.register_event(PartDrawingUnlinked(part_id=self.id))
+
+    def attach_files(self, files: list["File"]) -> None:
+        """검증된 파일들을 Part에 연결 — 소유자 할당은 FileHandler가 처리."""
+        self.register_event(
+            FileAttached(owner_type="part", owner_id=self.id, file_ids=[f.id for f in files])
+        )
+
+    def detach_file(self, file_id: uuid.UUID) -> None:
+        """Part 첨부파일 1건 분리 — 소프트 삭제는 FileHandler가 처리."""
+        target = next((f for f in self.files if f.id == file_id), None)
+        if target is None:
+            raise AppError(
+                message=f"Part '{self.id}'에 연결된 파일 '{file_id}'을(를) 찾을 수 없습니다",
+                code="NOT_FOUND",
+            )
+        self.register_event(FileDetached(owner_type="part", owner_id=self.id, file_id=file_id))
 
 
 class PartRevision(TenantBase):

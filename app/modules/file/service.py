@@ -23,6 +23,7 @@ from app.modules.file.schemas import (
     CreateFileRequest,
     CreateFileResponse,
     FileCompleteResponse,
+    FileItem,
 )
 
 _s3 = s3_client
@@ -324,6 +325,104 @@ def _delete_s3_files(file: File) -> None:
                 key=file.file_key,
                 file_id=file.id,
             )
+
+
+def get_uploaded_or_raise(db: Session, file_id: uuid.UUID) -> File:
+    """업로드 완료된 파일 조회 — 없거나 미완료면 AppError."""
+    file = repo.get_file_by_id(db, file_id)
+    if file is None:
+        raise AppError(message="파일을 찾을 수 없습니다", code="NOT_FOUND")
+    if file.status != FileStatus.UPLOADED:
+        raise AppError(
+            message="업로드가 완료되지 않은 파일입니다", code="PRECONDITION_FAILED"
+        )
+    return file
+
+
+def to_file_items(files: list[File]) -> list[FileItem]:
+    """File 목록을 프론트 응답용 FileItem으로 변환."""
+    return [
+        FileItem(
+            file_id=f.id,
+            original_name=f.original_name,
+            content_type=f.content_type,
+            file_size=f.file_size,
+            file_url=_s3.get_file_url(f.file_key),
+            created_at=f.created_at,
+        )
+        for f in files
+    ]
+
+
+def validate_attachable(
+    db: Session,
+    file_ids: list[uuid.UUID],
+) -> list[File]:
+    """파일 연결 가능 여부만 검증. 소유자 할당은 하지 않음.
+
+    검증 항목: 파일 존재, UPLOADED 상태, 미연결(owner 없음).
+    이벤트 핸들러가 assign_owner()를 처리하는 경우 사용.
+    """
+    files = repo.get_files_by_ids(db, file_ids)
+
+    found_ids = {f.id for f in files}
+    missing = set(file_ids) - found_ids
+    if missing:
+        raise AppError(
+            message=f"파일을 찾을 수 없습니다: {missing}",
+            code="NOT_FOUND",
+        )
+
+    not_uploaded = [f.id for f in files if f.status != FileStatus.UPLOADED]
+    if not_uploaded:
+        raise AppError(
+            message=f"업로드 완료되지 않은 파일이 있습니다: {not_uploaded}",
+            code="INVALID_STATE",
+        )
+
+    already_owned = [f.id for f in files if f.owner_id is not None]
+    if already_owned:
+        raise AppError(
+            message=f"이미 다른 리소스에 연결된 파일이 있습니다: {already_owned}",
+            code="CONFLICT",
+        )
+
+    return files
+
+
+def attach_to_owner(
+    db: Session,
+    file_ids: list[uuid.UUID],
+    owner_type: str,
+    owner_id: uuid.UUID,
+) -> list[File]:
+    """파일 연결 가능 여부 검증 + 소유자 할당.
+
+    Aggregate relationship이 없는 도메인에서 사용.
+    """
+    files = validate_attachable(db, file_ids)
+
+    for f in files:
+        f.assign_owner(owner_type, owner_id)
+
+    return files
+
+
+def detach_from_owner(
+    db: Session,
+    owner_type: str,
+    owner_id: uuid.UUID,
+    file_id: uuid.UUID,
+) -> None:
+    """소유자 검증 + 소프트 삭제."""
+    file = repo.get_file_by_id(db, file_id)
+    if not file or file.owner_type != owner_type or file.owner_id != owner_id:
+        raise AppError(
+            message=f"'{owner_type}:{owner_id}'에 연결된 파일 '{file_id}'을(를) 찾을 수 없습니다",
+            code="NOT_FOUND",
+        )
+
+    file.mark_deleted()
 
 
 def _to_file_complete_response(file: File) -> FileCompleteResponse:

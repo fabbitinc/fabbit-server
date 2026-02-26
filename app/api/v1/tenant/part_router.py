@@ -10,18 +10,18 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
-from app.modules.drawing import service as drawing_service
 from app.modules.drawing.schemas import RegisterDrawingRequest, RegisterDrawingResponse
-from app.modules.part import service
 from app.modules.part.constants import BomDirection
+from app.modules.file.schemas import FileItem
 from app.modules.part.schemas import (
     AttachFilesRequest,
     BomTreeResponse,
     PartDetailResponse,
-    PartFileItem,
     PartFilterOptions,
     PartListResponse,
 )
+from app.queries import part as part_queries
+from app.use_cases import part as part_commands
 
 router = APIRouter(prefix="/api/v1/parts", tags=["parts"])
 
@@ -48,7 +48,7 @@ def export_parts(
     `mapping_id`를 지정하면 원본 엑셀 헤더명(예: "품번", "품명")을 사용합니다.
     `part_ids`로 선택한 부품만 내보낼 수 있습니다.
     """
-    content = service.export_parts_excel(
+    content = part_queries.export_parts_excel(
         db,
         auth,
         search=search,
@@ -78,7 +78,7 @@ def get_filter_options(
     카테고리, 수명주기 상태의 DISTINCT 값 목록을 반환합니다.
     프론트엔드에서 필터 UI의 선택지를 동적으로 구성하는 데 사용됩니다.
     """
-    return service.get_filter_options(db, auth)
+    return part_queries.get_filter_options(db, auth)
 
 
 @router.get("", response_model=PartListResponse)
@@ -102,7 +102,7 @@ def list_parts(
     **검색**: `search` 파라미터로 품번/품명 ILIKE 검색
     **필터**: `category`, `lifecycle_state`(정확 일치), `has_drawing`, `has_children`(boolean)
     """
-    return service.list_parts(
+    return part_queries.list_parts(
         db,
         auth,
         search=search,
@@ -125,10 +125,10 @@ def get_part(
 
     Part의 전체 속성, BOM 관계(부모/자식), 도면, 공급사 정보를 포함합니다.
     """
-    return service.get_part(db, auth, part_id)
+    return part_queries.get_part_detail(db, auth, part_id)
 
 
-@router.post("/{part_id}/files", response_model=list[PartFileItem])
+@router.post("/{part_id}/files", response_model=list[FileItem])
 def attach_files(
     part_id: uuid.UUID,
     req: AttachFilesRequest,
@@ -146,7 +146,7 @@ def attach_files(
     3. `POST /api/v1/files/{file_id}/complete` — 업로드 확인
     4. **이 엔드포인트** — Part에 파일 연결
     """
-    return service.attach_files_to_part(db, auth, part_id, req.file_ids)
+    return part_commands.add_files(db, auth, part_id, req.file_ids)
 
 
 @router.delete("/{part_id}/files/{file_id}", status_code=204)
@@ -160,7 +160,7 @@ def detach_file(
 
     파일은 소프트 삭제되며, S3 파일은 보존 기간 후 배치 정리됩니다.
     """
-    service.detach_file_from_part(db, auth, part_id, file_id)
+    part_commands.delete_file(db, auth, part_id, file_id)
 
 
 @router.get("/{part_id}/bom", response_model=BomTreeResponse)
@@ -179,7 +179,7 @@ def get_bom_tree(
     - **forward**(기본값): 정전개 — 하위 부품 탐색
     - **reverse**: 역전개 — 상위 부품(where-used) 탐색
     """
-    return service.get_bom_tree(db, auth, part_id, direction)
+    return part_queries.get_bom_tree(db, auth, part_id, direction)
 
 
 @router.get("/{part_id}/bom/export")
@@ -197,7 +197,7 @@ def export_bom(
     `GET /{part_id}/bom`과 동일한 BOM 트리를 flat rows로 펼쳐서 xlsx 파일로 반환합니다.
     `mapping_id`를 지정하면 원본 엑셀 헤더명(예: "품번", "수량")을 사용합니다.
     """
-    content = service.export_bom_excel(
+    content = part_queries.export_bom_excel(
         db,
         auth,
         part_id,
@@ -222,7 +222,7 @@ def delete_drawing_from_part(
     Drawing 레코드와 연결된 파일(원본, PDF, 썸네일)이 함께 삭제됩니다.
     파일은 소프트 삭제되며, S3 파일은 보존 기간 후 배치 정리됩니다.
     """
-    drawing_service.delete_drawing(db, auth, part_id)
+    part_commands.delete_drawing(db, auth, part_id)
 
 
 @router.post("/{part_id}/drawings", response_model=RegisterDrawingResponse)
@@ -245,6 +245,6 @@ def register_drawing_for_part(
     DWG 파일은 자동으로 PDF/썸네일 변환이 트리거됩니다.
     변환 상태는 `GET /api/v1/drawings` 목록에서 `conversion_status`로 확인 가능합니다.
     """
-    return drawing_service.register_drawing(
+    return part_commands.add_drawing(
         db, auth, req.file_id, part_id, background_tasks.add_task
     )
