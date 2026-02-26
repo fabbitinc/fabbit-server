@@ -66,24 +66,13 @@ router → use_cases/    (쓰기) → service → repo
 
 ## 미완료: 도메인별 마이그레이션 작업
 
-### 🔴 File 도메인
+### ✅ 완료: File 도메인
 
-**현황**: router → service 직접 호출, service에 @transactional 다수
-
-**router 엔드포인트** (`file_router.py`):
-| 엔드포인트 | 현재 | 전환 |
-|------------|------|------|
-| `POST /upload` → `service.create_file()` | 쓰기 | → use_case |
-| `POST /upload/batch` → `service.batch_create_files()` | 쓰기 | → use_case |
-| `POST /upload/batch/complete` → `service.batch_complete_files()` | 쓰기 | → use_case |
-| `POST /upload/{file_id}/complete` → `service.complete_file()` | 쓰기 | → use_case |
-
-**service @transactional 제거 대상**: `create_file`, `batch_create_files`, `batch_complete_files`, `complete_file`, `soft_delete_file`, `soft_delete_files`
-
-**작업 체크리스트**:
-- [ ] `app/use_cases/file/` 생성 (4개 use_case)
-- [ ] `file/service.py`에서 @transactional 제거
-- [ ] `file_router.py`에서 service → use_cases 전환
+| 항목 | 상태 | 파일 |
+|------|------|------|
+| use_cases 분리 | ✅ | `app/use_cases/file/` (4개: create_file, batch_create_files, complete_file, batch_complete_files) |
+| service 정리 | ✅ | `app/modules/file/service.py` — @transactional 제거 (6개 함수) |
+| router 전환 | ✅ | `app/api/v1/tenant/file_router.py` — use_cases 패턴 |
 
 ---
 

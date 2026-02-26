@@ -43,9 +43,13 @@ class UnitOfWork:
         self.db.rollback()
 
     def _collect_aggregate_events(self) -> list[DomainEvent]:
-        """Session의 new/dirty/deleted 객체에서 AggregateRoot 이벤트를 수집."""
+        """Session에 로드된 모든 AggregateRoot에서 이벤트를 수집.
+
+        register_event()만 호출하고 mapped attribute를 변경하지 않은 경우에도
+        이벤트가 누락되지 않도록 identity_map 전체를 스캔한다.
+        """
         events: list[DomainEvent] = []
-        for obj in self.db.new | self.db.dirty | self.db.deleted:
+        for obj in self.db.identity_map.values():
             if isinstance(obj, AggregateRoot):
                 events.extend(obj.collect_events())
         return events

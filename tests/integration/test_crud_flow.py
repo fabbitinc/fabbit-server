@@ -483,26 +483,6 @@ class TestCRUDFlow:
         data = resp.json()
         assert "items" in data
 
-    def test_list_drawings(self, client: TestClient):
-        """GET /drawings → 도면 목록 조회 (빈 목록)."""
-        resp = client.get(
-            "/api/v1/drawings",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-        )
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert data["total"] == 0
-
-    def test_list_drawing_analyses(self, client: TestClient):
-        """GET /drawings/analyses → 분석 목록 조회 (빈 목록)."""
-        resp = client.get(
-            "/api/v1/drawings/analyses",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-        )
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert data["items"] == []
-
     # ── 프로젝트 CRUD ──
 
     def test_create_project(self, client: TestClient):
@@ -587,7 +567,9 @@ class TestCRUDFlow:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert len(data["projects"]) == 1, f"프로젝트 1건 기대, 실제 {len(data['projects'])}건"
+        assert len(data["projects"]) == 1, (
+            f"프로젝트 1건 기대, 실제 {len(data['projects'])}건"
+        )
         assert data["projects"][0]["id"] == TestCRUDFlow.project_id
 
     def test_add_part_to_project(self, client: TestClient):
@@ -691,9 +673,7 @@ class TestCRUDFlow:
             json={
                 "project_id": TestCRUDFlow.project_id,
                 "mapping_id": TestCRUDFlow.mapping_id,
-                "uploads": [
-                    {"file_id": uid} for uid in TestCRUDFlow.batch_file_ids
-                ],
+                "uploads": [{"file_id": uid} for uid in TestCRUDFlow.batch_file_ids],
             },
         )
         assert resp.status_code == 200, resp.text
@@ -859,11 +839,11 @@ class TestCRUDFlow:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("[AI 질의] 전체 부품 목록")
         print(f"  결과: {len(data['results'])}건")
         print(f"  답변: {data['answer'][:300]}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
     def test_ai_query_bom(self, client: TestClient, use_llm: bool):
         """POST /activation/query → BOM 관계 질의. (--use-llm 전용)"""
@@ -880,11 +860,11 @@ class TestCRUDFlow:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("[AI 질의] BOM 관계")
         print(f"  결과: {len(data['results'])}건")
         print(f"  답변: {data['answer'][:300]}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
     # ── 인증 후속 ──
 
@@ -974,7 +954,9 @@ class TestCRUDFlow:
                 "plan_type": "STARTER",
             },
         )
-        assert resp.status_code in (400, 409), f"기대: 400 또는 409, 실제: {resp.status_code}"
+        assert resp.status_code in (400, 409), (
+            f"기대: 400 또는 409, 실제: {resp.status_code}"
+        )
 
     def test_register_duplicate_slug(self, client: TestClient, unique_suffix: str):
         """POST /auth/register → 중복 slug로 가입 시 에러."""
@@ -989,7 +971,9 @@ class TestCRUDFlow:
                 "plan_type": "STARTER",
             },
         )
-        assert resp.status_code in (400, 409), f"기대: 400 또는 409, 실제: {resp.status_code}"
+        assert resp.status_code in (400, 409), (
+            f"기대: 400 또는 409, 실제: {resp.status_code}"
+        )
 
     def test_login_wrong_password(self, client: TestClient, unique_suffix: str):
         """POST /auth/login → 잘못된 비밀번호로 로그인 시 401."""

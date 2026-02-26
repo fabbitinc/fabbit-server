@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.database import create_tenant_session, generate_uuid7
 from app.core.exceptions import AppError
-from app.core.transactional import transactional
 from app.infrastructure.s3_client import s3_client
 from app.modules.file import repository as repo
 from app.modules.file.constants import FileStatus
@@ -29,7 +28,6 @@ from app.modules.file.schemas import (
 _s3 = s3_client
 
 
-@transactional
 def create_file(
     db: Session,
     auth: AuthContext,
@@ -66,7 +64,6 @@ def create_file(
     )
 
 
-@transactional
 def batch_create_files(
     db: Session,
     auth: AuthContext,
@@ -106,7 +103,6 @@ def batch_create_files(
     return BatchCreateFileResponse(items=results)
 
 
-@transactional
 def batch_complete_files(
     db: Session,
     req: BatchCompleteRequest,
@@ -158,7 +154,6 @@ def batch_complete_files(
     return BatchCompleteResponse(items=completed, failed=failed)
 
 
-@transactional
 def complete_file(
     db: Session,
     file_id: uuid.UUID,
@@ -188,7 +183,6 @@ def complete_file(
     return _to_file_complete_response(file)
 
 
-@transactional
 def soft_delete_file(db: Session, file_id: uuid.UUID) -> None:
     """파일을 소프트 삭제 처리. S3 파일은 cleanup 배치에서 제거."""
     file = repo.get_file_by_id(db, file_id)
@@ -198,7 +192,6 @@ def soft_delete_file(db: Session, file_id: uuid.UUID) -> None:
     file.mark_deleted()
 
 
-@transactional
 def soft_delete_files(db: Session, file_ids: list[uuid.UUID]) -> int:
     """여러 파일을 소프트 삭제 처리. 삭제된 건수 반환."""
     files = repo.get_files_by_ids(db, file_ids)

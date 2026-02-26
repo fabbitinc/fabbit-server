@@ -31,6 +31,11 @@ user-invocable: false
 - 본문: 동작 방식, 주요 파라미터 설명, 상태 흐름 등 프론트엔드 개발자가 참고할 내용
 - 마크다운 지원 — `**bold**`, 리스트(`-`), 코드(`backtick`) 활용 가능
 
+## Import alias 컨벤션
+
+- `from app.use_cases import {domain} as {domain}_commands`
+- `from app.queries import {domain} as {domain}_queries`
+
 ## 규칙
 
 - 읽기: queries를 직접 호출

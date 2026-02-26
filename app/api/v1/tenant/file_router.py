@@ -16,7 +16,7 @@ from app.modules.file.schemas import (
     CreateFileResponse,
     FileCompleteResponse,
 )
-from app.modules.file import service
+from app.use_cases import file as file_commands
 
 router = APIRouter(prefix="/api/v1/files", tags=["files"])
 
@@ -27,7 +27,7 @@ def create_file(
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    return service.create_file(db, auth, req)
+    return file_commands.create_file(db, auth, req)
 
 
 @router.post("/upload/batch", response_model=BatchCreateFileResponse)
@@ -36,7 +36,7 @@ def batch_create_files(
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    return service.batch_create_files(db, auth, req)
+    return file_commands.batch_create_files(db, auth, req)
 
 
 @router.post("/upload/batch/complete", response_model=BatchCompleteResponse)
@@ -44,7 +44,7 @@ def batch_complete_files(
     req: BatchCompleteRequest,
     db: Session = Depends(get_tenant_db),
 ):
-    return service.batch_complete_files(db, req)
+    return file_commands.batch_complete_files(db, req)
 
 
 @router.post("/upload/{file_id}/complete", response_model=FileCompleteResponse)
@@ -53,4 +53,4 @@ def complete_file(
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    return service.complete_file(db, file_id, auth)
+    return file_commands.complete_file(db, file_id, auth)

@@ -6,7 +6,6 @@ SoT(Single Source of Truth) 역할을 하며, Graph Part 노드에는 part_numbe
 
 import uuid
 from datetime import datetime
-
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
@@ -174,7 +173,9 @@ class Part(AggregateRoot, TenantBase):
     def attach_files(self, files: list["File"]) -> None:
         """검증된 파일들을 Part에 연결 — 소유자 할당은 FileHandler가 처리."""
         self.register_event(
-            FileAttached(owner_type="part", owner_id=self.id, file_ids=[f.id for f in files])
+            FileAttached(
+                owner_type="part", owner_id=self.id, file_ids=[f.id for f in files]
+            )
         )
 
     def detach_file(self, file_id: uuid.UUID) -> None:
@@ -185,7 +186,9 @@ class Part(AggregateRoot, TenantBase):
                 message=f"Part '{self.id}'에 연결된 파일 '{file_id}'을(를) 찾을 수 없습니다",
                 code="NOT_FOUND",
             )
-        self.register_event(FileDetached(owner_type="part", owner_id=self.id, file_id=file_id))
+        self.register_event(
+            FileDetached(owner_type="part", owner_id=self.id, file_id=file_id)
+        )
 
 
 class PartRevision(TenantBase):
@@ -193,7 +196,9 @@ class PartRevision(TenantBase):
 
     __table_args__ = (
         # 동일 부품의 리비전 번호 중복 방지
-        UniqueConstraint("part_id", "revision", name="uq_part_revisions_part_id_revision"),
+        UniqueConstraint(
+            "part_id", "revision", name="uq_part_revisions_part_id_revision"
+        ),
         # 부품별 리비전 조회 최적화
         Index("ix_part_revisions_part_id", "part_id"),
         # 합성 작업별 리비전 조회 최적화
