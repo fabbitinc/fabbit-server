@@ -48,6 +48,27 @@ model.register_event(Event)  →  UoW 수집  →  EventBus.publish()  →  db.c
 - 실패해도 롤백하면 안 되는 핸들러 → 핸들러 내부에서 자체 try/except
 - 핸들러 등록: `app/core/event_registry.py`에 명시적 import
 
+### events.py 작성 규칙
+
+이벤트 클래스는 `app/modules/{domain}/events.py`에 정의한다.
+
+- `DomainEvent`(`app/core/domain_event.py`) 상속 — Pydantic `frozen=True` (부모에서 설정)
+- 이벤트명은 **과거형 동사**: `FileAttached`, `PartCreated`, `BomLinkAdded`
+- 필드는 핸들러가 처리에 필요한 **최소 정보만** 포함 (모델 객체 전달 금지, ID로 참조)
+
+```python
+from uuid import UUID
+from app.core.domain_event import DomainEvent
+
+class FileAttached(DomainEvent):
+    """파일을 소유자에 연결."""
+    owner_type: str
+    owner_id: UUID
+    file_ids: list[UUID]
+```
+
+참고 구현: `app/modules/file/events.py`
+
 ## 도메인 모델 규칙
 
 - 자기 필드만 변경 — 다른 모델 필드를 직접 조작하지 않음

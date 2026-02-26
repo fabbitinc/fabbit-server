@@ -68,10 +68,14 @@ user-invocable: false
 ### 상속 순서 (MRO)
 
 **Base/TenantBase는 반드시 `__bases__`의 마지막에 위치해야 한다.** `linter/check_model_mro.py`가 자동 검증한다.
+AggregateRoot를 사용하는 경우 **가장 앞에** 위치한다.
 
 ```python
-# 올바름 — Mixin → Base 순서, Base가 마지막
-class Part(UpdatableMixin, PkMixin, TenantBase): ...
+# 올바름 — AggregateRoot → Mixin → Base 순서
+class Part(AggregateRoot, UpdatableMixin, PkMixin, TenantBase): ...
+
+# 이벤트 없는 모델 — Mixin → Base 순서
+class BomLink(TimestampMixin, PkMixin, TenantBase): ...
 
 # 위반 — TenantBase 뒤에 Mixin
 class Part(TenantBase, PkMixin): ...
@@ -80,13 +84,36 @@ class Part(TenantBase, PkMixin): ...
 ### 예시
 
 ```python
+from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase
 from app.core.mixins import PkMixin, UpdatableMixin
+
+class Part(AggregateRoot, UpdatableMixin, PkMixin, TenantBase):
+    __tablename__ = "parts"
+    part_number: Mapped[str] = mapped_column(String(100), nullable=False)
 
 class Project(UpdatableMixin, PkMixin, TenantBase):
     __tablename__ = "projects"
     name: Mapped[str] = mapped_column(String(200), nullable=False)
 ```
+
+## AggregateRoot
+
+도메인 이벤트를 발행하는 모델은 `AggregateRoot` mixin을 상속한다. 위치: `app/core/aggregate.py`
+
+### 적용 기준
+
+| 조건 | AggregateRoot 상속 |
+|------|-------------------|
+| 도메인 이벤트를 발행하는 모델 (도메인 경계를 넘는 변경) | ✓ |
+| 이벤트 없는 단순 엔티티, 관계 테이블 | ✗ |
+
+### 제공 메서드
+
+- `register_event(event)` — 이벤트를 수집 리스트에 등록
+- `collect_events()` — UoW가 commit 시 호출하여 수집된 이벤트를 반환 (직접 호출하지 않음)
+
+참고 구현: `app/modules/part/models.py`, `app/modules/file/models.py`
 
 ## 컬럼 규칙
 
@@ -120,12 +147,34 @@ class Project(UpdatableMixin, PkMixin, TenantBase):
 - 팩토리에서 필드 검증, 기본값 조합, 파생 필드 계산 등을 캡슐화
 - 호출부(service)는 팩토리를 통해 인스턴스 생성
 
+### 이벤트 발행 메서드
+
+도메인 경계를 넘는 상태 변경이 필요하면 타 도메인 모델을 직접 변경하지 않고 이벤트를 등록한다.
+
+- `self.register_event(Event(...))` — AggregateRoot가 제공하는 수집 메서드
+- UoW.commit() 시 수집된 이벤트가 EventBus로 일괄 발행
+- 이벤트 클래스는 `app/modules/{domain}/events.py`에 정의 (business-layer-guide 참조)
+
+```python
+# 올바름 — 이벤트로 도메인 경계 분리
+def attach_files(self, files: list["File"]) -> None:
+    self.register_event(
+        FileAttached(owner_type="part", owner_id=self.id, file_ids=[f.id for f in files])
+    )
+
+# 위반 — 타 도메인 모델 직접 변경
+def attach_files(self, files: list["File"]) -> None:
+    for f in files:
+        f.assign_owner("part", self.id)  # ✗ 도메인 경계 침범
+```
+
 ### 적용 기준
 
 | 패턴 | 적용 조건 |
 |------|-----------|
 | 상태 전이 메서드 | 상태 필드가 있는 모델 전부 (토글 포함) |
 | 팩토리 메서드 | 생성 시 검증·초기화가 필요한 모델 |
+| 이벤트 발행 메서드 | 도메인 경계를 넘는 변경이 필요한 모델 (AggregateRoot 필수) |
 | 해당 없음 | immutable 이력, append-only 로그 등 순수 기록 엔티티 |
 
 ### 공통 규칙

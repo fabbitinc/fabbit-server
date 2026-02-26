@@ -10,7 +10,20 @@
 
 ## 등록
 
-- `app/core/event_registry.py`에 명시적 import
+새 핸들러 모듈 추가 시 2단계:
+
+1. `app/modules/{domain}/handlers.py` 하단에서 `event_bus.subscribe()` 호출
+2. `app/core/event_registry.py`의 `register_event_handlers()`에 해당 모듈 import 추가
+
+```python
+# 1. app/modules/{domain}/handlers.py 하단
+event_bus.subscribe(SomeEvent, _on_some_event)
+
+# 2. app/core/event_registry.py
+def register_event_handlers() -> None:
+    import app.modules.file.handlers  # noqa: F401
+    import app.modules.{domain}.handlers  # noqa: F401  # ← 추가
+```
 
 ## 핸들러 유형
 
