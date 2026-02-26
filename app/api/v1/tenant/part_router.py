@@ -20,7 +20,9 @@ from app.modules.part.schemas import (
     PartFilterOptions,
     PartListResponse,
 )
+from app.modules.project.schemas import PartProjectsResponse
 from app.queries import part as part_queries
+from app.queries import project as project_queries
 from app.use_cases import part as part_commands
 
 router = APIRouter(prefix="/api/v1/parts", tags=["parts"])
@@ -126,6 +128,16 @@ def get_part(
     Part의 전체 속성, BOM 관계(부모/자식), 도면, 공급사 정보를 포함합니다.
     """
     return part_queries.get_part_detail(db, auth, part_id)
+
+
+@router.get("/{part_id}/projects", response_model=PartProjectsResponse)
+def get_part_projects(
+    part_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """부품이 속한 프로젝트 목록 조회."""
+    return project_queries.get_part_projects(db, auth, part_id)
 
 
 @router.post("/{part_id}/files", response_model=list[FileItem])

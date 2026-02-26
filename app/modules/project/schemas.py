@@ -25,3 +25,36 @@ class ProjectDetailResponse(BaseModel):
     description: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+# ── Project ↔ Part 연결 ──
+
+
+class LinkPartsRequest(BaseModel):
+    part_ids: list[uuid.UUID]
+
+
+class LinkPartsResponse(BaseModel):
+    linked_count: int
+
+
+class ProjectPartSummary(BaseModel):
+    id: uuid.UUID
+    part_number: str
+    name: str | None = None
+
+
+class ProjectPartsResponse(BaseModel):
+    total: int
+    items: list[ProjectPartSummary]
+
+
+class PartProjectSummary(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: str | None = None
+
+
+class PartProjectsResponse(BaseModel):
+    total: int
+    items: list[PartProjectSummary]
