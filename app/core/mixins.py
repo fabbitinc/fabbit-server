@@ -3,9 +3,9 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, event
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 from sqlalchemy.sql import func
 
 from app.core.database import generate_uuid7
@@ -33,6 +33,36 @@ class UpdatableMixin(TimestampMixin):
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), onupdate=func.now(), nullable=True
     )
+
+
+class AuditMixin:
+    """생성자 + 수정자 추적 — 감사 이력이 필요한 엔티티에 적용.
+
+    AuthContext.account_id를 논리적 참조로 저장 (cross-schema FK 없음).
+    session.info["account_id"] 설정 시 before_flush에서 자동 할당.
+    """
+
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+
+
+@event.listens_for(Session, "before_flush")
+def _auto_audit(session: Session, flush_context, instances) -> None:
+    """AuditMixin 인스턴스의 created_by/updated_by를 자동 할당."""
+    account_id = session.info.get("account_id")
+    if not account_id:
+        return
+    for obj in session.new:
+        if isinstance(obj, AuditMixin):
+            obj.created_by = account_id
+            obj.updated_by = account_id
+    for obj in session.dirty:
+        if isinstance(obj, AuditMixin):
+            obj.updated_by = account_id
 
 
 class SoftDeleteMixin:

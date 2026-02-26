@@ -1,18 +1,14 @@
-"""프로젝트 도메인 최소 모델."""
+"""프로젝트 도메인 모델."""
 
-import uuid
-
-from sqlalchemy import String
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.database import TenantBase, generate_uuid7
+from app.core.database import TenantBase
+from app.core.mixins import AuditMixin, PkMixin, UpdatableMixin
 
 
-class Project(TenantBase):
+class Project(AuditMixin, UpdatableMixin, PkMixin, TenantBase):
     __tablename__ = "projects"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=generate_uuid7
-    )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -79,6 +79,7 @@ def get_tenant_db(
     """
     schema = org_id_to_schema(auth.org_id)
     db = SessionLocal()
+    db.info["account_id"] = auth.account_id
 
     @event.listens_for(db, "after_begin")
     def _restore_search_path(session, transaction, connection):

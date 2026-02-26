@@ -16,7 +16,7 @@ user-invocable: false
 
 ## PK
 
-- UUID v7 필수: `default=generate_uuid7` (`app.core.database`)
+- `PkMixin`을 사용 — PK 컬럼을 모델에 직접 선언하지 않는다
 - `uuid_utils.UUID` 직접 사용 금지 (psycopg2 비호환)
 
 ## 인덱스 / 유니크
@@ -28,8 +28,17 @@ user-invocable: false
 
 ## Base 클래스
 
-- `public` 스키마 → `Base` (Organization, User)
-- `tenant_{org_id}` 스키마 → `TenantBase` (Project, MappingRecord)
+모델이 속하는 스키마에 따라 Base를 선택한다. 위치: `app/core/database.py`
+
+| Base | 스키마 | 대상 | 마이그레이션 |
+|------|--------|------|-------------|
+| `Base` | `public` | 전역 엔티티 (User, Organization, Membership) | `alembic/` (public) |
+| `TenantBase` | `tenant_{org_id}` | 테넌트 격리 엔티티 (Project, Part, Supplier) | `alembic_tenant/` |
+
+### 선택 기준
+
+- 조직과 무관하게 **전역으로 공유**되는 데이터 → `Base`
+- 조직별로 **격리**되어야 하는 비즈니스 데이터 → `TenantBase`
 
 ### TenantBase 규칙
 
@@ -37,12 +46,54 @@ user-invocable: false
 - `app/modules/{domain}/models.py`에 배치
 - 수동 import 불필요 — `discover_models()`가 `app/modules/*/models.py`를 자동 탐색
 
+## Mixin
+
+공통 컬럼은 mixin으로 선언한다. PK·timestamps를 모델에 직접 선언하지 않는다. 위치: `app/core/mixins.py`
+
+| Mixin | 제공 컬럼 | 용도 |
+|-------|-----------|------|
+| `PkMixin` | `id` (UUID v7) | 모든 모델 |
+| `TimestampMixin` | `created_at` | append-only, immutable 엔티티 |
+| `UpdatableMixin` | `created_at` + `updated_at` | 변경 가능 엔티티 (TimestampMixin 상속) |
+| `AuditMixin` | `created_by` + `updated_by` | 감사 이력이 필요한 엔티티. UUID 논리적 참조 (cross-schema FK 없음) |
+| `SoftDeleteMixin` | `deleted_at` + `soft_delete()` + `is_deleted` | 소프트 삭제가 필요한 엔티티 |
+
+### 조합 규칙
+
+- **모든 모델**: `PkMixin` 필수
+- **timestamps 선택**: `TimestampMixin` 또는 `UpdatableMixin` 중 하나 (변경 가능 여부로 판단)
+- **감사 추적**: 누가 생성/수정했는지 기록이 필요하면 `AuditMixin` 추가 조합
+- **소프트 삭제**: 필요 시 `SoftDeleteMixin` 추가 조합
+
+### 상속 순서 (MRO)
+
+**Base/TenantBase는 반드시 `__bases__`의 마지막에 위치해야 한다.** `linter/check_model_mro.py`가 자동 검증한다.
+
+```python
+# 올바름 — Mixin → Base 순서, Base가 마지막
+class Part(UpdatableMixin, PkMixin, TenantBase): ...
+
+# 위반 — TenantBase 뒤에 Mixin
+class Part(TenantBase, PkMixin): ...
+```
+
+### 예시
+
+```python
+from app.core.database import TenantBase
+from app.core.mixins import PkMixin, UpdatableMixin
+
+class Project(UpdatableMixin, PkMixin, TenantBase):
+    __tablename__ = "projects"
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+```
+
 ## 컬럼 규칙
 
 - **String 길이 필수**: `String(n)` — 길이 없는 `String` 사용 금지
 - **Nullable**: `Mapped[str | None]` + `nullable=True` 페어로 일치시킬 것
 - **FK ondelete 필수**: `CASCADE` 또는 `SET NULL` 명시
-- **Timestamps**: `created_at` 필수 (`server_default=func.now()`), `updated_at`는 변경 가능 엔티티만 (`onupdate=func.now()` 추가)
+- **PK·Timestamps**: mixin으로 선언 — 모델에 `id`, `created_at`, `updated_at`을 직접 정의하지 않는다
 
 ## Relationship
 
