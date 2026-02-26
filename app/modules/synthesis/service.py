@@ -92,19 +92,13 @@ def start_synthesis(
     if revision is None:
         raise AppError(message="매핑 리비전을 찾을 수 없습니다", code="NOT_FOUND")
 
-    # 3. 프로젝트 존재 검증
-    if req.project_id is not None:
-        project = repo.get_project_by_id(db, req.project_id)
-        if project is None:
-            raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
-
-    # 4. 모든 upload에 대해 root_context 검증 (scope 기반)
+    # 3. 모든 upload에 대해 root_context 검증 (scope 기반)
     mapping_for_scope = MappingResult(**revision.mapping)
     required_labels = _get_rootless_labels(mapping_for_scope)
     for item in req.uploads:
         _validate_root_context(record.scope, item.root_context, required_labels)
 
-    # 5. upload 루프
+    # 4. upload 루프
     schema_name = org_id_to_schema(auth.org_id)
     accepted_jobs: list[tuple[SynthesisJob, object, SynthesisUploadItem]] = []
     failed: list[SynthesisBatchFailure] = []
@@ -147,7 +141,7 @@ def start_synthesis(
         )
         accepted_jobs.append((job, file, item))
 
-    # 6. SynthesisBatch 생성
+    # 5. SynthesisBatch 생성
     batch = repo.create_synthesis_batch(
         db=db,
         batch_id=generate_uuid7(),
@@ -158,11 +152,11 @@ def start_synthesis(
         failed_uploads=[f.model_dump(mode="json") for f in failed],
     )
 
-    # 7. 성공 job들에 batch_id 할당
+    # 6. 성공 job들에 batch_id 할당
     for job, _file, _item in accepted_jobs:
         job.assign_batch(batch.id)
 
-    # 8. usage_count 일괄 증가
+    # 7. usage_count 일괄 증가
     if accepted_jobs:
         repo.increment_mapping_usage(db, record, revision, len(accepted_jobs))
 
@@ -171,7 +165,7 @@ def start_synthesis(
     for job, _file, _item in accepted_jobs:
         db.refresh(job)
 
-    # 9. 각 job에 대해 background task 등록
+    # 8. 각 job에 대해 background task 등록
     for job, file, item in accepted_jobs:
         add_background_task(
             guarded(_run_synthesis),
@@ -193,7 +187,7 @@ def start_synthesis(
         accepted=len(accepted_jobs),
         failed=len(failed),
     )
-    # 10. 항상 배치 응답 반환
+    # 9. 항상 배치 응답 반환
     return SynthesisBatchStartResponse(
         batch_id=batch.id,
         requested_count=batch.requested_count,
@@ -540,16 +534,18 @@ def _process_row_relationships(
         from_keys = {"part_number": escaped_pn}
         cyphers.append(
             _build_merge_rel(
-                "Part", from_keys, rm.target_label, to_keys,
-                rm.rel_type, rel_props,
+                "Part",
+                from_keys,
+                rm.target_label,
+                to_keys,
+                rm.rel_type,
+                rel_props,
             )
         )
     return cyphers
 
 
-def _extract_defined_by(
-    row: dict, mapping: MappingResult
-) -> dict[str, str]:
+def _extract_defined_by(row: dict, mapping: MappingResult) -> dict[str, str]:
     """행에서 DEFINED_BY 관계 데이터 추출.
 
     Returns:
@@ -568,9 +564,7 @@ def _extract_defined_by(
     return result
 
 
-def _extract_supplied_by(
-    row: dict, mapping: MappingResult
-) -> list[dict]:
+def _extract_supplied_by(row: dict, mapping: MappingResult) -> list[dict]:
     """행에서 SUPPLIED_BY 관계 데이터 추출.
 
     Returns:
@@ -715,8 +709,12 @@ def _run_synthesis(
                             if pn != root_value:
                                 entry: dict = {"parent_pn": root_value, "child_pn": pn}
                                 for rel_prop, src_col in rm.rel_columns.items():
-                                    data_type = rm.rel_column_types.get(rel_prop, "string")
-                                    val = _cast_python_value(row.get(src_col), data_type)
+                                    data_type = rm.rel_column_types.get(
+                                        rel_prop, "string"
+                                    )
+                                    val = _cast_python_value(
+                                        row.get(src_col), data_type
+                                    )
                                     if val is not None:
                                         entry[rel_prop] = val
                                 bom_entries.append(entry)
@@ -725,7 +723,10 @@ def _run_synthesis(
                             part_drawing_map[pn] = root_value
                         elif rm.rel_type == "SUPPLIED_BY":
                             # SUPPLIED_BY dual-write 경로
-                            sup_entry: dict = {"part_pn": pn, "company_name": root_value}
+                            sup_entry: dict = {
+                                "part_pn": pn,
+                                "company_name": root_value,
+                            }
                             for rel_prop, src_col in rm.rel_columns.items():
                                 data_type = rm.rel_column_types.get(rel_prop, "string")
                                 val = _cast_python_value(row.get(src_col), data_type)
@@ -734,24 +735,41 @@ def _run_synthesis(
                             part_supplier_entries.append(sup_entry)
                         else:
                             # 기타 관계: Graph Cypher 폴백
-                            target_def = MANUFACTURING_ONTOLOGY.get_node_label(rm.target_label)
+                            target_def = MANUFACTURING_ONTOLOGY.get_node_label(
+                                rm.target_label
+                            )
                             if not target_def:
                                 continue
                             merge_key = target_def.merge_keys[0]
                             rel_props: dict[str, str] = {}
                             for rel_prop, src_col in rm.rel_columns.items():
                                 data_type = rm.rel_column_types.get(rel_prop, "string")
-                                formatted = format_cypher_value(row.get(src_col), data_type)
+                                formatted = format_cypher_value(
+                                    row.get(src_col), data_type
+                                )
                                 if formatted is not None:
                                     rel_props[rel_prop] = formatted
-                            from_keys = {"part_number": format_cypher_value(pn, "string")}
-                            to_keys = {merge_key: format_cypher_value(root_value, "string")}
+                            from_keys = {
+                                "part_number": format_cypher_value(pn, "string")
+                            }
+                            to_keys = {
+                                merge_key: format_cypher_value(root_value, "string")
+                            }
                             all_rel_cyphers.append(
-                                _build_merge_rel("Part", from_keys, rm.target_label, to_keys, rm.rel_type, rel_props)
+                                _build_merge_rel(
+                                    "Part",
+                                    from_keys,
+                                    rm.target_label,
+                                    to_keys,
+                                    rm.rel_type,
+                                    rel_props,
+                                )
                             )
 
                     # Drawing/Supplier 속성 수집 (RDS dual-write 경로)
-                    row_drawing, row_supplier = _extract_drawing_supplier_nodes(row, mapping)
+                    row_drawing, row_supplier = _extract_drawing_supplier_nodes(
+                        row, mapping
+                    )
                     for dn, d_props in row_drawing.items():
                         _merge_part_props(drawing_data, dn, d_props)
                     for cn, s_props in row_supplier.items():
@@ -764,9 +782,7 @@ def _run_synthesis(
                             part_drawing_map[pn] = defined_by["drawing_number"]
 
                         for se in _extract_supplied_by(row, mapping):
-                            part_supplier_entries.append(
-                                {"part_pn": pn, **se}
-                            )
+                            part_supplier_entries.append({"part_pn": pn, **se})
 
                     # 미지 노드 Cypher 수집 (Drawing/Supplier 제외)
                     all_node_cyphers.extend(_process_row_nodes(row, mapping))
@@ -791,18 +807,34 @@ def _run_synthesis(
                         continue
                     if rm.rel_type == "CONSISTS_OF":
                         # Part는 RDS dual-write 경로
-                        _merge_part_props(part_data, root_value, {"part_number": root_value})
+                        _merge_part_props(
+                            part_data, root_value, {"part_number": root_value}
+                        )
                     elif rm.target_label == "Drawing":
-                        _merge_part_props(drawing_data, root_value, {"drawing_number": root_value})
+                        _merge_part_props(
+                            drawing_data, root_value, {"drawing_number": root_value}
+                        )
                     elif rm.target_label == "Supplier":
-                        _merge_part_props(supplier_data, root_value, {"company_name": root_value})
+                        _merge_part_props(
+                            supplier_data, root_value, {"company_name": root_value}
+                        )
                     else:
                         # 미지 노드: Graph MERGE 폴백
-                        target_def = MANUFACTURING_ONTOLOGY.get_node_label(rm.target_label)
+                        target_def = MANUFACTURING_ONTOLOGY.get_node_label(
+                            rm.target_label
+                        )
                         if target_def:
                             merge_key = target_def.merge_keys[0]
                             all_node_cyphers.append(
-                                _build_merge_node(rm.target_label, {merge_key: format_cypher_value(root_value, "string")}, {})
+                                _build_merge_node(
+                                    rm.target_label,
+                                    {
+                                        merge_key: format_cypher_value(
+                                            root_value, "string"
+                                        )
+                                    },
+                                    {},
+                                )
                             )
 
             # === Phase 2: Part upsert (RDS + Graph dual-write) ===
@@ -854,13 +886,16 @@ def _run_synthesis(
             for entry in bom_entries:
                 quantity = entry.get("quantity", 1)
                 ext_props = {
-                    k: v for k, v in entry.items()
+                    k: v
+                    for k, v in entry.items()
                     if k not in {"parent_pn", "child_pn", "quantity"}
                 }
                 try:
                     part_repo.upsert_bom_link(
-                        db, graph_name,
-                        entry["parent_pn"], entry["child_pn"],
+                        db,
+                        graph_name,
+                        entry["parent_pn"],
+                        entry["child_pn"],
                         quantity,
                         extended_properties=ext_props if ext_props else None,
                         overwrite=overwrite,
@@ -894,7 +929,8 @@ def _run_synthesis(
                             k: v
                             for k, v in s_entry.items()
                             if k not in {"part_pn", "company_name", "unit_cost"}
-                        } or None,
+                        }
+                        or None,
                         overwrite=overwrite,
                     )
                     rels_created += 1

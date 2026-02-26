@@ -29,6 +29,7 @@ class _FakeSession:
         self.new: set = set()
         self.dirty: set = set()
         self.deleted: set = set()
+        self.identity_map: dict = {}
 
     def commit(self) -> None:
         self.commit_count += 1

@@ -22,7 +22,6 @@ from app.modules.drawing.constants import (
 
 if TYPE_CHECKING:
     from app.modules.file.models import File
-    from app.modules.project.models import Folder, Project
 
 # Drawing 모델의 표준 속성 (온톨로지 정의 속성 중 RDS 컬럼에 매핑되는 것)
 _STANDARD_ATTRS = {"name", "version", "status"}
@@ -61,12 +60,10 @@ class Drawing(SoftDeleteMixin, AggregateRoot, TenantBase):
     )
     folder_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("folders.id", ondelete="SET NULL"),
         nullable=True,
     )
     project_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("projects.id", ondelete="CASCADE"),
         nullable=True,
     )
     original_file_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -112,10 +109,6 @@ class Drawing(SoftDeleteMixin, AggregateRoot, TenantBase):
         nullable=False,
     )
 
-    project: Mapped["Project | None"] = relationship(
-        "Project", back_populates="drawings"
-    )
-    folder: Mapped["Folder | None"] = relationship("Folder")
     original_file: Mapped["File | None"] = relationship(
         "File", foreign_keys=[original_file_id]
     )

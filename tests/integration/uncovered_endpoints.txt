@@ -1,4 +1,4 @@
-# 미테스트 API 엔드포인트 (5/55)
+# 미테스트 API 엔드포인트 (5/43)
 
 DELETE /api/v1/parts/{part_id}/drawings
 POST   /api/v1/activation/query

@@ -88,36 +88,14 @@ router → use_cases/    (쓰기) → service → repo
 
 ---
 
-### 🔴 Project 도메인
+### ✅ 완료: Project / Folder 도메인 제거
 
-**현황**: router → service 직접 호출, service에 @transactional 다수, **cross-domain 위반** (part_repo, file_repo 직접 import)
-
-**router 엔드포인트** (`project_router.py`):
-| 엔드포인트 | 현재 | 전환 |
-|------------|------|------|
-| `GET /tree` → `service.get_projects_tree()` | 읽기 | → query |
-| `GET /{id}` → `service.get_project()` | 읽기 | → query |
-| `GET /{id}/parts` → `service.get_project_parts()` | 읽기 | → query |
-| `POST /` → `service.create_project()` | 쓰기 | → use_case |
-| `PATCH /{id}` → `service.update_project()` | 쓰기 | → use_case |
-| `DELETE /{id}` → `service.delete_project()` | 쓰기 | → use_case |
-| `POST /folders` → `service.create_folder()` | 쓰기 | → use_case |
-| `PATCH /folders/{id}` → `service.update_folder()` | 쓰기 | → use_case |
-| `PATCH /folders/{id}/move` → `service.move_folder()` | 쓰기 | → use_case |
-| `DELETE /folders/{id}` → `service.delete_folder()` | 쓰기 | → use_case |
-| `POST /{id}/parts/{part_id}` → `service.add_part_to_project()` | 쓰기 | → use_case |
-| `DELETE /{id}/parts/{part_id}` → `service.remove_part_from_project()` | 쓰기 | → use_case |
-
-**cross-domain 위반**:
-- `project/service.py:12` → `from app.modules.part import repository as part_repo`
-- `project/service.py:32` → `from app.modules.file import repository as file_repo`
-
-**작업 체크리스트**:
-- [ ] `app/queries/project/` 생성 (3개 query: tree, get, parts)
-- [ ] `app/use_cases/project/` 생성 (9개 use_case)
-- [ ] `project/service.py`에서 @transactional 제거
-- [ ] cross-domain 위반 해결 (part_repo, file_repo → 이벤트 or 서비스 분리)
-- [ ] `project_router.py`에서 service → queries + use_cases 전환
+| 항목 | 상태 | 파일 |
+|------|------|------|
+| project API 라우터 제거 | ✅ | `app/api/v1/tenant/project_router.py` 삭제 |
+| project 모듈 제거 | ✅ | `app/modules/project/` 전체 삭제 |
+| project 관련 단위 테스트 제거 | ✅ | `tests/test_project_tree_service.py` 삭제 |
+| 앱 라우터 등록 해제 | ✅ | `app/main.py` |
 
 ---
 
@@ -225,11 +203,10 @@ router → use_cases/    (쓰기) → service → repo
 1. ~~**File**~~ — ✅ 완료
 2. ~~**Dashboard, Supplier, Ontology**~~ — ✅ 완료
 3. **Mapping** — 중간 복잡도, cross-domain 위반 해결 필요
-4. **Project** — 엔드포인트 많음, cross-domain 위반 해결 필요
-5. **Activation** — cross-domain 위반 포함
-6. **Synthesis** — 가장 복잡, 설계 판단 필요
-7. **Auth** — 적용 범위 결정 필요
-8. **Drawing** — file_repo 위반만 남음
+4. **Activation** — cross-domain 위반 포함
+5. **Synthesis** — 가장 복잡, 설계 판단 필요
+6. **Auth** — 적용 범위 결정 필요
+7. **Drawing** — file_repo 위반만 남음
 
 ---
 

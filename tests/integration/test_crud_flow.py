@@ -33,8 +33,6 @@ class TestCRUDFlow:
     file_key: str = ""
     mapping_id: str = ""
     synthesis_job_id: str = ""
-    project_id: str = ""
-    folder_id: str = ""
     part_id: str = ""
     batch_file_ids: list[str] = []
     batch_upload_urls: list[str] = []
@@ -486,122 +484,6 @@ class TestCRUDFlow:
         data = resp.json()
         assert "items" in data
 
-    # ── 프로젝트 CRUD ──
-
-    def test_create_project(self, client: TestClient):
-        """POST /projects → 프로젝트 생성."""
-        resp = client.post(
-            "/api/v1/projects",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-            json={
-                "name": "통합 테스트 프로젝트",
-                "description": "CRUD 통합 테스트용",
-            },
-        )
-        assert resp.status_code == 201, resp.text
-        data = resp.json()
-        assert data["id"]
-        assert data["name"] == "통합 테스트 프로젝트"
-
-        TestCRUDFlow.project_id = data["id"]
-
-    def test_get_project(self, client: TestClient):
-        """GET /projects/{project_id} → 프로젝트 상세 조회."""
-        resp = client.get(
-            f"/api/v1/projects/{TestCRUDFlow.project_id}",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-        )
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert data["id"] == TestCRUDFlow.project_id
-        assert data["name"] == "통합 테스트 프로젝트"
-
-    def test_update_project(self, client: TestClient):
-        """PATCH /projects/{project_id} → 프로젝트 수정."""
-        resp = client.patch(
-            f"/api/v1/projects/{TestCRUDFlow.project_id}",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-            json={"name": "수정된 프로젝트"},
-        )
-        assert resp.status_code == 200, resp.text
-        assert resp.json()["name"] == "수정된 프로젝트"
-
-    def test_create_folder(self, client: TestClient):
-        """POST /projects/folders → 폴더 생성."""
-        resp = client.post(
-            "/api/v1/projects/folders",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-            json={
-                "name": "테스트 폴더",
-                "project_id": TestCRUDFlow.project_id,
-            },
-        )
-        assert resp.status_code == 201, resp.text
-        data = resp.json()
-        assert data["id"]
-        assert data["name"] == "테스트 폴더"
-
-        TestCRUDFlow.folder_id = data["id"]
-
-    def test_update_folder(self, client: TestClient):
-        """PATCH /projects/folders/{folder_id} → 폴더 이름 수정."""
-        resp = client.patch(
-            f"/api/v1/projects/folders/{TestCRUDFlow.folder_id}",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-            json={"name": "수정된 폴더"},
-        )
-        assert resp.status_code == 200, resp.text
-        assert resp.json()["name"] == "수정된 폴더"
-
-    def test_move_folder(self, client: TestClient):
-        """PATCH /projects/folders/{folder_id}/move → 폴더 이동."""
-        resp = client.patch(
-            f"/api/v1/projects/folders/{TestCRUDFlow.folder_id}/move",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-            json={"parent_id": None},
-        )
-        assert resp.status_code == 200, resp.text
-
-    def test_projects_tree(self, client: TestClient):
-        """GET /projects/tree → 프로젝트 트리 조회."""
-        resp = client.get(
-            "/api/v1/projects/tree",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-        )
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert len(data["projects"]) == 1, (
-            f"프로젝트 1건 기대, 실제 {len(data['projects'])}건"
-        )
-        assert data["projects"][0]["id"] == TestCRUDFlow.project_id
-
-    def test_add_part_to_project(self, client: TestClient):
-        """POST /projects/{project_id}/parts/{part_id} → 프로젝트에 파트 추가."""
-        assert TestCRUDFlow.part_id, "test_list_parts에서 part_id가 설정되어야 합니다"
-        resp = client.post(
-            f"/api/v1/projects/{TestCRUDFlow.project_id}/parts/{TestCRUDFlow.part_id}",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-        )
-        assert resp.status_code == 204, resp.text
-
-    def test_get_project_parts(self, client: TestClient):
-        """GET /projects/{project_id}/parts → 프로젝트 파트 목록."""
-        resp = client.get(
-            f"/api/v1/projects/{TestCRUDFlow.project_id}/parts",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-        )
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert len(data["parts"]) == 1, f"파트 1건 기대, 실제 {len(data['parts'])}건"
-
-    def test_remove_part_from_project(self, client: TestClient):
-        """DELETE /projects/{project_id}/parts/{part_id} → 프로젝트에서 파트 제거."""
-        resp = client.delete(
-            f"/api/v1/projects/{TestCRUDFlow.project_id}/parts/{TestCRUDFlow.part_id}",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-        )
-        assert resp.status_code == 204, resp.text
-
     # ── 배치 업로드 + 합성 ──
 
     def test_batch_upload(self, client: TestClient, fixtures_dir):
@@ -618,15 +500,15 @@ class TestCRUDFlow:
                         "original_name": "batch_bom_1.csv",
                         "content_type": "text/csv",
                         "file_size": file_size,
-                        "owner_type": "project",
-                        "owner_id": TestCRUDFlow.project_id,
+                        "owner_type": "part",
+                        "owner_id": TestCRUDFlow.part_id,
                     },
                     {
                         "original_name": "batch_bom_2.csv",
                         "content_type": "text/csv",
                         "file_size": file_size,
-                        "owner_type": "project",
-                        "owner_id": TestCRUDFlow.project_id,
+                        "owner_type": "part",
+                        "owner_id": TestCRUDFlow.part_id,
                     },
                 ]
             },
@@ -669,12 +551,11 @@ class TestCRUDFlow:
             assert item["status"] == "UPLOADED"
 
     def test_start_synthesis_batch(self, client: TestClient):
-        """POST /synthesis → 배치 합성 시작 (project_id 지정)."""
+        """POST /synthesis → 배치 합성 시작."""
         resp = client.post(
             "/api/v1/synthesis",
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
             json={
-                "project_id": TestCRUDFlow.project_id,
                 "mapping_id": TestCRUDFlow.mapping_id,
                 "uploads": [{"file_id": uid} for uid in TestCRUDFlow.batch_file_ids],
             },
@@ -793,22 +674,6 @@ class TestCRUDFlow:
         )
         assert resp.status_code == 204, resp.text
 
-    def test_delete_folder(self, client: TestClient):
-        """DELETE /projects/folders/{folder_id} → 폴더 삭제."""
-        resp = client.delete(
-            f"/api/v1/projects/folders/{TestCRUDFlow.folder_id}",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-        )
-        assert resp.status_code == 204, resp.text
-
-    def test_delete_project(self, client: TestClient):
-        """DELETE /projects/{project_id} → 프로젝트 삭제."""
-        resp = client.delete(
-            f"/api/v1/projects/{TestCRUDFlow.project_id}",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-        )
-        assert resp.status_code == 204, resp.text
-
     # ── 활성화 ──
 
     def test_activation_health_check(self, client: TestClient):
@@ -904,14 +769,6 @@ class TestCRUDFlow:
         """GET /parts/{non-existent} → 404."""
         resp = client.get(
             f"/api/v1/parts/{uuid.uuid4()}",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-        )
-        assert resp.status_code == 404, resp.text
-
-    def test_get_project_not_found(self, client: TestClient):
-        """GET /projects/{non-existent} → 404."""
-        resp = client.get(
-            f"/api/v1/projects/{uuid.uuid4()}",
             headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
         )
         assert resp.status_code == 404, resp.text
