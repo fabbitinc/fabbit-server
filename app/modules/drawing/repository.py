@@ -12,37 +12,9 @@ from app.modules.drawing.models import (
     _STANDARD_ATTRS,
 )
 from app.modules.ontology.cypher_utils import escape_cypher_value
-from app.modules.file.models import File
 
 # 온톨로지의 file_path → RDS의 file_key로 매핑
 _DRAWING_STANDARD_ATTRS = _STANDARD_ATTRS | {"file_path"}
-
-
-def get_file_by_id(db: Session, file_id: uuid.UUID) -> File | None:
-    return db.query(File).filter(File.id == file_id).first()
-
-
-def create_file_record(
-    db: Session,
-    file_id: uuid.UUID,
-    original_name: str,
-    file_key: str,
-    content_type: str,
-    file_size: int,
-    owner_type: str | None,
-    owner_id: uuid.UUID | None,
-) -> File:
-    file = File(
-        id=file_id,
-        original_name=original_name,
-        file_key=file_key,
-        content_type=content_type,
-        file_size=file_size,
-        owner_type=owner_type,
-        owner_id=owner_id,
-    )
-    db.add(file)
-    return file
 
 
 def get_drawing_by_id(db: Session, drawing_id: uuid.UUID) -> Drawing | None:

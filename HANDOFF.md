@@ -157,32 +157,23 @@ router → use_cases/    (쓰기) → service → repo
 
 ---
 
-### 🟠 Auth 도메인 (별도 판단 필요)
+### ⚪ Auth 도메인 (컨벤션 제외)
 
-**현황**: public 스키마, 테넌트와 다른 세션 관리. router → service 직접 호출.
+**결정**: 비즈니스 레이어 컨벤션 적용 제외.
 
-| 엔드포인트 | 유형 |
-|------------|------|
-| `GET /site`, `/check-email`, `/check-slug`, `/me` | 읽기 |
-| `POST /register`, `/login`, `/refresh`, `/logout`, `/onboarding/complete` | 쓰기 |
-
-**특이사항**: public 스키마 전용, 테넌트 DB와 다른 세션 사용. 컨벤션 적용 범위를 결정해야 함.
-
-**작업 체크리스트**:
-- [ ] 컨벤션 적용 여부 결정 (public 스키마는 제외 가능)
-- [ ] 적용 시: queries/use_cases 분리
+**근거**: public 스키마 전용, 테넌트 비즈니스 도메인과 성격이 다름. router→service 직접 호출 유지. 타 도메인 의존 없음.
 
 ---
 
-### 🟡 Drawing 도메인 (부분 완료)
+### ✅ 완료: Drawing 도메인
 
-**현황**: router 삭제됨 (Part 하위로 통합). service는 Part use_case에서 호출됨.
+| 항목 | 상태 | 파일 |
+|------|------|------|
+| pipeline 분리 | ✅ | `app/modules/drawing/pipeline.py` — 백그라운드 변환 + File 레코드 생성 |
+| service 정리 | ✅ | `app/modules/drawing/service.py` — cross-domain import 제거 |
+| repository 정리 | ✅ | `app/modules/drawing/repository.py` — File 모델 import/함수 제거 |
 
-**잔존 위반**:
-- `drawing/service.py:21` → `from app.modules.file import repository as file_repo`
-
-**작업 체크리스트**:
-- [ ] `drawing/service.py`에서 file_repo 위반 해결
+**설계 판단**: cross-domain File 모델 접근은 `pipeline.py`에 격리. HTTP 요청 외부에서 자체 세션 생성 + 커밋으로 동작하는 백그라운드 파이프라인이므로 서비스 레이어 규칙의 예외로 처리.
 
 ---
 
@@ -203,8 +194,8 @@ router → use_cases/    (쓰기) → service → repo
 4. ~~**Project / Folder API**~~ — ✅ 완료 (Project 최소 엔티티 유지)
 5. ~~**Activation**~~ — ✅ 완료
 6. ~~**Synthesis**~~ — ✅ 완료 (pipeline.py 분리로 cross-domain 격리)
-7. **Auth** — 적용 범위 결정 필요
-8. **Drawing** — file_repo 위반만 남음
+7. ~~**Auth**~~ — ⚪ 컨벤션 제외 (public 스키마, 테넌트 도메인 아님)
+8. ~~**Drawing**~~ — ✅ 완료 (pipeline.py 분리로 cross-domain 격리)
 9. ~~**queries/part**~~ — ✅ 완료 (file/mapper.py + 린터 규칙 13)
 
 ---
