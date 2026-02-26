@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
-from app.modules.synthesis import service
 from app.modules.synthesis.schemas import (
     SynthesisBatchStartResponse,
     SynthesisBatchStatusResponse,
@@ -15,6 +14,8 @@ from app.modules.synthesis.schemas import (
     SynthesisListResponse,
     SynthesisStartRequest,
 )
+from app.queries import synthesis as synthesis_queries
+from app.use_cases import synthesis as synthesis_commands
 
 router = APIRouter(prefix="/api/v1/synthesis", tags=["synthesis"])
 
@@ -319,7 +320,7 @@ def start_synthesis(
       `true`이면 엑셀 데이터로 덮어쓰기.
     - 진행 상황은 `GET /synthesis/batches/{batch_id}`로 폴링.
     """
-    return service.start_synthesis(db, auth, req, background_tasks.add_task)
+    return synthesis_commands.start_synthesis(db, auth, req, background_tasks.add_task)
 
 
 @router.get("/batches/{batch_id}", response_model=SynthesisBatchStatusResponse)
@@ -336,7 +337,7 @@ def get_synthesis_batch(
     - 개별 작업별 처리 행 수, 생성된 노드/관계 수, 에러 목록 포함.
     """
     # return _BATCH_MOCKS[3]
-    return service.get_synthesis_batch(db, batch_id)
+    return synthesis_queries.get_synthesis_batch(db, batch_id)
 
 
 @router.get("/{job_id}", response_model=SynthesisJobResponse)
@@ -349,7 +350,7 @@ def get_synthesis_job(
     배치 내 특정 업로드 파일에 대한 합성 작업의 상태, 처리 행 수,
     생성된 노드/관계 수, 에러 목록 등을 반환한다.
     """
-    return service.get_synthesis_job(db, job_id)
+    return synthesis_queries.get_synthesis_job(db, job_id)
 
 
 @router.get("", response_model=SynthesisListResponse)
@@ -361,4 +362,4 @@ def list_synthesis_jobs(
     테넌트 내 모든 합성 작업을 최신순으로 반환한다.
     합성 이력 관리 화면에서 사용한다.
     """
-    return service.list_synthesis_jobs(db)
+    return synthesis_queries.list_synthesis_jobs(db)

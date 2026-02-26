@@ -10,6 +10,9 @@
 7. service.py: 타 모듈 repository import 금지
 8. queries/: service import 금지 (repo만 호출)
 9. api/: service 직접 import 금지 (queries/use_cases 경유)
+10. queries/: infrastructure import 금지 (repo만 호출)
+11. handlers.py: service import 금지 (순환 의존 방지)
+12. service.py: use_case import 금지 (역방향 의존)
 """
 
 import ast
@@ -327,4 +330,91 @@ def check_api_no_direct_service_import():
 
     assert not violations, (
         "api/ 레이어 service import 위반:\n" + "\n".join(violations)
+    )
+
+
+# --- 규칙 10: queries/ — infrastructure import 금지 (repo만 호출) ---
+
+# TODO: get_part_detail.py의 s3_client 의존 제거 후 허용 목록 삭제
+_QUERIES_INFRA_ALLOWLIST = {
+    "app/queries/part/get_part_detail.py",
+}
+
+
+def check_queries_no_infrastructure_import():
+    """queries/에서 infrastructure를 직접 import하면 위반."""
+    violations = []
+    pattern = re.compile(r"app\.infrastructure\b")
+
+    for py_file in _QUERIES_DIR.rglob("*.py"):
+        if py_file.name == "__init__.py":
+            continue
+        rel = str(py_file.relative_to(_ROOT))
+        if rel in _QUERIES_INFRA_ALLOWLIST:
+            continue
+        source = py_file.read_text()
+        tree = ast.parse(source, filename=str(py_file))
+
+        for node in ast.walk(tree):
+            for mod_name in _get_import_module_names(node):
+                if pattern.search(mod_name):
+                    violations.append(
+                        f"  {rel}:{node.lineno} — "
+                        f"queries에서 infrastructure import 금지 (repo를 사용하세요)"
+                    )
+
+    assert not violations, (
+        "queries/ → infrastructure import 위반:\n" + "\n".join(violations)
+    )
+
+
+# --- 규칙 11: handlers.py — service import 금지 (순환 의존 방지) ---
+
+
+def check_handlers_no_service_import():
+    """handlers.py에서 service를 import하면 위반."""
+    violations = []
+    pattern = re.compile(r"app\.modules\.\w+\.service")
+
+    for handler_file in _MODULES_DIR.glob("*/handlers.py"):
+        source = handler_file.read_text()
+        tree = ast.parse(source, filename=str(handler_file))
+
+        for node in ast.walk(tree):
+            for mod_name in _get_import_module_names(node):
+                if pattern.search(mod_name):
+                    rel = handler_file.relative_to(_ROOT)
+                    violations.append(
+                        f"  {rel}:{node.lineno} — "
+                        f"handlers에서 service import 금지 (순환 의존 방지)"
+                    )
+
+    assert not violations, (
+        "handlers.py → service import 위반:\n" + "\n".join(violations)
+    )
+
+
+# --- 규칙 12: service.py — use_case import 금지 (역방향 의존) ---
+
+
+def check_service_no_use_case_import():
+    """service.py에서 use_cases를 import하면 위반."""
+    violations = []
+    pattern = re.compile(r"app\.use_cases\b")
+
+    for svc_file in _MODULES_DIR.glob("*/service.py"):
+        source = svc_file.read_text()
+        tree = ast.parse(source, filename=str(svc_file))
+
+        for node in ast.walk(tree):
+            for mod_name in _get_import_module_names(node):
+                if pattern.search(mod_name):
+                    rel = svc_file.relative_to(_ROOT)
+                    violations.append(
+                        f"  {rel}:{node.lineno} — "
+                        f"service에서 use_cases import 금지 (역방향 의존)"
+                    )
+
+    assert not violations, (
+        "service.py → use_cases import 위반:\n" + "\n".join(violations)
     )

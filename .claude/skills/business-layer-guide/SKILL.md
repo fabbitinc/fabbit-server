@@ -27,6 +27,14 @@ router → use_cases/    (쓰기 / 복잡한 읽기) → service → repo
 | use_cases | `app/use_cases/{domain}/` | 쓰기 / 복잡한 읽기 오케스트레이션 | `@transactional` 또는 `@transactional(read_only=True)` |
 | service | `app/modules/*/service.py` | 쓰기 비즈니스 로직 | 없음 (use_case가 관리) |
 | handlers | `app/modules/*/handlers.py` | 이벤트 반응 부수효과 | 없음 (발행자와 같은 트랜잭션) |
+| mapper | `app/modules/*/mapper.py` | 도메인 모델 → Pydantic 응답 변환 | 없음 (순수 함수) |
+
+## mapper.py
+
+- 도메인 모델 → Pydantic 응답 스키마 변환 함수를 모아두는 파일
+- 위치: `app/modules/{domain}/mapper.py` — 도메인 모듈 내부에 배치
+- queries, service, use_cases 모든 레이어에서 import 가능 (의존성 방향 안전)
+- queries 내부에 mapper를 두지 않음 — service가 queries에 의존할 수 없으므로 중복 발생
 
 ## 이벤트 시스템
 
@@ -54,9 +62,9 @@ model.register_event(Event)  →  UoW 수집  →  EventBus.publish()  →  db.c
 ## 의존성 규칙
 
 ```
-✓ query     → repo (여러 도메인 repo 가능)
-✓ use_case  → service (여러 도메인 조합 가능)
-✓ service   → 자기 도메인 repo, infrastructure, 도메인 모델 메서드
+✓ query     → repo (여러 도메인 repo 가능), mapper
+✓ use_case  → service (여러 도메인 조합 가능), mapper
+✓ service   → 자기 도메인 repo, infrastructure, 도메인 모델 메서드, mapper
 ✓ repo      → 자기 도메인 models + 타 도메인 models (FK/JOIN 허용)
 ✓ handler   → get_active_session() + 자기 도메인 모델/repo
 

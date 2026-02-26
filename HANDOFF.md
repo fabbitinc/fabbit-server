@@ -19,16 +19,19 @@ router → use_cases/    (쓰기) → service → repo
 **레이어 규칙 요약**:
 | 레이어 | 트랜잭션 | 의존성 |
 |--------|----------|--------|
-| queries | `@transactional(read_only=True)` | repo (여러 도메인 가능) |
-| use_cases | `@transactional` | service (여러 도메인 가능) |
-| service | 없음 (use_case가 관리) | 자기 도메인 repo, infrastructure, 모델 메서드 |
+| queries | `@transactional(read_only=True)` | repo (여러 도메인 가능), mapper |
+| use_cases | `@transactional` | service (여러 도메인 가능), mapper |
+| service | 없음 (use_case가 관리) | 자기 도메인 repo, infrastructure, 모델 메서드, mapper |
+| mapper | 없음 (순수 함수) | 자기 도메인 models, schemas |
 | handlers | 없음 (발행자와 같은 트랜잭션) | `get_active_session()` + 자기 도메인 모델/repo |
 
 **금지 사항**:
 - `use_case → infrastructure, repo, 도메인 모델 메서드 직접 호출`
-- `service → 타 도메인 service, 타 도메인 repo`
+- `service → 타 도메인 service, 타 도메인 repo, use_case`
 - `router → service 직접 import` (queries/use_cases 경유 필수)
 - `service → @transactional` (use_case가 소유)
+- `queries → service, infrastructure`
+- `handlers → service`
 
 ---
 
@@ -59,8 +62,8 @@ router → use_cases/    (쓰기) → service → repo
 
 | 항목 | 상태 |
 |------|------|
-| 아키텍처 린터 규칙 추가 | ✅ `linter/check_import_rules.py` (규칙 5-7) |
-| 스킬 문서 보강 | ✅ `.claude/skills/business-layer-guide/` |
+| 아키텍처 린터 규칙 | ✅ `linter/check_import_rules.py` (12개 규칙, 전부 PASS) |
+| 스킬 문서 보강 | ✅ `.claude/skills/business-layer-guide/` (mapper.py 규칙 포함) |
 
 ---
 
@@ -85,6 +88,7 @@ router → use_cases/    (쓰기) → service → repo
 | service 정리 | ✅ | `app/modules/mapping/service.py` — @transactional 제거, 쓰기 비즈니스 로직만 유지 |
 | cross-domain 위반 해결 | ✅ | `mapping/service.py`에서 `ontology_service`, `ai_usage.service` 직접 import 제거 |
 | router 전환 | ✅ | `app/api/v1/tenant/mapping_router.py` — queries + use_cases 패턴 |
+| mapper 분리 | ✅ | `app/modules/mapping/mapper.py` — `to_mapping_response` |
 
 ---
 
@@ -100,31 +104,20 @@ router → use_cases/    (쓰기) → service → repo
 
 ---
 
-### 🔴 Synthesis 도메인
+### ✅ 완료: Synthesis 도메인
 
-**현황**: router → service 직접 호출, **가장 심각한 cross-domain 위반** (drawing_repo, part_repo, supplier_repo 직접 import)
+| 항목 | 상태 | 파일 |
+|------|------|------|
+| queries 분리 | ✅ | `app/queries/synthesis/` (3개: get_synthesis_job, list_synthesis_jobs, get_synthesis_batch) |
+| use_cases 분리 | ✅ | `app/use_cases/synthesis/` (1개: start_synthesis) |
+| service 정리 | ✅ | `app/modules/synthesis/service.py` — @transactional 제거, 읽기 함수 삭제 (~180줄) |
+| pipeline 분리 | ✅ | `app/modules/synthesis/pipeline.py` — 백그라운드 파이프라인 + 헬퍼 (~530줄) |
+| mapper 분리 | ✅ | `app/modules/synthesis/mapper.py` — `to_job_response` |
+| cross-domain 위반 해결 | ✅ | drawing_repo/part_repo/supplier_repo → pipeline.py로 격리 (백그라운드 예외) |
+| router 전환 | ✅ | `synthesis_router.py` — queries + use_cases 패턴 |
+| 테스트 수정 | ✅ | `tests/test_synthesis_start_service.py` — patch 경로 + import 전환 (12개 PASS) |
 
-**router 엔드포인트** (`synthesis_router.py`):
-| 엔드포인트 | 현재 | 전환 |
-|------------|------|------|
-| `GET /` → `service.list_synthesis_jobs()` | 읽기 | → query |
-| `GET /{job_id}` → `service.get_synthesis_job()` | 읽기 | → query |
-| `GET /batches/{batch_id}` → `service.get_synthesis_batch()` | 읽기 | → query |
-| `POST /` → `service.start_synthesis()` | 쓰기 | → use_case |
-
-**cross-domain 위반**:
-- `synthesis/service.py:21` → `from app.modules.drawing import repository as drawing_repo`
-- `synthesis/service.py:22` → `from app.modules.part import repository as part_repo`
-- `synthesis/service.py:23` → `from app.modules.supplier import repository as supplier_repo`
-
-**특이사항**: `start_synthesis()`는 대규모 오케스트레이션 로직 (~900줄). `_run_synthesis()` 내부에서 여러 도메인 repo를 통해 노드/관계를 직접 생성. 단순 use_case 추출로는 해결 어려울 수 있음 — 아키텍처 설계 판단 필요.
-
-**작업 체크리스트**:
-- [ ] `app/queries/synthesis/` 생성 (3개 query: list, get_job, get_batch)
-- [ ] `app/use_cases/synthesis/` 생성 (1개: start_synthesis)
-- [ ] `synthesis/service.py`에서 @transactional 제거
-- [ ] cross-domain 위반 해결 (설계 판단 필요)
-- [ ] `synthesis_router.py`에서 service → queries + use_cases 전환
+**설계 판단**: cross-domain repo import는 `pipeline.py`에 격리. HTTP 요청 외부에서 자체 세션 생성 + 청크별 커밋으로 동작하는 백그라운드 파이프라인이므로 서비스 레이어 규칙의 예외로 처리.
 
 ---
 
@@ -193,6 +186,18 @@ router → use_cases/    (쓰기) → service → repo
 
 ---
 
+### 🟡 잔존 위반: queries → infrastructure
+
+**현황**: `app/queries/part/get_part_detail.py`에서 `s3_client` 직접 import.
+
+presigned URL 생성을 위해 `s3_client.get_file_url()`을 사용 중. 린터 규칙 10에서 허용 목록으로 예외 처리됨.
+
+**작업 체크리스트**:
+- [ ] URL 생성 로직을 repo 또는 mapper로 이동하여 infrastructure 직접 의존 제거
+- [ ] 린터 허용 목록(`_QUERIES_INFRA_ALLOWLIST`) 삭제
+
+---
+
 ## 우선순위 제안
 
 1. ~~**File**~~ — ✅ 완료
@@ -200,24 +205,26 @@ router → use_cases/    (쓰기) → service → repo
 3. ~~**Mapping**~~ — ✅ 완료
 4. ~~**Project / Folder API**~~ — ✅ 완료 (Project 최소 엔티티 유지)
 5. ~~**Activation**~~ — ✅ 완료
-6. **Synthesis** — 가장 복잡, 설계 판단 필요
+6. ~~**Synthesis**~~ — ✅ 완료 (pipeline.py 분리로 cross-domain 격리)
 7. **Auth** — 적용 범위 결정 필요
 8. **Drawing** — file_repo 위반만 남음
+9. **queries/part** — s3_client 직접 의존 제거
 
 ---
 
 ## 참고: 기존 위반 검출 도구
 
 ```bash
-# 아키텍처 import 규칙 검증
-uv run python linter/check_import_rules.py
+# 아키텍처 import 규칙 검증 (12개 규칙)
+uv run pytest linter/ --confcutdir=linter -o "python_files=check_*.py" -o "python_functions=check_*" -v
 
-# 현재 알려진 위반 (린터가 잡는 것):
-# - mapping/service.py:19 → ai_usage.service import (규칙 6 위반)
+# 또는 단축 실행
+uv run python linter/check_import_rules.py
 ```
 
 ## 참고: 스킬/문서 위치
 
 - 비즈니스 레이어 가이드: `.claude/skills/business-layer-guide/`
 - 이벤트 목록: `EVENTS.md`
-- 린터: `linter/check_import_rules.py`
+- 린터: `linter/check_import_rules.py` (12개 규칙)
+- mapper 컨벤션: `modules/*/mapper.py` — 도메인 모델→응답 변환 (queries 내부 X)

@@ -1,3 +1,3 @@
 - [ ] "기존 테넌트에는 upgrade로 데이터 변환 + 신규 테넌트에는 초기값 세팅이 필요" 할때 마이그레이션 전략 필요
 - [ ] part, part_revision에 status 없음 <- 승인 관리 워크플로우가 있어야함 (draft, released 등) (lifecycle_state 는 제품 수명 주기)
-- [ ] 추후 구조 변경 필요: router → use-case (application service) → domain services → repository
+- [ ] test2 폴더 구조에 맞게 테스트 옮겨야함

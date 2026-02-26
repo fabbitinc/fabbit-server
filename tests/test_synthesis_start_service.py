@@ -16,7 +16,8 @@ from app.modules.synthesis.schemas import (
     SynthesisStartRequest,
     SynthesisUploadItem,
 )
-from app.modules.synthesis import service
+from app.modules.synthesis import pipeline, service
+from app.queries.synthesis import get_synthesis_batch as get_synthesis_batch_query
 
 
 class _FakeSession:
@@ -330,7 +331,7 @@ class SynthesisStartServiceTests(unittest.TestCase):
         self.assertEqual(res.accepted_count, 2)
         self.assertEqual(len(res.items), 2)
         self.assertEqual(len(res.failed), 0)
-        self.assertEqual(db.commit_count, 1)
+        # commit은 use_case 레이어(@transactional)에서 처리
         self.assertEqual(add_background_task.call_count, 2)
         inc_usage.assert_called_once_with(db, mapping_record, revision, 2)
 
@@ -663,15 +664,15 @@ class SynthesisStartServiceTests(unittest.TestCase):
 
         with (
             patch(
-                "app.modules.synthesis.service.repo.get_synthesis_batch_by_id",
+                "app.queries.synthesis.get_synthesis_batch.repo.get_synthesis_batch_by_id",
                 return_value=batch,
             ),
             patch(
-                "app.modules.synthesis.service.repo.list_synthesis_jobs_by_batch_id",
+                "app.queries.synthesis.get_synthesis_batch.repo.list_synthesis_jobs_by_batch_id",
                 return_value=jobs,
             ),
         ):
-            res = service.get_synthesis_batch(db, batch_id)
+            res = get_synthesis_batch_query(db, batch_id)
 
         self.assertEqual(res.accepted_count, 2)
         self.assertEqual(res.completed_count, 1)
@@ -694,47 +695,47 @@ class SynthesisStartServiceTests(unittest.TestCase):
 
         with (
             patch(
-                "app.modules.synthesis.service.create_tenant_session", return_value=db
+                "app.modules.synthesis.pipeline.create_tenant_session", return_value=db
             ),
             patch(
-                "app.modules.synthesis.service.repo.get_synthesis_job_required",
+                "app.modules.synthesis.pipeline.repo.get_synthesis_job_required",
                 return_value=job,
             ),
-            patch("app.modules.synthesis.service._s3.get_object", return_value=b"x"),
-            patch("app.modules.synthesis.service.get_sheet_names", return_value=[]),
+            patch("app.modules.synthesis.pipeline._s3.get_object", return_value=b"x"),
+            patch("app.modules.synthesis.pipeline.get_sheet_names", return_value=[]),
             patch(
-                "app.modules.synthesis.service.read_to_dataframe",
+                "app.modules.synthesis.pipeline.read_to_dataframe",
                 return_value=pd.DataFrame([{"col": "v"}]),
             ),
             patch(
-                "app.modules.synthesis.service._extract_row_part",
+                "app.modules.synthesis.pipeline._extract_row_part",
                 return_value=("COMP-001", {"part_number": "COMP-001"}),
             ),
             patch(
-                "app.modules.synthesis.service._extract_related_parts",
+                "app.modules.synthesis.pipeline._extract_related_parts",
                 return_value={},
             ),
             patch(
-                "app.modules.synthesis.service._extract_bom_data",
+                "app.modules.synthesis.pipeline._extract_bom_data",
                 return_value=bom_entries,
             ),
-            patch("app.modules.synthesis.service._process_row_nodes", return_value=[]),
+            patch("app.modules.synthesis.pipeline._process_row_nodes", return_value=[]),
             patch(
-                "app.modules.synthesis.service._process_row_relationships",
+                "app.modules.synthesis.pipeline._process_row_relationships",
                 return_value=[],
             ),
-            patch("app.modules.synthesis.service.part_repo.upsert_part"),
-            patch("app.modules.synthesis.service.repo.execute_graph_cyphers"),
+            patch("app.modules.synthesis.pipeline.part_repo.upsert_part"),
+            patch("app.modules.synthesis.pipeline.repo.execute_graph_cyphers"),
             patch(
-                "app.modules.synthesis.service.part_repo.upsert_bom_link",
+                "app.modules.synthesis.pipeline.part_repo.upsert_bom_link",
                 side_effect=[
                     None,
                     part_repo.MissingPartForBomError("ASM-001", "COMP-002"),
                 ],
             ) as upsert_bom_link,
-            patch("app.modules.synthesis.service.logger.warning") as warning,
+            patch("app.modules.synthesis.pipeline.logger.warning") as warning,
         ):
-            service._run_synthesis(
+            pipeline.run_synthesis(
                 job_id=job_id,
                 schema_name="tenant_x",
                 graph_name="tenant_x",

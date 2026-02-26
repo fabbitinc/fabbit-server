@@ -21,3 +21,4 @@
 - 데이터 변경 금지
 - 도메인 모델 우회 가능 — DTO 직접 조립 OK
 - 복잡한 조회 로직(조인, 집계)을 여기서 처리
+- 응답 변환은 `modules/*/mapper.py` import — queries 내부에 mapper를 두지 않음
