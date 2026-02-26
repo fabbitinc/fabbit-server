@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.infrastructure.age_client import execute_cypher_raw
 from app.modules.file.models import File
 from app.modules.mapping.models import MappingRecord, MappingRevision
+from app.modules.project.models import Project
 from app.modules.synthesis.models import SynthesisBatch, SynthesisJob
 
 
@@ -29,6 +30,10 @@ def get_latest_revision(db: Session, record_id: uuid.UUID) -> MappingRevision | 
 
 def get_file_by_id(db: Session, file_id: uuid.UUID) -> File | None:
     return db.query(File).filter(File.id == file_id).first()
+
+
+def get_project_by_id(db: Session, project_id: uuid.UUID) -> Project | None:
+    return db.query(Project).filter(Project.id == project_id).first()
 
 
 def create_synthesis_job(

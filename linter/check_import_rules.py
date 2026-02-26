@@ -8,6 +8,8 @@
 5. use_cases/: infrastructure, repository import 금지 (service만 호출)
 6. service.py: 타 모듈 service import 금지
 7. service.py: 타 모듈 repository import 금지
+8. queries/: service import 금지 (repo만 호출)
+9. api/: service 직접 import 금지 (queries/use_cases 경유)
 """
 
 import ast
@@ -18,6 +20,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 _MODULES_DIR = _ROOT / "app" / "modules"
 _API_DIR = _ROOT / "app" / "api"
 _USE_CASES_DIR = _ROOT / "app" / "use_cases"
+_QUERIES_DIR = _ROOT / "app" / "queries"
 
 
 def _get_import_module_names(node: ast.AST) -> list[str]:
@@ -270,4 +273,58 @@ def check_service_no_cross_repo_import():
 
     assert not violations, (
         "service.py 타 모듈 repository import 위반:\n" + "\n".join(violations)
+    )
+
+
+# --- 규칙 8: queries/ — service import 금지 (repo만 호출) ---
+
+
+def check_queries_no_service_import():
+    """queries/에서 modules의 service를 import하면 위반."""
+    violations = []
+    pattern = re.compile(r"app\.modules\.\w+\.service")
+
+    for py_file in _QUERIES_DIR.rglob("*.py"):
+        if py_file.name == "__init__.py":
+            continue
+        source = py_file.read_text()
+        tree = ast.parse(source, filename=str(py_file))
+
+        for node in ast.walk(tree):
+            for mod_name in _get_import_module_names(node):
+                if pattern.search(mod_name):
+                    rel = py_file.relative_to(_ROOT)
+                    violations.append(
+                        f"  {rel}:{node.lineno} — "
+                        f"queries에서 service import 금지 (repo를 직접 사용하세요)"
+                    )
+
+    assert not violations, (
+        "queries/ → service import 위반:\n" + "\n".join(violations)
+    )
+
+
+# --- 규칙 9: api/ — service 직접 import 금지 (queries/use_cases 경유) ---
+
+
+def check_api_no_direct_service_import():
+    """api/ 레이어에서 modules의 service를 직접 import하면 위반."""
+    violations = []
+    pattern = re.compile(r"app\.modules\.\w+\.service")
+
+    for py_file in _API_DIR.rglob("*.py"):
+        source = py_file.read_text()
+        tree = ast.parse(source, filename=str(py_file))
+
+        for node in ast.walk(tree):
+            for mod_name in _get_import_module_names(node):
+                if pattern.search(mod_name):
+                    rel = py_file.relative_to(_ROOT)
+                    violations.append(
+                        f"  {rel}:{node.lineno} — "
+                        f"api에서 service 직접 import 금지 (queries/use_cases를 사용하세요)"
+                    )
+
+    assert not violations, (
+        "api/ 레이어 service import 위반:\n" + "\n".join(violations)
     )

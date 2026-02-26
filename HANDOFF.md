@@ -88,14 +88,15 @@ router → use_cases/    (쓰기) → service → repo
 
 ---
 
-### ✅ 완료: Project / Folder 도메인 제거
+### ✅ 완료: Project API 제거 + Project 최소 엔티티 유지
 
 | 항목 | 상태 | 파일 |
 |------|------|------|
 | project API 라우터 제거 | ✅ | `app/api/v1/tenant/project_router.py` 삭제 |
-| project 모듈 제거 | ✅ | `app/modules/project/` 전체 삭제 |
-| project 관련 단위 테스트 제거 | ✅ | `tests/test_project_tree_service.py` 삭제 |
 | 앱 라우터 등록 해제 | ✅ | `app/main.py` |
+| project 모듈 축소 | ✅ | `app/modules/project/models.py` (`id`, `name` 최소 모델 유지), `app/modules/project/repository.py` (검색 전용) |
+| project/folder 서비스·스키마 제거 | ✅ | `app/modules/project/service.py`, `app/modules/project/schemas.py` 삭제 |
+| project 관련 단위 테스트 제거 | ✅ | `tests/test_project_tree_service.py` 삭제 |
 
 ---
 
@@ -153,19 +154,13 @@ router → use_cases/    (쓰기) → service → repo
 
 ---
 
-### 🟡 단순 도메인 (소규모)
+### ✅ 완료: Activation 도메인
 
-#### Activation
-| 항목 | 상태 | 비고 |
+| 항목 | 상태 | 파일 |
 |------|------|------|
-| `POST /health-check` → `service.health_check()` | 읽기 | → query |
-| `POST /query` → `service.query_graph()` | 읽기 | → query |
-| `GET /starters` → `service.get_starters()` | 정적 | → query 또는 유지 |
-| **cross-domain 위반**: `part_repo` import | | |
-| **작업**: | | |
-| `app/queries/activation/` 생성 | [ ] | 3개 query |
-| cross-domain 위반 해결 | [ ] | part_repo 제거 |
-| `activation_router.py` 전환 | [ ] | |
+| queries 분리 | ✅ | `app/queries/activation/` (3개: health_check, query_graph, get_starters) |
+| service 정리 | ✅ | `app/modules/activation/service.py` — @transactional 제거, `part_repo` import 제거 |
+| router 전환 | ✅ | `app/api/v1/tenant/activation_router.py` — queries 패턴 |
 
 ---
 
@@ -202,11 +197,12 @@ router → use_cases/    (쓰기) → service → repo
 
 1. ~~**File**~~ — ✅ 완료
 2. ~~**Dashboard, Supplier, Ontology**~~ — ✅ 완료
-3. **Mapping** — 중간 복잡도, cross-domain 위반 해결 필요
-4. **Activation** — cross-domain 위반 포함
-5. **Synthesis** — 가장 복잡, 설계 판단 필요
-6. **Auth** — 적용 범위 결정 필요
-7. **Drawing** — file_repo 위반만 남음
+3. ~~**Mapping**~~ — ✅ 완료
+4. ~~**Project / Folder API**~~ — ✅ 완료 (Project 최소 엔티티 유지)
+5. ~~**Activation**~~ — ✅ 완료
+6. **Synthesis** — 가장 복잡, 설계 판단 필요
+7. **Auth** — 적용 범위 결정 필요
+8. **Drawing** — file_repo 위반만 남음
 
 ---
 

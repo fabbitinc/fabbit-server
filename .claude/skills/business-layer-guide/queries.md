@@ -14,7 +14,7 @@
 
 ## 호출 대상
 
-- repo 직접 호출 (service 경유 안 함)
+- repo 직접 호출 (service 경유 안 함, 여러 도메인 repo 가능)
 
 ## 규칙
 

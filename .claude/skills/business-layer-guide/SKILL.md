@@ -54,14 +54,16 @@ model.register_event(Event)  →  UoW 수집  →  EventBus.publish()  →  db.c
 ## 의존성 규칙
 
 ```
-✓ query     → repo
+✓ query     → repo (여러 도메인 repo 가능)
 ✓ use_case  → service (여러 도메인 조합 가능)
 ✓ service   → 자기 도메인 repo, infrastructure, 도메인 모델 메서드
+✓ repo      → 자기 도메인 models + 타 도메인 models (FK/JOIN 허용)
 ✓ handler   → get_active_session() + 자기 도메인 모델/repo
 
 ✗ use_case  → infrastructure, repo, 도메인 모델 메서드 직접 호출
 ✗ query     → service
-✗ service   → 타 도메인 service
+✗ router    → service 직접 import (queries/use_cases 경유)
+✗ service   → 타 도메인 service, 타 도메인 repo
 ✗ service   → use_case
 ✗ handler   → service
 ```

@@ -1,10 +1,11 @@
 """활성화 및 탐색 도메인 데이터 접근 레이어."""
 
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from app.infrastructure.age_client import execute_cypher
-from app.modules.mapping.models import MappingRecord
+from app.modules.mapping.models import MappingRecord, MappingRevision
+from app.modules.part.models import Part
 
 
 def count_nodes_by_label(db: Session, graph_name: str, label: str) -> int:
@@ -84,7 +85,8 @@ def execute_graph_query(db: Session, cypher: str, graph_name: str) -> list:
 def list_recent_mappings(db: Session, limit: int = 5) -> list[dict]:
     """최근 매핑 레코드의 mapping JSON 목록 반환."""
     records = (
-        db.query(MappingRecord.mapping)
+        db.query(MappingRevision.mapping)
+        .join(MappingRecord, MappingRecord.id == MappingRevision.record_id)
         .order_by(MappingRecord.created_at.desc())
         .limit(limit)
         .all()
@@ -98,3 +100,15 @@ def execute_parts_sql_where(db: Session, where_clause: str) -> list[dict]:
     result = db.execute(sql)
     columns = result.keys()
     return [dict(zip(columns, row)) for row in result]
+
+
+def count_all_parts(db: Session) -> int:
+    """전체 Part 수 (RDS)."""
+    return db.query(func.count(Part.id)).scalar() or 0
+
+
+def get_parts_by_part_numbers(db: Session, part_numbers: list[str]) -> list[Part]:
+    """품번 목록으로 Part 일괄 조회 (RDS)."""
+    if not part_numbers:
+        return []
+    return db.query(Part).filter(Part.part_number.in_(part_numbers)).all()

@@ -16,23 +16,19 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.event_bus import event_bus
 from app.core.exceptions import AppError
-from app.core.transactional import transactional
 from app.infrastructure.llm_client import chat_completion_with_usage
 from app.modules.activation import repository as repo
 from app.modules.activation.schemas import (
     HealthCheckIssue,
     HealthCheckResponse,
     QueryResponse,
-    StarterQuestion,
     StartersResponse,
 )
 from app.modules.ai_usage.events import AiUsageLogged
 from app.modules.auth.provisioning import org_id_to_schema
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
-from app.modules.part import repository as part_repo
 
 
-@transactional(read_only=True)
 def health_check(
     db: Session,
     auth: AuthContext,
@@ -44,7 +40,7 @@ def health_check(
         MANUFACTURING_ONTOLOGY.get_valid_labels(),
     )
     # Part 카운트는 RDS에서 오버라이드
-    part_count = part_repo.count_all(db)
+    part_count = repo.count_all_parts(db)
     node_counts["Part"] = part_count
 
     rel_counts = _count_relationships_by_types(
@@ -134,7 +130,6 @@ def health_check(
     )
 
 
-@transactional(read_only=True)
 def query_graph(
     db: Session,
     auth: AuthContext,
@@ -151,7 +146,7 @@ def query_graph(
         MANUFACTURING_ONTOLOGY.get_valid_labels(),
     )
     # Part 카운트 RDS 오버라이드
-    part_count = part_repo.count_all(db)
+    part_count = repo.count_all_parts(db)
     node_counts["Part"] = part_count
 
     rel_counts = _count_relationships_by_types(
@@ -279,6 +274,8 @@ def query_graph(
 
 
 def get_starters() -> StartersResponse:
+    from app.modules.activation.constants import DEFAULT_STARTERS
+
     return StartersResponse(starters=DEFAULT_STARTERS)
 
 
@@ -443,7 +440,7 @@ def _enrich_cypher_results(db: Session, raw_results: list) -> list[dict]:
         return serialized
 
     # RDS에서 Part 속성 일괄 조회
-    parts = part_repo.get_by_part_numbers(db, list(part_numbers))
+    parts = repo.get_parts_by_part_numbers(db, list(part_numbers))
     part_map = {p.part_number: p for p in parts}
 
     # enrichment: part_number가 있는 행에 RDS 속성 병합
@@ -716,31 +713,3 @@ def _compact_query_for_log(raw: str, max_len: int = 2000) -> str:
         return compact
     extra = len(compact) - max_len
     return compact[:max_len] + f"...(truncated {extra} chars)"
-
-
-DEFAULT_STARTERS = [
-    StarterQuestion(
-        question="전체 부품 목록을 보여줘",
-        description="등록된 모든 부품의 품번과 품명을 조회합니다.",
-    ),
-    StarterQuestion(
-        question="BOM 구조를 보여줘. 상위 부품과 하위 부품의 관계를 알고 싶어",
-        description="CONSISTS_OF 관계를 통해 BOM 트리 구조를 탐색합니다.",
-    ),
-    StarterQuestion(
-        question="공급사별로 납품하는 부품 목록을 보여줘",
-        description="SUPPLIED_BY 관계를 통해 공급사-부품 매핑을 조회합니다.",
-    ),
-    StarterQuestion(
-        question="도면이 연결되지 않은 부품이 있어?",
-        description="DEFINED_BY 관계가 없는 부품을 찾아 데이터 품질을 점검합니다.",
-    ),
-    StarterQuestion(
-        question="단가가 가장 높은 상위 5개 부품을 보여줘",
-        description="SUPPLIED_BY 관계의 unit_cost 속성으로 고가 품목을 파악합니다.",
-    ),
-    StarterQuestion(
-        question="프로젝트별 부품 수를 알려줘",
-        description="HAS_ITEM 관계를 집계하여 프로젝트 규모를 파악합니다.",
-    ),
-]

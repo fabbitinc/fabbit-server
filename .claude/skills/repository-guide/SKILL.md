@@ -11,6 +11,11 @@ user-invocable: false
 - 데이터 접근 캡슐화 — service는 저장 위치(RDS/Graph)를 모름
 - 모듈 함수로 작성, 첫 번째 인자: `db: Session`
 
+## 의존성
+
+- 자기 도메인 models + 타 도메인 models (FK/JOIN 관계 시 허용)
+- 타 도메인 repository import 금지
+
 ## RDS-Graph 듀얼라이트
 
 관계 데이터가 RDS와 Graph 양쪽에 필요한 경우 **단일 repository 함수에서 동시 쓰기**:
