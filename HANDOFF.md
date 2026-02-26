@@ -53,9 +53,10 @@ router → use_cases/    (쓰기) → service → repo
 |------|------|
 | 테스트용 이벤트 전체 삭제 | ✅ (part, drawing, mapping, synthesis events.py 삭제) |
 | 핸들러 정리 | ✅ (drawing/handlers.py, synthesis/handlers.py 삭제) |
-| 유지 이벤트 | `FileAttached`, `FileDetached`, `AiUsageLogged` 3개만 |
+| AiUsageLogged → infrastructure 헬퍼 전환 | ✅ (`ai_usage/events.py`, `ai_usage/handlers.py` 삭제, `infrastructure/ai_usage_logger.py` 생성) |
+| 유지 이벤트 | `FileAttached`, `FileDetached` 2개만 |
 | 모델 register_event 제거 | ✅ (Part의 FileAttached/FileDetached만 유지) |
-| event_registry 정리 | ✅ (file, ai_usage 핸들러만 등록) |
+| event_registry 정리 | ✅ (file 핸들러만 등록) |
 | EVENTS.md 갱신 | ✅ |
 
 ### ✅ 완료: 인프라/린터

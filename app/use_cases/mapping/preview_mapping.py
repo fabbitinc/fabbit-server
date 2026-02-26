@@ -4,11 +4,9 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
-from app.core.event_bus import event_bus
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
-from app.modules.ai_usage.events import AiUsageLogged
-from app.modules.ai_usage.service import check_bom_quota
+from app.modules.ai_usage.service import check_bom_quota, log_usage
 from app.modules.mapping import service as mapping_service
 from app.modules.mapping.schemas import (
     MappingPreviewRequest,
@@ -75,15 +73,13 @@ def preview_mapping(
             elapsed=time.perf_counter() - t_llm,
         )
 
-        event_bus.publish(
-            AiUsageLogged(
-                org_id=auth.org_id,
-                user_id=auth.account_id,
-                feature="mapping:preview",
-                model=llm_resp.model,
-                input_tokens=llm_resp.input_tokens,
-                output_tokens=llm_resp.output_tokens,
-            )
+        log_usage(
+            org_id=auth.org_id,
+            user_id=auth.account_id,
+            feature="mapping:preview",
+            model=llm_resp.model,
+            input_tokens=llm_resp.input_tokens,
+            output_tokens=llm_resp.output_tokens,
         )
 
         if not mapping_result.property_mappings:

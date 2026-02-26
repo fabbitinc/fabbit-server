@@ -1,7 +1,6 @@
 """AI 사용량 서비스.
 
-BOM 쿼타 검증 등 비즈니스 로직을 제공합니다.
-사용량 기록은 AiUsageLogged 이벤트 핸들러가 처리합니다.
+BOM 쿼타 검증 및 사용량 기록 비즈니스 로직을 제공합니다.
 """
 
 import uuid
@@ -12,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
 from app.core.exceptions import AppError
+from app.infrastructure.ai_usage_logger import log_ai_usage
 from app.modules.ai_usage.models import AiUsageLog
 from app.modules.auth.constants import PLAN_LIMITS, PlanType
 from app.modules.auth.models import Organization
@@ -52,3 +52,22 @@ def check_bom_quota(org_id: uuid.UUID) -> None:
             )
     finally:
         db.close()
+
+
+def log_usage(
+    org_id: uuid.UUID,
+    user_id: uuid.UUID,
+    feature: str,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+) -> None:
+    """AI 사용량 기록 — infrastructure 헬퍼에 위임."""
+    log_ai_usage(
+        org_id=org_id,
+        user_id=user_id,
+        feature=feature,
+        model=model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )

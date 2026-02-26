@@ -1,6 +1,8 @@
-# 미테스트 API 엔드포인트 (5/43)
+# 미테스트 API 엔드포인트 (7/45)
 
 DELETE /api/v1/parts/{part_id}/drawings
+GET    /api/v1/projects
+GET    /api/v1/projects/{project_id}
 POST   /api/v1/activation/query
 POST   /api/v1/mappings/preview
 POST   /api/v1/mappings/validate
