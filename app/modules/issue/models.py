@@ -17,7 +17,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import TenantBase
-from app.core.mixins import AuditMixin, PkMixin, UpdatableMixin
+from app.core.mixins import AuditMixin, PkMixin, TimestampMixin, UpdatableMixin
 
 from .constants import CRState, IssueState, IssueType
 
@@ -116,3 +116,55 @@ class ChangeRequest(Issue):
         """변경 요청을 닫는다 (Issue.close 오버라이드)."""
         self.cr_state = CRState.CLOSED
         super().close(now)
+
+
+class IssueAssignee(TimestampMixin, PkMixin, TenantBase):
+    """이슈 담당자 (M:N)."""
+
+    __tablename__ = "issue_assignees"
+
+    __table_args__ = (
+        # 동일 이슈-사용자 관계 중복 방지
+        UniqueConstraint("issue_id", "user_id", name="uq_issue_assignees_issue_id_user_id"),
+        # 이슈 기준 담당자 조회 최적화
+        Index("ix_issue_assignees_issue_id", "issue_id"),
+        # 사용자 기준 담당 이슈 조회 최적화
+        Index("ix_issue_assignees_user_id", "user_id"),
+    )
+
+    issue_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("issues.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    # User id 논리적 참조 (cross-schema FK 없음)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=False,
+    )
+
+
+class IssuePart(TimestampMixin, PkMixin, TenantBase):
+    """이슈 ↔ 부품 연결 (M:N)."""
+
+    __tablename__ = "issue_parts"
+
+    __table_args__ = (
+        # 동일 이슈-부품 관계 중복 방지
+        UniqueConstraint("issue_id", "part_id", name="uq_issue_parts_issue_id_part_id"),
+        # 이슈 기준 부품 조회 최적화
+        Index("ix_issue_parts_issue_id", "issue_id"),
+        # 부품 기준 이슈 조회 최적화 (역추적)
+        Index("ix_issue_parts_part_id", "part_id"),
+    )
+
+    issue_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("issues.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    part_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("parts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
