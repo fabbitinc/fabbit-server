@@ -235,6 +235,32 @@ class IssuePart(TimestampMixin, PkMixin, TenantBase):
     )
 
 
+class IssueLabel(TimestampMixin, PkMixin, TenantBase):
+    """이슈 ↔ 라벨 연결 (M:N)."""
+
+    __tablename__ = "issue_labels"
+
+    __table_args__ = (
+        # 동일 이슈-라벨 관계 중복 방지
+        UniqueConstraint("issue_id", "label_id", name="uq_issue_labels_issue_id_label_id"),
+        # 이슈 기준 라벨 조회 최적화
+        Index("ix_issue_labels_issue_id", "issue_id"),
+        # 라벨 기준 이슈 조회 최적화 (역추적)
+        Index("ix_issue_labels_label_id", "label_id"),
+    )
+
+    issue_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("issues.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    label_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("labels.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+
 class ChangeRequestIssue(TimestampMixin, PkMixin, TenantBase):
     """변경 요청 ↔ 이슈 연결 (M:N)."""
 

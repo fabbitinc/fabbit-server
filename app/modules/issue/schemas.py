@@ -5,6 +5,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.modules.file.schemas import FileItem
+
 
 # ── 요청 ──
 
@@ -17,6 +19,75 @@ class CreateIssueRequest(BaseModel):
 class CreateChangeRequestRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500, description="변경 요청 제목")
     body: str | None = Field(None, description="변경 요청 본문")
+
+
+# ── 목록 응답 (body 제외한 요약) ──
+
+
+class LabelBadge(BaseModel):
+    """라벨 배지 (목록 표시용)."""
+
+    id: uuid.UUID
+    name: str
+    color: str
+
+
+class AssigneeSummary(BaseModel):
+    """담당자 요약 (아바타 표시용)."""
+
+    id: uuid.UUID
+    full_name: str
+
+
+class PartBadge(BaseModel):
+    """연결 부품 배지 (목록 표시용)."""
+
+    id: uuid.UUID
+    part_number: str
+    name: str | None = None
+
+
+class IssueSummary(BaseModel):
+    id: uuid.UUID
+    project_id: uuid.UUID
+    number: int
+    type: str
+    title: str
+    state: str
+    closed_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+    created_by: uuid.UUID | None = None
+    created_by_name: str | None = None
+    labels: list[LabelBadge] = []
+    assignees: list[AssigneeSummary] = []
+    parts: list[PartBadge] = []
+    files: list[FileItem] = []
+    comments_count: int = 0
+
+
+class IssueListResponse(BaseModel):
+    open_count: int
+    closed_count: int
+    total: int
+    offset: int
+    limit: int
+    items: list[IssueSummary]
+
+
+class ChangeRequestSummary(IssueSummary):
+    cr_state: str
+    merged_at: datetime | None = None
+    merged_by: uuid.UUID | None = None
+
+
+class ChangeRequestListResponse(BaseModel):
+    open_count: int
+    closed_count: int
+    total: int
+    offset: int
+    limit: int
+    items: list[ChangeRequestSummary]
 
 
 # ── 응답 ──
@@ -32,7 +103,14 @@ class IssueResponse(BaseModel):
     state: str
     closed_at: datetime | None = None
     created_at: datetime
+    updated_at: datetime
     created_by: uuid.UUID | None = None
+    created_by_name: str | None = None
+    labels: list[LabelBadge] = []
+    assignees: list[AssigneeSummary] = []
+    parts: list[PartBadge] = []
+    files: list[FileItem] = []
+    comments_count: int = 0
 
 
 class ChangeRequestResponse(IssueResponse):

@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth
@@ -13,11 +13,13 @@ from app.modules.issue.schemas import (
     AssignUsersRequest,
     AssignUsersResponse,
     AttachFilesRequest,
+    ChangeRequestListResponse,
     ChangeRequestResponse,
     CommentResponse,
     CreateChangeRequestRequest,
     CreateCommentRequest,
     CreateIssueRequest,
+    IssueListResponse,
     IssueResponse,
     LinkIssuesRequest,
     LinkIssuesResponse,
@@ -29,6 +31,81 @@ from app.queries import issue as issue_queries
 from app.use_cases import issue as issue_commands
 
 router = APIRouter(prefix="/api/v1/projects/{project_id}", tags=["issues"])
+
+
+@router.get("/issues", response_model=IssueListResponse)
+def list_issues(
+    project_id: uuid.UUID,
+    search: str | None = Query(None, description="제목 검색 (ILIKE)"),
+    state: str | None = Query(None, description="상태 필터 (OPEN|CLOSED)"),
+    offset: int = Query(0, ge=0, description="시작 위치"),
+    limit: int = Query(20, ge=1, le=100, description="조회 건수"),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """프로젝트 내 이슈 목록 조회.
+
+    변경 요청(CR)은 제외하고 일반 이슈만 반환합니다.
+    `state` 필터로 열린/닫힌 이슈를 구분할 수 있습니다.
+    """
+    return issue_queries.list_issues(
+        db, auth, project_id, state=state, search=search, offset=offset, limit=limit
+    )
+
+
+@router.get("/change-requests", response_model=ChangeRequestListResponse)
+def list_change_requests(
+    project_id: uuid.UUID,
+    search: str | None = Query(None, description="제목 검색 (ILIKE)"),
+    state: str | None = Query(None, description="이슈 상태 필터 (OPEN|CLOSED)"),
+    cr_state: str | None = Query(None, description="CR 상태 필터 (DRAFT|OPEN|MERGED|CLOSED)"),
+    offset: int = Query(0, ge=0, description="시작 위치"),
+    limit: int = Query(20, ge=1, le=100, description="조회 건수"),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """프로젝트 내 변경 요청(CR) 목록 조회.
+
+    `state`로 이슈 상태, `cr_state`로 CR 고유 상태를 필터링할 수 있습니다.
+    """
+    return issue_queries.list_change_requests(
+        db,
+        auth,
+        project_id,
+        state=state,
+        cr_state=cr_state,
+        search=search,
+        offset=offset,
+        limit=limit,
+    )
+
+
+@router.get("/issues/{issue_id}", response_model=IssueResponse)
+def get_issue(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 상세 조회.
+
+    라벨, 담당자, 댓글 수, 작성자 이름 등 상세 정보를 포함합니다.
+    """
+    return issue_queries.get_issue(db, auth, issue_id)
+
+
+@router.get("/change-requests/{issue_id}", response_model=ChangeRequestResponse)
+def get_change_request(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """변경 요청(CR) 상세 조회.
+
+    라벨, 담당자, 댓글 수, 작성자 이름 등 상세 정보를 포함합니다.
+    """
+    return issue_queries.get_change_request(db, auth, issue_id)
 
 
 @router.post("/issues", response_model=IssueResponse, status_code=201)
