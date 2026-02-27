@@ -4,7 +4,178 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, model_serializer
+
+
+# ── Activity Detail 스키마 (action별 타입 정의) ──
+
+
+class ActivityLabelInfo(BaseModel):
+    """Activity에 기록되는 라벨 정보."""
+
+    label_id: str
+    name: str
+    color: str
+
+
+# -- 상태 전이 (from 은 Python 예약어이므로 alias + model_serializer 사용) --
+
+
+class StateChangedDetail(BaseModel):
+    """이슈 상태 변경 (OPEN ↔ CLOSED)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["state_changed"]
+    from_: str = Field(alias="from", description="변경 전 상태")
+    to: str = Field(description="변경 후 상태")
+
+    @model_serializer
+    def _serialize(self):
+        return {"action": self.action, "from": self.from_, "to": self.to}
+
+
+class CRStateChangedDetail(BaseModel):
+    """CR 상태 변경 (DRAFT → OPEN → MERGED/CLOSED)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["cr_state_changed"]
+    from_: str = Field(alias="from", description="변경 전 상태")
+    to: str = Field(description="변경 후 상태")
+
+    @model_serializer
+    def _serialize(self):
+        return {"action": self.action, "from": self.from_, "to": self.to}
+
+
+# -- 담당자 --
+
+
+class AssigneeAddedDetail(BaseModel):
+    """담당자 배정."""
+
+    action: Literal["assignee_added"]
+    user_ids: list[str]
+
+
+class AssigneeRemovedDetail(BaseModel):
+    """담당자 해제."""
+
+    action: Literal["assignee_removed"]
+    user_ids: list[str]
+
+
+# -- 라벨 --
+
+
+class LabelsChangedDetail(BaseModel):
+    """라벨 변경 (추가/제거)."""
+
+    action: Literal["labels_changed"]
+    added: list[ActivityLabelInfo]
+    removed: list[ActivityLabelInfo]
+
+
+# -- 부품 --
+
+
+class PartAddedDetail(BaseModel):
+    """부품 연결."""
+
+    action: Literal["part_added"]
+    part_ids: list[str]
+
+
+class PartRemovedDetail(BaseModel):
+    """부품 해제."""
+
+    action: Literal["part_removed"]
+    part_ids: list[str]
+
+
+# -- CR-이슈 연결 --
+
+
+class IssueLinkedDetail(BaseModel):
+    """CR에 이슈 연결."""
+
+    action: Literal["issue_linked"]
+    linked_issue_ids: list[str]
+
+
+class IssueUnlinkedDetail(BaseModel):
+    """CR에서 이슈 해제."""
+
+    action: Literal["issue_unlinked"]
+    unlinked_issue_ids: list[str]
+
+
+# -- 프로젝트 스코프 --
+
+
+class IssueCreatedDetail(BaseModel):
+    """이슈/CR 생성."""
+
+    action: Literal["issue_created"]
+    issue_id: str
+    number: int
+    title: str
+    type: str
+
+
+class IssueClosedDetail(BaseModel):
+    """이슈 닫힘."""
+
+    action: Literal["issue_closed"]
+    issue_id: str
+    number: int
+    title: str
+
+
+class IssueReopenedDetail(BaseModel):
+    """이슈 재오픈."""
+
+    action: Literal["issue_reopened"]
+    issue_id: str
+    number: int
+    title: str
+
+
+class CRMergedDetail(BaseModel):
+    """CR 머지."""
+
+    action: Literal["cr_merged"]
+    issue_id: str
+    number: int
+    title: str
+
+
+# -- Detail 유니온 (typed 스키마 → dict fallback 순서 중요) --
+# Pydantic smart union이 action Literal로 자연 분기, 미매칭 시 dict 폴백.
+
+IssueActivityDetail = (
+    StateChangedDetail
+    | CRStateChangedDetail
+    | AssigneeAddedDetail
+    | AssigneeRemovedDetail
+    | LabelsChangedDetail
+    | PartAddedDetail
+    | PartRemovedDetail
+    | IssueLinkedDetail
+    | IssueUnlinkedDetail
+    | dict[str, Any]
+)
+
+ProjectActivityDetail = (
+    IssueCreatedDetail
+    | IssueClosedDetail
+    | IssueReopenedDetail
+    | CRMergedDetail
+    | PartAddedDetail
+    | PartRemovedDetail
+    | dict[str, Any]
+)
 
 
 # ── Activity 응답 ──
@@ -14,7 +185,7 @@ class ActivityResponse(BaseModel):
     id: uuid.UUID
     action: str
     actor_id: uuid.UUID
-    detail: dict[str, Any] | None = None
+    detail: ProjectActivityDetail | None = None
     created_at: datetime
 
 
@@ -39,7 +210,7 @@ class TimelineActivityItem(BaseModel):
     id: uuid.UUID
     action: str
     actor_id: uuid.UUID
-    detail: dict[str, Any] | None = None
+    detail: IssueActivityDetail | None = None
     created_at: datetime
 
 

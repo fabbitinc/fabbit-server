@@ -18,13 +18,20 @@ def _parse_body(body: str | None) -> dict | None:
         return None
 
 
+def _inject_action(detail: dict | None, action: str) -> dict | None:
+    """detail dict에 action 키를 주입하여 union 분기에 사용."""
+    if detail is None:
+        return None
+    return {**detail, "action": action}
+
+
 def to_activity_response(activity: Activity) -> ActivityResponse:
     """Activity 모델 → ActivityResponse 변환."""
     return ActivityResponse(
         id=activity.id,
         action=activity.action,
         actor_id=activity.actor_id,
-        detail=activity.detail,
+        detail=_inject_action(activity.detail, activity.action),
         created_at=activity.created_at,
     )
 
@@ -35,7 +42,7 @@ def to_timeline_activity_item(activity: Activity) -> TimelineActivityItem:
         id=activity.id,
         action=activity.action,
         actor_id=activity.actor_id,
-        detail=activity.detail,
+        detail=_inject_action(activity.detail, activity.action),
         created_at=activity.created_at,
     )
 
