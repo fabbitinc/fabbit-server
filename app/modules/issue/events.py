@@ -51,6 +51,20 @@ class AssigneesRemoved(DomainEvent):
     user_ids: list[UUID]
 
 
+class IssueLabelsLinked(DomainEvent):
+    """이슈에 라벨 연결 — Issue 피드용."""
+
+    issue_id: UUID
+    label_ids: list[UUID]
+
+
+class IssueLabelsUnlinked(DomainEvent):
+    """이슈에서 라벨 해제 — Issue 피드용."""
+
+    issue_id: UUID
+    label_ids: list[UUID]
+
+
 class IssuePartsLinked(DomainEvent):
     """이슈에 부품 연결 — Issue 피드용."""
 

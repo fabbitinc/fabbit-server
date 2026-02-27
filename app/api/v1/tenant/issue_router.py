@@ -23,6 +23,8 @@ from app.modules.issue.schemas import (
     IssueResponse,
     LinkIssuesRequest,
     LinkIssuesResponse,
+    LinkLabelsRequest,
+    LinkLabelsResponse,
     LinkPartsRequest,
     LinkPartsResponse,
     UpdateCommentRequest,
@@ -179,6 +181,47 @@ def unassign_users(
     요청된 사용자 ID에 해당하는 담당자를 해제합니다.
     """
     issue_commands.unassign_users(db, auth, issue_id, user_ids=req.user_ids)
+
+
+# ── 라벨 연결 ──
+
+
+@router.post(
+    "/issues/{issue_id}/labels",
+    response_model=LinkLabelsResponse,
+    status_code=200,
+)
+def link_labels(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    req: LinkLabelsRequest,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈에 라벨 배치 연결.
+
+    이미 연결된 라벨은 무시하고, 신규 연결 건수를 반환합니다.
+    각 라벨의 존재 여부를 사전 검증합니다.
+    """
+    return issue_commands.link_labels(db, auth, issue_id, label_ids=req.label_ids)
+
+
+@router.delete(
+    "/issues/{issue_id}/labels",
+    status_code=204,
+)
+def unlink_labels(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    req: LinkLabelsRequest,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈에서 라벨 배치 해제.
+
+    요청된 라벨 ID에 해당하는 연결을 해제합니다.
+    """
+    issue_commands.unlink_labels(db, auth, issue_id, label_ids=req.label_ids)
 
 
 # ── 부품 연결 ──

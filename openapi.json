@@ -3092,6 +3092,135 @@
                 }
             }
         },
+        "/api/v1/projects/{project_id}/issues/{issue_id}/labels": {
+            "post": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Link Labels",
+                "description": "\uc774\uc288\uc5d0 \ub77c\ubca8 \ubc30\uce58 \uc5f0\uacb0.\n\n\uc774\ubbf8 \uc5f0\uacb0\ub41c \ub77c\ubca8\uc740 \ubb34\uc2dc\ud558\uace0, \uc2e0\uaddc \uc5f0\uacb0 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uac01 \ub77c\ubca8\uc758 \uc874\uc7ac \uc5ec\ubd80\ub97c \uc0ac\uc804 \uac80\uc99d\ud569\ub2c8\ub2e4.",
+                "operationId": "link_labels_api_v1_projects__project_id__issues__issue_id__labels_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LinkLabelsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LinkLabelsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Unlink Labels",
+                "description": "\uc774\uc288\uc5d0\uc11c \ub77c\ubca8 \ubc30\uce58 \ud574\uc81c.\n\n\uc694\uccad\ub41c \ub77c\ubca8 ID\uc5d0 \ud574\ub2f9\ud558\ub294 \uc5f0\uacb0\uc744 \ud574\uc81c\ud569\ub2c8\ub2e4.",
+                "operationId": "unlink_labels_api_v1_projects__project_id__issues__issue_id__labels_delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LinkLabelsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/projects/{project_id}/issues/{issue_id}/parts": {
             "post": {
                 "tags": [
@@ -6209,6 +6338,38 @@
                     "linked_count"
                 ],
                 "title": "LinkIssuesResponse"
+            },
+            "LinkLabelsRequest": {
+                "properties": {
+                    "label_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "minItems": 1,
+                        "title": "Label Ids",
+                        "description": "\uc5f0\uacb0\ud560 \ub77c\ubca8 ID \ubaa9\ub85d"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "label_ids"
+                ],
+                "title": "LinkLabelsRequest"
+            },
+            "LinkLabelsResponse": {
+                "properties": {
+                    "linked_count": {
+                        "type": "integer",
+                        "title": "Linked Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "linked_count"
+                ],
+                "title": "LinkLabelsResponse"
             },
             "LinkPartsResponse": {
                 "properties": {

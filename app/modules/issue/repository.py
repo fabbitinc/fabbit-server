@@ -291,6 +291,42 @@ def unlink_parts(db: Session, issue_id: uuid.UUID, part_ids: list[uuid.UUID]) ->
     return count
 
 
+# ── 라벨 연결 ──
+
+
+def link_labels(db: Session, issue_id: uuid.UUID, label_ids: list[uuid.UUID]) -> int:
+    """이슈에 라벨 배치 연결 — 이미 연결된 건은 무시, 신규 연결 건수 반환."""
+    existing = set(
+        row[0]
+        for row in db.query(IssueLabel.label_id)
+        .filter(
+            IssueLabel.issue_id == issue_id,
+            IssueLabel.label_id.in_(label_ids),
+        )
+        .all()
+    )
+    new_ids = [lid for lid in label_ids if lid not in existing]
+    for lid in new_ids:
+        db.add(IssueLabel(issue_id=issue_id, label_id=lid))
+    if new_ids:
+        db.flush()
+    return len(new_ids)
+
+
+def unlink_labels(db: Session, issue_id: uuid.UUID, label_ids: list[uuid.UUID]) -> int:
+    """이슈에서 라벨 배치 해제 — 삭제 건수 반환."""
+    count = (
+        db.query(IssueLabel)
+        .filter(
+            IssueLabel.issue_id == issue_id,
+            IssueLabel.label_id.in_(label_ids),
+        )
+        .delete(synchronize_session="fetch")
+    )
+    db.flush()
+    return count
+
+
 # ── CR-Issue 연결 ──
 
 

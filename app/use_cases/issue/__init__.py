@@ -10,12 +10,14 @@ from app.use_cases.issue.create_issue import create_issue
 from app.use_cases.issue.delete_comment import delete_comment
 from app.use_cases.issue.delete_file import delete_file
 from app.use_cases.issue.link_issues import link_issues
+from app.use_cases.issue.link_labels import link_labels
 from app.use_cases.issue.link_parts import link_parts
 from app.use_cases.issue.merge_cr import merge_cr
 from app.use_cases.issue.open_cr_for_review import open_cr_for_review
 from app.use_cases.issue.reopen_issue import reopen_issue
 from app.use_cases.issue.unassign_users import unassign_users
 from app.use_cases.issue.unlink_issues import unlink_issues
+from app.use_cases.issue.unlink_labels import unlink_labels
 from app.use_cases.issue.unlink_parts import unlink_parts
 from app.use_cases.issue.update_comment import update_comment
 
@@ -30,12 +32,14 @@ __all__ = [
     "delete_comment",
     "delete_file",
     "link_issues",
+    "link_labels",
     "link_parts",
     "merge_cr",
     "open_cr_for_review",
     "reopen_issue",
     "unassign_users",
     "unlink_issues",
+    "unlink_labels",
     "unlink_parts",
     "update_comment",
 ]

@@ -130,6 +130,17 @@ class AssignUsersResponse(BaseModel):
     assigned_count: int
 
 
+# ── 라벨 연결 ──
+
+
+class LinkLabelsRequest(BaseModel):
+    label_ids: list[uuid.UUID] = Field(..., min_length=1, description="연결할 라벨 ID 목록")
+
+
+class LinkLabelsResponse(BaseModel):
+    linked_count: int
+
+
 # ── 부품 연결 ──
 
 
