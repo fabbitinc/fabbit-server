@@ -45,8 +45,7 @@ GET /issues/{id}/timeline
 | `cr_state_changed` | `{from, to}` | CR 상태 전이 |
 | `assignee_added` | `{user_ids}` | 담당자 배정 |
 | `assignee_removed` | `{user_ids}` | 담당자 제거 |
-| `label_added` | `{label_id, name, color}` | 라벨 추가 |
-| `label_removed` | `{label_id, name, color}` | 라벨 제거 |
+| `labels_changed` | `{added: [{label_id, name, color}], removed: [{label_id, name, color}]}` | 라벨 동기화 |
 | `part_added` | `{part_ids}` | 부품 연결 |
 | `part_removed` | `{part_ids}` | 부품 해제 |
 | `issue_linked` | `{linked_issue_ids}` | CR에 이슈 연결 |

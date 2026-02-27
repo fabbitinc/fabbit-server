@@ -291,37 +291,33 @@ def unlink_parts(db: Session, issue_id: uuid.UUID, part_ids: list[uuid.UUID]) ->
 # ── 라벨 연결 ──
 
 
-def link_labels(db: Session, issue_id: uuid.UUID, label_ids: list[uuid.UUID]) -> int:
-    """이슈에 라벨 배치 연결 — 이미 연결된 건은 무시, 신규 연결 건수 반환."""
-    existing = set(
+def sync_labels(
+    db: Session, issue_id: uuid.UUID, label_ids: list[uuid.UUID]
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """이슈 라벨 동기화 — diff 기반으로 추가/제거 수행, (added, removed) 반환."""
+    current = set(
         row[0]
         for row in db.query(IssueLabel.label_id)
-        .filter(
-            IssueLabel.issue_id == issue_id,
-            IssueLabel.label_id.in_(label_ids),
-        )
+        .filter(IssueLabel.issue_id == issue_id)
         .all()
     )
-    new_ids = [lid for lid in label_ids if lid not in existing]
-    for lid in new_ids:
-        db.add(IssueLabel(issue_id=issue_id, label_id=lid))
-    if new_ids:
-        db.flush()
-    return len(new_ids)
+    desired = set(label_ids)
+    to_add = desired - current
+    to_remove = current - desired
 
-
-def unlink_labels(db: Session, issue_id: uuid.UUID, label_ids: list[uuid.UUID]) -> int:
-    """이슈에서 라벨 배치 해제 — 삭제 건수 반환."""
-    count = (
-        db.query(IssueLabel)
-        .filter(
+    if to_remove:
+        db.query(IssueLabel).filter(
             IssueLabel.issue_id == issue_id,
-            IssueLabel.label_id.in_(label_ids),
-        )
-        .delete(synchronize_session="fetch")
-    )
-    db.flush()
-    return count
+            IssueLabel.label_id.in_(to_remove),
+        ).delete(synchronize_session="fetch")
+
+    for lid in to_add:
+        db.add(IssueLabel(issue_id=issue_id, label_id=lid))
+
+    if to_add or to_remove:
+        db.flush()
+
+    return list(to_add), list(to_remove)
 
 
 # ── CR-Issue 연결 ──

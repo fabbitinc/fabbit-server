@@ -29,7 +29,7 @@ class ActivityListResponse(BaseModel):
 class TimelineCommentItem(BaseModel):
     type: Literal["comment"] = "comment"
     id: uuid.UUID
-    body: str
+    body: dict | None = None
     author_id: uuid.UUID | None = None
     created_at: datetime
 

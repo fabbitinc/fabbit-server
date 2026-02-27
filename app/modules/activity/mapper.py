@@ -1,9 +1,21 @@
 """Activity 도메인 모델 → Pydantic 응답 변환."""
 
+import json
+
 from app.modules.activity.models import Activity
 from app.modules.activity.schemas import ActivityResponse, TimelineActivityItem
 from app.modules.issue.models import IssueComment
 from app.modules.activity.schemas import TimelineCommentItem
+
+
+def _parse_body(body: str | None) -> dict | None:
+    """TEXT 컬럼의 body JSON 문자열을 dict로 변환."""
+    if not body:
+        return None
+    try:
+        return json.loads(body)
+    except (json.JSONDecodeError, TypeError):
+        return None
 
 
 def to_activity_response(activity: Activity) -> ActivityResponse:
@@ -32,7 +44,7 @@ def to_timeline_comment_item(comment: IssueComment) -> TimelineCommentItem:
     """IssueComment 모델 → TimelineCommentItem 변환."""
     return TimelineCommentItem(
         id=comment.id,
-        body=comment.body,
+        body=_parse_body(comment.body),
         author_id=comment.created_by,
         created_at=comment.created_at,
     )

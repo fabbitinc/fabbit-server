@@ -15,10 +15,12 @@ from app.modules.issue.events import (
     CRIssuesUnlinked,
     CRStateChanged,
     IssueCreated,
+    IssueLabelsChanged,
     IssuePartsLinked,
     IssuePartsUnlinked,
     IssueStateChanged,
 )
+from app.modules.label.models import Label
 from app.modules.project.events import ProjectPartsLinked, ProjectPartsUnlinked
 
 
@@ -140,6 +142,27 @@ def _on_assignees_removed(event: AssigneesRemoved) -> None:
     )
 
 
+def _on_issue_labels_changed(event: IssueLabelsChanged) -> None:
+    """이슈 라벨 변경 → Issue 피드."""
+    actor_id = _get_actor_id()
+    db = get_active_session()
+
+    # 추가/제거된 라벨 정보 조회
+    all_ids = list(set(event.added_label_ids) | set(event.removed_label_ids))
+    labels = db.query(Label).filter(Label.id.in_(all_ids)).all() if all_ids else []
+    label_map = {label.id: (label.name, label.color) for label in labels}
+
+    def _label_info(lid):
+        name, color = label_map.get(lid, ("(삭제됨)", "#888888"))
+        return {"label_id": str(lid), "name": name, "color": color}
+
+    detail = {
+        "added": [_label_info(lid) for lid in event.added_label_ids],
+        "removed": [_label_info(lid) for lid in event.removed_label_ids],
+    }
+    _add_activity(TargetType.ISSUE, event.issue_id, "labels_changed", actor_id, detail)
+
+
 def _on_issue_parts_linked(event: IssuePartsLinked) -> None:
     """이슈에 부품 연결 → Issue 피드."""
     actor_id = _get_actor_id()
@@ -222,6 +245,7 @@ event_bus.subscribe(IssueStateChanged, _on_issue_state_changed)
 event_bus.subscribe(CRStateChanged, _on_cr_state_changed)
 event_bus.subscribe(AssigneesAdded, _on_assignees_added)
 event_bus.subscribe(AssigneesRemoved, _on_assignees_removed)
+event_bus.subscribe(IssueLabelsChanged, _on_issue_labels_changed)
 event_bus.subscribe(IssuePartsLinked, _on_issue_parts_linked)
 event_bus.subscribe(IssuePartsUnlinked, _on_issue_parts_unlinked)
 event_bus.subscribe(CRIssuesLinked, _on_cr_issues_linked)

@@ -16,8 +16,7 @@ from app.modules.issue.events import (
     CRIssuesLinked,
     CRIssuesUnlinked,
     IssueCreated,
-    IssueLabelsLinked,
-    IssueLabelsUnlinked,
+    IssueLabelsChanged,
     IssuePartsLinked,
     IssuePartsUnlinked,
 )
@@ -108,28 +107,18 @@ def unassign_users(
     return count
 
 
-def link_labels(
+def sync_labels(
     db: Session, issue: Issue, label_ids: list[uuid.UUID]
-) -> int:
-    """이슈에 라벨 배치 연결 — 신규 연결 건수 반환."""
-    count = repo.link_labels(db, issue.id, label_ids)
-    if count > 0:
-        issue.register_event(IssueLabelsLinked(
-            issue_id=issue.id, label_ids=label_ids
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """이슈 라벨 동기화 — (added, removed) 반환."""
+    added, removed = repo.sync_labels(db, issue.id, label_ids)
+    if added or removed:
+        issue.register_event(IssueLabelsChanged(
+            issue_id=issue.id,
+            added_label_ids=added,
+            removed_label_ids=removed,
         ))
-    return count
-
-
-def unlink_labels(
-    db: Session, issue: Issue, label_ids: list[uuid.UUID]
-) -> int:
-    """이슈에서 라벨 배치 해제 — 삭제 건수 반환."""
-    count = repo.unlink_labels(db, issue.id, label_ids)
-    if count > 0:
-        issue.register_event(IssueLabelsUnlinked(
-            issue_id=issue.id, label_ids=label_ids
-        ))
-    return count
+    return added, removed
 
 
 def link_parts(

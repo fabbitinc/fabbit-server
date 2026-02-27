@@ -51,18 +51,12 @@ class AssigneesRemoved(DomainEvent):
     user_ids: list[UUID]
 
 
-class IssueLabelsLinked(DomainEvent):
-    """이슈에 라벨 연결 — Issue 피드용."""
+class IssueLabelsChanged(DomainEvent):
+    """이슈 라벨 동기화 — 추가/제거를 한 번에 기록."""
 
     issue_id: UUID
-    label_ids: list[UUID]
-
-
-class IssueLabelsUnlinked(DomainEvent):
-    """이슈에서 라벨 해제 — Issue 피드용."""
-
-    issue_id: UUID
-    label_ids: list[UUID]
+    added_label_ids: list[UUID]
+    removed_label_ids: list[UUID]
 
 
 class IssuePartsLinked(DomainEvent):

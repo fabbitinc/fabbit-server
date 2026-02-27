@@ -213,15 +213,18 @@ class AssignUsersResponse(BaseModel):
     assigned_count: int
 
 
-# ── 라벨 연결 ──
+# ── 라벨 동기화 ──
 
 
-class LinkLabelsRequest(BaseModel):
-    label_ids: list[uuid.UUID] = Field(..., min_length=1, description="연결할 라벨 ID 목록")
+class SyncLabelsRequest(BaseModel):
+    label_ids: list[uuid.UUID] = Field(
+        default_factory=list, description="동기화할 라벨 ID 목록 (빈 목록 = 모든 라벨 해제)"
+    )
 
 
-class LinkLabelsResponse(BaseModel):
-    linked_count: int
+class SyncLabelsResponse(BaseModel):
+    added_count: int
+    removed_count: int
 
 
 # ── 부품 연결 ──
@@ -242,17 +245,17 @@ class LinkPartsResponse(BaseModel):
 
 
 class CreateCommentRequest(BaseModel):
-    body: str = Field(..., min_length=1, max_length=10000, description="댓글 본문")
+    body: TipTapDocument = Field(..., description="댓글 본문 (TipTap JSON)")
 
 
 class UpdateCommentRequest(BaseModel):
-    body: str = Field(..., min_length=1, max_length=10000, description="댓글 본문")
+    body: TipTapDocument = Field(..., description="댓글 본문 (TipTap JSON)")
 
 
 class CommentResponse(BaseModel):
     id: uuid.UUID
     issue_id: uuid.UUID
-    body: str
+    body: dict | None = None
     created_at: datetime
     updated_at: datetime
     created_by: uuid.UUID | None = None

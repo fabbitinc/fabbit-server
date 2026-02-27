@@ -23,8 +23,8 @@ from app.modules.issue.schemas import (
     IssueResponse,
     LinkIssuesRequest,
     LinkIssuesResponse,
-    LinkLabelsRequest,
-    LinkLabelsResponse,
+    SyncLabelsRequest,
+    SyncLabelsResponse,
     LinkPartsRequest,
     LinkPartsResponse,
     UpdateCommentRequest,
@@ -185,45 +185,28 @@ def unassign_users(
     issue_commands.unassign_users(db, auth, issue_id, user_ids=req.user_ids)
 
 
-# ── 라벨 연결 ──
+# ── 라벨 동기화 ──
 
 
-@router.post(
+@router.put(
     "/issues/{issue_id}/labels",
-    response_model=LinkLabelsResponse,
+    response_model=SyncLabelsResponse,
     status_code=200,
 )
-def link_labels(
+def sync_labels(
     project_id: uuid.UUID,
     issue_id: uuid.UUID,
-    req: LinkLabelsRequest,
+    req: SyncLabelsRequest,
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    """이슈에 라벨 배치 연결.
+    """이슈 라벨 동기화.
 
-    이미 연결된 라벨은 무시하고, 신규 연결 건수를 반환합니다.
-    각 라벨의 존재 여부를 사전 검증합니다.
+    전달된 `label_ids`를 이슈의 최종 라벨 목록으로 설정합니다.
+    기존 라벨과 diff를 비교하여 추가/제거를 자동 처리합니다.
+    빈 목록 전달 시 모든 라벨이 해제됩니다.
     """
-    return issue_commands.link_labels(db, auth, issue_id, label_ids=req.label_ids)
-
-
-@router.delete(
-    "/issues/{issue_id}/labels",
-    status_code=204,
-)
-def unlink_labels(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
-    req: LinkLabelsRequest,
-    auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(get_tenant_db),
-):
-    """이슈에서 라벨 배치 해제.
-
-    요청된 라벨 ID에 해당하는 연결을 해제합니다.
-    """
-    issue_commands.unlink_labels(db, auth, issue_id, label_ids=req.label_ids)
+    return issue_commands.sync_labels(db, auth, issue_id, label_ids=req.label_ids)
 
 
 # ── 부품 연결 ──
@@ -448,7 +431,8 @@ def create_comment(
 
     댓글 본문은 1~10,000자까지 입력 가능합니다.
     """
-    return issue_commands.create_comment(db, auth, issue_id, body=req.body)
+    body = req.body.model_dump_json(exclude_none=True)
+    return issue_commands.create_comment(db, auth, issue_id, body=body)
 
 
 @router.patch(
@@ -468,7 +452,8 @@ def update_comment(
 
     본인이 작성한 댓글만 수정할 수 있습니다.
     """
-    return issue_commands.update_comment(db, auth, issue_id, comment_id, body=req.body)
+    body = req.body.model_dump_json(exclude_none=True)
+    return issue_commands.update_comment(db, auth, issue_id, comment_id, body=body)
 
 
 @router.delete(

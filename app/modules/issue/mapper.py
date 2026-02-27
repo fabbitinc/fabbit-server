@@ -163,7 +163,7 @@ def to_comment_response(comment: IssueComment) -> CommentResponse:
     return CommentResponse(
         id=comment.id,
         issue_id=comment.issue_id,
-        body=comment.body,
+        body=_parse_body(comment.body),
         created_at=comment.created_at,
         updated_at=comment.updated_at,
         created_by=comment.created_by,
