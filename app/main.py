@@ -82,6 +82,7 @@ _PUBLIC_PATHS = frozenset(
         "/api/v1/auth/check-slug",
         "/api/v1/auth/plans",
         "/api/v1/auth/site",
+        "/api/v1/auth/invitations/verify",
         "/api/v1/auth/accept-invitation",
         "/docs",
         "/openapi.json",

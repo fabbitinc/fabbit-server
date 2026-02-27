@@ -128,6 +128,15 @@ class CreateInvitationRequest(BaseModel):
     role: str = Field("MEMBER", description="초대할 역할 (MEMBER / ADMIN)")
 
 
+class VerifyInvitationResponse(BaseModel):
+    email: str
+    org_name: str
+    inviter_name: str
+    role: str
+    is_existing_user: bool
+    expires_at: datetime
+
+
 class AcceptInvitationRequest(BaseModel):
     token: str
     password: str | None = Field(None, min_length=8, max_length=128, description="미가입자인 경우 필수")

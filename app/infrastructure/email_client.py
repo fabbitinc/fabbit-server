@@ -3,10 +3,13 @@
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from pathlib import Path
 
 from loguru import logger
 
 from app.core.config import settings
+
+_TEMPLATE_DIR = Path(__file__).parent / "email_templates"
 
 
 class EmailClient:
@@ -49,6 +52,30 @@ class EmailClient:
             server.sendmail(self._from_email, to, msg.as_string())
 
         logger.info("이메일 발송 완료: to={to} subject={subject}", to=to, subject=subject)
+
+
+    def send_template(
+        self,
+        to: str,
+        subject: str,
+        template_name: str,
+        **kwargs: str,
+    ) -> None:
+        """템플릿 기반 이메일 발송.
+
+        ``app/infrastructure/email_templates/{template_name}.html`` 파일을 읽어
+        ``kwargs``로 ``str.format()`` 치환 후 발송한다.
+        ``.txt`` 파일이 있으면 텍스트 본문도 함께 첨부한다.
+        """
+        html_path = _TEMPLATE_DIR / f"{template_name}.html"
+        html_body = html_path.read_text(encoding="utf-8").format(**kwargs)
+
+        text_body = None
+        txt_path = _TEMPLATE_DIR / f"{template_name}.txt"
+        if txt_path.exists():
+            text_body = txt_path.read_text(encoding="utf-8").format(**kwargs)
+
+        self.send(to, subject, html_body, text_body)
 
 
 email_client = EmailClient()

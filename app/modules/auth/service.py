@@ -318,10 +318,16 @@ def get_plans() -> list[PlanResponse]:
 # ── 초대 ──
 
 
-def _build_invite_url(token: str) -> str:
-    """초대 수락 페이지 URL 생성."""
+def _build_invite_url(token: str, slug: str) -> str:
+    """초대 수락 페이지 URL 생성 ({slug}.{base_domain} 서브도메인 패턴)."""
+    from urllib.parse import urlparse
+
     from app.core.config import settings
-    return f"{settings.invitation_base_url}/invite/accept?token={token}"
+
+    parsed = urlparse(settings.invitation_base_url)
+    port_suffix = f":{parsed.port}" if parsed.port else ""
+    base = f"{parsed.scheme}://{slug}.{settings.base_domain}{port_suffix}"
+    return f"{base}/invite/accept?token={token}"
 
 
 def _send_invitation_email(
@@ -330,29 +336,14 @@ def _send_invitation_email(
     """초대 이메일 발송."""
     from app.infrastructure.email_client import email_client
 
-    subject = f"[Fabbit] {org_name} 워크스페이스에 초대되었습니다"
-    html_body = f"""\
-<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-  <h2>{org_name} 워크스페이스 초대</h2>
-  <p><strong>{inviter_name}</strong>님이 <strong>{org_name}</strong> 워크스페이스에 초대했습니다.</p>
-  <p>아래 버튼을 클릭하여 초대를 수락하세요.</p>
-  <p style="margin: 24px 0;">
-    <a href="{invite_url}"
-       style="background-color: #2563eb; color: white; padding: 12px 24px;
-              text-decoration: none; border-radius: 6px; display: inline-block;">
-      초대 수락하기
-    </a>
-  </p>
-  <p style="color: #6b7280; font-size: 14px;">
-    버튼이 작동하지 않으면 아래 링크를 브라우저에 복사하세요:<br>
-    <a href="{invite_url}">{invite_url}</a>
-  </p>
-</div>"""
-    text_body = (
-        f"{inviter_name}님이 {org_name} 워크스페이스에 초대했습니다.\n"
-        f"초대 수락: {invite_url}"
+    email_client.send_template(
+        to=email,
+        subject=f"[Fabbit] {org_name} 워크스페이스에 초대되었습니다",
+        template_name="invitation",
+        org_name=org_name,
+        inviter_name=inviter_name,
+        invite_url=invite_url,
     )
-    email_client.send(email, subject, html_body, text_body)
 
 
 def create_invitation(
@@ -396,7 +387,7 @@ def create_invitation(
     # 이메일 발송
     org = repo.get_org_by_id(db, auth.org_id)
     inviter = repo.get_user_by_id(db, auth.user_id)
-    invite_url = _build_invite_url(raw_token)
+    invite_url = _build_invite_url(raw_token, org.slug)
     _send_invitation_email(req.email, org.name, inviter.full_name, invite_url)
 
     return InvitationResponse.model_validate(invitation)

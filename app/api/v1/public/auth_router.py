@@ -22,7 +22,9 @@ from app.modules.auth.schemas import (
     RegisterResponse,
     SiteResponse,
     TokenResponse,
+    VerifyInvitationResponse,
 )
+from app.queries import invitation as invitation_queries
 from app.use_cases import invitation as invitation_commands
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -96,6 +98,19 @@ def me(
     auth: AuthContext = Depends(require_auth),
 ):
     return service.get_me(db, auth)
+
+
+@router.get("/invitations/verify", response_model=VerifyInvitationResponse)
+def verify_invitation(
+    token: str = Query(..., description="초대 토큰"),
+    db: Session = Depends(get_db),
+):
+    """초대 토큰 검증.
+
+    토큰의 유효성을 확인하고 초대 정보를 반환합니다.
+    **is_existing_user**로 기가입 여부를 판단하여 프론트엔드에서 입력 폼을 분기합니다.
+    """
+    return invitation_queries.verify_invitation(db, token)
 
 
 @router.post("/accept-invitation", response_model=AcceptInvitationResponse)

@@ -453,6 +453,51 @@
                 ]
             }
         },
+        "/api/v1/auth/invitations/verify": {
+            "get": {
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Verify Invitation",
+                "description": "\ucd08\ub300 \ud1a0\ud070 \uac80\uc99d.\n\n\ud1a0\ud070\uc758 \uc720\ud6a8\uc131\uc744 \ud655\uc778\ud558\uace0 \ucd08\ub300 \uc815\ubcf4\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n**is_existing_user**\ub85c \uae30\uac00\uc785 \uc5ec\ubd80\ub97c \ud310\ub2e8\ud558\uc5ec \ud504\ub860\ud2b8\uc5d4\ub4dc\uc5d0\uc11c \uc785\ub825 \ud3fc\uc744 \ubd84\uae30\ud569\ub2c8\ub2e4.",
+                "operationId": "verify_invitation_api_v1_auth_invitations_verify_get",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "\ucd08\ub300 \ud1a0\ud070",
+                            "title": "Token"
+                        },
+                        "description": "\ucd08\ub300 \ud1a0\ud070"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VerifyInvitationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/accept-invitation": {
             "post": {
                 "tags": [
@@ -9737,6 +9782,45 @@
                 ],
                 "title": "ValidationIssue",
                 "description": "\ub9e4\ud551 \uac80\uc99d \uc774\uc288"
+            },
+            "VerifyInvitationResponse": {
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "title": "Email"
+                    },
+                    "org_name": {
+                        "type": "string",
+                        "title": "Org Name"
+                    },
+                    "inviter_name": {
+                        "type": "string",
+                        "title": "Inviter Name"
+                    },
+                    "role": {
+                        "type": "string",
+                        "title": "Role"
+                    },
+                    "is_existing_user": {
+                        "type": "boolean",
+                        "title": "Is Existing User"
+                    },
+                    "expires_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Expires At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "email",
+                    "org_name",
+                    "inviter_name",
+                    "role",
+                    "is_existing_user",
+                    "expires_at"
+                ],
+                "title": "VerifyInvitationResponse"
             },
             "app__modules__issue__schemas__AttachFilesRequest": {
                 "properties": {
