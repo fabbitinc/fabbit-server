@@ -9,9 +9,10 @@ from dataclasses import dataclass
 class AuthContext:
     """요청 스코프 인증 컨텍스트."""
 
-    account_id: uuid.UUID
+    user_id: uuid.UUID
     email: str
     org_id: uuid.UUID
+    role: str
 
 
 _auth_context: ContextVar[AuthContext | None] = ContextVar("auth_context", default=None)

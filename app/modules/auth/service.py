@@ -14,7 +14,7 @@ from app.infrastructure.password_hasher import hash_password, verify_password
 from app.infrastructure.turnstile import verify_turnstile_token
 from app.infrastructure.token_provider import token_provider
 from app.modules.auth import repository as repo
-from app.modules.auth.constants import PLAN_LIMITS, PlanType, RESERVED_SLUGS, validate_slug_format
+from app.modules.auth.constants import PLAN_LIMITS, MembershipRole, PlanType, RESERVED_SLUGS, validate_slug_format
 from app.modules.auth.provisioning import provision_tenant
 from app.modules.auth.schemas import (
     CheckEmailResponse,
@@ -117,7 +117,7 @@ def register(db: Session, req: RegisterRequest) -> RegisterResponse:
     )
 
     # 멤버십 (ADMIN)
-    repo.create_membership(db, user.id, org.id, role="ADMIN", job_role=req.job_role)
+    repo.create_membership(db, user.id, org.id, role=MembershipRole.ADMIN, job_role=req.job_role)
 
     # 테넌트 프로비저닝 (스키마 + AGE 그래프)
     schema_name = provision_tenant(db, org.id)
@@ -127,7 +127,8 @@ def register(db: Session, req: RegisterRequest) -> RegisterResponse:
 
     # 토큰 발급
     access_token = token_provider.create_access_token(
-        sub=str(user.id), email=user.email, org_id=str(org.id)
+        sub=str(user.id), email=user.email, org_id=str(org.id),
+        role=MembershipRole.ADMIN,
     )
     refresh_token_str, expires_at = token_provider.create_refresh_token(
         sub=str(user.id), email=user.email
@@ -165,7 +166,8 @@ def login(db: Session, req: LoginRequest, *, slug: str | None = None) -> LoginRe
     org_id = membership.org_id
 
     access_token = token_provider.create_access_token(
-        sub=str(user.id), email=user.email, org_id=str(org_id)
+        sub=str(user.id), email=user.email, org_id=str(org_id),
+        role=membership.role,
     )
     refresh_token_str, expires_at = token_provider.create_refresh_token(
         sub=str(user.id), email=user.email
@@ -217,8 +219,10 @@ def refresh_tokens(db: Session, refresh_token_str: str) -> TokenResponse:
         if not memberships:
             raise AppError(message="소속된 조직이 없습니다", code="FORBIDDEN")
 
+        membership = memberships[0]
         new_access = token_provider.create_access_token(
-            sub=str(user.id), email=user.email, org_id=str(memberships[0].org_id)
+            sub=str(user.id), email=user.email,
+            org_id=str(membership.org_id), role=membership.role,
         )
         new_refresh_str, new_expires = token_provider.create_refresh_token(
             sub=str(user.id), email=user.email
@@ -245,7 +249,7 @@ def logout(db: Session, auth: AuthContext, refresh_token_str: str) -> None:
 @transactional(read_only=True)
 def get_me(db: Session, auth: AuthContext) -> MeResponse:
     """현재 유저 + 소속 조직 목록."""
-    user = repo.get_user_by_id(db, auth.account_id)
+    user = repo.get_user_by_id(db, auth.user_id)
     if not user:
         raise AppError(message="사용자를 찾을 수 없습니다", code="NOT_FOUND")
 

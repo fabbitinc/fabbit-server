@@ -80,7 +80,7 @@ def create_membership(
     db: Session,
     user_id: uuid.UUID,
     org_id: uuid.UUID,
-    role: str = "ADMIN",
+    role: str = "MEMBER",
     *,
     job_role: str | None = None,
 ) -> Membership:

@@ -17,6 +17,7 @@ class TokenPayload:
     sub: str
     email: str
     org_id: str
+    role: str = ""
     token_type: str = "ACCESS"
     jti: str | None = None
 
@@ -24,7 +25,7 @@ class TokenPayload:
 class TokenProvider:
     """PyJWT 기반 토큰 생성/검증."""
 
-    def create_access_token(self, sub: str, email: str, org_id: str) -> str:
+    def create_access_token(self, sub: str, email: str, org_id: str, role: str) -> str:
         """Access Token 생성 (기본 15분 TTL)."""
         expire = datetime.now(timezone.utc) + timedelta(
             minutes=settings.access_token_expire_minutes
@@ -33,6 +34,7 @@ class TokenProvider:
             "sub": sub,
             "email": email,
             "orgId": org_id,
+            "role": role,
             "exp": expire,
             "type": "ACCESS",
             "iss": settings.jwt_issuer,
@@ -71,12 +73,13 @@ class TokenProvider:
                 issuer=settings.jwt_issuer,
             )
             token_type = payload.get("type", "ACCESS")
-            # Refresh token에는 orgId가 없으므로 기본값 처리
-            org_id = payload["orgId"] if token_type == "ACCESS" else ""
+            # Refresh token에는 orgId/role이 없으므로 기본값 처리
+            is_access = token_type == "ACCESS"
             return TokenPayload(
                 sub=payload["sub"],
                 email=payload["email"],
-                org_id=org_id,
+                org_id=payload["orgId"] if is_access else "",
+                role=payload.get("role", "") if is_access else "",
                 token_type=token_type,
                 jti=payload.get("jti"),
             )

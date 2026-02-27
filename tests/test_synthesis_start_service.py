@@ -130,9 +130,10 @@ def _make_job(mapping_id, upload_id):
 class SynthesisStartServiceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.auth = AuthContext(
-            account_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
             email="user@example.com",
             org_id=uuid.uuid4(),
+            role="ADMIN",
         )
 
     def test_start_synthesis_single_upload(self) -> None:

@@ -75,7 +75,7 @@ def preview_mapping(
 
         log_usage(
             org_id=auth.org_id,
-            user_id=auth.account_id,
+            user_id=auth.user_id,
             feature="mapping:preview",
             model=llm_resp.model,
             input_tokens=llm_resp.input_tokens,

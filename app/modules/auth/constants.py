@@ -5,6 +5,13 @@ from dataclasses import dataclass
 from enum import Enum
 
 
+class MembershipRole(str, Enum):
+    """멤버십 역할."""
+
+    MEMBER = "MEMBER"   # 일반 멤버
+    ADMIN = "ADMIN"     # 관리자
+
+
 class PlanType(str, Enum):
     STARTER = "STARTER"
     TEAM = "TEAM"

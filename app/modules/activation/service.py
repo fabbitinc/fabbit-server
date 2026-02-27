@@ -171,7 +171,7 @@ def query_graph(
 
     log_ai_usage(
         org_id=auth.org_id,
-        user_id=auth.account_id,
+        user_id=auth.user_id,
         feature="activation:query_plan",
         model=plan_resp.model,
         input_tokens=plan_resp.input_tokens,
@@ -194,7 +194,7 @@ def query_graph(
 
         log_ai_usage(
             org_id=auth.org_id,
-            user_id=auth.account_id,
+            user_id=auth.user_id,
             feature="activation:query_plan_retry",
             model=retry_resp.model,
             input_tokens=retry_resp.input_tokens,
@@ -246,7 +246,7 @@ def query_graph(
         answer = answer_resp.content
         log_ai_usage(
             org_id=auth.org_id,
-            user_id=auth.account_id,
+            user_id=auth.user_id,
             feature="activation:answer",
             model=answer_resp.model,
             input_tokens=answer_resp.input_tokens,

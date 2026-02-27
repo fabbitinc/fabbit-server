@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from app.core.database import Base, generate_uuid7
+from app.modules.auth.constants import MembershipRole
 
 
 class User(Base):
@@ -104,7 +105,7 @@ class Membership(Base):
         ForeignKey("organizations.id", ondelete="CASCADE"),
         nullable=False,
     )
-    role: Mapped[str] = mapped_column(String(20), nullable=False, default="MEMBER")
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default=MembershipRole.MEMBER)
     job_role: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

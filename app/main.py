@@ -44,6 +44,7 @@ from app.core.exceptions import register_exception_handlers  # noqa: E402
 from app.infrastructure.password_hasher import hash_password  # noqa: E402
 from app.infrastructure.token_provider import token_provider  # noqa: E402
 from app.modules.auth import repository as auth_repo  # noqa: E402
+from app.modules.auth.constants import MembershipRole  # noqa: E402
 from app.modules.auth.provisioning import provision_tenant  # noqa: E402
 
 app = FastAPI(
@@ -103,9 +104,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 try:
                     payload = _token_provider.decode(token)
                     request.state.auth_context = AuthContext(
-                        account_id=uuid.UUID(payload.sub),
+                        user_id=uuid.UUID(payload.sub),
                         email=payload.email,
                         org_id=uuid.UUID(payload.org_id),
+                        role=payload.role,
                     )
                 except Exception:
                     pass  # 인증 실패 시 auth_context 미설정 → require_auth에서 401
@@ -196,7 +198,7 @@ def _bootstrap_test_account_once() -> None:
                 db,
                 user_id=user.id,
                 org_id=org.id,
-                role="ADMIN",
+                role=MembershipRole.ADMIN,
             )
 
         db.commit()

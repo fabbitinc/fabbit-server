@@ -14,6 +14,7 @@ class _FakeSession:
     def __init__(self) -> None:
         self.executed: list[str] = []
         self.closed = False
+        self.info: dict = {}
 
     def execute(self, statement) -> None:
         self.executed.append(str(statement))
@@ -51,9 +52,10 @@ class TenantDependencyTests(unittest.TestCase):
     def test_get_tenant_db_sets_search_path_from_auth_org_id(self) -> None:
         fake_session = _FakeSession()
         auth = AuthContext(
-            account_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
             email="user@example.com",
             org_id=uuid.uuid4(),
+            role="ADMIN",
         )
 
         with (
@@ -81,14 +83,16 @@ class TenantDependencyTests(unittest.TestCase):
         session_a = _FakeSession()
         session_b = _FakeSession()
         auth_a = AuthContext(
-            account_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
             email="a@example.com",
             org_id=uuid.uuid4(),
+            role="ADMIN",
         )
         auth_b = AuthContext(
-            account_id=uuid.uuid4(),
+            user_id=uuid.uuid4(),
             email="b@example.com",
             org_id=uuid.uuid4(),
+            role="MEMBER",
         )
 
         with patch("app.api.deps.SessionLocal", side_effect=[session_a, session_b]):

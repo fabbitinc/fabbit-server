@@ -38,8 +38,8 @@ class UpdatableMixin(TimestampMixin):
 class AuditMixin:
     """생성자 + 수정자 추적 — 감사 이력이 필요한 엔티티에 적용.
 
-    AuthContext.account_id를 논리적 참조로 저장 (cross-schema FK 없음).
-    session.info["account_id"] 설정 시 before_flush에서 자동 할당.
+    AuthContext.user_id를 논리적 참조로 저장 (cross-schema FK 없음).
+    session.info["user_id"] 설정 시 before_flush에서 자동 할당.
     """
 
     created_by: Mapped[uuid.UUID | None] = mapped_column(
@@ -53,16 +53,16 @@ class AuditMixin:
 @event.listens_for(Session, "before_flush")
 def _auto_audit(session: Session, flush_context, instances) -> None:
     """AuditMixin 인스턴스의 created_by/updated_by를 자동 할당."""
-    account_id = session.info.get("account_id")
-    if not account_id:
+    user_id = session.info.get("user_id")
+    if not user_id:
         return
     for obj in session.new:
         if isinstance(obj, AuditMixin):
-            obj.created_by = account_id
-            obj.updated_by = account_id
+            obj.created_by = user_id
+            obj.updated_by = user_id
     for obj in session.dirty:
         if isinstance(obj, AuditMixin):
-            obj.updated_by = account_id
+            obj.updated_by = user_id
 
 
 class SoftDeleteMixin:
