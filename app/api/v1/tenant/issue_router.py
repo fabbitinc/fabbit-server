@@ -19,6 +19,8 @@ from app.modules.issue.schemas import (
     CreateCommentRequest,
     CreateIssueRequest,
     IssueResponse,
+    LinkIssuesRequest,
+    LinkIssuesResponse,
     LinkPartsRequest,
     LinkPartsResponse,
     UpdateCommentRequest,
@@ -141,6 +143,147 @@ def unlink_parts(
     요청된 부품 ID에 해당하는 연결을 해제합니다.
     """
     issue_commands.unlink_parts(db, auth, issue_id, part_ids=req.part_ids)
+
+
+# ── 이슈 상태 전이 ──
+
+
+@router.post(
+    "/issues/{issue_id}/close",
+    response_model=IssueResponse,
+    status_code=200,
+)
+def close_issue(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 닫기.
+
+    이슈 상태를 **OPEN → CLOSED**로 전환합니다.
+    `closed_at` 타임스탬프가 자동 기록됩니다.
+    """
+    return issue_commands.close_issue(db, auth, issue_id)
+
+
+@router.post(
+    "/issues/{issue_id}/reopen",
+    response_model=IssueResponse,
+    status_code=200,
+)
+def reopen_issue(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 재개.
+
+    닫힌 이슈 상태를 **CLOSED → OPEN**으로 전환합니다.
+    `closed_at`이 초기화됩니다.
+    """
+    return issue_commands.reopen_issue(db, auth, issue_id)
+
+
+# ── CR 상태 전이 ──
+
+
+@router.post(
+    "/change-requests/{issue_id}/open",
+    response_model=ChangeRequestResponse,
+    status_code=200,
+)
+def open_cr_for_review(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """변경 요청 검토 상태 전환.
+
+    CR 상태를 **DRAFT → OPEN**으로 전환하여 검토를 요청합니다.
+    """
+    return issue_commands.open_cr_for_review(db, auth, issue_id)
+
+
+@router.post(
+    "/change-requests/{issue_id}/merge",
+    response_model=ChangeRequestResponse,
+    status_code=200,
+)
+def merge_cr(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """변경 요청 반영.
+
+    CR 상태를 **MERGED**로 전환하고, 연결된 열린 이슈를 자동으로 닫습니다.
+    `merged_at`, `merged_by`가 자동 기록됩니다.
+    """
+    return issue_commands.merge_cr(db, auth, issue_id)
+
+
+@router.post(
+    "/change-requests/{issue_id}/close",
+    response_model=ChangeRequestResponse,
+    status_code=200,
+)
+def close_cr(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """변경 요청 닫기.
+
+    CR 상태를 **CLOSED**로 전환합니다.
+    이슈 상태(`state`)도 함께 CLOSED로 변경됩니다.
+    """
+    return issue_commands.close_cr(db, auth, issue_id)
+
+
+# ── CR-Issue 연결 ──
+
+
+@router.post(
+    "/change-requests/{issue_id}/issues",
+    response_model=LinkIssuesResponse,
+    status_code=200,
+)
+def link_issues(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    req: LinkIssuesRequest,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """변경 요청에 이슈 배치 연결.
+
+    이미 연결된 이슈는 무시하고, 신규 연결 건수를 반환합니다.
+    각 이슈의 존재 여부를 사전 검증합니다.
+    """
+    return issue_commands.link_issues(db, auth, issue_id, issue_ids=req.issue_ids)
+
+
+@router.delete(
+    "/change-requests/{issue_id}/issues",
+    status_code=204,
+)
+def unlink_issues(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    req: LinkIssuesRequest,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """변경 요청에서 이슈 배치 해제.
+
+    요청된 이슈 ID에 해당하는 연결을 해제합니다.
+    """
+    issue_commands.unlink_issues(db, auth, issue_id, issue_ids=req.issue_ids)
 
 
 # ── 타임라인 ──

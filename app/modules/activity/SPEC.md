@@ -49,6 +49,8 @@ GET /issues/{id}/timeline
 | `label_removed` | `{label_id, name, color}` | 라벨 제거 |
 | `part_added` | `{part_ids}` | 부품 연결 |
 | `part_removed` | `{part_ids}` | 부품 해제 |
+| `issue_linked` | `{linked_issue_ids}` | CR에 이슈 연결 |
+| `issue_unlinked` | `{unlinked_issue_ids}` | CR에서 이슈 해제 |
 | `title_changed` | `{old, new}` | 제목 수정 |
 
 ### Project scope (target_type=PROJECT)

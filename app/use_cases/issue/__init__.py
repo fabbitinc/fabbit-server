@@ -2,27 +2,40 @@
 
 from app.use_cases.issue.add_files import add_files
 from app.use_cases.issue.assign_users import assign_users
+from app.use_cases.issue.close_cr import close_cr
+from app.use_cases.issue.close_issue import close_issue
 from app.use_cases.issue.create_change_request import create_change_request
 from app.use_cases.issue.create_comment import create_comment
 from app.use_cases.issue.create_issue import create_issue
 from app.use_cases.issue.delete_comment import delete_comment
 from app.use_cases.issue.delete_file import delete_file
+from app.use_cases.issue.link_issues import link_issues
 from app.use_cases.issue.link_parts import link_parts
+from app.use_cases.issue.merge_cr import merge_cr
+from app.use_cases.issue.open_cr_for_review import open_cr_for_review
+from app.use_cases.issue.reopen_issue import reopen_issue
 from app.use_cases.issue.unassign_users import unassign_users
+from app.use_cases.issue.unlink_issues import unlink_issues
 from app.use_cases.issue.unlink_parts import unlink_parts
 from app.use_cases.issue.update_comment import update_comment
 
 __all__ = [
     "add_files",
     "assign_users",
+    "close_cr",
+    "close_issue",
     "create_change_request",
     "create_comment",
     "create_issue",
     "delete_comment",
     "delete_file",
+    "link_issues",
     "link_parts",
-    "list_comments",
+    "merge_cr",
+    "open_cr_for_review",
+    "reopen_issue",
     "unassign_users",
+    "unlink_issues",
     "unlink_parts",
     "update_comment",
 ]

@@ -233,3 +233,32 @@ class IssuePart(TimestampMixin, PkMixin, TenantBase):
         ForeignKey("parts.id", ondelete="CASCADE"),
         nullable=False,
     )
+
+
+class ChangeRequestIssue(TimestampMixin, PkMixin, TenantBase):
+    """변경 요청 ↔ 이슈 연결 (M:N)."""
+
+    __tablename__ = "change_request_issues"
+
+    __table_args__ = (
+        # 동일 CR-이슈 관계 중복 방지
+        UniqueConstraint(
+            "change_request_id", "issue_id",
+            name="uq_change_request_issues_cr_id_issue_id",
+        ),
+        # CR 기준 연결 이슈 조회 최적화
+        Index("ix_change_request_issues_change_request_id", "change_request_id"),
+        # 이슈 기준 연결 CR 조회 최적화 (역추적)
+        Index("ix_change_request_issues_issue_id", "issue_id"),
+    )
+
+    change_request_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("change_requests.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    issue_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("issues.id", ondelete="CASCADE"),
+        nullable=False,
+    )

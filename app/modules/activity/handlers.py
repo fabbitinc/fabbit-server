@@ -11,6 +11,8 @@ from app.modules.activity.models import Activity
 from app.modules.issue.events import (
     AssigneesAdded,
     AssigneesRemoved,
+    CRIssuesLinked,
+    CRIssuesUnlinked,
     CRStateChanged,
     IssueCreated,
     IssuePartsLinked,
@@ -162,6 +164,30 @@ def _on_issue_parts_unlinked(event: IssuePartsUnlinked) -> None:
     )
 
 
+def _on_cr_issues_linked(event: CRIssuesLinked) -> None:
+    """CR에 이슈 연결 → Issue 피드."""
+    actor_id = _get_actor_id()
+    _add_activity(
+        TargetType.ISSUE,
+        event.issue_id,
+        "issue_linked",
+        actor_id,
+        {"linked_issue_ids": [str(iid) for iid in event.linked_issue_ids]},
+    )
+
+
+def _on_cr_issues_unlinked(event: CRIssuesUnlinked) -> None:
+    """CR에서 이슈 해제 → Issue 피드."""
+    actor_id = _get_actor_id()
+    _add_activity(
+        TargetType.ISSUE,
+        event.issue_id,
+        "issue_unlinked",
+        actor_id,
+        {"unlinked_issue_ids": [str(iid) for iid in event.unlinked_issue_ids]},
+    )
+
+
 # ── Project 이벤트 ──
 
 
@@ -198,5 +224,7 @@ event_bus.subscribe(AssigneesAdded, _on_assignees_added)
 event_bus.subscribe(AssigneesRemoved, _on_assignees_removed)
 event_bus.subscribe(IssuePartsLinked, _on_issue_parts_linked)
 event_bus.subscribe(IssuePartsUnlinked, _on_issue_parts_unlinked)
+event_bus.subscribe(CRIssuesLinked, _on_cr_issues_linked)
+event_bus.subscribe(CRIssuesUnlinked, _on_cr_issues_unlinked)
 event_bus.subscribe(ProjectPartsLinked, _on_project_parts_linked)
 event_bus.subscribe(ProjectPartsUnlinked, _on_project_parts_unlinked)

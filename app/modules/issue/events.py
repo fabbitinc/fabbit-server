@@ -63,3 +63,17 @@ class IssuePartsUnlinked(DomainEvent):
 
     issue_id: UUID
     part_ids: list[UUID]
+
+
+class CRIssuesLinked(DomainEvent):
+    """변경 요청에 이슈 연결 — Issue 피드용."""
+
+    issue_id: UUID
+    linked_issue_ids: list[UUID]
+
+
+class CRIssuesUnlinked(DomainEvent):
+    """변경 요청에서 이슈 해제 — Issue 피드용."""
+
+    issue_id: UUID
+    unlinked_issue_ids: list[UUID]

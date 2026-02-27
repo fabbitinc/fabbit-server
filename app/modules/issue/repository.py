@@ -5,7 +5,13 @@ import uuid
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.modules.issue.models import Issue, IssueAssignee, IssueComment, IssuePart
+from app.modules.issue.models import (
+    ChangeRequestIssue,
+    Issue,
+    IssueAssignee,
+    IssueComment,
+    IssuePart,
+)
 from app.modules.project.models import Project
 
 
@@ -99,6 +105,56 @@ def unlink_parts(db: Session, issue_id: uuid.UUID, part_ids: list[uuid.UUID]) ->
     )
     db.flush()
     return count
+
+
+# ── CR-Issue 연결 ──
+
+
+def link_issues(
+    db: Session, cr_id: uuid.UUID, issue_ids: list[uuid.UUID]
+) -> int:
+    """CR에 이슈 배치 연결 — 이미 연결된 건은 무시, 신규 연결 건수 반환."""
+    existing = set(
+        row[0]
+        for row in db.query(ChangeRequestIssue.issue_id)
+        .filter(
+            ChangeRequestIssue.change_request_id == cr_id,
+            ChangeRequestIssue.issue_id.in_(issue_ids),
+        )
+        .all()
+    )
+    new_ids = [iid for iid in issue_ids if iid not in existing]
+    for iid in new_ids:
+        db.add(ChangeRequestIssue(change_request_id=cr_id, issue_id=iid))
+    if new_ids:
+        db.flush()
+    return len(new_ids)
+
+
+def unlink_issues(
+    db: Session, cr_id: uuid.UUID, issue_ids: list[uuid.UUID]
+) -> int:
+    """CR에서 이슈 배치 해제 — 삭제 건수 반환."""
+    count = (
+        db.query(ChangeRequestIssue)
+        .filter(
+            ChangeRequestIssue.change_request_id == cr_id,
+            ChangeRequestIssue.issue_id.in_(issue_ids),
+        )
+        .delete(synchronize_session="fetch")
+    )
+    db.flush()
+    return count
+
+
+def list_linked_issue_ids(db: Session, cr_id: uuid.UUID) -> list[uuid.UUID]:
+    """CR에 연결된 이슈 ID 목록 조회."""
+    rows = (
+        db.query(ChangeRequestIssue.issue_id)
+        .filter(ChangeRequestIssue.change_request_id == cr_id)
+        .all()
+    )
+    return [row[0] for row in rows]
 
 
 # ── 댓글 ──

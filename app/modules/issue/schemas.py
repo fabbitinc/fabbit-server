@@ -86,6 +86,17 @@ class CommentResponse(BaseModel):
     created_by: uuid.UUID | None = None
 
 
+# ── CR-Issue 연결 ──
+
+
+class LinkIssuesRequest(BaseModel):
+    issue_ids: list[uuid.UUID] = Field(..., min_length=1, description="연결할 이슈 ID 목록")
+
+
+class LinkIssuesResponse(BaseModel):
+    linked_count: int
+
+
 # ── 첨부파일 ──
 
 
