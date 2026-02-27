@@ -26,6 +26,9 @@ from app.api.v1.tenant.dashboard_router import (
     router as dashboard_router,  # noqa: E402
 )
 from app.api.v1.tenant.file_router import router as file_router  # noqa: E402
+from app.api.v1.tenant.invitation_router import (
+    router as invitation_router,  # noqa: E402
+)
 from app.api.v1.tenant.issue_router import router as issue_router  # noqa: E402
 from app.api.v1.tenant.label_router import router as label_router  # noqa: E402
 from app.api.v1.tenant.mapping_router import router as mapping_router  # noqa: E402
@@ -79,6 +82,7 @@ _PUBLIC_PATHS = frozenset(
         "/api/v1/auth/check-slug",
         "/api/v1/auth/plans",
         "/api/v1/auth/site",
+        "/api/v1/auth/accept-invitation",
         "/docs",
         "/openapi.json",
         "/redoc",
@@ -156,6 +160,7 @@ app.include_router(synthesis_router)
 app.include_router(part_router)
 app.include_router(project_router)
 app.include_router(file_router)
+app.include_router(invitation_router)
 app.include_router(issue_router)
 app.include_router(label_router)
 app.include_router(ontology_router)

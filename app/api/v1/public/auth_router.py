@@ -8,6 +8,8 @@ from app.api.deps import get_db, get_origin_slug, require_auth
 from app.core.auth_context import AuthContext
 from app.modules.auth import service
 from app.modules.auth.schemas import (
+    AcceptInvitationRequest,
+    AcceptInvitationResponse,
     CheckEmailResponse,
     CheckSlugResponse,
     LoginRequest,
@@ -21,6 +23,7 @@ from app.modules.auth.schemas import (
     SiteResponse,
     TokenResponse,
 )
+from app.use_cases import invitation as invitation_commands
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -93,3 +96,14 @@ def me(
     auth: AuthContext = Depends(require_auth),
 ):
     return service.get_me(db, auth)
+
+
+@router.post("/accept-invitation", response_model=AcceptInvitationResponse)
+def accept_invitation(req: AcceptInvitationRequest, db: Session = Depends(get_db)):
+    """초대 수락.
+
+    토큰으로 초대를 조회하여 수락합니다.
+    - **미가입자**: password, full_name 필수 → 유저 생성 + 조직 참여
+    - **기가입자**: 조직 참여만 처리
+    """
+    return invitation_commands.accept_invitation(db, req)

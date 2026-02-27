@@ -12,6 +12,14 @@ class MembershipRole(str, Enum):
     ADMIN = "ADMIN"     # 관리자
 
 
+class InvitationStatus(str, Enum):
+    """초대 상태."""
+
+    PENDING = "PENDING"       # 초대 발송됨, 수락 대기 중
+    ACCEPTED = "ACCEPTED"     # 수락 완료
+    CANCELLED = "CANCELLED"   # 관리자가 취소
+
+
 class PlanType(str, Enum):
     STARTER = "STARTER"
     TEAM = "TEAM"

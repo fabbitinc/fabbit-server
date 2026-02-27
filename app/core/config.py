@@ -43,6 +43,19 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_base_url: str = "https://openrouter.ai/api/v1"
 
+    # ── SMTP (이메일) ──
+    smtp_host: str = "localhost"
+    smtp_port: int = 1025
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_use_tls: bool = False
+    smtp_from_email: str = "noreply@fabbit.io"
+    smtp_from_name: str = "Fabbit"
+
+    # ── 초대 ──
+    invitation_expire_days: int = 7
+    invitation_base_url: str = "http://localhost:5173"
+
     # ── Cloudflare Turnstile (봇 방지) ──
     turnstile_secret_key: str = ""
     turnstile_enabled: bool = False

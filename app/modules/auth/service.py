@@ -14,11 +14,16 @@ from app.infrastructure.password_hasher import hash_password, verify_password
 from app.infrastructure.turnstile import verify_turnstile_token
 from app.infrastructure.token_provider import token_provider
 from app.modules.auth import repository as repo
-from app.modules.auth.constants import PLAN_LIMITS, MembershipRole, PlanType, RESERVED_SLUGS, validate_slug_format
+from app.modules.auth.constants import PLAN_LIMITS, InvitationStatus, MembershipRole, PlanType, RESERVED_SLUGS, validate_slug_format
 from app.modules.auth.provisioning import provision_tenant
+from app.modules.auth.models import Invitation, _hash_token
 from app.modules.auth.schemas import (
+    AcceptInvitationRequest,
+    AcceptInvitationResponse,
     CheckEmailResponse,
     CheckSlugResponse,
+    CreateInvitationRequest,
+    InvitationResponse,
     LoginRequest,
     LoginResponse,
     MeResponse,
@@ -308,3 +313,170 @@ def get_plans() -> list[PlanResponse]:
         )
         for pt, limits in PLAN_LIMITS.items()
     ]
+
+
+# ── 초대 ──
+
+
+def _build_invite_url(token: str) -> str:
+    """초대 수락 페이지 URL 생성."""
+    from app.core.config import settings
+    return f"{settings.invitation_base_url}/invite/accept?token={token}"
+
+
+def _send_invitation_email(
+    email: str, org_name: str, inviter_name: str, invite_url: str
+) -> None:
+    """초대 이메일 발송."""
+    from app.infrastructure.email_client import email_client
+
+    subject = f"[Fabbit] {org_name} 워크스페이스에 초대되었습니다"
+    html_body = f"""\
+<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2>{org_name} 워크스페이스 초대</h2>
+  <p><strong>{inviter_name}</strong>님이 <strong>{org_name}</strong> 워크스페이스에 초대했습니다.</p>
+  <p>아래 버튼을 클릭하여 초대를 수락하세요.</p>
+  <p style="margin: 24px 0;">
+    <a href="{invite_url}"
+       style="background-color: #2563eb; color: white; padding: 12px 24px;
+              text-decoration: none; border-radius: 6px; display: inline-block;">
+      초대 수락하기
+    </a>
+  </p>
+  <p style="color: #6b7280; font-size: 14px;">
+    버튼이 작동하지 않으면 아래 링크를 브라우저에 복사하세요:<br>
+    <a href="{invite_url}">{invite_url}</a>
+  </p>
+</div>"""
+    text_body = (
+        f"{inviter_name}님이 {org_name} 워크스페이스에 초대했습니다.\n"
+        f"초대 수락: {invite_url}"
+    )
+    email_client.send(email, subject, html_body, text_body)
+
+
+def create_invitation(
+    db: Session, auth: AuthContext, req: CreateInvitationRequest
+) -> InvitationResponse:
+    """초대 생성 및 이메일 발송."""
+    # ADMIN 검증
+    if auth.role != MembershipRole.ADMIN:
+        raise AppError(message="관리자만 초대할 수 있습니다", code="FORBIDDEN")
+
+    # 역할 검증
+    try:
+        MembershipRole(req.role)
+    except ValueError:
+        raise AppError(message="유효하지 않은 역할입니다", code="VALIDATION_ERROR")
+
+    # 이미 조직 멤버인지 확인
+    existing_user = repo.get_user_by_email(db, req.email)
+    if existing_user:
+        existing_membership = repo.get_membership(db, existing_user.id, auth.org_id)
+        if existing_membership:
+            raise AppError(message="이미 조직에 소속된 멤버입니다", code="ALREADY_EXISTS")
+
+    # PENDING 초대 중복 확인
+    pending = repo.get_pending_invitation(db, auth.org_id, req.email)
+    if pending:
+        raise AppError(message="이미 초대가 발송된 이메일입니다", code="ALREADY_EXISTS")
+
+    # 기존 CANCELLED 레코드 삭제 (재초대 허용)
+    repo.delete_invitation_by_org_email(db, auth.org_id, req.email)
+
+    # 초대 생성 (원본 토큰은 이메일 발송에만 사용)
+    invitation, raw_token = Invitation.create(
+        org_id=auth.org_id,
+        email=req.email,
+        invited_by=auth.user_id,
+        role=req.role,
+    )
+    invitation = repo.create_invitation(db, invitation)
+
+    # 이메일 발송
+    org = repo.get_org_by_id(db, auth.org_id)
+    inviter = repo.get_user_by_id(db, auth.user_id)
+    invite_url = _build_invite_url(raw_token)
+    _send_invitation_email(req.email, org.name, inviter.full_name, invite_url)
+
+    return InvitationResponse.model_validate(invitation)
+
+
+def cancel_invitation(
+    db: Session, auth: AuthContext, invitation_id: _uuid.UUID
+) -> None:
+    """초대 취소."""
+    if auth.role != MembershipRole.ADMIN:
+        raise AppError(message="관리자만 취소할 수 있습니다", code="FORBIDDEN")
+
+    invitation = repo.get_invitation_by_id(db, invitation_id)
+    if not invitation or invitation.org_id != auth.org_id:
+        raise AppError(message="초대를 찾을 수 없습니다", code="NOT_FOUND")
+
+    if invitation.status != InvitationStatus.PENDING:
+        raise AppError(message="대기 중인 초대만 취소할 수 있습니다", code="VALIDATION_ERROR")
+
+    invitation.cancel()
+
+
+def accept_invitation(
+    db: Session, req: AcceptInvitationRequest
+) -> AcceptInvitationResponse:
+    """초대 수락: 미가입 시 User 생성 → Membership 생성 → 토큰 발급."""
+    token_hash = _hash_token(req.token)
+    invitation = repo.get_invitation_by_token_hash(db, token_hash)
+    if not invitation:
+        raise AppError(message="유효하지 않은 초대입니다", code="NOT_FOUND")
+
+    if invitation.status != InvitationStatus.PENDING:
+        raise AppError(message="이미 처리된 초대입니다", code="VALIDATION_ERROR")
+
+    if invitation.is_expired:
+        raise AppError(message="만료된 초대입니다", code="VALIDATION_ERROR")
+
+    # 기존 유저 확인
+    user = repo.get_user_by_email(db, invitation.email)
+    is_new_user = user is None
+
+    if is_new_user:
+        # 미가입자 — password, full_name 필수
+        if not req.password or not req.full_name:
+            raise AppError(
+                message="신규 가입 시 비밀번호와 이름이 필요합니다",
+                code="VALIDATION_ERROR",
+            )
+        hashed = hash_password(req.password)
+        user = repo.create_user(db, invitation.email, hashed, req.full_name)
+
+    # 이미 멤버인지 확인
+    existing_membership = repo.get_membership(db, user.id, invitation.org_id)
+    if existing_membership:
+        invitation.accept()
+        raise AppError(message="이미 조직에 소속된 멤버입니다", code="ALREADY_EXISTS")
+
+    # 멤버십 생성
+    repo.create_membership(db, user.id, invitation.org_id, role=invitation.role)
+
+    # 초대 수락 처리
+    invitation.accept()
+
+    # 토큰 발급
+    org = repo.get_org_by_id(db, invitation.org_id)
+    access_token = token_provider.create_access_token(
+        sub=str(user.id), email=user.email,
+        org_id=str(invitation.org_id), role=invitation.role,
+    )
+    refresh_token_str, expires_at = token_provider.create_refresh_token(
+        sub=str(user.id), email=user.email
+    )
+    payload = token_provider.decode(refresh_token_str)
+    repo.save_refresh_token(db, user.id, payload.jti, expires_at)
+
+    return AcceptInvitationResponse(
+        user=UserResponse.model_validate(user),
+        organization=OrganizationResponse.model_validate(org),
+        tokens=TokenResponse(
+            access_token=access_token, refresh_token=refresh_token_str
+        ),
+        is_new_user=is_new_user,
+    )

@@ -7,7 +7,8 @@ from sqlalchemy import select, delete, update
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
-from app.modules.auth.models import Membership, Organization, RefreshToken, User
+from app.modules.auth.constants import InvitationStatus
+from app.modules.auth.models import Invitation, Membership, Organization, RefreshToken, User
 
 
 # ── User ──
@@ -148,3 +149,71 @@ def delete_refresh_token_by_jti(db: Session, token_jti: str) -> None:
 def delete_all_user_refresh_tokens(db: Session, user_id: uuid.UUID) -> None:
     """유저의 모든 리프레시 토큰 폐기 (토큰 재사용 감지 시)."""
     db.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
+
+
+# ── Invitation ──
+
+
+def create_invitation(db: Session, invitation: Invitation) -> Invitation:
+    db.add(invitation)
+    db.flush()
+    return invitation
+
+
+def get_invitation_by_token_hash(db: Session, token_hash: str) -> Invitation | None:
+    return db.scalars(
+        select(Invitation).where(Invitation.token_hash == token_hash)
+    ).first()
+
+
+def get_invitation_by_id(db: Session, invitation_id: uuid.UUID) -> Invitation | None:
+    return db.get(Invitation, invitation_id)
+
+
+def get_pending_invitation(
+    db: Session, org_id: uuid.UUID, email: str
+) -> Invitation | None:
+    """조직-이메일 조합의 PENDING 초대 조회."""
+    return db.scalars(
+        select(Invitation).where(
+            Invitation.org_id == org_id,
+            Invitation.email == email,
+            Invitation.status == InvitationStatus.PENDING,
+        )
+    ).first()
+
+
+def list_invitations_by_org(db: Session, org_id: uuid.UUID) -> list[Invitation]:
+    """조직의 초대 목록 조회 (최신순)."""
+    return list(
+        db.scalars(
+            select(Invitation)
+            .where(Invitation.org_id == org_id)
+            .order_by(Invitation.created_at.desc())
+        ).all()
+    )
+
+
+def delete_invitation_by_org_email(
+    db: Session, org_id: uuid.UUID, email: str
+) -> None:
+    """재초대 시 기존 CANCELLED 레코드 삭제."""
+    db.execute(
+        delete(Invitation).where(
+            Invitation.org_id == org_id,
+            Invitation.email == email,
+            Invitation.status == InvitationStatus.CANCELLED,
+        )
+    )
+
+
+def get_membership(
+    db: Session, user_id: uuid.UUID, org_id: uuid.UUID
+) -> Membership | None:
+    """유저-조직 멤버십 단건 조회."""
+    return db.scalars(
+        select(Membership).where(
+            Membership.user_id == user_id,
+            Membership.org_id == org_id,
+        )
+    ).first()

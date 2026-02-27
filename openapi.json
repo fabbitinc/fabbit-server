@@ -453,6 +453,48 @@
                 ]
             }
         },
+        "/api/v1/auth/accept-invitation": {
+            "post": {
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Accept Invitation",
+                "description": "\ucd08\ub300 \uc218\ub77d.\n\n\ud1a0\ud070\uc73c\ub85c \ucd08\ub300\ub97c \uc870\ud68c\ud558\uc5ec \uc218\ub77d\ud569\ub2c8\ub2e4.\n- **\ubbf8\uac00\uc785\uc790**: password, full_name \ud544\uc218 \u2192 \uc720\uc800 \uc0dd\uc131 + \uc870\uc9c1 \ucc38\uc5ec\n- **\uae30\uac00\uc785\uc790**: \uc870\uc9c1 \ucc38\uc5ec\ub9cc \ucc98\ub9ac",
+                "operationId": "accept_invitation_api_v1_auth_accept_invitation_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AcceptInvitationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AcceptInvitationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/dashboard/stats": {
             "get": {
                 "tags": [
@@ -785,6 +827,33 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/members": {
+            "get": {
+                "tags": [
+                    "members"
+                ],
+                "summary": "List Org Members",
+                "description": "\uc870\uc9c1 \uba64\ubc84 \ubaa9\ub85d \uc870\ud68c.\n\n\ud604\uc7ac \uc778\uc99d\ub41c \uc0ac\uc6a9\uc790\uac00 \uc18d\ud55c \uc870\uc9c1\uc758 \uc804\uccb4 \uba64\ubc84 \ubaa9\ub85d\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "list_org_members_api_v1_members_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MemberListResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
             }
         },
         "/api/v1/suppliers": {
@@ -2303,6 +2372,162 @@
                 }
             }
         },
+        "/api/v1/projects/{project_id}/members": {
+            "get": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "List Project Members",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \uba64\ubc84 \ubaa9\ub85d \uc870\ud68c.",
+                "operationId": "list_project_members_api_v1_projects__project_id__members_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectMemberListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Add Project Members",
+                "description": "\ud504\ub85c\uc81d\ud2b8\uc5d0 \uba64\ubc84 \ubc30\uce58 \ucd94\uac00.\n\n\uc774\ubbf8 \ucd94\uac00\ub41c \uba64\ubc84\ub294 \ubb34\uc2dc\ub418\uba70, \uc2e0\uaddc \ucd94\uac00 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "add_project_members_api_v1_projects__project_id__members_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ManageMembersRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ManageMembersResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Remove Project Members",
+                "description": "\ud504\ub85c\uc81d\ud2b8\uc5d0\uc11c \uba64\ubc84 \ubc30\uce58 \uc81c\uac70.",
+                "operationId": "remove_project_members_api_v1_projects__project_id__members_delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ManageMembersRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/files/upload": {
             "post": {
                 "tags": [
@@ -2475,6 +2700,120 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/invitations": {
+            "get": {
+                "tags": [
+                    "invitations"
+                ],
+                "summary": "List Invitations",
+                "description": "\uc870\uc9c1\uc758 \ucd08\ub300 \ubaa9\ub85d \uc870\ud68c.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \uc870\ud68c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\ubaa8\ub4e0 \uc0c1\ud0dc(PENDING, ACCEPTED, CANCELLED)\uc758 \ucd08\ub300\ub97c \ucd5c\uc2e0\uc21c\uc73c\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "list_invitations_api_v1_invitations_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InvitationListResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "invitations"
+                ],
+                "summary": "Create Invitation",
+                "description": "\uc774\uba54\uc77c\ub85c \uc870\uc9c1 \ucd08\ub300 \ubc1c\uc1a1.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \ucd08\ub300\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\uc774\ubbf8 PENDING \uc0c1\ud0dc\uc778 \ucd08\ub300\uac00 \uc788\uc73c\uba74 \uc911\ubcf5 \uc5d0\ub7ec\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uc774\uc804\uc5d0 \ucde8\uc18c\ub41c \ucd08\ub300\uac00 \uc788\uc73c\uba74 \uc0ad\uc81c \ud6c4 \uc0c8\ub85c \uc0dd\uc131\ud569\ub2c8\ub2e4.",
+                "operationId": "create_invitation_api_v1_invitations_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateInvitationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InvitationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/invitations/{invitation_id}": {
+            "delete": {
+                "tags": [
+                    "invitations"
+                ],
+                "summary": "Cancel Invitation",
+                "description": "\ucd08\ub300 \ucde8\uc18c.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \ucde8\uc18c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\nPENDING \uc0c1\ud0dc\uc778 \ucd08\ub300\ub9cc \ucde8\uc18c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+                "operationId": "cancel_invitation_api_v1_invitations__invitation_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "invitation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Invitation Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
                     },
                     "422": {
                         "description": "Validation Error",
@@ -4463,6 +4802,72 @@
     },
     "components": {
         "schemas": {
+            "AcceptInvitationRequest": {
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "title": "Token"
+                    },
+                    "password": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 128,
+                                "minLength": 8
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Password",
+                        "description": "\ubbf8\uac00\uc785\uc790\uc778 \uacbd\uc6b0 \ud544\uc218"
+                    },
+                    "full_name": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 100,
+                                "minLength": 1
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Full Name",
+                        "description": "\ubbf8\uac00\uc785\uc790\uc778 \uacbd\uc6b0 \ud544\uc218"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "token"
+                ],
+                "title": "AcceptInvitationRequest"
+            },
+            "AcceptInvitationResponse": {
+                "properties": {
+                    "user": {
+                        "$ref": "#/components/schemas/UserResponse"
+                    },
+                    "organization": {
+                        "$ref": "#/components/schemas/OrganizationResponse"
+                    },
+                    "tokens": {
+                        "$ref": "#/components/schemas/TokenResponse"
+                    },
+                    "is_new_user": {
+                        "type": "boolean",
+                        "title": "Is New User"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user",
+                    "organization",
+                    "tokens",
+                    "is_new_user"
+                ],
+                "title": "AcceptInvitationResponse"
+            },
             "ActivityListResponse": {
                 "properties": {
                     "items": {
@@ -5508,6 +5913,26 @@
                 ],
                 "title": "CreateFileResponse"
             },
+            "CreateInvitationRequest": {
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "title": "Email"
+                    },
+                    "role": {
+                        "type": "string",
+                        "title": "Role",
+                        "description": "\ucd08\ub300\ud560 \uc5ed\ud560 (MEMBER / ADMIN)",
+                        "default": "MEMBER"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "email"
+                ],
+                "title": "CreateInvitationRequest"
+            },
             "CreateIssueRequest": {
                 "properties": {
                     "title": {
@@ -5802,6 +6227,87 @@
                     "issues"
                 ],
                 "title": "HealthCheckResponse"
+            },
+            "InvitationListResponse": {
+                "properties": {
+                    "invitations": {
+                        "items": {
+                            "$ref": "#/components/schemas/InvitationResponse"
+                        },
+                        "type": "array",
+                        "title": "Invitations"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "invitations"
+                ],
+                "title": "InvitationListResponse"
+            },
+            "InvitationResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "org_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Org Id"
+                    },
+                    "email": {
+                        "type": "string",
+                        "title": "Email"
+                    },
+                    "role": {
+                        "type": "string",
+                        "title": "Role"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "invited_by": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Invited By"
+                    },
+                    "expires_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Expires At"
+                    },
+                    "accepted_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Accepted At"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "org_id",
+                    "email",
+                    "role",
+                    "status",
+                    "invited_by",
+                    "expires_at",
+                    "created_at"
+                ],
+                "title": "InvitationResponse"
             },
             "IssueListResponse": {
                 "properties": {
@@ -6331,6 +6837,38 @@
                 ],
                 "title": "LoginResponse"
             },
+            "ManageMembersRequest": {
+                "properties": {
+                    "user_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "User Ids"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_ids"
+                ],
+                "title": "ManageMembersRequest",
+                "description": "\uba64\ubc84 \ucd94\uac00/\uc81c\uac70 \uc694\uccad."
+            },
+            "ManageMembersResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count"
+                ],
+                "title": "ManageMembersResponse",
+                "description": "\uba64\ubc84 \ucd94\uac00/\uc81c\uac70 \uacb0\uacfc."
+            },
             "MappingConfirmRequest": {
                 "properties": {
                     "file_id": {
@@ -6695,6 +7233,64 @@
                     "memberships"
                 ],
                 "title": "MeResponse"
+            },
+            "MemberListResponse": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/MemberSummary"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "title": "MemberListResponse",
+                "description": "\uc870\uc9c1 \uba64\ubc84 \ubaa9\ub85d."
+            },
+            "MemberSummary": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "User Id"
+                    },
+                    "full_name": {
+                        "type": "string",
+                        "title": "Full Name"
+                    },
+                    "email": {
+                        "type": "string",
+                        "title": "Email"
+                    },
+                    "role": {
+                        "type": "string",
+                        "title": "Role"
+                    },
+                    "job_role": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Job Role"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "full_name",
+                    "email",
+                    "role"
+                ],
+                "title": "MemberSummary",
+                "description": "\uc870\uc9c1 \uba64\ubc84 \uc694\uc57d."
             },
             "MembershipResponse": {
                 "properties": {
@@ -7418,6 +8014,48 @@
                     "items"
                 ],
                 "title": "ProjectListResponse"
+            },
+            "ProjectMemberListResponse": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/ProjectMemberSummary"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "title": "ProjectMemberListResponse",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \uba64\ubc84 \ubaa9\ub85d."
+            },
+            "ProjectMemberSummary": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "User Id"
+                    },
+                    "full_name": {
+                        "type": "string",
+                        "title": "Full Name"
+                    },
+                    "email": {
+                        "type": "string",
+                        "title": "Email"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "full_name",
+                    "email"
+                ],
+                "title": "ProjectMemberSummary",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \uba64\ubc84 \uc694\uc57d."
             },
             "ProjectPartSummary": {
                 "properties": {

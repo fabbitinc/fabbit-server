@@ -118,3 +118,42 @@ class PlanResponse(BaseModel):
     max_drawing_parses: int
     max_chats: int
     price_monthly: int
+
+
+# ── 초대 ──
+
+
+class CreateInvitationRequest(BaseModel):
+    email: EmailStr
+    role: str = Field("MEMBER", description="초대할 역할 (MEMBER / ADMIN)")
+
+
+class AcceptInvitationRequest(BaseModel):
+    token: str
+    password: str | None = Field(None, min_length=8, max_length=128, description="미가입자인 경우 필수")
+    full_name: str | None = Field(None, min_length=1, max_length=100, description="미가입자인 경우 필수")
+
+
+class InvitationResponse(BaseModel):
+    id: uuid.UUID
+    org_id: uuid.UUID
+    email: str
+    role: str
+    status: str
+    invited_by: uuid.UUID
+    expires_at: datetime
+    accepted_at: datetime | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class InvitationListResponse(BaseModel):
+    invitations: list[InvitationResponse]
+
+
+class AcceptInvitationResponse(BaseModel):
+    user: UserResponse
+    organization: OrganizationResponse
+    tokens: TokenResponse
+    is_new_user: bool
