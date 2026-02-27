@@ -1,11 +1,94 @@
 """이슈 도메인 API Pydantic 스키마."""
 
 import uuid
+from typing import Any
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.modules.file.schemas import FileItem
+
+
+# ── TipTap JSON 검증 ──
+
+# 허용 노드 타입
+ALLOWED_NODE_TYPES: frozenset[str] = frozenset({
+    "doc", "paragraph", "text", "heading",
+    "bulletList", "orderedList", "listItem", "taskList", "taskItem",
+    "blockquote", "codeBlock", "hardBreak", "horizontalRule",
+    "image", "mention",
+    "table", "tableRow", "tableCell", "tableHeader",
+})
+
+# 허용 마크 타입
+ALLOWED_MARK_TYPES: frozenset[str] = frozenset({
+    "bold", "italic", "strike", "underline",
+    "code", "link", "highlight", "textStyle",
+    "superscript", "subscript",
+})
+
+
+class TipTapMark(BaseModel):
+    """TipTap 텍스트 마크 (bold, italic, link 등)."""
+
+    type: str
+    attrs: dict[str, Any] | None = None
+
+    @field_validator("type")
+    @classmethod
+    def check_mark_type(cls, v: str) -> str:
+        if v not in ALLOWED_MARK_TYPES:
+            raise ValueError(f"허용되지 않는 마크 타입: {v}")
+        return v
+
+    @model_validator(mode="after")
+    def check_link_href(self) -> "TipTapMark":
+        """link 마크의 href가 안전한 프로토콜인지 검증."""
+        if self.type == "link" and self.attrs:
+            href = self.attrs.get("href", "")
+            if href and not href.startswith(("http://", "https://", "mailto:")):
+                raise ValueError("link href는 http/https/mailto만 허용됩니다")
+        return self
+
+
+class TipTapNode(BaseModel):
+    """TipTap JSON 노드 (재귀 구조)."""
+
+    type: str
+    text: str | None = None
+    content: list["TipTapNode"] | None = None
+    attrs: dict[str, Any] | None = None
+    marks: list[TipTapMark] | None = None
+
+    @field_validator("type")
+    @classmethod
+    def check_node_type(cls, v: str) -> str:
+        if v not in ALLOWED_NODE_TYPES:
+            raise ValueError(f"허용되지 않는 노드 타입: {v}")
+        return v
+
+    @model_validator(mode="after")
+    def check_image_src(self) -> "TipTapNode":
+        """image 노드의 src가 안전한 프로토콜인지 검증."""
+        if self.type == "image" and self.attrs:
+            src = self.attrs.get("src", "")
+            if src and not src.startswith(("http://", "https://")):
+                raise ValueError("image src는 http/https만 허용됩니다")
+        return self
+
+
+class TipTapDocument(BaseModel):
+    """TipTap JSON 문서 루트."""
+
+    type: str = "doc"
+    content: list[TipTapNode] | None = None
+
+    @field_validator("type")
+    @classmethod
+    def check_doc_type(cls, v: str) -> str:
+        if v != "doc":
+            raise ValueError("최상위 타입은 'doc'이어야 합니다")
+        return v
 
 
 # ── 요청 ──
@@ -13,12 +96,12 @@ from app.modules.file.schemas import FileItem
 
 class CreateIssueRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500, description="이슈 제목")
-    body: str | None = Field(None, description="이슈 본문")
+    body: TipTapDocument | None = Field(None, description="이슈 본문 (TipTap JSON)")
 
 
 class CreateChangeRequestRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500, description="변경 요청 제목")
-    body: str | None = Field(None, description="변경 요청 본문")
+    body: TipTapDocument | None = Field(None, description="변경 요청 본문 (TipTap JSON)")
 
 
 # ── 목록 응답 (body 제외한 요약) ──
@@ -99,7 +182,7 @@ class IssueResponse(BaseModel):
     number: int
     type: str
     title: str
-    body: str | None = None
+    body: dict | None = None
     state: str
     closed_at: datetime | None = None
     created_at: datetime

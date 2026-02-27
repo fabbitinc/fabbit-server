@@ -1,5 +1,7 @@
 """이슈 도메인 모델 → Pydantic 응답 변환."""
 
+import json
+
 from app.modules.file.schemas import FileItem
 from app.modules.issue.models import ChangeRequest, Issue, IssueComment
 from app.modules.issue.schemas import (
@@ -12,6 +14,16 @@ from app.modules.issue.schemas import (
     LabelBadge,
     PartBadge,
 )
+
+
+def _parse_body(body: str | None) -> dict | None:
+    """TEXT 컬럼의 body JSON 문자열을 dict로 변환."""
+    if not body:
+        return None
+    try:
+        return json.loads(body)
+    except (json.JSONDecodeError, TypeError):
+        return None
 
 
 def to_issue_response(
@@ -31,7 +43,7 @@ def to_issue_response(
         number=issue.number,
         type=issue.type.value,
         title=issue.title,
-        body=issue.body,
+        body=_parse_body(issue.body),
         state=issue.state.value,
         closed_at=issue.closed_at,
         created_at=issue.created_at,
@@ -63,7 +75,7 @@ def to_change_request_response(
         number=cr.number,
         type=cr.type.value,
         title=cr.title,
-        body=cr.body,
+        body=_parse_body(cr.body),
         state=cr.state.value,
         closed_at=cr.closed_at,
         created_at=cr.created_at,

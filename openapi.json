@@ -5034,7 +5034,8 @@
                     "body": {
                         "anyOf": [
                             {
-                                "type": "string"
+                                "additionalProperties": true,
+                                "type": "object"
                             },
                             {
                                 "type": "null"
@@ -5454,14 +5455,13 @@
                     "body": {
                         "anyOf": [
                             {
-                                "type": "string"
+                                "$ref": "#/components/schemas/TipTapDocument"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Body",
-                        "description": "\ubcc0\uacbd \uc694\uccad \ubcf8\ubb38"
+                        "description": "\ubcc0\uacbd \uc694\uccad \ubcf8\ubb38 (TipTap JSON)"
                     }
                 },
                 "type": "object",
@@ -5576,14 +5576,13 @@
                     "body": {
                         "anyOf": [
                             {
-                                "type": "string"
+                                "$ref": "#/components/schemas/TipTapDocument"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Body",
-                        "description": "\uc774\uc288 \ubcf8\ubb38"
+                        "description": "\uc774\uc288 \ubcf8\ubb38 (TipTap JSON)"
                     }
                 },
                 "type": "object",
@@ -5928,7 +5927,8 @@
                     "body": {
                         "anyOf": [
                             {
-                                "type": "string"
+                                "additionalProperties": true,
+                                "type": "object"
                             },
                             {
                                 "type": "null"
@@ -8827,6 +8827,123 @@
                     "items"
                 ],
                 "title": "TimelineResponse"
+            },
+            "TipTapDocument": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "default": "doc"
+                    },
+                    "content": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/TipTapNode"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Content"
+                    }
+                },
+                "type": "object",
+                "title": "TipTapDocument",
+                "description": "TipTap JSON \ubb38\uc11c \ub8e8\ud2b8."
+            },
+            "TipTapMark": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "title": "Type"
+                    },
+                    "attrs": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Attrs"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type"
+                ],
+                "title": "TipTapMark",
+                "description": "TipTap \ud14d\uc2a4\ud2b8 \ub9c8\ud06c (bold, italic, link \ub4f1)."
+            },
+            "TipTapNode": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "title": "Type"
+                    },
+                    "text": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Text"
+                    },
+                    "content": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/TipTapNode"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Content"
+                    },
+                    "attrs": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Attrs"
+                    },
+                    "marks": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/TipTapMark"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Marks"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type"
+                ],
+                "title": "TipTapNode",
+                "description": "TipTap JSON \ub178\ub4dc (\uc7ac\uadc0 \uad6c\uc870)."
             },
             "TokenResponse": {
                 "properties": {

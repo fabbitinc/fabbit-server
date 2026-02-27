@@ -121,8 +121,9 @@ def create_issue(
 
     프로젝트 내 고유 번호(`number`)가 자동 부여됩니다.
     """
+    body = req.body.model_dump_json(exclude_none=True) if req.body else None
     return issue_commands.create_issue(
-        db, auth, project_id, title=req.title, body=req.body
+        db, auth, project_id, title=req.title, body=body
     )
 
 
@@ -138,8 +139,9 @@ def create_change_request(
     이슈 테이블에 `type=CHANGE_REQUEST`로 기록되며,
     변경 요청 고유 상태(`cr_state`)는 **DRAFT**로 시작합니다.
     """
+    body = req.body.model_dump_json(exclude_none=True) if req.body else None
     return issue_commands.create_change_request(
-        db, auth, project_id, title=req.title, body=req.body
+        db, auth, project_id, title=req.title, body=body
     )
 
 

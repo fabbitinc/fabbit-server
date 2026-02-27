@@ -56,6 +56,10 @@ revision-public:
 revision-tenant:
 	uv run alembic -c alembic_tenant.ini revision --autogenerate -m "$(m)"
 
+revision-all:
+	uv run alembic revision --autogenerate -m "$(m)"
+	uv run alembic -c alembic_tenant.ini revision --autogenerate -m "$(m)"
+
 # ── 테스트 ──
 
 test:

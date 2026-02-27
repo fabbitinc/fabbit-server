@@ -23,15 +23,12 @@ from app.modules.project.models import Project
 
 
 def get_next_number(db: Session, project_id: uuid.UUID) -> int:
-    """프로젝트 내 다음 이슈 번호 조회 (동시성 안전).
+    """프로젝트 내 다음 이슈 번호 채번 (동시성 안전).
 
-    Project 행을 FOR UPDATE로 잠가 동일 프로젝트 내 채번을 직렬화한다.
+    Project 행을 FOR UPDATE로 잠그고 카운터를 증가시켜 채번을 직렬화한다.
     """
-    db.query(Project).filter(Project.id == project_id).with_for_update().one()
-    max_num = (
-        db.query(func.max(Issue.number)).filter(Issue.project_id == project_id).scalar()
-    )
-    return (max_num or 0) + 1
+    project = db.query(Project).filter(Project.id == project_id).with_for_update().one()
+    return project.next_issue_number()
 
 
 def count_issues_by_state(
