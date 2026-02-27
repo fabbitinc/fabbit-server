@@ -18,6 +18,21 @@ user-invocable: false
 - 파일명: `{domain}_router.py`
 - prefix: `/api/v1/{domain}`
 
+### Sub-router 그룹핑
+
+sub-router가 여러 개인 도메인은 디렉토리로 묶고 `__init__.py`에서 단일 `router`로 합친다.
+
+```
+api/v1/tenant/project/
+├── __init__.py              # router = APIRouter() + include_router(각 sub-router)
+├── project_router.py        # /api/v1/projects
+├── project_issue_router.py  # /api/v1/projects/{project_id}/issues
+└── project_label_router.py  # /api/v1/projects/{project_id}/labels
+```
+
+- `__init__.py`의 `APIRouter()`는 prefix 없음 — 각 sub-router가 자체 prefix 보유
+- `main.py`는 `from app.api.v1.tenant.project import router`로 단일 import
+
 ## 의존성 주입 (Depends)
 
 - `require_auth` → `AuthContext` (인증 필수)

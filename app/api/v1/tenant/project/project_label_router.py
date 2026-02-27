@@ -16,10 +16,10 @@ from app.modules.label.schemas import (
 from app.queries import label as label_queries
 from app.use_cases import label as label_commands
 
-router = APIRouter(prefix="/api/v1/projects/{project_id}", tags=["labels"])
+router = APIRouter(prefix="/api/v1/projects/{project_id}/labels", tags=["labels"])
 
 
-@router.get("/labels", response_model=LabelListResponse)
+@router.get("", response_model=LabelListResponse)
 def list_labels(
     project_id: uuid.UUID,
     auth: AuthContext = Depends(require_auth),
@@ -32,7 +32,7 @@ def list_labels(
     return label_queries.list_labels(db, auth, project_id)
 
 
-@router.post("/labels", response_model=LabelResponse, status_code=201)
+@router.post("", response_model=LabelResponse, status_code=201)
 def create_label(
     project_id: uuid.UUID,
     req: CreateLabelRequest,
@@ -49,7 +49,7 @@ def create_label(
     )
 
 
-@router.patch("/labels/{label_id}", response_model=LabelResponse)
+@router.patch("/{label_id}", response_model=LabelResponse)
 def update_label(
     project_id: uuid.UUID,
     label_id: uuid.UUID,
@@ -77,7 +77,7 @@ def update_label(
     )
 
 
-@router.delete("/labels/{label_id}", status_code=204)
+@router.delete("/{label_id}", status_code=204)
 def delete_label(
     project_id: uuid.UUID,
     label_id: uuid.UUID,
