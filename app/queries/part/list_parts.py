@@ -1,5 +1,7 @@
 """Part 목록 조회."""
 
+import uuid
+
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
@@ -18,6 +20,7 @@ def list_parts(
     lifecycle_state: str | None = None,
     has_drawing: bool | None = None,
     has_children: bool | None = None,
+    project_id: uuid.UUID | None = None,
     offset: int = 0,
     limit: int = 20,
 ) -> PartListResponse:
@@ -28,6 +31,7 @@ def list_parts(
         lifecycle_state=lifecycle_state,
         has_drawing=has_drawing,
         has_children=has_children,
+        project_id=project_id,
         offset=offset,
         limit=limit,
     )

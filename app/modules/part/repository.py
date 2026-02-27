@@ -20,6 +20,7 @@ from app.modules.part.models import (
     PartSupplier,
     _STANDARD_ATTRS,
 )
+from app.modules.project.models import ProjectPart
 from app.modules.supplier.models import Supplier
 
 # models.py에서 이동된 상수를 re-export (service.py 호환)
@@ -88,6 +89,7 @@ def list_parts_paginated(
     lifecycle_state: str | None = None,
     has_drawing: bool | None = None,
     has_children: bool | None = None,
+    project_id: uuid.UUID | None = None,
     offset: int = 0,
     limit: int = 20,
 ) -> tuple[list[dict], int]:
@@ -114,6 +116,13 @@ def list_parts_paginated(
         conditions.append(exists().where(BomLink.parent_part_id == Part.id))
     elif has_children is False:
         conditions.append(~exists().where(BomLink.parent_part_id == Part.id))
+    if project_id is not None:
+        conditions.append(
+            exists().where(
+                (ProjectPart.part_id == Part.id)
+                & (ProjectPart.project_id == project_id)
+            )
+        )
 
     # 총 건수 (JOIN 없이)
     count_query = db.query(func.count(Part.id))

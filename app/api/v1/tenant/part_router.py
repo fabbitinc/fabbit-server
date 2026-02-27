@@ -92,6 +92,7 @@ def list_parts(
     ),
     has_drawing: bool | None = Query(None, description="도면 연결 여부 필터"),
     has_children: bool | None = Query(None, description="하위 부품 보유 여부 필터"),
+    project_id: uuid.UUID | None = Query(None, description="프로젝트 소속 필터"),
     offset: int = Query(0, ge=0, description="시작 위치"),
     limit: int = Query(20, ge=1, le=100, description="조회 건수"),
     auth: AuthContext = Depends(require_auth),
@@ -102,7 +103,7 @@ def list_parts(
     각 Part에 연결된 도면번호(`drawing_number`)와 하위 부품 수(`children_count`)를 포함합니다.
 
     **검색**: `search` 파라미터로 품번/품명 ILIKE 검색
-    **필터**: `category`, `lifecycle_state`(정확 일치), `has_drawing`, `has_children`(boolean)
+    **필터**: `category`, `lifecycle_state`(정확 일치), `has_drawing`, `has_children`(boolean), `project_id`(프로젝트 소속)
     """
     return part_queries.list_parts(
         db,
@@ -112,6 +113,7 @@ def list_parts(
         lifecycle_state=lifecycle_state,
         has_drawing=has_drawing,
         has_children=has_children,
+        project_id=project_id,
         offset=offset,
         limit=limit,
     )
