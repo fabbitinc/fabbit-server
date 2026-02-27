@@ -66,6 +66,29 @@ class LinkPartsResponse(BaseModel):
 # ── 첨부파일 ──
 
 
+# ── 댓글 ──
+
+
+class CreateCommentRequest(BaseModel):
+    body: str = Field(..., min_length=1, max_length=10000, description="댓글 본문")
+
+
+class UpdateCommentRequest(BaseModel):
+    body: str = Field(..., min_length=1, max_length=10000, description="댓글 본문")
+
+
+class CommentResponse(BaseModel):
+    id: uuid.UUID
+    issue_id: uuid.UUID
+    body: str
+    created_at: datetime
+    updated_at: datetime
+    created_by: uuid.UUID | None = None
+
+
+# ── 첨부파일 ──
+
+
 class AttachFilesRequest(BaseModel):
     file_ids: list[uuid.UUID] = Field(
         ..., min_length=1, max_length=20, description="첨부할 파일 ID 목록 (최대 20개)"

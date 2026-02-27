@@ -13,11 +13,14 @@ from app.modules.issue.schemas import (
     AssignUsersResponse,
     AttachFilesRequest,
     ChangeRequestResponse,
+    CommentResponse,
     CreateChangeRequestRequest,
+    CreateCommentRequest,
     CreateIssueRequest,
     IssueResponse,
     LinkPartsRequest,
     LinkPartsResponse,
+    UpdateCommentRequest,
 )
 from app.use_cases import issue as issue_commands
 
@@ -136,6 +139,66 @@ def unlink_parts(
     요청된 부품 ID에 해당하는 연결을 해제합니다.
     """
     issue_commands.unlink_parts(db, auth, issue_id, part_ids=req.part_ids)
+
+
+# ── 댓글 ──
+
+
+@router.post(
+    "/issues/{issue_id}/comments",
+    response_model=CommentResponse,
+    status_code=201,
+)
+def create_comment(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    req: CreateCommentRequest,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 댓글 생성.
+
+    댓글 본문은 1~10,000자까지 입력 가능합니다.
+    """
+    return issue_commands.create_comment(db, auth, issue_id, body=req.body)
+
+
+@router.patch(
+    "/issues/{issue_id}/comments/{comment_id}",
+    response_model=CommentResponse,
+    status_code=200,
+)
+def update_comment(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    comment_id: uuid.UUID,
+    req: UpdateCommentRequest,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 댓글 수정.
+
+    본인이 작성한 댓글만 수정할 수 있습니다.
+    """
+    return issue_commands.update_comment(db, auth, issue_id, comment_id, body=req.body)
+
+
+@router.delete(
+    "/issues/{issue_id}/comments/{comment_id}",
+    status_code=204,
+)
+def delete_comment(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    comment_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 댓글 삭제.
+
+    본인이 작성한 댓글만 삭제할 수 있습니다.
+    """
+    issue_commands.delete_comment(db, auth, issue_id, comment_id)
 
 
 # ── 첨부파일 ──

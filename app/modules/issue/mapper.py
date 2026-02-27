@@ -1,7 +1,7 @@
 """이슈 도메인 모델 → Pydantic 응답 변환."""
 
-from app.modules.issue.models import ChangeRequest, Issue
-from app.modules.issue.schemas import ChangeRequestResponse, IssueResponse
+from app.modules.issue.models import ChangeRequest, Issue, IssueComment
+from app.modules.issue.schemas import ChangeRequestResponse, CommentResponse, IssueResponse
 
 
 def to_issue_response(issue: Issue) -> IssueResponse:
@@ -36,4 +36,16 @@ def to_change_request_response(cr: ChangeRequest) -> ChangeRequestResponse:
         cr_state=cr.cr_state.value,
         merged_at=cr.merged_at,
         merged_by=cr.merged_by,
+    )
+
+
+def to_comment_response(comment: IssueComment) -> CommentResponse:
+    """IssueComment 모델 → CommentResponse 변환."""
+    return CommentResponse(
+        id=comment.id,
+        issue_id=comment.issue_id,
+        body=comment.body,
+        created_at=comment.created_at,
+        updated_at=comment.updated_at,
+        created_by=comment.created_by,
     )

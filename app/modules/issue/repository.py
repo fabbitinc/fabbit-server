@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.modules.issue.models import Issue, IssueAssignee, IssuePart
+from app.modules.issue.models import Issue, IssueAssignee, IssueComment, IssuePart
 from app.modules.project.models import Project
 
 
@@ -16,9 +16,7 @@ def get_next_number(db: Session, project_id: uuid.UUID) -> int:
     """
     db.query(Project).filter(Project.id == project_id).with_for_update().one()
     max_num = (
-        db.query(func.max(Issue.number))
-        .filter(Issue.project_id == project_id)
-        .scalar()
+        db.query(func.max(Issue.number)).filter(Issue.project_id == project_id).scalar()
     )
     return (max_num or 0) + 1
 
@@ -54,7 +52,9 @@ def add_assignees(db: Session, issue_id: uuid.UUID, user_ids: list[uuid.UUID]) -
     return len(new_ids)
 
 
-def remove_assignees(db: Session, issue_id: uuid.UUID, user_ids: list[uuid.UUID]) -> int:
+def remove_assignees(
+    db: Session, issue_id: uuid.UUID, user_ids: list[uuid.UUID]
+) -> int:
     """이슈 담당자 배치 해제 — 삭제 건수 반환."""
     count = (
         db.query(IssueAssignee)
@@ -99,3 +99,24 @@ def unlink_parts(db: Session, issue_id: uuid.UUID, part_ids: list[uuid.UUID]) ->
     )
     db.flush()
     return count
+
+
+# ── 댓글 ──
+
+
+def get_comment_by_id(db: Session, comment_id: uuid.UUID) -> IssueComment | None:
+    """댓글 단건 조회."""
+    return db.query(IssueComment).filter(IssueComment.id == comment_id).first()
+
+
+def add_comment(db: Session, entity: IssueComment) -> IssueComment:
+    """댓글 저장."""
+    db.add(entity)
+    db.flush()
+    return entity
+
+
+def delete_comment(db: Session, comment: IssueComment) -> None:
+    """댓글 하드 삭제."""
+    db.delete(comment)
+    db.flush()

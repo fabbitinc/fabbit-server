@@ -144,6 +144,24 @@ class IssueAssignee(TimestampMixin, PkMixin, TenantBase):
     )
 
 
+class IssueComment(AuditMixin, UpdatableMixin, PkMixin, TenantBase):
+    """이슈 댓글."""
+
+    __tablename__ = "issue_comments"
+
+    __table_args__ = (
+        # 이슈별 댓글 조회 최적화
+        Index("ix_issue_comments_issue_id", "issue_id"),
+    )
+
+    issue_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("issues.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 class IssuePart(TimestampMixin, PkMixin, TenantBase):
     """이슈 ↔ 부품 연결 (M:N)."""
 
