@@ -3,7 +3,18 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+# ── 요청 ──
+
+
+class CreateProjectRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200, description="프로젝트 이름")
+    description: str | None = Field(None, description="프로젝트 설명")
+
+
+# ── 응답 ──
 
 
 class ProjectSummary(BaseModel):

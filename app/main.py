@@ -27,6 +27,7 @@ from app.api.v1.tenant.dashboard_router import (
 )
 from app.api.v1.tenant.file_router import router as file_router  # noqa: E402
 from app.api.v1.tenant.issue_router import router as issue_router  # noqa: E402
+from app.api.v1.tenant.label_router import router as label_router  # noqa: E402
 from app.api.v1.tenant.mapping_router import router as mapping_router  # noqa: E402
 from app.api.v1.tenant.ontology_router import router as ontology_router  # noqa: E402
 from app.api.v1.tenant.part_router import router as part_router  # noqa: E402
@@ -154,6 +155,7 @@ app.include_router(part_router)
 app.include_router(project_router)
 app.include_router(file_router)
 app.include_router(issue_router)
+app.include_router(label_router)
 app.include_router(ontology_router)
 
 

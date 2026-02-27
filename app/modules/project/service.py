@@ -21,6 +21,16 @@ def get_or_raise(db: Session, project_id: uuid.UUID) -> Project:
     return project
 
 
+def create_project(
+    db: Session,
+    name: str,
+    description: str | None = None,
+) -> Project:
+    """프로젝트 생성."""
+    project = Project(name=name, description=description)
+    return repo.add(db, project)
+
+
 def link_parts(db: Session, project_id: uuid.UUID, part_ids: list[uuid.UUID]) -> int:
     """Project에 Part 배치 연결 — 신규 연결 건수 반환."""
     return repo.link_parts(db, project_id, part_ids)

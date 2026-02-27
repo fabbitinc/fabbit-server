@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
 from app.modules.project.schemas import (
+    CreateProjectRequest,
     LinkPartsRequest,
     LinkPartsResponse,
     ProjectDetailResponse,
@@ -18,6 +19,21 @@ from app.queries import project as project_queries
 from app.use_cases import project as project_commands
 
 router = APIRouter(prefix="/api/v1/projects", tags=["projects"])
+
+
+@router.post("", response_model=ProjectDetailResponse, status_code=201)
+def create_project(
+    req: CreateProjectRequest,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """프로젝트 생성.
+
+    프로젝트 생성 시 기본 라벨(버그, 기능, 개선, 긴급)이 자동으로 추가됩니다.
+    """
+    return project_commands.create_project(
+        db, auth, name=req.name, description=req.description
+    )
 
 
 @router.get("", response_model=ProjectListResponse)

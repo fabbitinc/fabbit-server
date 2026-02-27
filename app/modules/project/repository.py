@@ -8,6 +8,13 @@ from sqlalchemy.orm import Session
 from app.modules.project.models import Project, ProjectPart
 
 
+def add(db: Session, entity: Project) -> Project:
+    """Project 저장."""
+    db.add(entity)
+    db.flush()
+    return entity
+
+
 def search_merge_key(
     db: Session,
     search: str,
