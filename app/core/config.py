@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     smtp_from_email: str = "noreply@fabbit.io"
     smtp_from_name: str = "Fabbit"
 
+    # ── 이메일 인증 ──
+    email_verification_expire_minutes: int = 10    # 인증코드 유효기간 (분)
+    email_verification_max_attempts: int = 5       # 최대 시도 횟수
+    email_verification_cooldown_seconds: int = 60  # 재발송 쿨다운 (초)
+
     # ── 초대 ──
     invitation_expire_days: int = 7
     invitation_base_url: str = "http://localhost:5173"

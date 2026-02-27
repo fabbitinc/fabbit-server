@@ -7,8 +7,8 @@ from sqlalchemy import select, delete, update
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
-from app.modules.auth.constants import InvitationStatus
-from app.modules.auth.models import Invitation, Membership, Organization, RefreshToken, User
+from app.modules.auth.constants import EmailVerificationStatus, InvitationStatus
+from app.modules.auth.models import EmailVerification, Invitation, Membership, Organization, RefreshToken, User
 
 
 # ── User ──
@@ -217,3 +217,65 @@ def get_membership(
             Membership.org_id == org_id,
         )
     ).first()
+
+
+# ── EmailVerification ──
+
+
+def create_email_verification(
+    db: Session, verification: EmailVerification
+) -> EmailVerification:
+    db.add(verification)
+    db.flush()
+    return verification
+
+
+def get_pending_verification_by_email(
+    db: Session, email: str
+) -> EmailVerification | None:
+    """이메일의 최신 PENDING 인증코드 조회 (쿨다운 체크용)."""
+    return db.scalars(
+        select(EmailVerification)
+        .where(
+            EmailVerification.email == email,
+            EmailVerification.status == EmailVerificationStatus.PENDING,
+        )
+        .order_by(EmailVerification.created_at.desc())
+        .limit(1)
+    ).first()
+
+
+def get_pending_verification_by_email_and_code_hash(
+    db: Session, email: str, code_hash: str
+) -> EmailVerification | None:
+    """이메일 + 코드 해시로 PENDING 인증코드 조회 (verify 단계)."""
+    return db.scalars(
+        select(EmailVerification).where(
+            EmailVerification.email == email,
+            EmailVerification.code_hash == code_hash,
+            EmailVerification.status == EmailVerificationStatus.PENDING,
+        )
+    ).first()
+
+
+def get_verified_by_token_hash_and_code_hash(
+    db: Session, token_hash: str, code_hash: str
+) -> EmailVerification | None:
+    """verification_token_hash + code_hash로 VERIFIED 인증 조회 (register 단계)."""
+    return db.scalars(
+        select(EmailVerification).where(
+            EmailVerification.verification_token_hash == token_hash,
+            EmailVerification.code_hash == code_hash,
+            EmailVerification.status == EmailVerificationStatus.VERIFIED,
+        )
+    ).first()
+
+
+def delete_pending_verifications_by_email(db: Session, email: str) -> None:
+    """재발송 시 이전 PENDING 인증코드 삭제."""
+    db.execute(
+        delete(EmailVerification).where(
+            EmailVerification.email == email,
+            EmailVerification.status == EmailVerificationStatus.PENDING,
+        )
+    )

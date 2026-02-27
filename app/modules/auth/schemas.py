@@ -6,11 +6,34 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
 
 
+# ── 이메일 인증 ──
+
+
+class SendVerificationRequest(BaseModel):
+    email: EmailStr
+    turnstile_token: str | None = None
+
+
+class SendVerificationResponse(BaseModel):
+    message: str
+
+
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6)
+
+
+class VerifyEmailResponse(BaseModel):
+    verification_token: str
+    email: str
+
+
 # ── 요청 ──
 
 
 class RegisterRequest(BaseModel):
-    email: EmailStr
+    verification_token: str = Field(description="이메일 인증 완료 증표")
+    code: str = Field(min_length=6, max_length=6, description="이메일 인증코드 (재검증용)")
     password: str = Field(min_length=8, max_length=128)
     full_name: str = Field(min_length=1, max_length=100)
     org_name: str = Field(min_length=1, max_length=100)

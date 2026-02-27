@@ -11,7 +11,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from app.core.config import settings
 from app.core.database import Base, generate_uuid7
-from app.modules.auth.constants import InvitationStatus, MembershipRole
+from sqlalchemy import Integer
+from app.modules.auth.constants import EmailVerificationStatus, InvitationStatus, MembershipRole
 
 
 def _hash_token(token: str) -> str:
@@ -239,3 +240,79 @@ class Invitation(Base):
     @property
     def is_expired(self) -> bool:
         return datetime.now(timezone.utc) > self.expires_at
+
+
+class EmailVerification(Base):
+    """이메일 인증코드 (회원가입 전 이메일 소유권 검증)."""
+
+    __tablename__ = "email_verifications"
+
+    __table_args__ = (
+        # 이메일별 인증코드 조회 최적화
+        Index("ix_email_verifications_email", "email"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=generate_uuid7
+    )
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    # SHA-256 해시된 6자리 코드
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    # SHA-256 해시된 verification_token (verify 성공 시 생성)
+    verification_token_hash: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=EmailVerificationStatus.PENDING
+    )
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    @classmethod
+    def create(cls, email: str) -> tuple["EmailVerification", str]:
+        """인증코드 생성 팩토리.
+
+        Returns:
+            (EmailVerification 인스턴스, 6자리 원본 코드) — 원본 코드는 이메일 발송에만 사용.
+        """
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        return cls(
+            email=email,
+            code_hash=_hash_token(code),
+            status=EmailVerificationStatus.PENDING,
+            attempt_count=0,
+            expires_at=datetime.now(timezone.utc)
+            + timedelta(minutes=settings.email_verification_expire_minutes),
+        ), code
+
+    def verify(self) -> str:
+        """코드 검증 성공 처리 → VERIFIED + verification_token 생성.
+
+        Returns:
+            원본 verification_token — 클라이언트에 반환 후 DB에는 해시만 유지.
+        """
+        self.status = EmailVerificationStatus.VERIFIED
+        raw_token = secrets.token_urlsafe(32)
+        self.verification_token_hash = _hash_token(raw_token)
+        return raw_token
+
+    def use(self) -> None:
+        """가입 완료 처리 → USED."""
+        self.status = EmailVerificationStatus.USED
+
+    def increment_attempt(self) -> None:
+        """검증 시도 횟수 증가."""
+        self.attempt_count += 1
+
+    @property
+    def is_expired(self) -> bool:
+        return datetime.now(timezone.utc) > self.expires_at
+
+    @property
+    def is_max_attempts(self) -> bool:
+        return self.attempt_count >= settings.email_verification_max_attempts

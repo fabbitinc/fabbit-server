@@ -14,6 +14,7 @@ from app.infrastructure.password_hasher import hash_password, verify_password
 from app.infrastructure.token_provider import token_provider
 from app.infrastructure.turnstile import verify_turnstile_token
 from app.modules.auth import repository as repo
+from app.core.config import settings
 from app.modules.auth.constants import (
     PLAN_LIMITS,
     RESERVED_SLUGS,
@@ -22,7 +23,7 @@ from app.modules.auth.constants import (
     PlanType,
     validate_slug_format,
 )
-from app.modules.auth.models import Invitation, _hash_token
+from app.modules.auth.models import EmailVerification, Invitation, _hash_token
 from app.modules.auth.provisioning import provision_tenant
 from app.modules.auth.schemas import (
     AcceptInvitationRequest,
@@ -42,9 +43,13 @@ from app.modules.auth.schemas import (
     RegisterRequest,
     RegisterResponse,
     ScopedLoginResponse,
+    SendVerificationRequest,
+    SendVerificationResponse,
     SiteResponse,
     TokenResponse,
     UserResponse,
+    VerifyEmailRequest,
+    VerifyEmailResponse,
 )
 
 
@@ -86,11 +91,122 @@ def check_slug(db: Session, slug: str) -> CheckSlugResponse:
     return CheckSlugResponse(available=True)
 
 
-@transactional
-def register(db: Session, req: RegisterRequest) -> RegisterResponse:
-    """통합 회원가입: 유저 + 조직 + 멤버십 + 테넌트 프로비저닝 + 토큰 발급."""
+def send_verification_email(
+    db: Session, req: SendVerificationRequest
+) -> SendVerificationResponse:
+    """이메일 인증코드 발송.
+
+    @transactional 없음 — use_case에서 트랜잭션 관리.
+    """
     # Turnstile 봇 방지 검증
     verify_turnstile_token(req.turnstile_token)
+
+    # 이미 가입된 이메일인지 확인
+    if repo.get_user_by_email(db, req.email):
+        raise AppError(message="이미 가입된 이메일입니다", code="ALREADY_EXISTS")
+
+    # 쿨다운 체크: 최근 PENDING이 60초 이내면 에러
+    from datetime import datetime, timezone
+
+    existing = repo.get_pending_verification_by_email(db, req.email)
+    if existing:
+        elapsed = (datetime.now(timezone.utc) - existing.created_at).total_seconds()
+        if elapsed < settings.email_verification_cooldown_seconds:
+            raise AppError(
+                message="잠시 후 다시 시도해 주세요",
+                code="RATE_LIMITED",
+            )
+
+    # 기존 PENDING 삭제 (재발송)
+    repo.delete_pending_verifications_by_email(db, req.email)
+
+    # 인증코드 생성
+    verification, code = EmailVerification.create(req.email)
+    repo.create_email_verification(db, verification)
+
+    # 이메일 발송
+    _send_verification_code_email(req.email, code)
+
+    return SendVerificationResponse(message="인증코드가 발송되었습니다")
+
+
+def verify_email(db: Session, req: VerifyEmailRequest) -> VerifyEmailResponse:
+    """인증코드 검증.
+
+    @transactional 없음 — use_case에서 트랜잭션 관리.
+    """
+    code_hash = _hash_token(req.code)
+    verification = repo.get_pending_verification_by_email_and_code_hash(
+        db, req.email, code_hash
+    )
+
+    if not verification:
+        # 코드 불일치 — 같은 이메일의 PENDING 레코드 찾아서 attempt_count 증가
+        pending = repo.get_pending_verification_by_email(db, req.email)
+        if pending:
+            pending.increment_attempt()
+            if pending.is_max_attempts:
+                raise AppError(
+                    message="인증 시도 횟수를 초과했습니다. 인증코드를 재발송해 주세요",
+                    code="MAX_ATTEMPTS_EXCEEDED",
+                )
+        raise AppError(
+            message="인증코드가 올바르지 않습니다", code="INVALID_CODE"
+        )
+
+    # 만료 확인
+    if verification.is_expired:
+        raise AppError(
+            message="인증코드가 만료되었습니다. 재발송해 주세요",
+            code="CODE_EXPIRED",
+        )
+
+    # 시도 횟수 초과 확인
+    if verification.is_max_attempts:
+        raise AppError(
+            message="인증 시도 횟수를 초과했습니다. 인증코드를 재발송해 주세요",
+            code="MAX_ATTEMPTS_EXCEEDED",
+        )
+
+    # VERIFIED + verification_token 생성
+    raw_token = verification.verify()
+
+    return VerifyEmailResponse(verification_token=raw_token, email=verification.email)
+
+
+def _send_verification_code_email(email: str, code: str) -> None:
+    """인증코드 이메일 발송."""
+    from app.infrastructure.email_client import email_client
+
+    email_client.send_template(
+        to=email,
+        subject="[Fabbit] 이메일 인증코드",
+        template_name="verification",
+        code=code,
+    )
+
+
+@transactional
+def register(db: Session, req: RegisterRequest) -> RegisterResponse:
+    """통합 회원가입: 인증 재검증 + 유저 + 조직 + 멤버십 + 테넌트 프로비저닝 + 토큰 발급."""
+    # Turnstile 봇 방지 검증
+    verify_turnstile_token(req.turnstile_token)
+
+    # 인증 재검증: verification_token + code 확인
+    token_hash = _hash_token(req.verification_token)
+    code_hash = _hash_token(req.code)
+    verification = repo.get_verified_by_token_hash_and_code_hash(db, token_hash, code_hash)
+    if not verification:
+        raise AppError(
+            message="유효하지 않은 인증 정보입니다", code="INVALID_VERIFICATION"
+        )
+    if verification.is_expired:
+        raise AppError(
+            message="인증이 만료되었습니다. 다시 인증해 주세요", code="CODE_EXPIRED"
+        )
+    # USED 처리
+    verification.use()
+    email = verification.email
 
     # 플랜 검증
     try:
@@ -99,7 +215,7 @@ def register(db: Session, req: RegisterRequest) -> RegisterResponse:
         raise AppError(message="유효하지 않은 플랜입니다", code="VALIDATION_ERROR")
 
     # 이메일 중복 검사
-    if repo.get_user_by_email(db, req.email):
+    if repo.get_user_by_email(db, email):
         raise AppError(message="이미 가입된 이메일입니다", code="ALREADY_EXISTS")
 
     # slug 결정
@@ -124,7 +240,7 @@ def register(db: Session, req: RegisterRequest) -> RegisterResponse:
 
     # 유저 생성
     hashed = hash_password(req.password)
-    user = repo.create_user(db, req.email, hashed, req.full_name)
+    user = repo.create_user(db, email, hashed, req.full_name)
 
     # 조직 생성
     org = repo.create_organization(

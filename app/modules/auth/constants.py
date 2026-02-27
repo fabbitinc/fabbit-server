@@ -20,6 +20,14 @@ class InvitationStatus(str, Enum):
     CANCELLED = "CANCELLED"   # 관리자가 취소
 
 
+class EmailVerificationStatus(str, Enum):
+    """이메일 인증 상태."""
+
+    PENDING = "PENDING"       # 코드 발송됨, 검증 대기
+    VERIFIED = "VERIFIED"     # 코드 검증 완료, 가입 대기
+    USED = "USED"             # 가입 완료 (소모됨)
+
+
 class PlanType(str, Enum):
     STARTER = "STARTER"
     TEAM = "TEAM"

@@ -23,9 +23,13 @@ from app.modules.auth.schemas import (
     RegisterRequest,
     RegisterResponse,
     ScopedLoginResponse,
+    SendVerificationRequest,
+    SendVerificationResponse,
     SiteResponse,
     SwitchOrgRequest,
     TokenResponse,
+    VerifyEmailRequest,
+    VerifyEmailResponse,
     VerifyInvitationResponse,
 )
 from app.queries import invitation as invitation_queries
@@ -59,6 +63,29 @@ def check_slug(
     db: Session = Depends(get_db),
 ):
     return service.check_slug(db, slug)
+
+
+@router.post("/send-verification", response_model=SendVerificationResponse)
+def send_verification(req: SendVerificationRequest, db: Session = Depends(get_db)):
+    """이메일 인증코드 발송.
+
+    입력된 이메일로 6자리 인증코드를 발송합니다.
+    - 이미 가입된 이메일이면 에러
+    - 60초 이내 재발송 요청 시 쿨다운 에러
+    - 인증코드 유효시간: 10분
+    """
+    return auth_commands.send_verification(db, req)
+
+
+@router.post("/verify-email", response_model=VerifyEmailResponse)
+def verify_email(req: VerifyEmailRequest, db: Session = Depends(get_db)):
+    """인증코드 검증.
+
+    이메일로 받은 6자리 코드를 검증합니다.
+    - 성공 시 verification_token을 반환 (회원가입 시 필요)
+    - 5회 실패 시 코드 무효화 (재발송 필요)
+    """
+    return auth_commands.verify_email(db, req)
 
 
 @router.post("/register", response_model=RegisterResponse)
