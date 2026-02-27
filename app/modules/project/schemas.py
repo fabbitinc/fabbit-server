@@ -10,6 +10,7 @@ class ProjectSummary(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None = None
+    part_count: int
 
 
 class ProjectListResponse(BaseModel):

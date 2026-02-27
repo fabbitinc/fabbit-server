@@ -18,7 +18,7 @@ def list_projects(
     limit: int = 20,
 ) -> ProjectListResponse:
     """Project 목록 페이징 조회."""
-    projects, total = repo.list_projects_paginated(
+    rows, total = repo.list_projects_paginated(
         db, search=search, offset=offset, limit=limit
     )
 
@@ -27,8 +27,9 @@ def list_projects(
             id=p.id,
             name=p.name,
             description=p.description,
+            part_count=part_count,
         )
-        for p in projects
+        for p, part_count in rows
     ]
 
     return ProjectListResponse(total=total, offset=offset, limit=limit, items=items)

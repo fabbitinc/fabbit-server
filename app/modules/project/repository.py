@@ -2,6 +2,7 @@
 
 import uuid
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modules.project.models import Project, ProjectPart
@@ -24,14 +25,21 @@ def list_projects_paginated(
     search: str | None = None,
     offset: int = 0,
     limit: int = 20,
-) -> tuple[list[Project], int]:
-    """Project 목록 페이징 조회 (RDS)."""
-    query = db.query(Project)
+) -> tuple[list[tuple[Project, int]], int]:
+    """Project 목록 페이징 조회 (RDS). 각 항목은 (Project, part_count) 튜플."""
+    part_count = (
+        select(func.count(ProjectPart.id))
+        .where(ProjectPart.project_id == Project.id)
+        .correlate(Project)
+        .scalar_subquery()
+        .label("part_count")
+    )
+    query = db.query(Project, part_count)
     if search:
         query = query.filter(Project.name.ilike(f"%{search}%"))
     total = query.count()
-    projects = query.order_by(Project.name).offset(offset).limit(limit).all()
-    return projects, total
+    rows = query.order_by(Project.name).offset(offset).limit(limit).all()
+    return rows, total
 
 
 def get_project_by_id(db: Session, project_id: uuid.UUID) -> Project | None:
