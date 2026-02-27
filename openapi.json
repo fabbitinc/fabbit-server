@@ -286,6 +286,7 @@
                     "auth"
                 ],
                 "summary": "Login",
+                "description": "\ub85c\uadf8\uc778.\n\n- **slug \uc788\uc74c** (\uc11c\ube0c\ub3c4\uba54\uc778 \uc811\uadfc): \ud574\ub2f9 \uc6cc\ud06c\uc2a4\ud398\uc774\uc2a4 \uba64\ubc84\uc2ed \ud655\uc778 \u2192 access+refresh \ud1a0\ud070 \ubc1c\uae09\n- **slug \uc5c6\uc74c** (\ub8e8\ud2b8 \ub3c4\uba54\uc778 \uc811\uadfc): \uc720\uc800 \uc778\uc99d\ub9cc \u2192 \uc870\uc9c1 \uc0dd\uc131 \uc804\uc6a9 \uc2a4\ucf54\ud504 \ud1a0\ud070 \ubc1c\uae09 (`scoped_token`)",
                 "operationId": "login_api_v1_auth_login_post",
                 "requestBody": {
                     "content": {
@@ -303,7 +304,15 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/LoginResponse"
+                                    "anyOf": [
+                                        {
+                                            "$ref": "#/components/schemas/LoginResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/ScopedLoginResponse"
+                                        }
+                                    ],
+                                    "title": "Response Login Api V1 Auth Login Post"
                                 }
                             }
                         }
@@ -441,6 +450,100 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/MeResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/auth/organizations": {
+            "post": {
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Create Organization",
+                "description": "\uae30\uac00\uc785\uc790 \uc870\uc9c1 \uc0dd\uc131.\n\n\ub8e8\ud2b8 \ub3c4\uba54\uc778 \ub85c\uadf8\uc778\uc73c\ub85c \ubc1c\uae09\ubc1b\uc740 **\uc2a4\ucf54\ud504 \ud1a0\ud070**(scope=create_org)\uc774 \ud544\uc694\ud569\ub2c8\ub2e4.\n\uc870\uc9c1 \uc0dd\uc131 + ADMIN \uba64\ubc84\uc2ed + \ud14c\ub10c\ud2b8 \ud504\ub85c\ube44\uc800\ub2dd \ud6c4 \uc815\uc0c1 access+refresh \ud1a0\ud070\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "create_organization_api_v1_auth_organizations_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateOrganizationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CreateOrganizationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/auth/switch-org": {
+            "post": {
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Switch Org",
+                "description": "\uc870\uc9c1 \uc804\ud658.\n\n\ud604\uc7ac \uc778\uc99d\ub41c \uc720\uc800\uac00 \ub2e4\ub978 \uc6cc\ud06c\uc2a4\ud398\uc774\uc2a4\ub85c \uc804\ud658\ud569\ub2c8\ub2e4.\n\ub300\uc0c1 \uc6cc\ud06c\uc2a4\ud398\uc774\uc2a4\uc758 \uba64\ubc84\uc2ed\uc744 \ud655\uc778\ud55c \ud6c4 \uc0c8 access+refresh \ud1a0\ud070\uc744 \ubc1c\uae09\ud569\ub2c8\ub2e4.",
+                "operationId": "switch_org_api_v1_auth_switch_org_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SwitchOrgRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LoginResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
                                 }
                             }
                         }
@@ -6043,6 +6146,83 @@
                 ],
                 "title": "CreateLabelRequest"
             },
+            "CreateOrganizationRequest": {
+                "properties": {
+                    "org_name": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "minLength": 1,
+                        "title": "Org Name"
+                    },
+                    "slug": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 50,
+                                "minLength": 3
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Slug",
+                        "description": "\ucee4\uc2a4\ud140 \uc6cc\ud06c\uc2a4\ud398\uc774\uc2a4 \uc8fc\uc18c"
+                    },
+                    "industry": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 50
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Industry",
+                        "description": "\uc0b0\uc5c5 \ubd84\uc57c"
+                    },
+                    "team_size": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 20
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Team Size",
+                        "description": "\ud300 \uaddc\ubaa8"
+                    },
+                    "plan_type": {
+                        "type": "string",
+                        "title": "Plan Type",
+                        "description": "\uc694\uae08\uc81c (FREE / PRO / ELITE)",
+                        "default": "FREE"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "org_name"
+                ],
+                "title": "CreateOrganizationRequest"
+            },
+            "CreateOrganizationResponse": {
+                "properties": {
+                    "organization": {
+                        "$ref": "#/components/schemas/OrganizationResponse"
+                    },
+                    "tokens": {
+                        "$ref": "#/components/schemas/TokenResponse"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "organization",
+                    "tokens"
+                ],
+                "title": "CreateOrganizationResponse"
+            },
             "CreateProjectRequest": {
                 "properties": {
                     "name": {
@@ -8734,6 +8914,24 @@
                 ],
                 "title": "RelationshipTypeSchema"
             },
+            "ScopedLoginResponse": {
+                "properties": {
+                    "user": {
+                        "$ref": "#/components/schemas/UserResponse"
+                    },
+                    "scoped_token": {
+                        "type": "string",
+                        "title": "Scoped Token"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user",
+                    "scoped_token"
+                ],
+                "title": "ScopedLoginResponse",
+                "description": "slug \uc5c6\uc774 \ub85c\uadf8\uc778 \uc2dc \ubc18\ud658 \u2014 \uc870\uc9c1 \uc0dd\uc131 \uc804\uc6a9 \uc2a4\ucf54\ud504 \ud1a0\ud070."
+            },
             "SheetPreview": {
                 "properties": {
                     "sheet_name": {
@@ -8912,6 +9110,22 @@
                     "company_name"
                 ],
                 "title": "SupplierSummary"
+            },
+            "SwitchOrgRequest": {
+                "properties": {
+                    "slug": {
+                        "type": "string",
+                        "maxLength": 50,
+                        "minLength": 1,
+                        "title": "Slug",
+                        "description": "\uc804\ud658\ud560 \uc6cc\ud06c\uc2a4\ud398\uc774\uc2a4 \uc8fc\uc18c"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "slug"
+                ],
+                "title": "SwitchOrgRequest"
             },
             "SyncLabelsRequest": {
                 "properties": {

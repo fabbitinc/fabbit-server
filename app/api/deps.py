@@ -10,10 +10,11 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import event, text
 from sqlalchemy.orm import Session
 
-from app.core.auth_context import AuthContext
+from app.core.auth_context import AuthContext, CreateOrgContext
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.exceptions import AppError
+from app.infrastructure.token_provider import token_provider
 from app.modules.auth.provisioning import org_id_to_schema
 
 # Swagger UI에 Authorize 버튼 표시 (실제 검증은 AuthMiddleware에서 처리)
@@ -48,6 +49,32 @@ def require_auth(
     return ctx
 
 
+def require_create_org_token(
+    _credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    request: Request = None,
+) -> CreateOrgContext:
+    """조직 생성 전용 스코프 토큰 검증 의존성.
+
+    Bearer 토큰에서 type=SCOPED, scope=create_org 검증 후 CreateOrgContext 반환.
+    """
+    import uuid
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise AppError(message="인증이 필요합니다", code="UNAUTHENTICATED")
+
+    raw_token = auth_header[7:]
+    payload = token_provider.decode(raw_token)
+
+    if payload.token_type != "SCOPED" or payload.scope != "create_org":
+        raise AppError(message="조직 생성 권한이 없는 토큰입니다", code="FORBIDDEN")
+
+    return CreateOrgContext(
+        user_id=uuid.UUID(payload.sub),
+        email=payload.email,
+    )
+
+
 def get_origin_slug(request: Request) -> str | None:
     """Origin 헤더에서 서브도메인 slug를 추출한다.
 
@@ -57,7 +84,6 @@ def get_origin_slug(request: Request) -> str | None:
     origin = request.headers.get("origin", "")
     if not origin:
         return None
-    # "http://test-org.lvh.me:5173" → "test-org.lvh.me"
     host = origin.split("://", 1)[-1].split(":")[0]
     base = settings.base_domain
     if host == base:

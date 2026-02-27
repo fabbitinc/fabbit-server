@@ -20,6 +20,7 @@ class TokenPayload:
     role: str = ""
     token_type: str = "ACCESS"
     jti: str | None = None
+    scope: str | None = None
 
 
 class TokenProvider:
@@ -37,6 +38,23 @@ class TokenProvider:
             "role": role,
             "exp": expire,
             "type": "ACCESS",
+            "iss": settings.jwt_issuer,
+        }
+        return jwt.encode(
+            payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm
+        )
+
+    def create_scoped_token(self, sub: str, email: str, scope: str) -> str:
+        """스코프 제한 토큰 생성 (org 컨텍스트 없음, 15분 TTL)."""
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=settings.access_token_expire_minutes
+        )
+        payload: dict = {
+            "sub": sub,
+            "email": email,
+            "scope": scope,
+            "exp": expire,
+            "type": "SCOPED",
             "iss": settings.jwt_issuer,
         }
         return jwt.encode(
@@ -73,6 +91,15 @@ class TokenProvider:
                 issuer=settings.jwt_issuer,
             )
             token_type = payload.get("type", "ACCESS")
+            if token_type == "SCOPED":
+                return TokenPayload(
+                    sub=payload["sub"],
+                    email=payload["email"],
+                    org_id="",
+                    role="",
+                    token_type=token_type,
+                    scope=payload.get("scope"),
+                )
             # Refresh token에는 orgId/role이 없으므로 기본값 처리
             is_access = token_type == "ACCESS"
             return TokenPayload(

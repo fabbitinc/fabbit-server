@@ -15,6 +15,14 @@ class AuthContext:
     role: str
 
 
+@dataclass(frozen=True)
+class CreateOrgContext:
+    """조직 생성 전용 컨텍스트 (스코프 토큰에서 추출)."""
+
+    user_id: uuid.UUID
+    email: str
+
+
 _auth_context: ContextVar[AuthContext | None] = ContextVar("auth_context", default=None)
 
 

@@ -84,6 +84,7 @@ _PUBLIC_PATHS = frozenset(
         "/api/v1/auth/site",
         "/api/v1/auth/invitations/verify",
         "/api/v1/auth/accept-invitation",
+        "/api/v1/auth/organizations",  # SCOPED 토큰 사용 — 미들웨어 uuid.UUID("") 예외 방지
         "/docs",
         "/openapi.json",
         "/redoc",

@@ -82,6 +82,12 @@ class LoginResponse(BaseModel):
     tokens: TokenResponse
 
 
+class ScopedLoginResponse(BaseModel):
+    """slug 없이 로그인 시 반환 — 조직 생성 전용 스코프 토큰."""
+    user: UserResponse
+    scoped_token: str
+
+
 class MeResponse(BaseModel):
     user: UserResponse
     memberships: list[MembershipResponse]
@@ -118,6 +124,26 @@ class PlanResponse(BaseModel):
     max_drawing_parses: int
     max_chats: int
     price_monthly: int
+
+
+# ── 조직 생성 / 전환 ──
+
+
+class CreateOrganizationRequest(BaseModel):
+    org_name: str = Field(min_length=1, max_length=100)
+    slug: str | None = Field(None, min_length=3, max_length=50, description="커스텀 워크스페이스 주소")
+    industry: str | None = Field(None, max_length=50, description="산업 분야")
+    team_size: str | None = Field(None, max_length=20, description="팀 규모")
+    plan_type: str = Field("FREE", description="요금제 (FREE / PRO / ELITE)")
+
+
+class CreateOrganizationResponse(BaseModel):
+    organization: OrganizationResponse
+    tokens: TokenResponse
+
+
+class SwitchOrgRequest(BaseModel):
+    slug: str = Field(min_length=1, max_length=50, description="전환할 워크스페이스 주소")
 
 
 # ── 초대 ──

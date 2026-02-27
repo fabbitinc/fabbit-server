@@ -4,14 +4,16 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, get_origin_slug, require_auth
-from app.core.auth_context import AuthContext
+from app.api.deps import get_db, get_origin_slug, require_auth, require_create_org_token
+from app.core.auth_context import AuthContext, CreateOrgContext
 from app.modules.auth import service
 from app.modules.auth.schemas import (
     AcceptInvitationRequest,
     AcceptInvitationResponse,
     CheckEmailResponse,
     CheckSlugResponse,
+    CreateOrganizationRequest,
+    CreateOrganizationResponse,
     LoginRequest,
     LoginResponse,
     MeResponse,
@@ -20,11 +22,14 @@ from app.modules.auth.schemas import (
     RefreshRequest,
     RegisterRequest,
     RegisterResponse,
+    ScopedLoginResponse,
     SiteResponse,
+    SwitchOrgRequest,
     TokenResponse,
     VerifyInvitationResponse,
 )
 from app.queries import invitation as invitation_queries
+from app.use_cases import auth as auth_commands
 from app.use_cases import invitation as invitation_commands
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -61,12 +66,17 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     return service.register(db, req)
 
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/login", response_model=LoginResponse | ScopedLoginResponse)
 def login(
     req: LoginRequest,
     db: Session = Depends(get_db),
     slug: str | None = Depends(get_origin_slug),
 ):
+    """로그인.
+
+    - **slug 있음** (서브도메인 접근): 해당 워크스페이스 멤버십 확인 → access+refresh 토큰 발급
+    - **slug 없음** (루트 도메인 접근): 유저 인증만 → 조직 생성 전용 스코프 토큰 발급 (`scoped_token`)
+    """
     return service.login(db, req, slug=slug)
 
 
@@ -98,6 +108,34 @@ def me(
     auth: AuthContext = Depends(require_auth),
 ):
     return service.get_me(db, auth)
+
+
+@router.post("/organizations", response_model=CreateOrganizationResponse)
+def create_organization(
+    req: CreateOrganizationRequest,
+    db: Session = Depends(get_db),
+    ctx: CreateOrgContext = Depends(require_create_org_token),
+):
+    """기가입자 조직 생성.
+
+    루트 도메인 로그인으로 발급받은 **스코프 토큰**(scope=create_org)이 필요합니다.
+    조직 생성 + ADMIN 멤버십 + 테넌트 프로비저닝 후 정상 access+refresh 토큰을 반환합니다.
+    """
+    return auth_commands.create_organization(db, ctx.user_id, req)
+
+
+@router.post("/switch-org", response_model=LoginResponse)
+def switch_org(
+    req: SwitchOrgRequest,
+    db: Session = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+):
+    """조직 전환.
+
+    현재 인증된 유저가 다른 워크스페이스로 전환합니다.
+    대상 워크스페이스의 멤버십을 확인한 후 새 access+refresh 토큰을 발급합니다.
+    """
+    return auth_commands.switch_org(db, auth.user_id, auth.email, req.slug)
 
 
 @router.get("/invitations/verify", response_model=VerifyInvitationResponse)

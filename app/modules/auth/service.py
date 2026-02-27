@@ -11,32 +11,41 @@ from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
 from app.infrastructure.password_hasher import hash_password, verify_password
-from app.infrastructure.turnstile import verify_turnstile_token
 from app.infrastructure.token_provider import token_provider
+from app.infrastructure.turnstile import verify_turnstile_token
 from app.modules.auth import repository as repo
-from app.modules.auth.constants import PLAN_LIMITS, InvitationStatus, MembershipRole, PlanType, RESERVED_SLUGS, validate_slug_format
-from app.modules.auth.provisioning import provision_tenant
+from app.modules.auth.constants import (
+    PLAN_LIMITS,
+    RESERVED_SLUGS,
+    InvitationStatus,
+    MembershipRole,
+    PlanType,
+    validate_slug_format,
+)
 from app.modules.auth.models import Invitation, _hash_token
+from app.modules.auth.provisioning import provision_tenant
 from app.modules.auth.schemas import (
     AcceptInvitationRequest,
     AcceptInvitationResponse,
     CheckEmailResponse,
     CheckSlugResponse,
     CreateInvitationRequest,
+    CreateOrganizationRequest,
+    CreateOrganizationResponse,
     InvitationResponse,
     LoginRequest,
     LoginResponse,
-    MeResponse,
     MembershipResponse,
+    MeResponse,
     OrganizationResponse,
     PlanResponse,
     RegisterRequest,
     RegisterResponse,
+    ScopedLoginResponse,
     SiteResponse,
     TokenResponse,
     UserResponse,
 )
-
 
 
 def _slugify(name: str) -> str:
@@ -100,7 +109,9 @@ def register(db: Session, req: RegisterRequest) -> RegisterResponse:
         if error:
             raise AppError(message=error, code="VALIDATION_ERROR")
         if repo.get_org_by_slug(db, req.slug):
-            raise AppError(message="이미 사용 중인 워크스페이스 주소입니다", code="ALREADY_EXISTS")
+            raise AppError(
+                message="이미 사용 중인 워크스페이스 주소입니다", code="ALREADY_EXISTS"
+            )
         slug = req.slug
     else:
         # 자동 생성: org_name → slug
@@ -117,12 +128,19 @@ def register(db: Session, req: RegisterRequest) -> RegisterResponse:
 
     # 조직 생성
     org = repo.create_organization(
-        db, slug, req.org_name, user.id,
-        industry=req.industry, team_size=req.team_size, plan_type=plan.value,
+        db,
+        slug,
+        req.org_name,
+        user.id,
+        industry=req.industry,
+        team_size=req.team_size,
+        plan_type=plan.value,
     )
 
     # 멤버십 (ADMIN)
-    repo.create_membership(db, user.id, org.id, role=MembershipRole.ADMIN, job_role=req.job_role)
+    repo.create_membership(
+        db, user.id, org.id, role=MembershipRole.ADMIN, job_role=req.job_role
+    )
 
     # 테넌트 프로비저닝 (스키마 + AGE 그래프)
     schema_name = provision_tenant(db, org.id)
@@ -132,7 +150,9 @@ def register(db: Session, req: RegisterRequest) -> RegisterResponse:
 
     # 토큰 발급
     access_token = token_provider.create_access_token(
-        sub=str(user.id), email=user.email, org_id=str(org.id),
+        sub=str(user.id),
+        email=user.email,
+        org_id=str(org.id),
         role=MembershipRole.ADMIN,
     )
     refresh_token_str, expires_at = token_provider.create_refresh_token(
@@ -152,26 +172,48 @@ def register(db: Session, req: RegisterRequest) -> RegisterResponse:
 
 
 @transactional
-def login(db: Session, req: LoginRequest, *, slug: str | None = None) -> LoginResponse:
-    """로그인: 자격증명 검증 + 토큰 발급."""
+def login(
+    db: Session, req: LoginRequest, *, slug: str | None = None
+) -> LoginResponse | ScopedLoginResponse:
+    """로그인: 자격증명 검증 + 토큰 발급.
+
+    - slug 있음: 해당 워크스페이스 멤버십 확인 → 정상 access+refresh 토큰 발급
+    - slug 없음: 유저 인증만 → 조직 생성 전용 스코프 토큰 발급
+    """
     user = repo.get_user_by_email(db, req.email)
     if not user or not verify_password(req.password, user.hashed_password):
-        raise AppError(message="이메일 또는 비밀번호가 올바르지 않습니다", code="INVALID_CREDENTIALS")
+        raise AppError(
+            message="이메일 또는 비밀번호가 올바르지 않습니다",
+            code="INVALID_CREDENTIALS",
+        )
 
     if not user.is_active:
         raise AppError(message="비활성화된 계정입니다", code="FORBIDDEN")
 
-    # Origin 서브도메인에서 추출한 slug로 조직 결정
+    # slug 없음 → 스코프 토큰 발급 (조직 생성용)
     if not slug:
-        raise AppError(message="워크스페이스를 통해 로그인해주세요", code="VALIDATION_ERROR")
+        scoped_token = token_provider.create_scoped_token(
+            sub=str(user.id),
+            email=user.email,
+            scope="create_org",
+        )
+        return ScopedLoginResponse(
+            user=UserResponse.model_validate(user),
+            scoped_token=scoped_token,
+        )
 
+    # slug 있음 → 기존 플로우
     membership = repo.get_membership_by_slug(db, user.id, slug)
     if not membership:
-        raise AppError(message="해당 워크스페이스에 소속되어 있지 않습니다", code="FORBIDDEN")
+        raise AppError(
+            message="해당 워크스페이스에 소속되어 있지 않습니다", code="FORBIDDEN"
+        )
     org_id = membership.org_id
 
     access_token = token_provider.create_access_token(
-        sub=str(user.id), email=user.email, org_id=str(org_id),
+        sub=str(user.id),
+        email=user.email,
+        org_id=str(org_id),
         role=membership.role,
     )
     refresh_token_str, expires_at = token_provider.create_refresh_token(
@@ -210,7 +252,9 @@ def refresh_tokens(db: Session, refresh_token_str: str) -> TokenResponse:
 
         repo.delete_all_user_refresh_tokens(db, uuid.UUID(payload.sub))
         db.commit()
-        raise AppError(message="토큰이 재사용되었습니다. 다시 로그인해주세요", code="TOKEN_INVALID")
+        raise AppError(
+            message="토큰이 재사용되었습니다. 다시 로그인해주세요", code="TOKEN_INVALID"
+        )
 
     # 정상 경로 — 기존 토큰 삭제 + 새 토큰 발급
     try:
@@ -226,8 +270,10 @@ def refresh_tokens(db: Session, refresh_token_str: str) -> TokenResponse:
 
         membership = memberships[0]
         new_access = token_provider.create_access_token(
-            sub=str(user.id), email=user.email,
-            org_id=str(membership.org_id), role=membership.role,
+            sub=str(user.id),
+            email=user.email,
+            org_id=str(membership.org_id),
+            role=membership.role,
         )
         new_refresh_str, new_expires = token_provider.create_refresh_token(
             sub=str(user.id), email=user.email
@@ -291,7 +337,9 @@ def complete_onboarding(db: Session, auth: AuthContext) -> OrganizationResponse:
 def get_site(db: Session, slug: str | None) -> SiteResponse:
     """서브도메인 slug로 워크스페이스 기본 정보 조회."""
     if not slug:
-        raise AppError(message="워크스페이스를 통해 접근해주세요", code="VALIDATION_ERROR")
+        raise AppError(
+            message="워크스페이스를 통해 접근해주세요", code="VALIDATION_ERROR"
+        )
     org = repo.get_org_by_slug(db, slug)
     if not org:
         raise AppError(message="존재하지 않는 워크스페이스입니다", code="NOT_FOUND")
@@ -313,6 +361,122 @@ def get_plans() -> list[PlanResponse]:
         )
         for pt, limits in PLAN_LIMITS.items()
     ]
+
+
+# ── 조직 생성 / 전환 ──
+
+
+def create_organization(
+    db: Session, user_id: _uuid.UUID, req: CreateOrganizationRequest
+) -> CreateOrganizationResponse:
+    """기가입자의 조직 생성: 조직 + 멤버십 + 테넌트 프로비저닝 + 토큰 발급.
+
+    @transactional 없음 — use_case에서 트랜잭션 관리.
+    """
+    # 플랜 검증
+    try:
+        plan = PlanType(req.plan_type)
+    except ValueError:
+        raise AppError(message="유효하지 않은 플랜입니다", code="VALIDATION_ERROR")
+
+    # slug 결정
+    if req.slug:
+        error = validate_slug_format(req.slug)
+        if error:
+            raise AppError(message=error, code="VALIDATION_ERROR")
+        if repo.get_org_by_slug(db, req.slug):
+            raise AppError(
+                message="이미 사용 중인 워크스페이스 주소입니다", code="ALREADY_EXISTS"
+            )
+        slug = req.slug
+    else:
+        slug = _slugify(req.org_name)
+        if not slug:
+            slug = "org"
+        if slug in RESERVED_SLUGS or repo.get_org_by_slug(db, slug):
+            slug = f"{slug}-{str(_uuid.uuid4())[:8]}"
+
+    # 유저 조회
+    user = repo.get_user_by_id(db, user_id)
+    if not user:
+        raise AppError(message="사용자를 찾을 수 없습니다", code="NOT_FOUND")
+
+    # 조직 생성
+    org = repo.create_organization(
+        db,
+        slug,
+        req.org_name,
+        user.id,
+        industry=req.industry,
+        team_size=req.team_size,
+        plan_type=plan.value,
+    )
+
+    # 멤버십 (ADMIN)
+    repo.create_membership(db, user.id, org.id, role=MembershipRole.ADMIN)
+
+    # 테넌트 프로비저닝
+    schema_name = provision_tenant(db, org.id)
+    logger.info(
+        "테넌트 프로비저닝 완료: {schema}", schema=schema_name, org_id=str(org.id)
+    )
+
+    # 토큰 발급
+    access_token = token_provider.create_access_token(
+        sub=str(user.id),
+        email=user.email,
+        org_id=str(org.id),
+        role=MembershipRole.ADMIN,
+    )
+    refresh_token_str, expires_at = token_provider.create_refresh_token(
+        sub=str(user.id), email=user.email
+    )
+    payload = token_provider.decode(refresh_token_str)
+    repo.save_refresh_token(db, user.id, payload.jti, expires_at)
+
+    return CreateOrganizationResponse(
+        organization=OrganizationResponse.model_validate(org),
+        tokens=TokenResponse(
+            access_token=access_token, refresh_token=refresh_token_str
+        ),
+    )
+
+
+def switch_org(
+    db: Session, user_id: _uuid.UUID, email: str, slug: str
+) -> LoginResponse:
+    """조직 전환: 대상 조직 멤버십 확인 → 새 토큰 발급.
+
+    @transactional 없음 — use_case에서 트랜잭션 관리.
+    """
+    membership = repo.get_membership_by_slug(db, user_id, slug)
+    if not membership:
+        raise AppError(
+            message="해당 워크스페이스에 소속되어 있지 않습니다", code="FORBIDDEN"
+        )
+
+    user = repo.get_user_by_id(db, user_id)
+    if not user:
+        raise AppError(message="사용자를 찾을 수 없습니다", code="NOT_FOUND")
+
+    access_token = token_provider.create_access_token(
+        sub=str(user.id),
+        email=email,
+        org_id=str(membership.org_id),
+        role=membership.role,
+    )
+    refresh_token_str, expires_at = token_provider.create_refresh_token(
+        sub=str(user.id), email=email
+    )
+    payload = token_provider.decode(refresh_token_str)
+    repo.save_refresh_token(db, user.id, payload.jti, expires_at)
+
+    return LoginResponse(
+        user=UserResponse.model_validate(user),
+        tokens=TokenResponse(
+            access_token=access_token, refresh_token=refresh_token_str
+        ),
+    )
 
 
 # ── 초대 ──
@@ -365,7 +529,9 @@ def create_invitation(
     if existing_user:
         existing_membership = repo.get_membership(db, existing_user.id, auth.org_id)
         if existing_membership:
-            raise AppError(message="이미 조직에 소속된 멤버입니다", code="ALREADY_EXISTS")
+            raise AppError(
+                message="이미 조직에 소속된 멤버입니다", code="ALREADY_EXISTS"
+            )
 
     # PENDING 초대 중복 확인
     pending = repo.get_pending_invitation(db, auth.org_id, req.email)
@@ -405,7 +571,9 @@ def cancel_invitation(
         raise AppError(message="초대를 찾을 수 없습니다", code="NOT_FOUND")
 
     if invitation.status != InvitationStatus.PENDING:
-        raise AppError(message="대기 중인 초대만 취소할 수 있습니다", code="VALIDATION_ERROR")
+        raise AppError(
+            message="대기 중인 초대만 취소할 수 있습니다", code="VALIDATION_ERROR"
+        )
 
     invitation.cancel()
 
@@ -454,8 +622,10 @@ def accept_invitation(
     # 토큰 발급
     org = repo.get_org_by_id(db, invitation.org_id)
     access_token = token_provider.create_access_token(
-        sub=str(user.id), email=user.email,
-        org_id=str(invitation.org_id), role=invitation.role,
+        sub=str(user.id),
+        email=user.email,
+        org_id=str(invitation.org_id),
+        role=invitation.role,
     )
     refresh_token_str, expires_at = token_provider.create_refresh_token(
         sub=str(user.id), email=user.email
