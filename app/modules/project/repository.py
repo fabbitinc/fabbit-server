@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.modules.project.models import Project, ProjectPart
+from app.modules.project.models import Project, ProjectMember, ProjectPart
 
 
 def add(db: Session, entity: Project) -> Project:
@@ -102,6 +102,52 @@ def get_linked_project_ids(db: Session, part_id: uuid.UUID) -> list[uuid.UUID]:
     rows = (
         db.query(ProjectPart.project_id)
         .filter(ProjectPart.part_id == part_id)
+        .all()
+    )
+    return [r[0] for r in rows]
+
+
+# ── Project ↔ Member ──
+
+
+def add_members(db: Session, project_id: uuid.UUID, user_ids: list[uuid.UUID]) -> int:
+    """Project에 멤버 배치 추가 — 이미 추가된 건은 무시, 신규 추가 건수 반환."""
+    existing = set(
+        row[0]
+        for row in db.query(ProjectMember.user_id)
+        .filter(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id.in_(user_ids),
+        )
+        .all()
+    )
+    new_ids = [uid for uid in user_ids if uid not in existing]
+    for uid in new_ids:
+        db.add(ProjectMember(project_id=project_id, user_id=uid))
+    if new_ids:
+        db.flush()
+    return len(new_ids)
+
+
+def remove_members(db: Session, project_id: uuid.UUID, user_ids: list[uuid.UUID]) -> int:
+    """Project에서 멤버 배치 제거 — 삭제 건수 반환."""
+    count = (
+        db.query(ProjectMember)
+        .filter(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id.in_(user_ids),
+        )
+        .delete(synchronize_session="fetch")
+    )
+    db.flush()
+    return count
+
+
+def list_member_ids(db: Session, project_id: uuid.UUID) -> list[uuid.UUID]:
+    """Project에 소속된 멤버 User ID 목록 조회."""
+    rows = (
+        db.query(ProjectMember.user_id)
+        .filter(ProjectMember.project_id == project_id)
         .all()
     )
     return [r[0] for r in rows]

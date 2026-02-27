@@ -54,3 +54,17 @@ def unlink_parts(
             project_id=project.id, part_ids=part_ids
         ))
     return count
+
+
+def add_members(
+    db: Session, project_id: uuid.UUID, user_ids: list[uuid.UUID]
+) -> int:
+    """Project에 멤버 배치 추가 — 신규 추가 건수 반환."""
+    return repo.add_members(db, project_id, user_ids)
+
+
+def remove_members(
+    db: Session, project_id: uuid.UUID, user_ids: list[uuid.UUID]
+) -> int:
+    """Project에서 멤버 배치 제거 — 삭제 건수 반환."""
+    return repo.remove_members(db, project_id, user_ids)

@@ -70,3 +70,42 @@ class PartProjectSummary(BaseModel):
 class PartProjectsResponse(BaseModel):
     total: int
     items: list[PartProjectSummary]
+
+
+# ── 멤버 ──
+
+
+class MemberSummary(BaseModel):
+    """조직 멤버 요약."""
+    user_id: uuid.UUID
+    full_name: str
+    email: str
+    role: str
+    job_role: str | None = None
+
+
+class MemberListResponse(BaseModel):
+    """조직 멤버 목록."""
+    items: list[MemberSummary]
+
+
+class ProjectMemberSummary(BaseModel):
+    """프로젝트 멤버 요약."""
+    user_id: uuid.UUID
+    full_name: str
+    email: str
+
+
+class ProjectMemberListResponse(BaseModel):
+    """프로젝트 멤버 목록."""
+    items: list[ProjectMemberSummary]
+
+
+class ManageMembersRequest(BaseModel):
+    """멤버 추가/제거 요청."""
+    user_ids: list[uuid.UUID]
+
+
+class ManageMembersResponse(BaseModel):
+    """멤버 추가/제거 결과."""
+    count: int

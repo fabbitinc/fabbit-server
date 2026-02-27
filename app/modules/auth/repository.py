@@ -98,6 +98,20 @@ def get_user_memberships(db: Session, user_id: uuid.UUID) -> list[Membership]:
     )
 
 
+def list_org_members(
+    db: Session, org_id: uuid.UUID
+) -> list[tuple[User, Membership]]:
+    """조직 멤버 목록 조회 (User JOIN Membership)."""
+    return list(
+        db.execute(
+            select(User, Membership)
+            .join(Membership, User.id == Membership.user_id)
+            .where(Membership.org_id == org_id)
+            .order_by(User.full_name)
+        ).all()
+    )
+
+
 def get_membership_by_slug(
     db: Session, user_id: uuid.UUID, slug: str
 ) -> Membership | None:

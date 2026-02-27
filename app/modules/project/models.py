@@ -24,6 +24,36 @@ class Project(AggregateRoot, AuditMixin, UpdatableMixin, PkMixin, TenantBase):
         return self.issue_counter
 
 
+class ProjectMember(TimestampMixin, PkMixin, TenantBase):
+    """Project ↔ User 멤버 관계 (M:N)."""
+
+    __tablename__ = "project_members"
+
+    __table_args__ = (
+        # 동일 Project-User 관계 중복 방지
+        UniqueConstraint(
+            "project_id",
+            "user_id",
+            name="uq_project_members_project_id_user_id",
+        ),
+        # Project 기준 멤버 조회 최적화
+        Index("ix_project_members_project_id", "project_id"),
+        # User 기준 소속 프로젝트 조회 최적화
+        Index("ix_project_members_user_id", "user_id"),
+    )
+
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    # User id 논리적 참조 (cross-schema FK 없음)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=False,
+    )
+
+
 class ProjectPart(TimestampMixin, PkMixin, TenantBase):
     """Project → Part 소속 관계 (M:N)."""
 
