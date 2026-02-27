@@ -104,6 +104,16 @@ def unlink_parts(db: Session, issue_id: uuid.UUID, part_ids: list[uuid.UUID]) ->
 # ── 댓글 ──
 
 
+def list_comments_by_issue(db: Session, issue_id: uuid.UUID) -> list[IssueComment]:
+    """이슈별 댓글 목록 조회 (시간순)."""
+    return (
+        db.query(IssueComment)
+        .filter(IssueComment.issue_id == issue_id)
+        .order_by(IssueComment.created_at)
+        .all()
+    )
+
+
 def get_comment_by_id(db: Session, comment_id: uuid.UUID) -> IssueComment | None:
     """댓글 단건 조회."""
     return db.query(IssueComment).filter(IssueComment.id == comment_id).first()

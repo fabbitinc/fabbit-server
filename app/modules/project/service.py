@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError
 from app.modules.project import repository as repo
+from app.modules.project.events import ProjectPartsLinked, ProjectPartsUnlinked
 from app.modules.project.models import Project
 
 
@@ -31,11 +32,25 @@ def create_project(
     return repo.add(db, project)
 
 
-def link_parts(db: Session, project_id: uuid.UUID, part_ids: list[uuid.UUID]) -> int:
+def link_parts(
+    db: Session, project: Project, part_ids: list[uuid.UUID]
+) -> int:
     """Project에 Part 배치 연결 — 신규 연결 건수 반환."""
-    return repo.link_parts(db, project_id, part_ids)
+    count = repo.link_parts(db, project.id, part_ids)
+    if count > 0:
+        project.register_event(ProjectPartsLinked(
+            project_id=project.id, part_ids=part_ids
+        ))
+    return count
 
 
-def unlink_parts(db: Session, project_id: uuid.UUID, part_ids: list[uuid.UUID]) -> int:
+def unlink_parts(
+    db: Session, project: Project, part_ids: list[uuid.UUID]
+) -> int:
     """Project에서 Part 배치 해제 — 삭제 건수 반환."""
-    return repo.unlink_parts(db, project_id, part_ids)
+    count = repo.unlink_parts(db, project.id, part_ids)
+    if count > 0:
+        project.register_event(ProjectPartsUnlinked(
+            project_id=project.id, part_ids=part_ids
+        ))
+    return count

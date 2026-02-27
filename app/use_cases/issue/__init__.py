@@ -8,7 +8,6 @@ from app.use_cases.issue.create_issue import create_issue
 from app.use_cases.issue.delete_comment import delete_comment
 from app.use_cases.issue.delete_file import delete_file
 from app.use_cases.issue.link_parts import link_parts
-from app.use_cases.issue.list_comments import list_comments
 from app.use_cases.issue.unassign_users import unassign_users
 from app.use_cases.issue.unlink_parts import unlink_parts
 from app.use_cases.issue.update_comment import update_comment

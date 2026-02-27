@@ -17,5 +17,5 @@ def unlink_parts(
     part_ids: list[uuid.UUID],
 ) -> None:
     """Project에서 Part 배치 해제."""
-    project_service.get_or_raise(db, project_id)
-    project_service.unlink_parts(db, project_id, part_ids)
+    project = project_service.get_or_raise(db, project_id)
+    project_service.unlink_parts(db, project, part_ids)

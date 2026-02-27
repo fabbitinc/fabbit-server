@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
+from app.modules.activity.schemas import TimelineResponse
 from app.modules.file.schemas import FileItem
 from app.modules.issue.schemas import (
     AssignUsersRequest,
@@ -22,6 +23,7 @@ from app.modules.issue.schemas import (
     LinkPartsResponse,
     UpdateCommentRequest,
 )
+from app.queries import issue as issue_queries
 from app.use_cases import issue as issue_commands
 
 router = APIRouter(prefix="/api/v1/projects/{project_id}", tags=["issues"])
@@ -139,6 +141,27 @@ def unlink_parts(
     요청된 부품 ID에 해당하는 연결을 해제합니다.
     """
     issue_commands.unlink_parts(db, auth, issue_id, part_ids=req.part_ids)
+
+
+# ── 타임라인 ──
+
+
+@router.get(
+    "/issues/{issue_id}/timeline",
+    response_model=TimelineResponse,
+    status_code=200,
+)
+def get_timeline(
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 타임라인 조회.
+
+    댓글과 활동 이력을 `created_at` 기준으로 시간순 merge하여 반환합니다.
+    """
+    return issue_queries.get_timeline(db, auth, issue_id)
 
 
 # ── 댓글 ──

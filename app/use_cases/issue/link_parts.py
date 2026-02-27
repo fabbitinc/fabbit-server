@@ -19,9 +19,9 @@ def link_parts(
     part_ids: list[uuid.UUID],
 ) -> LinkPartsResponse:
     """이슈에 부품 배치 연결."""
-    issue_service.get_or_raise(db, issue_id)
+    issue = issue_service.get_or_raise(db, issue_id)
     # Part 존재 검증
     for pid in part_ids:
         part_service.get_or_raise(db, pid)
-    linked_count = issue_service.link_parts(db, issue_id, part_ids)
+    linked_count = issue_service.link_parts(db, issue, part_ids)
     return LinkPartsResponse(linked_count=linked_count)

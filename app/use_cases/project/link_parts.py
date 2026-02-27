@@ -19,9 +19,9 @@ def link_parts(
     part_ids: list[uuid.UUID],
 ) -> LinkPartsResponse:
     """Project에 Part 배치 연결."""
-    project_service.get_or_raise(db, project_id)
+    project = project_service.get_or_raise(db, project_id)
     # Part 존재 검증
     for pid in part_ids:
         part_service.get_or_raise(db, pid)
-    linked_count = project_service.link_parts(db, project_id, part_ids)
+    linked_count = project_service.link_parts(db, project, part_ids)
     return LinkPartsResponse(linked_count=linked_count)

@@ -6,11 +6,12 @@ from sqlalchemy import ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase
 from app.core.mixins import AuditMixin, PkMixin, TimestampMixin, UpdatableMixin
 
 
-class Project(AuditMixin, UpdatableMixin, PkMixin, TenantBase):
+class Project(AggregateRoot, AuditMixin, UpdatableMixin, PkMixin, TenantBase):
     __tablename__ = "projects"
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)

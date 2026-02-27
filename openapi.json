@@ -11,6 +11,7 @@
                     "activation"
                 ],
                 "summary": "Health Check",
+                "description": "\uadf8\ub798\ud504 \ub370\uc774\ud130 \uc0c1\ud0dc\ub97c \uc810\uac80\ud569\ub2c8\ub2e4.",
                 "operationId": "health_check_api_v1_activation_health_check_post",
                 "responses": {
                     "200": {
@@ -37,6 +38,7 @@
                     "activation"
                 ],
                 "summary": "Query Graph",
+                "description": "\uc790\uc5f0\uc5b4 \uc9c8\ubb38\uc744 \uadf8\ub798\ud504/SQL \uc9c8\uc758\ub85c \uc2e4\ud589\ud569\ub2c8\ub2e4.",
                 "operationId": "query_graph_api_v1_activation_query_post",
                 "requestBody": {
                     "content": {
@@ -83,6 +85,7 @@
                     "activation"
                 ],
                 "summary": "Get Starters",
+                "description": "\ucd08\uae30 \ud0d0\uc0c9\uc6a9 \ucd94\ucc9c \uc9c8\ubb38 \ubaa9\ub85d\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
                 "operationId": "get_starters_api_v1_activation_starters_get",
                 "responses": {
                     "200": {
@@ -456,6 +459,7 @@
                     "dashboard"
                 ],
                 "summary": "Get Dashboard Stats",
+                "description": "\ub300\uc2dc\ubcf4\ub4dc \ud1b5\uacc4 \uc870\ud68c.\n\nPart \ucd1d \uc218, \uae08\uc8fc \ucd94\uac00 \uc218, BOM \ub9c1\ud06c \uc218, \ucd5c\uadfc \ud569\uc131 \uc791\uc5c5 \uc0c1\ud0dc\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.",
                 "operationId": "get_dashboard_stats_api_v1_dashboard_stats_get",
                 "responses": {
                     "200": {
@@ -474,397 +478,6 @@
                         "HTTPBearer": []
                     }
                 ]
-            }
-        },
-        "/api/v1/drawings": {
-            "get": {
-                "tags": [
-                    "drawings"
-                ],
-                "summary": "List Drawings",
-                "description": "\ub3c4\uba74 \ubaa9\ub85d \uc870\ud68c.\n\ndrawing_number, name\uc73c\ub85c ILIKE \uac80\uc0c9\uc744 \uc9c0\uc6d0\ud569\ub2c8\ub2e4.",
-                "operationId": "list_drawings_api_v1_drawings_get",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "search",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "drawing_number \ub610\ub294 name \uac80\uc0c9",
-                            "title": "Search"
-                        },
-                        "description": "drawing_number \ub610\ub294 name \uac80\uc0c9"
-                    },
-                    {
-                        "name": "offset",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "description": "\uc2dc\uc791 \uc704\uce58",
-                            "default": 0,
-                            "title": "Offset"
-                        },
-                        "description": "\uc2dc\uc791 \uc704\uce58"
-                    },
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "maximum": 100,
-                            "minimum": 1,
-                            "description": "\uc870\ud68c \uac74\uc218",
-                            "default": 20,
-                            "title": "Limit"
-                        },
-                        "description": "\uc870\ud68c \uac74\uc218"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DrawingListResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/drawings/bulk": {
-            "post": {
-                "tags": [
-                    "drawings"
-                ],
-                "summary": "Bulk Register Drawings",
-                "description": "\ub3c4\uba74 \ub300\ub7c9 \ub4f1\ub85d.\n\n## \uc5c5\ub85c\ub4dc \ud750\ub984\n\n1. `POST /api/v1/files/upload/batch` \u2014 presigned URL \uc77c\uad04 \ubc1c\uae09\n2. S3\uc5d0 \ud30c\uc77c \uc5c5\ub85c\ub4dc (\uac01 presigned URL PUT)\n3. `POST /api/v1/files/upload/batch/complete` \u2014 \uc5c5\ub85c\ub4dc \uc77c\uad04 \ud655\uc778\n4. **\uc774 \uc5d4\ub4dc\ud3ec\uc778\ud2b8** \u2014 Drawing \uc77c\uad04 \uc0dd\uc131\n\n\uac01 \ud56d\ubaa9\uc5d0 `part_id`\ub97c \ud3ec\ud568\ud558\uba74 \ud574\ub2f9 Part\uc5d0 \ub3c4\uba74\uc774 \uc5f0\uacb0\ub429\ub2c8\ub2e4.\nDWG \ud30c\uc77c\uc740 \uc790\ub3d9\uc73c\ub85c PDF/\uc378\ub124\uc77c \ubcc0\ud658\uc774 \ud2b8\ub9ac\uac70\ub429\ub2c8\ub2e4.",
-                "operationId": "bulk_register_drawings_api_v1_drawings_bulk_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/BulkRegisterDrawingRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/BulkRegisterDrawingResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/drawings/analyze": {
-            "post": {
-                "tags": [
-                    "drawings"
-                ],
-                "summary": "Analyze Drawing",
-                "operationId": "analyze_drawing_api_v1_drawings_analyze_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/DrawingAnalyzeRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DrawingAnalyzeResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/drawings/confirm": {
-            "post": {
-                "tags": [
-                    "drawings"
-                ],
-                "summary": "Confirm Analysis",
-                "operationId": "confirm_analysis_api_v1_drawings_confirm_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/DrawingConfirmRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DrawingAnalysisResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/drawings/analyses": {
-            "get": {
-                "tags": [
-                    "drawings"
-                ],
-                "summary": "List Analyses",
-                "operationId": "list_analyses_api_v1_drawings_analyses_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DrawingAnalysisListResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/drawings/analyses/{analysis_id}": {
-            "get": {
-                "tags": [
-                    "drawings"
-                ],
-                "summary": "Get Analysis",
-                "operationId": "get_analysis_api_v1_drawings_analyses__analysis_id__get",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "analysis_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Analysis Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DrawingAnalysisResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/drawings/synthesis": {
-            "post": {
-                "tags": [
-                    "drawings"
-                ],
-                "summary": "Start Synthesis",
-                "operationId": "start_synthesis_api_v1_drawings_synthesis_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/DrawingSynthesisStartRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DrawingSynthesisJobResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/drawings/synthesis/{job_id}": {
-            "get": {
-                "tags": [
-                    "drawings"
-                ],
-                "summary": "Get Synthesis Job",
-                "operationId": "get_synthesis_job_api_v1_drawings_synthesis__job_id__get",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "job_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Job Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/DrawingSynthesisJobResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
             }
         },
         "/api/v1/mappings/preview": {
@@ -1154,570 +767,6 @@
                             "type": "string",
                             "format": "uuid",
                             "title": "Mapping Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects/tree": {
-            "get": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Get Projects Tree",
-                "operationId": "get_projects_tree_api_v1_projects_tree_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProjectTreeResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/projects/folders": {
-            "post": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Create Folder",
-                "operationId": "create_folder_api_v1_projects_folders_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CreateFolderRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "201": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/FolderResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/projects/folders/{folder_id}": {
-            "patch": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Update Folder",
-                "operationId": "update_folder_api_v1_projects_folders__folder_id__patch",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "folder_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Folder Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/UpdateFolderRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/FolderResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Delete Folder",
-                "operationId": "delete_folder_api_v1_projects_folders__folder_id__delete",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "folder_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Folder Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects/folders/{folder_id}/move": {
-            "patch": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Move Folder",
-                "operationId": "move_folder_api_v1_projects_folders__folder_id__move_patch",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "folder_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Folder Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/MoveFolderRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/FolderResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects": {
-            "post": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Create Project",
-                "operationId": "create_project_api_v1_projects_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CreateProjectRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "201": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProjectResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/projects/{project_id}": {
-            "get": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Get Project",
-                "operationId": "get_project_api_v1_projects__project_id__get",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProjectResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Update Project",
-                "operationId": "update_project_api_v1_projects__project_id__patch",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/UpdateProjectRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProjectResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Delete Project",
-                "operationId": "delete_project_api_v1_projects__project_id__delete",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects/{project_id}/parts": {
-            "get": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Get Project Parts",
-                "operationId": "get_project_parts_api_v1_projects__project_id__parts_get",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProjectPartListResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects/{project_id}/parts/{part_id}": {
-            "post": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Add Part To Project",
-                "operationId": "add_part_to_project_api_v1_projects__project_id__parts__part_id__post",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "part_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Part Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Remove Part From Project",
-                "operationId": "remove_part_from_project_api_v1_projects__project_id__parts__part_id__delete",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "part_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Part Id"
                         }
                     }
                 ],
@@ -2193,7 +1242,7 @@
                     "parts"
                 ],
                 "summary": "List Parts",
-                "description": "Part \ubaa9\ub85d \uc870\ud68c.\n\n\uac01 Part\uc5d0 \uc5f0\uacb0\ub41c \ub3c4\uba74\ubc88\ud638(`drawing_number`)\uc640 \ud558\uc704 \ubd80\ud488 \uc218(`children_count`)\ub97c \ud3ec\ud568\ud569\ub2c8\ub2e4.\n\n**\uac80\uc0c9**: `search` \ud30c\ub77c\ubbf8\ud130\ub85c \ud488\ubc88/\ud488\uba85 ILIKE \uac80\uc0c9\n**\ud544\ud130**: `category`, `lifecycle_state`(\uc815\ud655 \uc77c\uce58), `has_drawing`, `has_children`(boolean)",
+                "description": "Part \ubaa9\ub85d \uc870\ud68c.\n\n\uac01 Part\uc5d0 \uc5f0\uacb0\ub41c \ub3c4\uba74\ubc88\ud638(`drawing_number`)\uc640 \ud558\uc704 \ubd80\ud488 \uc218(`children_count`)\ub97c \ud3ec\ud568\ud569\ub2c8\ub2e4.\n\n**\uac80\uc0c9**: `search` \ud30c\ub77c\ubbf8\ud130\ub85c \ud488\ubc88/\ud488\uba85 ILIKE \uac80\uc0c9\n**\ud544\ud130**: `category`, `lifecycle_state`(\uc815\ud655 \uc77c\uce58), `has_drawing`, `has_children`(boolean), `project_id`(\ud504\ub85c\uc81d\ud2b8 \uc18c\uc18d)",
                 "operationId": "list_parts_api_v1_parts_get",
                 "security": [
                     {
@@ -2290,6 +1339,25 @@
                             "title": "Has Children"
                         },
                         "description": "\ud558\uc704 \ubd80\ud488 \ubcf4\uc720 \uc5ec\ubd80 \ud544\ud130"
+                    },
+                    {
+                        "name": "project_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "\ud504\ub85c\uc81d\ud2b8 \uc18c\uc18d \ud544\ud130",
+                            "title": "Project Id"
+                        },
+                        "description": "\ud504\ub85c\uc81d\ud2b8 \uc18c\uc18d \ud544\ud130"
                     },
                     {
                         "name": "offset",
@@ -2392,6 +1460,55 @@
                 }
             }
         },
+        "/api/v1/parts/{part_id}/projects": {
+            "get": {
+                "tags": [
+                    "parts"
+                ],
+                "summary": "Get Part Projects",
+                "description": "\ubd80\ud488\uc774 \uc18d\ud55c \ud504\ub85c\uc81d\ud2b8 \ubaa9\ub85d \uc870\ud68c.",
+                "operationId": "get_part_projects_api_v1_parts__part_id__projects_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PartProjectsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/parts/{part_id}/files": {
             "post": {
                 "tags": [
@@ -2422,7 +1539,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/AttachFilesRequest"
+                                "$ref": "#/components/schemas/app__modules__part__schemas__AttachFilesRequest"
                             }
                         }
                     }
@@ -2435,7 +1552,7 @@
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/components/schemas/PartFileItem"
+                                        "$ref": "#/components/schemas/FileItem"
                                     },
                                     "title": "Response Attach Files Api V1 Parts  Part Id  Files Post"
                                 }
@@ -2743,6 +1860,443 @@
                 }
             }
         },
+        "/api/v1/projects": {
+            "post": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Create Project",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \uc0dd\uc131.\n\n\ud504\ub85c\uc81d\ud2b8 \uc0dd\uc131 \uc2dc \uae30\ubcf8 \ub77c\ubca8(\ubc84\uadf8, \uae30\ub2a5, \uac1c\uc120, \uae34\uae09)\uc774 \uc790\ub3d9\uc73c\ub85c \ucd94\uac00\ub429\ub2c8\ub2e4.",
+                "operationId": "create_project_api_v1_projects_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateProjectRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectDetailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "List Projects",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \ubaa9\ub85d \uc870\ud68c.\n\nname\uc73c\ub85c ILIKE \uac80\uc0c9\uc744 \uc9c0\uc6d0\ud569\ub2c8\ub2e4.",
+                "operationId": "list_projects_api_v1_projects_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "\ud504\ub85c\uc81d\ud2b8\uba85 \uac80\uc0c9",
+                            "title": "Search"
+                        },
+                        "description": "\ud504\ub85c\uc81d\ud2b8\uba85 \uac80\uc0c9"
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "\uc2dc\uc791 \uc704\uce58",
+                            "default": 0,
+                            "title": "Offset"
+                        },
+                        "description": "\uc2dc\uc791 \uc704\uce58"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "description": "\uc870\ud68c \uac74\uc218",
+                            "default": 20,
+                            "title": "Limit"
+                        },
+                        "description": "\uc870\ud68c \uac74\uc218"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}": {
+            "get": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Get Project",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \uc0c1\uc138 \uc870\ud68c.",
+                "operationId": "get_project_api_v1_projects__project_id__get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectDetailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/parts": {
+            "post": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Link Parts To Project",
+                "description": "\ud504\ub85c\uc81d\ud2b8\uc5d0 \ubd80\ud488 \ubc30\uce58 \uc5f0\uacb0.\n\n\uc774\ubbf8 \uc5f0\uacb0\ub41c \ubd80\ud488\uc740 \ubb34\uc2dc\ub418\uba70, \uc2e0\uaddc \uc5f0\uacb0 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "link_parts_to_project_api_v1_projects__project_id__parts_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/app__modules__project__schemas__LinkPartsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LinkPartsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Unlink Parts From Project",
+                "description": "\ud504\ub85c\uc81d\ud2b8\uc5d0\uc11c \ubd80\ud488 \ubc30\uce58 \ud574\uc81c.",
+                "operationId": "unlink_parts_from_project_api_v1_projects__project_id__parts_delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/app__modules__project__schemas__LinkPartsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Get Project Parts",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \uc18c\uc18d \ubd80\ud488 \ubaa9\ub85d \uc870\ud68c.",
+                "operationId": "get_project_parts_api_v1_projects__project_id__parts_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "\uc2dc\uc791 \uc704\uce58",
+                            "default": 0,
+                            "title": "Offset"
+                        },
+                        "description": "\uc2dc\uc791 \uc704\uce58"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "description": "\uc870\ud68c \uac74\uc218",
+                            "default": 20,
+                            "title": "Limit"
+                        },
+                        "description": "\uc870\ud68c \uac74\uc218"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectPartsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/activities": {
+            "get": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Get Project Activities",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \ud65c\ub3d9 \ud53c\ub4dc \uc870\ud68c.\n\n\ud504\ub85c\uc81d\ud2b8 \ubc94\uc704\uc758 \ud65c\ub3d9 \uc774\ub825\uc744 \ucd5c\uc2e0\uc21c\uc73c\ub85c \ud398\uc774\uc9d5 \uc870\ud68c\ud569\ub2c8\ub2e4.",
+                "operationId": "get_project_activities_api_v1_projects__project_id__activities_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "\uc2dc\uc791 \uc704\uce58",
+                            "default": 0,
+                            "title": "Offset"
+                        },
+                        "description": "\uc2dc\uc791 \uc704\uce58"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "description": "\uc870\ud68c \uac74\uc218",
+                            "default": 20,
+                            "title": "Limit"
+                        },
+                        "description": "\uc870\ud68c \uac74\uc218"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ActivityListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/files/upload": {
             "post": {
                 "tags": [
@@ -2929,6 +2483,1009 @@
                 }
             }
         },
+        "/api/v1/projects/{project_id}/issues": {
+            "post": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Create Issue",
+                "description": "\uc774\uc288 \uc0dd\uc131.\n\n\ud504\ub85c\uc81d\ud2b8 \ub0b4 \uace0\uc720 \ubc88\ud638(`number`)\uac00 \uc790\ub3d9 \ubd80\uc5ec\ub429\ub2c8\ub2e4.",
+                "operationId": "create_issue_api_v1_projects__project_id__issues_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateIssueRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IssueResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/change-requests": {
+            "post": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Create Change Request",
+                "description": "\ubcc0\uacbd \uc694\uccad(Change Request) \uc0dd\uc131.\n\n\uc774\uc288 \ud14c\uc774\ube14\uc5d0 `type=CHANGE_REQUEST`\ub85c \uae30\ub85d\ub418\uba70,\n\ubcc0\uacbd \uc694\uccad \uace0\uc720 \uc0c1\ud0dc(`cr_state`)\ub294 **DRAFT**\ub85c \uc2dc\uc791\ud569\ub2c8\ub2e4.",
+                "operationId": "create_change_request_api_v1_projects__project_id__change_requests_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateChangeRequestRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChangeRequestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/issues/{issue_id}/assignees": {
+            "post": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Assign Users",
+                "description": "\uc774\uc288 \ub2f4\ub2f9\uc790 \ubc30\uce58 \ud560\ub2f9.\n\n\uc774\ubbf8 \ud560\ub2f9\ub41c \uc0ac\uc6a9\uc790\ub294 \ubb34\uc2dc\ud558\uace0, \uc2e0\uaddc \ud560\ub2f9 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "assign_users_api_v1_projects__project_id__issues__issue_id__assignees_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AssignUsersRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AssignUsersResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Unassign Users",
+                "description": "\uc774\uc288 \ub2f4\ub2f9\uc790 \ubc30\uce58 \ud574\uc81c.\n\n\uc694\uccad\ub41c \uc0ac\uc6a9\uc790 ID\uc5d0 \ud574\ub2f9\ud558\ub294 \ub2f4\ub2f9\uc790\ub97c \ud574\uc81c\ud569\ub2c8\ub2e4.",
+                "operationId": "unassign_users_api_v1_projects__project_id__issues__issue_id__assignees_delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AssignUsersRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/issues/{issue_id}/parts": {
+            "post": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Link Parts",
+                "description": "\uc774\uc288\uc5d0 \ubd80\ud488 \ubc30\uce58 \uc5f0\uacb0.\n\n\uc774\ubbf8 \uc5f0\uacb0\ub41c \ubd80\ud488\uc740 \ubb34\uc2dc\ud558\uace0, \uc2e0\uaddc \uc5f0\uacb0 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uac01 \ubd80\ud488\uc758 \uc874\uc7ac \uc5ec\ubd80\ub97c \uc0ac\uc804 \uac80\uc99d\ud569\ub2c8\ub2e4.",
+                "operationId": "link_parts_api_v1_projects__project_id__issues__issue_id__parts_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/app__modules__issue__schemas__LinkPartsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LinkPartsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Unlink Parts",
+                "description": "\uc774\uc288\uc5d0\uc11c \ubd80\ud488 \ubc30\uce58 \ud574\uc81c.\n\n\uc694\uccad\ub41c \ubd80\ud488 ID\uc5d0 \ud574\ub2f9\ud558\ub294 \uc5f0\uacb0\uc744 \ud574\uc81c\ud569\ub2c8\ub2e4.",
+                "operationId": "unlink_parts_api_v1_projects__project_id__issues__issue_id__parts_delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/app__modules__issue__schemas__LinkPartsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/issues/{issue_id}/timeline": {
+            "get": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Get Timeline",
+                "description": "\uc774\uc288 \ud0c0\uc784\ub77c\uc778 \uc870\ud68c.\n\n\ub313\uae00\uacfc \ud65c\ub3d9 \uc774\ub825\uc744 `created_at` \uae30\uc900\uc73c\ub85c \uc2dc\uac04\uc21c merge\ud558\uc5ec \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "get_timeline_api_v1_projects__project_id__issues__issue_id__timeline_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TimelineResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/issues/{issue_id}/comments": {
+            "post": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Create Comment",
+                "description": "\uc774\uc288 \ub313\uae00 \uc0dd\uc131.\n\n\ub313\uae00 \ubcf8\ubb38\uc740 1~10,000\uc790\uae4c\uc9c0 \uc785\ub825 \uac00\ub2a5\ud569\ub2c8\ub2e4.",
+                "operationId": "create_comment_api_v1_projects__project_id__issues__issue_id__comments_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateCommentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/issues/{issue_id}/comments/{comment_id}": {
+            "patch": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Update Comment",
+                "description": "\uc774\uc288 \ub313\uae00 \uc218\uc815.\n\n\ubcf8\uc778\uc774 \uc791\uc131\ud55c \ub313\uae00\ub9cc \uc218\uc815\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+                "operationId": "update_comment_api_v1_projects__project_id__issues__issue_id__comments__comment_id__patch",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    },
+                    {
+                        "name": "comment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Comment Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateCommentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Delete Comment",
+                "description": "\uc774\uc288 \ub313\uae00 \uc0ad\uc81c.\n\n\ubcf8\uc778\uc774 \uc791\uc131\ud55c \ub313\uae00\ub9cc \uc0ad\uc81c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+                "operationId": "delete_comment_api_v1_projects__project_id__issues__issue_id__comments__comment_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    },
+                    {
+                        "name": "comment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Comment Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/issues/{issue_id}/files": {
+            "post": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Add Files",
+                "description": "\uc774\uc288\uc5d0 \ucca8\ubd80\ud30c\uc77c \ubc30\uce58 \uc5f0\uacb0.\n\n\uc5c5\ub85c\ub4dc \uc644\ub8cc(`UPLOADED`) \uc0c1\ud0dc\uc774\uba70 \uc544\uc9c1 \uc18c\uc720\uc790\uac00 \uc5c6\ub294 \ud30c\uc77c\ub9cc \uc5f0\uacb0 \uac00\ub2a5\ud569\ub2c8\ub2e4.\n\ucd5c\ub300 20\uac1c\uae4c\uc9c0 \ud55c \ubc88\uc5d0 \uc5f0\uacb0\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+                "operationId": "add_files_api_v1_projects__project_id__issues__issue_id__files_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/app__modules__issue__schemas__AttachFilesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FileItem"
+                                    },
+                                    "title": "Response Add Files Api V1 Projects  Project Id  Issues  Issue Id  Files Post"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/issues/{issue_id}/files/{file_id}": {
+            "delete": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Delete File",
+                "description": "\uc774\uc288 \ucca8\ubd80\ud30c\uc77c 1\uac74 \uc0ad\uc81c.\n\n\ud574\ub2f9 \uc774\uc288\uc5d0 \uc5f0\uacb0\ub41c \ud30c\uc77c\ub9cc \uc0ad\uc81c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\ud30c\uc77c\uc740 \uc18c\ud504\ud2b8 \uc0ad\uc81c \ucc98\ub9ac\ub429\ub2c8\ub2e4.",
+                "operationId": "delete_file_api_v1_projects__project_id__issues__issue_id__files__file_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    },
+                    {
+                        "name": "file_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "File Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/labels": {
+            "get": {
+                "tags": [
+                    "labels"
+                ],
+                "summary": "List Labels",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \ub77c\ubca8 \ubaa9\ub85d \uc870\ud68c.\n\n\ud504\ub85c\uc81d\ud2b8\uc5d0 \ub4f1\ub85d\ub41c \ubaa8\ub4e0 \ub77c\ubca8\uc744 \uc774\ub984\uc21c\uc73c\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "list_labels_api_v1_projects__project_id__labels_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LabelListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "labels"
+                ],
+                "summary": "Create Label",
+                "description": "\ub77c\ubca8 \uc0dd\uc131.\n\n\ud504\ub85c\uc81d\ud2b8 \ub0b4\uc5d0\uc11c \ub77c\ubca8 \uc774\ub984\uc740 \uace0\uc720\ud574\uc57c \ud569\ub2c8\ub2e4.\n\uc0c9\uc0c1\uc740 `#RRGGBB` \ud615\uc2dd\uc758 hex \ucf54\ub4dc\uc785\ub2c8\ub2e4.",
+                "operationId": "create_label_api_v1_projects__project_id__labels_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateLabelRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LabelResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/labels/{label_id}": {
+            "patch": {
+                "tags": [
+                    "labels"
+                ],
+                "summary": "Update Label",
+                "description": "\ub77c\ubca8 \uc218\uc815.\n\n\ubcc0\uacbd\ud560 \ud544\ub4dc\ub9cc \uc694\uccad \ubcf8\ubb38\uc5d0 \ud3ec\ud568\ud558\uba74 \ub429\ub2c8\ub2e4.\n`description`\uc744 `null`\ub85c \ubcf4\ub0b4\uba74 \uc124\uba85\uc774 \uc81c\uac70\ub429\ub2c8\ub2e4.",
+                "operationId": "update_label_api_v1_projects__project_id__labels__label_id__patch",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "label_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Label Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateLabelRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LabelResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "labels"
+                ],
+                "summary": "Delete Label",
+                "description": "\ub77c\ubca8 \uc0ad\uc81c.\n\n\uc0ad\uc81c\ub41c \ub77c\ubca8\uc740 \ubcf5\uad6c\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.",
+                "operationId": "delete_label_api_v1_projects__project_id__labels__label_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "label_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Label Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ontology/schema": {
             "get": {
                 "tags": [
@@ -3051,25 +3608,101 @@
     },
     "components": {
         "schemas": {
-            "AttachFilesRequest": {
+            "ActivityListResponse": {
                 "properties": {
-                    "file_ids": {
+                    "total": {
+                        "type": "integer",
+                        "title": "Total"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/ActivityResponse"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "total",
+                    "items"
+                ],
+                "title": "ActivityListResponse"
+            },
+            "ActivityResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "action": {
+                        "type": "string",
+                        "title": "Action"
+                    },
+                    "actor_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Actor Id"
+                    },
+                    "detail": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Detail"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "action",
+                    "actor_id",
+                    "created_at"
+                ],
+                "title": "ActivityResponse"
+            },
+            "AssignUsersRequest": {
+                "properties": {
+                    "user_ids": {
                         "items": {
                             "type": "string",
                             "format": "uuid"
                         },
                         "type": "array",
-                        "maxItems": 20,
                         "minItems": 1,
-                        "title": "File Ids"
+                        "title": "User Ids",
+                        "description": "\ud560\ub2f9\ud560 \uc0ac\uc6a9\uc790 ID \ubaa9\ub85d"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "file_ids"
+                    "user_ids"
                 ],
-                "title": "AttachFilesRequest",
-                "description": "Part \ucca8\ubd80\ud30c\uc77c \ubc30\uce58 \uc5f0\uacb0 \uc694\uccad"
+                "title": "AssignUsersRequest"
+            },
+            "AssignUsersResponse": {
+                "properties": {
+                    "assigned_count": {
+                        "type": "integer",
+                        "title": "Assigned Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "assigned_count"
+                ],
+                "title": "AssignUsersResponse"
             },
             "BatchCompleteFailure": {
                 "properties": {
@@ -3391,34 +4024,63 @@
                 "title": "BomTreeResponse",
                 "description": "BOM \ud2b8\ub9ac \uc751\ub2f5"
             },
-            "BulkRegisterDrawingFailure": {
+            "ChangeRequestResponse": {
                 "properties": {
-                    "file_id": {
+                    "id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "File Id"
+                        "title": "Id"
                     },
-                    "reason": {
-                        "type": "string",
-                        "title": "Reason"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "file_id",
-                    "reason"
-                ],
-                "title": "BulkRegisterDrawingFailure",
-                "description": "\ub300\ub7c9 \ub3c4\uba74 \ub4f1\ub85d \uc2e4\ud328 \ud56d\ubaa9."
-            },
-            "BulkRegisterDrawingItem": {
-                "properties": {
-                    "file_id": {
+                    "project_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "File Id"
+                        "title": "Project Id"
                     },
-                    "part_id": {
+                    "number": {
+                        "type": "integer",
+                        "title": "Number"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type"
+                    },
+                    "title": {
+                        "type": "string",
+                        "title": "Title"
+                    },
+                    "body": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Body"
+                    },
+                    "state": {
+                        "type": "string",
+                        "title": "State"
+                    },
+                    "closed_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Closed At"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    },
+                    "created_by": {
                         "anyOf": [
                             {
                                 "type": "string",
@@ -3428,59 +4090,49 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Part Id"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "file_id"
-                ],
-                "title": "BulkRegisterDrawingItem",
-                "description": "\ub300\ub7c9 \ub3c4\uba74 \ub4f1\ub85d \uac1c\ubcc4 \ud56d\ubaa9."
-            },
-            "BulkRegisterDrawingRequest": {
-                "properties": {
-                    "items": {
-                        "items": {
-                            "$ref": "#/components/schemas/BulkRegisterDrawingItem"
-                        },
-                        "type": "array",
-                        "maxItems": 100,
-                        "minItems": 1,
-                        "title": "Items"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "items"
-                ],
-                "title": "BulkRegisterDrawingRequest",
-                "description": "\ub300\ub7c9 \ub3c4\uba74 \ub4f1\ub85d \uc694\uccad."
-            },
-            "BulkRegisterDrawingResponse": {
-                "properties": {
-                    "items": {
-                        "items": {
-                            "$ref": "#/components/schemas/RegisterDrawingResponse"
-                        },
-                        "type": "array",
-                        "title": "Items"
+                        "title": "Created By"
                     },
-                    "failed": {
-                        "items": {
-                            "$ref": "#/components/schemas/BulkRegisterDrawingFailure"
-                        },
-                        "type": "array",
-                        "title": "Failed"
+                    "cr_state": {
+                        "type": "string",
+                        "title": "Cr State"
+                    },
+                    "merged_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Merged At"
+                    },
+                    "merged_by": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Merged By"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "items",
-                    "failed"
+                    "id",
+                    "project_id",
+                    "number",
+                    "type",
+                    "title",
+                    "state",
+                    "created_at",
+                    "cr_state"
                 ],
-                "title": "BulkRegisterDrawingResponse",
-                "description": "\ub300\ub7c9 \ub3c4\uba74 \ub4f1\ub85d \uc751\ub2f5."
+                "title": "ChangeRequestResponse"
             },
             "CheckEmailResponse": {
                 "properties": {
@@ -3541,6 +4193,55 @@
                 ],
                 "title": "CheckSlugResponse"
             },
+            "CommentResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "issue_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Issue Id"
+                    },
+                    "body": {
+                        "type": "string",
+                        "title": "Body"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At"
+                    },
+                    "created_by": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Created By"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "issue_id",
+                    "body",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "CommentResponse"
+            },
             "ConversionStatus": {
                 "type": "string",
                 "enum": [
@@ -3550,6 +4251,50 @@
                 ],
                 "title": "ConversionStatus",
                 "description": "DWG \u2192 PDF/\uc378\ub124\uc77c \ubcc0\ud658 \uc0c1\ud0dc."
+            },
+            "CreateChangeRequestRequest": {
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 500,
+                        "minLength": 1,
+                        "title": "Title",
+                        "description": "\ubcc0\uacbd \uc694\uccad \uc81c\ubaa9"
+                    },
+                    "body": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Body",
+                        "description": "\ubcc0\uacbd \uc694\uccad \ubcf8\ubb38"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "title"
+                ],
+                "title": "CreateChangeRequestRequest"
+            },
+            "CreateCommentRequest": {
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "maxLength": 10000,
+                        "minLength": 1,
+                        "title": "Body",
+                        "description": "\ub313\uae00 \ubcf8\ubb38"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "body"
+                ],
+                "title": "CreateCommentRequest"
             },
             "CreateFileRequest": {
                 "properties": {
@@ -3629,44 +4374,80 @@
                 ],
                 "title": "CreateFileResponse"
             },
-            "CreateFolderRequest": {
+            "CreateIssueRequest": {
                 "properties": {
-                    "name": {
+                    "title": {
                         "type": "string",
-                        "maxLength": 200,
-                        "title": "Name"
+                        "maxLength": 500,
+                        "minLength": 1,
+                        "title": "Title",
+                        "description": "\uc774\uc288 \uc81c\ubaa9"
                     },
-                    "project_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Project Id"
-                    },
-                    "parent_id": {
+                    "body": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "format": "uuid"
+                                "type": "string"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Parent Id"
+                        "title": "Body",
+                        "description": "\uc774\uc288 \ubcf8\ubb38"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "title"
+                ],
+                "title": "CreateIssueRequest"
+            },
+            "CreateLabelRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 50,
+                        "minLength": 1,
+                        "title": "Name",
+                        "description": "\ub77c\ubca8 \uc774\ub984"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 200
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "\ub77c\ubca8 \uc124\uba85"
+                    },
+                    "color": {
+                        "type": "string",
+                        "maxLength": 7,
+                        "minLength": 7,
+                        "pattern": "^#[0-9a-fA-F]{6}$",
+                        "title": "Color",
+                        "description": "\ub77c\ubca8 \uc0c9\uc0c1 (hex #RRGGBB)"
                     }
                 },
                 "type": "object",
                 "required": [
                     "name",
-                    "project_id"
+                    "color"
                 ],
-                "title": "CreateFolderRequest"
+                "title": "CreateLabelRequest"
             },
             "CreateProjectRequest": {
                 "properties": {
                     "name": {
                         "type": "string",
                         "maxLength": 200,
-                        "title": "Name"
+                        "minLength": 1,
+                        "title": "Name",
+                        "description": "\ud504\ub85c\uc81d\ud2b8 \uc774\ub984"
                     },
                     "description": {
                         "anyOf": [
@@ -3677,7 +4458,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Description"
+                        "title": "Description",
+                        "description": "\ud504\ub85c\uc81d\ud2b8 \uc124\uba85"
                     }
                 },
                 "type": "object",
@@ -3712,554 +4494,6 @@
                     "last_synthesis"
                 ],
                 "title": "DashboardStatsResponse"
-            },
-            "DrawingAnalysisListResponse": {
-                "properties": {
-                    "items": {
-                        "items": {
-                            "$ref": "#/components/schemas/DrawingAnalysisResponse"
-                        },
-                        "type": "array",
-                        "title": "Items"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "items"
-                ],
-                "title": "DrawingAnalysisListResponse",
-                "description": "\ubd84\uc11d \ub808\ucf54\ub4dc \ubaa9\ub85d \uc751\ub2f5."
-            },
-            "DrawingAnalysisResponse": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Id"
-                    },
-                    "file_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "File Id"
-                    },
-                    "name": {
-                        "type": "string",
-                        "title": "Name"
-                    },
-                    "analysis": {
-                        "additionalProperties": true,
-                        "type": "object",
-                        "title": "Analysis"
-                    },
-                    "page_count": {
-                        "type": "integer",
-                        "title": "Page Count"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "file_id",
-                    "name",
-                    "analysis",
-                    "page_count",
-                    "created_at"
-                ],
-                "title": "DrawingAnalysisResponse",
-                "description": "\ubd84\uc11d \ub808\ucf54\ub4dc \uc751\ub2f5 (DB \uc800\uc7a5 \ud6c4)."
-            },
-            "DrawingAnalysisResult": {
-                "properties": {
-                    "title_block": {
-                        "$ref": "#/components/schemas/ExtractedTitleBlock"
-                    },
-                    "parts": {
-                        "items": {
-                            "$ref": "#/components/schemas/ExtractedPart"
-                        },
-                        "type": "array",
-                        "title": "Parts"
-                    },
-                    "drawing_type": {
-                        "type": "string",
-                        "title": "Drawing Type",
-                        "default": "unknown"
-                    },
-                    "confidence": {
-                        "type": "integer",
-                        "title": "Confidence",
-                        "default": 0
-                    },
-                    "notes": {
-                        "type": "string",
-                        "title": "Notes",
-                        "default": ""
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "title_block",
-                    "parts"
-                ],
-                "title": "DrawingAnalysisResult",
-                "description": "\ub3c4\uba74 \ubd84\uc11d \uc804\uccb4 \uacb0\uacfc."
-            },
-            "DrawingAnalyzeRequest": {
-                "properties": {
-                    "file_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "File Id"
-                    },
-                    "page_range": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Page Range"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "file_id"
-                ],
-                "title": "DrawingAnalyzeRequest",
-                "description": "\ub3c4\uba74 \ubd84\uc11d \uc694\uccad."
-            },
-            "DrawingAnalyzeResponse": {
-                "properties": {
-                    "file_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "File Id"
-                    },
-                    "page_count": {
-                        "type": "integer",
-                        "title": "Page Count"
-                    },
-                    "analysis": {
-                        "$ref": "#/components/schemas/DrawingAnalysisResult"
-                    },
-                    "matching_report": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/MatchingReport"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "extraction_method": {
-                        "type": "string",
-                        "title": "Extraction Method",
-                        "default": "vision_llm"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "file_id",
-                    "page_count",
-                    "analysis"
-                ],
-                "title": "DrawingAnalyzeResponse",
-                "description": "\ub3c4\uba74 \ubd84\uc11d \ubbf8\ub9ac\ubcf4\uae30 \uc751\ub2f5."
-            },
-            "DrawingConfirmRequest": {
-                "properties": {
-                    "file_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "File Id"
-                    },
-                    "name": {
-                        "type": "string",
-                        "title": "Name"
-                    },
-                    "analysis": {
-                        "$ref": "#/components/schemas/DrawingAnalysisResult"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "file_id",
-                    "name",
-                    "analysis"
-                ],
-                "title": "DrawingConfirmRequest",
-                "description": "\ubd84\uc11d \uacb0\uacfc \ud655\uc815 \uc694\uccad."
-            },
-            "DrawingListResponse": {
-                "properties": {
-                    "total": {
-                        "type": "integer",
-                        "title": "Total"
-                    },
-                    "offset": {
-                        "type": "integer",
-                        "title": "Offset"
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "title": "Limit"
-                    },
-                    "items": {
-                        "items": {
-                            "$ref": "#/components/schemas/DrawingSummary"
-                        },
-                        "type": "array",
-                        "title": "Items"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "total",
-                    "offset",
-                    "limit",
-                    "items"
-                ],
-                "title": "DrawingListResponse"
-            },
-            "DrawingSummary": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Id"
-                    },
-                    "drawing_number": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Drawing Number"
-                    },
-                    "name": {
-                        "type": "string",
-                        "title": "Name"
-                    },
-                    "version": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Version"
-                    },
-                    "status": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Status"
-                    },
-                    "original_file_key": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Original File Key"
-                    },
-                    "pdf_key": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Pdf Key"
-                    },
-                    "thumbnail_key": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Thumbnail Key"
-                    },
-                    "conversion_status": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/ConversionStatus"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "name"
-                ],
-                "title": "DrawingSummary"
-            },
-            "DrawingSynthesisJobResponse": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Id"
-                    },
-                    "analysis_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Analysis Id"
-                    },
-                    "status": {
-                        "type": "string",
-                        "title": "Status"
-                    },
-                    "nodes_created": {
-                        "type": "integer",
-                        "title": "Nodes Created"
-                    },
-                    "relationships_created": {
-                        "type": "integer",
-                        "title": "Relationships Created"
-                    },
-                    "errors": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "Errors"
-                    },
-                    "started_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Started At"
-                    },
-                    "completed_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Completed At"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "analysis_id",
-                    "status",
-                    "nodes_created",
-                    "relationships_created",
-                    "errors",
-                    "created_at"
-                ],
-                "title": "DrawingSynthesisJobResponse",
-                "description": "\ub3c4\uba74 \ud569\uc131 \uc791\uc5c5 \uc0c1\ud0dc \uc751\ub2f5."
-            },
-            "DrawingSynthesisStartRequest": {
-                "properties": {
-                    "analysis_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Analysis Id"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "analysis_id"
-                ],
-                "title": "DrawingSynthesisStartRequest",
-                "description": "\ub3c4\uba74 \ud569\uc131 \uc2dc\uc791 \uc694\uccad."
-            },
-            "ExtractedPart": {
-                "properties": {
-                    "reference_designator": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Reference Designator"
-                    },
-                    "part_number": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Part Number"
-                    },
-                    "name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Name"
-                    },
-                    "quantity": {
-                        "type": "integer",
-                        "title": "Quantity",
-                        "default": 1
-                    },
-                    "value": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Value"
-                    },
-                    "package": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Package"
-                    }
-                },
-                "type": "object",
-                "title": "ExtractedPart",
-                "description": "\ubd80\ud488 \ubaa9\ub85d \ucd94\ucd9c \uacb0\uacfc."
-            },
-            "ExtractedTitleBlock": {
-                "properties": {
-                    "drawing_number": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Drawing Number"
-                    },
-                    "name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Name"
-                    },
-                    "version": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Version"
-                    },
-                    "date": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Date"
-                    },
-                    "author": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Author"
-                    },
-                    "sheet_info": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Sheet Info"
-                    },
-                    "additional": {
-                        "additionalProperties": {
-                            "type": "string"
-                        },
-                        "type": "object",
-                        "title": "Additional",
-                        "default": {}
-                    }
-                },
-                "type": "object",
-                "title": "ExtractedTitleBlock",
-                "description": "\ud45c\uc81c\ub780 \ucd94\ucd9c \uacb0\uacfc."
             },
             "FileCompleteResponse": {
                 "properties": {
@@ -4306,40 +4540,35 @@
                 ],
                 "title": "FileCompleteResponse"
             },
-            "FolderResponse": {
+            "FileItem": {
                 "properties": {
-                    "id": {
+                    "file_id": {
                         "type": "string",
                         "format": "uuid",
-                        "title": "Id"
+                        "title": "File Id"
                     },
-                    "name": {
+                    "original_name": {
                         "type": "string",
-                        "title": "Name"
+                        "title": "Original Name"
                     },
-                    "parent_id": {
+                    "content_type": {
+                        "type": "string",
+                        "title": "Content Type"
+                    },
+                    "file_size": {
+                        "type": "integer",
+                        "title": "File Size"
+                    },
+                    "file_url": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "format": "uuid"
+                                "type": "string"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Parent Id"
-                    },
-                    "project_id": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uuid"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Project Id"
+                        "title": "File Url"
                     },
                     "created_at": {
                         "type": "string",
@@ -4349,96 +4578,14 @@
                 },
                 "type": "object",
                 "required": [
-                    "id",
-                    "name",
-                    "parent_id",
-                    "project_id",
+                    "file_id",
+                    "original_name",
+                    "content_type",
+                    "file_size",
                     "created_at"
                 ],
-                "title": "FolderResponse"
-            },
-            "FolderStats": {
-                "properties": {
-                    "drawing_count": {
-                        "type": "integer",
-                        "title": "Drawing Count",
-                        "default": 0
-                    }
-                },
-                "type": "object",
-                "title": "FolderStats"
-            },
-            "FolderTreeNode": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Id"
-                    },
-                    "name": {
-                        "type": "string",
-                        "title": "Name"
-                    },
-                    "parent_id": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uuid"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Parent Id"
-                    },
-                    "project_id": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uuid"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Project Id"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At"
-                    },
-                    "stats": {
-                        "$ref": "#/components/schemas/FolderStats"
-                    },
-                    "folders": {
-                        "items": {
-                            "$ref": "#/components/schemas/FolderTreeNode"
-                        },
-                        "type": "array",
-                        "title": "Folders"
-                    },
-                    "items": {
-                        "items": {
-                            "additionalProperties": true,
-                            "type": "object"
-                        },
-                        "type": "array",
-                        "title": "Items"
-                    },
-                    "item_count": {
-                        "type": "integer",
-                        "title": "Item Count",
-                        "default": 0
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "name",
-                    "created_at"
-                ],
-                "title": "FolderTreeNode"
+                "title": "FileItem",
+                "description": "\ud504\ub860\ud2b8 \uc751\ub2f5\uc6a9 \ud30c\uc77c \ud56d\ubaa9"
             },
             "HTTPValidationError": {
                 "properties": {
@@ -4523,6 +4670,167 @@
                 ],
                 "title": "HealthCheckResponse"
             },
+            "IssueResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "project_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Project Id"
+                    },
+                    "number": {
+                        "type": "integer",
+                        "title": "Number"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type"
+                    },
+                    "title": {
+                        "type": "string",
+                        "title": "Title"
+                    },
+                    "body": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Body"
+                    },
+                    "state": {
+                        "type": "string",
+                        "title": "State"
+                    },
+                    "closed_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Closed At"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    },
+                    "created_by": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Created By"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "project_id",
+                    "number",
+                    "type",
+                    "title",
+                    "state",
+                    "created_at"
+                ],
+                "title": "IssueResponse"
+            },
+            "LabelListResponse": {
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "title": "Total"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/LabelResponse"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "total",
+                    "items"
+                ],
+                "title": "LabelListResponse"
+            },
+            "LabelResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "project_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Project Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description"
+                    },
+                    "color": {
+                        "type": "string",
+                        "title": "Color"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    },
+                    "created_by": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Created By"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "project_id",
+                    "name",
+                    "color",
+                    "created_at"
+                ],
+                "title": "LabelResponse"
+            },
             "LastSynthesis": {
                 "properties": {
                     "job_id": {
@@ -4564,6 +4872,19 @@
                     "relationships_created"
                 ],
                 "title": "LastSynthesis"
+            },
+            "LinkPartsResponse": {
+                "properties": {
+                    "linked_count": {
+                        "type": "integer",
+                        "title": "Linked Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "linked_count"
+                ],
+                "title": "LinkPartsResponse"
             },
             "LoginRequest": {
                 "properties": {
@@ -4945,37 +5266,6 @@
                 "title": "MappingValidateResponse",
                 "description": "\ub9e4\ud551 \uac80\uc99d \uc751\ub2f5"
             },
-            "MatchingReport": {
-                "properties": {
-                    "matched_parts": {
-                        "items": {
-                            "$ref": "#/components/schemas/PartMatch"
-                        },
-                        "type": "array",
-                        "title": "Matched Parts",
-                        "default": []
-                    },
-                    "new_parts": {
-                        "items": {
-                            "$ref": "#/components/schemas/ExtractedPart"
-                        },
-                        "type": "array",
-                        "title": "New Parts",
-                        "default": []
-                    },
-                    "conflicting_parts": {
-                        "items": {
-                            "$ref": "#/components/schemas/PartConflict"
-                        },
-                        "type": "array",
-                        "title": "Conflicting Parts",
-                        "default": []
-                    }
-                },
-                "type": "object",
-                "title": "MatchingReport",
-                "description": "\uae30\uc874 BOM \ub370\uc774\ud130\uc640\uc758 \ub9e4\uce6d \uacb0\uacfc."
-            },
             "MeResponse": {
                 "properties": {
                     "user": {
@@ -5029,24 +5319,6 @@
                     "organization"
                 ],
                 "title": "MembershipResponse"
-            },
-            "MoveFolderRequest": {
-                "properties": {
-                    "parent_id": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uuid"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Parent Id"
-                    }
-                },
-                "type": "object",
-                "title": "MoveFolderRequest"
             },
             "NodeLabelSchema": {
                 "properties": {
@@ -5224,35 +5496,6 @@
                 ],
                 "title": "OrganizationResponse"
             },
-            "PartConflict": {
-                "properties": {
-                    "part_number": {
-                        "type": "string",
-                        "title": "Part Number"
-                    },
-                    "field": {
-                        "type": "string",
-                        "title": "Field"
-                    },
-                    "extracted_value": {
-                        "type": "string",
-                        "title": "Extracted Value"
-                    },
-                    "existing_value": {
-                        "type": "string",
-                        "title": "Existing Value"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "part_number",
-                    "field",
-                    "extracted_value",
-                    "existing_value"
-                ],
-                "title": "PartConflict",
-                "description": "\uc18d\uc131 \ubd88\uc77c\uce58 \ubd80\ud488."
-            },
             "PartDetailResponse": {
                 "properties": {
                     "id": {
@@ -5399,7 +5642,7 @@
                     },
                     "files": {
                         "items": {
-                            "$ref": "#/components/schemas/PartFileItem"
+                            "$ref": "#/components/schemas/FileItem"
                         },
                         "type": "array",
                         "title": "Files",
@@ -5413,53 +5656,6 @@
                 ],
                 "title": "PartDetailResponse",
                 "description": "Part \uc0c1\uc138 \uc751\ub2f5"
-            },
-            "PartFileItem": {
-                "properties": {
-                    "file_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "File Id"
-                    },
-                    "original_name": {
-                        "type": "string",
-                        "title": "Original Name"
-                    },
-                    "content_type": {
-                        "type": "string",
-                        "title": "Content Type"
-                    },
-                    "file_size": {
-                        "type": "integer",
-                        "title": "File Size"
-                    },
-                    "file_url": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "File Url"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "file_id",
-                    "original_name",
-                    "content_type",
-                    "file_size",
-                    "created_at"
-                ],
-                "title": "PartFileItem",
-                "description": "Part \ucca8\ubd80\ud30c\uc77c \ud56d\ubaa9"
             },
             "PartFilterOptions": {
                 "properties": {
@@ -5518,16 +5714,18 @@
                 "title": "PartListResponse",
                 "description": "Part \ubaa9\ub85d \uc751\ub2f5"
             },
-            "PartMatch": {
+            "PartProjectSummary": {
                 "properties": {
-                    "extracted": {
-                        "$ref": "#/components/schemas/ExtractedPart"
-                    },
-                    "existing_part_number": {
+                    "id": {
                         "type": "string",
-                        "title": "Existing Part Number"
+                        "format": "uuid",
+                        "title": "Id"
                     },
-                    "existing_name": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "description": {
                         "anyOf": [
                             {
                                 "type": "string"
@@ -5536,16 +5734,36 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Existing Name"
+                        "title": "Description"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "extracted",
-                    "existing_part_number"
+                    "id",
+                    "name"
                 ],
-                "title": "PartMatch",
-                "description": "\uae30\uc874 Part\uc640 \uc77c\uce58\ud55c \ubd80\ud488."
+                "title": "PartProjectSummary"
+            },
+            "PartProjectsResponse": {
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "title": "Total"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/PartProjectSummary"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "total",
+                    "items"
+                ],
+                "title": "PartProjectsResponse"
             },
             "PartStats": {
                 "properties": {
@@ -5687,23 +5905,80 @@
                 ],
                 "title": "PlanResponse"
             },
-            "ProjectPartListResponse": {
+            "ProjectDetailResponse": {
                 "properties": {
-                    "parts": {
-                        "items": {
-                            "$ref": "#/components/schemas/ProjectPartResponse"
-                        },
-                        "type": "array",
-                        "title": "Parts"
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "parts"
+                    "id",
+                    "name",
+                    "created_at",
+                    "updated_at"
                 ],
-                "title": "ProjectPartListResponse"
+                "title": "ProjectDetailResponse"
             },
-            "ProjectPartResponse": {
+            "ProjectListResponse": {
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "title": "Total"
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "title": "Offset"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "title": "Limit"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/ProjectSummary"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "total",
+                    "offset",
+                    "limit",
+                    "items"
+                ],
+                "title": "ProjectListResponse"
+            },
+            "ProjectPartSummary": {
                 "properties": {
                     "id": {
                         "type": "string",
@@ -5724,29 +5999,37 @@
                             }
                         ],
                         "title": "Name"
-                    },
-                    "category": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Category"
                     }
                 },
                 "type": "object",
                 "required": [
                     "id",
-                    "part_number",
-                    "name",
-                    "category"
+                    "part_number"
                 ],
-                "title": "ProjectPartResponse"
+                "title": "ProjectPartSummary"
             },
-            "ProjectResponse": {
+            "ProjectPartsResponse": {
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "title": "Total"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/ProjectPartSummary"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "total",
+                    "items"
+                ],
+                "title": "ProjectPartsResponse"
+            },
+            "ProjectSummary": {
                 "properties": {
                     "id": {
                         "type": "string",
@@ -5768,143 +6051,18 @@
                         ],
                         "title": "Description"
                     },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At"
-                    },
-                    "updated_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Updated At"
+                    "part_count": {
+                        "type": "integer",
+                        "title": "Part Count"
                     }
                 },
                 "type": "object",
                 "required": [
                     "id",
                     "name",
-                    "description",
-                    "created_at",
-                    "updated_at"
+                    "part_count"
                 ],
-                "title": "ProjectResponse"
-            },
-            "ProjectStats": {
-                "properties": {
-                    "upload_count": {
-                        "type": "integer",
-                        "title": "Upload Count",
-                        "default": 0
-                    },
-                    "drawing_count": {
-                        "type": "integer",
-                        "title": "Drawing Count",
-                        "default": 0
-                    },
-                    "folder_count": {
-                        "type": "integer",
-                        "title": "Folder Count",
-                        "default": 0
-                    }
-                },
-                "type": "object",
-                "title": "ProjectStats"
-            },
-            "ProjectTreeMeta": {
-                "properties": {
-                    "project_count": {
-                        "type": "integer",
-                        "title": "Project Count"
-                    },
-                    "folder_count": {
-                        "type": "integer",
-                        "title": "Folder Count"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "project_count",
-                    "folder_count"
-                ],
-                "title": "ProjectTreeMeta"
-            },
-            "ProjectTreeNode": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Id"
-                    },
-                    "name": {
-                        "type": "string",
-                        "title": "Name"
-                    },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At"
-                    },
-                    "updated_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Updated At"
-                    },
-                    "stats": {
-                        "$ref": "#/components/schemas/ProjectStats"
-                    },
-                    "folders": {
-                        "items": {
-                            "$ref": "#/components/schemas/FolderTreeNode"
-                        },
-                        "type": "array",
-                        "title": "Folders"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "name",
-                    "created_at",
-                    "updated_at"
-                ],
-                "title": "ProjectTreeNode"
-            },
-            "ProjectTreeResponse": {
-                "properties": {
-                    "projects": {
-                        "items": {
-                            "$ref": "#/components/schemas/ProjectTreeNode"
-                        },
-                        "type": "array",
-                        "title": "Projects"
-                    },
-                    "orphans": {
-                        "items": {
-                            "$ref": "#/components/schemas/FolderTreeNode"
-                        },
-                        "type": "array",
-                        "title": "Orphans"
-                    },
-                    "meta": {
-                        "$ref": "#/components/schemas/ProjectTreeMeta"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "meta"
-                ],
-                "title": "ProjectTreeResponse"
+                "title": "ProjectSummary"
             },
             "PropertyMapping": {
                 "properties": {
@@ -7026,6 +7184,121 @@
                 "title": "SynthesisUploadItem",
                 "description": "\ud569\uc131 \ub300\uc0c1 \ud30c\uc77c \ud56d\ubaa9."
             },
+            "TimelineActivityItem": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "activity",
+                        "title": "Type",
+                        "default": "activity"
+                    },
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "action": {
+                        "type": "string",
+                        "title": "Action"
+                    },
+                    "actor_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Actor Id"
+                    },
+                    "detail": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Detail"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "action",
+                    "actor_id",
+                    "created_at"
+                ],
+                "title": "TimelineActivityItem"
+            },
+            "TimelineCommentItem": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "comment",
+                        "title": "Type",
+                        "default": "comment"
+                    },
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "body": {
+                        "type": "string",
+                        "title": "Body"
+                    },
+                    "author_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Author Id"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "body",
+                    "created_at"
+                ],
+                "title": "TimelineCommentItem"
+            },
+            "TimelineResponse": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "$ref": "#/components/schemas/TimelineCommentItem"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/TimelineActivityItem"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "title": "TimelineResponse"
+            },
             "TokenResponse": {
                 "properties": {
                     "access_token": {
@@ -7049,52 +7322,69 @@
                 ],
                 "title": "TokenResponse"
             },
-            "UpdateFolderRequest": {
+            "UpdateCommentRequest": {
                 "properties": {
-                    "name": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "maxLength": 200
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Name"
+                    "body": {
+                        "type": "string",
+                        "maxLength": 10000,
+                        "minLength": 1,
+                        "title": "Body",
+                        "description": "\ub313\uae00 \ubcf8\ubb38"
                     }
                 },
                 "type": "object",
-                "title": "UpdateFolderRequest"
+                "required": [
+                    "body"
+                ],
+                "title": "UpdateCommentRequest"
             },
-            "UpdateProjectRequest": {
+            "UpdateLabelRequest": {
                 "properties": {
                     "name": {
                         "anyOf": [
                             {
                                 "type": "string",
-                                "maxLength": 200
+                                "maxLength": 50,
+                                "minLength": 1
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Name"
+                        "title": "Name",
+                        "description": "\ub77c\ubca8 \uc774\ub984"
                     },
                     "description": {
                         "anyOf": [
                             {
-                                "type": "string"
+                                "type": "string",
+                                "maxLength": 200
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Description"
+                        "title": "Description",
+                        "description": "\ub77c\ubca8 \uc124\uba85"
+                    },
+                    "color": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 7,
+                                "minLength": 7,
+                                "pattern": "^#[0-9a-fA-F]{6}$"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Color",
+                        "description": "\ub77c\ubca8 \uc0c9\uc0c1 (hex #RRGGBB)"
                     }
                 },
                 "type": "object",
-                "title": "UpdateProjectRequest"
+                "title": "UpdateLabelRequest"
             },
             "UserResponse": {
                 "properties": {
@@ -7214,6 +7504,82 @@
                 ],
                 "title": "ValidationIssue",
                 "description": "\ub9e4\ud551 \uac80\uc99d \uc774\uc288"
+            },
+            "app__modules__issue__schemas__AttachFilesRequest": {
+                "properties": {
+                    "file_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "maxItems": 20,
+                        "minItems": 1,
+                        "title": "File Ids",
+                        "description": "\ucca8\ubd80\ud560 \ud30c\uc77c ID \ubaa9\ub85d (\ucd5c\ub300 20\uac1c)"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file_ids"
+                ],
+                "title": "AttachFilesRequest"
+            },
+            "app__modules__issue__schemas__LinkPartsRequest": {
+                "properties": {
+                    "part_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "minItems": 1,
+                        "title": "Part Ids",
+                        "description": "\uc5f0\uacb0\ud560 \ubd80\ud488 ID \ubaa9\ub85d"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "part_ids"
+                ],
+                "title": "LinkPartsRequest"
+            },
+            "app__modules__part__schemas__AttachFilesRequest": {
+                "properties": {
+                    "file_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "maxItems": 20,
+                        "minItems": 1,
+                        "title": "File Ids"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file_ids"
+                ],
+                "title": "AttachFilesRequest",
+                "description": "Part \ucca8\ubd80\ud30c\uc77c \ubc30\uce58 \uc5f0\uacb0 \uc694\uccad"
+            },
+            "app__modules__project__schemas__LinkPartsRequest": {
+                "properties": {
+                    "part_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Part Ids"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "part_ids"
+                ],
+                "title": "LinkPartsRequest"
             }
         },
         "securitySchemes": {

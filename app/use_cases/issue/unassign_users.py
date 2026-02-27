@@ -17,5 +17,5 @@ def unassign_users(
     user_ids: list[uuid.UUID],
 ) -> None:
     """이슈 담당자 배치 해제."""
-    issue_service.get_or_raise(db, issue_id)
-    issue_service.unassign_users(db, issue_id, user_ids)
+    issue = issue_service.get_or_raise(db, issue_id)
+    issue_service.unassign_users(db, issue, user_ids)

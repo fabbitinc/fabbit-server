@@ -23,15 +23,19 @@ class TimestampMixin:
     """생성 시각 — 모든 모델에 적용."""
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True), default=func.now(), server_default=func.now(), nullable=False
     )
 
 
 class UpdatableMixin(TimestampMixin):
     """생성 + 수정 시각 — 변경 가능 엔티티에 적용."""
 
-    updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), onupdate=func.now(), nullable=True
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=func.now(),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
 

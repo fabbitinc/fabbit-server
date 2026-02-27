@@ -10,6 +10,13 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError
 from app.modules.issue import repository as repo
+from app.modules.issue.events import (
+    AssigneesAdded,
+    AssigneesRemoved,
+    IssueCreated,
+    IssuePartsLinked,
+    IssuePartsUnlinked,
+)
 from app.modules.issue.models import ChangeRequest, Issue, IssueComment
 
 
@@ -37,7 +44,15 @@ def create_issue(
         title=title,
         body=body,
     )
-    return repo.add(db, issue)
+    repo.add(db, issue)
+    issue.register_event(IssueCreated(
+        project_id=project_id,
+        issue_id=issue.id,
+        number=issue.number,
+        title=title,
+        issue_type=issue.type.value,
+    ))
+    return issue
 
 
 def create_change_request(
@@ -54,27 +69,63 @@ def create_change_request(
         title=title,
         body=body,
     )
-    return repo.add(db, cr)
+    repo.add(db, cr)
+    cr.register_event(IssueCreated(
+        project_id=project_id,
+        issue_id=cr.id,
+        number=cr.number,
+        title=title,
+        issue_type=cr.type.value,
+    ))
+    return cr
 
 
-def assign_users(db: Session, issue_id: uuid.UUID, user_ids: list[uuid.UUID]) -> int:
+def assign_users(
+    db: Session, issue: Issue, user_ids: list[uuid.UUID]
+) -> int:
     """이슈 담당자 배치 할당 — 신규 할당 건수 반환."""
-    return repo.add_assignees(db, issue_id, user_ids)
+    count = repo.add_assignees(db, issue.id, user_ids)
+    if count > 0:
+        issue.register_event(AssigneesAdded(
+            issue_id=issue.id, user_ids=user_ids
+        ))
+    return count
 
 
-def unassign_users(db: Session, issue_id: uuid.UUID, user_ids: list[uuid.UUID]) -> int:
+def unassign_users(
+    db: Session, issue: Issue, user_ids: list[uuid.UUID]
+) -> int:
     """이슈 담당자 배치 해제 — 삭제 건수 반환."""
-    return repo.remove_assignees(db, issue_id, user_ids)
+    count = repo.remove_assignees(db, issue.id, user_ids)
+    if count > 0:
+        issue.register_event(AssigneesRemoved(
+            issue_id=issue.id, user_ids=user_ids
+        ))
+    return count
 
 
-def link_parts(db: Session, issue_id: uuid.UUID, part_ids: list[uuid.UUID]) -> int:
+def link_parts(
+    db: Session, issue: Issue, part_ids: list[uuid.UUID]
+) -> int:
     """이슈에 부품 배치 연결 — 신규 연결 건수 반환."""
-    return repo.link_parts(db, issue_id, part_ids)
+    count = repo.link_parts(db, issue.id, part_ids)
+    if count > 0:
+        issue.register_event(IssuePartsLinked(
+            issue_id=issue.id, part_ids=part_ids
+        ))
+    return count
 
 
-def unlink_parts(db: Session, issue_id: uuid.UUID, part_ids: list[uuid.UUID]) -> int:
+def unlink_parts(
+    db: Session, issue: Issue, part_ids: list[uuid.UUID]
+) -> int:
     """이슈에서 부품 배치 해제 — 삭제 건수 반환."""
-    return repo.unlink_parts(db, issue_id, part_ids)
+    count = repo.unlink_parts(db, issue.id, part_ids)
+    if count > 0:
+        issue.register_event(IssuePartsUnlinked(
+            issue_id=issue.id, part_ids=part_ids
+        ))
+    return count
 
 
 # ── 댓글 ──

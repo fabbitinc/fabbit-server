@@ -1,69 +1,91 @@
-# Handoff Document
+# Activity 모듈 구현 Handoff
 
 ## Goal
 
-제조업 PLM 서버에 Label 기능과 Project 생성 API를 구현한다.
+GitHub 이슈 타임라인처럼 이슈 상세 페이지에서 댓글+활동을 시간순으로 인터리빙하고, 프로젝트 페이지에서 상위 이벤트 피드를 보여주는 Activity 모듈 구현.
 
-- Project 단위 라벨(Label) CRUD
-- Project 생성 시 PLM 기본 라벨 9종 자동 생성
-- Project 생성 API (`POST /api/v1/projects`)
+- 감사 로그가 아닌 **UI 피드** 목적
+- 스펙: `app/modules/activity/SPEC.md`
 
-## Current Progress — 완료
+## Current Progress
 
-커밋: `b39fc87 feat(label): Label 모듈 구현 및 Project 생성 API 추가`
+**구현 완료 — 마이그레이션 미적용 상태.**
 
-### 신규 파일 (15개)
+### 새로 생성된 파일
 
 | 파일 | 역할 |
 |------|------|
-| `app/modules/label/__init__.py` | 모듈 패키지 |
-| `app/modules/label/models.py` | `Label` ORM (AuditMixin + UpdatableMixin + PkMixin + TenantBase) |
-| `app/modules/label/constants.py` | 기본 라벨 9종 (우선순위 3 + 유형 6) |
-| `app/modules/label/schemas.py` | Create/Update 요청 + LabelResponse/LabelListResponse |
-| `app/modules/label/repository.py` | get_by_id, get_by_project_and_name, list_by_project, add, add_all, delete |
-| `app/modules/label/mapper.py` | Label → LabelResponse 변환 |
-| `app/modules/label/service.py` | create_label, update_label, delete_label, seed_defaults |
-| `app/use_cases/label/create_label.py` | 프로젝트 검증 → 라벨 생성 |
-| `app/use_cases/label/update_label.py` | 라벨 수정 (PATCH, description null 해제 지원) |
-| `app/use_cases/label/delete_label.py` | 라벨 삭제 |
-| `app/queries/label/list_labels.py` | 프로젝트 라벨 목록 조회 |
-| `app/api/v1/tenant/label_router.py` | GET/POST/PATCH/DELETE 4개 엔드포인트 |
-| `app/use_cases/project/create_project.py` | 프로젝트 생성 + 기본 라벨 seed |
+| `app/modules/activity/__init__.py` | 모듈 패키지 |
+| `app/modules/activity/constants.py` | `TargetType` Enum (PROJECT, ISSUE) |
+| `app/modules/activity/models.py` | `Activity` 모델 (TimestampMixin + PkMixin, append-only) |
+| `app/modules/activity/repository.py` | `add`, `list_by_target`, `list_by_target_cursor` |
+| `app/modules/activity/schemas.py` | 응답 스키마 + 타임라인 스키마 |
+| `app/modules/activity/mapper.py` | 모델→응답 변환 |
+| `app/modules/activity/handlers.py` | 9개 이벤트 구독, Activity 레코드 생성 |
+| `app/modules/issue/events.py` | Issue 도메인 이벤트 7종 |
+| `app/modules/project/events.py` | Project 도메인 이벤트 2종 |
+| `app/queries/issue/__init__.py` | `get_timeline` re-export |
+| `app/queries/issue/get_timeline.py` | 댓글+활동 merge 타임라인 조회 |
+| `app/queries/project/get_activities.py` | 프로젝트 활동 피드 cursor 기반 조회 |
 
-### 수정 파일 (6개)
+### 수정된 파일
 
 | 파일 | 변경 내용 |
 |------|-----------|
-| `app/modules/project/repository.py` | `add()` 함수 추가 |
-| `app/modules/project/service.py` | `create_project()` 함수 추가 |
-| `app/modules/project/schemas.py` | `CreateProjectRequest` 스키마 추가 |
-| `app/use_cases/project/__init__.py` | `create_project` re-export |
-| `app/api/v1/tenant/project_router.py` | `POST /api/v1/projects` 엔드포인트 추가 |
-| `app/main.py` | `label_router` 등록 |
+| `app/modules/issue/models.py` | `AggregateRoot` 추가, close/reopen/open_for_review/merge/close에 이벤트 등록 |
+| `app/modules/project/models.py` | `AggregateRoot` 추가 |
+| `app/modules/issue/service.py` | create에 `IssueCreated` 이벤트, assign/unassign/link/unlink 시그니처 변경(issue_id→issue 객체) + 이벤트 등록 |
+| `app/modules/project/service.py` | link_parts/unlink_parts 시그니처 변경(project_id→project 객체) + 이벤트 등록 |
+| `app/modules/issue/repository.py` | `list_comments_by_issue` 함수 추가 |
+| `app/use_cases/issue/assign_users.py` | 서비스 호출 시그니처 반영 |
+| `app/use_cases/issue/unassign_users.py` | 서비스 호출 시그니처 반영 |
+| `app/use_cases/issue/link_parts.py` | 서비스 호출 시그니처 반영 |
+| `app/use_cases/issue/unlink_parts.py` | 서비스 호출 시그니처 반영 |
+| `app/use_cases/project/link_parts.py` | 서비스 호출 시그니처 반영 |
+| `app/use_cases/project/unlink_parts.py` | 서비스 호출 시그니처 반영 |
+| `app/core/event_registry.py` | `activity.handlers` import 추가 |
+| `app/queries/project/__init__.py` | `get_activities` re-export 추가 |
+| `app/api/v1/tenant/issue_router.py` | `GET .../timeline` 엔드포인트 추가 |
+| `app/api/v1/tenant/project_router.py` | `GET .../activities` 엔드포인트 추가 |
 
 ### API 엔드포인트
 
-| Method | Path | 설명 |
-|--------|------|------|
-| POST | `/api/v1/projects` | 프로젝트 생성 (기본 라벨 자동 생성) |
-| GET | `/api/v1/projects/{project_id}/labels` | 라벨 목록 |
-| POST | `/api/v1/projects/{project_id}/labels` | 라벨 생성 |
-| PATCH | `/api/v1/projects/{project_id}/labels/{label_id}` | 라벨 수정 |
-| DELETE | `/api/v1/projects/{project_id}/labels/{label_id}` | 라벨 삭제 |
+- `GET /api/v1/projects/{project_id}/issues/{issue_id}/timeline` — 댓글+활동 시간순 merge
+- `GET /api/v1/projects/{project_id}/activities?cursor=&limit=` — 프로젝트 활동 피드 (cursor 기반 무한스크롤)
+
+### 서비스 시그니처 변경 요약
+
+이벤트 등록을 위해 AggregateRoot 인스턴스가 필요하므로, 일부 서비스 함수의 시그니처가 `issue_id`/`project_id` → `issue`/`project` 객체로 변경됨. use_case에서 `get_or_raise`로 조회한 객체를 그대로 전달하는 패턴.
+
+### 이벤트 → Activity 매핑
+
+| DomainEvent | Issue 피드 activity | Project 피드 activity |
+|-------------|:-------------------:|:---------------------:|
+| IssueCreated | - | `issue_created` |
+| IssueStateChanged(→CLOSED) | `state_changed` | `issue_closed` |
+| IssueStateChanged(→OPEN) | `state_changed` | `issue_reopened` |
+| CRStateChanged(→MERGED) | `cr_state_changed` | `cr_merged` |
+| CRStateChanged(other) | `cr_state_changed` | - |
+| AssigneesAdded | `assignee_added` | - |
+| AssigneesRemoved | `assignee_removed` | - |
+| IssuePartsLinked | `part_added` | - |
+| IssuePartsUnlinked | `part_removed` | - |
+| ProjectPartsLinked | - | `part_added` |
+| ProjectPartsUnlinked | - | `part_removed` |
 
 ## What Worked
 
-- 기존 Issue 모듈 패턴을 그대로 따라 일관된 구조 유지
-- 프로젝트 아키텍처 스킬(`models-guide`, `api-guide`, `business-layer-guide`, `repository-guide`)을 사전 로드하여 컨벤션 준수
-- `UpdateLabelRequest`에서 `model_dump(exclude_unset=True)`로 description null 명시 전달과 미전달을 구분
+- 기존 `file/handlers.py` 패턴을 그대로 따라 핸들러 구현
+- 서비스 시그니처를 issue/project 객체로 변경하여 AggregateRoot.register_event() 자연스럽게 호출
+- ChangeRequest.close()에서 CRStateChanged 등록 후 super().close()로 IssueStateChanged도 자동 등록 (dual-write)
+- 프로젝트 활동 피드는 cursor 기반(UUID v7의 시간순 정렬 활용, `id < cursor`)으로 무한스크롤 지원
 
 ## What Didn't Work
 
-- 특별히 실패한 접근 없음
+- 없음 (첫 구현에서 모든 import 검증 통과)
 
 ## Next Steps
 
-- **마이그레이션**: `labels` 테이블 Alembic 마이그레이션 생성 필요 (사용자 별도 지시 시)
-- **Issue ↔ Label 연결**: Issue에 Label을 붙이는 M:N 관계 (`issue_labels` 테이블) 구현 필요
-- **라벨 필터링**: Issue 목록 조회 시 라벨 기준 필터링
-- **Project 수정/삭제 API**: 현재 생성만 있음
+1. **DB 마이그레이션**: `activities` 테이블 생성 + `activity_target_type` Enum 타입 생성 (사용자가 별도 지시 시)
+2. **통합 테스트**: 서버 기동 후 이슈 생성 → activities 테이블 레코드 확인, 타임라인 API 호출 검증
+3. **SPEC.md에 있지만 아직 미구현인 이벤트**: `label_added`, `label_removed`, `title_changed`, `project_updated` (라벨/제목 변경 기능이 구현되면 추가)

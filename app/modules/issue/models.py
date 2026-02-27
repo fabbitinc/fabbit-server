@@ -16,13 +16,15 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase
 from app.core.mixins import AuditMixin, PkMixin, TimestampMixin, UpdatableMixin
 
 from .constants import CRState, IssueState, IssueType
+from .events import CRStateChanged, IssueStateChanged
 
 
-class Issue(AuditMixin, UpdatableMixin, PkMixin, TenantBase):
+class Issue(AggregateRoot, AuditMixin, UpdatableMixin, PkMixin, TenantBase):
     """이슈 — 프로젝트 내 이슈/변경요청의 공통 베이스."""
 
     __tablename__ = "issues"
@@ -63,13 +65,31 @@ class Issue(AuditMixin, UpdatableMixin, PkMixin, TenantBase):
 
     def close(self, now: datetime) -> None:
         """이슈를 닫는다."""
+        old_state = self.state.value
         self.state = IssueState.CLOSED
         self.closed_at = now
+        self.register_event(IssueStateChanged(
+            project_id=self.project_id,
+            issue_id=self.id,
+            number=self.number,
+            title=self.title,
+            old_state=old_state,
+            new_state=IssueState.CLOSED.value,
+        ))
 
     def reopen(self) -> None:
         """닫힌 이슈를 다시 연다."""
+        old_state = self.state.value
         self.state = IssueState.OPEN
         self.closed_at = None
+        self.register_event(IssueStateChanged(
+            project_id=self.project_id,
+            issue_id=self.id,
+            number=self.number,
+            title=self.title,
+            old_state=old_state,
+            new_state=IssueState.OPEN.value,
+        ))
 
 
 class ChangeRequest(Issue):
@@ -104,17 +124,44 @@ class ChangeRequest(Issue):
 
     def open_for_review(self) -> None:
         """초안을 검토 상태로 전환한다."""
+        old_state = self.cr_state.value
         self.cr_state = CRState.OPEN
+        self.register_event(CRStateChanged(
+            project_id=self.project_id,
+            issue_id=self.id,
+            number=self.number,
+            title=self.title,
+            old_state=old_state,
+            new_state=CRState.OPEN.value,
+        ))
 
     def merge(self, now: datetime, user_id: uuid.UUID) -> None:
         """변경 요청을 반영한다."""
+        old_state = self.cr_state.value
         self.cr_state = CRState.MERGED
         self.merged_at = now
         self.merged_by = user_id
+        self.register_event(CRStateChanged(
+            project_id=self.project_id,
+            issue_id=self.id,
+            number=self.number,
+            title=self.title,
+            old_state=old_state,
+            new_state=CRState.MERGED.value,
+        ))
 
     def close(self, now: datetime) -> None:
         """변경 요청을 닫는다 (Issue.close 오버라이드)."""
+        old_state = self.cr_state.value
         self.cr_state = CRState.CLOSED
+        self.register_event(CRStateChanged(
+            project_id=self.project_id,
+            issue_id=self.id,
+            number=self.number,
+            title=self.title,
+            old_state=old_state,
+            new_state=CRState.CLOSED.value,
+        ))
         super().close(now)
 
 
