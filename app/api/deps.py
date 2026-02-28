@@ -123,7 +123,7 @@ def get_origin_slug(request: Request) -> str | None:
         return None
     host = origin.split("://", 1)[-1].split(":")[0]
     base = settings.base_domain
-    if host == base:
+    if host == base or host == f"www.{base}":
         return None
     if host.endswith(f".{base}"):
         return host.removesuffix(f".{base}")
