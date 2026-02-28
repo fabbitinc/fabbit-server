@@ -65,6 +65,7 @@ def check_slug(
     return service.check_slug(db, slug)
 
 
+# TODO 만료된 레코드 정리 필요
 @router.post("/send-verification", response_model=SendVerificationResponse)
 def send_verification(req: SendVerificationRequest, db: Session = Depends(get_db)):
     """이메일 인증코드 발송.
