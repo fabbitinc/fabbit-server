@@ -29,9 +29,9 @@ from app.modules.organization.schemas import (
     SiteResponse,
 )
 from app.queries import auth as auth_queries
-from app.queries import invitation as invitation_queries
+from app.queries import organization as org_queries
 from app.use_cases import auth as auth_commands
-from app.use_cases import invitation as invitation_commands
+from app.use_cases import organization as org_commands
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -138,7 +138,7 @@ def verify_invitation(
     토큰의 유효성을 확인하고 초대 정보를 반환합니다.
     **is_existing_user**로 기가입 여부를 판단하여 프론트엔드에서 입력 폼을 분기합니다.
     """
-    return invitation_queries.verify_invitation(db, token)
+    return org_queries.verify_invitation(db, token)
 
 
 @router.post("/accept-invitation", response_model=AcceptInvitationResponse)
@@ -149,4 +149,4 @@ def accept_invitation(req: AcceptInvitationRequest, db: Session = Depends(get_db
     - **미가입자**: password, full_name 필수 → 유저 생성 + 조직 참여
     - **기가입자**: 조직 참여만 처리
     """
-    return invitation_commands.accept_invitation(db, req)
+    return org_commands.accept_invitation(db, req)
