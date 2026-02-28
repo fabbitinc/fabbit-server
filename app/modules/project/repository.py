@@ -97,6 +97,22 @@ def get_linked_part_ids(db: Session, project_id: uuid.UUID) -> list[uuid.UUID]:
     return [r[0] for r in rows]
 
 
+def filter_unlinked_part_ids(
+    db: Session, project_id: uuid.UUID, part_ids: list[uuid.UUID]
+) -> list[uuid.UUID]:
+    """part_ids 중 Project에 연결되지 않은 ID 목록 반환."""
+    linked = set(
+        row[0]
+        for row in db.query(ProjectPart.part_id)
+        .filter(
+            ProjectPart.project_id == project_id,
+            ProjectPart.part_id.in_(part_ids),
+        )
+        .all()
+    )
+    return [pid for pid in part_ids if pid not in linked]
+
+
 def get_linked_project_ids(db: Session, part_id: uuid.UUID) -> list[uuid.UUID]:
     """Part가 속한 Project ID 목록 조회."""
     rows = (

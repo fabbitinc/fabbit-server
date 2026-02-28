@@ -56,6 +56,18 @@ def unlink_parts(
     return count
 
 
+def validate_parts_in_project(
+    db: Session, project_id: uuid.UUID, part_ids: list[uuid.UUID]
+) -> None:
+    """part_ids가 모두 프로젝트에 연결되어 있는지 검증 — 아니면 AppError."""
+    invalid = repo.filter_unlinked_part_ids(db, project_id, part_ids)
+    if invalid:
+        raise AppError(
+            message=f"프로젝트에 연결되지 않은 부품입니다: {invalid}",
+            code="INVALID_PART",
+        )
+
+
 def add_members(
     db: Session, project_id: uuid.UUID, user_ids: list[uuid.UUID]
 ) -> int:

@@ -5,6 +5,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app.modules.file.constants import FileStatus
 from app.modules.file.models import File
 
 
@@ -33,6 +34,15 @@ def create_file_record(
 
 def get_file_by_id(db: Session, file_id: uuid.UUID) -> File | None:
     return db.query(File).filter(File.id == file_id).first()
+
+
+def get_active_file_by_id(db: Session, file_id: uuid.UUID) -> File | None:
+    """삭제되지 않은 파일 단건 조회."""
+    return (
+        db.query(File)
+        .filter(File.id == file_id, File.status != FileStatus.DELETED)
+        .first()
+    )
 
 
 def get_files_by_ids(db: Session, file_ids: list[uuid.UUID]) -> list[File]:

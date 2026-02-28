@@ -99,6 +99,7 @@ def setup_logging() -> None:
 
     # SQLAlchemy 쿼리 로그는 DEBUG에서만 (OTel이 span으로 처리)
     sql_logger = logging.getLogger("sqlalchemy.engine")
-    sql_logger.setLevel(logging.WARNING if not settings.debug else logging.INFO)
+    sql_logger.setLevel(logging.WARNING)
+    # sql_logger.setLevel(logging.WARNING if not settings.debug else logging.INFO)
     sql_logger.handlers = []
     sql_logger.propagate = True

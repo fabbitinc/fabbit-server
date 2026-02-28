@@ -148,8 +148,9 @@ def sync_parts(
     기존 부품과 diff를 비교하여 추가/제거를 자동 처리합니다.
     빈 목록 전달 시 모든 부품이 해제됩니다.
     """
-    # TODO 프로젝트에 연결되어있는 parts 인지 확인해야함
-    return issue_commands.sync_parts(db, auth, issue_id, part_ids=req.part_ids)
+    return issue_commands.sync_parts(
+        db, auth, project_id, issue_id, part_ids=req.part_ids
+    )
 
 
 # ── 이슈 상태 전이 ──

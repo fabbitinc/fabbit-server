@@ -219,13 +219,12 @@ def revoke_all_user_tokens(db: Session, user_id: _uuid.UUID) -> None:
 
 
 def logout(db: Session, auth: AuthContext, refresh_token_str: str) -> None:
-    """로그아웃: 리프레시 토큰 폐기.
+    """로그아웃: 해당 유저의 모든 리프레시 토큰 폐기.
 
+    크로스 서브도메인 세션까지 전부 무효화한다.
     @transactional 없음 — use_case에서 트랜잭션 관리.
     """
-    payload = token_provider.decode(refresh_token_str)
-    if payload.jti:
-        repo.delete_refresh_token_by_jti(db, payload.jti)
+    repo.delete_all_user_refresh_tokens(db, auth.user_id)
 
 
 # ── 초대 레코드 관리 ──

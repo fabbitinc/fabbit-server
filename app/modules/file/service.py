@@ -394,7 +394,7 @@ def detach_from_owner(
     file_id: uuid.UUID,
 ) -> None:
     """소유자 검증 + 소프트 삭제."""
-    file = repo.get_file_by_id(db, file_id)
+    file = repo.get_active_file_by_id(db, file_id)
     if not file or file.owner_type != owner_type or file.owner_id != owner_id:
         raise AppError(
             message=f"'{owner_type}:{owner_id}'에 연결된 파일 '{file_id}'을(를) 찾을 수 없습니다",
