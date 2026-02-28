@@ -1,5 +1,6 @@
 """Activity 도메인 상수."""
 
+from collections import defaultdict
 from enum import Enum
 
 
@@ -11,38 +12,36 @@ class TargetType(str, Enum):
 
 
 class Action(str, Enum):
-    """Activity action 열거형."""
+    """Activity action 열거형. scope를 내장하여 단일 진실 공급원 역할."""
 
-    # Issue scope
-    ISSUE_STATE_CHANGED = "issue_state_changed"
-    ISSUE_TITLE_CHANGED = "issue_title_changed"
-    ISSUE_CREATED = "issue_created"
-    ISSUE_CLOSED = "issue_closed"
-    ISSUE_REOPENED = "issue_reopened"
+    def __new__(cls, value: str, scope: str) -> "Action":
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.scope = scope  # type: ignore[attr-defined]
+        return obj
 
-    # CR scope
-    CR_STATE_CHANGED = "cr_state_changed"
-    CR_MERGED = "cr_merged"
-    CR_ISSUE_LINKED = "cr_issue_linked"
-    CR_ISSUE_UNLINKED = "cr_issue_unlinked"
+    # -- Issue 타임라인 --
+    ISSUE_STATE_CHANGED = ("issue_state_changed", "issue")
+    ISSUE_TITLE_CHANGED = ("issue_title_changed", "issue")
+    CR_STATE_CHANGED = ("cr_state_changed", "cr")
+    ASSIGNEE_CHANGED = ("assignee_changed", "assignee")
+    LABEL_CHANGED = ("label_changed", "label")
+    PART_CHANGED = ("part_changed", "part")
+    CR_ISSUE_LINKED = ("cr_issue_linked", "cr")
+    CR_ISSUE_UNLINKED = ("cr_issue_unlinked", "cr")
 
-    # Part scope
-    PART_ADDED = "part_added"
-    PART_REMOVED = "part_removed"
-    PART_CHANGED = "part_changed"
-
-    # Assignee scope
-    ASSIGNEE_CHANGED = "assignee_changed"
-
-    # Label scope
-    LABEL_CHANGED = "label_changed"
-
-    # Project scope
-    PROJECT_UPDATED = "project_updated"
+    # -- Project 피드 --
+    ISSUE_CREATED = ("issue_created", "issue")
+    ISSUE_CLOSED = ("issue_closed", "issue")
+    ISSUE_REOPENED = ("issue_reopened", "issue")
+    CR_MERGED = ("cr_merged", "cr")
+    PART_ADDED = ("part_added", "part")
+    PART_REMOVED = ("part_removed", "part")
+    PROJECT_UPDATED = ("project_updated", "project")
 
 
 class ActivityScope(str, Enum):
-    """Activity scope — action을 도메인 영역별로 그룹화."""
+    """Activity scope — API query param 타입 검증용."""
 
     ISSUE = "issue"
     CR = "cr"
@@ -52,38 +51,12 @@ class ActivityScope(str, Enum):
     PROJECT = "project"
 
 
-SCOPE_ACTIONS: dict[ActivityScope, list[Action]] = {
-    ActivityScope.ISSUE: [
-        Action.ISSUE_STATE_CHANGED,
-        Action.ISSUE_TITLE_CHANGED,
-        Action.ISSUE_CREATED,
-        Action.ISSUE_CLOSED,
-        Action.ISSUE_REOPENED,
-    ],
-    ActivityScope.CR: [
-        Action.CR_STATE_CHANGED,
-        Action.CR_MERGED,
-        Action.CR_ISSUE_LINKED,
-        Action.CR_ISSUE_UNLINKED,
-    ],
-    ActivityScope.PART: [
-        Action.PART_ADDED,
-        Action.PART_REMOVED,
-        Action.PART_CHANGED,
-    ],
-    ActivityScope.ASSIGNEE: [
-        Action.ASSIGNEE_CHANGED,
-    ],
-    ActivityScope.LABEL: [
-        Action.LABEL_CHANGED,
-    ],
-    ActivityScope.PROJECT: [
-        Action.PROJECT_UPDATED,
-    ],
-}
+# Action enum에서 자동 유도 — 하위호환용 변수명 유지
+SCOPE_ACTIONS: dict[ActivityScope, list[Action]] = defaultdict(list)
+for _action in Action:
+    SCOPE_ACTIONS[ActivityScope(_action.scope)].append(_action)
+SCOPE_ACTIONS = dict(SCOPE_ACTIONS)
 
 ACTION_SCOPE: dict[Action, ActivityScope] = {
-    action: scope
-    for scope, actions in SCOPE_ACTIONS.items()
-    for action in actions
+    action: ActivityScope(action.scope) for action in Action
 }

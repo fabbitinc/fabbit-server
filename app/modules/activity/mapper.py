@@ -2,7 +2,7 @@
 
 import json
 
-from app.modules.activity.constants import ACTION_SCOPE, Action
+from app.modules.activity.constants import Action
 from app.modules.activity.models import Activity
 from app.modules.activity.schemas import ActivityResponse, TimelineActivityItem
 from app.modules.issue.models import IssueComment
@@ -29,8 +29,8 @@ def _inject_action(detail: dict | None, action: str) -> dict | None:
 def _resolve_scope(action: str) -> str | None:
     """action 문자열로부터 scope를 역매핑."""
     try:
-        return ACTION_SCOPE[Action(action)].value
-    except (ValueError, KeyError):
+        return Action(action).scope
+    except ValueError:
         return None
 
 

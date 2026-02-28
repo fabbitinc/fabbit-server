@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.transactional import transactional
 from app.modules.activity import mapper, repository as activity_repo
-from app.modules.activity.constants import SCOPE_ACTIONS, ActivityScope, TargetType
+from app.modules.activity.constants import Action, ActivityScope, TargetType
 from app.modules.activity.schemas import ActivityListResponse
 
 
@@ -25,7 +25,8 @@ def get_activities(
     # scope → action 문자열 목록 변환
     actions: list[str] | None = None
     if scope:
-        actions = [a.value for s in scope for a in SCOPE_ACTIONS[s]]
+        scope_values = {s.value for s in scope}
+        actions = [a.value for a in Action if a.scope in scope_values]
 
     activities = activity_repo.list_by_target_cursor(
         db, TargetType.PROJECT, project_id, cursor=cursor, limit=limit, actions=actions
