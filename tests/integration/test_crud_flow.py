@@ -144,16 +144,6 @@ class TestCRUDFlow:
         TestCRUDFlow.access_token = data["tokens"]["access_token"]
         TestCRUDFlow.refresh_token = data["tokens"]["refresh_token"]
 
-    def test_onboarding_complete(self, client: TestClient):
-        """POST /auth/onboarding/complete → 온보딩 완료."""
-        resp = client.post(
-            "/api/v1/auth/onboarding/complete",
-            headers={"Authorization": f"Bearer {TestCRUDFlow.access_token}"},
-        )
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert data["onboarded_at"] is not None
-
     def test_ontology_schema(self, client: TestClient):
         """GET /ontology/schema → 온톨로지 스키마 조회 (인증 필수)."""
         resp = client.get(

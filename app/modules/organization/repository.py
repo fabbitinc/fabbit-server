@@ -2,9 +2,8 @@
 
 import uuid
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import func
 
 from app.modules.organization.models import Membership, Organization
 from app.modules.user.models import User
@@ -40,17 +39,6 @@ def create_organization(
     db.add(org)
     db.flush()
     return org
-
-
-def complete_onboarding(db: Session, org_id: uuid.UUID) -> Organization:
-    """온보딩 완료 시각 기록."""
-    db.execute(
-        update(Organization)
-        .where(Organization.id == org_id)
-        .values(onboarded_at=func.now())
-    )
-    db.flush()
-    return db.get(Organization, org_id)
 
 
 # ── Membership ──

@@ -41,9 +41,6 @@ class Organization(Base):
     plan_type: Mapped[str] = mapped_column(
         String(20), nullable=False, default="STARTER"
     )
-    onboarded_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

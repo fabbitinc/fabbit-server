@@ -682,21 +682,21 @@
                 ]
             }
         },
-        "/api/v1/organizations/onboarding/complete": {
-            "post": {
+        "/api/v1/organizations/members": {
+            "get": {
                 "tags": [
                     "organizations"
                 ],
-                "summary": "Complete Onboarding",
-                "description": "\uc628\ubcf4\ub529 \uc644\ub8cc \ucc98\ub9ac.",
-                "operationId": "complete_onboarding_api_v1_organizations_onboarding_complete_post",
+                "summary": "List Org Members",
+                "description": "\uc870\uc9c1 \uba64\ubc84 \ubaa9\ub85d \uc870\ud68c.\n\n\ud604\uc7ac \uc778\uc99d\ub41c \uc0ac\uc6a9\uc790\uac00 \uc18d\ud55c \uc870\uc9c1\uc758 \uc804\uccb4 \uba64\ubc84 \ubaa9\ub85d\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "list_org_members_api_v1_organizations_members_get",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/OrganizationResponse"
+                                    "$ref": "#/components/schemas/MemberListResponse"
                                 }
                             }
                         }
@@ -707,6 +707,162 @@
                         "HTTPBearer": []
                     }
                 ]
+            }
+        },
+        "/api/v1/organizations/members/{user_id}": {
+            "delete": {
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Remove Member",
+                "description": "\uc870\uc9c1\uc5d0\uc11c \uba64\ubc84 \uc81c\uac70.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \uc81c\uac70\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\uc870\uc9c1 \uc18c\uc720\uc790\uc640 \uc790\uae30 \uc790\uc2e0\uc740 \uc81c\uac70\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.",
+                "operationId": "remove_member_api_v1_organizations_members__user_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "User Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/organizations/invitations": {
+            "get": {
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "List Invitations",
+                "description": "\uc870\uc9c1\uc758 \ucd08\ub300 \ubaa9\ub85d \uc870\ud68c.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \uc870\ud68c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\ubaa8\ub4e0 \uc0c1\ud0dc(PENDING, ACCEPTED, CANCELLED)\uc758 \ucd08\ub300\ub97c \ucd5c\uc2e0\uc21c\uc73c\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "list_invitations_api_v1_organizations_invitations_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InvitationListResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Create Invitation",
+                "description": "\uc774\uba54\uc77c\ub85c \uc870\uc9c1 \ucd08\ub300 \ubc1c\uc1a1.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \ucd08\ub300\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\uc774\ubbf8 PENDING \uc0c1\ud0dc\uc778 \ucd08\ub300\uac00 \uc788\uc73c\uba74 \uc911\ubcf5 \uc5d0\ub7ec\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uc774\uc804\uc5d0 \ucde8\uc18c\ub41c \ucd08\ub300\uac00 \uc788\uc73c\uba74 \uc0ad\uc81c \ud6c4 \uc0c8\ub85c \uc0dd\uc131\ud569\ub2c8\ub2e4.",
+                "operationId": "create_invitation_api_v1_organizations_invitations_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateInvitationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InvitationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/organizations/invitations/{invitation_id}": {
+            "delete": {
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Cancel Invitation",
+                "description": "\ucd08\ub300 \ucde8\uc18c.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \ucde8\uc18c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\nPENDING \uc0c1\ud0dc\uc778 \ucd08\ub300\ub9cc \ucde8\uc18c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+                "operationId": "cancel_invitation_api_v1_organizations_invitations__invitation_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "invitation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Invitation Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/users/me": {
@@ -1135,189 +1291,6 @@
                             "type": "string",
                             "format": "uuid",
                             "title": "Mapping Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/members": {
-            "get": {
-                "tags": [
-                    "members"
-                ],
-                "summary": "List Org Members",
-                "description": "\uc870\uc9c1 \uba64\ubc84 \ubaa9\ub85d \uc870\ud68c.\n\n\ud604\uc7ac \uc778\uc99d\ub41c \uc0ac\uc6a9\uc790\uac00 \uc18d\ud55c \uc870\uc9c1\uc758 \uc804\uccb4 \uba64\ubc84 \ubaa9\ub85d\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
-                "operationId": "list_org_members_api_v1_members_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MemberListResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/members/{user_id}": {
-            "delete": {
-                "tags": [
-                    "members"
-                ],
-                "summary": "Remove Member",
-                "description": "\uc870\uc9c1\uc5d0\uc11c \uba64\ubc84 \uc81c\uac70.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \uc81c\uac70\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\uc870\uc9c1 \uc18c\uc720\uc790\uc640 \uc790\uae30 \uc790\uc2e0\uc740 \uc81c\uac70\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.",
-                "operationId": "remove_member_api_v1_members__user_id__delete",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "user_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "User Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/members/invitations": {
-            "get": {
-                "tags": [
-                    "members"
-                ],
-                "summary": "List Invitations",
-                "description": "\uc870\uc9c1\uc758 \ucd08\ub300 \ubaa9\ub85d \uc870\ud68c.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \uc870\ud68c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\ubaa8\ub4e0 \uc0c1\ud0dc(PENDING, ACCEPTED, CANCELLED)\uc758 \ucd08\ub300\ub97c \ucd5c\uc2e0\uc21c\uc73c\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.",
-                "operationId": "list_invitations_api_v1_members_invitations_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/InvitationListResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            },
-            "post": {
-                "tags": [
-                    "members"
-                ],
-                "summary": "Create Invitation",
-                "description": "\uc774\uba54\uc77c\ub85c \uc870\uc9c1 \ucd08\ub300 \ubc1c\uc1a1.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \ucd08\ub300\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\uc774\ubbf8 PENDING \uc0c1\ud0dc\uc778 \ucd08\ub300\uac00 \uc788\uc73c\uba74 \uc911\ubcf5 \uc5d0\ub7ec\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uc774\uc804\uc5d0 \ucde8\uc18c\ub41c \ucd08\ub300\uac00 \uc788\uc73c\uba74 \uc0ad\uc81c \ud6c4 \uc0c8\ub85c \uc0dd\uc131\ud569\ub2c8\ub2e4.",
-                "operationId": "create_invitation_api_v1_members_invitations_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CreateInvitationRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "201": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/InvitationResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/members/invitations/{invitation_id}": {
-            "delete": {
-                "tags": [
-                    "members"
-                ],
-                "summary": "Cancel Invitation",
-                "description": "\ucd08\ub300 \ucde8\uc18c.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \ucde8\uc18c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\nPENDING \uc0c1\ud0dc\uc778 \ucd08\ub300\ub9cc \ucde8\uc18c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
-                "operationId": "cancel_invitation_api_v1_members_invitations__invitation_id__delete",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "invitation_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Invitation Id"
                         }
                     }
                 ],
@@ -8174,18 +8147,6 @@
                     "plan_type": {
                         "type": "string",
                         "title": "Plan Type"
-                    },
-                    "onboarded_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Onboarded At"
                     }
                 },
                 "type": "object",

@@ -1,7 +1,6 @@
 """조직 Pydantic 요청/응답 스키마."""
 
 import uuid
-from datetime import datetime
 
 from pydantic import BaseModel, Field
 
@@ -15,8 +14,6 @@ class OrganizationResponse(BaseModel):
     industry: str | None = None
     team_size: str | None = None
     plan_type: str
-    onboarded_at: datetime | None = None
-
     model_config = {"from_attributes": True}
 
 

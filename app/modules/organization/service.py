@@ -23,10 +23,7 @@ from app.modules.organization.constants import (
 )
 from app.modules.organization.models import Membership, Organization
 from app.modules.organization.provisioning import provision_tenant
-from app.modules.organization.schemas import (
-    CreateOrganizationRequest,
-    OrganizationResponse,
-)
+from app.modules.organization.schemas import CreateOrganizationRequest
 
 
 def _slugify(name: str) -> str:
@@ -37,21 +34,6 @@ def _slugify(name: str) -> str:
     slug = re.sub(r"[^\w\s-]", "", name).strip().lower()
     slug = re.sub(r"[-\s]+", "-", slug)
     return slug[:50]
-
-
-def complete_onboarding(db: Session, auth: AuthContext) -> OrganizationResponse:
-    """조직 온보딩 완료 처리.
-
-    @transactional 없음 — use_case에서 트랜잭션 관리.
-    """
-    org = repo.get_org_by_id(db, auth.org_id)
-    if not org:
-        raise AppError(message="조직을 찾을 수 없습니다", code="NOT_FOUND")
-    if org.onboarded_at:
-        raise AppError(message="이미 온보딩이 완료된 조직입니다", code="ALREADY_EXISTS")
-
-    org = repo.complete_onboarding(db, auth.org_id)
-    return OrganizationResponse.model_validate(org)
 
 
 def create_organization(

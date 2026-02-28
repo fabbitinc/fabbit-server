@@ -8,7 +8,6 @@ from app.core.auth_context import AuthContext, CreateOrgContext
 from app.modules.auth.schemas import CreateOrganizationResponse, LoginResponse
 from app.modules.organization.schemas import (
     CreateOrganizationRequest,
-    OrganizationResponse,
     SwitchOrgRequest,
 )
 from app.use_cases import organization as org_commands
@@ -42,13 +41,3 @@ def switch_org(
     대상 워크스페이스의 멤버십을 확인한 후 새 access+refresh 토큰을 발급합니다.
     """
     return org_commands.switch_org(db, auth.user_id, auth.email, req.slug)
-
-
-# TODO 삭제
-@router.post("/onboarding/complete", response_model=OrganizationResponse)
-def complete_onboarding(
-    db: Session = Depends(get_db),
-    auth: AuthContext = Depends(require_auth),
-):
-    """온보딩 완료 처리."""
-    return org_commands.complete_onboarding(db, auth)
