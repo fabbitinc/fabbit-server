@@ -18,6 +18,7 @@ from app.modules.issue.events import (
     IssueLabelsChanged,
     IssuePartsChanged,
 )
+from app.modules.file.models import File
 from app.modules.issue.models import ChangeRequest, Issue, IssueComment
 
 
@@ -79,6 +80,18 @@ def create_change_request(
         issue_type=cr.type.value,
     ))
     return cr
+
+
+def attach_files(db: Session, issue_id: uuid.UUID, files: list[File]) -> None:
+    """Issue에 검증된 파일들을 연결."""
+    issue = get_or_raise(db, issue_id)
+    issue.attach_files(files)
+
+
+def detach_file(db: Session, issue_id: uuid.UUID, file_id: uuid.UUID) -> None:
+    """Issue 첨부파일 1건 분리."""
+    issue = get_or_raise(db, issue_id)
+    issue.detach_file(file_id)
 
 
 def sync_assignees(

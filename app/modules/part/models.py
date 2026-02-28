@@ -101,13 +101,12 @@ class Part(AggregateRoot, TenantBase):
     # ── Relationships ──
 
     # 다형성 소유권 기반 (File.owner_type='part', File.owner_id=Part.id)
-    # 삭제된 파일 제외
+    # soft-deleted 파일은 SoftDeleteMixin auto-filter가 자동 제외
     files: Mapped[list["File"]] = relationship(
         "File",
         primaryjoin=(
             "and_(Part.id == foreign(File.owner_id),"
-            " File.owner_type == 'part',"
-            " File.status != 'DELETED')"
+            " File.owner_type == 'part')"
         ),
         viewonly=True,
     )

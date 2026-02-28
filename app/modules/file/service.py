@@ -188,7 +188,7 @@ def soft_delete_file(db: Session, file_id: uuid.UUID) -> None:
     if file is None:
         raise AppError(message="파일을 찾을 수 없습니다", code="NOT_FOUND")
 
-    file.mark_deleted()
+    file.soft_delete()
 
 
 def soft_delete_files(db: Session, file_ids: list[uuid.UUID]) -> int:
@@ -196,8 +196,8 @@ def soft_delete_files(db: Session, file_ids: list[uuid.UUID]) -> int:
     files = repo.get_files_by_ids(db, file_ids)
     count = 0
     for file in files:
-        if file.status != FileStatus.DELETED:
-            file.mark_deleted()
+        if not file.is_deleted:
+            file.soft_delete()
             count += 1
     return count
 
@@ -207,11 +207,11 @@ def cleanup_stale_files(
     days: int = 1,
     batch_size: int = 100,
 ) -> int:
-    """PENDING 상태로 오래된 파일 정리. S3 삭제 + EXPIRED 처리."""
+    """PENDING 상태로 오래된 파일 정리. S3 삭제 + DB 물리 삭제."""
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     db = create_tenant_session(tenant_schema)
     try:
-        count = _cleanup_batch(db, FileStatus.PENDING, cutoff, batch_size, expire=True)
+        count = _cleanup_stale_batch(db, cutoff, batch_size)
         db.commit()
     except Exception:
         db.rollback()
@@ -258,11 +258,11 @@ def cleanup_deleted_files(
     days: int = 7,
     batch_size: int = 100,
 ) -> int:
-    """DELETED 상태로 보존 기간 만료된 파일 물리 삭제. S3 삭제 + 레코드 삭제."""
+    """soft-deleted 후 보존 기간 만료된 파일 물리 삭제. S3 삭제 + 레코드 삭제."""
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     db = create_tenant_session(tenant_schema)
     try:
-        count = _cleanup_batch(db, FileStatus.DELETED, cutoff, batch_size, expire=False)
+        count = _cleanup_deleted_batch(db, cutoff, batch_size)
         db.commit()
     except Exception:
         db.rollback()
@@ -278,27 +278,45 @@ def cleanup_deleted_files(
     return count
 
 
-def _cleanup_batch(
+def _cleanup_stale_batch(
     db: Session,
-    status: str,
     cutoff: datetime,
     batch_size: int,
-    expire: bool,
 ) -> int:
-    """배치 단위로 S3 삭제 + DB 상태 변경/레코드 삭제."""
+    """stale PENDING 파일 배치 정리. S3 삭제 + DB 물리 삭제."""
     count = 0
     cursor = None
     while True:
-        files = repo.get_stale_files(db, status, cutoff, batch_size, cursor)
+        files = repo.get_stale_pending_files(db, cutoff, batch_size, cursor)
         if not files:
             break
 
         for file in files:
             _delete_s3_files(file)
-            if expire:
-                file.mark_expired()
-            else:
-                db.delete(file)
+            db.delete(file)
+            count += 1
+
+        cursor = files[-1].id
+
+    return count
+
+
+def _cleanup_deleted_batch(
+    db: Session,
+    cutoff: datetime,
+    batch_size: int,
+) -> int:
+    """보존 기간 만료 soft-deleted 파일 배치 정리. S3 삭제 + DB 물리 삭제."""
+    count = 0
+    cursor = None
+    while True:
+        files = repo.get_expired_deleted_files(db, cutoff, batch_size, cursor)
+        if not files:
+            break
+
+        for file in files:
+            _delete_s3_files(file)
+            db.delete(file)
             count += 1
 
         cursor = files[-1].id
@@ -329,8 +347,6 @@ def get_uploaded_or_raise(db: Session, file_id: uuid.UUID) -> File:
             message="업로드가 완료되지 않은 파일입니다", code="PRECONDITION_FAILED"
         )
     return file
-
-
 
 
 def validate_attachable(
@@ -367,41 +383,6 @@ def validate_attachable(
         )
 
     return files
-
-
-def attach_to_owner(
-    db: Session,
-    file_ids: list[uuid.UUID],
-    owner_type: str,
-    owner_id: uuid.UUID,
-) -> list[File]:
-    """파일 연결 가능 여부 검증 + 소유자 할당.
-
-    Aggregate relationship이 없는 도메인에서 사용.
-    """
-    files = validate_attachable(db, file_ids)
-
-    for f in files:
-        f.assign_owner(owner_type, owner_id)
-
-    return files
-
-
-def detach_from_owner(
-    db: Session,
-    owner_type: str,
-    owner_id: uuid.UUID,
-    file_id: uuid.UUID,
-) -> None:
-    """소유자 검증 + 소프트 삭제."""
-    file = repo.get_active_file_by_id(db, file_id)
-    if not file or file.owner_type != owner_type or file.owner_id != owner_id:
-        raise AppError(
-            message=f"'{owner_type}:{owner_id}'에 연결된 파일 '{file_id}'을(를) 찾을 수 없습니다",
-            code="NOT_FOUND",
-        )
-
-    file.mark_deleted()
 
 
 def _to_file_complete_response(file: File) -> FileCompleteResponse:

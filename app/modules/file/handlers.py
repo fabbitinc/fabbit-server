@@ -24,7 +24,7 @@ def _on_file_detached(event: FileDetached) -> None:
     db = get_active_session()
     file = db.get(File, event.file_id)
     if file is not None:
-        file.mark_deleted()
+        file.soft_delete()
 
 
 event_bus.subscribe(FileAttached, _on_file_attached)

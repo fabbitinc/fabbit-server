@@ -20,6 +20,6 @@ def add_files(
     file_ids: list[uuid.UUID],
 ) -> list[FileItem]:
     """이슈에 첨부파일 배치 연결."""
-    issue_service.get_or_raise(db, issue_id)
-    files = file_service.attach_to_owner(db, file_ids, "issue", issue_id)
+    files = file_service.validate_attachable(db, file_ids)
+    issue_service.attach_files(db, issue_id, files)
     return to_file_items(files)

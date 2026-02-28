@@ -8,5 +8,3 @@ class FileStatus(str, Enum):
 
     PENDING = "PENDING"      # presigned URL 발급됨, S3 업로드 대기
     UPLOADED = "UPLOADED"    # S3 업로드 확인 완료
-    DELETED = "DELETED"      # 소프트 삭제 (보존 기간 후 물리 삭제)
-    EXPIRED = "EXPIRED"      # stale 업로드 만료 처리

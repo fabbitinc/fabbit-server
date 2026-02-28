@@ -36,15 +36,6 @@ def get_file_by_id(db: Session, file_id: uuid.UUID) -> File | None:
     return db.query(File).filter(File.id == file_id).first()
 
 
-def get_active_file_by_id(db: Session, file_id: uuid.UUID) -> File | None:
-    """삭제되지 않은 파일 단건 조회."""
-    return (
-        db.query(File)
-        .filter(File.id == file_id, File.status != FileStatus.DELETED)
-        .first()
-    )
-
-
 def get_files_by_ids(db: Session, file_ids: list[uuid.UUID]) -> list[File]:
     return db.query(File).filter(File.id.in_(file_ids)).all()
 
@@ -76,21 +67,33 @@ def delete_files_by_owner(
     return count
 
 
-def get_stale_files(
+def get_stale_pending_files(
     db: Session,
-    status: str,
     cutoff: datetime,
     limit: int = 100,
     cursor: uuid.UUID | None = None,
 ) -> list[File]:
-    """정리 대상 파일 조회 (cursor 기반 페이지네이션).
-
-    - status="PENDING", cutoff 이전 → stale
-    - status="DELETED", cutoff 이전 → soft delete 만료
-    """
+    """PENDING 상태로 cutoff 이전에 생성된 stale 파일 조회."""
     q = db.query(File).filter(
-        File.status == status,
+        File.status == FileStatus.PENDING,
         File.created_at < cutoff,
+    )
+    if cursor:
+        q = q.filter(File.id > cursor)
+    return q.order_by(File.id).limit(limit).all()
+
+
+def get_expired_deleted_files(
+    db: Session,
+    cutoff: datetime,
+    limit: int = 100,
+    cursor: uuid.UUID | None = None,
+) -> list[File]:
+    """soft-deleted 후 보존 기간(cutoff)이 만료된 파일 조회."""
+    q = (
+        db.query(File)
+        .execution_options(include_deleted=True)
+        .filter(File.deleted_at.isnot(None), File.deleted_at < cutoff)
     )
     if cursor:
         q = q.filter(File.id > cursor)
@@ -102,5 +105,10 @@ def get_all_file_keys(db: Session) -> set[str]:
 
     PDF/썸네일은 독립 File 레코드로 관리되므로 file_key만 조회.
     """
-    rows = db.query(File.file_key).filter(File.file_key.isnot(None)).all()
+    rows = (
+        db.query(File.file_key)
+        .execution_options(include_deleted=True)
+        .filter(File.file_key.isnot(None))
+        .all()
+    )
     return {row[0] for row in rows}

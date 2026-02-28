@@ -1,6 +1,6 @@
 """Stale 업로드 정리 job.
 
-PENDING 상태로 일정 기간 경과한 업로드의 S3 파일을 삭제하고 EXPIRED 처리합니다.
+PENDING 상태로 일정 기간 경과한 업로드의 S3 파일과 DB 레코드를 물리 삭제합니다.
 """
 
 from loguru import logger

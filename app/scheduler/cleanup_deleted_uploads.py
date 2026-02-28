@@ -1,6 +1,6 @@
 """Soft-deleted 업로드 정리 job.
 
-DELETED 상태로 보존 기간이 만료된 업로드의 S3 파일과 DB 레코드를 삭제합니다.
+soft-deleted(deleted_at IS NOT NULL) 후 보존 기간이 만료된 업로드의 S3 파일과 DB 레코드를 물리 삭제합니다.
 """
 
 from loguru import logger

@@ -14,14 +14,22 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase
 from app.core.mixins import AuditMixin, PkMixin, TimestampMixin, UpdatableMixin
 
+from typing import TYPE_CHECKING
+
+from app.core.exceptions import AppError
+from app.modules.file.events import FileAttached, FileDetached
+
 from .constants import CRState, IssueState, IssueType
 from .events import CRStateChanged, IssueStateChanged
+
+if TYPE_CHECKING:
+    from app.modules.file.models import File
 
 
 class Issue(AggregateRoot, AuditMixin, UpdatableMixin, PkMixin, TenantBase):
@@ -60,6 +68,41 @@ class Issue(AggregateRoot, AuditMixin, UpdatableMixin, PkMixin, TenantBase):
     closed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+    # ── Relationships ──
+
+    # 다형성 소유권 기반 (File.owner_type='issue', File.owner_id=Issue.id)
+    # soft-deleted 파일은 SoftDeleteMixin auto-filter가 자동 제외
+    files: Mapped[list["File"]] = relationship(
+        "File",
+        primaryjoin=(
+            "and_(Issue.id == foreign(File.owner_id),"
+            " File.owner_type == 'issue')"
+        ),
+        viewonly=True,
+    )
+
+    # ── 파일 연결/분리 ──
+
+    def attach_files(self, files: list["File"]) -> None:
+        """검증된 파일들을 Issue에 연결 — 소유자 할당은 FileHandler가 처리."""
+        self.register_event(
+            FileAttached(
+                owner_type="issue", owner_id=self.id, file_ids=[f.id for f in files]
+            )
+        )
+
+    def detach_file(self, file_id: uuid.UUID) -> None:
+        """Issue 첨부파일 1건 분리 — 소프트 삭제는 FileHandler가 처리."""
+        target = next((f for f in self.files if f.id == file_id), None)
+        if target is None:
+            raise AppError(
+                message=f"Issue '{self.id}'에 연결된 파일 '{file_id}'을(를) 찾을 수 없습니다",
+                code="NOT_FOUND",
+            )
+        self.register_event(
+            FileDetached(owner_type="issue", owner_id=self.id, file_id=file_id)
+        )
 
     # -- 상태 전이 메서드 --
 

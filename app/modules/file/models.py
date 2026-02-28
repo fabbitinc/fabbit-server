@@ -4,7 +4,7 @@
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import BigInteger, DateTime, Index, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
@@ -13,10 +13,11 @@ from sqlalchemy.sql import func
 
 from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase, generate_uuid7
+from app.core.mixins import SoftDeleteMixin
 from app.modules.file.constants import FileStatus
 
 
-class File(AggregateRoot, TenantBase):
+class File(AggregateRoot, SoftDeleteMixin, TenantBase):
     __tablename__ = "files"
 
     __table_args__ = (
@@ -44,9 +45,6 @@ class File(AggregateRoot, TenantBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    deleted_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
 
     def assign_owner(self, owner_type: str, owner_id: uuid.UUID) -> None:
         """파일 소유권 설정."""
@@ -56,13 +54,4 @@ class File(AggregateRoot, TenantBase):
     def mark_uploaded(self) -> None:
         """S3 업로드 확인 완료."""
         self.status = FileStatus.UPLOADED
-
-    def mark_deleted(self) -> None:
-        """소프트 삭제 처리."""
-        self.status = FileStatus.DELETED
-        self.deleted_at = datetime.now(timezone.utc)
-
-    def mark_expired(self) -> None:
-        """stale 업로드 만료 처리."""
-        self.status = FileStatus.EXPIRED
 

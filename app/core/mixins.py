@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, event
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column, with_loader_criteria
 from sqlalchemy.sql import func
 
 from app.core.database import generate_uuid7
@@ -82,3 +82,22 @@ class SoftDeleteMixin:
     @property
     def is_deleted(self) -> bool:
         return self.deleted_at is not None
+
+
+@event.listens_for(Session, "do_orm_execute")
+def _apply_soft_delete_filter(execute_state) -> None:
+    """SoftDeleteMixin 상속 모델의 SELECT 쿼리에 deleted_at IS NULL 자동 적용.
+
+    우회: query.execution_options(include_deleted=True)
+    """
+    if (
+        execute_state.is_select
+        and not execute_state.execution_options.get("include_deleted", False)
+    ):
+        execute_state.statement = execute_state.statement.options(
+            with_loader_criteria(
+                SoftDeleteMixin,
+                lambda cls: cls.deleted_at.is_(None),
+                include_aliases=True,
+            )
+        )
