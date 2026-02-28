@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
+from app.modules.activity.constants import ActivityScope
 from app.modules.activity.schemas import ActivityListResponse
 from app.modules.project.schemas import (
     CreateProjectRequest,
@@ -64,6 +65,7 @@ def get_project_activities(
     project_id: uuid.UUID,
     cursor: uuid.UUID | None = Query(None, description="이전 페이지 마지막 항목의 id"),
     limit: int = Query(20, ge=1, le=100, description="조회 건수"),
+    scope: list[ActivityScope] | None = Query(None, description="활동 scope 필터 (issue, cr, part, assignee, label, project)"),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -72,7 +74,8 @@ def get_project_activities(
     프로젝트 범위의 활동 이력을 최신순으로 조회합니다.
     cursor에 이전 응답의 `next_cursor` 값을 전달하면 다음 페이지를 반환합니다.
     `next_cursor`가 null이면 마지막 페이지입니다.
+    scope를 지정하면 해당 도메인 영역의 활동만 필터링합니다 (복수 지정 가능).
     """
     return project_queries.get_activities(
-        db, auth, project_id, cursor=cursor, limit=limit
+        db, auth, project_id, cursor=cursor, limit=limit, scope=scope
     )

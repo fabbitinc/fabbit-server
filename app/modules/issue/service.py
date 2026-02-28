@@ -169,7 +169,8 @@ def link_issues(
     count = repo.link_issues(db, cr.id, issue_ids)
     if count > 0:
         cr.register_event(CRIssuesLinked(
-            issue_id=cr.id, linked_issue_ids=issue_ids
+            issue_id=cr.id, cr_number=cr.number, cr_title=cr.title,
+            linked_issue_ids=issue_ids,
         ))
     return count
 
@@ -181,7 +182,8 @@ def unlink_issues(
     count = repo.unlink_issues(db, cr.id, issue_ids)
     if count > 0:
         cr.register_event(CRIssuesUnlinked(
-            issue_id=cr.id, unlinked_issue_ids=issue_ids
+            issue_id=cr.id, cr_number=cr.number, cr_title=cr.title,
+            unlinked_issue_ids=issue_ids,
         ))
     return count
 

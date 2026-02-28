@@ -6,7 +6,7 @@
 
 from app.core.event_bus import event_bus
 from app.core.transactional import get_active_session
-from app.modules.activity.constants import TargetType
+from app.modules.activity.constants import Action, TargetType
 from app.modules.activity.models import Activity
 from app.modules.issue.events import (
     AssigneesAdded,
@@ -30,7 +30,7 @@ def _get_actor_id():
     return db.info.get("user_id")
 
 
-def _add_activity(target_type, target_id, action, actor_id, detail=None):
+def _add_activity(target_type, target_id, action: Action, actor_id, detail=None):
     """Activity 레코드 생성 헬퍼."""
     db = get_active_session()
     activity = Activity(
@@ -52,7 +52,7 @@ def _on_issue_created(event: IssueCreated) -> None:
     _add_activity(
         TargetType.PROJECT,
         event.project_id,
-        "issue_created",
+        Action.ISSUE_CREATED,
         actor_id,
         {
             "issue_id": str(event.issue_id),
@@ -70,15 +70,15 @@ def _on_issue_state_changed(event: IssueStateChanged) -> None:
     _add_activity(
         TargetType.ISSUE,
         event.issue_id,
-        "state_changed",
+        Action.ISSUE_STATE_CHANGED,
         actor_id,
         {"from": event.old_state, "to": event.new_state},
     )
     # Project 피드
     if event.new_state == "CLOSED":
-        action = "issue_closed"
+        action = Action.ISSUE_CLOSED
     else:
-        action = "issue_reopened"
+        action = Action.ISSUE_REOPENED
     _add_activity(
         TargetType.PROJECT,
         event.project_id,
@@ -99,7 +99,7 @@ def _on_cr_state_changed(event: CRStateChanged) -> None:
     _add_activity(
         TargetType.ISSUE,
         event.issue_id,
-        "cr_state_changed",
+        Action.CR_STATE_CHANGED,
         actor_id,
         {"from": event.old_state, "to": event.new_state},
     )
@@ -108,7 +108,7 @@ def _on_cr_state_changed(event: CRStateChanged) -> None:
         _add_activity(
             TargetType.PROJECT,
             event.project_id,
-            "cr_merged",
+            Action.CR_MERGED,
             actor_id,
             {
                 "issue_id": str(event.issue_id),
@@ -124,7 +124,7 @@ def _on_assignees_added(event: AssigneesAdded) -> None:
     _add_activity(
         TargetType.ISSUE,
         event.issue_id,
-        "assignee_added",
+        Action.ASSIGNEE_ADDED,
         actor_id,
         {"user_ids": [str(uid) for uid in event.user_ids]},
     )
@@ -136,7 +136,7 @@ def _on_assignees_removed(event: AssigneesRemoved) -> None:
     _add_activity(
         TargetType.ISSUE,
         event.issue_id,
-        "assignee_removed",
+        Action.ASSIGNEE_REMOVED,
         actor_id,
         {"user_ids": [str(uid) for uid in event.user_ids]},
     )
@@ -160,7 +160,7 @@ def _on_issue_labels_changed(event: IssueLabelsChanged) -> None:
         "added": [_label_info(lid) for lid in event.added_label_ids],
         "removed": [_label_info(lid) for lid in event.removed_label_ids],
     }
-    _add_activity(TargetType.ISSUE, event.issue_id, "labels_changed", actor_id, detail)
+    _add_activity(TargetType.ISSUE, event.issue_id, Action.LABEL_CHANGED, actor_id, detail)
 
 
 def _on_issue_parts_linked(event: IssuePartsLinked) -> None:
@@ -169,7 +169,7 @@ def _on_issue_parts_linked(event: IssuePartsLinked) -> None:
     _add_activity(
         TargetType.ISSUE,
         event.issue_id,
-        "part_added",
+        Action.PART_ADDED,
         actor_id,
         {"part_ids": [str(pid) for pid in event.part_ids]},
     )
@@ -181,34 +181,62 @@ def _on_issue_parts_unlinked(event: IssuePartsUnlinked) -> None:
     _add_activity(
         TargetType.ISSUE,
         event.issue_id,
-        "part_removed",
+        Action.PART_REMOVED,
         actor_id,
         {"part_ids": [str(pid) for pid in event.part_ids]},
     )
 
 
 def _on_cr_issues_linked(event: CRIssuesLinked) -> None:
-    """CR에 이슈 연결 → Issue 피드."""
+    """CR에 이슈 연결 → CR 피드 + 각 이슈 피드."""
     actor_id = _get_actor_id()
+    # CR 피드
     _add_activity(
         TargetType.ISSUE,
         event.issue_id,
-        "issue_linked",
+        Action.CR_ISSUE_LINKED,
         actor_id,
         {"linked_issue_ids": [str(iid) for iid in event.linked_issue_ids]},
     )
+    # 연결된 각 이슈 피드
+    for iid in event.linked_issue_ids:
+        _add_activity(
+            TargetType.ISSUE,
+            iid,
+            Action.CR_ISSUE_LINKED,
+            actor_id,
+            {
+                "cr_id": str(event.issue_id),
+                "cr_number": event.cr_number,
+                "cr_title": event.cr_title,
+            },
+        )
 
 
 def _on_cr_issues_unlinked(event: CRIssuesUnlinked) -> None:
-    """CR에서 이슈 해제 → Issue 피드."""
+    """CR에서 이슈 해제 → CR 피드 + 각 이슈 피드."""
     actor_id = _get_actor_id()
+    # CR 피드
     _add_activity(
         TargetType.ISSUE,
         event.issue_id,
-        "issue_unlinked",
+        Action.CR_ISSUE_UNLINKED,
         actor_id,
         {"unlinked_issue_ids": [str(iid) for iid in event.unlinked_issue_ids]},
     )
+    # 연결 해제된 각 이슈 피드
+    for iid in event.unlinked_issue_ids:
+        _add_activity(
+            TargetType.ISSUE,
+            iid,
+            Action.CR_ISSUE_UNLINKED,
+            actor_id,
+            {
+                "cr_id": str(event.issue_id),
+                "cr_number": event.cr_number,
+                "cr_title": event.cr_title,
+            },
+        )
 
 
 # ── Project 이벤트 ──
@@ -220,7 +248,7 @@ def _on_project_parts_linked(event: ProjectPartsLinked) -> None:
     _add_activity(
         TargetType.PROJECT,
         event.project_id,
-        "part_added",
+        Action.PART_ADDED,
         actor_id,
         {"part_ids": [str(pid) for pid in event.part_ids]},
     )
@@ -232,7 +260,7 @@ def _on_project_parts_unlinked(event: ProjectPartsUnlinked) -> None:
     _add_activity(
         TargetType.PROJECT,
         event.project_id,
-        "part_removed",
+        Action.PART_REMOVED,
         actor_id,
         {"part_ids": [str(pid) for pid in event.part_ids]},
     )

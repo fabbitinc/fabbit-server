@@ -26,7 +26,7 @@ class StateChangedDetail(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    action: Literal["state_changed"]
+    action: Literal["issue_state_changed"]
     from_: str = Field(alias="from", description="변경 전 상태")
     to: str = Field(description="변경 후 상태")
 
@@ -72,7 +72,7 @@ class AssigneeRemovedDetail(BaseModel):
 class LabelsChangedDetail(BaseModel):
     """라벨 변경 (추가/제거)."""
 
-    action: Literal["labels_changed"]
+    action: Literal["label_changed"]
     added: list[ActivityLabelInfo]
     removed: list[ActivityLabelInfo]
 
@@ -100,14 +100,14 @@ class PartRemovedDetail(BaseModel):
 class IssueLinkedDetail(BaseModel):
     """CR에 이슈 연결."""
 
-    action: Literal["issue_linked"]
+    action: Literal["cr_issue_linked"]
     linked_issue_ids: list[str]
 
 
 class IssueUnlinkedDetail(BaseModel):
     """CR에서 이슈 해제."""
 
-    action: Literal["issue_unlinked"]
+    action: Literal["cr_issue_unlinked"]
     unlinked_issue_ids: list[str]
 
 
@@ -184,6 +184,7 @@ ProjectActivityDetail = (
 class ActivityResponse(BaseModel):
     id: uuid.UUID
     action: str
+    scope: str | None = None
     actor_id: uuid.UUID
     detail: ProjectActivityDetail | None = None
     created_at: datetime
@@ -209,6 +210,7 @@ class TimelineActivityItem(BaseModel):
     type: Literal["activity"] = "activity"
     id: uuid.UUID
     action: str
+    scope: str | None = None
     actor_id: uuid.UUID
     detail: IssueActivityDetail | None = None
     created_at: datetime

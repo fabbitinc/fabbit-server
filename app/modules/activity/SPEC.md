@@ -41,16 +41,16 @@ GET /issues/{id}/timeline
 
 | action | detail | 트리거 |
 |--------|--------|--------|
-| `state_changed` | `{from, to}` | Issue open/close |
+| `issue_state_changed` | `{from, to}` | Issue open/close |
 | `cr_state_changed` | `{from, to}` | CR 상태 전이 |
 | `assignee_added` | `{user_ids}` | 담당자 배정 |
 | `assignee_removed` | `{user_ids}` | 담당자 제거 |
-| `labels_changed` | `{added: [{label_id, name, color}], removed: [{label_id, name, color}]}` | 라벨 동기화 |
+| `label_changed` | `{added: [{label_id, name, color}], removed: [{label_id, name, color}]}` | 라벨 동기화 |
 | `part_added` | `{part_ids}` | 부품 연결 |
 | `part_removed` | `{part_ids}` | 부품 해제 |
-| `issue_linked` | `{linked_issue_ids}` | CR에 이슈 연결 |
-| `issue_unlinked` | `{unlinked_issue_ids}` | CR에서 이슈 해제 |
-| `title_changed` | `{old, new}` | 제목 수정 |
+| `cr_issue_linked` | `{linked_issue_ids}` / `{cr_id, cr_number, cr_title}` | CR에 이슈 연결 (양방향) |
+| `cr_issue_unlinked` | `{unlinked_issue_ids}` / `{cr_id, cr_number, cr_title}` | CR에서 이슈 해제 (양방향) |
+| `issue_title_changed` | `{old, new}` | 제목 수정 |
 
 ### Project scope (target_type=PROJECT)
 
@@ -72,9 +72,25 @@ GET /issues/{id}/timeline
 
 | DomainEvent | Issue 피드 | Project 피드 |
 |-------------|:---------:|:-----------:|
-| IssueClosed | `state_changed` | `issue_closed` |
-| IssueReopened | `state_changed` | `issue_reopened` |
+| IssueClosed | `issue_state_changed` | `issue_closed` |
+| IssueReopened | `issue_state_changed` | `issue_reopened` |
 | CRMerged | `cr_state_changed` | `cr_merged` |
+
+## Activity Scope
+
+action을 도메인 영역별로 그룹화하여 프론트엔드에서 필터링할 수 있다.
+DB 컬럼 없이 코드 레벨 매핑으로 관리 (action과 1:1).
+
+| scope | actions |
+|-------|---------|
+| `issue` | `issue_state_changed`, `issue_title_changed`, `issue_created`, `issue_closed`, `issue_reopened` |
+| `cr` | `cr_state_changed`, `cr_merged`, `cr_issue_linked`, `cr_issue_unlinked` |
+| `part` | `part_added`, `part_removed` |
+| `assignee` | `assignee_added`, `assignee_removed` |
+| `label` | `label_changed` |
+| `project` | `project_updated` |
+
+API: `GET /projects/{id}/activities?scope=issue&scope=part` — 복수 scope 지정 가능.
 
 ## 데이터 흐름
 

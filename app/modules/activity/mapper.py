@@ -2,6 +2,7 @@
 
 import json
 
+from app.modules.activity.constants import ACTION_SCOPE, Action
 from app.modules.activity.models import Activity
 from app.modules.activity.schemas import ActivityResponse, TimelineActivityItem
 from app.modules.issue.models import IssueComment
@@ -25,11 +26,20 @@ def _inject_action(detail: dict | None, action: str) -> dict | None:
     return {**detail, "action": action}
 
 
+def _resolve_scope(action: str) -> str | None:
+    """action 문자열로부터 scope를 역매핑."""
+    try:
+        return ACTION_SCOPE[Action(action)].value
+    except (ValueError, KeyError):
+        return None
+
+
 def to_activity_response(activity: Activity) -> ActivityResponse:
     """Activity 모델 → ActivityResponse 변환."""
     return ActivityResponse(
         id=activity.id,
         action=activity.action,
+        scope=_resolve_scope(activity.action),
         actor_id=activity.actor_id,
         detail=_inject_action(activity.detail, activity.action),
         created_at=activity.created_at,
@@ -41,6 +51,7 @@ def to_timeline_activity_item(activity: Activity) -> TimelineActivityItem:
     return TimelineActivityItem(
         id=activity.id,
         action=activity.action,
+        scope=_resolve_scope(activity.action),
         actor_id=activity.actor_id,
         detail=_inject_action(activity.detail, activity.action),
         created_at=activity.created_at,

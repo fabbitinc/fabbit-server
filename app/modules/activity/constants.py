@@ -8,3 +8,82 @@ class TargetType(str, Enum):
 
     PROJECT = "PROJECT"  # 프로젝트 피드
     ISSUE = "ISSUE"      # 이슈 타임라인
+
+
+class Action(str, Enum):
+    """Activity action 열거형."""
+
+    # Issue scope
+    ISSUE_STATE_CHANGED = "issue_state_changed"
+    ISSUE_TITLE_CHANGED = "issue_title_changed"
+    ISSUE_CREATED = "issue_created"
+    ISSUE_CLOSED = "issue_closed"
+    ISSUE_REOPENED = "issue_reopened"
+
+    # CR scope
+    CR_STATE_CHANGED = "cr_state_changed"
+    CR_MERGED = "cr_merged"
+    CR_ISSUE_LINKED = "cr_issue_linked"
+    CR_ISSUE_UNLINKED = "cr_issue_unlinked"
+
+    # Part scope
+    PART_ADDED = "part_added"
+    PART_REMOVED = "part_removed"
+
+    # Assignee scope
+    ASSIGNEE_ADDED = "assignee_added"
+    ASSIGNEE_REMOVED = "assignee_removed"
+
+    # Label scope
+    LABEL_CHANGED = "label_changed"
+
+    # Project scope
+    PROJECT_UPDATED = "project_updated"
+
+
+class ActivityScope(str, Enum):
+    """Activity scope — action을 도메인 영역별로 그룹화."""
+
+    ISSUE = "issue"
+    CR = "cr"
+    PART = "part"
+    ASSIGNEE = "assignee"
+    LABEL = "label"
+    PROJECT = "project"
+
+
+SCOPE_ACTIONS: dict[ActivityScope, list[Action]] = {
+    ActivityScope.ISSUE: [
+        Action.ISSUE_STATE_CHANGED,
+        Action.ISSUE_TITLE_CHANGED,
+        Action.ISSUE_CREATED,
+        Action.ISSUE_CLOSED,
+        Action.ISSUE_REOPENED,
+    ],
+    ActivityScope.CR: [
+        Action.CR_STATE_CHANGED,
+        Action.CR_MERGED,
+        Action.CR_ISSUE_LINKED,
+        Action.CR_ISSUE_UNLINKED,
+    ],
+    ActivityScope.PART: [
+        Action.PART_ADDED,
+        Action.PART_REMOVED,
+    ],
+    ActivityScope.ASSIGNEE: [
+        Action.ASSIGNEE_ADDED,
+        Action.ASSIGNEE_REMOVED,
+    ],
+    ActivityScope.LABEL: [
+        Action.LABEL_CHANGED,
+    ],
+    ActivityScope.PROJECT: [
+        Action.PROJECT_UPDATED,
+    ],
+}
+
+ACTION_SCOPE: dict[Action, ActivityScope] = {
+    action: scope
+    for scope, actions in SCOPE_ACTIONS.items()
+    for action in actions
+}

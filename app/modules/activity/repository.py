@@ -19,17 +19,20 @@ def list_by_target(
     db: Session,
     target_type: TargetType,
     target_id: uuid.UUID,
+    *,
+    actions: list[str] | None = None,
 ) -> list[Activity]:
     """대상별 Activity 목록 조회 (시간순)."""
-    return (
+    query = (
         db.query(Activity)
         .filter(
             Activity.target_type == target_type,
             Activity.target_id == target_id,
         )
-        .order_by(Activity.created_at)
-        .all()
     )
+    if actions:
+        query = query.filter(Activity.action.in_(actions))
+    return query.order_by(Activity.created_at).all()
 
 
 def list_by_target_cursor(
@@ -39,6 +42,7 @@ def list_by_target_cursor(
     *,
     cursor: uuid.UUID | None = None,
     limit: int = 20,
+    actions: list[str] | None = None,
 ) -> list[Activity]:
     """대상별 Activity cursor 기반 조회 (최신순).
 
@@ -51,4 +55,6 @@ def list_by_target_cursor(
     )
     if cursor is not None:
         query = query.filter(Activity.id < cursor)
+    if actions:
+        query = query.filter(Activity.action.in_(actions))
     return query.order_by(Activity.id.desc()).limit(limit).all()
