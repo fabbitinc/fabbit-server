@@ -9,9 +9,6 @@ from sqlalchemy.orm import Session
 
 from app.core.database import TenantBase, discover_models
 
-discover_models()
-from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
-
 
 def org_id_to_schema(org_id: uuid.UUID) -> str:
     """UUID → 테넌트 스키마/그래프명 변환 (하이픈 제거)."""
@@ -28,6 +25,7 @@ def provision_tenant(db: Session, org_id: uuid.UUID) -> str:
     PostgreSQL DDL은 트랜잭션 내에서 롤백 가능하므로,
     호출자의 트랜잭션에 포함시켜 실패 시 전체 롤백을 보장합니다.
     """
+    discover_models()
     graph_name = org_id_to_schema(org_id)
     conn = db.connection()
 
@@ -89,6 +87,8 @@ def _stamp_tenant_alembic_version(conn, schema_name: str) -> None:
 
 def _create_ontology_indexes(conn, graph_name: str) -> None:
     """온톨로지 정의 기반 vlabel 생성 + merge key 인덱스."""
+    from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
+
     indexed = MANUFACTURING_ONTOLOGY.get_all_indexed_properties()
 
     # vlabel 먼저 생성 (인덱스 대상 라벨만)

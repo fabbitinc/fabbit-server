@@ -4,34 +4,31 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, get_origin_slug, require_auth, require_create_org_token
-from app.core.auth_context import AuthContext, CreateOrgContext
-from app.modules.auth import service
+from app.api.deps import get_db, get_origin_slug, require_auth
+from app.core.auth_context import AuthContext
 from app.modules.auth.schemas import (
     AcceptInvitationRequest,
     AcceptInvitationResponse,
     CheckEmailResponse,
-    CheckSlugResponse,
-    CreateOrganizationRequest,
-    CreateOrganizationResponse,
     LoginRequest,
     LoginResponse,
-    MeResponse,
-    OrganizationResponse,
-    PlanResponse,
     RefreshRequest,
     RegisterRequest,
     RegisterResponse,
     ScopedLoginResponse,
     SendVerificationRequest,
     SendVerificationResponse,
-    SiteResponse,
-    SwitchOrgRequest,
     TokenResponse,
     VerifyEmailRequest,
     VerifyEmailResponse,
     VerifyInvitationResponse,
 )
+from app.modules.organization.schemas import (
+    CheckSlugResponse,
+    PlanResponse,
+    SiteResponse,
+)
+from app.queries import auth as auth_queries
 from app.queries import invitation as invitation_queries
 from app.use_cases import auth as auth_commands
 from app.use_cases import invitation as invitation_commands
@@ -44,17 +41,14 @@ def get_site(
     db: Session = Depends(get_db),
     slug: str | None = Depends(get_origin_slug),
 ):
-    return service.get_site(db, slug)
+    """서브도메인 워크스페이스 정보 조회."""
+    return auth_queries.get_site(db, slug)
 
 
 @router.get("/plans", response_model=list[PlanResponse])
 def get_plans():
-    return service.get_plans()
-
-
-@router.get("/check-email", response_model=CheckEmailResponse)
-def check_email(email: EmailStr = Query(...), db: Session = Depends(get_db)):
-    return service.check_email(db, email)
+    """플랜 목록 및 제한값 조회."""
+    return auth_queries.get_plans()
 
 
 @router.get("/check-slug", response_model=CheckSlugResponse)
@@ -62,10 +56,16 @@ def check_slug(
     slug: str = Query(..., min_length=3, max_length=50),
     db: Session = Depends(get_db),
 ):
-    return service.check_slug(db, slug)
+    """slug 사용 가능 여부 확인."""
+    return auth_queries.check_slug(db, slug)
 
 
-# TODO 만료된 레코드 정리 필요
+@router.get("/check-email", response_model=CheckEmailResponse)
+def check_email(email: EmailStr = Query(...), db: Session = Depends(get_db)):
+    """이메일 중복 확인."""
+    return auth_queries.check_email(db, email)
+
+
 @router.post("/send-verification", response_model=SendVerificationResponse)
 def send_verification(req: SendVerificationRequest, db: Session = Depends(get_db)):
     """이메일 인증코드 발송.
@@ -91,7 +91,11 @@ def verify_email(req: VerifyEmailRequest, db: Session = Depends(get_db)):
 
 @router.post("/register", response_model=RegisterResponse)
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
-    return service.register(db, req)
+    """회원가입.
+
+    이메일 인증 완료 후 유저 + 조직 생성 + 토큰 발급.
+    """
+    return auth_commands.register(db, req)
 
 
 @router.post("/login", response_model=LoginResponse | ScopedLoginResponse)
@@ -105,12 +109,13 @@ def login(
     - **slug 있음** (서브도메인 접근): 해당 워크스페이스 멤버십 확인 → access+refresh 토큰 발급
     - **slug 없음** (루트 도메인 접근): 유저 인증만 → 조직 생성 전용 스코프 토큰 발급 (`scoped_token`)
     """
-    return service.login(db, req, slug=slug)
+    return auth_commands.login(db, req, slug=slug)
 
 
 @router.post("/refresh", response_model=TokenResponse)
 def refresh(req: RefreshRequest, db: Session = Depends(get_db)):
-    return service.refresh_tokens(db, req.refresh_token)
+    """토큰 갱신."""
+    return auth_commands.refresh_tokens(db, req.refresh_token)
 
 
 @router.post("/logout", status_code=204)
@@ -119,51 +124,8 @@ def logout(
     db: Session = Depends(get_db),
     auth: AuthContext = Depends(require_auth),
 ):
-    service.logout(db, auth, req.refresh_token)
-
-
-@router.post("/onboarding/complete", response_model=OrganizationResponse)
-def complete_onboarding(
-    db: Session = Depends(get_db),
-    auth: AuthContext = Depends(require_auth),
-):
-    return service.complete_onboarding(db, auth)
-
-
-@router.get("/me", response_model=MeResponse)
-def me(
-    db: Session = Depends(get_db),
-    auth: AuthContext = Depends(require_auth),
-):
-    return service.get_me(db, auth)
-
-
-@router.post("/organizations", response_model=CreateOrganizationResponse)
-def create_organization(
-    req: CreateOrganizationRequest,
-    db: Session = Depends(get_db),
-    ctx: CreateOrgContext = Depends(require_create_org_token),
-):
-    """기가입자 조직 생성.
-
-    루트 도메인 로그인으로 발급받은 **스코프 토큰**(scope=create_org)이 필요합니다.
-    조직 생성 + ADMIN 멤버십 + 테넌트 프로비저닝 후 정상 access+refresh 토큰을 반환합니다.
-    """
-    return auth_commands.create_organization(db, ctx.user_id, req)
-
-
-@router.post("/switch-org", response_model=LoginResponse)
-def switch_org(
-    req: SwitchOrgRequest,
-    db: Session = Depends(get_db),
-    auth: AuthContext = Depends(require_auth),
-):
-    """조직 전환.
-
-    현재 인증된 유저가 다른 워크스페이스로 전환합니다.
-    대상 워크스페이스의 멤버십을 확인한 후 새 access+refresh 토큰을 발급합니다.
-    """
-    return auth_commands.switch_org(db, auth.user_id, auth.email, req.slug)
+    """로그아웃."""
+    auth_commands.logout(db, auth, req.refresh_token)
 
 
 @router.get("/invitations/verify", response_model=VerifyInvitationResponse)

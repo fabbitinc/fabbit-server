@@ -1,9 +1,19 @@
-"""사용자 프로필 Pydantic 요청/응답 스키마."""
+"""사용자 Pydantic 요청/응답 스키마."""
 
 import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, Field
+
+
+class UserResponse(BaseModel):
+    id: uuid.UUID
+    email: str
+    full_name: str
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 # ── 프로필 수정 ──

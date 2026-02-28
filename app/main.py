@@ -18,24 +18,25 @@ from loguru import logger  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
 from app import scheduler  # noqa: E402
-from app.api.v1.public.auth_router import router as auth_router  # noqa: E402
-from app.api.v1.public.user_router import router as user_router  # noqa: E402
-from app.api.v1.tenant.activation_router import (
+from app.api.v1.auth_router import router as auth_router  # noqa: E402
+from app.api.v1.user_router import router as user_router  # noqa: E402
+from app.api.v1.org_router import router as org_router  # noqa: E402
+from app.api.v1.activation_router import (
     router as activation_router,  # noqa: E402
 )
-from app.api.v1.tenant.dashboard_router import (
+from app.api.v1.dashboard_router import (
     router as dashboard_router,  # noqa: E402
 )
-from app.api.v1.tenant.file_router import router as file_router  # noqa: E402
-from app.api.v1.tenant.member import router as member_router  # noqa: E402
-from app.api.v1.tenant.project import router as project_router  # noqa: E402
-from app.api.v1.tenant.mapping_router import router as mapping_router  # noqa: E402
-from app.api.v1.tenant.ontology_router import router as ontology_router  # noqa: E402
-from app.api.v1.tenant.part_router import router as part_router  # noqa: E402
-from app.api.v1.tenant.supplier_router import (  # noqa: E402
+from app.api.v1.file_router import router as file_router  # noqa: E402
+from app.api.v1.member import router as member_router  # noqa: E402
+from app.api.v1.project import router as project_router  # noqa: E402
+from app.api.v1.mapping_router import router as mapping_router  # noqa: E402
+from app.api.v1.ontology_router import router as ontology_router  # noqa: E402
+from app.api.v1.part_router import router as part_router  # noqa: E402
+from app.api.v1.supplier_router import (  # noqa: E402
     router as supplier_router,
 )
-from app.api.v1.tenant.synthesis_router import router as synthesis_router  # noqa: E402
+from app.api.v1.synthesis_router import router as synthesis_router  # noqa: E402
 from app.core.auth_context import AuthContext  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.database import (
@@ -45,9 +46,10 @@ from app.core.database import (
 from app.core.exceptions import register_exception_handlers  # noqa: E402
 from app.infrastructure.password_hasher import hash_password  # noqa: E402
 from app.infrastructure.token_provider import token_provider  # noqa: E402
-from app.modules.auth import repository as auth_repo  # noqa: E402
-from app.modules.auth.constants import MembershipRole  # noqa: E402
-from app.modules.auth.provisioning import provision_tenant  # noqa: E402
+from app.modules.organization import repository as org_repo  # noqa: E402
+from app.modules.organization.constants import MembershipRole  # noqa: E402
+from app.modules.organization.provisioning import provision_tenant  # noqa: E402
+from app.modules.user import repository as user_repo  # noqa: E402
 
 app = FastAPI(
     title=settings.app_name,
@@ -75,12 +77,14 @@ _PUBLIC_PATHS = frozenset(
         "/api/v1/auth/login",
         "/api/v1/auth/refresh",
         "/api/v1/auth/check-email",
-        "/api/v1/auth/check-slug",
-        "/api/v1/auth/plans",
-        "/api/v1/auth/site",
+        "/api/v1/auth/send-verification",
+        "/api/v1/auth/verify-email",
         "/api/v1/auth/invitations/verify",
         "/api/v1/auth/accept-invitation",
-        "/api/v1/auth/organizations",  # SCOPED 토큰 사용 — 미들웨어 uuid.UUID("") 예외 방지
+        "/api/v1/auth/site",
+        "/api/v1/auth/plans",
+        "/api/v1/auth/check-slug",
+        "/api/v1/organizations",  # SCOPED 토큰 사용 — 미들웨어 uuid.UUID("") 예외 방지
         "/docs",
         "/openapi.json",
         "/redoc",
@@ -150,6 +154,7 @@ app.add_middleware(
 
 app.include_router(activation_router)
 app.include_router(auth_router)
+app.include_router(org_router)
 app.include_router(user_router)
 app.include_router(dashboard_router)
 app.include_router(mapping_router)
@@ -179,18 +184,18 @@ def _bootstrap_test_account_once() -> None:
 
     db = SessionLocal()
     try:
-        user = auth_repo.get_user_by_email(db, test_email)
+        user = user_repo.get_user_by_email(db, test_email)
         if user is None:
-            user = auth_repo.create_user(
+            user = user_repo.create_user(
                 db,
                 email=test_email,
                 hashed_password=hash_password(test_password),
                 full_name=test_full_name,
             )
 
-        org = auth_repo.get_org_by_slug(db, test_org_slug)
+        org = org_repo.get_org_by_slug(db, test_org_slug)
         if org is None:
-            org = auth_repo.create_organization(
+            org = org_repo.create_organization(
                 db,
                 slug=test_org_slug,
                 name=test_org_name,
@@ -199,9 +204,9 @@ def _bootstrap_test_account_once() -> None:
             )
             provision_tenant(db, org.id)
 
-        memberships = auth_repo.get_user_memberships(db, user.id)
+        memberships = org_repo.get_user_memberships(db, user.id)
         if not any(m.org_id == org.id for m in memberships):
-            auth_repo.create_membership(
+            org_repo.create_membership(
                 db,
                 user_id=user.id,
                 org_id=org.id,

@@ -1,9 +1,9 @@
 from fastapi import APIRouter
 
-from app.api.v1.tenant.member.member_invitation_router import (
+from app.api.v1.member.member_invitation_router import (
     router as invitation_router,
 )
-from app.api.v1.tenant.member.member_router import router as member_router
+from app.api.v1.member.member_router import router as member_router
 
 router = APIRouter()
 

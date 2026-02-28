@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.background_worker import guarded
 from app.core.exceptions import AppError
-from app.modules.auth.provisioning import org_id_to_schema
+from app.modules.organization.provisioning import org_id_to_schema
 from app.modules.drawing import repository as repo
 from app.modules.drawing.constants import ALLOWED_DRAWING_EXTENSIONS, ConversionStatus
 from app.modules.drawing.models import Drawing

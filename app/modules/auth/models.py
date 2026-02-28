@@ -1,129 +1,31 @@
-"""인증/조직 ORM 모델 (public 스키마)."""
+"""인증 ORM 모델 (public 스키마) — RefreshToken, Invitation, EmailVerification."""
+
+from __future__ import annotations
 
 import hashlib
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
+
 from app.core.config import settings
 from app.core.database import Base, generate_uuid7
-from sqlalchemy import Integer
-from app.modules.auth.constants import EmailVerificationStatus, InvitationStatus, MembershipRole
+from app.modules.auth.constants import EmailVerificationStatus, InvitationStatus
+from app.modules.organization.constants import MembershipRole
+
+if TYPE_CHECKING:
+    from app.modules.organization.models import Organization
+    from app.modules.user.models import User
 
 
 def _hash_token(token: str) -> str:
     """초대 토큰을 SHA-256 해시로 변환. DB에는 해시만 저장."""
     return hashlib.sha256(token.encode()).hexdigest()
-
-
-class User(Base):
-    __tablename__ = "users"
-
-    __table_args__ = (
-        # 이메일 유일성
-        UniqueConstraint("email", name="uq_users_email"),
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=generate_uuid7
-    )
-    email: Mapped[str] = mapped_column(String(255), nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    full_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
-
-    memberships: Mapped[list["Membership"]] = relationship(
-        "Membership", back_populates="user"
-    )
-
-
-class Organization(Base):
-    __tablename__ = "organizations"
-
-    __table_args__ = (
-        # 슬러그 유일성
-        UniqueConstraint("slug", name="uq_organizations_slug"),
-        # 소유자별 조직 조회 최적화
-        Index("ix_organizations_owner_id", "owner_id"),
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=generate_uuid7
-    )
-    slug: Mapped[str] = mapped_column(String(50), nullable=False)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    owner_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
-    )
-    industry: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    team_size: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    plan_type: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="STARTER"
-    )
-    onboarded_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
-
-    memberships: Mapped[list["Membership"]] = relationship(
-        "Membership", back_populates="organization"
-    )
-
-
-class Membership(Base):
-    __tablename__ = "memberships"
-
-    __table_args__ = (
-        # 유저-조직 조합 유일성 (user_id가 선두 → 유저별 멤버십 조회 커버)
-        UniqueConstraint("user_id", "org_id", name="uq_memberships_user_id_org_id"),
-        # 조직별 멤버 목록 조회 최적화
-        Index("ix_memberships_org_id", "org_id"),
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=generate_uuid7
-    )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    org_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("organizations.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    role: Mapped[str] = mapped_column(String(20), nullable=False, default=MembershipRole.MEMBER)
-    job_role: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
-    user: Mapped["User"] = relationship("User", back_populates="memberships")
-    organization: Mapped["Organization"] = relationship(
-        "Organization", back_populates="memberships"
-    )
 
 
 class RefreshToken(Base):

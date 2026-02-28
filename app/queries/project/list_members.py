@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
 from app.core.transactional import transactional
-from app.modules.auth.models import User
+from app.modules.user.models import User
 from app.modules.project import repository as project_repo
 from app.modules.project import service as project_service
 from app.modules.project.schemas import ProjectMemberListResponse, ProjectMemberSummary

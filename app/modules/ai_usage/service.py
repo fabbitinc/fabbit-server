@@ -13,8 +13,8 @@ from app.core.database import SessionLocal
 from app.core.exceptions import AppError
 from app.infrastructure.ai_usage_logger import log_ai_usage
 from app.modules.ai_usage.models import AiUsageLog
-from app.modules.auth.constants import PLAN_LIMITS, PlanType
-from app.modules.auth.models import Organization
+from app.modules.organization.constants import PLAN_LIMITS, PlanType
+from app.modules.organization.models import Organization
 
 
 def check_bom_quota(org_id: uuid.UUID) -> None:

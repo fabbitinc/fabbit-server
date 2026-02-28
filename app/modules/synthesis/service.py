@@ -7,7 +7,7 @@ from app.core.auth_context import AuthContext
 from app.core.background_worker import guarded
 from app.core.database import generate_uuid7
 from app.core.exceptions import AppError
-from app.modules.auth.provisioning import org_id_to_schema
+from app.modules.organization.provisioning import org_id_to_schema
 from app.modules.ontology.schemas import MappingResult
 from app.modules.synthesis import repository as repo
 from app.modules.synthesis.mapper import to_job_response

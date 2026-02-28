@@ -15,8 +15,8 @@ from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.exceptions import AppError
 from app.infrastructure.token_provider import token_provider
-from app.modules.auth.constants import MembershipRole
-from app.modules.auth.provisioning import org_id_to_schema
+from app.modules.organization.constants import MembershipRole
+from app.modules.organization.provisioning import org_id_to_schema
 
 # Swagger UI에 Authorize 버튼 표시 (실제 검증은 AuthMiddleware에서 처리)
 bearer_scheme = HTTPBearer(auto_error=False)

@@ -14,6 +14,7 @@
 11. handlers.py: service import 금지 (순환 의존 방지)
 12. service.py: use_case import 금지 (역방향 의존)
 13. repository.py: age_client 외 infrastructure import 금지 (URL 변환 등은 mapper로)
+14. service.py: transactional 데코레이터 import 금지 (트랜잭션은 use_case가 관리)
 """
 
 import ast
@@ -306,10 +307,28 @@ def check_queries_no_service_import():
 # --- 규칙 9: api/ — service 직접 import 금지 (queries/use_cases 경유) ---
 
 
+def _imports_service_name(node: ast.AST) -> bool:
+    """ImportFrom 노드에서 import된 이름 중 'service'가 있는지 확인.
+
+    `from app.modules.X import service` 패턴을 잡기 위한 헬퍼.
+    """
+    if isinstance(node, ast.ImportFrom) and node.names:
+        return any(alias.name == "service" for alias in node.names)
+    return False
+
+
 def check_api_no_direct_service_import():
-    """api/ 레이어에서 modules의 service를 직접 import하면 위반."""
+    """api/ 레이어에서 modules의 service를 직접 import하면 위반.
+
+    두 가지 패턴 모두 감지:
+    - `from app.modules.X.service import something`
+    - `from app.modules.X import service`
+    """
     violations = []
-    pattern = re.compile(r"app\.modules\.\w+\.service")
+    # 패턴 1: from app.modules.X.service import ...
+    dotted_pattern = re.compile(r"app\.modules\.\w+\.service")
+    # 패턴 2: from app.modules.X import service
+    parent_pattern = re.compile(r"^app\.modules\.\w+$")
 
     for py_file in _API_DIR.rglob("*.py"):
         source = py_file.read_text()
@@ -317,7 +336,13 @@ def check_api_no_direct_service_import():
 
         for node in ast.walk(tree):
             for mod_name in _get_import_module_names(node):
-                if pattern.search(mod_name):
+                if dotted_pattern.search(mod_name):
+                    rel = py_file.relative_to(_ROOT)
+                    violations.append(
+                        f"  {rel}:{node.lineno} — "
+                        f"api에서 service 직접 import 금지 (queries/use_cases를 사용하세요)"
+                    )
+                elif parent_pattern.match(mod_name) and _imports_service_name(node):
                     rel = py_file.relative_to(_ROOT)
                     violations.append(
                         f"  {rel}:{node.lineno} — "
@@ -440,4 +465,31 @@ def check_repository_no_non_db_infra_import():
     assert not violations, (
         "repository.py → non-DB infrastructure import 위반:\n"
         + "\n".join(violations)
+    )
+
+
+# --- 규칙 14: service.py — transactional 데코레이터 import 금지 ---
+
+
+def check_service_no_transactional_import():
+    """service.py에서 transactional을 import하면 위반 (트랜잭션은 use_case가 관리)."""
+    violations = []
+    pattern = re.compile(r"app\.core\.transactional")
+
+    for svc_file in _MODULES_DIR.glob("*/service.py"):
+        source = svc_file.read_text()
+        tree = ast.parse(source, filename=str(svc_file))
+
+        for node in ast.walk(tree):
+            for mod_name in _get_import_module_names(node):
+                if pattern.search(mod_name):
+                    rel = svc_file.relative_to(_ROOT)
+                    violations.append(
+                        f"  {rel}:{node.lineno} — "
+                        f"service에서 transactional import 금지 "
+                        f"(트랜잭션 경계는 use_case가 관리)"
+                    )
+
+    assert not violations, (
+        "service.py → transactional import 위반:\n" + "\n".join(violations)
     )

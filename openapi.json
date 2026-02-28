@@ -112,6 +112,7 @@
                     "auth"
                 ],
                 "summary": "Get Site",
+                "description": "\uc11c\ube0c\ub3c4\uba54\uc778 \uc6cc\ud06c\uc2a4\ud398\uc774\uc2a4 \uc815\ubcf4 \uc870\ud68c.",
                 "operationId": "get_site_api_v1_auth_site_get",
                 "responses": {
                     "200": {
@@ -133,6 +134,7 @@
                     "auth"
                 ],
                 "summary": "Get Plans",
+                "description": "\ud50c\ub79c \ubaa9\ub85d \ubc0f \uc81c\ud55c\uac12 \uc870\ud68c.",
                 "operationId": "get_plans_api_v1_auth_plans_get",
                 "responses": {
                     "200": {
@@ -152,55 +154,13 @@
                 }
             }
         },
-        "/api/v1/auth/check-email": {
-            "get": {
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Check Email",
-                "operationId": "check_email_api_v1_auth_check_email_get",
-                "parameters": [
-                    {
-                        "name": "email",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "email",
-                            "title": "Email"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CheckEmailResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/auth/check-slug": {
             "get": {
                 "tags": [
                     "auth"
                 ],
                 "summary": "Check Slug",
+                "description": "slug \uc0ac\uc6a9 \uac00\ub2a5 \uc5ec\ubd80 \ud655\uc778.",
                 "operationId": "check_slug_api_v1_auth_check_slug_get",
                 "parameters": [
                     {
@@ -222,6 +182,50 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/CheckSlugResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/check-email": {
+            "get": {
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Check Email",
+                "description": "\uc774\uba54\uc77c \uc911\ubcf5 \ud655\uc778.",
+                "operationId": "check_email_api_v1_auth_check_email_get",
+                "parameters": [
+                    {
+                        "name": "email",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "email",
+                            "title": "Email"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CheckEmailResponse"
                                 }
                             }
                         }
@@ -329,6 +333,7 @@
                     "auth"
                 ],
                 "summary": "Register",
+                "description": "\ud68c\uc6d0\uac00\uc785.\n\n\uc774\uba54\uc77c \uc778\uc99d \uc644\ub8cc \ud6c4 \uc720\uc800 + \uc870\uc9c1 \uc0dd\uc131 + \ud1a0\ud070 \ubc1c\uae09.",
                 "operationId": "register_api_v1_auth_register_post",
                 "requestBody": {
                     "content": {
@@ -420,6 +425,7 @@
                     "auth"
                 ],
                 "summary": "Refresh",
+                "description": "\ud1a0\ud070 \uac31\uc2e0.",
                 "operationId": "refresh_api_v1_auth_refresh_post",
                 "requestBody": {
                     "content": {
@@ -461,6 +467,7 @@
                     "auth"
                 ],
                 "summary": "Logout",
+                "description": "\ub85c\uadf8\uc544\uc6c3.",
                 "operationId": "logout_api_v1_auth_logout_post",
                 "requestBody": {
                     "content": {
@@ -475,152 +482,6 @@
                 "responses": {
                     "204": {
                         "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/auth/onboarding/complete": {
-            "post": {
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Complete Onboarding",
-                "operationId": "complete_onboarding_api_v1_auth_onboarding_complete_post",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/OrganizationResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/auth/me": {
-            "get": {
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Me",
-                "operationId": "me_api_v1_auth_me_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MeResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/auth/organizations": {
-            "post": {
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Create Organization",
-                "description": "\uae30\uac00\uc785\uc790 \uc870\uc9c1 \uc0dd\uc131.\n\n\ub8e8\ud2b8 \ub3c4\uba54\uc778 \ub85c\uadf8\uc778\uc73c\ub85c \ubc1c\uae09\ubc1b\uc740 **\uc2a4\ucf54\ud504 \ud1a0\ud070**(scope=create_org)\uc774 \ud544\uc694\ud569\ub2c8\ub2e4.\n\uc870\uc9c1 \uc0dd\uc131 + ADMIN \uba64\ubc84\uc2ed + \ud14c\ub10c\ud2b8 \ud504\ub85c\ube44\uc800\ub2dd \ud6c4 \uc815\uc0c1 access+refresh \ud1a0\ud070\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
-                "operationId": "create_organization_api_v1_auth_organizations_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CreateOrganizationRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CreateOrganizationResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/auth/switch-org": {
-            "post": {
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Switch Org",
-                "description": "\uc870\uc9c1 \uc804\ud658.\n\n\ud604\uc7ac \uc778\uc99d\ub41c \uc720\uc800\uac00 \ub2e4\ub978 \uc6cc\ud06c\uc2a4\ud398\uc774\uc2a4\ub85c \uc804\ud658\ud569\ub2c8\ub2e4.\n\ub300\uc0c1 \uc6cc\ud06c\uc2a4\ud398\uc774\uc2a4\uc758 \uba64\ubc84\uc2ed\uc744 \ud655\uc778\ud55c \ud6c4 \uc0c8 access+refresh \ud1a0\ud070\uc744 \ubc1c\uae09\ud569\ub2c8\ub2e4.",
-                "operationId": "switch_org_api_v1_auth_switch_org_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SwitchOrgRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LoginResponse"
-                                }
-                            }
-                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -727,7 +588,153 @@
                 }
             }
         },
+        "/api/v1/organizations": {
+            "post": {
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Create Organization",
+                "description": "\uae30\uac00\uc785\uc790 \uc870\uc9c1 \uc0dd\uc131.\n\n\ub8e8\ud2b8 \ub3c4\uba54\uc778 \ub85c\uadf8\uc778\uc73c\ub85c \ubc1c\uae09\ubc1b\uc740 **\uc2a4\ucf54\ud504 \ud1a0\ud070**(scope=create_org)\uc774 \ud544\uc694\ud569\ub2c8\ub2e4.\n\uc870\uc9c1 \uc0dd\uc131 + ADMIN \uba64\ubc84\uc2ed + \ud14c\ub10c\ud2b8 \ud504\ub85c\ube44\uc800\ub2dd \ud6c4 \uc815\uc0c1 access+refresh \ud1a0\ud070\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "create_organization_api_v1_organizations_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateOrganizationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CreateOrganizationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/organizations/switch": {
+            "post": {
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Switch Org",
+                "description": "\uc870\uc9c1 \uc804\ud658.\n\n\ud604\uc7ac \uc778\uc99d\ub41c \uc720\uc800\uac00 \ub2e4\ub978 \uc6cc\ud06c\uc2a4\ud398\uc774\uc2a4\ub85c \uc804\ud658\ud569\ub2c8\ub2e4.\n\ub300\uc0c1 \uc6cc\ud06c\uc2a4\ud398\uc774\uc2a4\uc758 \uba64\ubc84\uc2ed\uc744 \ud655\uc778\ud55c \ud6c4 \uc0c8 access+refresh \ud1a0\ud070\uc744 \ubc1c\uae09\ud569\ub2c8\ub2e4.",
+                "operationId": "switch_org_api_v1_organizations_switch_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SwitchOrgRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LoginResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/organizations/onboarding/complete": {
+            "post": {
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Complete Onboarding",
+                "description": "\uc628\ubcf4\ub529 \uc644\ub8cc \ucc98\ub9ac.",
+                "operationId": "complete_onboarding_api_v1_organizations_onboarding_complete_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OrganizationResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
         "/api/v1/users/me": {
+            "get": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Me",
+                "description": "\ub0b4 \uc815\ubcf4 \uc870\ud68c.\n\n\ud604\uc7ac \uc778\uc99d\ub41c \uc0ac\uc6a9\uc790\uc758 \uae30\ubcf8 \uc815\ubcf4\uc640 \uc18c\uc18d \uc870\uc9c1 \ubaa9\ub85d\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "me_api_v1_users_me_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MeResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            },
             "patch": {
                 "tags": [
                     "users"

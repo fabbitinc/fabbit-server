@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.modules.auth.models import User
+from app.modules.user.models import User
 from app.modules.file.models import File
 from app.modules.issue.constants import IssueState, IssueType
 from app.modules.issue.models import (

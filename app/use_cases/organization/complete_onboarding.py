@@ -1,19 +1,17 @@
-"""조직에서 멤버 제거."""
-
-import uuid
+"""온보딩 완료 처리."""
 
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
 from app.core.transactional import transactional
 from app.modules.organization import service as org_service
+from app.modules.organization.schemas import OrganizationResponse
 
 
 @transactional()
-def remove_member(
+def complete_onboarding(
     db: Session,
     auth: AuthContext,
-    user_id: uuid.UUID,
-) -> None:
-    """조직에서 멤버 제거."""
-    org_service.remove_member(db, auth, user_id)
+) -> OrganizationResponse:
+    """조직 온보딩 완료."""
+    return org_service.complete_onboarding(db, auth)

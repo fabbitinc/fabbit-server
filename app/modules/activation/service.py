@@ -24,7 +24,7 @@ from app.modules.activation.schemas import (
     QueryResponse,
     StartersResponse,
 )
-from app.modules.auth.provisioning import org_id_to_schema
+from app.modules.organization.provisioning import org_id_to_schema
 from app.modules.ontology.base_ontology import MANUFACTURING_ONTOLOGY
 
 

@@ -8,6 +8,8 @@ from app.modules.auth import repository as repo
 from app.modules.auth.constants import InvitationStatus
 from app.modules.auth.models import _hash_token
 from app.modules.auth.schemas import VerifyInvitationResponse
+from app.modules.organization import repository as org_repo
+from app.modules.user import repository as user_repo
 
 
 @transactional(read_only=True)
@@ -27,9 +29,9 @@ def verify_invitation(
     if invitation.is_expired:
         raise AppError(message="만료된 초대입니다", code="VALIDATION_ERROR")
 
-    org = repo.get_org_by_id(db, invitation.org_id)
-    inviter = repo.get_user_by_id(db, invitation.invited_by)
-    existing_user = repo.get_user_by_email(db, invitation.email)
+    org = org_repo.get_org_by_id(db, invitation.org_id)
+    inviter = user_repo.get_user_by_id(db, invitation.invited_by)
+    existing_user = user_repo.get_user_by_email(db, invitation.email)
 
     return VerifyInvitationResponse(
         email=invitation.email,

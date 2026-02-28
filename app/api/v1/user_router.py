@@ -5,14 +5,28 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_auth
 from app.core.auth_context import AuthContext
-from app.modules.auth.user_schemas import (
+from app.modules.organization.schemas import MeResponse
+from app.modules.user.schemas import (
     ChangePasswordRequest,
     UpdateProfileRequest,
     UpdateProfileResponse,
 )
+from app.queries import user as user_queries
 from app.use_cases import user as user_commands
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
+
+
+@router.get("/me", response_model=MeResponse)
+def me(
+    db: Session = Depends(get_db),
+    auth: AuthContext = Depends(require_auth),
+):
+    """내 정보 조회.
+
+    현재 인증된 사용자의 기본 정보와 소속 조직 목록을 반환합니다.
+    """
+    return user_queries.get_me(db, auth)
 
 
 @router.patch("/me", response_model=UpdateProfileResponse)

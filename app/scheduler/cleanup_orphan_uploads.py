@@ -7,8 +7,8 @@ from loguru import logger
 from sqlalchemy import select
 
 from app.core.database import SessionLocal
-from app.modules.auth.models import Organization
-from app.modules.auth.provisioning import org_id_to_schema
+from app.modules.organization.models import Organization
+from app.modules.organization.provisioning import org_id_to_schema
 from app.modules.file import service as file_service
 
 
