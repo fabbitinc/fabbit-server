@@ -5,7 +5,7 @@ import uuid
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_auth
+from app.api.deps import get_db, require_admin
 from app.core.auth_context import AuthContext
 from app.modules.auth.schemas import (
     CreateInvitationRequest,
@@ -15,14 +15,14 @@ from app.modules.auth.schemas import (
 from app.queries import invitation as invitation_queries
 from app.use_cases import invitation as invitation_commands
 
-router = APIRouter(prefix="/api/v1/invitations", tags=["invitations"])
+router = APIRouter(prefix="/api/v1/members/invitations", tags=["members"])
 
 
 @router.post("", response_model=InvitationResponse, status_code=201)
 def create_invitation(
     req: CreateInvitationRequest,
     db: Session = Depends(get_db),
-    auth: AuthContext = Depends(require_auth),
+    auth: AuthContext = Depends(require_admin),
 ):
     """이메일로 조직 초대 발송.
 
@@ -36,7 +36,7 @@ def create_invitation(
 @router.get("", response_model=InvitationListResponse)
 def list_invitations(
     db: Session = Depends(get_db),
-    auth: AuthContext = Depends(require_auth),
+    auth: AuthContext = Depends(require_admin),
 ):
     """조직의 초대 목록 조회.
 
@@ -50,7 +50,7 @@ def list_invitations(
 def cancel_invitation(
     invitation_id: uuid.UUID,
     db: Session = Depends(get_db),
-    auth: AuthContext = Depends(require_auth),
+    auth: AuthContext = Depends(require_admin),
 ):
     """초대 취소.
 

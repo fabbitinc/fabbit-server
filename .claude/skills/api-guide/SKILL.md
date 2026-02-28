@@ -36,8 +36,17 @@ api/v1/tenant/project/
 ## 의존성 주입 (Depends)
 
 - `require_auth` → `AuthContext` (인증 필수)
+- `require_admin` → `AuthContext` (ADMIN 역할 필수, `require_auth` 체이닝)
+- `require_role(MembershipRole.XXX)` → `AuthContext` (특정 역할 필수, 팩토리 함수)
 - `get_tenant_db` → `Session` (테넌트 격리 세션, 인증 포함)
 - `get_db` → `Session` (public 스키마, 인증 불필요)
+
+### RBAC (역할 기반 접근 제어)
+
+**정적 권한(역할 기반)은 router `Depends`에서 처리** — service/queries에서 `if auth.role != ...` 검증 금지.
+
+- **비즈니스 규칙**(자기 자신 제거 불가, 소유자 보호 등 DB 조회 필요한 검증)은 service에 유지
+- `require_admin`은 `app/api/deps.py`에 정의 — `require_role(MembershipRole.ADMIN)`의 alias
 
 ## Docstring (OpenAPI 문서)
 
@@ -57,3 +66,24 @@ api/v1/tenant/project/
 - 쓰기: use_case를 호출 (service 직접 호출 금지)
 - 요청/응답은 Pydantic schema로 타입 지정 (`response_model=`)
 - 로깅 최소화 — HTTP 요청/응답은 OTel이 처리
+
+## 코드 예시
+
+```python
+from app.queries import member as member_queries      # 읽기
+from app.use_cases import member as member_commands    # 쓰기
+
+router = APIRouter(prefix="/api/v1/members", tags=["members"])
+
+# 읽기 — require_auth + queries
+@router.get("", response_model=MemberListResponse)
+def list_members(auth: AuthContext = Depends(require_auth), db: Session = Depends(get_tenant_db)):
+    """조직 멤버 목록 조회."""
+    return member_queries.list_org_members(db, auth)
+
+# 쓰기 — require_admin + use_case
+@router.delete("/{user_id}", status_code=204)
+def remove_member(user_id: uuid.UUID, db: Session = Depends(get_db), auth: AuthContext = Depends(require_admin)):
+    """조직에서 멤버 제거."""
+    member_commands.remove_member(db, auth, user_id)
+```

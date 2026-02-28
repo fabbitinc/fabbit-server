@@ -239,6 +239,90 @@
                 }
             }
         },
+        "/api/v1/auth/send-verification": {
+            "post": {
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Send Verification",
+                "description": "\uc774\uba54\uc77c \uc778\uc99d\ucf54\ub4dc \ubc1c\uc1a1.\n\n\uc785\ub825\ub41c \uc774\uba54\uc77c\ub85c 6\uc790\ub9ac \uc778\uc99d\ucf54\ub4dc\ub97c \ubc1c\uc1a1\ud569\ub2c8\ub2e4.\n- \uc774\ubbf8 \uac00\uc785\ub41c \uc774\uba54\uc77c\uc774\uba74 \uc5d0\ub7ec\n- 60\ucd08 \uc774\ub0b4 \uc7ac\ubc1c\uc1a1 \uc694\uccad \uc2dc \ucfe8\ub2e4\uc6b4 \uc5d0\ub7ec\n- \uc778\uc99d\ucf54\ub4dc \uc720\ud6a8\uc2dc\uac04: 10\ubd84",
+                "operationId": "send_verification_api_v1_auth_send_verification_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SendVerificationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SendVerificationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/verify-email": {
+            "post": {
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Verify Email",
+                "description": "\uc778\uc99d\ucf54\ub4dc \uac80\uc99d.\n\n\uc774\uba54\uc77c\ub85c \ubc1b\uc740 6\uc790\ub9ac \ucf54\ub4dc\ub97c \uac80\uc99d\ud569\ub2c8\ub2e4.\n- \uc131\uacf5 \uc2dc verification_token\uc744 \ubc18\ud658 (\ud68c\uc6d0\uac00\uc785 \uc2dc \ud544\uc694)\n- 5\ud68c \uc2e4\ud328 \uc2dc \ucf54\ub4dc \ubb34\ud6a8\ud654 (\uc7ac\ubc1c\uc1a1 \ud544\uc694)",
+                "operationId": "verify_email_api_v1_auth_verify_email_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/VerifyEmailRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VerifyEmailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/register": {
             "post": {
                 "tags": [
@@ -1002,6 +1086,162 @@
                         "HTTPBearer": []
                     }
                 ]
+            }
+        },
+        "/api/v1/members/{user_id}": {
+            "delete": {
+                "tags": [
+                    "members"
+                ],
+                "summary": "Remove Member",
+                "description": "\uc870\uc9c1\uc5d0\uc11c \uba64\ubc84 \uc81c\uac70.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \uc81c\uac70\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\uc870\uc9c1 \uc18c\uc720\uc790\uc640 \uc790\uae30 \uc790\uc2e0\uc740 \uc81c\uac70\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.",
+                "operationId": "remove_member_api_v1_members__user_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "User Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/members/invitations": {
+            "get": {
+                "tags": [
+                    "members"
+                ],
+                "summary": "List Invitations",
+                "description": "\uc870\uc9c1\uc758 \ucd08\ub300 \ubaa9\ub85d \uc870\ud68c.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \uc870\ud68c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\ubaa8\ub4e0 \uc0c1\ud0dc(PENDING, ACCEPTED, CANCELLED)\uc758 \ucd08\ub300\ub97c \ucd5c\uc2e0\uc21c\uc73c\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "list_invitations_api_v1_members_invitations_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InvitationListResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "members"
+                ],
+                "summary": "Create Invitation",
+                "description": "\uc774\uba54\uc77c\ub85c \uc870\uc9c1 \ucd08\ub300 \ubc1c\uc1a1.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \ucd08\ub300\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\uc774\ubbf8 PENDING \uc0c1\ud0dc\uc778 \ucd08\ub300\uac00 \uc788\uc73c\uba74 \uc911\ubcf5 \uc5d0\ub7ec\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uc774\uc804\uc5d0 \ucde8\uc18c\ub41c \ucd08\ub300\uac00 \uc788\uc73c\uba74 \uc0ad\uc81c \ud6c4 \uc0c8\ub85c \uc0dd\uc131\ud569\ub2c8\ub2e4.",
+                "operationId": "create_invitation_api_v1_members_invitations_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateInvitationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InvitationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/members/invitations/{invitation_id}": {
+            "delete": {
+                "tags": [
+                    "members"
+                ],
+                "summary": "Cancel Invitation",
+                "description": "\ucd08\ub300 \ucde8\uc18c.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \ucde8\uc18c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\nPENDING \uc0c1\ud0dc\uc778 \ucd08\ub300\ub9cc \ucde8\uc18c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+                "operationId": "cancel_invitation_api_v1_members_invitations__invitation_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "invitation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Invitation Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/suppliers": {
@@ -2255,196 +2495,13 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/parts": {
-            "post": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Link Parts To Project",
-                "description": "\ud504\ub85c\uc81d\ud2b8\uc5d0 \ubd80\ud488 \ubc30\uce58 \uc5f0\uacb0.\n\n\uc774\ubbf8 \uc5f0\uacb0\ub41c \ubd80\ud488\uc740 \ubb34\uc2dc\ub418\uba70, \uc2e0\uaddc \uc5f0\uacb0 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.",
-                "operationId": "link_parts_to_project_api_v1_projects__project_id__parts_post",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/app__modules__project__schemas__LinkPartsRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LinkPartsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Unlink Parts From Project",
-                "description": "\ud504\ub85c\uc81d\ud2b8\uc5d0\uc11c \ubd80\ud488 \ubc30\uce58 \ud574\uc81c.",
-                "operationId": "unlink_parts_from_project_api_v1_projects__project_id__parts_delete",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/app__modules__project__schemas__LinkPartsRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "get": {
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Get Project Parts",
-                "description": "\ud504\ub85c\uc81d\ud2b8 \uc18c\uc18d \ubd80\ud488 \ubaa9\ub85d \uc870\ud68c.",
-                "operationId": "get_project_parts_api_v1_projects__project_id__parts_get",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "offset",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "description": "\uc2dc\uc791 \uc704\uce58",
-                            "default": 0,
-                            "title": "Offset"
-                        },
-                        "description": "\uc2dc\uc791 \uc704\uce58"
-                    },
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "maximum": 100,
-                            "minimum": 1,
-                            "description": "\uc870\ud68c \uac74\uc218",
-                            "default": 20,
-                            "title": "Limit"
-                        },
-                        "description": "\uc870\ud68c \uac74\uc218"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProjectPartsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/projects/{project_id}/activities": {
             "get": {
                 "tags": [
                     "projects"
                 ],
                 "summary": "Get Project Activities",
-                "description": "\ud504\ub85c\uc81d\ud2b8 \ud65c\ub3d9 \ud53c\ub4dc \uc870\ud68c.\n\n\ud504\ub85c\uc81d\ud2b8 \ubc94\uc704\uc758 \ud65c\ub3d9 \uc774\ub825\uc744 \ucd5c\uc2e0\uc21c\uc73c\ub85c \uc870\ud68c\ud569\ub2c8\ub2e4.\ncursor\uc5d0 \uc774\uc804 \uc751\ub2f5\uc758 `next_cursor` \uac12\uc744 \uc804\ub2ec\ud558\uba74 \ub2e4\uc74c \ud398\uc774\uc9c0\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n`next_cursor`\uac00 null\uc774\uba74 \ub9c8\uc9c0\ub9c9 \ud398\uc774\uc9c0\uc785\ub2c8\ub2e4.",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \ud65c\ub3d9 \ud53c\ub4dc \uc870\ud68c.\n\n\ud504\ub85c\uc81d\ud2b8 \ubc94\uc704\uc758 \ud65c\ub3d9 \uc774\ub825\uc744 \ucd5c\uc2e0\uc21c\uc73c\ub85c \uc870\ud68c\ud569\ub2c8\ub2e4.\ncursor\uc5d0 \uc774\uc804 \uc751\ub2f5\uc758 `next_cursor` \uac12\uc744 \uc804\ub2ec\ud558\uba74 \ub2e4\uc74c \ud398\uc774\uc9c0\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n`next_cursor`\uac00 null\uc774\uba74 \ub9c8\uc9c0\ub9c9 \ud398\uc774\uc9c0\uc785\ub2c8\ub2e4.\nscope\ub97c \uc9c0\uc815\ud558\uba74 \ud574\ub2f9 \ub3c4\uba54\uc778 \uc601\uc5ed\uc758 \ud65c\ub3d9\ub9cc \ud544\ud130\ub9c1\ud569\ub2c8\ub2e4 (\ubcf5\uc218 \uc9c0\uc815 \uac00\ub2a5).",
                 "operationId": "get_project_activities_api_v1_projects__project_id__activities_get",
                 "security": [
                     {
@@ -2494,6 +2551,27 @@
                             "title": "Limit"
                         },
                         "description": "\uc870\ud68c \uac74\uc218"
+                    },
+                    {
+                        "name": "scope",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ActivityScope"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "\ud65c\ub3d9 scope \ud544\ud130 (issue, cr, part, assignee, label, project)",
+                            "title": "Scope"
+                        },
+                        "description": "\ud65c\ub3d9 scope \ud544\ud130 (issue, cr, part, assignee, label, project)"
                     }
                 ],
                 "responses": {
@@ -2520,14 +2598,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/members": {
+        "/api/v1/projects/{project_id}/changes": {
             "get": {
                 "tags": [
-                    "projects"
+                    "changes"
                 ],
-                "summary": "List Project Members",
-                "description": "\ud504\ub85c\uc81d\ud2b8 \uba64\ubc84 \ubaa9\ub85d \uc870\ud68c.",
-                "operationId": "list_project_members_api_v1_projects__project_id__members_get",
+                "summary": "List Change Requests",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \ub0b4 \ubcc0\uacbd \uc694\uccad(CR) \ubaa9\ub85d \uc870\ud68c.\n\n`state`\ub85c \uc774\uc288 \uc0c1\ud0dc, `cr_state`\ub85c CR \uace0\uc720 \uc0c1\ud0dc\ub97c \ud544\ud130\ub9c1\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+                "operationId": "list_change_requests_api_v1_projects__project_id__changes_get",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -2543,6 +2621,87 @@
                             "format": "uuid",
                             "title": "Project Id"
                         }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "\uc81c\ubaa9 \uac80\uc0c9 (ILIKE)",
+                            "title": "Search"
+                        },
+                        "description": "\uc81c\ubaa9 \uac80\uc0c9 (ILIKE)"
+                    },
+                    {
+                        "name": "state",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "\uc774\uc288 \uc0c1\ud0dc \ud544\ud130 (OPEN|CLOSED)",
+                            "title": "State"
+                        },
+                        "description": "\uc774\uc288 \uc0c1\ud0dc \ud544\ud130 (OPEN|CLOSED)"
+                    },
+                    {
+                        "name": "cr_state",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "CR \uc0c1\ud0dc \ud544\ud130 (DRAFT|OPEN|MERGED|CLOSED)",
+                            "title": "Cr State"
+                        },
+                        "description": "CR \uc0c1\ud0dc \ud544\ud130 (DRAFT|OPEN|MERGED|CLOSED)"
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "\uc2dc\uc791 \uc704\uce58",
+                            "default": 0,
+                            "title": "Offset"
+                        },
+                        "description": "\uc2dc\uc791 \uc704\uce58"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "description": "\uc870\ud68c \uac74\uc218",
+                            "default": 20,
+                            "title": "Limit"
+                        },
+                        "description": "\uc870\ud68c \uac74\uc218"
                     }
                 ],
                 "responses": {
@@ -2551,7 +2710,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ProjectMemberListResponse"
+                                    "$ref": "#/components/schemas/ChangeRequestListResponse"
                                 }
                             }
                         }
@@ -2570,11 +2729,11 @@
             },
             "post": {
                 "tags": [
-                    "projects"
+                    "changes"
                 ],
-                "summary": "Add Project Members",
-                "description": "\ud504\ub85c\uc81d\ud2b8\uc5d0 \uba64\ubc84 \ubc30\uce58 \ucd94\uac00.\n\n\uc774\ubbf8 \ucd94\uac00\ub41c \uba64\ubc84\ub294 \ubb34\uc2dc\ub418\uba70, \uc2e0\uaddc \ucd94\uac00 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.",
-                "operationId": "add_project_members_api_v1_projects__project_id__members_post",
+                "summary": "Create Change Request",
+                "description": "\ubcc0\uacbd \uc694\uccad(Change Request) \uc0dd\uc131.\n\n\uc774\uc288 \ud14c\uc774\ube14\uc5d0 `type=CHANGE_REQUEST`\ub85c \uae30\ub85d\ub418\uba70,\n\ubcc0\uacbd \uc694\uccad \uace0\uc720 \uc0c1\ud0dc(`cr_state`)\ub294 **DRAFT**\ub85c \uc2dc\uc791\ud569\ub2c8\ub2e4.",
+                "operationId": "create_change_request_api_v1_projects__project_id__changes_post",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -2597,7 +2756,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ManageMembersRequest"
+                                "$ref": "#/components/schemas/CreateChangeRequestRequest"
                             }
                         }
                     }
@@ -2608,7 +2767,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ManageMembersResponse"
+                                    "$ref": "#/components/schemas/ChangeRequestResponse"
                                 }
                             }
                         }
@@ -2624,14 +2783,16 @@
                         }
                     }
                 }
-            },
-            "delete": {
+            }
+        },
+        "/api/v1/projects/{project_id}/changes/{issue_id}": {
+            "get": {
                 "tags": [
-                    "projects"
+                    "changes"
                 ],
-                "summary": "Remove Project Members",
-                "description": "\ud504\ub85c\uc81d\ud2b8\uc5d0\uc11c \uba64\ubc84 \ubc30\uce58 \uc81c\uac70.",
-                "operationId": "remove_project_members_api_v1_projects__project_id__members_delete",
+                "summary": "Get Change Request",
+                "description": "\ubcc0\uacbd \uc694\uccad(CR) \uc0c1\uc138 \uc870\ud68c.\n\n\ub77c\ubca8, \ub2f4\ub2f9\uc790, \ub313\uae00 \uc218, \uc791\uc131\uc790 \uc774\ub984 \ub4f1 \uc0c1\uc138 \uc815\ubcf4\ub97c \ud3ec\ud568\ud569\ub2c8\ub2e4.",
+                "operationId": "get_change_request_api_v1_projects__project_id__changes__issue_id__get",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -2647,6 +2808,252 @@
                             "format": "uuid",
                             "title": "Project Id"
                         }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChangeRequestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/changes/{issue_id}/open": {
+            "post": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Open Cr For Review",
+                "description": "\ubcc0\uacbd \uc694\uccad \uac80\ud1a0 \uc0c1\ud0dc \uc804\ud658.\n\nCR \uc0c1\ud0dc\ub97c **DRAFT \u2192 OPEN**\uc73c\ub85c \uc804\ud658\ud558\uc5ec \uac80\ud1a0\ub97c \uc694\uccad\ud569\ub2c8\ub2e4.",
+                "operationId": "open_cr_for_review_api_v1_projects__project_id__changes__issue_id__open_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChangeRequestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/changes/{issue_id}/merge": {
+            "post": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Merge Cr",
+                "description": "\ubcc0\uacbd \uc694\uccad \ubc18\uc601.\n\nCR \uc0c1\ud0dc\ub97c **MERGED**\ub85c \uc804\ud658\ud558\uace0, \uc5f0\uacb0\ub41c \uc5f4\ub9b0 \uc774\uc288\ub97c \uc790\ub3d9\uc73c\ub85c \ub2eb\uc2b5\ub2c8\ub2e4.\n`merged_at`, `merged_by`\uac00 \uc790\ub3d9 \uae30\ub85d\ub429\ub2c8\ub2e4.",
+                "operationId": "merge_cr_api_v1_projects__project_id__changes__issue_id__merge_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChangeRequestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/changes/{issue_id}/close": {
+            "post": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Close Cr",
+                "description": "\ubcc0\uacbd \uc694\uccad \ub2eb\uae30.\n\nCR \uc0c1\ud0dc\ub97c **CLOSED**\ub85c \uc804\ud658\ud569\ub2c8\ub2e4.\n\uc774\uc288 \uc0c1\ud0dc(`state`)\ub3c4 \ud568\uaed8 CLOSED\ub85c \ubcc0\uacbd\ub429\ub2c8\ub2e4.",
+                "operationId": "close_cr_api_v1_projects__project_id__changes__issue_id__close_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChangeRequestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/changes/{issue_id}/issues": {
+            "post": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Link Issues",
+                "description": "\ubcc0\uacbd \uc694\uccad\uc5d0 \uc774\uc288 \ubc30\uce58 \uc5f0\uacb0.\n\n\uc774\ubbf8 \uc5f0\uacb0\ub41c \uc774\uc288\ub294 \ubb34\uc2dc\ud558\uace0, \uc2e0\uaddc \uc5f0\uacb0 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uac01 \uc774\uc288\uc758 \uc874\uc7ac \uc5ec\ubd80\ub97c \uc0ac\uc804 \uac80\uc99d\ud569\ub2c8\ub2e4.",
+                "operationId": "link_issues_api_v1_projects__project_id__changes__issue_id__issues_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
+                        }
                     }
                 ],
                 "requestBody": {
@@ -2654,44 +3061,10 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ManageMembersRequest"
+                                "$ref": "#/components/schemas/LinkIssuesRequest"
                             }
                         }
                     }
-                },
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/files/upload": {
-            "post": {
-                "tags": [
-                    "files"
-                ],
-                "summary": "Create File",
-                "operationId": "create_file_api_v1_files_upload_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CreateFileRequest"
-                            }
-                        }
-                    },
-                    "required": true
                 },
                 "responses": {
                     "200": {
@@ -2699,152 +3072,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/CreateFileResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/files/upload/batch": {
-            "post": {
-                "tags": [
-                    "files"
-                ],
-                "summary": "Batch Create Files",
-                "operationId": "batch_create_files_api_v1_files_upload_batch_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/BatchCreateFileRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/BatchCreateFileResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/files/upload/batch/complete": {
-            "post": {
-                "tags": [
-                    "files"
-                ],
-                "summary": "Batch Complete Files",
-                "operationId": "batch_complete_files_api_v1_files_upload_batch_complete_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/BatchCompleteRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/BatchCompleteResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/files/upload/{file_id}/complete": {
-            "post": {
-                "tags": [
-                    "files"
-                ],
-                "summary": "Complete File",
-                "operationId": "complete_file_api_v1_files_upload__file_id__complete_post",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "file_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "File Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/FileCompleteResponse"
+                                    "$ref": "#/components/schemas/LinkIssuesResponse"
                                 }
                             }
                         }
@@ -2860,88 +3088,14 @@
                         }
                     }
                 }
-            }
-        },
-        "/api/v1/invitations": {
-            "get": {
-                "tags": [
-                    "invitations"
-                ],
-                "summary": "List Invitations",
-                "description": "\uc870\uc9c1\uc758 \ucd08\ub300 \ubaa9\ub85d \uc870\ud68c.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \uc870\ud68c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\ubaa8\ub4e0 \uc0c1\ud0dc(PENDING, ACCEPTED, CANCELLED)\uc758 \ucd08\ub300\ub97c \ucd5c\uc2e0\uc21c\uc73c\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.",
-                "operationId": "list_invitations_api_v1_invitations_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/InvitationListResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
             },
-            "post": {
-                "tags": [
-                    "invitations"
-                ],
-                "summary": "Create Invitation",
-                "description": "\uc774\uba54\uc77c\ub85c \uc870\uc9c1 \ucd08\ub300 \ubc1c\uc1a1.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \ucd08\ub300\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\uc774\ubbf8 PENDING \uc0c1\ud0dc\uc778 \ucd08\ub300\uac00 \uc788\uc73c\uba74 \uc911\ubcf5 \uc5d0\ub7ec\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uc774\uc804\uc5d0 \ucde8\uc18c\ub41c \ucd08\ub300\uac00 \uc788\uc73c\uba74 \uc0ad\uc81c \ud6c4 \uc0c8\ub85c \uc0dd\uc131\ud569\ub2c8\ub2e4.",
-                "operationId": "create_invitation_api_v1_invitations_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CreateInvitationRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "201": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/InvitationResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/invitations/{invitation_id}": {
             "delete": {
                 "tags": [
-                    "invitations"
+                    "changes"
                 ],
-                "summary": "Cancel Invitation",
-                "description": "\ucd08\ub300 \ucde8\uc18c.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \ucde8\uc18c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\nPENDING \uc0c1\ud0dc\uc778 \ucd08\ub300\ub9cc \ucde8\uc18c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
-                "operationId": "cancel_invitation_api_v1_invitations__invitation_id__delete",
+                "summary": "Unlink Issues",
+                "description": "\ubcc0\uacbd \uc694\uccad\uc5d0\uc11c \uc774\uc288 \ubc30\uce58 \ud574\uc81c.\n\n\uc694\uccad\ub41c \uc774\uc288 ID\uc5d0 \ud574\ub2f9\ud558\ub294 \uc5f0\uacb0\uc744 \ud574\uc81c\ud569\ub2c8\ub2e4.",
+                "operationId": "unlink_issues_api_v1_projects__project_id__changes__issue_id__issues_delete",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -2949,16 +3103,36 @@
                 ],
                 "parameters": [
                     {
-                        "name": "invitation_id",
+                        "name": "project_id",
                         "in": "path",
                         "required": true,
                         "schema": {
                             "type": "string",
                             "format": "uuid",
-                            "title": "Invitation Id"
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Issue Id"
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LinkIssuesRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "204": {
                         "description": "Successful Response"
@@ -3145,193 +3319,6 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/change-requests": {
-            "get": {
-                "tags": [
-                    "issues"
-                ],
-                "summary": "List Change Requests",
-                "description": "\ud504\ub85c\uc81d\ud2b8 \ub0b4 \ubcc0\uacbd \uc694\uccad(CR) \ubaa9\ub85d \uc870\ud68c.\n\n`state`\ub85c \uc774\uc288 \uc0c1\ud0dc, `cr_state`\ub85c CR \uace0\uc720 \uc0c1\ud0dc\ub97c \ud544\ud130\ub9c1\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
-                "operationId": "list_change_requests_api_v1_projects__project_id__change_requests_get",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "search",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "\uc81c\ubaa9 \uac80\uc0c9 (ILIKE)",
-                            "title": "Search"
-                        },
-                        "description": "\uc81c\ubaa9 \uac80\uc0c9 (ILIKE)"
-                    },
-                    {
-                        "name": "state",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "\uc774\uc288 \uc0c1\ud0dc \ud544\ud130 (OPEN|CLOSED)",
-                            "title": "State"
-                        },
-                        "description": "\uc774\uc288 \uc0c1\ud0dc \ud544\ud130 (OPEN|CLOSED)"
-                    },
-                    {
-                        "name": "cr_state",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "CR \uc0c1\ud0dc \ud544\ud130 (DRAFT|OPEN|MERGED|CLOSED)",
-                            "title": "Cr State"
-                        },
-                        "description": "CR \uc0c1\ud0dc \ud544\ud130 (DRAFT|OPEN|MERGED|CLOSED)"
-                    },
-                    {
-                        "name": "offset",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "description": "\uc2dc\uc791 \uc704\uce58",
-                            "default": 0,
-                            "title": "Offset"
-                        },
-                        "description": "\uc2dc\uc791 \uc704\uce58"
-                    },
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "maximum": 100,
-                            "minimum": 1,
-                            "description": "\uc870\ud68c \uac74\uc218",
-                            "default": 20,
-                            "title": "Limit"
-                        },
-                        "description": "\uc870\ud68c \uac74\uc218"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ChangeRequestListResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "tags": [
-                    "issues"
-                ],
-                "summary": "Create Change Request",
-                "description": "\ubcc0\uacbd \uc694\uccad(Change Request) \uc0dd\uc131.\n\n\uc774\uc288 \ud14c\uc774\ube14\uc5d0 `type=CHANGE_REQUEST`\ub85c \uae30\ub85d\ub418\uba70,\n\ubcc0\uacbd \uc694\uccad \uace0\uc720 \uc0c1\ud0dc(`cr_state`)\ub294 **DRAFT**\ub85c \uc2dc\uc791\ud569\ub2c8\ub2e4.",
-                "operationId": "create_change_request_api_v1_projects__project_id__change_requests_post",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CreateChangeRequestRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ChangeRequestResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/projects/{project_id}/issues/{issue_id}": {
             "get": {
                 "tags": [
@@ -3374,65 +3361,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/IssueResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects/{project_id}/change-requests/{issue_id}": {
-            "get": {
-                "tags": [
-                    "issues"
-                ],
-                "summary": "Get Change Request",
-                "description": "\ubcc0\uacbd \uc694\uccad(CR) \uc0c1\uc138 \uc870\ud68c.\n\n\ub77c\ubca8, \ub2f4\ub2f9\uc790, \ub313\uae00 \uc218, \uc791\uc131\uc790 \uc774\ub984 \ub4f1 \uc0c1\uc138 \uc815\ubcf4\ub97c \ud3ec\ud568\ud569\ub2c8\ub2e4.",
-                "operationId": "get_change_request_api_v1_projects__project_id__change_requests__issue_id__get",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "issue_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ChangeRequestResponse"
                                 }
                             }
                         }
@@ -3881,312 +3809,6 @@
                                 }
                             }
                         }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects/{project_id}/change-requests/{issue_id}/open": {
-            "post": {
-                "tags": [
-                    "issues"
-                ],
-                "summary": "Open Cr For Review",
-                "description": "\ubcc0\uacbd \uc694\uccad \uac80\ud1a0 \uc0c1\ud0dc \uc804\ud658.\n\nCR \uc0c1\ud0dc\ub97c **DRAFT \u2192 OPEN**\uc73c\ub85c \uc804\ud658\ud558\uc5ec \uac80\ud1a0\ub97c \uc694\uccad\ud569\ub2c8\ub2e4.",
-                "operationId": "open_cr_for_review_api_v1_projects__project_id__change_requests__issue_id__open_post",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "issue_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ChangeRequestResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects/{project_id}/change-requests/{issue_id}/merge": {
-            "post": {
-                "tags": [
-                    "issues"
-                ],
-                "summary": "Merge Cr",
-                "description": "\ubcc0\uacbd \uc694\uccad \ubc18\uc601.\n\nCR \uc0c1\ud0dc\ub97c **MERGED**\ub85c \uc804\ud658\ud558\uace0, \uc5f0\uacb0\ub41c \uc5f4\ub9b0 \uc774\uc288\ub97c \uc790\ub3d9\uc73c\ub85c \ub2eb\uc2b5\ub2c8\ub2e4.\n`merged_at`, `merged_by`\uac00 \uc790\ub3d9 \uae30\ub85d\ub429\ub2c8\ub2e4.",
-                "operationId": "merge_cr_api_v1_projects__project_id__change_requests__issue_id__merge_post",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "issue_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ChangeRequestResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects/{project_id}/change-requests/{issue_id}/close": {
-            "post": {
-                "tags": [
-                    "issues"
-                ],
-                "summary": "Close Cr",
-                "description": "\ubcc0\uacbd \uc694\uccad \ub2eb\uae30.\n\nCR \uc0c1\ud0dc\ub97c **CLOSED**\ub85c \uc804\ud658\ud569\ub2c8\ub2e4.\n\uc774\uc288 \uc0c1\ud0dc(`state`)\ub3c4 \ud568\uaed8 CLOSED\ub85c \ubcc0\uacbd\ub429\ub2c8\ub2e4.",
-                "operationId": "close_cr_api_v1_projects__project_id__change_requests__issue_id__close_post",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "issue_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ChangeRequestResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects/{project_id}/change-requests/{issue_id}/issues": {
-            "post": {
-                "tags": [
-                    "issues"
-                ],
-                "summary": "Link Issues",
-                "description": "\ubcc0\uacbd \uc694\uccad\uc5d0 \uc774\uc288 \ubc30\uce58 \uc5f0\uacb0.\n\n\uc774\ubbf8 \uc5f0\uacb0\ub41c \uc774\uc288\ub294 \ubb34\uc2dc\ud558\uace0, \uc2e0\uaddc \uc5f0\uacb0 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uac01 \uc774\uc288\uc758 \uc874\uc7ac \uc5ec\ubd80\ub97c \uc0ac\uc804 \uac80\uc99d\ud569\ub2c8\ub2e4.",
-                "operationId": "link_issues_api_v1_projects__project_id__change_requests__issue_id__issues_post",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "issue_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/LinkIssuesRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LinkIssuesResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "issues"
-                ],
-                "summary": "Unlink Issues",
-                "description": "\ubcc0\uacbd \uc694\uccad\uc5d0\uc11c \uc774\uc288 \ubc30\uce58 \ud574\uc81c.\n\n\uc694\uccad\ub41c \uc774\uc288 ID\uc5d0 \ud574\ub2f9\ud558\ub294 \uc5f0\uacb0\uc744 \ud574\uc81c\ud569\ub2c8\ub2e4.",
-                "operationId": "unlink_issues_api_v1_projects__project_id__change_requests__issue_id__issues_delete",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "issue_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/LinkIssuesRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
                     },
                     "422": {
                         "description": "Validation Error",
@@ -4828,6 +4450,531 @@
                 }
             }
         },
+        "/api/v1/projects/{project_id}/members": {
+            "get": {
+                "tags": [
+                    "project-members"
+                ],
+                "summary": "List Project Members",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \uba64\ubc84 \ubaa9\ub85d \uc870\ud68c.",
+                "operationId": "list_project_members_api_v1_projects__project_id__members_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectMemberListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "project-members"
+                ],
+                "summary": "Add Project Members",
+                "description": "\ud504\ub85c\uc81d\ud2b8\uc5d0 \uba64\ubc84 \ubc30\uce58 \ucd94\uac00.\n\n\uc774\ubbf8 \ucd94\uac00\ub41c \uba64\ubc84\ub294 \ubb34\uc2dc\ub418\uba70, \uc2e0\uaddc \ucd94\uac00 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "add_project_members_api_v1_projects__project_id__members_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ManageMembersRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ManageMembersResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "project-members"
+                ],
+                "summary": "Remove Project Members",
+                "description": "\ud504\ub85c\uc81d\ud2b8\uc5d0\uc11c \uba64\ubc84 \ubc30\uce58 \uc81c\uac70.",
+                "operationId": "remove_project_members_api_v1_projects__project_id__members_delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ManageMembersRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/parts": {
+            "post": {
+                "tags": [
+                    "project-parts"
+                ],
+                "summary": "Link Parts To Project",
+                "description": "\ud504\ub85c\uc81d\ud2b8\uc5d0 \ubd80\ud488 \ubc30\uce58 \uc5f0\uacb0.\n\n\uc774\ubbf8 \uc5f0\uacb0\ub41c \ubd80\ud488\uc740 \ubb34\uc2dc\ub418\uba70, \uc2e0\uaddc \uc5f0\uacb0 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "link_parts_to_project_api_v1_projects__project_id__parts_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/app__modules__project__schemas__LinkPartsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LinkPartsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "project-parts"
+                ],
+                "summary": "Unlink Parts From Project",
+                "description": "\ud504\ub85c\uc81d\ud2b8\uc5d0\uc11c \ubd80\ud488 \ubc30\uce58 \ud574\uc81c.",
+                "operationId": "unlink_parts_from_project_api_v1_projects__project_id__parts_delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/app__modules__project__schemas__LinkPartsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "project-parts"
+                ],
+                "summary": "Get Project Parts",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \uc18c\uc18d \ubd80\ud488 \ubaa9\ub85d \uc870\ud68c.",
+                "operationId": "get_project_parts_api_v1_projects__project_id__parts_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "\uc2dc\uc791 \uc704\uce58",
+                            "default": 0,
+                            "title": "Offset"
+                        },
+                        "description": "\uc2dc\uc791 \uc704\uce58"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "description": "\uc870\ud68c \uac74\uc218",
+                            "default": 20,
+                            "title": "Limit"
+                        },
+                        "description": "\uc870\ud68c \uac74\uc218"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectPartsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/files/upload": {
+            "post": {
+                "tags": [
+                    "files"
+                ],
+                "summary": "Create File",
+                "operationId": "create_file_api_v1_files_upload_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateFileRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CreateFileResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/files/upload/batch": {
+            "post": {
+                "tags": [
+                    "files"
+                ],
+                "summary": "Batch Create Files",
+                "operationId": "batch_create_files_api_v1_files_upload_batch_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BatchCreateFileRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BatchCreateFileResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/files/upload/batch/complete": {
+            "post": {
+                "tags": [
+                    "files"
+                ],
+                "summary": "Batch Complete Files",
+                "operationId": "batch_complete_files_api_v1_files_upload_batch_complete_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BatchCompleteRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BatchCompleteResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/files/upload/{file_id}/complete": {
+            "post": {
+                "tags": [
+                    "files"
+                ],
+                "summary": "Complete File",
+                "operationId": "complete_file_api_v1_files_upload__file_id__complete_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "file_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "File Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FileCompleteResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ontology/schema": {
             "get": {
                 "tags": [
@@ -5079,6 +5226,17 @@
                         "type": "string",
                         "title": "Action"
                     },
+                    "scope": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Scope"
+                    },
                     "actor_id": {
                         "type": "string",
                         "format": "uuid",
@@ -5128,6 +5286,19 @@
                     "created_at"
                 ],
                 "title": "ActivityResponse"
+            },
+            "ActivityScope": {
+                "type": "string",
+                "enum": [
+                    "issue",
+                    "cr",
+                    "part",
+                    "assignee",
+                    "label",
+                    "project"
+                ],
+                "title": "ActivityScope",
+                "description": "Activity scope \u2014 action\uc744 \ub3c4\uba54\uc778 \uc601\uc5ed\ubcc4\ub85c \uadf8\ub8f9\ud654."
             },
             "AssignUsersRequest": {
                 "properties": {
@@ -6748,7 +6919,7 @@
                 "properties": {
                     "action": {
                         "type": "string",
-                        "const": "issue_linked",
+                        "const": "cr_issue_linked",
                         "title": "Action"
                     },
                     "linked_issue_ids": {
@@ -7102,7 +7273,7 @@
                 "properties": {
                     "action": {
                         "type": "string",
-                        "const": "issue_unlinked",
+                        "const": "cr_issue_unlinked",
                         "title": "Action"
                     },
                     "unlinked_issue_ids": {
@@ -7230,7 +7401,7 @@
                 "properties": {
                     "action": {
                         "type": "string",
-                        "const": "labels_changed",
+                        "const": "label_changed",
                         "title": "Action"
                     },
                     "added": {
@@ -8909,10 +9080,17 @@
             },
             "RegisterRequest": {
                 "properties": {
-                    "email": {
+                    "verification_token": {
                         "type": "string",
-                        "format": "email",
-                        "title": "Email"
+                        "title": "Verification Token",
+                        "description": "\uc774\uba54\uc77c \uc778\uc99d \uc644\ub8cc \uc99d\ud45c"
+                    },
+                    "code": {
+                        "type": "string",
+                        "maxLength": 6,
+                        "minLength": 6,
+                        "title": "Code",
+                        "description": "\uc774\uba54\uc77c \uc778\uc99d\ucf54\ub4dc (\uc7ac\uac80\uc99d\uc6a9)"
                     },
                     "password": {
                         "type": "string",
@@ -9006,7 +9184,8 @@
                 },
                 "type": "object",
                 "required": [
-                    "email",
+                    "verification_token",
+                    "code",
                     "password",
                     "full_name",
                     "org_name"
@@ -9295,6 +9474,44 @@
                 "title": "ScopedLoginResponse",
                 "description": "slug \uc5c6\uc774 \ub85c\uadf8\uc778 \uc2dc \ubc18\ud658 \u2014 \uc870\uc9c1 \uc0dd\uc131 \uc804\uc6a9 \uc2a4\ucf54\ud504 \ud1a0\ud070."
             },
+            "SendVerificationRequest": {
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "title": "Email"
+                    },
+                    "turnstile_token": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Turnstile Token"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "email"
+                ],
+                "title": "SendVerificationRequest"
+            },
+            "SendVerificationResponse": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "title": "Message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "message"
+                ],
+                "title": "SendVerificationResponse"
+            },
             "SheetPreview": {
                 "properties": {
                     "sheet_name": {
@@ -9406,7 +9623,7 @@
                 "properties": {
                     "action": {
                         "type": "string",
-                        "const": "state_changed",
+                        "const": "issue_state_changed",
                         "title": "Action"
                     },
                     "from": {
@@ -9962,6 +10179,17 @@
                         "type": "string",
                         "title": "Action"
                     },
+                    "scope": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Scope"
+                    },
                     "actor_id": {
                         "type": "string",
                         "format": "uuid",
@@ -10413,6 +10641,45 @@
                 ],
                 "title": "ValidationIssue",
                 "description": "\ub9e4\ud551 \uac80\uc99d \uc774\uc288"
+            },
+            "VerifyEmailRequest": {
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "title": "Email"
+                    },
+                    "code": {
+                        "type": "string",
+                        "maxLength": 6,
+                        "minLength": 6,
+                        "title": "Code"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "email",
+                    "code"
+                ],
+                "title": "VerifyEmailRequest"
+            },
+            "VerifyEmailResponse": {
+                "properties": {
+                    "verification_token": {
+                        "type": "string",
+                        "title": "Verification Token"
+                    },
+                    "email": {
+                        "type": "string",
+                        "title": "Email"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "verification_token",
+                    "email"
+                ],
+                "title": "VerifyEmailResponse"
             },
             "VerifyInvitationResponse": {
                 "properties": {

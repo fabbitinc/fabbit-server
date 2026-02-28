@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.exceptions import AppError
 from app.infrastructure.token_provider import token_provider
+from app.modules.auth.constants import MembershipRole
 from app.modules.auth.provisioning import org_id_to_schema
 
 # Swagger UI에 Authorize 버튼 표시 (실제 검증은 AuthMiddleware에서 처리)
@@ -47,6 +48,42 @@ def require_auth(
     if ctx is None:
         raise AppError(message="인증이 필요합니다", code="UNAUTHENTICATED")
     return ctx
+
+
+def require_role(role: MembershipRole):
+    """역할 기반 접근 제어 의존성 팩토리.
+
+    사용: auth: AuthContext = Depends(require_role(MembershipRole.ADMIN))
+    """
+    def _check(auth: AuthContext = Depends(require_auth)) -> AuthContext:
+        if auth.role != role:
+            raise AppError(
+                message=f"{role.value} 권한이 필요합니다", code="FORBIDDEN"
+            )
+        return auth
+    return _check
+
+
+require_admin = require_role(MembershipRole.ADMIN)
+"""ADMIN 역할 필수 의존성. 사용: auth: AuthContext = Depends(require_admin)"""
+
+
+# TODO: DB 기반 Permission RBAC 도입 시 활성화
+# def require_permission(permission: str):
+#     """세분화된 권한 기반 접근 제어 의존성 팩토리.
+#
+#     DB에서 역할-권한 매핑을 조회하여 검증한다.
+#     사용: auth: AuthContext = Depends(require_permission("members.remove"))
+#     """
+#     def _check(
+#         auth: AuthContext = Depends(require_auth),
+#         db: Session = Depends(get_db),
+#     ) -> AuthContext:
+#         # permissions = permission_repo.get_role_permissions(db, auth.org_id, auth.role)
+#         # if permission not in permissions:
+#         #     raise AppError(message="권한이 없습니다", code="FORBIDDEN")
+#         return auth
+#     return _check
 
 
 def require_create_org_token(

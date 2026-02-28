@@ -595,6 +595,32 @@ def switch_org(
     )
 
 
+# ── 멤버 ──
+
+
+def remove_member(
+    db: Session, auth: AuthContext, user_id: _uuid.UUID
+) -> None:
+    """조직에서 멤버 제거.
+
+    @transactional 없음 — use_case에서 트랜잭션 관리.
+    RBAC(ADMIN 검증)은 router Depends(require_admin)에서 처리.
+    """
+    if auth.user_id == user_id:
+        raise AppError(message="자신을 제거할 수 없습니다", code="VALIDATION_ERROR")
+
+    # 소유자 보호
+    org = repo.get_org_by_id(db, auth.org_id)
+    if org and org.owner_id == user_id:
+        raise AppError(message="조직 소유자는 제거할 수 없습니다", code="FORBIDDEN")
+
+    membership = repo.get_membership(db, user_id, auth.org_id)
+    if not membership:
+        raise AppError(message="해당 멤버를 찾을 수 없습니다", code="NOT_FOUND")
+
+    repo.delete_membership(db, auth.org_id, user_id)
+
+
 # ── 초대 ──
 
 
@@ -629,11 +655,10 @@ def _send_invitation_email(
 def create_invitation(
     db: Session, auth: AuthContext, req: CreateInvitationRequest
 ) -> InvitationResponse:
-    """초대 생성 및 이메일 발송."""
-    # ADMIN 검증
-    if auth.role != MembershipRole.ADMIN:
-        raise AppError(message="관리자만 초대할 수 있습니다", code="FORBIDDEN")
+    """초대 생성 및 이메일 발송.
 
+    RBAC(ADMIN 검증)은 router Depends(require_admin)에서 처리.
+    """
     # 역할 검증
     try:
         MembershipRole(req.role)
@@ -678,10 +703,10 @@ def create_invitation(
 def cancel_invitation(
     db: Session, auth: AuthContext, invitation_id: _uuid.UUID
 ) -> None:
-    """초대 취소."""
-    if auth.role != MembershipRole.ADMIN:
-        raise AppError(message="관리자만 취소할 수 있습니다", code="FORBIDDEN")
+    """초대 취소.
 
+    RBAC(ADMIN 검증)은 router Depends(require_admin)에서 처리.
+    """
     invitation = repo.get_invitation_by_id(db, invitation_id)
     if not invitation or invitation.org_id != auth.org_id:
         raise AppError(message="초대를 찾을 수 없습니다", code="NOT_FOUND")

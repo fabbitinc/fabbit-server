@@ -219,6 +219,17 @@ def get_membership(
     ).first()
 
 
+def delete_membership(db: Session, org_id: uuid.UUID, user_id: uuid.UUID) -> None:
+    """조직에서 멤버 제거."""
+    db.execute(
+        delete(Membership).where(
+            Membership.org_id == org_id,
+            Membership.user_id == user_id,
+        )
+    )
+    db.flush()
+
+
 # ── EmailVerification ──
 
 

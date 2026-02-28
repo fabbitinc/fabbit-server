@@ -22,3 +22,8 @@
 - 모델 필드 직접 대입 금지 — 도메인 메서드 호출 (`entity.mark_uploaded()`)
 - 모델 팩토리 메서드가 있으면 직접 생성(`Model(field=...)`) 대신 팩토리 사용
 - 프론트 응답용 schema 변환(URL 생성 등)은 해당 도메인 service가 제공 — use_case가 infrastructure에 직접 의존하지 않도록 감싸기
+
+## 권한 검증 경계
+
+- **RBAC(역할 기반)**: router `Depends(require_admin)` 등에서 처리 → service에서 `if auth.role != ...` 금지
+- **비즈니스 규칙**: service에서 처리 (자기 자신 제거 불가, 소유자 보호, 리소스 소유 확인 등 DB 조회 필요한 검증)
