@@ -19,6 +19,7 @@ def get_project_parts(
     auth: AuthContext,
     project_id: uuid.UUID,
     *,
+    search: str | None = None,
     offset: int = 0,
     limit: int = 20,
 ) -> ProjectPartsResponse:
@@ -34,6 +35,9 @@ def get_project_parts(
         .join(ProjectPart, ProjectPart.part_id == Part.id)
         .filter(ProjectPart.project_id == project_id)
     )
+    if search:
+        pattern = f"%{search}%"
+        query = query.filter(Part.part_number.ilike(pattern) | Part.name.ilike(pattern))
     total = query.count()
     parts = query.order_by(Part.part_number).offset(offset).limit(limit).all()
 

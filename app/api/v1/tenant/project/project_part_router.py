@@ -46,10 +46,13 @@ def unlink_parts_from_project(
 @router.get("", response_model=ProjectPartsResponse)
 def get_project_parts(
     project_id: uuid.UUID,
+    search: str | None = Query(None, description="품번 또는 품명 검색 (ILIKE)"),
     offset: int = Query(0, ge=0, description="시작 위치"),
     limit: int = Query(20, ge=1, le=100, description="조회 건수"),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """프로젝트 소속 부품 목록 조회."""
-    return project_queries.get_project_parts(db, auth, project_id, offset=offset, limit=limit)
+    return project_queries.get_project_parts(
+        db, auth, project_id, search=search, offset=offset, limit=limit
+    )

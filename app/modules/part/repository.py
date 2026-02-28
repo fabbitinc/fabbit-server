@@ -14,11 +14,11 @@ from app.infrastructure.age_client import execute_cypher_raw
 from app.modules.drawing.models import Drawing
 from app.modules.ontology.cypher_utils import escape_cypher_value
 from app.modules.part.models import (
+    _STANDARD_ATTRS,
     BomLink,
     Part,
     PartRevision,
     PartSupplier,
-    _STANDARD_ATTRS,
 )
 from app.modules.project.models import ProjectPart
 from app.modules.supplier.models import Supplier
@@ -101,9 +101,8 @@ def list_parts_paginated(
     # 필터 조건 조립
     conditions = []
     if search:
-        conditions.append(
-            Part.part_number.ilike(f"%{search}%") | Part.name.ilike(f"%{search}%")
-        )
+        pattern = f"%{search}%"
+        conditions.append(Part.part_number.ilike(pattern) | Part.name.ilike(pattern))
     if category:
         conditions.append(Part.category == category)
     if lifecycle_state:

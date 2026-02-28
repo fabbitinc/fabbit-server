@@ -727,6 +727,93 @@
                 }
             }
         },
+        "/api/v1/users/me": {
+            "patch": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update Profile",
+                "description": "\ub0b4 \ud504\ub85c\ud544 \uc218\uc815.\n\n\uc804\ub2ec\ub41c \ud544\ub4dc\ub9cc \uc5c5\ub370\uc774\ud2b8\ud569\ub2c8\ub2e4 (partial update).\n- **full_name**: \uc774\ub984 \ubcc0\uacbd (1~100\uc790)",
+                "operationId": "update_profile_api_v1_users_me_patch",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateProfileRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UpdateProfileResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/users/me/password": {
+            "put": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Change Password",
+                "description": "\ube44\ubc00\ubc88\ud638 \ubcc0\uacbd.\n\n\ud604\uc7ac \ube44\ubc00\ubc88\ud638\ub97c \uac80\uc99d\ud55c \ud6c4 \uc0c8 \ube44\ubc00\ubc88\ud638\ub85c \ubcc0\uacbd\ud569\ub2c8\ub2e4.\n- **current_password**: \ud604\uc7ac \ube44\ubc00\ubc88\ud638\n- **new_password**: \uc0c8 \ube44\ubc00\ubc88\ud638 (8~128\uc790)",
+                "operationId": "change_password_api_v1_users_me_password_put",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangePasswordRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
         "/api/v1/dashboard/stats": {
             "get": {
                 "tags": [
@@ -3379,13 +3466,13 @@
             }
         },
         "/api/v1/projects/{project_id}/issues/{issue_id}/assignees": {
-            "post": {
+            "put": {
                 "tags": [
                     "issues"
                 ],
-                "summary": "Assign Users",
-                "description": "\uc774\uc288 \ub2f4\ub2f9\uc790 \ubc30\uce58 \ud560\ub2f9.\n\n\uc774\ubbf8 \ud560\ub2f9\ub41c \uc0ac\uc6a9\uc790\ub294 \ubb34\uc2dc\ud558\uace0, \uc2e0\uaddc \ud560\ub2f9 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.",
-                "operationId": "assign_users_api_v1_projects__project_id__issues__issue_id__assignees_post",
+                "summary": "Sync Assignees",
+                "description": "\uc774\uc288 \ub2f4\ub2f9\uc790 \ub3d9\uae30\ud654.\n\n\uc804\ub2ec\ub41c `user_ids`\ub97c \uc774\uc288\uc758 \ucd5c\uc885 \ub2f4\ub2f9\uc790 \ubaa9\ub85d\uc73c\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\uae30\uc874 \ub2f4\ub2f9\uc790\uc640 diff\ub97c \ube44\uad50\ud558\uc5ec \ucd94\uac00/\uc81c\uac70\ub97c \uc790\ub3d9 \ucc98\ub9ac\ud569\ub2c8\ub2e4.\n\ube48 \ubaa9\ub85d \uc804\ub2ec \uc2dc \ubaa8\ub4e0 \ub2f4\ub2f9\uc790\uac00 \ud574\uc81c\ub429\ub2c8\ub2e4.",
+                "operationId": "sync_assignees_api_v1_projects__project_id__issues__issue_id__assignees_put",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -3418,7 +3505,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/AssignUsersRequest"
+                                "$ref": "#/components/schemas/SyncAssigneesRequest"
                             }
                         }
                     }
@@ -3429,70 +3516,10 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/AssignUsersResponse"
+                                    "$ref": "#/components/schemas/SyncAssigneesResponse"
                                 }
                             }
                         }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "issues"
-                ],
-                "summary": "Unassign Users",
-                "description": "\uc774\uc288 \ub2f4\ub2f9\uc790 \ubc30\uce58 \ud574\uc81c.\n\n\uc694\uccad\ub41c \uc0ac\uc6a9\uc790 ID\uc5d0 \ud574\ub2f9\ud558\ub294 \ub2f4\ub2f9\uc790\ub97c \ud574\uc81c\ud569\ub2c8\ub2e4.",
-                "operationId": "unassign_users_api_v1_projects__project_id__issues__issue_id__assignees_delete",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "issue_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/AssignUsersRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
                     },
                     "422": {
                         "description": "Validation Error",
@@ -3577,13 +3604,13 @@
             }
         },
         "/api/v1/projects/{project_id}/issues/{issue_id}/parts": {
-            "post": {
+            "put": {
                 "tags": [
                     "issues"
                 ],
-                "summary": "Link Parts",
-                "description": "\uc774\uc288\uc5d0 \ubd80\ud488 \ubc30\uce58 \uc5f0\uacb0.\n\n\uc774\ubbf8 \uc5f0\uacb0\ub41c \ubd80\ud488\uc740 \ubb34\uc2dc\ud558\uace0, \uc2e0\uaddc \uc5f0\uacb0 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uac01 \ubd80\ud488\uc758 \uc874\uc7ac \uc5ec\ubd80\ub97c \uc0ac\uc804 \uac80\uc99d\ud569\ub2c8\ub2e4.",
-                "operationId": "link_parts_api_v1_projects__project_id__issues__issue_id__parts_post",
+                "summary": "Sync Parts",
+                "description": "\uc774\uc288 \ubd80\ud488 \ub3d9\uae30\ud654.\n\n\uc804\ub2ec\ub41c `part_ids`\ub97c \uc774\uc288\uc758 \ucd5c\uc885 \ubd80\ud488 \ubaa9\ub85d\uc73c\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\uae30\uc874 \ubd80\ud488\uacfc diff\ub97c \ube44\uad50\ud558\uc5ec \ucd94\uac00/\uc81c\uac70\ub97c \uc790\ub3d9 \ucc98\ub9ac\ud569\ub2c8\ub2e4.\n\ube48 \ubaa9\ub85d \uc804\ub2ec \uc2dc \ubaa8\ub4e0 \ubd80\ud488\uc774 \ud574\uc81c\ub429\ub2c8\ub2e4.",
+                "operationId": "sync_parts_api_v1_projects__project_id__issues__issue_id__parts_put",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -3616,7 +3643,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/app__modules__issue__schemas__LinkPartsRequest"
+                                "$ref": "#/components/schemas/SyncPartsRequest"
                             }
                         }
                     }
@@ -3627,70 +3654,10 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/LinkPartsResponse"
+                                    "$ref": "#/components/schemas/SyncPartsResponse"
                                 }
                             }
                         }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "issues"
-                ],
-                "summary": "Unlink Parts",
-                "description": "\uc774\uc288\uc5d0\uc11c \ubd80\ud488 \ubc30\uce58 \ud574\uc81c.\n\n\uc694\uccad\ub41c \ubd80\ud488 ID\uc5d0 \ud574\ub2f9\ud558\ub294 \uc5f0\uacb0\uc744 \ud574\uc81c\ud569\ub2c8\ub2e4.",
-                "operationId": "unlink_parts_api_v1_projects__project_id__issues__issue_id__parts_delete",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "issue_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/app__modules__issue__schemas__LinkPartsRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
                     },
                     "422": {
                         "description": "Validation Error",
@@ -4636,7 +4603,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/app__modules__project__schemas__LinkPartsRequest"
+                                "$ref": "#/components/schemas/LinkPartsRequest"
                             }
                         }
                     }
@@ -4693,7 +4660,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/app__modules__project__schemas__LinkPartsRequest"
+                                "$ref": "#/components/schemas/LinkPartsRequest"
                             }
                         }
                     }
@@ -4736,6 +4703,24 @@
                             "format": "uuid",
                             "title": "Project Id"
                         }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "\ud488\ubc88 \ub610\ub294 \ud488\uba85 \uac80\uc0c9 (ILIKE)",
+                            "title": "Search"
+                        },
+                        "description": "\ud488\ubc88 \ub610\ub294 \ud488\uba85 \uac80\uc0c9 (ILIKE)"
                     },
                     {
                         "name": "offset",
@@ -5298,85 +5283,7 @@
                     "project"
                 ],
                 "title": "ActivityScope",
-                "description": "Activity scope \u2014 action\uc744 \ub3c4\uba54\uc778 \uc601\uc5ed\ubcc4\ub85c \uadf8\ub8f9\ud654."
-            },
-            "AssignUsersRequest": {
-                "properties": {
-                    "user_ids": {
-                        "items": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "type": "array",
-                        "minItems": 1,
-                        "title": "User Ids",
-                        "description": "\ud560\ub2f9\ud560 \uc0ac\uc6a9\uc790 ID \ubaa9\ub85d"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "user_ids"
-                ],
-                "title": "AssignUsersRequest"
-            },
-            "AssignUsersResponse": {
-                "properties": {
-                    "assigned_count": {
-                        "type": "integer",
-                        "title": "Assigned Count"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "assigned_count"
-                ],
-                "title": "AssignUsersResponse"
-            },
-            "AssigneeAddedDetail": {
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "const": "assignee_added",
-                        "title": "Action"
-                    },
-                    "user_ids": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "User Ids"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "action",
-                    "user_ids"
-                ],
-                "title": "AssigneeAddedDetail",
-                "description": "\ub2f4\ub2f9\uc790 \ubc30\uc815."
-            },
-            "AssigneeRemovedDetail": {
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "const": "assignee_removed",
-                        "title": "Action"
-                    },
-                    "user_ids": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "User Ids"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "action",
-                    "user_ids"
-                ],
-                "title": "AssigneeRemovedDetail",
-                "description": "\ub2f4\ub2f9\uc790 \ud574\uc81c."
+                "description": "Activity scope \u2014 API query param \ud0c0\uc785 \uac80\uc99d\uc6a9."
             },
             "AssigneeSummary": {
                 "properties": {
@@ -5397,6 +5304,37 @@
                 ],
                 "title": "AssigneeSummary",
                 "description": "\ub2f4\ub2f9\uc790 \uc694\uc57d (\uc544\ubc14\ud0c0 \ud45c\uc2dc\uc6a9)."
+            },
+            "AssigneesChangedDetail": {
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "const": "assignee_changed",
+                        "title": "Action"
+                    },
+                    "added": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Added"
+                    },
+                    "removed": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Removed"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "action",
+                    "added",
+                    "removed"
+                ],
+                "title": "AssigneesChangedDetail",
+                "description": "\ub2f4\ub2f9\uc790 \ubcc0\uacbd (\ucd94\uac00/\uc81c\uac70)."
             },
             "BatchCompleteFailure": {
                 "properties": {
@@ -5774,6 +5712,26 @@
                 ],
                 "title": "CRStateChangedDetail",
                 "description": "CR \uc0c1\ud0dc \ubcc0\uacbd (DRAFT \u2192 OPEN \u2192 MERGED/CLOSED)."
+            },
+            "ChangePasswordRequest": {
+                "properties": {
+                    "current_password": {
+                        "type": "string",
+                        "title": "Current Password"
+                    },
+                    "new_password": {
+                        "type": "string",
+                        "maxLength": 128,
+                        "minLength": 8,
+                        "title": "New Password"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "current_password",
+                    "new_password"
+                ],
+                "title": "ChangePasswordRequest"
             },
             "ChangeRequestListResponse": {
                 "properties": {
@@ -7502,6 +7460,23 @@
                 ],
                 "title": "LinkIssuesResponse"
             },
+            "LinkPartsRequest": {
+                "properties": {
+                    "part_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Part Ids"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "part_ids"
+                ],
+                "title": "LinkPartsRequest"
+            },
             "LinkPartsResponse": {
                 "properties": {
                     "linked_count": {
@@ -8236,7 +8211,7 @@
                     "part_ids"
                 ],
                 "title": "PartAddedDetail",
-                "description": "\ubd80\ud488 \uc5f0\uacb0."
+                "description": "\ubd80\ud488 \uc5f0\uacb0 \u2014 \ud504\ub85c\uc81d\ud2b8 \uc2a4\ucf54\ud504."
             },
             "PartBadge": {
                 "properties": {
@@ -8559,7 +8534,7 @@
                     "part_ids"
                 ],
                 "title": "PartRemovedDetail",
-                "description": "\ubd80\ud488 \ud574\uc81c."
+                "description": "\ubd80\ud488 \ud574\uc81c \u2014 \ud504\ub85c\uc81d\ud2b8 \uc2a4\ucf54\ud504."
             },
             "PartStats": {
                 "properties": {
@@ -8652,6 +8627,37 @@
                 ],
                 "title": "PartSummary",
                 "description": "Part \ubaa9\ub85d \uc544\uc774\ud15c"
+            },
+            "PartsChangedDetail": {
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "const": "part_changed",
+                        "title": "Action"
+                    },
+                    "added": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Added"
+                    },
+                    "removed": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Removed"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "action",
+                    "added",
+                    "removed"
+                ],
+                "title": "PartsChangedDetail",
+                "description": "\ubd80\ud488 \ubcc0\uacbd (\ucd94\uac00/\uc81c\uac70) \u2014 \uc774\uc288 \uc2a4\ucf54\ud504."
             },
             "PlanResponse": {
                 "properties": {
@@ -9734,6 +9740,39 @@
                 ],
                 "title": "SwitchOrgRequest"
             },
+            "SyncAssigneesRequest": {
+                "properties": {
+                    "user_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "User Ids",
+                        "description": "\ub3d9\uae30\ud654\ud560 \ub2f4\ub2f9\uc790 ID \ubaa9\ub85d (\ube48 \ubaa9\ub85d = \ubaa8\ub4e0 \ub2f4\ub2f9\uc790 \ud574\uc81c)"
+                    }
+                },
+                "type": "object",
+                "title": "SyncAssigneesRequest"
+            },
+            "SyncAssigneesResponse": {
+                "properties": {
+                    "added_count": {
+                        "type": "integer",
+                        "title": "Added Count"
+                    },
+                    "removed_count": {
+                        "type": "integer",
+                        "title": "Removed Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "added_count",
+                    "removed_count"
+                ],
+                "title": "SyncAssigneesResponse"
+            },
             "SyncLabelsRequest": {
                 "properties": {
                     "label_ids": {
@@ -9766,6 +9805,39 @@
                     "removed_count"
                 ],
                 "title": "SyncLabelsResponse"
+            },
+            "SyncPartsRequest": {
+                "properties": {
+                    "part_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Part Ids",
+                        "description": "\ub3d9\uae30\ud654\ud560 \ubd80\ud488 ID \ubaa9\ub85d (\ube48 \ubaa9\ub85d = \ubaa8\ub4e0 \ubd80\ud488 \ud574\uc81c)"
+                    }
+                },
+                "type": "object",
+                "title": "SyncPartsRequest"
+            },
+            "SyncPartsResponse": {
+                "properties": {
+                    "added_count": {
+                        "type": "integer",
+                        "title": "Added Count"
+                    },
+                    "removed_count": {
+                        "type": "integer",
+                        "title": "Removed Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "added_count",
+                    "removed_count"
+                ],
+                "title": "SyncPartsResponse"
             },
             "SynthesisBatchFailure": {
                 "properties": {
@@ -10204,19 +10276,13 @@
                                 "$ref": "#/components/schemas/CRStateChangedDetail"
                             },
                             {
-                                "$ref": "#/components/schemas/AssigneeAddedDetail"
-                            },
-                            {
-                                "$ref": "#/components/schemas/AssigneeRemovedDetail"
+                                "$ref": "#/components/schemas/AssigneesChangedDetail"
                             },
                             {
                                 "$ref": "#/components/schemas/LabelsChangedDetail"
                             },
                             {
-                                "$ref": "#/components/schemas/PartAddedDetail"
-                            },
-                            {
-                                "$ref": "#/components/schemas/PartRemovedDetail"
+                                "$ref": "#/components/schemas/PartsChangedDetail"
                             },
                             {
                                 "$ref": "#/components/schemas/IssueLinkedDetail"
@@ -10523,6 +10589,55 @@
                 "type": "object",
                 "title": "UpdateLabelRequest"
             },
+            "UpdateProfileRequest": {
+                "properties": {
+                    "full_name": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 100,
+                                "minLength": 1
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Full Name"
+                    }
+                },
+                "type": "object",
+                "title": "UpdateProfileRequest"
+            },
+            "UpdateProfileResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "email": {
+                        "type": "string",
+                        "title": "Email"
+                    },
+                    "full_name": {
+                        "type": "string",
+                        "title": "Full Name"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "email",
+                    "full_name",
+                    "updated_at"
+                ],
+                "title": "UpdateProfileResponse"
+            },
             "UserResponse": {
                 "properties": {
                     "id": {
@@ -10740,25 +10855,6 @@
                 ],
                 "title": "AttachFilesRequest"
             },
-            "app__modules__issue__schemas__LinkPartsRequest": {
-                "properties": {
-                    "part_ids": {
-                        "items": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "type": "array",
-                        "minItems": 1,
-                        "title": "Part Ids",
-                        "description": "\uc5f0\uacb0\ud560 \ubd80\ud488 ID \ubaa9\ub85d"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "part_ids"
-                ],
-                "title": "LinkPartsRequest"
-            },
             "app__modules__part__schemas__AttachFilesRequest": {
                 "properties": {
                     "file_ids": {
@@ -10778,23 +10874,6 @@
                 ],
                 "title": "AttachFilesRequest",
                 "description": "Part \ucca8\ubd80\ud30c\uc77c \ubc30\uce58 \uc5f0\uacb0 \uc694\uccad"
-            },
-            "app__modules__project__schemas__LinkPartsRequest": {
-                "properties": {
-                    "part_ids": {
-                        "items": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "type": "array",
-                        "title": "Part Ids"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "part_ids"
-                ],
-                "title": "LinkPartsRequest"
             }
         },
         "securitySchemes": {
