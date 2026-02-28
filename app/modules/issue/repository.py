@@ -220,72 +220,62 @@ def add(db: Session, entity: Issue) -> Issue:
     return entity
 
 
-def add_assignees(db: Session, issue_id: uuid.UUID, user_ids: list[uuid.UUID]) -> int:
-    """이슈 담당자 배치 할당 — 이미 할당된 건은 무시, 신규 할당 건수 반환."""
-    existing = set(
+def sync_assignees(
+    db: Session, issue_id: uuid.UUID, user_ids: list[uuid.UUID]
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """이슈 담당자 동기화 — diff 기반으로 추가/제거 수행, (added, removed) 반환."""
+    current = set(
         row[0]
         for row in db.query(IssueAssignee.user_id)
-        .filter(
-            IssueAssignee.issue_id == issue_id,
-            IssueAssignee.user_id.in_(user_ids),
-        )
+        .filter(IssueAssignee.issue_id == issue_id)
         .all()
     )
-    new_ids = [uid for uid in user_ids if uid not in existing]
-    for uid in new_ids:
-        db.add(IssueAssignee(issue_id=issue_id, user_id=uid))
-    if new_ids:
-        db.flush()
-    return len(new_ids)
+    desired = set(user_ids)
+    to_add = desired - current
+    to_remove = current - desired
 
-
-def remove_assignees(
-    db: Session, issue_id: uuid.UUID, user_ids: list[uuid.UUID]
-) -> int:
-    """이슈 담당자 배치 해제 — 삭제 건수 반환."""
-    count = (
-        db.query(IssueAssignee)
-        .filter(
+    if to_remove:
+        db.query(IssueAssignee).filter(
             IssueAssignee.issue_id == issue_id,
-            IssueAssignee.user_id.in_(user_ids),
-        )
-        .delete(synchronize_session="fetch")
-    )
-    db.flush()
-    return count
+            IssueAssignee.user_id.in_(to_remove),
+        ).delete(synchronize_session="fetch")
+
+    for uid in to_add:
+        db.add(IssueAssignee(issue_id=issue_id, user_id=uid))
+
+    if to_add or to_remove:
+        db.flush()
+
+    return list(to_add), list(to_remove)
 
 
-def link_parts(db: Session, issue_id: uuid.UUID, part_ids: list[uuid.UUID]) -> int:
-    """이슈에 부품 배치 연결 — 이미 연결된 건은 무시, 신규 연결 건수 반환."""
-    existing = set(
+def sync_parts(
+    db: Session, issue_id: uuid.UUID, part_ids: list[uuid.UUID]
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """이슈 부품 동기화 — diff 기반으로 추가/제거 수행, (added, removed) 반환."""
+    current = set(
         row[0]
         for row in db.query(IssuePart.part_id)
-        .filter(
-            IssuePart.issue_id == issue_id,
-            IssuePart.part_id.in_(part_ids),
-        )
+        .filter(IssuePart.issue_id == issue_id)
         .all()
     )
-    new_ids = [pid for pid in part_ids if pid not in existing]
-    for pid in new_ids:
-        db.add(IssuePart(issue_id=issue_id, part_id=pid))
-    if new_ids:
-        db.flush()
-    return len(new_ids)
+    desired = set(part_ids)
+    to_add = desired - current
+    to_remove = current - desired
 
-
-def unlink_parts(db: Session, issue_id: uuid.UUID, part_ids: list[uuid.UUID]) -> int:
-    """이슈에서 부품 배치 해제 — 삭제 건수 반환."""
-    count = (
-        db.query(IssuePart)
-        .filter(
+    if to_remove:
+        db.query(IssuePart).filter(
             IssuePart.issue_id == issue_id,
-            IssuePart.part_id.in_(part_ids),
-        )
-        .delete(synchronize_session="fetch")
-    )
-    db.flush()
-    return count
+            IssuePart.part_id.in_(to_remove),
+        ).delete(synchronize_session="fetch")
+
+    for pid in to_add:
+        db.add(IssuePart(issue_id=issue_id, part_id=pid))
+
+    if to_add or to_remove:
+        db.flush()
+
+    return list(to_add), list(to_remove)
 
 
 # ── 라벨 연결 ──

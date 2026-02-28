@@ -29,10 +29,10 @@ class Action(str, Enum):
     # Part scope
     PART_ADDED = "part_added"
     PART_REMOVED = "part_removed"
+    PART_CHANGED = "part_changed"
 
     # Assignee scope
-    ASSIGNEE_ADDED = "assignee_added"
-    ASSIGNEE_REMOVED = "assignee_removed"
+    ASSIGNEE_CHANGED = "assignee_changed"
 
     # Label scope
     LABEL_CHANGED = "label_changed"
@@ -69,10 +69,10 @@ SCOPE_ACTIONS: dict[ActivityScope, list[Action]] = {
     ActivityScope.PART: [
         Action.PART_ADDED,
         Action.PART_REMOVED,
+        Action.PART_CHANGED,
     ],
     ActivityScope.ASSIGNEE: [
-        Action.ASSIGNEE_ADDED,
-        Action.ASSIGNEE_REMOVED,
+        Action.ASSIGNEE_CHANGED,
     ],
     ActivityScope.LABEL: [
         Action.LABEL_CHANGED,

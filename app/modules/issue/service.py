@@ -11,14 +11,12 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import AppError
 from app.modules.issue import repository as repo
 from app.modules.issue.events import (
-    AssigneesAdded,
-    AssigneesRemoved,
+    AssigneesChanged,
     CRIssuesLinked,
     CRIssuesUnlinked,
     IssueCreated,
     IssueLabelsChanged,
-    IssuePartsLinked,
-    IssuePartsUnlinked,
+    IssuePartsChanged,
 )
 from app.modules.issue.models import ChangeRequest, Issue, IssueComment
 
@@ -83,28 +81,18 @@ def create_change_request(
     return cr
 
 
-def assign_users(
+def sync_assignees(
     db: Session, issue: Issue, user_ids: list[uuid.UUID]
-) -> int:
-    """이슈 담당자 배치 할당 — 신규 할당 건수 반환."""
-    count = repo.add_assignees(db, issue.id, user_ids)
-    if count > 0:
-        issue.register_event(AssigneesAdded(
-            issue_id=issue.id, user_ids=user_ids
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """이슈 담당자 동기화 — (added, removed) 반환."""
+    added, removed = repo.sync_assignees(db, issue.id, user_ids)
+    if added or removed:
+        issue.register_event(AssigneesChanged(
+            issue_id=issue.id,
+            added_user_ids=added,
+            removed_user_ids=removed,
         ))
-    return count
-
-
-def unassign_users(
-    db: Session, issue: Issue, user_ids: list[uuid.UUID]
-) -> int:
-    """이슈 담당자 배치 해제 — 삭제 건수 반환."""
-    count = repo.remove_assignees(db, issue.id, user_ids)
-    if count > 0:
-        issue.register_event(AssigneesRemoved(
-            issue_id=issue.id, user_ids=user_ids
-        ))
-    return count
+    return added, removed
 
 
 def sync_labels(
@@ -121,28 +109,18 @@ def sync_labels(
     return added, removed
 
 
-def link_parts(
+def sync_parts(
     db: Session, issue: Issue, part_ids: list[uuid.UUID]
-) -> int:
-    """이슈에 부품 배치 연결 — 신규 연결 건수 반환."""
-    count = repo.link_parts(db, issue.id, part_ids)
-    if count > 0:
-        issue.register_event(IssuePartsLinked(
-            issue_id=issue.id, part_ids=part_ids
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """이슈 부품 동기화 — (added, removed) 반환."""
+    added, removed = repo.sync_parts(db, issue.id, part_ids)
+    if added or removed:
+        issue.register_event(IssuePartsChanged(
+            issue_id=issue.id,
+            added_part_ids=added,
+            removed_part_ids=removed,
         ))
-    return count
-
-
-def unlink_parts(
-    db: Session, issue: Issue, part_ids: list[uuid.UUID]
-) -> int:
-    """이슈에서 부품 배치 해제 — 삭제 건수 반환."""
-    count = repo.unlink_parts(db, issue.id, part_ids)
-    if count > 0:
-        issue.register_event(IssuePartsUnlinked(
-            issue_id=issue.id, part_ids=part_ids
-        ))
-    return count
+    return added, removed
 
 
 # ── CR 조회 ──

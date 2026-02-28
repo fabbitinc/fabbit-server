@@ -10,18 +10,18 @@ from app.core.auth_context import AuthContext
 from app.modules.activity.schemas import TimelineResponse
 from app.modules.file.schemas import FileItem
 from app.modules.issue.schemas import (
-    AssignUsersRequest,
-    AssignUsersResponse,
     AttachFilesRequest,
     CommentResponse,
     CreateCommentRequest,
     CreateIssueRequest,
     IssueListResponse,
     IssueResponse,
-    LinkPartsRequest,
-    LinkPartsResponse,
+    SyncAssigneesRequest,
+    SyncAssigneesResponse,
     SyncLabelsRequest,
     SyncLabelsResponse,
+    SyncPartsRequest,
+    SyncPartsResponse,
     UpdateCommentRequest,
 )
 from app.queries import issue as issue_queries
@@ -81,44 +81,28 @@ def create_issue(
     )
 
 
-# ── 담당자 ──
+# ── 담당자 동기화 ──
 
 
-@router.post(
+@router.put(
     "/{issue_id}/assignees",
-    response_model=AssignUsersResponse,
+    response_model=SyncAssigneesResponse,
     status_code=200,
 )
-def assign_users(
+def sync_assignees(
     project_id: uuid.UUID,
     issue_id: uuid.UUID,
-    req: AssignUsersRequest,
+    req: SyncAssigneesRequest,
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    """이슈 담당자 배치 할당.
+    """이슈 담당자 동기화.
 
-    이미 할당된 사용자는 무시하고, 신규 할당 건수를 반환합니다.
+    전달된 `user_ids`를 이슈의 최종 담당자 목록으로 설정합니다.
+    기존 담당자와 diff를 비교하여 추가/제거를 자동 처리합니다.
+    빈 목록 전달 시 모든 담당자가 해제됩니다.
     """
-    return issue_commands.assign_users(db, auth, issue_id, user_ids=req.user_ids)
-
-
-@router.delete(
-    "/{issue_id}/assignees",
-    status_code=204,
-)
-def unassign_users(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
-    req: AssignUsersRequest,
-    auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(get_tenant_db),
-):
-    """이슈 담당자 배치 해제.
-
-    요청된 사용자 ID에 해당하는 담당자를 해제합니다.
-    """
-    issue_commands.unassign_users(db, auth, issue_id, user_ids=req.user_ids)
+    return issue_commands.sync_assignees(db, auth, issue_id, user_ids=req.user_ids)
 
 
 # ── 라벨 동기화 ──
@@ -145,45 +129,28 @@ def sync_labels(
     return issue_commands.sync_labels(db, auth, issue_id, label_ids=req.label_ids)
 
 
-# ── 부품 연결 ──
+# ── 부품 동기화 ──
 
 
-@router.post(
+@router.put(
     "/{issue_id}/parts",
-    response_model=LinkPartsResponse,
+    response_model=SyncPartsResponse,
     status_code=200,
 )
-def link_parts(
+def sync_parts(
     project_id: uuid.UUID,
     issue_id: uuid.UUID,
-    req: LinkPartsRequest,
+    req: SyncPartsRequest,
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    """이슈에 부품 배치 연결.
+    """이슈 부품 동기화.
 
-    이미 연결된 부품은 무시하고, 신규 연결 건수를 반환합니다.
-    각 부품의 존재 여부를 사전 검증합니다.
+    전달된 `part_ids`를 이슈의 최종 부품 목록으로 설정합니다.
+    기존 부품과 diff를 비교하여 추가/제거를 자동 처리합니다.
+    빈 목록 전달 시 모든 부품이 해제됩니다.
     """
-    return issue_commands.link_parts(db, auth, issue_id, part_ids=req.part_ids)
-
-
-@router.delete(
-    "/{issue_id}/parts",
-    status_code=204,
-)
-def unlink_parts(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
-    req: LinkPartsRequest,
-    auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(get_tenant_db),
-):
-    """이슈에서 부품 배치 해제.
-
-    요청된 부품 ID에 해당하는 연결을 해제합니다.
-    """
-    issue_commands.unlink_parts(db, auth, issue_id, part_ids=req.part_ids)
+    return issue_commands.sync_parts(db, auth, issue_id, part_ids=req.part_ids)
 
 
 # ── 이슈 상태 전이 ──

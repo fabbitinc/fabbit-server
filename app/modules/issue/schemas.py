@@ -202,15 +202,18 @@ class ChangeRequestResponse(IssueResponse):
     merged_by: uuid.UUID | None = None
 
 
-# ── 담당자 ──
+# ── 담당자 동기화 ──
 
 
-class AssignUsersRequest(BaseModel):
-    user_ids: list[uuid.UUID] = Field(..., min_length=1, description="할당할 사용자 ID 목록")
+class SyncAssigneesRequest(BaseModel):
+    user_ids: list[uuid.UUID] = Field(
+        default_factory=list, description="동기화할 담당자 ID 목록 (빈 목록 = 모든 담당자 해제)"
+    )
 
 
-class AssignUsersResponse(BaseModel):
-    assigned_count: int
+class SyncAssigneesResponse(BaseModel):
+    added_count: int
+    removed_count: int
 
 
 # ── 라벨 동기화 ──
@@ -227,15 +230,18 @@ class SyncLabelsResponse(BaseModel):
     removed_count: int
 
 
-# ── 부품 연결 ──
+# ── 부품 동기화 ──
 
 
-class LinkPartsRequest(BaseModel):
-    part_ids: list[uuid.UUID] = Field(..., min_length=1, description="연결할 부품 ID 목록")
+class SyncPartsRequest(BaseModel):
+    part_ids: list[uuid.UUID] = Field(
+        default_factory=list, description="동기화할 부품 ID 목록 (빈 목록 = 모든 부품 해제)"
+    )
 
 
-class LinkPartsResponse(BaseModel):
-    linked_count: int
+class SyncPartsResponse(BaseModel):
+    added_count: int
+    removed_count: int
 
 
 # ── 첨부파일 ──

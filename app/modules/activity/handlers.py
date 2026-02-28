@@ -9,15 +9,13 @@ from app.core.transactional import get_active_session
 from app.modules.activity.constants import Action, TargetType
 from app.modules.activity.models import Activity
 from app.modules.issue.events import (
-    AssigneesAdded,
-    AssigneesRemoved,
+    AssigneesChanged,
     CRIssuesLinked,
     CRIssuesUnlinked,
     CRStateChanged,
     IssueCreated,
     IssueLabelsChanged,
-    IssuePartsLinked,
-    IssuePartsUnlinked,
+    IssuePartsChanged,
     IssueStateChanged,
 )
 from app.modules.label.models import Label
@@ -118,28 +116,14 @@ def _on_cr_state_changed(event: CRStateChanged) -> None:
         )
 
 
-def _on_assignees_added(event: AssigneesAdded) -> None:
-    """담당자 배정 → Issue 피드."""
+def _on_assignees_changed(event: AssigneesChanged) -> None:
+    """담당자 동기화 → Issue 피드."""
     actor_id = _get_actor_id()
-    _add_activity(
-        TargetType.ISSUE,
-        event.issue_id,
-        Action.ASSIGNEE_ADDED,
-        actor_id,
-        {"user_ids": [str(uid) for uid in event.user_ids]},
-    )
-
-
-def _on_assignees_removed(event: AssigneesRemoved) -> None:
-    """담당자 해제 → Issue 피드."""
-    actor_id = _get_actor_id()
-    _add_activity(
-        TargetType.ISSUE,
-        event.issue_id,
-        Action.ASSIGNEE_REMOVED,
-        actor_id,
-        {"user_ids": [str(uid) for uid in event.user_ids]},
-    )
+    detail = {
+        "added": [str(uid) for uid in event.added_user_ids],
+        "removed": [str(uid) for uid in event.removed_user_ids],
+    }
+    _add_activity(TargetType.ISSUE, event.issue_id, Action.ASSIGNEE_CHANGED, actor_id, detail)
 
 
 def _on_issue_labels_changed(event: IssueLabelsChanged) -> None:
@@ -163,28 +147,14 @@ def _on_issue_labels_changed(event: IssueLabelsChanged) -> None:
     _add_activity(TargetType.ISSUE, event.issue_id, Action.LABEL_CHANGED, actor_id, detail)
 
 
-def _on_issue_parts_linked(event: IssuePartsLinked) -> None:
-    """이슈에 부품 연결 → Issue 피드."""
+def _on_issue_parts_changed(event: IssuePartsChanged) -> None:
+    """이슈 부품 동기화 → Issue 피드."""
     actor_id = _get_actor_id()
-    _add_activity(
-        TargetType.ISSUE,
-        event.issue_id,
-        Action.PART_ADDED,
-        actor_id,
-        {"part_ids": [str(pid) for pid in event.part_ids]},
-    )
-
-
-def _on_issue_parts_unlinked(event: IssuePartsUnlinked) -> None:
-    """이슈에서 부품 해제 → Issue 피드."""
-    actor_id = _get_actor_id()
-    _add_activity(
-        TargetType.ISSUE,
-        event.issue_id,
-        Action.PART_REMOVED,
-        actor_id,
-        {"part_ids": [str(pid) for pid in event.part_ids]},
-    )
+    detail = {
+        "added": [str(pid) for pid in event.added_part_ids],
+        "removed": [str(pid) for pid in event.removed_part_ids],
+    }
+    _add_activity(TargetType.ISSUE, event.issue_id, Action.PART_CHANGED, actor_id, detail)
 
 
 def _on_cr_issues_linked(event: CRIssuesLinked) -> None:
@@ -271,11 +241,9 @@ def _on_project_parts_unlinked(event: ProjectPartsUnlinked) -> None:
 event_bus.subscribe(IssueCreated, _on_issue_created)
 event_bus.subscribe(IssueStateChanged, _on_issue_state_changed)
 event_bus.subscribe(CRStateChanged, _on_cr_state_changed)
-event_bus.subscribe(AssigneesAdded, _on_assignees_added)
-event_bus.subscribe(AssigneesRemoved, _on_assignees_removed)
+event_bus.subscribe(AssigneesChanged, _on_assignees_changed)
 event_bus.subscribe(IssueLabelsChanged, _on_issue_labels_changed)
-event_bus.subscribe(IssuePartsLinked, _on_issue_parts_linked)
-event_bus.subscribe(IssuePartsUnlinked, _on_issue_parts_unlinked)
+event_bus.subscribe(IssuePartsChanged, _on_issue_parts_changed)
 event_bus.subscribe(CRIssuesLinked, _on_cr_issues_linked)
 event_bus.subscribe(CRIssuesUnlinked, _on_cr_issues_unlinked)
 event_bus.subscribe(ProjectPartsLinked, _on_project_parts_linked)

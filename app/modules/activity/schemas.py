@@ -52,18 +52,12 @@ class CRStateChangedDetail(BaseModel):
 # -- 담당자 --
 
 
-class AssigneeAddedDetail(BaseModel):
-    """담당자 배정."""
+class AssigneesChangedDetail(BaseModel):
+    """담당자 변경 (추가/제거)."""
 
-    action: Literal["assignee_added"]
-    user_ids: list[str]
-
-
-class AssigneeRemovedDetail(BaseModel):
-    """담당자 해제."""
-
-    action: Literal["assignee_removed"]
-    user_ids: list[str]
+    action: Literal["assignee_changed"]
+    added: list[str]
+    removed: list[str]
 
 
 # -- 라벨 --
@@ -80,15 +74,23 @@ class LabelsChangedDetail(BaseModel):
 # -- 부품 --
 
 
+class PartsChangedDetail(BaseModel):
+    """부품 변경 (추가/제거) — 이슈 스코프."""
+
+    action: Literal["part_changed"]
+    added: list[str]
+    removed: list[str]
+
+
 class PartAddedDetail(BaseModel):
-    """부품 연결."""
+    """부품 연결 — 프로젝트 스코프."""
 
     action: Literal["part_added"]
     part_ids: list[str]
 
 
 class PartRemovedDetail(BaseModel):
-    """부품 해제."""
+    """부품 해제 — 프로젝트 스코프."""
 
     action: Literal["part_removed"]
     part_ids: list[str]
@@ -157,11 +159,9 @@ class CRMergedDetail(BaseModel):
 IssueActivityDetail = (
     StateChangedDetail
     | CRStateChangedDetail
-    | AssigneeAddedDetail
-    | AssigneeRemovedDetail
+    | AssigneesChangedDetail
     | LabelsChangedDetail
-    | PartAddedDetail
-    | PartRemovedDetail
+    | PartsChangedDetail
     | IssueLinkedDetail
     | IssueUnlinkedDetail
     | dict[str, Any]

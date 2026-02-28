@@ -37,18 +37,12 @@ class CRStateChanged(DomainEvent):
     new_state: str
 
 
-class AssigneesAdded(DomainEvent):
-    """담당자 배정 — Issue 피드용."""
+class AssigneesChanged(DomainEvent):
+    """담당자 동기화 — 추가/제거를 한 번에 기록."""
 
     issue_id: UUID
-    user_ids: list[UUID]
-
-
-class AssigneesRemoved(DomainEvent):
-    """담당자 해제 — Issue 피드용."""
-
-    issue_id: UUID
-    user_ids: list[UUID]
+    added_user_ids: list[UUID]
+    removed_user_ids: list[UUID]
 
 
 class IssueLabelsChanged(DomainEvent):
@@ -59,18 +53,12 @@ class IssueLabelsChanged(DomainEvent):
     removed_label_ids: list[UUID]
 
 
-class IssuePartsLinked(DomainEvent):
-    """이슈에 부품 연결 — Issue 피드용."""
+class IssuePartsChanged(DomainEvent):
+    """이슈 부품 동기화 — 추가/제거를 한 번에 기록."""
 
     issue_id: UUID
-    part_ids: list[UUID]
-
-
-class IssuePartsUnlinked(DomainEvent):
-    """이슈에서 부품 해제 — Issue 피드용."""
-
-    issue_id: UUID
-    part_ids: list[UUID]
+    added_part_ids: list[UUID]
+    removed_part_ids: list[UUID]
 
 
 class CRIssuesLinked(DomainEvent):
