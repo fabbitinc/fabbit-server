@@ -29,6 +29,28 @@ def create_user(db: Session, email: str, password: str, full_name: str) -> User:
     return repo.create_user(db, email, hashed, full_name)
 
 
+def find_or_create_for_invitation(
+    db: Session,
+    email: str,
+    password: str | None,
+    full_name: str | None,
+) -> tuple[User, bool]:
+    """이메일로 기존 유저 조회, 없으면 생성. (User, is_new_user) 반환.
+
+    초대 수락 use_case에서 호출. 미가입자는 password/full_name 필수.
+    """
+    user = repo.get_user_by_email(db, email)
+    if user:
+        return user, False
+
+    if not password or not full_name:
+        raise AppError(
+            message="신규 가입 시 비밀번호와 이름이 필요합니다",
+            code="VALIDATION_ERROR",
+        )
+    return create_user(db, email, password, full_name), True
+
+
 def authenticate(db: Session, email: str, password: str) -> User:
     """자격증명 검증.
 
@@ -44,6 +66,11 @@ def authenticate(db: Session, email: str, password: str) -> User:
     if not user.is_active:
         raise AppError(message="비활성화된 계정입니다", code="FORBIDDEN")
     return user
+
+
+def get_user_by_email(db: Session, email: str) -> User | None:
+    """이메일로 유저 조회. 없으면 None."""
+    return repo.get_user_by_email(db, email)
 
 
 def get_user_or_raise(db: Session, user_id) -> User:

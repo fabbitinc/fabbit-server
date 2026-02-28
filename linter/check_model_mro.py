@@ -9,6 +9,7 @@
     class Part(TenantBase, PkMixin): ...
 """
 
+import pytest
 from sqlalchemy.orm import DeclarativeBase
 
 from app.core.database import Base, TenantBase, discover_models
@@ -36,4 +37,5 @@ def check_base_class_is_last_in_bases():
                 order = " → ".join(b.__name__ for b in bases)
                 violations.append(f"  {cls.__name__}({order}): {b.__name__}은 마지막이어야 함")
 
-    assert not violations, "Mixin → Base 순서 위반:\n" + "\n".join(violations)
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)

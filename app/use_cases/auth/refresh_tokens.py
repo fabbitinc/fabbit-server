@@ -2,10 +2,9 @@
 
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import AppError
 from app.modules.auth import service as auth_service
 from app.modules.auth.schemas import TokenResponse
-from app.modules.organization import repository as org_repo
+from app.modules.organization import service as org_service
 from app.modules.user import service as user_service
 
 
@@ -23,13 +22,8 @@ def refresh_tokens(db: Session, refresh_token_str: str) -> TokenResponse:
     # 2. 정상 경로 — 기존 토큰 삭제 + 새 토큰 발급
     try:
         auth_service.revoke_refresh_token(db, payload.jti)
-
         user = user_service.get_user_or_raise(db, stored.user_id)
-
-        membership = org_repo.get_first_membership_or_none(db, user.id)
-        if not membership:
-            raise AppError(message="소속된 조직이 없습니다", code="FORBIDDEN")
-
+        membership = org_service.get_first_membership_or_raise(db, user.id)
         tokens = auth_service.issue_tokens(
             db, user.id, user.email, membership.org_id, membership.role
         )

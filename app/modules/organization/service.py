@@ -146,11 +146,44 @@ def remove_member(
     repo.delete_membership(db, auth.org_id, user_id)
 
 
+def get_first_membership_or_raise(
+    db: Session, user_id: _uuid.UUID
+) -> Membership:
+    """유저의 첫 번째 멤버십 조회 + 미소속 시 에러.
+
+    토큰 갱신 use_case에서 호출.
+    """
+    membership = repo.get_first_membership_or_none(db, user_id)
+    if not membership:
+        raise AppError(message="소속된 조직이 없습니다", code="FORBIDDEN")
+    return membership
+
+
+def check_not_member_by_email(
+    db: Session, org_id: _uuid.UUID, user_id: _uuid.UUID
+) -> None:
+    """이미 조직 멤버이면 에러. 초대 생성 전 사전 검증."""
+    existing = repo.get_membership(db, user_id, org_id)
+    if existing:
+        raise AppError(message="이미 조직에 소속된 멤버입니다", code="ALREADY_EXISTS")
+
+
+def get_org_or_raise(db: Session, org_id: _uuid.UUID) -> Organization:
+    """조직 조회 + 404 처리."""
+    org = repo.get_org_by_id(db, org_id)
+    if not org:
+        raise AppError(message="조직을 찾을 수 없습니다", code="NOT_FOUND")
+    return org
+
+
 def add_member(
     db: Session, user_id: _uuid.UUID, org_id: _uuid.UUID, role: str
 ) -> Membership:
-    """멤버십 추가 (초대 수락 use_case용).
+    """멤버십 추가 — 중복 시 에러.
 
     @transactional 없음 — use_case에서 트랜잭션 관리.
     """
+    existing = repo.get_membership(db, user_id, org_id)
+    if existing:
+        raise AppError(message="이미 조직에 소속된 멤버입니다", code="ALREADY_EXISTS")
     return repo.create_membership(db, user_id, org_id, role=role)

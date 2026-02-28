@@ -78,4 +78,4 @@ test-e2e-llm:
 # 아키텍처 규칙 검증 (DB 불필요)
 lint:
 	uv run ruff check .
-	uv run pytest linter/ --confcutdir=linter -o "python_files=check_*.py" -o "python_functions=check_*" -v
+	uv run pytest linter/ --confcutdir=linter -o "python_files=check_*.py" -o "python_functions=check_*" --tb=line --no-header -q

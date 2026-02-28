@@ -268,6 +268,19 @@ def create_invitation_record(
     return invitation, raw_token
 
 
+def validate_invitation_token(db: Session, raw_token: str) -> Invitation:
+    """토큰으로 초대 조회 + 유효성 검증 (PENDING, 만료 여부)."""
+    token_hash = _hash_token(raw_token)
+    invitation = repo.get_invitation_by_token_hash(db, token_hash)
+    if not invitation:
+        raise AppError(message="유효하지 않은 초대입니다", code="NOT_FOUND")
+    if invitation.status != InvitationStatus.PENDING:
+        raise AppError(message="이미 처리된 초대입니다", code="VALIDATION_ERROR")
+    if invitation.is_expired:
+        raise AppError(message="만료된 초대입니다", code="VALIDATION_ERROR")
+    return invitation
+
+
 def cancel_invitation(
     db: Session, auth: AuthContext, invitation_id: _uuid.UUID
 ) -> None:

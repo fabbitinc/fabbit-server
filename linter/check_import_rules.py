@@ -21,6 +21,8 @@ import ast
 import re
 from pathlib import Path
 
+import pytest
+
 _ROOT = Path(__file__).resolve().parent.parent
 _MODULES_DIR = _ROOT / "app" / "modules"
 _API_DIR = _ROOT / "app" / "api"
@@ -35,6 +37,21 @@ def _get_import_module_names(node: ast.AST) -> list[str]:
     if isinstance(node, ast.ImportFrom) and node.module:
         return [node.module]
     return []
+
+
+_PARENT_MODULE_PATTERN = re.compile(r"^app\.modules\.(\w+)$")
+
+
+def _imports_submodule(node: ast.AST, submodule: str) -> str | None:
+    """``from app.modules.X import {submodule}`` 패턴에서 X(모듈명)를 반환.
+
+    해당 패턴이 아니면 None.
+    """
+    if isinstance(node, ast.ImportFrom) and node.module and node.names:
+        m = _PARENT_MODULE_PATTERN.match(node.module)
+        if m and any(alias.name == submodule for alias in node.names):
+            return m.group(1)
+    return None
 
 
 def _is_inside_type_checking(node: ast.AST, tree: ast.Module) -> bool:
@@ -78,25 +95,25 @@ def check_models_no_cross_module_import():
         tree = ast.parse(source, filename=str(models_file))
 
         for node in ast.walk(tree):
+            target_module = None
             for mod_name in _get_import_module_names(node):
                 m = pattern.search(mod_name)
-                if not m:
-                    continue
-                target_module = m.group(1)
-                if target_module == own_module:
-                    continue
-                if _is_inside_type_checking(node, tree):
-                    continue
-                rel = models_file.relative_to(_ROOT)
-                violations.append(
-                    f"  {rel}:{node.lineno} — "
-                    f"TYPE_CHECKING 밖에서 {target_module}.models import"
-                )
+                if m:
+                    target_module = m.group(1)
+            if not target_module:
+                target_module = _imports_submodule(node, "models")
+            if not target_module or target_module == own_module:
+                continue
+            if _is_inside_type_checking(node, tree):
+                continue
+            rel = models_file.relative_to(_ROOT)
+            violations.append(
+                f"  {rel}:{node.lineno} — "
+                f"TYPE_CHECKING 밖에서 {target_module}.models import"
+            )
 
-    assert not violations, (
-        "models.py 타 모듈 models import 위반 (TYPE_CHECKING 내에서만 허용):\n"
-        + "\n".join(violations)
-    )
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)
 
 
 # --- 규칙 2: repository.py — 타 모듈 repository import 금지 ---
@@ -113,21 +130,22 @@ def check_repository_no_cross_repo_import():
         tree = ast.parse(source, filename=str(repo_file))
 
         for node in ast.walk(tree):
+            target_module = None
             for mod_name in _get_import_module_names(node):
                 m = pattern.search(mod_name)
-                if not m:
-                    continue
-                target_module = m.group(1)
-                if target_module == own_module:
-                    continue
-                rel = repo_file.relative_to(_ROOT)
-                violations.append(
-                    f"  {rel}:{node.lineno} — {target_module}.repository import 금지"
-                )
+                if m:
+                    target_module = m.group(1)
+            if not target_module:
+                target_module = _imports_submodule(node, "repository")
+            if not target_module or target_module == own_module:
+                continue
+            rel = repo_file.relative_to(_ROOT)
+            violations.append(
+                f"  {rel}:{node.lineno} — {target_module}.repository import 금지"
+            )
 
-    assert not violations, (
-        "repository.py 타 모듈 repository import 위반:\n" + "\n".join(violations)
-    )
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)
 
 
 # --- 규칙 3: api/ — repository 직접 import 금지 ---
@@ -143,17 +161,21 @@ def check_api_no_direct_repository_import():
         tree = ast.parse(source, filename=str(py_file))
 
         for node in ast.walk(tree):
+            matched = False
             for mod_name in _get_import_module_names(node):
                 if pattern.search(mod_name):
-                    rel = py_file.relative_to(_ROOT)
-                    violations.append(
-                        f"  {rel}:{node.lineno} — "
-                        f"api에서 repository 직접 import 금지 (service를 사용하세요)"
-                    )
+                    matched = True
+            if not matched:
+                matched = _imports_submodule(node, "repository") is not None
+            if matched:
+                rel = py_file.relative_to(_ROOT)
+                violations.append(
+                    f"  {rel}:{node.lineno} — "
+                    f"api에서 repository 직접 import 금지 (service를 사용하세요)"
+                )
 
-    assert not violations, "api/ 레이어 repository import 위반:\n" + "\n".join(
-        violations
-    )
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)
 
 
 # --- 규칙 4: modules/ — api layer import 금지 ---
@@ -177,9 +199,8 @@ def check_modules_no_api_import():
                         f"modules에서 api import 금지 (역방향 의존)"
                     )
 
-    assert not violations, "modules/ → api/ 역방향 import 위반:\n" + "\n".join(
-        violations
-    )
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)
 
 
 # --- 규칙 5: use_cases/ — infrastructure, repository import 금지 ---
@@ -198,8 +219,8 @@ def check_use_cases_no_infra_or_repo_import():
         tree = ast.parse(source, filename=str(py_file))
 
         for node in ast.walk(tree):
+            rel = py_file.relative_to(_ROOT)
             for mod_name in _get_import_module_names(node):
-                rel = py_file.relative_to(_ROOT)
                 if infra_pattern.search(mod_name):
                     violations.append(
                         f"  {rel}:{node.lineno} — "
@@ -210,8 +231,14 @@ def check_use_cases_no_infra_or_repo_import():
                         f"  {rel}:{node.lineno} — "
                         f"use_cases에서 repository import 금지 (service를 사용하세요)"
                     )
+            if _imports_submodule(node, "repository") is not None:
+                violations.append(
+                    f"  {rel}:{node.lineno} — "
+                    f"use_cases에서 repository import 금지 (service를 사용하세요)"
+                )
 
-    assert not violations, "use_cases/ 의존성 위반:\n" + "\n".join(violations)
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)
 
 
 # --- 규칙 6: service.py — 타 모듈 service import 금지 ---
@@ -228,22 +255,23 @@ def check_service_no_cross_service_import():
         tree = ast.parse(source, filename=str(svc_file))
 
         for node in ast.walk(tree):
+            target_module = None
             for mod_name in _get_import_module_names(node):
                 m = pattern.search(mod_name)
-                if not m:
-                    continue
-                target_module = m.group(1)
-                if target_module == own_module:
-                    continue
-                rel = svc_file.relative_to(_ROOT)
-                violations.append(
-                    f"  {rel}:{node.lineno} — "
-                    f"{target_module}.service import 금지 (크로스 도메인은 use_case에서 조합)"
-                )
+                if m:
+                    target_module = m.group(1)
+            if not target_module:
+                target_module = _imports_submodule(node, "service")
+            if not target_module or target_module == own_module:
+                continue
+            rel = svc_file.relative_to(_ROOT)
+            violations.append(
+                f"  {rel}:{node.lineno} — "
+                f"{target_module}.service import 금지 (크로스 도메인은 use_case에서 조합)"
+            )
 
-    assert not violations, "service.py 타 모듈 service import 위반:\n" + "\n".join(
-        violations
-    )
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)
 
 
 # --- 규칙 7: service.py — 타 모듈 repository import 금지 ---
@@ -260,22 +288,23 @@ def check_service_no_cross_repo_import():
         tree = ast.parse(source, filename=str(svc_file))
 
         for node in ast.walk(tree):
+            target_module = None
             for mod_name in _get_import_module_names(node):
                 m = pattern.search(mod_name)
-                if not m:
-                    continue
-                target_module = m.group(1)
-                if target_module == own_module:
-                    continue
-                rel = svc_file.relative_to(_ROOT)
-                violations.append(
-                    f"  {rel}:{node.lineno} — "
-                    f"{target_module}.repository import 금지 (자기 도메인 repo만 허용)"
-                )
+                if m:
+                    target_module = m.group(1)
+            if not target_module:
+                target_module = _imports_submodule(node, "repository")
+            if not target_module or target_module == own_module:
+                continue
+            rel = svc_file.relative_to(_ROOT)
+            violations.append(
+                f"  {rel}:{node.lineno} — "
+                f"{target_module}.repository import 금지 (자기 도메인 repo만 허용)"
+            )
 
-    assert not violations, "service.py 타 모듈 repository import 위반:\n" + "\n".join(
-        violations
-    )
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)
 
 
 # --- 규칙 8: queries/ — service import 금지 (repo만 호출) ---
@@ -293,63 +322,51 @@ def check_queries_no_service_import():
         tree = ast.parse(source, filename=str(py_file))
 
         for node in ast.walk(tree):
+            matched = False
             for mod_name in _get_import_module_names(node):
                 if pattern.search(mod_name):
-                    rel = py_file.relative_to(_ROOT)
-                    violations.append(
-                        f"  {rel}:{node.lineno} — "
-                        f"queries에서 service import 금지 (repo를 직접 사용하세요)"
-                    )
+                    matched = True
+            if not matched:
+                matched = _imports_submodule(node, "service") is not None
+            if matched:
+                rel = py_file.relative_to(_ROOT)
+                violations.append(
+                    f"  {rel}:{node.lineno} — "
+                    f"queries에서 service import 금지 (repo를 직접 사용하세요)"
+                )
 
-    assert not violations, "queries/ → service import 위반:\n" + "\n".join(violations)
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)
 
 
 # --- 규칙 9: api/ — service 직접 import 금지 (queries/use_cases 경유) ---
 
 
-def _imports_service_name(node: ast.AST) -> bool:
-    """ImportFrom 노드에서 import된 이름 중 'service'가 있는지 확인.
-
-    `from app.modules.X import service` 패턴을 잡기 위한 헬퍼.
-    """
-    if isinstance(node, ast.ImportFrom) and node.names:
-        return any(alias.name == "service" for alias in node.names)
-    return False
-
-
 def check_api_no_direct_service_import():
-    """api/ 레이어에서 modules의 service를 직접 import하면 위반.
-
-    두 가지 패턴 모두 감지:
-    - `from app.modules.X.service import something`
-    - `from app.modules.X import service`
-    """
+    """api/ 레이어에서 modules의 service를 직접 import하면 위반."""
     violations = []
-    # 패턴 1: from app.modules.X.service import ...
-    dotted_pattern = re.compile(r"app\.modules\.\w+\.service")
-    # 패턴 2: from app.modules.X import service
-    parent_pattern = re.compile(r"^app\.modules\.\w+$")
+    pattern = re.compile(r"app\.modules\.\w+\.service")
 
     for py_file in _API_DIR.rglob("*.py"):
         source = py_file.read_text()
         tree = ast.parse(source, filename=str(py_file))
 
         for node in ast.walk(tree):
+            matched = False
             for mod_name in _get_import_module_names(node):
-                if dotted_pattern.search(mod_name):
-                    rel = py_file.relative_to(_ROOT)
-                    violations.append(
-                        f"  {rel}:{node.lineno} — "
-                        f"api에서 service 직접 import 금지 (queries/use_cases를 사용하세요)"
-                    )
-                elif parent_pattern.match(mod_name) and _imports_service_name(node):
-                    rel = py_file.relative_to(_ROOT)
-                    violations.append(
-                        f"  {rel}:{node.lineno} — "
-                        f"api에서 service 직접 import 금지 (queries/use_cases를 사용하세요)"
-                    )
+                if pattern.search(mod_name):
+                    matched = True
+            if not matched:
+                matched = _imports_submodule(node, "service") is not None
+            if matched:
+                rel = py_file.relative_to(_ROOT)
+                violations.append(
+                    f"  {rel}:{node.lineno} — "
+                    f"api에서 service 직접 import 금지 (queries/use_cases를 사용하세요)"
+                )
 
-    assert not violations, "api/ 레이어 service import 위반:\n" + "\n".join(violations)
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)
 
 
 # --- 규칙 10: queries/ — infrastructure import 금지 (repo만 호출) ---
@@ -375,9 +392,8 @@ def check_queries_no_infrastructure_import():
                         f"queries에서 infrastructure import 금지 (repo를 사용하세요)"
                     )
 
-    assert not violations, "queries/ → infrastructure import 위반:\n" + "\n".join(
-        violations
-    )
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)
 
 
 # --- 규칙 11: handlers.py — service import 금지 (순환 의존 방지) ---
@@ -393,17 +409,21 @@ def check_handlers_no_service_import():
         tree = ast.parse(source, filename=str(handler_file))
 
         for node in ast.walk(tree):
+            matched = False
             for mod_name in _get_import_module_names(node):
                 if pattern.search(mod_name):
-                    rel = handler_file.relative_to(_ROOT)
-                    violations.append(
-                        f"  {rel}:{node.lineno} — "
-                        f"handlers에서 service import 금지 (순환 의존 방지)"
-                    )
+                    matched = True
+            if not matched:
+                matched = _imports_submodule(node, "service") is not None
+            if matched:
+                rel = handler_file.relative_to(_ROOT)
+                violations.append(
+                    f"  {rel}:{node.lineno} — "
+                    f"handlers에서 service import 금지 (순환 의존 방지)"
+                )
 
-    assert not violations, "handlers.py → service import 위반:\n" + "\n".join(
-        violations
-    )
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)
 
 
 # --- 규칙 12: service.py — use_case import 금지 (역방향 의존) ---
@@ -427,9 +447,8 @@ def check_service_no_use_case_import():
                         f"service에서 use_cases import 금지 (역방향 의존)"
                     )
 
-    assert not violations, "service.py → use_cases import 위반:\n" + "\n".join(
-        violations
-    )
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)
 
 
 # --- 규칙 13: repository.py — age_client 외 infrastructure import 금지 ---
@@ -462,10 +481,8 @@ def check_repository_no_non_db_infra_import():
                     f"(age_client만 허용, URL 변환은 mapper로)"
                 )
 
-    assert not violations, (
-        "repository.py → non-DB infrastructure import 위반:\n"
-        + "\n".join(violations)
-    )
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)
 
 
 # --- 규칙 14: service.py — transactional 데코레이터 import 금지 ---
@@ -490,6 +507,5 @@ def check_service_no_transactional_import():
                         f"(트랜잭션 경계는 use_case가 관리)"
                     )
 
-    assert not violations, (
-        "service.py → transactional import 위반:\n" + "\n".join(violations)
-    )
+    if violations:
+        pytest.fail("\n" + "\n".join(violations), pytrace=False)

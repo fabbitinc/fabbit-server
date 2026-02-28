@@ -169,6 +169,20 @@ def unlink_issues(
 # ── 상태 전이 ──
 
 
+def close_linked_open_issues(db: Session, cr: ChangeRequest) -> None:
+    """CR에 연결된 열린 이슈를 모두 닫는다."""
+    from datetime import datetime, timezone
+    from app.modules.issue.constants import IssueState
+
+    linked_ids = repo.list_linked_issue_ids(db, cr.id)
+    now = datetime.now(timezone.utc)
+    for lid in linked_ids:
+        linked = repo.get_by_id(db, lid)
+        if linked and linked.state == IssueState.OPEN:
+            linked.close(now)
+    db.flush()
+
+
 def close_issue(db: Session, issue: Issue) -> Issue:
     """이슈 닫기."""
     from datetime import datetime, timezone

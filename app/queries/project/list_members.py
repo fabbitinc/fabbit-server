@@ -5,10 +5,10 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
+from app.core.exceptions import AppError
 from app.core.transactional import transactional
 from app.modules.user.models import User
 from app.modules.project import repository as project_repo
-from app.modules.project import service as project_service
 from app.modules.project.schemas import ProjectMemberListResponse, ProjectMemberSummary
 
 
@@ -19,7 +19,9 @@ def list_members(
     project_id: uuid.UUID,
 ) -> ProjectMemberListResponse:
     """프로젝트 멤버 목록 조회."""
-    project_service.get_or_raise(db, project_id)
+    project = project_repo.get_by_id(db, project_id)
+    if not project:
+        raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
     member_ids = project_repo.list_member_ids(db, project_id)
     if not member_ids:
         return ProjectMemberListResponse(items=[])
