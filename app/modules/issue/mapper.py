@@ -51,6 +51,7 @@ def to_issue_response(
         closed_at=issue.closed_at,
         created_at=issue.created_at,
         updated_at=issue.updated_at,
+        is_modified=issue.is_modified,
         created_by=created_by,
         labels=labels or [],
         assignees=assignees or [],
@@ -85,6 +86,7 @@ def to_change_request_response(
         closed_at=cr.closed_at,
         created_at=cr.created_at,
         updated_at=cr.updated_at,
+        is_modified=cr.is_modified,
         created_by=created_by,
         labels=labels or [],
         assignees=assignees or [],
@@ -172,5 +174,6 @@ def to_comment_response(comment: IssueComment) -> CommentResponse:
         body=_parse_body(comment.body),
         created_at=comment.created_at,
         updated_at=comment.updated_at,
+        is_modified=comment.is_modified,
         created_by=comment.created_by,
     )

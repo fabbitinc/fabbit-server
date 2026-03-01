@@ -242,6 +242,7 @@ class IssueResponse(BaseModel):
     closed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+    is_modified: bool
     created_by: UserSummary | None = None
     labels: list[LabelBadge] = []
     assignees: list[UserSummary] = []
@@ -335,6 +336,7 @@ class CommentResponse(BaseModel):
     body: dict | None = None
     created_at: datetime
     updated_at: datetime
+    is_modified: bool
     created_by: uuid.UUID | None = None
 
 
