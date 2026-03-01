@@ -14,6 +14,11 @@ class CreateProjectRequest(BaseModel):
     description: str | None = Field(None, description="프로젝트 설명")
 
 
+class UpdateProjectRequest(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=200, description="프로젝트 이름")
+    description: str | None = Field(None, description="프로젝트 설명")
+
+
 # ── 응답 ──
 
 

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError
 from app.modules.project import repository as repo
-from app.modules.project.events import ProjectPartsLinked, ProjectPartsUnlinked
+from app.modules.project.events import ProjectPartsLinked, ProjectPartsUnlinked, ProjectUpdated
 from app.modules.project.models import Project
 
 
@@ -30,6 +30,27 @@ def create_project(
     """프로젝트 생성."""
     project = Project(name=name, description=description)
     return repo.add(db, project)
+
+
+def update_project(
+    db: Session,
+    project: Project,
+    name: str | None = None,
+    description: str | None = None,
+) -> Project:
+    """프로젝트 정보 수정 — 변경된 필드만 감지하여 이벤트 발행."""
+    changes: dict = {}
+    if name is not None and name != project.name:
+        changes["name"] = {"from": project.name, "to": name}
+        project.name = name
+    if description is not None and description != project.description:
+        changes["description"] = {"from": project.description, "to": description}
+        project.description = description
+    if changes:
+        project.register_event(ProjectUpdated(
+            project_id=project.id, changes=changes
+        ))
+    return project
 
 
 def link_parts(

@@ -17,3 +17,10 @@ class ProjectPartsUnlinked(DomainEvent):
 
     project_id: UUID
     part_ids: list[UUID]
+
+
+class ProjectUpdated(DomainEvent):
+    """프로젝트 정보 수정 — Project 피드용."""
+
+    project_id: UUID
+    changes: dict  # {"name": {"from": "old", "to": "new"}, ...}

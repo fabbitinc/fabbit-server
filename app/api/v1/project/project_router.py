@@ -13,6 +13,7 @@ from app.modules.project.schemas import (
     CreateProjectRequest,
     ProjectDetailResponse,
     ProjectListResponse,
+    UpdateProjectRequest,
 )
 from app.queries import project as project_queries
 from app.use_cases import project as project_commands
@@ -48,6 +49,23 @@ def list_projects(
     name으로 ILIKE 검색을 지원합니다.
     """
     return project_queries.list_projects(db, auth, search=search, offset=offset, limit=limit)
+
+
+@router.patch("/{project_id}", response_model=ProjectDetailResponse)
+def update_project(
+    project_id: uuid.UUID,
+    req: UpdateProjectRequest,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """프로젝트 정보 수정.
+
+    `name`, `description` 필드를 선택적으로 수정합니다.
+    전달된 필드만 변경되며, 생략된 필드는 기존 값을 유지합니다.
+    """
+    return project_commands.update_project(
+        db, auth, project_id, name=req.name, description=req.description
+    )
 
 
 @router.get("/{project_id}", response_model=ProjectDetailResponse)

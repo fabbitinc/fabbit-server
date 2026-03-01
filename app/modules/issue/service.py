@@ -9,6 +9,7 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError
+from app.modules.file.models import File
 from app.modules.issue import repository as repo
 from app.modules.issue.events import (
     AssigneesChanged,
@@ -21,7 +22,6 @@ from app.modules.issue.events import (
     IssuePartsChanged,
     ReviewersChanged,
 )
-from app.modules.file.models import File
 from app.modules.issue.models import ChangeRequest, Issue, IssueComment
 
 
@@ -50,13 +50,15 @@ def create_issue(
         body=body,
     )
     repo.add(db, issue)
-    issue.register_event(IssueCreated(
-        project_id=project_id,
-        issue_id=issue.id,
-        number=issue.number,
-        title=title,
-        issue_type=issue.type.value,
-    ))
+    issue.register_event(
+        IssueCreated(
+            project_id=project_id,
+            issue_id=issue.id,
+            number=issue.number,
+            title=title,
+            issue_type=issue.type.value,
+        )
+    )
     return issue
 
 
@@ -75,13 +77,15 @@ def create_change_request(
         body=body,
     )
     repo.add(db, cr)
-    cr.register_event(IssueCreated(
-        project_id=project_id,
-        issue_id=cr.id,
-        number=cr.number,
-        title=title,
-        issue_type=cr.type.value,
-    ))
+    cr.register_event(
+        IssueCreated(
+            project_id=project_id,
+            issue_id=cr.id,
+            number=cr.number,
+            title=title,
+            issue_type=cr.type.value,
+        )
+    )
     return cr
 
 
@@ -90,20 +94,24 @@ def attach_files(db: Session, issue_id: uuid.UUID, files: list[File]) -> None:
     issue = get_or_raise(db, issue_id)
     issue.attach_files(files)
     if files:
-        issue.register_event(IssueFilesAttached(
-            issue_id=issue.id,
-            file_ids=[f.id for f in files],
-        ))
+        issue.register_event(
+            IssueFilesAttached(
+                issue_id=issue.id,
+                file_ids=[f.id for f in files],
+            )
+        )
 
 
 def detach_file(db: Session, issue_id: uuid.UUID, file_id: uuid.UUID) -> None:
     """Issue 첨부파일 1건 분리."""
     issue = get_or_raise(db, issue_id)
     issue.detach_file(file_id)
-    issue.register_event(IssueFileDetached(
-        issue_id=issue.id,
-        file_id=file_id,
-    ))
+    issue.register_event(
+        IssueFileDetached(
+            issue_id=issue.id,
+            file_id=file_id,
+        )
+    )
 
 
 def sync_assignees(
@@ -112,11 +120,13 @@ def sync_assignees(
     """이슈 담당자 동기화 — (added, removed) 반환."""
     added, removed = repo.sync_assignees(db, issue.id, user_ids)
     if added or removed:
-        issue.register_event(AssigneesChanged(
-            issue_id=issue.id,
-            added_user_ids=added,
-            removed_user_ids=removed,
-        ))
+        issue.register_event(
+            AssigneesChanged(
+                issue_id=issue.id,
+                added_user_ids=added,
+                removed_user_ids=removed,
+            )
+        )
     return added, removed
 
 
@@ -126,11 +136,13 @@ def sync_reviewers(
     """CR 검토자 동기화 — (added, removed) 반환."""
     added, removed = repo.sync_reviewers(db, cr.id, user_ids)
     if added or removed:
-        cr.register_event(ReviewersChanged(
-            issue_id=cr.id,
-            added_user_ids=added,
-            removed_user_ids=removed,
-        ))
+        cr.register_event(
+            ReviewersChanged(
+                issue_id=cr.id,
+                added_user_ids=added,
+                removed_user_ids=removed,
+            )
+        )
     return added, removed
 
 
@@ -140,11 +152,13 @@ def sync_labels(
     """이슈 라벨 동기화 — (added, removed) 반환."""
     added, removed = repo.sync_labels(db, issue.id, label_ids)
     if added or removed:
-        issue.register_event(IssueLabelsChanged(
-            issue_id=issue.id,
-            added_label_ids=added,
-            removed_label_ids=removed,
-        ))
+        issue.register_event(
+            IssueLabelsChanged(
+                issue_id=issue.id,
+                added_label_ids=added,
+                removed_label_ids=removed,
+            )
+        )
     return added, removed
 
 
@@ -154,11 +168,13 @@ def sync_parts(
     """이슈 부품 동기화 — (added, removed) 반환."""
     added, removed = repo.sync_parts(db, issue.id, part_ids)
     if added or removed:
-        issue.register_event(IssuePartsChanged(
-            issue_id=issue.id,
-            added_part_ids=added,
-            removed_part_ids=removed,
-        ))
+        issue.register_event(
+            IssuePartsChanged(
+                issue_id=issue.id,
+                added_part_ids=added,
+                removed_part_ids=removed,
+            )
+        )
     return added, removed
 
 
@@ -179,29 +195,33 @@ def get_cr_or_raise(db: Session, issue_id: uuid.UUID) -> ChangeRequest:
 # ── CR-Issue 연결 ──
 
 
-def link_issues(
-    db: Session, cr: ChangeRequest, issue_ids: list[uuid.UUID]
-) -> int:
+def link_issues(db: Session, cr: ChangeRequest, issue_ids: list[uuid.UUID]) -> int:
     """CR에 이슈 배치 연결 — 신규 연결 건수 반환."""
     count = repo.link_issues(db, cr.id, issue_ids)
     if count > 0:
-        cr.register_event(CRIssuesLinked(
-            issue_id=cr.id, cr_number=cr.number, cr_title=cr.title,
-            linked_issue_ids=issue_ids,
-        ))
+        cr.register_event(
+            CRIssuesLinked(
+                issue_id=cr.id,
+                cr_number=cr.number,
+                cr_title=cr.title,
+                linked_issue_ids=issue_ids,
+            )
+        )
     return count
 
 
-def unlink_issues(
-    db: Session, cr: ChangeRequest, issue_ids: list[uuid.UUID]
-) -> int:
+def unlink_issues(db: Session, cr: ChangeRequest, issue_ids: list[uuid.UUID]) -> int:
     """CR에서 이슈 배치 해제 — 삭제 건수 반환."""
     count = repo.unlink_issues(db, cr.id, issue_ids)
     if count > 0:
-        cr.register_event(CRIssuesUnlinked(
-            issue_id=cr.id, cr_number=cr.number, cr_title=cr.title,
-            unlinked_issue_ids=issue_ids,
-        ))
+        cr.register_event(
+            CRIssuesUnlinked(
+                issue_id=cr.id,
+                cr_number=cr.number,
+                cr_title=cr.title,
+                unlinked_issue_ids=issue_ids,
+            )
+        )
     return count
 
 
@@ -211,6 +231,7 @@ def unlink_issues(
 def close_linked_open_issues(db: Session, cr: ChangeRequest) -> None:
     """CR에 연결된 열린 이슈를 모두 닫는다."""
     from datetime import datetime, timezone
+
     from app.modules.issue.constants import IssueState
 
     linked_ids = repo.list_linked_issue_ids(db, cr.id)
@@ -245,9 +266,7 @@ def open_cr_for_review(db: Session, cr: ChangeRequest) -> ChangeRequest:
     return cr
 
 
-def merge_cr(
-    db: Session, cr: ChangeRequest, user_id: uuid.UUID
-) -> ChangeRequest:
+def merge_cr(db: Session, cr: ChangeRequest, user_id: uuid.UUID) -> ChangeRequest:
     """CR 반영."""
     from datetime import datetime, timezone
 
