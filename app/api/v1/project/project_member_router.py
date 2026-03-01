@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
 from app.modules.project.schemas import (
+    AddMembersRequest,
     ManageMembersRequest,
     ManageMembersResponse,
     MemberLookupResponse,
@@ -48,15 +49,16 @@ def list_project_members(
 @router.post("", response_model=ManageMembersResponse, status_code=201)
 def add_project_members(
     project_id: uuid.UUID,
-    req: ManageMembersRequest,
+    req: AddMembersRequest,
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """프로젝트에 멤버 배치 추가.
 
     이미 추가된 멤버는 무시되며, 신규 추가 건수를 반환합니다.
+    `role`을 지정하지 않으면 **MEMBER**로 추가됩니다.
     """
-    return project_commands.add_members(db, auth, project_id, req.user_ids)
+    return project_commands.add_members(db, auth, project_id, req.user_ids, role=req.role)
 
 
 @router.delete("", status_code=204)

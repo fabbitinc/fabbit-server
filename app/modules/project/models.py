@@ -6,6 +6,8 @@ from sqlalchemy import ForeignKey, Index, Integer, String, Text, UniqueConstrain
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.modules.project.constants import ProjectRole
+
 from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase
 from app.core.mixins import AuditMixin, PkMixin, TimestampMixin, UpdatableMixin
@@ -50,6 +52,11 @@ class ProjectMember(TimestampMixin, PkMixin, TenantBase):
     # User id 논리적 참조 (cross-schema FK 없음)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
+        nullable=False,
+    )
+    role: Mapped[str] = mapped_column(
+        String(20),
+        default=ProjectRole.MEMBER,
         nullable=False,
     )
 

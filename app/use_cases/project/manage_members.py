@@ -16,10 +16,11 @@ def add_members(
     auth: AuthContext,
     project_id: uuid.UUID,
     user_ids: list[uuid.UUID],
+    role: str = "MEMBER",
 ) -> ManageMembersResponse:
     """프로젝트에 멤버 배치 추가."""
     project_service.get_or_raise(db, project_id)
-    count = project_service.add_members(db, project_id, user_ids)
+    count = project_service.add_members(db, project_id, user_ids, role=role)
     return ManageMembersResponse(count=count)
 
 

@@ -136,7 +136,12 @@ def get_linked_project_ids(db: Session, part_id: uuid.UUID) -> list[uuid.UUID]:
 # ── Project ↔ Member ──
 
 
-def add_members(db: Session, project_id: uuid.UUID, user_ids: list[uuid.UUID]) -> int:
+def add_members(
+    db: Session,
+    project_id: uuid.UUID,
+    user_ids: list[uuid.UUID],
+    role: str = "MEMBER",
+) -> int:
     """Project에 멤버 배치 추가 — 이미 추가된 건은 무시, 신규 추가 건수 반환."""
     existing = set(
         row[0]
@@ -149,7 +154,7 @@ def add_members(db: Session, project_id: uuid.UUID, user_ids: list[uuid.UUID]) -
     )
     new_ids = [uid for uid in user_ids if uid not in existing]
     for uid in new_ids:
-        db.add(ProjectMember(project_id=project_id, user_id=uid))
+        db.add(ProjectMember(project_id=project_id, user_id=uid, role=role))
     if new_ids:
         db.flush()
     return len(new_ids)
@@ -195,3 +200,14 @@ def list_member_ids(db: Session, project_id: uuid.UUID) -> list[uuid.UUID]:
         .all()
     )
     return [r[0] for r in rows]
+
+
+def list_members(
+    db: Session, project_id: uuid.UUID
+) -> list[ProjectMember]:
+    """Project 멤버 목록 조회 (role 포함)."""
+    return (
+        db.query(ProjectMember)
+        .filter(ProjectMember.project_id == project_id)
+        .all()
+    )

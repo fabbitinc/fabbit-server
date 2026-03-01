@@ -5,6 +5,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.modules.project.constants import ProjectRole
 from app.modules.user.schemas import UserSummary
 
 
@@ -114,6 +115,7 @@ class ProjectMemberSummary(BaseModel):
     user_id: uuid.UUID
     full_name: str
     email: str
+    role: str
 
 
 class ProjectMemberListResponse(BaseModel):
@@ -121,8 +123,14 @@ class ProjectMemberListResponse(BaseModel):
     items: list[ProjectMemberSummary]
 
 
+class AddMembersRequest(BaseModel):
+    """멤버 추가 요청."""
+    user_ids: list[uuid.UUID]
+    role: ProjectRole = Field(default=ProjectRole.MEMBER, description="멤버 역할")
+
+
 class ManageMembersRequest(BaseModel):
-    """멤버 추가/제거 요청."""
+    """멤버 제거 요청."""
     user_ids: list[uuid.UUID]
 
 

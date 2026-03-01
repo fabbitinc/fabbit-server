@@ -110,10 +110,13 @@ def validate_parts_in_project(
 
 
 def add_members(
-    db: Session, project_id: uuid.UUID, user_ids: list[uuid.UUID]
+    db: Session,
+    project_id: uuid.UUID,
+    user_ids: list[uuid.UUID],
+    role: str = "MEMBER",
 ) -> int:
     """Project에 멤버 배치 추가 — 신규 추가 건수 반환."""
-    return repo.add_members(db, project_id, user_ids)
+    return repo.add_members(db, project_id, user_ids, role=role)
 
 
 def remove_members(

@@ -22,20 +22,22 @@ def list_members(
     project = project_repo.get_project_by_id(db, project_id)
     if not project:
         raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
-    member_ids = project_repo.list_member_ids(db, project_id)
-    if not member_ids:
+    members = project_repo.list_members(db, project_id)
+    if not members:
         return ProjectMemberListResponse(items=[])
 
     # User 정보 배치 조회 (cross-schema)
-    users = db.query(User).filter(User.id.in_(member_ids)).all()
+    member_user_ids = [m.user_id for m in members]
+    users = db.query(User).filter(User.id.in_(member_user_ids)).all()
     user_map = {u.id: u for u in users}
 
     items = [
         ProjectMemberSummary(
-            user_id=uid,
-            full_name=user_map[uid].full_name if uid in user_map else "",
-            email=user_map[uid].email if uid in user_map else "",
+            user_id=m.user_id,
+            full_name=user_map[m.user_id].full_name if m.user_id in user_map else "",
+            email=user_map[m.user_id].email if m.user_id in user_map else "",
+            role=m.role,
         )
-        for uid in member_ids
+        for m in members
     ]
     return ProjectMemberListResponse(items=items)
