@@ -174,3 +174,28 @@ def ensure_webp(
     buf = io.BytesIO()
     img.save(buf, format="WEBP", lossless=True)
     return buf.getvalue()
+
+
+def create_thumbnail(content: bytes, size: int = 256) -> bytes:
+    """이미지를 center crop 후 정사각 WebP 썸네일로 변환.
+
+    짧은 변 기준으로 중앙 크롭 → size×size 리사이징 → WebP 변환.
+    """
+    img = Image.open(io.BytesIO(content))
+
+    if img.mode == "RGBA":
+        img = img.convert("RGB")
+
+    # center crop: 짧은 변 기준 정사각 크롭
+    w, h = img.size
+    crop_size = min(w, h)
+    left = (w - crop_size) // 2
+    top = (h - crop_size) // 2
+    img = img.crop((left, top, left + crop_size, top + crop_size))
+
+    # 리사이징
+    img = img.resize((size, size), Image.LANCZOS)
+
+    buf = io.BytesIO()
+    img.save(buf, format="WEBP", quality=85)
+    return buf.getvalue()

@@ -24,6 +24,7 @@ from loguru import logger
 
 from app.core.config import settings
 from app.infrastructure.s3_client import S3Client
+from app.infrastructure.utils import replace_suffix
 
 # QCAD 동시 실행 제한 (CPU/메모리 집약적)
 _semaphore = threading.Semaphore(settings.converter_max_concurrent)
@@ -102,21 +103,13 @@ def _cache_path(key: str) -> str:
     return os.path.join(settings.converter_temp_dir, key)
 
 
-def _make_output_key(file_key: str, suffix: str) -> str:
-    """원본 file_key의 확장자만 교체.
-
-    예: tenants/.../drawing.dwg → tenants/.../drawing.pdf
-    """
-    return str(Path(file_key).with_suffix(suffix))
-
-
 def _convert_pipeline(file_key: str, s3: S3Client) -> ConversionResult:
     """변환 파이프라인 내부 구현."""
     ext = Path(file_key).suffix.lower()
     input_path = _cache_path(file_key)
-    pdf_key = _make_output_key(file_key, ".pdf")
+    pdf_key = replace_suffix(file_key, ".pdf")
     pdf_path = _cache_path(pdf_key)
-    thumbnail_key = _make_output_key(file_key, ".png")
+    thumbnail_key = replace_suffix(file_key, ".png")
     thumbnail_path = _cache_path(thumbnail_key)
 
     os.makedirs(os.path.dirname(input_path), exist_ok=True)
@@ -158,9 +151,7 @@ def _convert_pipeline(file_key: str, s3: S3Client) -> ConversionResult:
 
         # 3. 썸네일 생성 (항상 PDF에서)
         _generate_thumbnail(pdf_path, thumbnail_path)
-        thumbnail_size = _upload_file(
-            s3, thumbnail_path, thumbnail_key, "image/png"
-        )
+        thumbnail_size = _upload_file(s3, thumbnail_path, thumbnail_key, "image/png")
 
         return ConversionResult(
             pdf_key=pdf_key,
@@ -204,9 +195,7 @@ def _generate_pdf_from_cad(input_path: str, output_path: str) -> None:
             stderr=stderr[:500],
             input=input_path,
         )
-        raise RuntimeError(
-            f"dwg2pdf 실패 (exit {result.returncode}): {stderr[:500]}"
-        )
+        raise RuntimeError(f"dwg2pdf 실패 (exit {result.returncode}): {stderr[:500]}")
 
 
 def _generate_pdf_from_image(input_path: str, output_path: str) -> None:

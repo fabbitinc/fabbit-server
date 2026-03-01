@@ -18,9 +18,14 @@ def set_profile_image(
     auth: AuthContext,
     file_id: uuid.UUID,
 ) -> ProfileImageResponse:
-    """업로드 완료된 파일을 프로필 이미지로 설정."""
+    """업로드 완료된 파일을 프로필 이미지로 설정.
+
+    원본 이미지를 256x256 WebP 썸네일로 변환 후 저장.
+    """
     files = file_service.validate_attachable(db, [file_id])
-    user_service.set_profile_image(db, auth, files[0])
+    file = files[0]
+    file_service.convert_to_thumbnail(db, file)
+    user_service.set_profile_image(db, auth, file)
     return ProfileImageResponse(
-        profile_image_url=get_file_url(files[0].file_key),
+        profile_image_url=get_file_url(file.file_key),
     )

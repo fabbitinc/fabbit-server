@@ -33,7 +33,7 @@ def create_file(
     req: CreateFileRequest,
 ) -> CreateFileResponse:
     file_id = generate_uuid7()
-    file_key = f"tenants/{auth.org_id}/raw_data/{file_id}/{req.original_name}"
+    file_key = f"tenants/{auth.org_id}/uploaded/{file_id}/{req.original_name}"
 
     repo.create_file_record(
         db=db,
@@ -335,6 +335,47 @@ def _delete_s3_files(file: File) -> None:
                 key=file.file_key,
                 file_id=file.id,
             )
+
+
+def convert_to_thumbnail(
+    db: Session,
+    file: File,
+    size: int = 256,
+) -> None:
+    """원본 이미지를 썸네일로 변환하여 교체.
+
+    S3 원본 다운로드 → 썸네일 변환 → 새 키로 업로드 → 원본 삭제 → File 레코드 갱신.
+    트랜잭션은 호출자(use_case)에서 관리.
+    """
+    from app.infrastructure.image_converter import create_thumbnail
+    from app.infrastructure.utils import replace_suffix
+
+    # 원본 다운로드
+    original_data = _s3.get_object(file.file_key)
+
+    # 썸네일 변환
+    thumbnail_data = create_thumbnail(original_data, size)
+
+    # 원본 키에서 확장자만 .webp로 교체
+    original_key = file.file_key
+    thumbnail_key = replace_suffix(original_key, ".webp")
+    _s3.put_object(thumbnail_key, thumbnail_data, "image/webp")
+
+    # 원본과 키가 다른 경우에만 삭제 (이미 .webp면 덮어쓰기이므로 삭제 불필요)
+    if original_key != thumbnail_key:
+        _s3.delete_object(original_key)
+
+    # File 레코드 갱신
+    file.file_key = thumbnail_key
+    file.content_type = "image/webp"
+    file.file_size = len(thumbnail_data)
+
+    logger.info(
+        "썸네일 변환 완료: file_id={file_id} {orig_key} → {thumb_key}",
+        file_id=file.id,
+        orig_key=original_key,
+        thumb_key=thumbnail_key,
+    )
 
 
 def get_uploaded_or_raise(db: Session, file_id: uuid.UUID) -> File:
