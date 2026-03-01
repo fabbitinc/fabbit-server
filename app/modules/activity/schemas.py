@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_serializer
 
+from app.modules.user.schemas import UserSummary
+
 
 # ── Activity Detail 스키마 (action별 타입 정의) ──
 
@@ -205,6 +207,7 @@ class ActivityResponse(BaseModel):
 class ActivityListResponse(BaseModel):
     items: list[ActivityResponse]
     next_cursor: uuid.UUID | None = None
+    users: dict[str, UserSummary] = {}
 
 
 # ── 타임라인 ──
@@ -230,3 +233,4 @@ class TimelineActivityItem(BaseModel):
 
 class TimelineResponse(BaseModel):
     items: list[TimelineCommentItem | TimelineActivityItem]
+    users: dict[str, UserSummary] = {}

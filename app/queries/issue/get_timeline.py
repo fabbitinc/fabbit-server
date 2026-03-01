@@ -8,9 +8,45 @@ from app.core.auth_context import AuthContext
 from app.core.transactional import transactional
 from app.modules.activity import mapper as activity_mapper
 from app.modules.activity import repository as activity_repo
-from app.modules.activity.constants import TargetType
+from app.modules.activity.constants import Action, TargetType
 from app.modules.activity.schemas import TimelineResponse
 from app.modules.issue import repository as issue_repo
+from app.modules.user import mapper as user_mapper
+from app.modules.user import repository as user_repo
+
+# detail에 user ID가 포함되는 액션 (added/removed 필드)
+_USER_ID_ACTIONS = {Action.ASSIGNEE_CHANGED.value, Action.REVIEWER_CHANGED.value}
+
+
+def _collect_user_ids(comment_items, activity_items, activities) -> set[uuid.UUID]:
+    """타임라인 아이템에서 모든 user ID 수집."""
+    ids: set[uuid.UUID] = set()
+
+    for item in comment_items:
+        if item.author_id:
+            ids.add(item.author_id)
+
+    for item in activity_items:
+        ids.add(item.actor_id)
+
+    # assignee_changed, reviewer_changed detail의 added/removed
+    for a in activities:
+        if a.action in _USER_ID_ACTIONS and a.detail:
+            for uid_str in a.detail.get("added", []) + a.detail.get("removed", []):
+                try:
+                    ids.add(uuid.UUID(uid_str))
+                except (ValueError, AttributeError):
+                    pass
+
+    return ids
+
+
+def _build_user_map(db: Session, user_ids: set[uuid.UUID]) -> dict:
+    """user ID 집합 → {str(id): UserSummary} 딕셔너리."""
+    if not user_ids:
+        return {}
+    users = user_repo.get_users_by_ids(db, list(user_ids))
+    return {str(u.id): user_mapper.to_user_summary(u) for u in users}
 
 
 @transactional(read_only=True)
@@ -31,4 +67,7 @@ def get_timeline(
         key=lambda item: item.created_at,
     )
 
-    return TimelineResponse(items=merged)
+    user_ids = _collect_user_ids(comment_items, activity_items, activities)
+    user_map = _build_user_map(db, user_ids)
+
+    return TimelineResponse(items=merged, users=user_map)

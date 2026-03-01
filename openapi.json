@@ -682,6 +682,71 @@
                 ]
             }
         },
+        "/api/v1/organizations/profile-image": {
+            "put": {
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Set Profile Image",
+                "description": "\uc870\uc9c1 \ud504\ub85c\ud544 \uc774\ubbf8\uc9c0 \uc124\uc815.\n\n\uae30\uc874 \ud30c\uc77c \uc5c5\ub85c\ub4dc API\ub85c \uc5c5\ub85c\ub4dc\ud55c \ud30c\uc77c\uc758 file_id\ub97c \uc804\ub2ec\ud558\uc5ec \uc870\uc9c1 \ud504\ub85c\ud544 \uc774\ubbf8\uc9c0\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\ud30c\uc77c \uc0c1\ud0dc(UPLOADED) \ubc0f \ubbf8\uc5f0\uacb0 \uc5ec\ubd80\ub97c \uac80\uc99d\ud55c \ud6c4 \uc800\uc7a5\ud569\ub2c8\ub2e4.\n**ADMIN \uad8c\ud55c \ud544\uc694.**",
+                "operationId": "set_profile_image_api_v1_organizations_profile_image_put",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetProfileImageRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProfileImageResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Delete Profile Image",
+                "description": "\uc870\uc9c1 \ud504\ub85c\ud544 \uc774\ubbf8\uc9c0 \uc81c\uac70.\n\n\ud504\ub85c\ud544 \uc774\ubbf8\uc9c0\ub97c \uc81c\uac70\ud558\uace0 \uc5f0\uacb0\ub41c \ud30c\uc77c\uc744 \uc18c\ud504\ud2b8 \uc0ad\uc81c\ud569\ub2c8\ub2e4.\n**ADMIN \uad8c\ud55c \ud544\uc694.**",
+                "operationId": "delete_profile_image_api_v1_organizations_profile_image_delete",
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
         "/api/v1/organizations/members": {
             "get": {
                 "tags": [
@@ -3276,6 +3341,142 @@
                 }
             }
         },
+        "/api/v1/projects/{project_id}/changes/{issue_number}/assignees": {
+            "put": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Sync Assignees",
+                "description": "\uc774\uc288 \ub2f4\ub2f9\uc790 \ub3d9\uae30\ud654.\n\n\uc804\ub2ec\ub41c `user_ids`\ub97c \uc774\uc288\uc758 \ucd5c\uc885 \ub2f4\ub2f9\uc790 \ubaa9\ub85d\uc73c\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\uae30\uc874 \ub2f4\ub2f9\uc790\uc640 diff\ub97c \ube44\uad50\ud558\uc5ec \ucd94\uac00/\uc81c\uac70\ub97c \uc790\ub3d9 \ucc98\ub9ac\ud569\ub2c8\ub2e4.\n\ube48 \ubaa9\ub85d \uc804\ub2ec \uc2dc \ubaa8\ub4e0 \ub2f4\ub2f9\uc790\uac00 \ud574\uc81c\ub429\ub2c8\ub2e4.",
+                "operationId": "sync_assignees_api_v1_projects__project_id__changes__issue_number__assignees_put",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyncAssigneesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyncAssigneesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/changes/{issue_number}/reviewers": {
+            "put": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Sync Reviewers",
+                "description": "\ubcc0\uacbd \uc694\uccad \uac80\ud1a0\uc790 \ub3d9\uae30\ud654.\n\n\uc804\ub2ec\ub41c `user_ids`\ub97c CR\uc758 \ucd5c\uc885 \uac80\ud1a0\uc790 \ubaa9\ub85d\uc73c\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\uae30\uc874 \uac80\ud1a0\uc790\uc640 diff\ub97c \ube44\uad50\ud558\uc5ec \ucd94\uac00/\uc81c\uac70\ub97c \uc790\ub3d9 \ucc98\ub9ac\ud569\ub2c8\ub2e4.\n\ube48 \ubaa9\ub85d \uc804\ub2ec \uc2dc \ubaa8\ub4e0 \uac80\ud1a0\uc790\uac00 \ud574\uc81c\ub429\ub2c8\ub2e4.",
+                "operationId": "sync_reviewers_api_v1_projects__project_id__changes__issue_number__reviewers_put",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyncReviewersRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyncReviewersResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/projects/{project_id}/changes/{issue_number}/labels": {
             "put": {
                 "tags": [
@@ -5751,6 +5952,14 @@
                             }
                         ],
                         "title": "Next Cursor"
+                    },
+                    "users": {
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/UserSummary"
+                        },
+                        "type": "object",
+                        "title": "Users",
+                        "default": {}
                     }
                 },
                 "type": "object",
@@ -5838,6 +6047,7 @@
                     "cr",
                     "part",
                     "assignee",
+                    "reviewer",
                     "label",
                     "project"
                 ],
@@ -6482,6 +6692,14 @@
                             }
                         ],
                         "title": "Merged By"
+                    },
+                    "reviewers": {
+                        "items": {
+                            "$ref": "#/components/schemas/AssigneeSummary"
+                        },
+                        "type": "array",
+                        "title": "Reviewers",
+                        "default": []
                     }
                 },
                 "type": "object",
@@ -6635,6 +6853,14 @@
                             }
                         ],
                         "title": "Merged By"
+                    },
+                    "reviewers": {
+                        "items": {
+                            "$ref": "#/components/schemas/AssigneeSummary"
+                        },
+                        "type": "array",
+                        "title": "Reviewers",
+                        "default": []
                     }
                 },
                 "type": "object",
@@ -8527,6 +8753,17 @@
                             }
                         ],
                         "title": "Job Role"
+                    },
+                    "profile_image_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Profile Image Url"
                     }
                 },
                 "type": "object",
@@ -8726,6 +8963,17 @@
                     "plan_type": {
                         "type": "string",
                         "title": "Plan Type"
+                    },
+                    "profile_image_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Profile Image Url"
                     }
                 },
                 "type": "object",
@@ -10037,6 +10285,37 @@
                 ],
                 "title": "RelationshipTypeSchema"
             },
+            "ReviewersChangedDetail": {
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "const": "reviewer_changed",
+                        "title": "Action"
+                    },
+                    "added": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Added"
+                    },
+                    "removed": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Removed"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "action",
+                    "added",
+                    "removed"
+                ],
+                "title": "ReviewersChangedDetail",
+                "description": "\uac80\ud1a0\uc790 \ubcc0\uacbd (\ucd94\uac00/\uc81c\uac70)."
+            },
             "ScopedLoginResponse": {
                 "properties": {
                     "user": {
@@ -10151,6 +10430,17 @@
                     "name": {
                         "type": "string",
                         "title": "Name"
+                    },
+                    "profile_image_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Profile Image Url"
                     }
                 },
                 "type": "object",
@@ -10427,6 +10717,39 @@
                     "removed_count"
                 ],
                 "title": "SyncPartsResponse"
+            },
+            "SyncReviewersRequest": {
+                "properties": {
+                    "user_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "User Ids",
+                        "description": "\ub3d9\uae30\ud654\ud560 \uac80\ud1a0\uc790 ID \ubaa9\ub85d (\ube48 \ubaa9\ub85d = \ubaa8\ub4e0 \uac80\ud1a0\uc790 \ud574\uc81c)"
+                    }
+                },
+                "type": "object",
+                "title": "SyncReviewersRequest"
+            },
+            "SyncReviewersResponse": {
+                "properties": {
+                    "added_count": {
+                        "type": "integer",
+                        "title": "Added Count"
+                    },
+                    "removed_count": {
+                        "type": "integer",
+                        "title": "Removed Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "added_count",
+                    "removed_count"
+                ],
+                "title": "SyncReviewersResponse"
             },
             "SynthesisBatchFailure": {
                 "properties": {
@@ -10868,6 +11191,9 @@
                                 "$ref": "#/components/schemas/AssigneesChangedDetail"
                             },
                             {
+                                "$ref": "#/components/schemas/ReviewersChangedDetail"
+                            },
+                            {
                                 "$ref": "#/components/schemas/LabelsChangedDetail"
                             },
                             {
@@ -10969,6 +11295,14 @@
                         },
                         "type": "array",
                         "title": "Items"
+                    },
+                    "users": {
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/UserSummary"
+                        },
+                        "type": "object",
+                        "title": "Users",
+                        "default": {}
                     }
                 },
                 "type": "object",
@@ -11317,6 +11651,37 @@
                     "created_at"
                 ],
                 "title": "UserResponse"
+            },
+            "UserSummary": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "full_name": {
+                        "type": "string",
+                        "title": "Full Name"
+                    },
+                    "profile_image_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Profile Image Url"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "full_name"
+                ],
+                "title": "UserSummary",
+                "description": "\uc720\uc800 \uc694\uc57d \uc815\ubcf4 (\ud0c0\uc784\ub77c\uc778 \ub4f1 \uc784\ubca0\ub529\uc6a9)."
             },
             "ValidationError": {
                 "properties": {

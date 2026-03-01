@@ -85,6 +85,7 @@ class MemberSummary(BaseModel):
     email: str
     role: str
     job_role: str | None = None
+    profile_image_url: str | None = None
 
 
 class MemberListResponse(BaseModel):

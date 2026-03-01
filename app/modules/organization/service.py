@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     from app.core.auth_context import AuthContext
+    from app.modules.file.models import File
 
 from app.core.exceptions import AppError
 from app.modules.organization import repository as repo
@@ -169,3 +170,23 @@ def add_member(
     if existing:
         raise AppError(message="이미 조직에 소속된 멤버입니다", code="ALREADY_EXISTS")
     return repo.create_membership(db, user_id, org_id, role=role)
+
+
+def set_profile_image(db: Session, auth: AuthContext, file: File) -> None:
+    """프로필 이미지 설정 — 검증된 파일을 연결.
+
+    @transactional 없음 — use_case에서 트랜잭션 관리.
+    """
+    org = get_org_or_raise(db, auth.org_id)
+    org.set_profile_image(file)
+
+
+def delete_profile_image(
+    db: Session, auth: AuthContext, file_id: _uuid.UUID
+) -> None:
+    """프로필 이미지 제거 — 소프트 삭제는 FileHandler가 처리.
+
+    @transactional 없음 — use_case에서 트랜잭션 관리.
+    """
+    org = get_org_or_raise(db, auth.org_id)
+    org.remove_profile_image(file_id)

@@ -39,7 +39,17 @@ def get_me(db: Session, auth: AuthContext) -> MeResponse:
                 org_id=m.org_id,
                 role=m.role,
                 job_role=m.job_role,
-                organization=OrganizationResponse.model_validate(m.organization),
+                organization=OrganizationResponse(
+                    id=m.organization.id,
+                    slug=m.organization.slug,
+                    name=m.organization.name,
+                    industry=m.organization.industry,
+                    team_size=m.organization.team_size,
+                    plan_type=m.organization.plan_type,
+                    profile_image_url=get_file_url(
+                        m.organization.profile_image_file_key
+                    ),
+                ),
             )
             for m in memberships
         ],

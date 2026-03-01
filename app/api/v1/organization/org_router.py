@@ -3,11 +3,13 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_auth, require_create_org_token
+from app.api.deps import get_db, get_tenant_db, require_admin, require_auth, require_create_org_token
 from app.core.auth_context import AuthContext, CreateOrgContext
 from app.modules.auth.schemas import CreateOrganizationResponse, LoginResponse
 from app.modules.organization.schemas import (
     CreateOrganizationRequest,
+    ProfileImageResponse,
+    SetProfileImageRequest,
     SwitchOrgRequest,
 )
 from app.use_cases import organization as org_commands
@@ -41,3 +43,31 @@ def switch_org(
     대상 워크스페이스의 멤버십을 확인한 후 새 access+refresh 토큰을 발급합니다.
     """
     return org_commands.switch_org(db, auth.user_id, auth.email, req.slug)
+
+
+@router.put("/profile-image", response_model=ProfileImageResponse)
+def set_profile_image(
+    req: SetProfileImageRequest,
+    db: Session = Depends(get_tenant_db),
+    auth: AuthContext = Depends(require_admin),
+):
+    """조직 프로필 이미지 설정.
+
+    기존 파일 업로드 API로 업로드한 파일의 file_id를 전달하여 조직 프로필 이미지로 설정합니다.
+    파일 상태(UPLOADED) 및 미연결 여부를 검증한 후 저장합니다.
+    **ADMIN 권한 필요.**
+    """
+    return org_commands.set_profile_image(db, auth, req.file_id)
+
+
+@router.delete("/profile-image", status_code=204)
+def delete_profile_image(
+    db: Session = Depends(get_tenant_db),
+    auth: AuthContext = Depends(require_admin),
+):
+    """조직 프로필 이미지 제거.
+
+    프로필 이미지를 제거하고 연결된 파일을 소프트 삭제합니다.
+    **ADMIN 권한 필요.**
+    """
+    org_commands.delete_profile_image(db, auth)

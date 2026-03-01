@@ -19,6 +19,8 @@ from app.modules.issue.schemas import (
     CreateCommentRequest,
     LinkIssuesRequest,
     LinkIssuesResponse,
+    SyncAssigneesRequest,
+    SyncAssigneesResponse,
     SyncLabelsRequest,
     SyncLabelsResponse,
     SyncPartsRequest,
@@ -188,6 +190,29 @@ def unlink_issues(
     요청된 이슈 ID에 해당하는 연결을 해제합니다.
     """
     issue_commands.unlink_issues(db, auth, cr.id, issue_ids=req.issue_ids)
+
+
+# ── 담당자 동기화 ──
+
+
+@router.put(
+    "/{issue_number}/assignees",
+    response_model=SyncAssigneesResponse,
+    status_code=200,
+)
+def sync_assignees(
+    req: SyncAssigneesRequest,
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 담당자 동기화.
+
+    전달된 `user_ids`를 이슈의 최종 담당자 목록으로 설정합니다.
+    기존 담당자와 diff를 비교하여 추가/제거를 자동 처리합니다.
+    빈 목록 전달 시 모든 담당자가 해제됩니다.
+    """
+    return issue_commands.sync_assignees(db, auth, cr.id, user_ids=req.user_ids)
 
 
 # ── 검토자 동기화 ──

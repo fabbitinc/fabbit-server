@@ -6,6 +6,14 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+class UserSummary(BaseModel):
+    """유저 요약 정보 (타임라인 등 임베딩용)."""
+
+    id: uuid.UUID
+    full_name: str
+    profile_image_url: str | None = None
+
+
 class UserResponse(BaseModel):
     id: uuid.UUID
     email: str

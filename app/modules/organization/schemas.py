@@ -14,6 +14,8 @@ class OrganizationResponse(BaseModel):
     industry: str | None = None
     team_size: str | None = None
     plan_type: str
+    profile_image_url: str | None = None
+
     model_config = {"from_attributes": True}
 
 
@@ -41,8 +43,7 @@ class SiteResponse(BaseModel):
     """서브도메인 접근 시 워크스페이스 기본 정보 (로그인 페이지용)."""
     slug: str
     name: str
-
-    model_config = {"from_attributes": True}
+    profile_image_url: str | None = None
 
 
 class PlanResponse(BaseModel):
@@ -69,3 +70,14 @@ class CreateOrganizationRequest(BaseModel):
 
 class SwitchOrgRequest(BaseModel):
     slug: str = Field(min_length=1, max_length=50, description="전환할 워크스페이스 주소")
+
+
+# ── 프로필 이미지 ──
+
+
+class SetProfileImageRequest(BaseModel):
+    file_id: uuid.UUID
+
+
+class ProfileImageResponse(BaseModel):
+    profile_image_url: str
