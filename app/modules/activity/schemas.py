@@ -12,12 +12,41 @@ from app.modules.user.schemas import UserSummary
 # ── Activity Detail 스키마 (action별 타입 정의) ──
 
 
+class ActivityUserInfo(BaseModel):
+    """Activity에 기록되는 사용자 정보."""
+
+    user_id: str
+    name: str
+
+
+class ActivityPartInfo(BaseModel):
+    """Activity에 기록되는 부품 정보."""
+
+    part_id: str
+    part_number: str
+
+
+class ActivityFileInfo(BaseModel):
+    """Activity에 기록되는 파일 정보."""
+
+    file_id: str
+    original_name: str
+
+
 class ActivityLabelInfo(BaseModel):
     """Activity에 기록되는 라벨 정보."""
 
     label_id: str
     name: str
     color: str
+
+
+class ActivityIssueInfo(BaseModel):
+    """Activity에 기록되는 이슈 정보."""
+
+    issue_id: str
+    number: int
+    title: str
 
 
 # -- 상태 전이 (from 은 Python 예약어이므로 alias + model_serializer 사용) --
@@ -58,8 +87,8 @@ class AssigneesChangedDetail(BaseModel):
     """담당자 변경 (추가/제거)."""
 
     action: Literal["assignee_changed"]
-    added: list[str]
-    removed: list[str]
+    added: list[ActivityUserInfo]
+    removed: list[ActivityUserInfo]
 
 
 # -- 검토자 --
@@ -69,8 +98,8 @@ class ReviewersChangedDetail(BaseModel):
     """검토자 변경 (추가/제거)."""
 
     action: Literal["reviewer_changed"]
-    added: list[str]
-    removed: list[str]
+    added: list[ActivityUserInfo]
+    removed: list[ActivityUserInfo]
 
 
 # -- 라벨 --
@@ -91,8 +120,8 @@ class PartsChangedDetail(BaseModel):
     """부품 변경 (추가/제거) — 이슈 스코프."""
 
     action: Literal["part_changed"]
-    added: list[str]
-    removed: list[str]
+    added: list[ActivityPartInfo]
+    removed: list[ActivityPartInfo]
 
 
 class ProjectUpdatedDetail(BaseModel):
@@ -106,14 +135,14 @@ class PartAddedDetail(BaseModel):
     """부품 연결 — 프로젝트 스코프."""
 
     action: Literal["part_added"]
-    part_ids: list[str]
+    parts: list[ActivityPartInfo]
 
 
 class PartRemovedDetail(BaseModel):
     """부품 해제 — 프로젝트 스코프."""
 
     action: Literal["part_removed"]
-    part_ids: list[str]
+    parts: list[ActivityPartInfo]
 
 
 # -- 파일 첨부/분리 --
@@ -123,7 +152,7 @@ class FileAttachedDetail(BaseModel):
     """파일 첨부."""
 
     action: Literal["file_attached"]
-    file_ids: list[str]
+    files: list[ActivityFileInfo]
 
 
 class FileDetachedDetail(BaseModel):
@@ -131,6 +160,7 @@ class FileDetachedDetail(BaseModel):
 
     action: Literal["file_detached"]
     file_id: str
+    file_name: str
 
 
 # -- CR-이슈 연결 --
@@ -140,14 +170,14 @@ class IssueLinkedDetail(BaseModel):
     """CR에 이슈 연결."""
 
     action: Literal["cr_issue_linked"]
-    linked_issue_ids: list[str]
+    linked_issues: list[ActivityIssueInfo]
 
 
 class IssueUnlinkedDetail(BaseModel):
     """CR에서 이슈 해제."""
 
     action: Literal["cr_issue_unlinked"]
-    unlinked_issue_ids: list[str]
+    unlinked_issues: list[ActivityIssueInfo]
 
 
 # -- 프로젝트 스코프 --
