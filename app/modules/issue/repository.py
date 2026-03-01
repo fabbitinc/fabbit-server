@@ -204,16 +204,19 @@ def batch_load_comment_counts(
 
 def batch_load_user_names(
     db: Session, user_ids: list[uuid.UUID]
-) -> dict[uuid.UUID, str]:
-    """User ID 목록에 대한 이름 배치 조회 (cross-schema)."""
+) -> dict[uuid.UUID, tuple[str, str | None]]:
+    """User ID 목록에 대한 이름·프로필 이미지 배치 조회 (cross-schema).
+
+    Returns: {user_id: (full_name, profile_image_file_key)}
+    """
     if not user_ids:
         return {}
     rows = (
-        db.query(User.id, User.full_name)
+        db.query(User.id, User.full_name, User.profile_image_file_key)
         .filter(User.id.in_(user_ids))
         .all()
     )
-    return {uid: name for uid, name in rows}
+    return {uid: (name, file_key) for uid, name, file_key in rows}
 
 
 def batch_load_parts(

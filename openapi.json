@@ -6064,6 +6064,17 @@
                     "full_name": {
                         "type": "string",
                         "title": "Full Name"
+                    },
+                    "profile_image_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Profile Image Url"
                     }
                 },
                 "type": "object",

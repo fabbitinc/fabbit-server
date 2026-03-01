@@ -120,6 +120,7 @@ class AssigneeSummary(BaseModel):
 
     id: uuid.UUID
     full_name: str
+    profile_image_url: str | None = None
 
 
 class PartBadge(BaseModel):
@@ -142,6 +143,7 @@ class IssueSummary(BaseModel):
     updated_at: datetime
     created_by: uuid.UUID | None = None
     created_by_name: str | None = None
+    created_by_profile_image_url: str | None = None
     labels: list[LabelBadge] = []
     assignees: list[AssigneeSummary] = []
     parts: list[PartBadge] = []
@@ -190,6 +192,7 @@ class IssueResponse(BaseModel):
     updated_at: datetime
     created_by: uuid.UUID | None = None
     created_by_name: str | None = None
+    created_by_profile_image_url: str | None = None
     labels: list[LabelBadge] = []
     assignees: list[AssigneeSummary] = []
     parts: list[PartBadge] = []

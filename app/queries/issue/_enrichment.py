@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
 
-from app.modules.file.mapper import to_file_item
+from app.modules.file.mapper import get_file_url, to_file_item
 from app.modules.file.schemas import FileItem
 from app.modules.issue import repository as repo
 from app.modules.issue.models import ChangeRequest, Issue
@@ -21,6 +21,7 @@ class IssueEnrichment:
     """단일 이슈에 대한 enrichment 데이터."""
 
     created_by_name: str | None = None
+    created_by_profile_image_url: str | None = None
     labels: list[LabelBadge] = field(default_factory=list)
     assignees: list[AssigneeSummary] = field(default_factory=list)
     reviewers: list[AssigneeSummary] = field(default_factory=list)
@@ -49,7 +50,7 @@ def load_enrichments(
     cr_ids = [i.id for i in issues if isinstance(i, ChangeRequest)]
     reviewer_ids_map = repo.batch_load_reviewer_ids(db, cr_ids) if cr_ids else {}
 
-    # User 이름 일괄 조회
+    # User 이름·프로필 이미지 일괄 조회
     all_user_ids: set[uuid.UUID] = set()
     for issue in issues:
         if issue.created_by:
@@ -58,7 +59,7 @@ def load_enrichments(
         all_user_ids.update(ids)
     for ids in reviewer_ids_map.values():
         all_user_ids.update(ids)
-    user_names = repo.batch_load_user_names(db, list(all_user_ids))
+    user_info = repo.batch_load_user_names(db, list(all_user_ids))
 
     result: dict[uuid.UUID, IssueEnrichment] = {}
     for issue in issues:
@@ -67,11 +68,19 @@ def load_enrichments(
             for lb in labels_map.get(issue.id, [])
         ]
         issue_assignees = [
-            AssigneeSummary(id=uid, full_name=user_names.get(uid, ""))
+            AssigneeSummary(
+                id=uid,
+                full_name=user_info[uid][0] if uid in user_info else "",
+                profile_image_url=get_file_url(user_info[uid][1]) if uid in user_info else None,
+            )
             for uid in assignee_ids_map.get(issue.id, [])
         ]
         issue_reviewers = [
-            AssigneeSummary(id=uid, full_name=user_names.get(uid, ""))
+            AssigneeSummary(
+                id=uid,
+                full_name=user_info[uid][0] if uid in user_info else "",
+                profile_image_url=get_file_url(user_info[uid][1]) if uid in user_info else None,
+            )
             for uid in reviewer_ids_map.get(issue.id, [])
         ]
         issue_parts = [
@@ -82,10 +91,14 @@ def load_enrichments(
             to_file_item(f) for f in files_map.get(issue.id, [])
         ]
 
+        _creator = (
+            user_info[issue.created_by]
+            if issue.created_by and issue.created_by in user_info
+            else None
+        )
         result[issue.id] = IssueEnrichment(
-            created_by_name=(
-                user_names.get(issue.created_by) if issue.created_by else None
-            ),
+            created_by_name=_creator[0] if _creator else None,
+            created_by_profile_image_url=get_file_url(_creator[1]) if _creator else None,
             labels=issue_labels,
             assignees=issue_assignees,
             reviewers=issue_reviewers,
