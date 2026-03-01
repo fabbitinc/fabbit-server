@@ -6,17 +6,17 @@ from app.core.domain_event import DomainEvent
 
 
 class ProjectPartsLinked(DomainEvent):
-    """프로젝트에 부품 연결 — Project 피드용."""
+    """프로젝트에 부품 연결 — 스냅샷 포함."""
 
     project_id: UUID
-    part_ids: list[UUID]
+    parts: list[dict]  # [{"part_id": str, "part_number": str}]
 
 
 class ProjectPartsUnlinked(DomainEvent):
-    """프로젝트에서 부품 해제 — Project 피드용."""
+    """프로젝트에서 부품 해제 — 스냅샷 포함."""
 
     project_id: UUID
-    part_ids: list[UUID]
+    parts: list[dict]  # [{"part_id": str, "part_number": str}]
 
 
 class ProjectUpdated(DomainEvent):

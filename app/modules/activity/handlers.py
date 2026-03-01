@@ -4,6 +4,8 @@
 같은 트랜잭션 내에서 실행되므로 비즈니스 로직과 함께 commit/rollback 된다.
 """
 
+from uuid import UUID
+
 from app.core.event_bus import event_bus
 from app.core.transactional import get_active_session
 from app.modules.activity.constants import Action, TargetType
@@ -22,7 +24,6 @@ from app.modules.issue.events import (
     IssueStateChanged,
     ReviewersChanged,
 )
-from app.modules.label.models import Label
 from app.modules.project.events import (
     ProjectPartsLinked,
     ProjectPartsUnlinked,
@@ -142,77 +143,72 @@ def _on_cr_state_changed(event: CRStateChanged) -> None:
 def _on_assignees_changed(event: AssigneesChanged) -> None:
     """담당자 동기화 → Issue 피드."""
     actor_id = _get_actor_id()
-    detail = {
-        "added": [str(uid) for uid in event.added_user_ids],
-        "removed": [str(uid) for uid in event.removed_user_ids],
-    }
     _add_activity(
-        TargetType.ISSUE, event.issue_id, Action.ASSIGNEE_CHANGED, actor_id, detail
+        TargetType.ISSUE,
+        event.issue_id,
+        Action.ASSIGNEE_CHANGED,
+        actor_id,
+        {"added": event.added, "removed": event.removed},
     )
 
 
 def _on_reviewers_changed(event: ReviewersChanged) -> None:
     """검토자 동기화 → Issue 피드."""
     actor_id = _get_actor_id()
-    detail = {
-        "added": [str(uid) for uid in event.added_user_ids],
-        "removed": [str(uid) for uid in event.removed_user_ids],
-    }
     _add_activity(
-        TargetType.ISSUE, event.issue_id, Action.REVIEWER_CHANGED, actor_id, detail
+        TargetType.ISSUE,
+        event.issue_id,
+        Action.REVIEWER_CHANGED,
+        actor_id,
+        {"added": event.added, "removed": event.removed},
     )
 
 
 def _on_issue_labels_changed(event: IssueLabelsChanged) -> None:
     """이슈 라벨 변경 → Issue 피드."""
     actor_id = _get_actor_id()
-    db = get_active_session()
-
-    # 추가/제거된 라벨 정보 조회
-    all_ids = list(set(event.added_label_ids) | set(event.removed_label_ids))
-    labels = db.query(Label).filter(Label.id.in_(all_ids)).all() if all_ids else []
-    label_map = {label.id: (label.name, label.color) for label in labels}
-
-    def _label_info(lid):
-        name, color = label_map.get(lid, ("(삭제됨)", "#888888"))
-        return {"label_id": str(lid), "name": name, "color": color}
-
-    detail = {
-        "added": [_label_info(lid) for lid in event.added_label_ids],
-        "removed": [_label_info(lid) for lid in event.removed_label_ids],
-    }
     _add_activity(
-        TargetType.ISSUE, event.issue_id, Action.LABEL_CHANGED, actor_id, detail
+        TargetType.ISSUE,
+        event.issue_id,
+        Action.LABEL_CHANGED,
+        actor_id,
+        {"added": event.added, "removed": event.removed},
     )
 
 
 def _on_issue_parts_changed(event: IssuePartsChanged) -> None:
     """이슈 부품 동기화 → Issue 피드."""
     actor_id = _get_actor_id()
-    detail = {
-        "added": [str(pid) for pid in event.added_part_ids],
-        "removed": [str(pid) for pid in event.removed_part_ids],
-    }
     _add_activity(
-        TargetType.ISSUE, event.issue_id, Action.PART_CHANGED, actor_id, detail
+        TargetType.ISSUE,
+        event.issue_id,
+        Action.PART_CHANGED,
+        actor_id,
+        {"added": event.added, "removed": event.removed},
     )
 
 
 def _on_issue_files_attached(event: IssueFilesAttached) -> None:
     """이슈에 파일 첨부 → Issue 피드."""
     actor_id = _get_actor_id()
-    detail = {"file_ids": [str(fid) for fid in event.file_ids]}
     _add_activity(
-        TargetType.ISSUE, event.issue_id, Action.FILE_ATTACHED, actor_id, detail
+        TargetType.ISSUE,
+        event.issue_id,
+        Action.FILE_ATTACHED,
+        actor_id,
+        {"files": event.files},
     )
 
 
 def _on_issue_file_detached(event: IssueFileDetached) -> None:
     """이슈에서 파일 분리 → Issue 피드."""
     actor_id = _get_actor_id()
-    detail = {"file_id": str(event.file_id)}
     _add_activity(
-        TargetType.ISSUE, event.issue_id, Action.FILE_DETACHED, actor_id, detail
+        TargetType.ISSUE,
+        event.issue_id,
+        Action.FILE_DETACHED,
+        actor_id,
+        {"file_id": str(event.file_id), "file_name": event.file_name},
     )
 
 
@@ -225,13 +221,13 @@ def _on_cr_issues_linked(event: CRIssuesLinked) -> None:
         event.issue_id,
         Action.CR_ISSUE_LINKED,
         actor_id,
-        {"linked_issue_ids": [str(iid) for iid in event.linked_issue_ids]},
+        {"linked_issues": event.linked_issues},
     )
     # 연결된 각 이슈 피드
-    for iid in event.linked_issue_ids:
+    for issue_info in event.linked_issues:
         _add_activity(
             TargetType.ISSUE,
-            iid,
+            UUID(issue_info["issue_id"]),
             Action.CR_ISSUE_LINKED,
             actor_id,
             {
@@ -251,13 +247,13 @@ def _on_cr_issues_unlinked(event: CRIssuesUnlinked) -> None:
         event.issue_id,
         Action.CR_ISSUE_UNLINKED,
         actor_id,
-        {"unlinked_issue_ids": [str(iid) for iid in event.unlinked_issue_ids]},
+        {"unlinked_issues": event.unlinked_issues},
     )
     # 연결 해제된 각 이슈 피드
-    for iid in event.unlinked_issue_ids:
+    for issue_info in event.unlinked_issues:
         _add_activity(
             TargetType.ISSUE,
-            iid,
+            UUID(issue_info["issue_id"]),
             Action.CR_ISSUE_UNLINKED,
             actor_id,
             {
@@ -279,7 +275,7 @@ def _on_project_parts_linked(event: ProjectPartsLinked) -> None:
         event.project_id,
         Action.PART_ADDED,
         actor_id,
-        {"part_ids": [str(pid) for pid in event.part_ids]},
+        {"parts": event.parts},
     )
 
 
@@ -291,7 +287,7 @@ def _on_project_parts_unlinked(event: ProjectPartsUnlinked) -> None:
         event.project_id,
         Action.PART_REMOVED,
         actor_id,
-        {"part_ids": [str(pid) for pid in event.part_ids]},
+        {"parts": event.parts},
     )
 
 

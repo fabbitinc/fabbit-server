@@ -59,8 +59,18 @@ def link_parts(
     """Project에 Part 배치 연결 — 신규 연결 건수 반환."""
     count = repo.link_parts(db, project.id, part_ids)
     if count > 0:
+        from app.modules.part.models import Part
+
+        parts_map = {
+            p.id: p for p in db.query(Part).filter(Part.id.in_(part_ids)).all()
+        }
         project.register_event(ProjectPartsLinked(
-            project_id=project.id, part_ids=part_ids
+            project_id=project.id,
+            parts=[
+                {"part_id": str(pid), "part_number": parts_map[pid].part_number}
+                for pid in part_ids
+                if pid in parts_map
+            ],
         ))
     return count
 
@@ -71,8 +81,18 @@ def unlink_parts(
     """Project에서 Part 배치 해제 — 삭제 건수 반환."""
     count = repo.unlink_parts(db, project.id, part_ids)
     if count > 0:
+        from app.modules.part.models import Part
+
+        parts_map = {
+            p.id: p for p in db.query(Part).filter(Part.id.in_(part_ids)).all()
+        }
         project.register_event(ProjectPartsUnlinked(
-            project_id=project.id, part_ids=part_ids
+            project_id=project.id,
+            parts=[
+                {"part_id": str(pid), "part_number": parts_map[pid].part_number}
+                for pid in part_ids
+                if pid in parts_map
+            ],
         ))
     return count
 

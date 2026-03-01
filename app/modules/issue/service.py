@@ -96,7 +96,10 @@ def attach_files(db: Session, issue_id: uuid.UUID, files: list[File]) -> None:
         issue.register_event(
             IssueFilesAttached(
                 issue_id=issue.id,
-                file_ids=[f.id for f in files],
+                files=[
+                    {"file_id": str(f.id), "original_name": f.original_name}
+                    for f in files
+                ],
             )
         )
 
@@ -104,11 +107,15 @@ def attach_files(db: Session, issue_id: uuid.UUID, files: list[File]) -> None:
 def detach_file(db: Session, issue_id: uuid.UUID, file_id: uuid.UUID) -> None:
     """Issue 첨부파일 1건 분리."""
     issue = get_or_raise(db, issue_id)
+    # 스냅샷용 파일명 조회 (분리 전)
+    file = db.query(File).filter(File.id == file_id).first()
+    file_name = file.original_name if file else "(알 수 없음)"
     issue.detach_file(file_id)
     issue.register_event(
         IssueFileDetached(
             issue_id=issue.id,
             file_id=file_id,
+            file_name=file_name,
         )
     )
 
@@ -119,11 +126,20 @@ def sync_assignees(
     """이슈 담당자 동기화 — (added, removed) 반환."""
     added, removed = repo.sync_assignees(db, issue.id, user_ids)
     if added or removed:
+        from app.modules.user.models import User
+
+        all_ids = list(set(added) | set(removed))
+        users = {u.id: u for u in db.query(User).filter(User.id.in_(all_ids)).all()}
+
+        def _snap(uid: uuid.UUID) -> dict:
+            u = users.get(uid)
+            return {"user_id": str(uid), "name": u.full_name if u else "(알 수 없음)"}
+
         issue.register_event(
             AssigneesChanged(
                 issue_id=issue.id,
-                added_user_ids=added,
-                removed_user_ids=removed,
+                added=[_snap(uid) for uid in added],
+                removed=[_snap(uid) for uid in removed],
             )
         )
     return added, removed
@@ -135,11 +151,20 @@ def sync_reviewers(
     """CR 검토자 동기화 — (added, removed) 반환."""
     added, removed = repo.sync_reviewers(db, cr.id, user_ids)
     if added or removed:
+        from app.modules.user.models import User
+
+        all_ids = list(set(added) | set(removed))
+        users = {u.id: u for u in db.query(User).filter(User.id.in_(all_ids)).all()}
+
+        def _snap(uid: uuid.UUID) -> dict:
+            u = users.get(uid)
+            return {"user_id": str(uid), "name": u.full_name if u else "(알 수 없음)"}
+
         cr.register_event(
             ReviewersChanged(
                 issue_id=cr.id,
-                added_user_ids=added,
-                removed_user_ids=removed,
+                added=[_snap(uid) for uid in added],
+                removed=[_snap(uid) for uid in removed],
             )
         )
     return added, removed
@@ -151,11 +176,24 @@ def sync_labels(
     """이슈 라벨 동기화 — (added, removed) 반환."""
     added, removed = repo.sync_labels(db, issue.id, label_ids)
     if added or removed:
+        from app.modules.label.models import Label
+
+        all_ids = list(set(added) | set(removed))
+        labels = {
+            lb.id: lb for lb in db.query(Label).filter(Label.id.in_(all_ids)).all()
+        }
+
+        def _snap(lid: uuid.UUID) -> dict:
+            lb = labels.get(lid)
+            if lb:
+                return {"label_id": str(lid), "name": lb.name, "color": lb.color}
+            return {"label_id": str(lid), "name": "(삭제됨)", "color": "#888888"}
+
         issue.register_event(
             IssueLabelsChanged(
                 issue_id=issue.id,
-                added_label_ids=added,
-                removed_label_ids=removed,
+                added=[_snap(lid) for lid in added],
+                removed=[_snap(lid) for lid in removed],
             )
         )
     return added, removed
@@ -167,11 +205,25 @@ def sync_parts(
     """이슈 부품 동기화 — (added, removed) 반환."""
     added, removed = repo.sync_parts(db, issue.id, part_ids)
     if added or removed:
+        from app.modules.part.models import Part
+
+        all_ids = list(set(added) | set(removed))
+        parts = {
+            p.id: p for p in db.query(Part).filter(Part.id.in_(all_ids)).all()
+        }
+
+        def _snap(pid: uuid.UUID) -> dict:
+            p = parts.get(pid)
+            return {
+                "part_id": str(pid),
+                "part_number": p.part_number if p else "(알 수 없음)",
+            }
+
         issue.register_event(
             IssuePartsChanged(
                 issue_id=issue.id,
-                added_part_ids=added,
-                removed_part_ids=removed,
+                added=[_snap(pid) for pid in added],
+                removed=[_snap(pid) for pid in removed],
             )
         )
     return added, removed
@@ -198,12 +250,17 @@ def link_issues(db: Session, cr: ChangeRequest, issue_ids: list[uuid.UUID]) -> i
     """CR에 이슈 배치 연결 — 신규 연결 건수 반환."""
     count = repo.link_issues(db, cr.id, issue_ids)
     if count > 0:
+        # 스냅샷용 이슈 조회
+        issues = db.query(Issue).filter(Issue.id.in_(issue_ids)).all()
         cr.register_event(
             CRIssuesLinked(
                 issue_id=cr.id,
                 cr_number=cr.number,
                 cr_title=cr.title,
-                linked_issue_ids=issue_ids,
+                linked_issues=[
+                    {"issue_id": str(i.id), "number": i.number, "title": i.title}
+                    for i in issues
+                ],
             )
         )
     return count
@@ -213,12 +270,17 @@ def unlink_issues(db: Session, cr: ChangeRequest, issue_ids: list[uuid.UUID]) ->
     """CR에서 이슈 배치 해제 — 삭제 건수 반환."""
     count = repo.unlink_issues(db, cr.id, issue_ids)
     if count > 0:
+        # 스냅샷용 이슈 조회
+        issues = db.query(Issue).filter(Issue.id.in_(issue_ids)).all()
         cr.register_event(
             CRIssuesUnlinked(
                 issue_id=cr.id,
                 cr_number=cr.number,
                 cr_title=cr.title,
-                unlinked_issue_ids=issue_ids,
+                unlinked_issues=[
+                    {"issue_id": str(i.id), "number": i.number, "title": i.title}
+                    for i in issues
+                ],
             )
         )
     return count

@@ -46,64 +46,65 @@ class CRStateChanged(DomainEvent):
 
 
 class AssigneesChanged(DomainEvent):
-    """담당자 동기화 — 추가/제거를 한 번에 기록."""
+    """담당자 동기화 — 스냅샷 포함."""
 
     issue_id: UUID
-    added_user_ids: list[UUID]
-    removed_user_ids: list[UUID]
+    added: list[dict]    # [{"user_id": str, "name": str}]
+    removed: list[dict]  # [{"user_id": str, "name": str}]
 
 
 class ReviewersChanged(DomainEvent):
-    """검토자 동기화 — 추가/제거를 한 번에 기록."""
+    """검토자 동기화 — 스냅샷 포함."""
 
     issue_id: UUID
-    added_user_ids: list[UUID]
-    removed_user_ids: list[UUID]
+    added: list[dict]    # [{"user_id": str, "name": str}]
+    removed: list[dict]  # [{"user_id": str, "name": str}]
 
 
 class IssueLabelsChanged(DomainEvent):
-    """이슈 라벨 동기화 — 추가/제거를 한 번에 기록."""
+    """이슈 라벨 동기화 — 스냅샷 포함."""
 
     issue_id: UUID
-    added_label_ids: list[UUID]
-    removed_label_ids: list[UUID]
+    added: list[dict]    # [{"label_id": str, "name": str, "color": str}]
+    removed: list[dict]  # [{"label_id": str, "name": str, "color": str}]
 
 
 class IssuePartsChanged(DomainEvent):
-    """이슈 부품 동기화 — 추가/제거를 한 번에 기록."""
+    """이슈 부품 동기화 — 스냅샷 포함."""
 
     issue_id: UUID
-    added_part_ids: list[UUID]
-    removed_part_ids: list[UUID]
+    added: list[dict]    # [{"part_id": str, "part_number": str}]
+    removed: list[dict]  # [{"part_id": str, "part_number": str}]
 
 
 class IssueFilesAttached(DomainEvent):
-    """이슈에 파일 첨부."""
+    """이슈에 파일 첨부 — 스냅샷 포함."""
 
     issue_id: UUID
-    file_ids: list[UUID]
+    files: list[dict]  # [{"file_id": str, "original_name": str}]
 
 
 class IssueFileDetached(DomainEvent):
-    """이슈에서 파일 분리."""
+    """이슈에서 파일 분리 — 스냅샷 포함."""
 
     issue_id: UUID
     file_id: UUID
+    file_name: str
 
 
 class CRIssuesLinked(DomainEvent):
-    """변경 요청에 이슈 연결 — CR·이슈 양쪽 피드."""
+    """변경 요청에 이슈 연결 — 스냅샷 포함."""
 
     issue_id: UUID
     cr_number: int
     cr_title: str
-    linked_issue_ids: list[UUID]
+    linked_issues: list[dict]  # [{"issue_id": str, "number": int, "title": str}]
 
 
 class CRIssuesUnlinked(DomainEvent):
-    """변경 요청에서 이슈 해제 — CR·이슈 양쪽 피드."""
+    """변경 요청에서 이슈 해제 — 스냅샷 포함."""
 
     issue_id: UUID
     cr_number: int
     cr_title: str
-    unlinked_issue_ids: list[UUID]
+    unlinked_issues: list[dict]  # [{"issue_id": str, "number": int, "title": str}]
