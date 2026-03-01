@@ -28,6 +28,7 @@ from app.modules.issue.schemas import (
     SyncReviewersRequest,
     SyncReviewersResponse,
     UpdateCommentRequest,
+    UpdateIssueRequest,
 )
 from app.queries import issue as issue_queries
 from app.use_cases import issue as issue_commands
@@ -94,6 +95,23 @@ def create_change_request(
     body = req.body.model_dump_json(exclude_none=True) if req.body else None
     return issue_commands.create_change_request(
         db, auth, project_id, title=req.title, body=body, issue_number=req.issue_number
+    )
+
+
+@router.patch("/{issue_number}", response_model=ChangeRequestResponse)
+def update_change_request(
+    req: UpdateIssueRequest,
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """변경 요청 제목/본문 수정.
+
+    `title`, `body` 중 전달된 필드만 수정합니다.
+    """
+    body = req.body.model_dump_json(exclude_none=True) if req.body else None
+    return issue_commands.update_change_request(
+        db, auth, cr.id, title=req.title, body=body
     )
 
 

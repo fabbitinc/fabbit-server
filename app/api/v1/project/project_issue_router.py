@@ -25,6 +25,7 @@ from app.modules.issue.schemas import (
     SyncPartsRequest,
     SyncPartsResponse,
     UpdateCommentRequest,
+    UpdateIssueRequest,
 )
 from app.queries import issue as issue_queries
 from app.use_cases import issue as issue_commands
@@ -96,6 +97,23 @@ def create_issue(
     """
     body = req.body.model_dump_json(exclude_none=True) if req.body else None
     return issue_commands.create_issue(db, auth, project_id, title=req.title, body=body)
+
+
+@router.patch("/{issue_number}", response_model=IssueResponse)
+def update_issue(
+    req: UpdateIssueRequest,
+    issue: Issue = Depends(resolve_issue),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 제목/본문 수정.
+
+    `title`, `body` 중 전달된 필드만 수정합니다.
+    """
+    body = req.body.model_dump_json(exclude_none=True) if req.body else None
+    return issue_commands.update_issue(
+        db, auth, issue.id, title=req.title, body=body
+    )
 
 
 # ── 담당자 동기화 ──

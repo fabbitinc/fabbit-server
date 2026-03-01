@@ -23,7 +23,10 @@ class TimestampMixin:
     """생성 시각 — 모든 모델에 적용."""
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=func.now(), server_default=func.now(), nullable=False
+        DateTime(timezone=True),
+        default=func.now(),
+        server_default=func.now(),
+        nullable=False,
     )
 
 
@@ -37,6 +40,10 @@ class UpdatableMixin(TimestampMixin):
         onupdate=func.now(),
         nullable=False,
     )
+
+    @property
+    def is_modified(self) -> bool:
+        return self.updated_at > self.created_at
 
 
 class AuditMixin:
@@ -90,9 +97,8 @@ def _apply_soft_delete_filter(execute_state) -> None:
 
     우회: query.execution_options(include_deleted=True)
     """
-    if (
-        execute_state.is_select
-        and not execute_state.execution_options.get("include_deleted", False)
+    if execute_state.is_select and not execute_state.execution_options.get(
+        "include_deleted", False
     ):
         execute_state.statement = execute_state.statement.options(
             with_loader_criteria(

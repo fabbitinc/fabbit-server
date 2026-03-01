@@ -17,7 +17,9 @@ from app.use_cases.issue.sync_labels import sync_labels
 from app.use_cases.issue.sync_parts import sync_parts
 from app.use_cases.issue.sync_reviewers import sync_reviewers
 from app.use_cases.issue.unlink_issues import unlink_issues
+from app.use_cases.issue.update_change_request import update_change_request
 from app.use_cases.issue.update_comment import update_comment
+from app.use_cases.issue.update_issue import update_issue
 
 __all__ = [
     "add_files",
@@ -37,5 +39,7 @@ __all__ = [
     "sync_parts",
     "sync_reviewers",
     "unlink_issues",
+    "update_change_request",
     "update_comment",
+    "update_issue",
 ]

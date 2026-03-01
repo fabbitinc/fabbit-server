@@ -101,6 +101,21 @@ def create_change_request(
     return cr
 
 
+def update_issue(
+    db: Session,
+    issue: Issue,
+    title: str | None = None,
+    body: str | None = None,
+) -> Issue:
+    """이슈 제목/본문 수정."""
+    if title is not None:
+        issue.title = title
+    if body is not None:
+        issue.body = body
+    db.flush()
+    return issue
+
+
 def attach_files(db: Session, issue_id: uuid.UUID, files: list[File]) -> None:
     """Issue에 검증된 파일들을 연결."""
     issue = get_or_raise(db, issue_id)

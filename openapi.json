@@ -3114,6 +3114,72 @@
                         }
                     }
                 }
+            },
+            "patch": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Update Change Request",
+                "description": "\ubcc0\uacbd \uc694\uccad \uc81c\ubaa9/\ubcf8\ubb38 \uc218\uc815.\n\n`title`, `body` \uc911 \uc804\ub2ec\ub41c \ud544\ub4dc\ub9cc \uc218\uc815\ud569\ub2c8\ub2e4.",
+                "operationId": "update_change_request_api_v1_projects__project_id__changes__issue_number__patch",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateIssueRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChangeRequestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/projects/{project_id}/changes/{issue_number}/open": {
@@ -4369,6 +4435,72 @@
                         }
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IssueResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Update Issue",
+                "description": "\uc774\uc288 \uc81c\ubaa9/\ubcf8\ubb38 \uc218\uc815.\n\n`title`, `body` \uc911 \uc804\ub2ec\ub41c \ud544\ub4dc\ub9cc \uc218\uc815\ud569\ub2c8\ub2e4.",
+                "operationId": "update_issue_api_v1_projects__project_id__issues__issue_number__patch",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateIssueRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -12123,6 +12255,37 @@
                     "body"
                 ],
                 "title": "UpdateCommentRequest"
+            },
+            "UpdateIssueRequest": {
+                "properties": {
+                    "title": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 500,
+                                "minLength": 1
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Title",
+                        "description": "\uc774\uc288 \uc81c\ubaa9"
+                    },
+                    "body": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/TipTapDocument"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "\uc774\uc288 \ubcf8\ubb38 (TipTap JSON)"
+                    }
+                },
+                "type": "object",
+                "title": "UpdateIssueRequest"
             },
             "UpdateLabelRequest": {
                 "properties": {

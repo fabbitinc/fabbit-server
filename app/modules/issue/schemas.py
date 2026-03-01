@@ -17,7 +17,7 @@ ALLOWED_NODE_TYPES: frozenset[str] = frozenset({
     "doc", "paragraph", "text", "heading",
     "bulletList", "orderedList", "listItem", "taskList", "taskItem",
     "blockquote", "codeBlock", "hardBreak", "horizontalRule",
-    "image", "mention",
+    "image", "mention", "userMention", "issueMention",
     "table", "tableRow", "tableCell", "tableHeader",
 })
 
@@ -77,6 +77,24 @@ class TipTapNode(BaseModel):
                 raise ValueError("image src는 http/https만 허용됩니다")
         return self
 
+    @model_validator(mode="after")
+    def check_mention_attrs(self) -> "TipTapNode":
+        """userMention/issueMention 노드의 attrs(id, label) 검증."""
+        if self.type not in ("userMention", "issueMention"):
+            return self
+        if not self.attrs:
+            raise ValueError(f"{self.type}에는 attrs가 필요합니다")
+        if "id" not in self.attrs or "label" not in self.attrs:
+            raise ValueError(f"{self.type} attrs에는 id와 label이 필요합니다")
+        # id가 유효한 UUID인지 검증
+        try:
+            uuid.UUID(str(self.attrs["id"]))
+        except (ValueError, AttributeError):
+            raise ValueError(f"{self.type} attrs.id는 유효한 UUID여야 합니다")
+        if not isinstance(self.attrs["label"], str):
+            raise ValueError(f"{self.type} attrs.label은 문자열이어야 합니다")
+        return self
+
 
 class TipTapDocument(BaseModel):
     """TipTap JSON 문서 루트."""
@@ -97,6 +115,11 @@ class TipTapDocument(BaseModel):
 
 class CreateIssueRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500, description="이슈 제목")
+    body: TipTapDocument | None = Field(None, description="이슈 본문 (TipTap JSON)")
+
+
+class UpdateIssueRequest(BaseModel):
+    title: str | None = Field(None, min_length=1, max_length=500, description="이슈 제목")
     body: TipTapDocument | None = Field(None, description="이슈 본문 (TipTap JSON)")
 
 
