@@ -178,6 +178,7 @@ def list_parts_for_export(
     has_drawing: bool | None = None,
     has_children: bool | None = None,
     part_ids: list[uuid.UUID] | None = None,
+    project_id: uuid.UUID | None = None,
 ) -> list[Part]:
     """Part 목록 전체 조회 (Excel 내보내기용, pagination 없음, 최대 10,000건)."""
     conditions = []
@@ -199,6 +200,13 @@ def list_parts_for_export(
         conditions.append(~exists().where(BomLink.parent_part_id == Part.id))
     if part_ids:
         conditions.append(Part.id.in_(part_ids))
+    if project_id is not None:
+        conditions.append(
+            exists().where(
+                (ProjectPart.part_id == Part.id)
+                & (ProjectPart.project_id == project_id)
+            )
+        )
 
     query = db.query(Part)
     for cond in conditions:

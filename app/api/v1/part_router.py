@@ -41,6 +41,7 @@ def export_parts(
         None, description="매핑 ID (원본 헤더명 사용)"
     ),
     part_ids: list[uuid.UUID] | None = Query(None, description="선택 부품 ID 목록"),
+    project_id: uuid.UUID | None = Query(None, description="프로젝트 소속 필터"),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -60,6 +61,7 @@ def export_parts(
         has_children=has_children,
         part_ids=part_ids,
         mapping_id=mapping_id,
+        project_id=project_id,
     )
     return StreamingResponse(
         BytesIO(content),

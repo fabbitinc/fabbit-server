@@ -303,7 +303,7 @@ def unlink_issues(db: Session, cr: ChangeRequest, issue_ids: list[uuid.UUID]) ->
 
 
 def close_linked_open_issues(db: Session, cr: ChangeRequest) -> None:
-    """CR에 연결된 열린 이슈를 모두 닫는다."""
+    """CR에 연결된 열린 이슈 중, 모든 연결 CR이 완료된 이슈만 닫는다."""
     from datetime import datetime, timezone
 
     from app.modules.issue.constants import IssueState
@@ -313,7 +313,8 @@ def close_linked_open_issues(db: Session, cr: ChangeRequest) -> None:
     for lid in linked_ids:
         linked = repo.get_by_id(db, lid)
         if linked and linked.state == IssueState.OPEN:
-            linked.close(now)
+            if not repo.has_unresolved_linked_crs(db, lid):
+                linked.close(now)
     db.flush()
 
 

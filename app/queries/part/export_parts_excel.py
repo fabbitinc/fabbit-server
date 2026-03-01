@@ -41,6 +41,7 @@ def export_parts_excel(
     has_children: bool | None = None,
     part_ids: list[uuid.UUID] | None = None,
     mapping_id: uuid.UUID | None = None,
+    project_id: uuid.UUID | None = None,
 ) -> bytes:
     """Part 목록을 Excel(xlsx)로 내보내기.
 
@@ -54,6 +55,7 @@ def export_parts_excel(
         has_drawing=has_drawing,
         has_children=has_children,
         part_ids=part_ids,
+        project_id=project_id,
     )
 
     # 확장 속성 키 합집합 수집

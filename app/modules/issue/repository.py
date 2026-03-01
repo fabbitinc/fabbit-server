@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.modules.file.models import File
-from app.modules.issue.constants import IssueState, IssueType
+from app.modules.issue.constants import CRState, IssueState, IssueType
 from app.modules.issue.models import (
     ChangeRequest,
     ChangeRequestIssue,
@@ -474,6 +474,20 @@ def batch_load_linked_crs(
     for issue_id, cr in rows:
         result[issue_id].append(cr)
     return result
+
+
+def has_unresolved_linked_crs(db: Session, issue_id: uuid.UUID) -> bool:
+    """이슈에 MERGED/CLOSED가 아닌 연결된 CR이 존재하는지 확인."""
+    count = (
+        db.query(func.count(ChangeRequestIssue.id))
+        .join(ChangeRequest, ChangeRequest.id == ChangeRequestIssue.change_request_id)
+        .filter(
+            ChangeRequestIssue.issue_id == issue_id,
+            ChangeRequest.cr_state.notin_([CRState.MERGED, CRState.CLOSED]),
+        )
+        .scalar()
+    )
+    return count > 0
 
 
 # ── 댓글 ──
