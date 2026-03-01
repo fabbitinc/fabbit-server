@@ -440,6 +440,42 @@ def list_linked_issue_ids(db: Session, cr_id: uuid.UUID) -> list[uuid.UUID]:
     return [row[0] for row in rows]
 
 
+def batch_load_linked_issues(
+    db: Session, cr_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, list[Issue]]:
+    """CR ID 목록에 대해 연결된 Issue를 배치 조회."""
+    if not cr_ids:
+        return {}
+    rows = (
+        db.query(ChangeRequestIssue.change_request_id, Issue)
+        .join(Issue, Issue.id == ChangeRequestIssue.issue_id)
+        .filter(ChangeRequestIssue.change_request_id.in_(cr_ids))
+        .all()
+    )
+    result: dict[uuid.UUID, list[Issue]] = {cid: [] for cid in cr_ids}
+    for cr_id, issue in rows:
+        result[cr_id].append(issue)
+    return result
+
+
+def batch_load_linked_crs(
+    db: Session, issue_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, list[ChangeRequest]]:
+    """Issue ID 목록에 대해 연결된 ChangeRequest를 배치 조회."""
+    if not issue_ids:
+        return {}
+    rows = (
+        db.query(ChangeRequestIssue.issue_id, ChangeRequest)
+        .join(ChangeRequest, ChangeRequest.id == ChangeRequestIssue.change_request_id)
+        .filter(ChangeRequestIssue.issue_id.in_(issue_ids))
+        .all()
+    )
+    result: dict[uuid.UUID, list[ChangeRequest]] = {iid: [] for iid in issue_ids}
+    for issue_id, cr in rows:
+        result[issue_id].append(cr)
+    return result
+
+
 # ── 댓글 ──
 
 

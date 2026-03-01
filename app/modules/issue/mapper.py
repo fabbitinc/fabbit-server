@@ -11,6 +11,8 @@ from app.modules.issue.schemas import (
     IssueResponse,
     IssueSummary,
     LabelBadge,
+    LinkedChangeRequestBadge,
+    LinkedIssueBadge,
     PartBadge,
 )
 from app.modules.user.schemas import UserSummary
@@ -35,6 +37,7 @@ def to_issue_response(
     parts: list[PartBadge] | None = None,
     files: list[FileItem] | None = None,
     comments_count: int = 0,
+    linked_changes: list[LinkedChangeRequestBadge] | None = None,
 ) -> IssueResponse:
     """Issue 모델 → IssueResponse 변환."""
     return IssueResponse(
@@ -54,6 +57,7 @@ def to_issue_response(
         parts=parts or [],
         files=files or [],
         comments_count=comments_count,
+        linked_changes=linked_changes or [],
     )
 
 
@@ -67,6 +71,7 @@ def to_change_request_response(
     parts: list[PartBadge] | None = None,
     files: list[FileItem] | None = None,
     comments_count: int = 0,
+    linked_issues: list[LinkedIssueBadge] | None = None,
 ) -> ChangeRequestResponse:
     """ChangeRequest 모델 → ChangeRequestResponse 변환."""
     return ChangeRequestResponse(
@@ -90,6 +95,7 @@ def to_change_request_response(
         cr_state=cr.cr_state.value,
         merged_at=cr.merged_at,
         merged_by=cr.merged_by,
+        linked_issues=linked_issues or [],
     )
 
 

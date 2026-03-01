@@ -40,4 +40,5 @@ def get_change_request(
         parts=e.parts,
         files=e.files,
         comments_count=e.comments_count,
+        linked_issues=e.linked_issues,
     )

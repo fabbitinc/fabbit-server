@@ -93,7 +93,7 @@ def create_change_request(
     """
     body = req.body.model_dump_json(exclude_none=True) if req.body else None
     return issue_commands.create_change_request(
-        db, auth, project_id, title=req.title, body=body
+        db, auth, project_id, title=req.title, body=body, issue_number=req.issue_number
     )
 
 

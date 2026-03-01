@@ -103,6 +103,7 @@ class CreateIssueRequest(BaseModel):
 class CreateChangeRequestRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500, description="변경 요청 제목")
     body: TipTapDocument | None = Field(None, description="변경 요청 본문 (TipTap JSON)")
+    issue_number: int | None = Field(None, description="연결할 이슈 번호 (ISSUE 타입만 허용)")
 
 
 # ── 목록 응답 (body 제외한 요약) ──
@@ -167,6 +168,28 @@ class ChangeRequestListResponse(BaseModel):
     items: list[ChangeRequestSummary]
 
 
+# ── 연결 배지 ──
+
+
+class LinkedIssueBadge(BaseModel):
+    """연결된 이슈 요약 (CR 상세에서 사용)."""
+
+    id: uuid.UUID
+    number: int
+    title: str
+    state: str
+
+
+class LinkedChangeRequestBadge(BaseModel):
+    """연결된 변경 요청 요약 (이슈 상세에서 사용)."""
+
+    id: uuid.UUID
+    number: int
+    title: str
+    state: str
+    cr_state: str
+
+
 # ── 응답 ──
 
 
@@ -187,6 +210,7 @@ class IssueResponse(BaseModel):
     parts: list[PartBadge] = []
     files: list[FileItem] = []
     comments_count: int = 0
+    linked_changes: list[LinkedChangeRequestBadge] = []
 
 
 class ChangeRequestResponse(IssueResponse):
@@ -194,6 +218,7 @@ class ChangeRequestResponse(IssueResponse):
     merged_at: datetime | None = None
     merged_by: uuid.UUID | None = None
     reviewers: list[UserSummary] = []
+    linked_issues: list[LinkedIssueBadge] = []
 
 
 # ── 담당자 동기화 ──

@@ -11,6 +11,8 @@ from app.modules.issue import repository as repo
 from app.modules.issue.models import ChangeRequest, Issue
 from app.modules.issue.schemas import (
     LabelBadge,
+    LinkedChangeRequestBadge,
+    LinkedIssueBadge,
     PartBadge,
 )
 from app.modules.user import mapper as user_mapper
@@ -29,6 +31,8 @@ class IssueEnrichment:
     parts: list[PartBadge] = field(default_factory=list)
     files: list[FileItem] = field(default_factory=list)
     comments_count: int = 0
+    linked_issues: list[LinkedIssueBadge] = field(default_factory=list)
+    linked_changes: list[LinkedChangeRequestBadge] = field(default_factory=list)
 
 
 def load_enrichments(
@@ -47,9 +51,14 @@ def load_enrichments(
     files_map = repo.batch_load_files(db, issue_ids)
     comment_counts = repo.batch_load_comment_counts(db, issue_ids)
 
-    # CR 검토자 배치 조회 (CR만 해당)
+    # CR 검토자 + 연결 이슈 배치 조회 (CR만 해당)
     cr_ids = [i.id for i in issues if isinstance(i, ChangeRequest)]
     reviewer_ids_map = repo.batch_load_reviewer_ids(db, cr_ids) if cr_ids else {}
+    linked_issues_map = repo.batch_load_linked_issues(db, cr_ids) if cr_ids else {}
+
+    # Issue에 연결된 CR 배치 조회 (ISSUE만 해당)
+    issue_only_ids = [i.id for i in issues if not isinstance(i, ChangeRequest)]
+    linked_crs_map = repo.batch_load_linked_crs(db, issue_only_ids) if issue_only_ids else {}
 
     # User 일괄 조회 → UserSummary 매핑
     all_user_ids: set[uuid.UUID] = set()
@@ -89,6 +98,20 @@ def load_enrichments(
             to_file_item(f) for f in files_map.get(issue.id, [])
         ]
 
+        issue_linked_issues = [
+            LinkedIssueBadge(
+                id=li.id, number=li.number, title=li.title, state=li.state.value,
+            )
+            for li in linked_issues_map.get(issue.id, [])
+        ]
+        issue_linked_changes = [
+            LinkedChangeRequestBadge(
+                id=lc.id, number=lc.number, title=lc.title,
+                state=lc.state.value, cr_state=lc.cr_state.value,
+            )
+            for lc in linked_crs_map.get(issue.id, [])
+        ]
+
         result[issue.id] = IssueEnrichment(
             created_by=user_summary_map.get(issue.created_by) if issue.created_by else None,
             labels=issue_labels,
@@ -97,6 +120,8 @@ def load_enrichments(
             parts=issue_parts,
             files=issue_files,
             comments_count=comment_counts.get(issue.id, 0),
+            linked_issues=issue_linked_issues,
+            linked_changes=issue_linked_changes,
         )
 
     return result

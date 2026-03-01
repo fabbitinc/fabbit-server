@@ -38,4 +38,5 @@ def get_issue(
         parts=e.parts,
         files=e.files,
         comments_count=e.comments_count,
+        linked_changes=e.linked_changes,
     )

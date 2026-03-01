@@ -5965,6 +5965,49 @@
                 ],
                 "title": "AcceptInvitationResponse"
             },
+            "ActivityFileInfo": {
+                "properties": {
+                    "file_id": {
+                        "type": "string",
+                        "title": "File Id"
+                    },
+                    "original_name": {
+                        "type": "string",
+                        "title": "Original Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file_id",
+                    "original_name"
+                ],
+                "title": "ActivityFileInfo",
+                "description": "Activity\uc5d0 \uae30\ub85d\ub418\ub294 \ud30c\uc77c \uc815\ubcf4."
+            },
+            "ActivityIssueInfo": {
+                "properties": {
+                    "issue_id": {
+                        "type": "string",
+                        "title": "Issue Id"
+                    },
+                    "number": {
+                        "type": "integer",
+                        "title": "Number"
+                    },
+                    "title": {
+                        "type": "string",
+                        "title": "Title"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "issue_id",
+                    "number",
+                    "title"
+                ],
+                "title": "ActivityIssueInfo",
+                "description": "Activity\uc5d0 \uae30\ub85d\ub418\ub294 \uc774\uc288 \uc815\ubcf4."
+            },
             "ActivityLabelInfo": {
                 "properties": {
                     "label_id": {
@@ -6024,6 +6067,25 @@
                     "items"
                 ],
                 "title": "ActivityListResponse"
+            },
+            "ActivityPartInfo": {
+                "properties": {
+                    "part_id": {
+                        "type": "string",
+                        "title": "Part Id"
+                    },
+                    "part_number": {
+                        "type": "string",
+                        "title": "Part Number"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "part_id",
+                    "part_number"
+                ],
+                "title": "ActivityPartInfo",
+                "description": "Activity\uc5d0 \uae30\ub85d\ub418\ub294 \ubd80\ud488 \uc815\ubcf4."
             },
             "ActivityResponse": {
                 "properties": {
@@ -6118,6 +6180,25 @@
                 "title": "ActivityScope",
                 "description": "Activity scope \u2014 API query param \ud0c0\uc785 \uac80\uc99d\uc6a9."
             },
+            "ActivityUserInfo": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "title": "User Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "name"
+                ],
+                "title": "ActivityUserInfo",
+                "description": "Activity\uc5d0 \uae30\ub85d\ub418\ub294 \uc0ac\uc6a9\uc790 \uc815\ubcf4."
+            },
             "AssigneesChangedDetail": {
                 "properties": {
                     "action": {
@@ -6127,14 +6208,14 @@
                     },
                     "added": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/ActivityUserInfo"
                         },
                         "type": "array",
                         "title": "Added"
                     },
                     "removed": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/ActivityUserInfo"
                         },
                         "type": "array",
                         "title": "Removed"
@@ -6726,6 +6807,14 @@
                         "title": "Comments Count",
                         "default": 0
                     },
+                    "linked_changes": {
+                        "items": {
+                            "$ref": "#/components/schemas/LinkedChangeRequestBadge"
+                        },
+                        "type": "array",
+                        "title": "Linked Changes",
+                        "default": []
+                    },
                     "cr_state": {
                         "type": "string",
                         "title": "Cr State"
@@ -6760,6 +6849,14 @@
                         },
                         "type": "array",
                         "title": "Reviewers",
+                        "default": []
+                    },
+                    "linked_issues": {
+                        "items": {
+                            "$ref": "#/components/schemas/LinkedIssueBadge"
+                        },
+                        "type": "array",
+                        "title": "Linked Issues",
                         "default": []
                     }
                 },
@@ -7069,6 +7166,18 @@
                             }
                         ],
                         "description": "\ubcc0\uacbd \uc694\uccad \ubcf8\ubb38 (TipTap JSON)"
+                    },
+                    "issue_number": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Issue Number",
+                        "description": "\uc5f0\uacb0\ud560 \uc774\uc288 \ubc88\ud638 (ISSUE \ud0c0\uc785\ub9cc \ud5c8\uc6a9)"
                     }
                 },
                 "type": "object",
@@ -7392,18 +7501,18 @@
                         "const": "file_attached",
                         "title": "Action"
                     },
-                    "file_ids": {
+                    "files": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/ActivityFileInfo"
                         },
                         "type": "array",
-                        "title": "File Ids"
+                        "title": "Files"
                     }
                 },
                 "type": "object",
                 "required": [
                     "action",
-                    "file_ids"
+                    "files"
                 ],
                 "title": "FileAttachedDetail",
                 "description": "\ud30c\uc77c \ucca8\ubd80."
@@ -7463,12 +7572,17 @@
                     "file_id": {
                         "type": "string",
                         "title": "File Id"
+                    },
+                    "file_name": {
+                        "type": "string",
+                        "title": "File Name"
                     }
                 },
                 "type": "object",
                 "required": [
                     "action",
-                    "file_id"
+                    "file_id",
+                    "file_name"
                 ],
                 "title": "FileDetachedDetail",
                 "description": "\ud30c\uc77c \ubd84\ub9ac."
@@ -7751,18 +7865,18 @@
                         "const": "cr_issue_linked",
                         "title": "Action"
                     },
-                    "linked_issue_ids": {
+                    "linked_issues": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/ActivityIssueInfo"
                         },
                         "type": "array",
-                        "title": "Linked Issue Ids"
+                        "title": "Linked Issues"
                     }
                 },
                 "type": "object",
                 "required": [
                     "action",
-                    "linked_issue_ids"
+                    "linked_issues"
                 ],
                 "title": "IssueLinkedDetail",
                 "description": "CR\uc5d0 \uc774\uc288 \uc5f0\uacb0."
@@ -7946,6 +8060,14 @@
                         "type": "integer",
                         "title": "Comments Count",
                         "default": 0
+                    },
+                    "linked_changes": {
+                        "items": {
+                            "$ref": "#/components/schemas/LinkedChangeRequestBadge"
+                        },
+                        "type": "array",
+                        "title": "Linked Changes",
+                        "default": []
                     }
                 },
                 "type": "object",
@@ -8079,18 +8201,18 @@
                         "const": "cr_issue_unlinked",
                         "title": "Action"
                     },
-                    "unlinked_issue_ids": {
+                    "unlinked_issues": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/ActivityIssueInfo"
                         },
                         "type": "array",
-                        "title": "Unlinked Issue Ids"
+                        "title": "Unlinked Issues"
                     }
                 },
                 "type": "object",
                 "required": [
                     "action",
-                    "unlinked_issue_ids"
+                    "unlinked_issues"
                 ],
                 "title": "IssueUnlinkedDetail",
                 "description": "CR\uc5d0\uc11c \uc774\uc288 \ud574\uc81c."
@@ -8334,6 +8456,71 @@
                     "linked_count"
                 ],
                 "title": "LinkPartsResponse"
+            },
+            "LinkedChangeRequestBadge": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "number": {
+                        "type": "integer",
+                        "title": "Number"
+                    },
+                    "title": {
+                        "type": "string",
+                        "title": "Title"
+                    },
+                    "state": {
+                        "type": "string",
+                        "title": "State"
+                    },
+                    "cr_state": {
+                        "type": "string",
+                        "title": "Cr State"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "number",
+                    "title",
+                    "state",
+                    "cr_state"
+                ],
+                "title": "LinkedChangeRequestBadge",
+                "description": "\uc5f0\uacb0\ub41c \ubcc0\uacbd \uc694\uccad \uc694\uc57d (\uc774\uc288 \uc0c1\uc138\uc5d0\uc11c \uc0ac\uc6a9)."
+            },
+            "LinkedIssueBadge": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "number": {
+                        "type": "integer",
+                        "title": "Number"
+                    },
+                    "title": {
+                        "type": "string",
+                        "title": "Title"
+                    },
+                    "state": {
+                        "type": "string",
+                        "title": "State"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "number",
+                    "title",
+                    "state"
+                ],
+                "title": "LinkedIssueBadge",
+                "description": "\uc5f0\uacb0\ub41c \uc774\uc288 \uc694\uc57d (CR \uc0c1\uc138\uc5d0\uc11c \uc0ac\uc6a9)."
             },
             "LoginRequest": {
                 "properties": {
@@ -9052,18 +9239,18 @@
                         "const": "part_added",
                         "title": "Action"
                     },
-                    "part_ids": {
+                    "parts": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/ActivityPartInfo"
                         },
                         "type": "array",
-                        "title": "Part Ids"
+                        "title": "Parts"
                     }
                 },
                 "type": "object",
                 "required": [
                     "action",
-                    "part_ids"
+                    "parts"
                 ],
                 "title": "PartAddedDetail",
                 "description": "\ubd80\ud488 \uc5f0\uacb0 \u2014 \ud504\ub85c\uc81d\ud2b8 \uc2a4\ucf54\ud504."
@@ -9375,18 +9562,18 @@
                         "const": "part_removed",
                         "title": "Action"
                     },
-                    "part_ids": {
+                    "parts": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/ActivityPartInfo"
                         },
                         "type": "array",
-                        "title": "Part Ids"
+                        "title": "Parts"
                     }
                 },
                 "type": "object",
                 "required": [
                     "action",
-                    "part_ids"
+                    "parts"
                 ],
                 "title": "PartRemovedDetail",
                 "description": "\ubd80\ud488 \ud574\uc81c \u2014 \ud504\ub85c\uc81d\ud2b8 \uc2a4\ucf54\ud504."
@@ -9492,14 +9679,14 @@
                     },
                     "added": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/ActivityPartInfo"
                         },
                         "type": "array",
                         "title": "Added"
                     },
                     "removed": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/ActivityPartInfo"
                         },
                         "type": "array",
                         "title": "Removed"
@@ -10375,14 +10562,14 @@
                     },
                     "added": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/ActivityUserInfo"
                         },
                         "type": "array",
                         "title": "Added"
                     },
                     "removed": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/ActivityUserInfo"
                         },
                         "type": "array",
                         "title": "Removed"

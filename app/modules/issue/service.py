@@ -23,6 +23,7 @@ from app.modules.issue.events import (
     IssuePartsChanged,
     ReviewersChanged,
 )
+from app.modules.issue.constants import IssueType
 from app.modules.issue.models import ChangeRequest, Issue, IssueComment
 
 
@@ -32,6 +33,18 @@ def get_or_raise(db: Session, issue_id: uuid.UUID) -> Issue:
     if not issue:
         raise AppError(
             message=f"Issue '{issue_id}'을(를) 찾을 수 없습니다", code="NOT_FOUND"
+        )
+    return issue
+
+
+def get_issue_by_number_or_raise(
+    db: Session, project_id: uuid.UUID, number: int
+) -> Issue:
+    """프로젝트 내 이슈 번호로 ISSUE 타입 조회 — 없거나 타입 불일치 시 AppError."""
+    issue = repo.get_by_project_and_number(db, project_id, number)
+    if not issue or issue.type != IssueType.ISSUE:
+        raise AppError(
+            message=f"이슈 #{number}을(를) 찾을 수 없습니다", code="NOT_FOUND"
         )
     return issue
 
