@@ -28,6 +28,8 @@ class Action(str, Enum):
     REVIEWER_CHANGED = ("reviewer_changed", "reviewer")
     LABEL_CHANGED = ("label_changed", "label")
     PART_CHANGED = ("part_changed", "part")
+    FILE_ATTACHED = ("file_attached", "file")
+    FILE_DETACHED = ("file_detached", "file")
     CR_ISSUE_LINKED = ("cr_issue_linked", "cr")
     CR_ISSUE_UNLINKED = ("cr_issue_unlinked", "cr")
 
@@ -50,6 +52,7 @@ class ActivityScope(str, Enum):
     ASSIGNEE = "assignee"
     REVIEWER = "reviewer"
     LABEL = "label"
+    FILE = "file"
     PROJECT = "project"
 
 

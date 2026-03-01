@@ -14,13 +14,15 @@ from app.modules.issue.events import (
     CRIssuesUnlinked,
     CRStateChanged,
     IssueCreated,
+    IssueFileDetached,
+    IssueFilesAttached,
     IssueLabelsChanged,
     IssuePartsChanged,
     IssueStateChanged,
     ReviewersChanged,
 )
 from app.modules.label.models import Label
-from app.modules.project.events import ProjectPartsLinked, ProjectPartsUnlinked
+from app.modules.project.events import ProjectPartsLinked, ProjectPartsUnlinked, ProjectUpdated
 
 
 def _get_actor_id():
@@ -168,6 +170,20 @@ def _on_issue_parts_changed(event: IssuePartsChanged) -> None:
     _add_activity(TargetType.ISSUE, event.issue_id, Action.PART_CHANGED, actor_id, detail)
 
 
+def _on_issue_files_attached(event: IssueFilesAttached) -> None:
+    """이슈에 파일 첨부 → Issue 피드."""
+    actor_id = _get_actor_id()
+    detail = {"file_ids": [str(fid) for fid in event.file_ids]}
+    _add_activity(TargetType.ISSUE, event.issue_id, Action.FILE_ATTACHED, actor_id, detail)
+
+
+def _on_issue_file_detached(event: IssueFileDetached) -> None:
+    """이슈에서 파일 분리 → Issue 피드."""
+    actor_id = _get_actor_id()
+    detail = {"file_id": str(event.file_id)}
+    _add_activity(TargetType.ISSUE, event.issue_id, Action.FILE_DETACHED, actor_id, detail)
+
+
 def _on_cr_issues_linked(event: CRIssuesLinked) -> None:
     """CR에 이슈 연결 → CR 피드 + 각 이슈 피드."""
     actor_id = _get_actor_id()
@@ -247,6 +263,18 @@ def _on_project_parts_unlinked(event: ProjectPartsUnlinked) -> None:
     )
 
 
+def _on_project_updated(event: ProjectUpdated) -> None:
+    """프로젝트 정보 수정 → Project 피드."""
+    actor_id = _get_actor_id()
+    _add_activity(
+        TargetType.PROJECT,
+        event.project_id,
+        Action.PROJECT_UPDATED,
+        actor_id,
+        {"changes": event.changes},
+    )
+
+
 # ── 구독 등록 ──
 
 event_bus.subscribe(IssueCreated, _on_issue_created)
@@ -256,7 +284,10 @@ event_bus.subscribe(AssigneesChanged, _on_assignees_changed)
 event_bus.subscribe(ReviewersChanged, _on_reviewers_changed)
 event_bus.subscribe(IssueLabelsChanged, _on_issue_labels_changed)
 event_bus.subscribe(IssuePartsChanged, _on_issue_parts_changed)
+event_bus.subscribe(IssueFilesAttached, _on_issue_files_attached)
+event_bus.subscribe(IssueFileDetached, _on_issue_file_detached)
 event_bus.subscribe(CRIssuesLinked, _on_cr_issues_linked)
 event_bus.subscribe(CRIssuesUnlinked, _on_cr_issues_unlinked)
 event_bus.subscribe(ProjectPartsLinked, _on_project_parts_linked)
 event_bus.subscribe(ProjectPartsUnlinked, _on_project_parts_unlinked)
+event_bus.subscribe(ProjectUpdated, _on_project_updated)

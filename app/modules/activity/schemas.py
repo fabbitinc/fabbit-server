@@ -95,6 +95,13 @@ class PartsChangedDetail(BaseModel):
     removed: list[str]
 
 
+class ProjectUpdatedDetail(BaseModel):
+    """프로젝트 정보 수정."""
+
+    action: Literal["project_updated"]
+    changes: dict[str, Any]
+
+
 class PartAddedDetail(BaseModel):
     """부품 연결 — 프로젝트 스코프."""
 
@@ -107,6 +114,23 @@ class PartRemovedDetail(BaseModel):
 
     action: Literal["part_removed"]
     part_ids: list[str]
+
+
+# -- 파일 첨부/분리 --
+
+
+class FileAttachedDetail(BaseModel):
+    """파일 첨부."""
+
+    action: Literal["file_attached"]
+    file_ids: list[str]
+
+
+class FileDetachedDetail(BaseModel):
+    """파일 분리."""
+
+    action: Literal["file_detached"]
+    file_id: str
 
 
 # -- CR-이슈 연결 --
@@ -176,6 +200,8 @@ IssueActivityDetail = (
     | ReviewersChangedDetail
     | LabelsChangedDetail
     | PartsChangedDetail
+    | FileAttachedDetail
+    | FileDetachedDetail
     | IssueLinkedDetail
     | IssueUnlinkedDetail
     | dict[str, Any]
@@ -188,6 +214,7 @@ ProjectActivityDetail = (
     | CRMergedDetail
     | PartAddedDetail
     | PartRemovedDetail
+    | ProjectUpdatedDetail
     | dict[str, Any]
 )
 

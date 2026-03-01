@@ -15,6 +15,8 @@ from app.modules.issue.events import (
     CRIssuesLinked,
     CRIssuesUnlinked,
     IssueCreated,
+    IssueFileDetached,
+    IssueFilesAttached,
     IssueLabelsChanged,
     IssuePartsChanged,
     ReviewersChanged,
@@ -87,12 +89,21 @@ def attach_files(db: Session, issue_id: uuid.UUID, files: list[File]) -> None:
     """Issue에 검증된 파일들을 연결."""
     issue = get_or_raise(db, issue_id)
     issue.attach_files(files)
+    if files:
+        issue.register_event(IssueFilesAttached(
+            issue_id=issue.id,
+            file_ids=[f.id for f in files],
+        ))
 
 
 def detach_file(db: Session, issue_id: uuid.UUID, file_id: uuid.UUID) -> None:
     """Issue 첨부파일 1건 분리."""
     issue = get_or_raise(db, issue_id)
     issue.detach_file(file_id)
+    issue.register_event(IssueFileDetached(
+        issue_id=issue.id,
+        file_id=file_id,
+    ))
 
 
 def sync_assignees(

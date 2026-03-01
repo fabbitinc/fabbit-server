@@ -69,6 +69,20 @@ class IssuePartsChanged(DomainEvent):
     removed_part_ids: list[UUID]
 
 
+class IssueFilesAttached(DomainEvent):
+    """이슈에 파일 첨부."""
+
+    issue_id: UUID
+    file_ids: list[UUID]
+
+
+class IssueFileDetached(DomainEvent):
+    """이슈에서 파일 분리."""
+
+    issue_id: UUID
+    file_id: UUID
+
+
 class CRIssuesLinked(DomainEvent):
     """변경 요청에 이슈 연결 — CR·이슈 양쪽 피드."""
 
