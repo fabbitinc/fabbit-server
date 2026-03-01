@@ -42,7 +42,7 @@ def list_change_requests(
     search: str | None = Query(None, description="제목 검색 (ILIKE)"),
     state: str | None = Query(None, description="이슈 상태 필터 (OPEN|CLOSED)"),
     cr_state: str | None = Query(
-        None, description="CR 상태 필터 (DRAFT|OPEN|MERGED|CLOSED)"
+        None, description="CR 상태 필터 (DRAFT|SUBMITTED|MERGED|CLOSED)"
     ),
     offset: int = Query(0, ge=0, description="시작 위치"),
     limit: int = Query(20, ge=1, le=100, description="조회 건수"),
@@ -108,6 +108,7 @@ def update_change_request(
     """변경 요청 제목/본문 수정.
 
     `title`, `body` 중 전달된 필드만 수정합니다.
+    DRAFT 또는 OPEN 상태에서만 수정 가능합니다.
     """
     body = req.body.model_dump_json(exclude_none=True) if req.body else None
     return issue_commands.update_change_request(
@@ -119,20 +120,21 @@ def update_change_request(
 
 
 @router.post(
-    "/{issue_number}/open",
+    "/{issue_number}/submit",
     response_model=ChangeRequestResponse,
     status_code=200,
 )
-def open_cr_for_review(
+def submit_cr(
     cr: ChangeRequest = Depends(resolve_change_request),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    """변경 요청 검토 상태 전환.
+    """변경 요청 제출.
 
-    CR 상태를 **DRAFT → OPEN**으로 전환하여 검토를 요청합니다.
+    CR 상태를 **DRAFT → SUBMITTED**로 전환하여 검토를 요청합니다.
+    DRAFT 상태에서만 호출 가능합니다.
     """
-    return issue_commands.open_cr_for_review(db, auth, cr.id)
+    return issue_commands.submit_cr(db, auth, cr.id)
 
 
 @router.post(
@@ -147,8 +149,9 @@ def merge_cr(
 ):
     """변경 요청 반영.
 
-    CR 상태를 **MERGED**로 전환하고, 연결된 열린 이슈를 자동으로 닫습니다.
+    CR 상태를 **SUBMITTED → MERGED**로 전환하고, 연결된 열린 이슈를 자동으로 닫습니다.
     `merged_at`, `merged_by`가 자동 기록됩니다.
+    SUBMITTED 상태에서만 호출 가능합니다.
     """
     return issue_commands.merge_cr(db, auth, cr.id)
 
@@ -165,10 +168,28 @@ def close_cr(
 ):
     """변경 요청 닫기.
 
-    CR 상태를 **CLOSED**로 전환합니다.
+    CR 상태를 **DRAFT|SUBMITTED → CLOSED**로 전환합니다.
     이슈 상태(`state`)도 함께 CLOSED로 변경됩니다.
     """
     return issue_commands.close_cr(db, auth, cr.id)
+
+
+@router.post(
+    "/{issue_number}/reopen",
+    response_model=ChangeRequestResponse,
+    status_code=200,
+)
+def reopen_cr(
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """변경 요청 다시 제출.
+
+    CR 상태를 **CLOSED → SUBMITTED**로 전환합니다.
+    MERGED 상태에서는 다시 열 수 없습니다.
+    """
+    return issue_commands.reopen_cr(db, auth, cr.id)
 
 
 # ── CR-Issue 연결 ──

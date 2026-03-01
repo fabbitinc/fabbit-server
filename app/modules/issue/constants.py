@@ -20,7 +20,7 @@ class IssueState(str, Enum):
 class CRState(str, Enum):
     """변경 요청 상태."""
 
-    DRAFT = "DRAFT"    # 초안
-    OPEN = "OPEN"      # 검토 중
-    MERGED = "MERGED"  # 반영 완료
-    CLOSED = "CLOSED"  # 닫힘
+    DRAFT = "DRAFT"          # 초안
+    SUBMITTED = "SUBMITTED"  # 검토 중 (제출됨)
+    MERGED = "MERGED"        # 반영 완료
+    CLOSED = "CLOSED"        # 닫힘

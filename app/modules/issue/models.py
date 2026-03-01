@@ -165,21 +165,31 @@ class ChangeRequest(Issue):
 
     # -- 상태 전이 메서드 --
 
-    def open_for_review(self) -> None:
-        """초안을 검토 상태로 전환한다."""
+    def submit(self) -> None:
+        """초안을 검토 상태로 제출한다 (DRAFT → SUBMITTED)."""
+        if self.cr_state != CRState.DRAFT:
+            raise AppError(
+                message=f"DRAFT 상태에서만 제출할 수 있습니다 (현재: {self.cr_state.value})",
+                code="INVALID_STATE",
+            )
         old_state = self.cr_state.value
-        self.cr_state = CRState.OPEN
+        self.cr_state = CRState.SUBMITTED
         self.register_event(CRStateChanged(
             project_id=self.project_id,
             issue_id=self.id,
             number=self.number,
             title=self.title,
             old_state=old_state,
-            new_state=CRState.OPEN.value,
+            new_state=CRState.SUBMITTED.value,
         ))
 
     def merge(self, now: datetime, user_id: uuid.UUID) -> None:
-        """변경 요청을 반영한다."""
+        """변경 요청을 반영한다 (SUBMITTED → MERGED)."""
+        if self.cr_state != CRState.SUBMITTED:
+            raise AppError(
+                message=f"SUBMITTED 상태에서만 반영할 수 있습니다 (현재: {self.cr_state.value})",
+                code="INVALID_STATE",
+            )
         old_state = self.cr_state.value
         self.cr_state = CRState.MERGED
         self.merged_at = now
@@ -192,9 +202,17 @@ class ChangeRequest(Issue):
             old_state=old_state,
             new_state=CRState.MERGED.value,
         ))
+        # issue.state 동기화 (IssueStateChanged 이벤트 없이 필드만 설정)
+        self.state = IssueState.CLOSED
+        self.closed_at = now
 
     def close(self, now: datetime) -> None:
-        """변경 요청을 닫는다 (Issue.close 오버라이드)."""
+        """변경 요청을 닫는다 (DRAFT|SUBMITTED → CLOSED)."""
+        if self.cr_state not in (CRState.DRAFT, CRState.SUBMITTED):
+            raise AppError(
+                message=f"DRAFT 또는 SUBMITTED 상태에서만 닫을 수 있습니다 (현재: {self.cr_state.value})",
+                code="INVALID_STATE",
+            )
         old_state = self.cr_state.value
         self.cr_state = CRState.CLOSED
         self.register_event(CRStateChanged(
@@ -205,7 +223,30 @@ class ChangeRequest(Issue):
             old_state=old_state,
             new_state=CRState.CLOSED.value,
         ))
-        super().close(now)
+        # issue.state 동기화 (IssueStateChanged 이벤트 없이 필드만 설정)
+        self.state = IssueState.CLOSED
+        self.closed_at = now
+
+    def reopen(self) -> None:
+        """닫힌 변경 요청을 다시 제출한다 (CLOSED → SUBMITTED)."""
+        if self.cr_state != CRState.CLOSED:
+            raise AppError(
+                message=f"CLOSED 상태에서만 다시 열 수 있습니다 (현재: {self.cr_state.value})",
+                code="INVALID_STATE",
+            )
+        old_state = self.cr_state.value
+        self.cr_state = CRState.SUBMITTED
+        self.register_event(CRStateChanged(
+            project_id=self.project_id,
+            issue_id=self.id,
+            number=self.number,
+            title=self.title,
+            old_state=old_state,
+            new_state=CRState.SUBMITTED.value,
+        ))
+        # issue.state 동기화 (IssueStateChanged 이벤트 없이 필드만 설정)
+        self.state = IssueState.OPEN
+        self.closed_at = None
 
 
 class IssueAssignee(TimestampMixin, PkMixin, TenantBase):

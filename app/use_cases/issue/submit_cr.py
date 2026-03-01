@@ -1,4 +1,4 @@
-"""변경 요청 수정 — 제목/본문 수정."""
+"""변경 요청 제출 (DRAFT → SUBMITTED)."""
 
 import uuid
 
@@ -11,14 +11,12 @@ from app.modules.issue.schemas import ChangeRequestResponse
 
 
 @transactional()
-def update_change_request(
+def submit_cr(
     db: Session,
     auth: AuthContext,
     issue_id: uuid.UUID,
-    title: str | None = None,
-    body: str | None = None,
 ) -> ChangeRequestResponse:
-    """변경 요청 제목/본문 수정 (MERGED/CLOSED 상태에서는 수정 불가)."""
+    """CR을 검토 상태(SUBMITTED)로 제출한다."""
     cr = issue_service.get_cr_or_raise(db, issue_id)
-    issue_service.update_cr(db, cr, title=title, body=body)
+    issue_service.submit_cr(db, cr)
     return mapper.to_change_request_response(cr)

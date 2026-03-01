@@ -10,7 +10,8 @@ from app.use_cases.issue.delete_comment import delete_comment
 from app.use_cases.issue.delete_file import delete_file
 from app.use_cases.issue.link_issues import link_issues
 from app.use_cases.issue.merge_cr import merge_cr
-from app.use_cases.issue.open_cr_for_review import open_cr_for_review
+from app.use_cases.issue.reopen_cr import reopen_cr
+from app.use_cases.issue.submit_cr import submit_cr
 from app.use_cases.issue.reopen_issue import reopen_issue
 from app.use_cases.issue.sync_assignees import sync_assignees
 from app.use_cases.issue.sync_labels import sync_labels
@@ -32,7 +33,8 @@ __all__ = [
     "delete_file",
     "link_issues",
     "merge_cr",
-    "open_cr_for_review",
+    "reopen_cr",
+    "submit_cr",
     "reopen_issue",
     "sync_assignees",
     "sync_labels",

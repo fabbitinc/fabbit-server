@@ -398,19 +398,37 @@ def reopen_issue(db: Session, issue: Issue) -> Issue:
     return issue
 
 
-def open_cr_for_review(db: Session, cr: ChangeRequest) -> ChangeRequest:
-    """CR 검토 상태로 전환."""
-    cr.open_for_review()
+def update_cr(
+    db: Session,
+    cr: ChangeRequest,
+    title: str | None = None,
+    body: str | None = None,
+) -> ChangeRequest:
+    """변경 요청 수정 (MERGED/CLOSED 상태에서는 수정 불가)."""
+    from app.modules.issue.constants import CRState
+
+    if cr.cr_state in (CRState.MERGED, CRState.CLOSED):
+        raise AppError(
+            message=f"'{cr.cr_state.value}' 상태에서는 수정할 수 없습니다",
+            code="INVALID_STATE",
+        )
+    return update_issue(db, cr, title=title, body=body)
+
+
+def submit_cr(db: Session, cr: ChangeRequest) -> ChangeRequest:
+    """CR 제출 (DRAFT → SUBMITTED)."""
+    cr.submit()
     db.flush()
     return cr
 
 
 def merge_cr(db: Session, cr: ChangeRequest, user_id: uuid.UUID) -> ChangeRequest:
-    """CR 반영."""
+    """CR 반영 — 연결된 열린 이슈를 자동으로 닫는다."""
     from datetime import datetime, timezone
 
     cr.merge(datetime.now(timezone.utc), user_id)
     db.flush()
+    close_linked_open_issues(db, cr)
     return cr
 
 
@@ -419,6 +437,13 @@ def close_cr(db: Session, cr: ChangeRequest) -> ChangeRequest:
     from datetime import datetime, timezone
 
     cr.close(datetime.now(timezone.utc))
+    db.flush()
+    return cr
+
+
+def reopen_cr(db: Session, cr: ChangeRequest) -> ChangeRequest:
+    """CR 다시 열기 (CLOSED → OPEN)."""
+    cr.reopen()
     db.flush()
     return cr
 

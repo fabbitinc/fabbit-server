@@ -19,5 +19,4 @@ def merge_cr(
     """CR을 반영하고, 연결된 열린 이슈를 자동으로 닫는다."""
     cr = issue_service.get_cr_or_raise(db, issue_id)
     issue_service.merge_cr(db, cr, auth.user_id)
-    issue_service.close_linked_open_issues(db, cr)
     return mapper.to_change_request_response(cr)
