@@ -17,13 +17,14 @@ from app.queries.issue._enrichment import load_enrichments
 def get_issue(
     db: Session,
     auth: AuthContext,
-    issue_id: uuid.UUID,
+    project_id: uuid.UUID,
+    issue_number: int,
 ) -> IssueResponse:
-    """Issue 상세 조회."""
-    issue = repo.get_by_id(db, issue_id)
+    """Issue 상세 조회 (프로젝트 + 번호 기반)."""
+    issue = repo.get_by_project_and_number(db, project_id, issue_number)
     if not issue:
         raise AppError(
-            message=f"Issue '{issue_id}'을(를) 찾을 수 없습니다", code="NOT_FOUND"
+            message=f"Issue #{issue_number}을(를) 찾을 수 없습니다", code="NOT_FOUND"
         )
 
     enrichments = load_enrichments(db, [issue])

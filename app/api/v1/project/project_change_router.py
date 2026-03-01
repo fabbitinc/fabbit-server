@@ -5,8 +5,10 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_tenant_db, require_auth
+from app.api.deps import get_tenant_db, require_auth, resolve_change_request
 from app.core.auth_context import AuthContext
+from app.modules.activity.schemas import TimelineResponse
+from app.modules.issue.models import ChangeRequest
 from app.modules.issue.schemas import (
     ChangeRequestListResponse,
     ChangeRequestResponse,
@@ -47,18 +49,19 @@ def list_change_requests(
     )
 
 
-@router.get("/{issue_id}", response_model=ChangeRequestResponse)
+@router.get("/{issue_number}", response_model=ChangeRequestResponse)
 def get_change_request(
     project_id: uuid.UUID,
-    issue_id: uuid.UUID,
+    issue_number: int,
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """변경 요청(CR) 상세 조회.
 
+    프로젝트 내 이슈 번호(`number`)로 조회합니다.
     라벨, 담당자, 댓글 수, 작성자 이름 등 상세 정보를 포함합니다.
     """
-    return issue_queries.get_change_request(db, auth, issue_id)
+    return issue_queries.get_change_request(db, auth, project_id, issue_number)
 
 
 @router.post("", response_model=ChangeRequestResponse, status_code=201)
@@ -79,17 +82,33 @@ def create_change_request(
     )
 
 
+@router.get(
+    "/{issue_number}/timeline",
+    response_model=TimelineResponse,
+    status_code=200,
+)
+def get_timeline(
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """변경 요청(CR) 타임라인 조회.
+
+    댓글과 활동 이력을 `created_at` 기준으로 시간순 merge하여 반환합니다.
+    """
+    return issue_queries.get_timeline(db, auth, cr.id)
+
+
 # ── CR 상태 전이 ──
 
 
 @router.post(
-    "/{issue_id}/open",
+    "/{issue_number}/open",
     response_model=ChangeRequestResponse,
     status_code=200,
 )
 def open_cr_for_review(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
+    cr: ChangeRequest = Depends(resolve_change_request),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -97,17 +116,16 @@ def open_cr_for_review(
 
     CR 상태를 **DRAFT → OPEN**으로 전환하여 검토를 요청합니다.
     """
-    return issue_commands.open_cr_for_review(db, auth, issue_id)
+    return issue_commands.open_cr_for_review(db, auth, cr.id)
 
 
 @router.post(
-    "/{issue_id}/merge",
+    "/{issue_number}/merge",
     response_model=ChangeRequestResponse,
     status_code=200,
 )
 def merge_cr(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
+    cr: ChangeRequest = Depends(resolve_change_request),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -116,17 +134,16 @@ def merge_cr(
     CR 상태를 **MERGED**로 전환하고, 연결된 열린 이슈를 자동으로 닫습니다.
     `merged_at`, `merged_by`가 자동 기록됩니다.
     """
-    return issue_commands.merge_cr(db, auth, issue_id)
+    return issue_commands.merge_cr(db, auth, cr.id)
 
 
 @router.post(
-    "/{issue_id}/close",
+    "/{issue_number}/close",
     response_model=ChangeRequestResponse,
     status_code=200,
 )
 def close_cr(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
+    cr: ChangeRequest = Depends(resolve_change_request),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -135,21 +152,20 @@ def close_cr(
     CR 상태를 **CLOSED**로 전환합니다.
     이슈 상태(`state`)도 함께 CLOSED로 변경됩니다.
     """
-    return issue_commands.close_cr(db, auth, issue_id)
+    return issue_commands.close_cr(db, auth, cr.id)
 
 
 # ── CR-Issue 연결 ──
 
 
 @router.post(
-    "/{issue_id}/issues",
+    "/{issue_number}/issues",
     response_model=LinkIssuesResponse,
     status_code=200,
 )
 def link_issues(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
     req: LinkIssuesRequest,
+    cr: ChangeRequest = Depends(resolve_change_request),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -158,17 +174,16 @@ def link_issues(
     이미 연결된 이슈는 무시하고, 신규 연결 건수를 반환합니다.
     각 이슈의 존재 여부를 사전 검증합니다.
     """
-    return issue_commands.link_issues(db, auth, issue_id, issue_ids=req.issue_ids)
+    return issue_commands.link_issues(db, auth, cr.id, issue_ids=req.issue_ids)
 
 
 @router.delete(
-    "/{issue_id}/issues",
+    "/{issue_number}/issues",
     status_code=204,
 )
 def unlink_issues(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
     req: LinkIssuesRequest,
+    cr: ChangeRequest = Depends(resolve_change_request),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -176,4 +191,4 @@ def unlink_issues(
 
     요청된 이슈 ID에 해당하는 연결을 해제합니다.
     """
-    issue_commands.unlink_issues(db, auth, issue_id, issue_ids=req.issue_ids)
+    issue_commands.unlink_issues(db, auth, cr.id, issue_ids=req.issue_ids)

@@ -3,6 +3,7 @@
 인증, DB 세션 등 API 엔드포인트에서 공통으로 사용하는 의존성입니다.
 """
 
+import uuid
 from collections.abc import Generator
 
 from fastapi import Depends, Request
@@ -15,6 +16,7 @@ from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.exceptions import AppError
 from app.infrastructure.token_provider import token_provider
+from app.modules.issue.models import ChangeRequest, Issue
 from app.modules.organization.constants import MembershipRole
 from app.modules.organization.provisioning import org_id_to_schema
 
@@ -152,3 +154,35 @@ def get_tenant_db(
         yield db
     finally:
         db.close()
+
+
+def resolve_issue(
+    project_id: uuid.UUID,
+    issue_number: int,
+    db: Session = Depends(get_tenant_db),
+) -> Issue:
+    """프로젝트 내 이슈 번호로 Issue를 resolve하는 의존성."""
+    issue = (
+        db.query(Issue)
+        .filter(Issue.project_id == project_id, Issue.number == issue_number)
+        .first()
+    )
+    if issue is None:
+        raise AppError(message="이슈를 찾을 수 없습니다", code="NOT_FOUND")
+    return issue
+
+
+def resolve_change_request(
+    project_id: uuid.UUID,
+    issue_number: int,
+    db: Session = Depends(get_tenant_db),
+) -> ChangeRequest:
+    """프로젝트 내 이슈 번호로 ChangeRequest를 resolve하는 의존성."""
+    cr = (
+        db.query(ChangeRequest)
+        .filter(ChangeRequest.project_id == project_id, ChangeRequest.number == issue_number)
+        .first()
+    )
+    if cr is None:
+        raise AppError(message="변경 요청을 찾을 수 없습니다", code="NOT_FOUND")
+    return cr

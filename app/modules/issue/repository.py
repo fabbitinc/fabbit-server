@@ -208,9 +208,31 @@ def get_by_id(db: Session, issue_id: uuid.UUID) -> Issue | None:
     return db.query(Issue).filter(Issue.id == issue_id).first()
 
 
+def get_by_project_and_number(
+    db: Session, project_id: uuid.UUID, number: int
+) -> Issue | None:
+    """프로젝트 내 이슈 번호로 단건 조회."""
+    return (
+        db.query(Issue)
+        .filter(Issue.project_id == project_id, Issue.number == number)
+        .first()
+    )
+
+
 def get_cr_by_id(db: Session, issue_id: uuid.UUID) -> ChangeRequest | None:
     """ChangeRequest 단건 조회."""
     return db.query(ChangeRequest).filter(ChangeRequest.id == issue_id).first()
+
+
+def get_cr_by_project_and_number(
+    db: Session, project_id: uuid.UUID, number: int
+) -> ChangeRequest | None:
+    """프로젝트 내 이슈 번호로 ChangeRequest 단건 조회."""
+    return (
+        db.query(ChangeRequest)
+        .filter(ChangeRequest.project_id == project_id, ChangeRequest.number == number)
+        .first()
+    )
 
 
 def add(db: Session, entity: Issue) -> Issue:

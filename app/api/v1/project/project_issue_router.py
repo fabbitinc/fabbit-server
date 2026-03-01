@@ -5,10 +5,11 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_tenant_db, require_auth
+from app.api.deps import get_tenant_db, require_auth, resolve_issue
 from app.core.auth_context import AuthContext
 from app.modules.activity.schemas import TimelineResponse
 from app.modules.file.schemas import FileItem
+from app.modules.issue.models import Issue
 from app.modules.issue.schemas import (
     AttachFilesRequest,
     CommentResponse,
@@ -50,18 +51,19 @@ def list_issues(
     )
 
 
-@router.get("/{issue_id}", response_model=IssueResponse)
+@router.get("/{issue_number}", response_model=IssueResponse)
 def get_issue(
     project_id: uuid.UUID,
-    issue_id: uuid.UUID,
+    issue_number: int,
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """이슈 상세 조회.
 
+    프로젝트 내 이슈 번호(`number`)로 조회합니다.
     라벨, 담당자, 댓글 수, 작성자 이름 등 상세 정보를 포함합니다.
     """
-    return issue_queries.get_issue(db, auth, issue_id)
+    return issue_queries.get_issue(db, auth, project_id, issue_number)
 
 
 @router.post("", response_model=IssueResponse, status_code=201)
@@ -83,14 +85,13 @@ def create_issue(
 
 
 @router.put(
-    "/{issue_id}/assignees",
+    "/{issue_number}/assignees",
     response_model=SyncAssigneesResponse,
     status_code=200,
 )
 def sync_assignees(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
     req: SyncAssigneesRequest,
+    issue: Issue = Depends(resolve_issue),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -100,21 +101,20 @@ def sync_assignees(
     기존 담당자와 diff를 비교하여 추가/제거를 자동 처리합니다.
     빈 목록 전달 시 모든 담당자가 해제됩니다.
     """
-    return issue_commands.sync_assignees(db, auth, issue_id, user_ids=req.user_ids)
+    return issue_commands.sync_assignees(db, auth, issue.id, user_ids=req.user_ids)
 
 
 # ── 라벨 동기화 ──
 
 
 @router.put(
-    "/{issue_id}/labels",
+    "/{issue_number}/labels",
     response_model=SyncLabelsResponse,
     status_code=200,
 )
 def sync_labels(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
     req: SyncLabelsRequest,
+    issue: Issue = Depends(resolve_issue),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -124,21 +124,20 @@ def sync_labels(
     기존 라벨과 diff를 비교하여 추가/제거를 자동 처리합니다.
     빈 목록 전달 시 모든 라벨이 해제됩니다.
     """
-    return issue_commands.sync_labels(db, auth, issue_id, label_ids=req.label_ids)
+    return issue_commands.sync_labels(db, auth, issue.id, label_ids=req.label_ids)
 
 
 # ── 부품 동기화 ──
 
 
 @router.put(
-    "/{issue_id}/parts",
+    "/{issue_number}/parts",
     response_model=SyncPartsResponse,
     status_code=200,
 )
 def sync_parts(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
     req: SyncPartsRequest,
+    issue: Issue = Depends(resolve_issue),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -149,7 +148,7 @@ def sync_parts(
     빈 목록 전달 시 모든 부품이 해제됩니다.
     """
     return issue_commands.sync_parts(
-        db, auth, project_id, issue_id, part_ids=req.part_ids
+        db, auth, issue.project_id, issue.id, part_ids=req.part_ids
     )
 
 
@@ -157,13 +156,12 @@ def sync_parts(
 
 
 @router.post(
-    "/{issue_id}/close",
+    "/{issue_number}/close",
     response_model=IssueResponse,
     status_code=200,
 )
 def close_issue(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
+    issue: Issue = Depends(resolve_issue),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -172,17 +170,16 @@ def close_issue(
     이슈 상태를 **OPEN → CLOSED**로 전환합니다.
     `closed_at` 타임스탬프가 자동 기록됩니다.
     """
-    return issue_commands.close_issue(db, auth, issue_id)
+    return issue_commands.close_issue(db, auth, issue.id)
 
 
 @router.post(
-    "/{issue_id}/reopen",
+    "/{issue_number}/reopen",
     response_model=IssueResponse,
     status_code=200,
 )
 def reopen_issue(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
+    issue: Issue = Depends(resolve_issue),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -191,20 +188,19 @@ def reopen_issue(
     닫힌 이슈 상태를 **CLOSED → OPEN**으로 전환합니다.
     `closed_at`이 초기화됩니다.
     """
-    return issue_commands.reopen_issue(db, auth, issue_id)
+    return issue_commands.reopen_issue(db, auth, issue.id)
 
 
 # ── 타임라인 ──
 
 
 @router.get(
-    "/{issue_id}/timeline",
+    "/{issue_number}/timeline",
     response_model=TimelineResponse,
     status_code=200,
 )
 def get_timeline(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
+    issue: Issue = Depends(resolve_issue),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -212,21 +208,20 @@ def get_timeline(
 
     댓글과 활동 이력을 `created_at` 기준으로 시간순 merge하여 반환합니다.
     """
-    return issue_queries.get_timeline(db, auth, issue_id)
+    return issue_queries.get_timeline(db, auth, issue.id)
 
 
 # ── 댓글 ──
 
 
 @router.post(
-    "/{issue_id}/comments",
+    "/{issue_number}/comments",
     response_model=CommentResponse,
     status_code=201,
 )
 def create_comment(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
     req: CreateCommentRequest,
+    issue: Issue = Depends(resolve_issue),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -235,19 +230,18 @@ def create_comment(
     댓글 본문은 1~10,000자까지 입력 가능합니다.
     """
     body = req.body.model_dump_json(exclude_none=True)
-    return issue_commands.create_comment(db, auth, issue_id, body=body)
+    return issue_commands.create_comment(db, auth, issue.id, body=body)
 
 
 @router.patch(
-    "/{issue_id}/comments/{comment_id}",
+    "/{issue_number}/comments/{comment_id}",
     response_model=CommentResponse,
     status_code=200,
 )
 def update_comment(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
     comment_id: uuid.UUID,
     req: UpdateCommentRequest,
+    issue: Issue = Depends(resolve_issue),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -256,17 +250,16 @@ def update_comment(
     본인이 작성한 댓글만 수정할 수 있습니다.
     """
     body = req.body.model_dump_json(exclude_none=True)
-    return issue_commands.update_comment(db, auth, issue_id, comment_id, body=body)
+    return issue_commands.update_comment(db, auth, issue.id, comment_id, body=body)
 
 
 @router.delete(
-    "/{issue_id}/comments/{comment_id}",
+    "/{issue_number}/comments/{comment_id}",
     status_code=204,
 )
 def delete_comment(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
     comment_id: uuid.UUID,
+    issue: Issue = Depends(resolve_issue),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -274,21 +267,20 @@ def delete_comment(
 
     본인이 작성한 댓글만 삭제할 수 있습니다.
     """
-    issue_commands.delete_comment(db, auth, issue_id, comment_id)
+    issue_commands.delete_comment(db, auth, issue.id, comment_id)
 
 
 # ── 첨부파일 ──
 
 
 @router.post(
-    "/{issue_id}/files",
+    "/{issue_number}/files",
     response_model=list[FileItem],
     status_code=200,
 )
 def add_files(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
     req: AttachFilesRequest,
+    issue: Issue = Depends(resolve_issue),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -297,17 +289,16 @@ def add_files(
     업로드 완료(`UPLOADED`) 상태이며 아직 소유자가 없는 파일만 연결 가능합니다.
     최대 20개까지 한 번에 연결할 수 있습니다.
     """
-    return issue_commands.add_files(db, auth, issue_id, file_ids=req.file_ids)
+    return issue_commands.add_files(db, auth, issue.id, file_ids=req.file_ids)
 
 
 @router.delete(
-    "/{issue_id}/files/{file_id}",
+    "/{issue_number}/files/{file_id}",
     status_code=204,
 )
 def delete_file(
-    project_id: uuid.UUID,
-    issue_id: uuid.UUID,
     file_id: uuid.UUID,
+    issue: Issue = Depends(resolve_issue),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
@@ -316,4 +307,4 @@ def delete_file(
     해당 이슈에 연결된 파일만 삭제할 수 있습니다.
     파일은 소프트 삭제 처리됩니다.
     """
-    issue_commands.delete_file(db, auth, issue_id, file_id)
+    issue_commands.delete_file(db, auth, issue.id, file_id)

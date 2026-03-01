@@ -17,13 +17,14 @@ from app.queries.issue._enrichment import load_enrichments
 def get_change_request(
     db: Session,
     auth: AuthContext,
-    issue_id: uuid.UUID,
+    project_id: uuid.UUID,
+    issue_number: int,
 ) -> ChangeRequestResponse:
-    """ChangeRequest 상세 조회."""
-    cr = repo.get_cr_by_id(db, issue_id)
+    """ChangeRequest 상세 조회 (프로젝트 + 번호 기반)."""
+    cr = repo.get_cr_by_project_and_number(db, project_id, issue_number)
     if not cr:
         raise AppError(
-            message=f"ChangeRequest '{issue_id}'을(를) 찾을 수 없습니다",
+            message=f"ChangeRequest #{issue_number}을(를) 찾을 수 없습니다",
             code="NOT_FOUND",
         )
 
