@@ -8,7 +8,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_serializer
 
 from app.modules.user.schemas import UserSummary
 
-
 # ── Activity Detail 스키마 (action별 타입 정의) ──
 
 
@@ -298,6 +297,8 @@ class TimelineCommentItem(BaseModel):
     body: dict | None = None
     author_id: uuid.UUID | None = None
     created_at: datetime
+    updated_at: datetime
+    is_modified: bool
 
 
 class TimelineActivityItem(BaseModel):

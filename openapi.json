@@ -12150,12 +12150,23 @@
                         "type": "string",
                         "format": "date-time",
                         "title": "Created At"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At"
+                    },
+                    "is_modified": {
+                        "type": "boolean",
+                        "title": "Is Modified"
                     }
                 },
                 "type": "object",
                 "required": [
                     "id",
-                    "created_at"
+                    "created_at",
+                    "updated_at",
+                    "is_modified"
                 ],
                 "title": "TimelineCommentItem"
             },

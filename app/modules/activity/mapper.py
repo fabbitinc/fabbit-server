@@ -4,9 +4,12 @@ import json
 
 from app.modules.activity.constants import Action
 from app.modules.activity.models import Activity
-from app.modules.activity.schemas import ActivityResponse, TimelineActivityItem
+from app.modules.activity.schemas import (
+    ActivityResponse,
+    TimelineActivityItem,
+    TimelineCommentItem,
+)
 from app.modules.issue.models import IssueComment
-from app.modules.activity.schemas import TimelineCommentItem
 
 
 def _parse_body(body: str | None) -> dict | None:
@@ -65,4 +68,6 @@ def to_timeline_comment_item(comment: IssueComment) -> TimelineCommentItem:
         body=_parse_body(comment.body),
         author_id=comment.created_by,
         created_at=comment.created_at,
+        updated_at=comment.updated_at,
+        is_modified=comment.is_modified,
     )
