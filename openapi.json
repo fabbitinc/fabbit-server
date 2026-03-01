@@ -6058,6 +6058,9 @@
                                 "$ref": "#/components/schemas/IssueCreatedDetail"
                             },
                             {
+                                "$ref": "#/components/schemas/CRCreatedDetail"
+                            },
+                            {
                                 "$ref": "#/components/schemas/IssueClosedDetail"
                             },
                             {
@@ -6465,6 +6468,36 @@
                 ],
                 "title": "BomTreeResponse",
                 "description": "BOM \ud2b8\ub9ac \uc751\ub2f5"
+            },
+            "CRCreatedDetail": {
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "const": "cr_created",
+                        "title": "Action"
+                    },
+                    "issue_id": {
+                        "type": "string",
+                        "title": "Issue Id"
+                    },
+                    "number": {
+                        "type": "integer",
+                        "title": "Number"
+                    },
+                    "title": {
+                        "type": "string",
+                        "title": "Title"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "action",
+                    "issue_id",
+                    "number",
+                    "title"
+                ],
+                "title": "CRCreatedDetail",
+                "description": "\ubcc0\uacbd \uc694\uccad \uc0dd\uc131."
             },
             "CRMergedDetail": {
                 "properties": {
@@ -7699,10 +7732,6 @@
                     "title": {
                         "type": "string",
                         "title": "Title"
-                    },
-                    "type": {
-                        "type": "string",
-                        "title": "Type"
                     }
                 },
                 "type": "object",
@@ -7710,11 +7739,10 @@
                     "action",
                     "issue_id",
                     "number",
-                    "title",
-                    "type"
+                    "title"
                 ],
                 "title": "IssueCreatedDetail",
-                "description": "\uc774\uc288/CR \uc0dd\uc131."
+                "description": "\uc774\uc288 \uc0dd\uc131."
             },
             "IssueLinkedDetail": {
                 "properties": {

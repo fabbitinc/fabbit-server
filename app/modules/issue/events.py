@@ -6,13 +6,21 @@ from app.core.domain_event import DomainEvent
 
 
 class IssueCreated(DomainEvent):
-    """이슈/변경요청 생성 — Project 피드용."""
+    """일반 이슈 생성 — Project 피드용."""
 
     project_id: UUID
     issue_id: UUID
     number: int
     title: str
-    issue_type: str
+
+
+class CRCreated(DomainEvent):
+    """변경 요청 생성 — Project 피드용."""
+
+    project_id: UUID
+    issue_id: UUID
+    number: int
+    title: str
 
 
 class IssueStateChanged(DomainEvent):

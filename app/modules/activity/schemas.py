@@ -154,13 +154,21 @@ class IssueUnlinkedDetail(BaseModel):
 
 
 class IssueCreatedDetail(BaseModel):
-    """이슈/CR 생성."""
+    """이슈 생성."""
 
     action: Literal["issue_created"]
     issue_id: str
     number: int
     title: str
-    type: str
+
+
+class CRCreatedDetail(BaseModel):
+    """변경 요청 생성."""
+
+    action: Literal["cr_created"]
+    issue_id: str
+    number: int
+    title: str
 
 
 class IssueClosedDetail(BaseModel):
@@ -209,6 +217,7 @@ IssueActivityDetail = (
 
 ProjectActivityDetail = (
     IssueCreatedDetail
+    | CRCreatedDetail
     | IssueClosedDetail
     | IssueReopenedDetail
     | CRMergedDetail

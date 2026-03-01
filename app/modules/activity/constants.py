@@ -35,6 +35,7 @@ class Action(str, Enum):
 
     # -- Project 피드 --
     ISSUE_CREATED = ("issue_created", "issue")
+    CR_CREATED = ("cr_created", "cr")
     ISSUE_CLOSED = ("issue_closed", "issue")
     ISSUE_REOPENED = ("issue_reopened", "issue")
     CR_MERGED = ("cr_merged", "cr")

@@ -13,6 +13,7 @@ from app.modules.file.models import File
 from app.modules.issue import repository as repo
 from app.modules.issue.events import (
     AssigneesChanged,
+    CRCreated,
     CRIssuesLinked,
     CRIssuesUnlinked,
     IssueCreated,
@@ -56,7 +57,6 @@ def create_issue(
             issue_id=issue.id,
             number=issue.number,
             title=title,
-            issue_type=issue.type.value,
         )
     )
     return issue
@@ -78,12 +78,11 @@ def create_change_request(
     )
     repo.add(db, cr)
     cr.register_event(
-        IssueCreated(
+        CRCreated(
             project_id=project_id,
             issue_id=cr.id,
             number=cr.number,
             title=title,
-            issue_type=cr.type.value,
         )
     )
     return cr

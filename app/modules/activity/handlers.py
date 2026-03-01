@@ -10,6 +10,7 @@ from app.modules.activity.constants import Action, TargetType
 from app.modules.activity.models import Activity
 from app.modules.issue.events import (
     AssigneesChanged,
+    CRCreated,
     CRIssuesLinked,
     CRIssuesUnlinked,
     CRStateChanged,
@@ -52,7 +53,7 @@ def _add_activity(target_type, target_id, action: Action, actor_id, detail=None)
 
 
 def _on_issue_created(event: IssueCreated) -> None:
-    """이슈/CR 생성 → Project 피드."""
+    """이슈 생성 → Project 피드."""
     actor_id = _get_actor_id()
     _add_activity(
         TargetType.PROJECT,
@@ -63,7 +64,22 @@ def _on_issue_created(event: IssueCreated) -> None:
             "issue_id": str(event.issue_id),
             "number": event.number,
             "title": event.title,
-            "type": event.issue_type,
+        },
+    )
+
+
+def _on_cr_created(event: CRCreated) -> None:
+    """변경 요청 생성 → Project 피드."""
+    actor_id = _get_actor_id()
+    _add_activity(
+        TargetType.PROJECT,
+        event.project_id,
+        Action.CR_CREATED,
+        actor_id,
+        {
+            "issue_id": str(event.issue_id),
+            "number": event.number,
+            "title": event.title,
         },
     )
 
@@ -294,6 +310,7 @@ def _on_project_updated(event: ProjectUpdated) -> None:
 # ── 구독 등록 ──
 
 event_bus.subscribe(IssueCreated, _on_issue_created)
+event_bus.subscribe(CRCreated, _on_cr_created)
 event_bus.subscribe(IssueStateChanged, _on_issue_state_changed)
 event_bus.subscribe(CRStateChanged, _on_cr_state_changed)
 event_bus.subscribe(AssigneesChanged, _on_assignees_changed)

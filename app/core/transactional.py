@@ -7,6 +7,7 @@ from typing import Any, Callable, TypeVar, cast
 
 from sqlalchemy.orm import Session
 
+from app.core.aggregate import init_event_collection, reset_event_collection
 from app.core.uow import UnitOfWork
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -63,6 +64,7 @@ def transactional(
                 return method(*args, **kwargs)
 
             token_db = _active_db.set(db)
+            token_ev = init_event_collection()
             try:
                 with UnitOfWork(db) as uow:
                     result = method(*args, **kwargs)
@@ -70,6 +72,7 @@ def transactional(
                         uow.commit()
                     return result
             finally:
+                reset_event_collection(token_ev)
                 _active_db.reset(token_db)
 
         return cast(F, wrapper)
