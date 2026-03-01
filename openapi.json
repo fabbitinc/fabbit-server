@@ -5618,7 +5618,7 @@
                     "project-members"
                 ],
                 "summary": "Add Project Members",
-                "description": "\ud504\ub85c\uc81d\ud2b8\uc5d0 \uba64\ubc84 \ubc30\uce58 \ucd94\uac00.\n\n\uc774\ubbf8 \ucd94\uac00\ub41c \uba64\ubc84\ub294 \ubb34\uc2dc\ub418\uba70, \uc2e0\uaddc \ucd94\uac00 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "description": "\ud504\ub85c\uc81d\ud2b8\uc5d0 \uba64\ubc84 \ubc30\uce58 \ucd94\uac00.\n\n\uc774\ubbf8 \ucd94\uac00\ub41c \uba64\ubc84\ub294 \ubb34\uc2dc\ub418\uba70, \uc2e0\uaddc \ucd94\uac00 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n`role`\uc744 \uc9c0\uc815\ud558\uc9c0 \uc54a\uc73c\uba74 **MEMBER**\ub85c \ucd94\uac00\ub429\ub2c8\ub2e4.",
                 "operationId": "add_project_members_api_v1_projects__project_id__members_post",
                 "security": [
                     {
@@ -5642,7 +5642,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ManageMembersRequest"
+                                "$ref": "#/components/schemas/AddMembersRequest"
                             }
                         }
                     }
@@ -6628,6 +6628,29 @@
                 ],
                 "title": "ActivityUserInfo",
                 "description": "Activity\uc5d0 \uae30\ub85d\ub418\ub294 \uc0ac\uc6a9\uc790 \uc815\ubcf4."
+            },
+            "AddMembersRequest": {
+                "properties": {
+                    "user_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "User Ids"
+                    },
+                    "role": {
+                        "$ref": "#/components/schemas/ProjectRole",
+                        "description": "\uba64\ubc84 \uc5ed\ud560",
+                        "default": "MEMBER"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_ids"
+                ],
+                "title": "AddMembersRequest",
+                "description": "\uba64\ubc84 \ucd94\uac00 \uc694\uccad."
             },
             "AssigneesChangedDetail": {
                 "properties": {
@@ -9110,7 +9133,7 @@
                     "user_ids"
                 ],
                 "title": "ManageMembersRequest",
-                "description": "\uba64\ubc84 \ucd94\uac00/\uc81c\uac70 \uc694\uccad."
+                "description": "\uba64\ubc84 \uc81c\uac70 \uc694\uccad."
             },
             "ManageMembersResponse": {
                 "properties": {
@@ -10483,13 +10506,18 @@
                     "email": {
                         "type": "string",
                         "title": "Email"
+                    },
+                    "role": {
+                        "type": "string",
+                        "title": "Role"
                     }
                 },
                 "type": "object",
                 "required": [
                     "user_id",
                     "full_name",
-                    "email"
+                    "email",
+                    "role"
                 ],
                 "title": "ProjectMemberSummary",
                 "description": "\ud504\ub85c\uc81d\ud2b8 \uba64\ubc84 \uc694\uc57d."
@@ -10544,6 +10572,16 @@
                     "items"
                 ],
                 "title": "ProjectPartsResponse"
+            },
+            "ProjectRole": {
+                "type": "string",
+                "enum": [
+                    "ADMIN",
+                    "MEMBER",
+                    "VIEWER"
+                ],
+                "title": "ProjectRole",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \uba64\ubc84 \uc5ed\ud560."
             },
             "ProjectSummary": {
                 "properties": {
