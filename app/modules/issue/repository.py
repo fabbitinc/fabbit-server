@@ -5,7 +5,6 @@ import uuid
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.modules.user.models import User
 from app.modules.file.models import File
 from app.modules.issue.constants import IssueState, IssueType
 from app.modules.issue.models import (
@@ -200,23 +199,6 @@ def batch_load_comment_counts(
         .all()
     )
     return {issue_id: cnt for issue_id, cnt in rows}
-
-
-def batch_load_user_names(
-    db: Session, user_ids: list[uuid.UUID]
-) -> dict[uuid.UUID, tuple[str, str | None]]:
-    """User ID 목록에 대한 이름·프로필 이미지 배치 조회 (cross-schema).
-
-    Returns: {user_id: (full_name, profile_image_file_key)}
-    """
-    if not user_ids:
-        return {}
-    rows = (
-        db.query(User.id, User.full_name, User.profile_image_file_key)
-        .filter(User.id.in_(user_ids))
-        .all()
-    )
-    return {uid: (name, file_key) for uid, name, file_key in rows}
 
 
 def batch_load_parts(

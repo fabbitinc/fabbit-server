@@ -36,8 +36,7 @@ def list_issues(
         items.append(
             mapper.to_issue_summary(
                 issue,
-                created_by_name=e.created_by_name,
-                created_by_profile_image_url=e.created_by_profile_image_url,
+                created_by=e.created_by,
                 labels=e.labels,
                 assignees=e.assignees,
                 parts=e.parts,

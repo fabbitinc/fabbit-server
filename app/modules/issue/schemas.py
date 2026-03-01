@@ -7,6 +7,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.modules.file.schemas import FileItem
+from app.modules.user.schemas import UserSummary
 
 
 # ── TipTap JSON 검증 ──
@@ -115,14 +116,6 @@ class LabelBadge(BaseModel):
     color: str
 
 
-class AssigneeSummary(BaseModel):
-    """담당자 요약 (아바타 표시용)."""
-
-    id: uuid.UUID
-    full_name: str
-    profile_image_url: str | None = None
-
-
 class PartBadge(BaseModel):
     """연결 부품 배지 (목록 표시용)."""
 
@@ -141,11 +134,9 @@ class IssueSummary(BaseModel):
     closed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
-    created_by: uuid.UUID | None = None
-    created_by_name: str | None = None
-    created_by_profile_image_url: str | None = None
+    created_by: UserSummary | None = None
     labels: list[LabelBadge] = []
-    assignees: list[AssigneeSummary] = []
+    assignees: list[UserSummary] = []
     parts: list[PartBadge] = []
     files: list[FileItem] = []
     comments_count: int = 0
@@ -164,7 +155,7 @@ class ChangeRequestSummary(IssueSummary):
     cr_state: str
     merged_at: datetime | None = None
     merged_by: uuid.UUID | None = None
-    reviewers: list[AssigneeSummary] = []
+    reviewers: list[UserSummary] = []
 
 
 class ChangeRequestListResponse(BaseModel):
@@ -190,11 +181,9 @@ class IssueResponse(BaseModel):
     closed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
-    created_by: uuid.UUID | None = None
-    created_by_name: str | None = None
-    created_by_profile_image_url: str | None = None
+    created_by: UserSummary | None = None
     labels: list[LabelBadge] = []
-    assignees: list[AssigneeSummary] = []
+    assignees: list[UserSummary] = []
     parts: list[PartBadge] = []
     files: list[FileItem] = []
     comments_count: int = 0
@@ -204,7 +193,7 @@ class ChangeRequestResponse(IssueResponse):
     cr_state: str
     merged_at: datetime | None = None
     merged_by: uuid.UUID | None = None
-    reviewers: list[AssigneeSummary] = []
+    reviewers: list[UserSummary] = []
 
 
 # ── 담당자 동기화 ──
