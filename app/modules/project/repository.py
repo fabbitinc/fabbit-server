@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.modules.project.models import Project, ProjectMember, ProjectPart
+from app.modules.user.models import User
 
 
 def add(db: Session, entity: Project) -> Project:
@@ -166,6 +167,24 @@ def remove_members(db: Session, project_id: uuid.UUID, user_ids: list[uuid.UUID]
     )
     db.flush()
     return count
+
+
+def lookup_members(
+    db: Session,
+    project_id: uuid.UUID,
+    *,
+    search: str | None = None,
+    limit: int = 10,
+) -> list[User]:
+    """프로젝트 멤버 lookup 조회 (picker/autocomplete용)."""
+    query = (
+        db.query(User)
+        .join(ProjectMember, ProjectMember.user_id == User.id)
+        .filter(ProjectMember.project_id == project_id)
+    )
+    if search:
+        query = query.filter(User.full_name.ilike(f"%{search}%"))
+    return query.order_by(User.full_name).limit(limit).all()
 
 
 def list_member_ids(db: Session, project_id: uuid.UUID) -> list[uuid.UUID]:

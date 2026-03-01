@@ -16,6 +16,7 @@ from app.modules.issue.schemas import (
     CreateCommentRequest,
     CreateIssueRequest,
     IssueListResponse,
+    IssueLookupResponse,
     IssueResponse,
     SyncAssigneesRequest,
     SyncAssigneesResponse,
@@ -29,6 +30,22 @@ from app.queries import issue as issue_queries
 from app.use_cases import issue as issue_commands
 
 router = APIRouter(prefix="/api/v1/projects/{project_id}/issues", tags=["issues"])
+
+
+@router.get("/lookup", response_model=IssueLookupResponse)
+def lookup_issues(
+    project_id: uuid.UUID,
+    search: str | None = Query(None, description="제목 검색 (ILIKE)"),
+    limit: int = Query(10, ge=1, le=50, description="조회 건수"),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """프로젝트 이슈 lookup 조회.
+
+    이슈 연결 picker UI를 위한 경량 목록 엔드포인트입니다.
+    id, number, title, state만 반환합니다 (변경 요청 제외).
+    """
+    return issue_queries.lookup_issues(db, auth, project_id, search=search, limit=limit)
 
 
 @router.get("", response_model=IssueListResponse)

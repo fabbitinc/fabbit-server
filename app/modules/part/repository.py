@@ -81,6 +81,29 @@ def get_by_id(db: Session, part_id: uuid.UUID) -> Part | None:
     return db.query(Part).filter(Part.id == part_id).first()
 
 
+def lookup_parts(
+    db: Session,
+    *,
+    search: str | None = None,
+    exclude_project_id: uuid.UUID | None = None,
+    limit: int = 10,
+) -> list[Part]:
+    """부품 lookup 조회 (picker/autocomplete용)."""
+    query = db.query(Part)
+    if search:
+        query = query.filter(
+            Part.part_number.ilike(f"%{search}%") | Part.name.ilike(f"%{search}%")
+        )
+    if exclude_project_id is not None:
+        query = query.filter(
+            ~exists().where(
+                (ProjectPart.part_id == Part.id)
+                & (ProjectPart.project_id == exclude_project_id)
+            )
+        )
+    return query.order_by(Part.part_number).limit(limit).all()
+
+
 def list_parts_paginated(
     db: Session,
     *,

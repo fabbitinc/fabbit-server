@@ -66,6 +66,23 @@ class AttachFilesRequest(BaseModel):
     file_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=20)
 
 
+# ── Lookup ──
+
+
+class PartLookupItem(BaseModel):
+    """부품 lookup 항목 (picker/autocomplete용)."""
+
+    id: uuid.UUID
+    part_number: str
+    name: str | None = None
+
+
+class PartLookupResponse(BaseModel):
+    """부품 lookup 응답."""
+
+    items: list[PartLookupItem]
+
+
 # ── 목록 ──
 
 

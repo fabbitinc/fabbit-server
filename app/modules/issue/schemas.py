@@ -171,6 +171,21 @@ class ChangeRequestListResponse(BaseModel):
 # ── 연결 배지 ──
 
 
+class IssueLookupItem(BaseModel):
+    """이슈 lookup 항목 (picker/autocomplete용)."""
+
+    id: uuid.UUID
+    number: int
+    title: str
+    state: str
+
+
+class IssueLookupResponse(BaseModel):
+    """이슈 lookup 응답."""
+
+    items: list[IssueLookupItem]
+
+
 class LinkedIssueBadge(BaseModel):
     """연결된 이슈 요약 (CR 상세에서 사용)."""
 

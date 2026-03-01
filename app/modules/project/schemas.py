@@ -5,6 +5,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.modules.user.schemas import UserSummary
+
 
 # ── 요청 ──
 
@@ -78,6 +80,15 @@ class PartProjectSummary(BaseModel):
 class PartProjectsResponse(BaseModel):
     total: int
     items: list[PartProjectSummary]
+
+
+# ── 멤버 lookup ──
+
+
+class MemberLookupResponse(BaseModel):
+    """멤버 lookup 응답 (picker/autocomplete용)."""
+
+    items: list[UserSummary]
 
 
 # ── 멤버 ──

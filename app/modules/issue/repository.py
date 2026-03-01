@@ -232,6 +232,23 @@ def batch_load_files(
     return result
 
 
+def lookup_issues(
+    db: Session,
+    project_id: uuid.UUID,
+    *,
+    search: str | None = None,
+    limit: int = 10,
+) -> list[Issue]:
+    """프로젝트 내 이슈 lookup 조회 (picker/autocomplete용, CR 제외)."""
+    query = db.query(Issue).filter(
+        Issue.project_id == project_id,
+        Issue.type == IssueType.ISSUE,
+    )
+    if search:
+        query = query.filter(Issue.title.ilike(f"%{search}%"))
+    return query.order_by(Issue.created_at.desc()).limit(limit).all()
+
+
 def get_by_id(db: Session, issue_id: uuid.UUID) -> Issue | None:
     """Issue 단건 조회."""
     return db.query(Issue).filter(Issue.id == issue_id).first()

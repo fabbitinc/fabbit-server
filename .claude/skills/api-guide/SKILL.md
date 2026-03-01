@@ -55,6 +55,42 @@ api/v1/tenant/project/
 - 본문: 동작 방식, 주요 파라미터 설명, 상태 흐름 등 프론트엔드 개발자가 참고할 내용
 - 마크다운 지원 — `**bold**`, 리스트(`-`), 코드(`backtick`) 활용 가능
 
+## 목록 엔드포인트 패턴
+
+동일 리소스에 대해 용도별로 두 가지 목록 엔드포인트가 공존할 수 있다.
+
+| 패턴 | 경로 | 용도 | 특징 |
+|---|---|---|---|
+| **Full List** | `GET /` | 메인 목록 페이지 | 페이지네이션(offset/limit), 상태 필터, enrichment(라벨·담당자·파일 등), 상태별 카운트 포함 |
+| **Lookup** | `GET /lookup` | picker/autocomplete/select UI | `search` + `limit`만, 최소 필드(id + 표시용 1~2개), enrichment 없음 |
+
+### Lookup 규칙
+
+- 경로: `GET /{resource}/lookup` — Full List(`GET /`)와 같은 라우터에 등록하되 **`/lookup`을 먼저 선언**해야 `/{id}` 패턴과 충돌하지 않음
+- query params: `search` (optional), `limit` (default 10, ge=1, le=50)
+- 응답 스키마: `{Resource}LookupResponse(items: list[{Resource}LookupItem])` — 기존 Summary/Response 스키마 재사용 금지 (필드 과다)
+  - 단, 이미 경량인 스키마(`UserSummary` 등)는 재사용 가능
+- queries에서 repo 직접 호출 → 직접 매핑 (enrichment 함수 사용 안 함)
+
+### 코드 예시
+
+```python
+# router
+@router.get("/lookup", response_model=IssueLookupResponse)
+def lookup_issues(
+    project_id: uuid.UUID,
+    search: str | None = Query(None, description="제목 검색 (ILIKE)"),
+    limit: int = Query(10, ge=1, le=50, description="조회 건수"),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 lookup 조회.
+
+    picker UI를 위한 경량 목록 엔드포인트입니다.
+    """
+    return issue_queries.lookup_issues(db, auth, project_id, search=search, limit=limit)
+```
+
 ## Import alias 컨벤션
 
 - `from app.use_cases import {domain} as {domain}_commands`
