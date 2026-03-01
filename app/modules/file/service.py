@@ -349,6 +349,15 @@ def get_uploaded_or_raise(db: Session, file_id: uuid.UUID) -> File:
     return file
 
 
+def get_files_by_owner(
+    db: Session,
+    owner_type: str,
+    owner_id: uuid.UUID,
+) -> list[File]:
+    """소유자별 파일 목록 조회."""
+    return repo.get_files_by_owner(db, owner_type, owner_id)
+
+
 def validate_attachable(
     db: Session,
     file_ids: list[uuid.UUID],

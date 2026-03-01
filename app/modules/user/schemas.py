@@ -10,6 +10,8 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     full_name: str
+    phone: str | None = None
+    profile_image_url: str | None = None
     is_active: bool
     created_at: datetime
 
@@ -21,12 +23,15 @@ class UserResponse(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     full_name: str | None = Field(None, min_length=1, max_length=100)
+    phone: str | None = Field(None, max_length=20)
 
 
 class UpdateProfileResponse(BaseModel):
     id: uuid.UUID
     email: str
     full_name: str
+    phone: str | None = None
+    profile_image_url: str | None = None
     updated_at: datetime
 
     model_config = {"from_attributes": True}
@@ -38,3 +43,14 @@ class UpdateProfileResponse(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+# ── 프로필 이미지 ──
+
+
+class SetProfileImageRequest(BaseModel):
+    file_id: uuid.UUID
+
+
+class ProfileImageResponse(BaseModel):
+    profile_image_url: str

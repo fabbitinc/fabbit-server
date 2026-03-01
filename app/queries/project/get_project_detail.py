@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
+from app.modules.issue import repository as issue_repo
 from app.modules.project import repository as repo
 from app.modules.project.schemas import ProjectDetailResponse
 
@@ -26,6 +27,9 @@ def get_project_detail(
         id=project.id,
         name=project.name,
         description=project.description,
+        part_count=repo.count_linked_parts(db, project_id),
+        open_issue_count=issue_repo.count_open_issues(db, project_id),
+        open_change_request_count=issue_repo.count_open_crs(db, project_id),
         created_at=project.created_at,
         updated_at=project.updated_at,
     )

@@ -35,6 +35,9 @@ class ProjectDetailResponse(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None = None
+    part_count: int
+    open_issue_count: int
+    open_change_request_count: int
     created_at: datetime
     updated_at: datetime
 

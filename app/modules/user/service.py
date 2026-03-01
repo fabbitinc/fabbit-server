@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     from app.core.auth_context import AuthContext
+    from app.modules.file.models import File
     from app.modules.user.schemas import (
         ChangePasswordRequest,
         UpdateProfileRequest,
@@ -16,6 +18,7 @@ if TYPE_CHECKING:
 
 from app.core.exceptions import AppError
 from app.infrastructure.password_hasher import hash_password, verify_password
+from app.modules.file.mapper import get_file_url
 from app.modules.user import repository as repo
 from app.modules.user.models import User
 
@@ -88,19 +91,17 @@ def update_profile(
 
     @transactional 없음 — use_case에서 트랜잭션 관리.
     """
-    from app.modules.user.schemas import UpdateProfileResponse
-
     user = get_user_or_raise(db, auth.user_id)
 
     updates = req.model_dump(exclude_unset=True)
     if not updates:
-        return UpdateProfileResponse.model_validate(user)
+        return _to_update_profile_response(user)
 
     for field, value in updates.items():
         setattr(user, field, value)
     db.flush()
 
-    return UpdateProfileResponse.model_validate(user)
+    return _to_update_profile_response(user)
 
 
 def change_password(db: Session, auth: AuthContext, req: ChangePasswordRequest) -> None:
@@ -117,3 +118,37 @@ def change_password(db: Session, auth: AuthContext, req: ChangePasswordRequest) 
 
     user.hashed_password = hash_password(req.new_password)
     db.flush()
+
+
+def set_profile_image(db: Session, auth: AuthContext, file: File) -> None:
+    """프로필 이미지 설정 — 검증된 파일을 연결.
+
+    @transactional 없음 — use_case에서 트랜잭션 관리.
+    """
+    user = get_user_or_raise(db, auth.user_id)
+    user.set_profile_image(file)
+
+
+def delete_profile_image(
+    db: Session, auth: AuthContext, file_id: uuid.UUID
+) -> None:
+    """프로필 이미지 제거 — 소프트 삭제는 FileHandler가 처리.
+
+    @transactional 없음 — use_case에서 트랜잭션 관리.
+    """
+    user = get_user_or_raise(db, auth.user_id)
+    user.remove_profile_image(file_id)
+
+
+def _to_update_profile_response(user: User) -> UpdateProfileResponse:
+    """User → UpdateProfileResponse 변환 (profile_image_url 포함)."""
+    from app.modules.user.schemas import UpdateProfileResponse
+
+    return UpdateProfileResponse(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        phone=user.phone,
+        profile_image_url=get_file_url(user.profile_image_file_key),
+        updated_at=user.updated_at,
+    )

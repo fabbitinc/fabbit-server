@@ -11,13 +11,16 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
+from app.core.aggregate import AggregateRoot
 from app.core.database import Base, generate_uuid7
+from app.modules.file.events import FileAttached, FileDetached
 
 if TYPE_CHECKING:
+    from app.modules.file.models import File
     from app.modules.organization.models import Membership
 
 
-class User(Base):
+class User(AggregateRoot, Base):
     __tablename__ = "users"
 
     __table_args__ = (
@@ -31,6 +34,10 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    profile_image_file_key: Mapped[str | None] = mapped_column(
+        String(1000), nullable=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -45,3 +52,19 @@ class User(Base):
     memberships: Mapped[list["Membership"]] = relationship(
         "Membership", back_populates="user"
     )
+
+    # ── 도메인 메서드 ──
+
+    def set_profile_image(self, file: "File") -> None:
+        """프로필 이미지 설정 — 소유자 할당은 FileHandler가 처리."""
+        self.profile_image_file_key = file.file_key
+        self.register_event(
+            FileAttached(owner_type="user", owner_id=self.id, file_ids=[file.id])
+        )
+
+    def remove_profile_image(self, file_id: uuid.UUID) -> None:
+        """프로필 이미지 제거 — 소프트 삭제는 FileHandler가 처리."""
+        self.profile_image_file_key = None
+        self.register_event(
+            FileDetached(owner_type="user", owner_id=self.id, file_id=file_id)
+        )

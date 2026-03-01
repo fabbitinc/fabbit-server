@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
+from app.modules.file.mapper import get_file_url
 from app.modules.organization import repository as org_repo
 from app.modules.organization.schemas import (
     MembershipResponse,
@@ -24,7 +25,15 @@ def get_me(db: Session, auth: AuthContext) -> MeResponse:
     memberships = org_repo.get_user_memberships(db, user.id)
 
     return MeResponse(
-        user=UserResponse.model_validate(user),
+        user=UserResponse(
+            id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            phone=user.phone,
+            profile_image_url=get_file_url(user.profile_image_file_key),
+            is_active=user.is_active,
+            created_at=user.created_at,
+        ),
         memberships=[
             MembershipResponse(
                 org_id=m.org_id,

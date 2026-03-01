@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth, resolve_change_request
 from app.core.auth_context import AuthContext
-from app.modules.activity.schemas import TimelineResponse
 from app.modules.issue.models import ChangeRequest
 from app.modules.issue.schemas import (
     ChangeRequestListResponse,
@@ -27,7 +26,9 @@ def list_change_requests(
     project_id: uuid.UUID,
     search: str | None = Query(None, description="제목 검색 (ILIKE)"),
     state: str | None = Query(None, description="이슈 상태 필터 (OPEN|CLOSED)"),
-    cr_state: str | None = Query(None, description="CR 상태 필터 (DRAFT|OPEN|MERGED|CLOSED)"),
+    cr_state: str | None = Query(
+        None, description="CR 상태 필터 (DRAFT|OPEN|MERGED|CLOSED)"
+    ),
     offset: int = Query(0, ge=0, description="시작 위치"),
     limit: int = Query(20, ge=1, le=100, description="조회 건수"),
     auth: AuthContext = Depends(require_auth),
@@ -80,23 +81,6 @@ def create_change_request(
     return issue_commands.create_change_request(
         db, auth, project_id, title=req.title, body=body
     )
-
-
-@router.get(
-    "/{issue_number}/timeline",
-    response_model=TimelineResponse,
-    status_code=200,
-)
-def get_timeline(
-    cr: ChangeRequest = Depends(resolve_change_request),
-    auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(get_tenant_db),
-):
-    """변경 요청(CR) 타임라인 조회.
-
-    댓글과 활동 이력을 `created_at` 기준으로 시간순 merge하여 반환합니다.
-    """
-    return issue_queries.get_timeline(db, auth, cr.id)
 
 
 # ── CR 상태 전이 ──

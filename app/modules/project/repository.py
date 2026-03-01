@@ -87,6 +87,15 @@ def unlink_parts(db: Session, project_id: uuid.UUID, part_ids: list[uuid.UUID]) 
     return count
 
 
+def count_linked_parts(db: Session, project_id: uuid.UUID) -> int:
+    """Project에 연결된 Part 수 조회."""
+    return (
+        db.query(func.count(ProjectPart.id))
+        .filter(ProjectPart.project_id == project_id)
+        .scalar()
+    )
+
+
 def get_linked_part_ids(db: Session, project_id: uuid.UUID) -> list[uuid.UUID]:
     """Project에 연결된 Part ID 목록 조회."""
     rows = (

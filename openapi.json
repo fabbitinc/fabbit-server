@@ -977,6 +977,71 @@
                 ]
             }
         },
+        "/api/v1/users/me/profile-image": {
+            "put": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Set Profile Image",
+                "description": "\ud504\ub85c\ud544 \uc774\ubbf8\uc9c0 \uc124\uc815.\n\n\uae30\uc874 \ud30c\uc77c \uc5c5\ub85c\ub4dc API\ub85c \uc5c5\ub85c\ub4dc\ud55c \ud30c\uc77c\uc758 file_id\ub97c \uc804\ub2ec\ud558\uc5ec \ud504\ub85c\ud544 \uc774\ubbf8\uc9c0\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\ud30c\uc77c \uc0c1\ud0dc(UPLOADED) \ubc0f \ubbf8\uc5f0\uacb0 \uc5ec\ubd80\ub97c \uac80\uc99d\ud55c \ud6c4 \uc800\uc7a5\ud569\ub2c8\ub2e4.",
+                "operationId": "set_profile_image_api_v1_users_me_profile_image_put",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetProfileImageRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProfileImageResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete Profile Image",
+                "description": "\ud504\ub85c\ud544 \uc774\ubbf8\uc9c0 \uc81c\uac70.\n\n\ud504\ub85c\ud544 \uc774\ubbf8\uc9c0\ub97c \uc81c\uac70\ud558\uace0 \uc5f0\uacb0\ub41c \ud30c\uc77c\uc744 \uc18c\ud504\ud2b8 \uc0ad\uc81c\ud569\ub2c8\ub2e4.",
+                "operationId": "delete_profile_image_api_v1_users_me_profile_image_delete",
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
         "/api/v1/dashboard/stats": {
             "get": {
                 "tags": [
@@ -2852,14 +2917,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/changes/{issue_id}": {
+        "/api/v1/projects/{project_id}/changes/{issue_number}": {
             "get": {
                 "tags": [
                     "changes"
                 ],
                 "summary": "Get Change Request",
-                "description": "\ubcc0\uacbd \uc694\uccad(CR) \uc0c1\uc138 \uc870\ud68c.\n\n\ub77c\ubca8, \ub2f4\ub2f9\uc790, \ub313\uae00 \uc218, \uc791\uc131\uc790 \uc774\ub984 \ub4f1 \uc0c1\uc138 \uc815\ubcf4\ub97c \ud3ec\ud568\ud569\ub2c8\ub2e4.",
-                "operationId": "get_change_request_api_v1_projects__project_id__changes__issue_id__get",
+                "description": "\ubcc0\uacbd \uc694\uccad(CR) \uc0c1\uc138 \uc870\ud68c.\n\n\ud504\ub85c\uc81d\ud2b8 \ub0b4 \uc774\uc288 \ubc88\ud638(`number`)\ub85c \uc870\ud68c\ud569\ub2c8\ub2e4.\n\ub77c\ubca8, \ub2f4\ub2f9\uc790, \ub313\uae00 \uc218, \uc791\uc131\uc790 \uc774\ub984 \ub4f1 \uc0c1\uc138 \uc815\ubcf4\ub97c \ud3ec\ud568\ud569\ub2c8\ub2e4.",
+                "operationId": "get_change_request_api_v1_projects__project_id__changes__issue_number__get",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -2877,13 +2942,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -2911,14 +2975,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/changes/{issue_id}/open": {
+        "/api/v1/projects/{project_id}/changes/{issue_number}/open": {
             "post": {
                 "tags": [
                     "changes"
                 ],
                 "summary": "Open Cr For Review",
                 "description": "\ubcc0\uacbd \uc694\uccad \uac80\ud1a0 \uc0c1\ud0dc \uc804\ud658.\n\nCR \uc0c1\ud0dc\ub97c **DRAFT \u2192 OPEN**\uc73c\ub85c \uc804\ud658\ud558\uc5ec \uac80\ud1a0\ub97c \uc694\uccad\ud569\ub2c8\ub2e4.",
-                "operationId": "open_cr_for_review_api_v1_projects__project_id__changes__issue_id__open_post",
+                "operationId": "open_cr_for_review_api_v1_projects__project_id__changes__issue_number__open_post",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -2936,13 +3000,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -2970,14 +3033,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/changes/{issue_id}/merge": {
+        "/api/v1/projects/{project_id}/changes/{issue_number}/merge": {
             "post": {
                 "tags": [
                     "changes"
                 ],
                 "summary": "Merge Cr",
                 "description": "\ubcc0\uacbd \uc694\uccad \ubc18\uc601.\n\nCR \uc0c1\ud0dc\ub97c **MERGED**\ub85c \uc804\ud658\ud558\uace0, \uc5f0\uacb0\ub41c \uc5f4\ub9b0 \uc774\uc288\ub97c \uc790\ub3d9\uc73c\ub85c \ub2eb\uc2b5\ub2c8\ub2e4.\n`merged_at`, `merged_by`\uac00 \uc790\ub3d9 \uae30\ub85d\ub429\ub2c8\ub2e4.",
-                "operationId": "merge_cr_api_v1_projects__project_id__changes__issue_id__merge_post",
+                "operationId": "merge_cr_api_v1_projects__project_id__changes__issue_number__merge_post",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -2995,13 +3058,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -3029,14 +3091,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/changes/{issue_id}/close": {
+        "/api/v1/projects/{project_id}/changes/{issue_number}/close": {
             "post": {
                 "tags": [
                     "changes"
                 ],
                 "summary": "Close Cr",
                 "description": "\ubcc0\uacbd \uc694\uccad \ub2eb\uae30.\n\nCR \uc0c1\ud0dc\ub97c **CLOSED**\ub85c \uc804\ud658\ud569\ub2c8\ub2e4.\n\uc774\uc288 \uc0c1\ud0dc(`state`)\ub3c4 \ud568\uaed8 CLOSED\ub85c \ubcc0\uacbd\ub429\ub2c8\ub2e4.",
-                "operationId": "close_cr_api_v1_projects__project_id__changes__issue_id__close_post",
+                "operationId": "close_cr_api_v1_projects__project_id__changes__issue_number__close_post",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -3054,13 +3116,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -3088,14 +3149,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/changes/{issue_id}/issues": {
+        "/api/v1/projects/{project_id}/changes/{issue_number}/issues": {
             "post": {
                 "tags": [
                     "changes"
                 ],
                 "summary": "Link Issues",
                 "description": "\ubcc0\uacbd \uc694\uccad\uc5d0 \uc774\uc288 \ubc30\uce58 \uc5f0\uacb0.\n\n\uc774\ubbf8 \uc5f0\uacb0\ub41c \uc774\uc288\ub294 \ubb34\uc2dc\ud558\uace0, \uc2e0\uaddc \uc5f0\uacb0 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uac01 \uc774\uc288\uc758 \uc874\uc7ac \uc5ec\ubd80\ub97c \uc0ac\uc804 \uac80\uc99d\ud569\ub2c8\ub2e4.",
-                "operationId": "link_issues_api_v1_projects__project_id__changes__issue_id__issues_post",
+                "operationId": "link_issues_api_v1_projects__project_id__changes__issue_number__issues_post",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -3113,13 +3174,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -3162,7 +3222,7 @@
                 ],
                 "summary": "Unlink Issues",
                 "description": "\ubcc0\uacbd \uc694\uccad\uc5d0\uc11c \uc774\uc288 \ubc30\uce58 \ud574\uc81c.\n\n\uc694\uccad\ub41c \uc774\uc288 ID\uc5d0 \ud574\ub2f9\ud558\ub294 \uc5f0\uacb0\uc744 \ud574\uc81c\ud569\ub2c8\ub2e4.",
-                "operationId": "unlink_issues_api_v1_projects__project_id__changes__issue_id__issues_delete",
+                "operationId": "unlink_issues_api_v1_projects__project_id__changes__issue_number__issues_delete",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -3180,13 +3240,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -3386,14 +3445,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/issues/{issue_id}": {
+        "/api/v1/projects/{project_id}/issues/{issue_number}": {
             "get": {
                 "tags": [
                     "issues"
                 ],
                 "summary": "Get Issue",
-                "description": "\uc774\uc288 \uc0c1\uc138 \uc870\ud68c.\n\n\ub77c\ubca8, \ub2f4\ub2f9\uc790, \ub313\uae00 \uc218, \uc791\uc131\uc790 \uc774\ub984 \ub4f1 \uc0c1\uc138 \uc815\ubcf4\ub97c \ud3ec\ud568\ud569\ub2c8\ub2e4.",
-                "operationId": "get_issue_api_v1_projects__project_id__issues__issue_id__get",
+                "description": "\uc774\uc288 \uc0c1\uc138 \uc870\ud68c.\n\n\ud504\ub85c\uc81d\ud2b8 \ub0b4 \uc774\uc288 \ubc88\ud638(`number`)\ub85c \uc870\ud68c\ud569\ub2c8\ub2e4.\n\ub77c\ubca8, \ub2f4\ub2f9\uc790, \ub313\uae00 \uc218, \uc791\uc131\uc790 \uc774\ub984 \ub4f1 \uc0c1\uc138 \uc815\ubcf4\ub97c \ud3ec\ud568\ud569\ub2c8\ub2e4.",
+                "operationId": "get_issue_api_v1_projects__project_id__issues__issue_number__get",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -3411,13 +3470,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -3445,14 +3503,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/issues/{issue_id}/assignees": {
+        "/api/v1/projects/{project_id}/issues/{issue_number}/assignees": {
             "put": {
                 "tags": [
                     "issues"
                 ],
                 "summary": "Sync Assignees",
                 "description": "\uc774\uc288 \ub2f4\ub2f9\uc790 \ub3d9\uae30\ud654.\n\n\uc804\ub2ec\ub41c `user_ids`\ub97c \uc774\uc288\uc758 \ucd5c\uc885 \ub2f4\ub2f9\uc790 \ubaa9\ub85d\uc73c\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\uae30\uc874 \ub2f4\ub2f9\uc790\uc640 diff\ub97c \ube44\uad50\ud558\uc5ec \ucd94\uac00/\uc81c\uac70\ub97c \uc790\ub3d9 \ucc98\ub9ac\ud569\ub2c8\ub2e4.\n\ube48 \ubaa9\ub85d \uc804\ub2ec \uc2dc \ubaa8\ub4e0 \ub2f4\ub2f9\uc790\uac00 \ud574\uc81c\ub429\ub2c8\ub2e4.",
-                "operationId": "sync_assignees_api_v1_projects__project_id__issues__issue_id__assignees_put",
+                "operationId": "sync_assignees_api_v1_projects__project_id__issues__issue_number__assignees_put",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -3470,13 +3528,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -3514,14 +3571,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/issues/{issue_id}/labels": {
+        "/api/v1/projects/{project_id}/issues/{issue_number}/labels": {
             "put": {
                 "tags": [
                     "issues"
                 ],
                 "summary": "Sync Labels",
                 "description": "\uc774\uc288 \ub77c\ubca8 \ub3d9\uae30\ud654.\n\n\uc804\ub2ec\ub41c `label_ids`\ub97c \uc774\uc288\uc758 \ucd5c\uc885 \ub77c\ubca8 \ubaa9\ub85d\uc73c\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\uae30\uc874 \ub77c\ubca8\uacfc diff\ub97c \ube44\uad50\ud558\uc5ec \ucd94\uac00/\uc81c\uac70\ub97c \uc790\ub3d9 \ucc98\ub9ac\ud569\ub2c8\ub2e4.\n\ube48 \ubaa9\ub85d \uc804\ub2ec \uc2dc \ubaa8\ub4e0 \ub77c\ubca8\uc774 \ud574\uc81c\ub429\ub2c8\ub2e4.",
-                "operationId": "sync_labels_api_v1_projects__project_id__issues__issue_id__labels_put",
+                "operationId": "sync_labels_api_v1_projects__project_id__issues__issue_number__labels_put",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -3539,13 +3596,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -3583,14 +3639,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/issues/{issue_id}/parts": {
+        "/api/v1/projects/{project_id}/issues/{issue_number}/parts": {
             "put": {
                 "tags": [
                     "issues"
                 ],
                 "summary": "Sync Parts",
                 "description": "\uc774\uc288 \ubd80\ud488 \ub3d9\uae30\ud654.\n\n\uc804\ub2ec\ub41c `part_ids`\ub97c \uc774\uc288\uc758 \ucd5c\uc885 \ubd80\ud488 \ubaa9\ub85d\uc73c\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\uae30\uc874 \ubd80\ud488\uacfc diff\ub97c \ube44\uad50\ud558\uc5ec \ucd94\uac00/\uc81c\uac70\ub97c \uc790\ub3d9 \ucc98\ub9ac\ud569\ub2c8\ub2e4.\n\ube48 \ubaa9\ub85d \uc804\ub2ec \uc2dc \ubaa8\ub4e0 \ubd80\ud488\uc774 \ud574\uc81c\ub429\ub2c8\ub2e4.",
-                "operationId": "sync_parts_api_v1_projects__project_id__issues__issue_id__parts_put",
+                "operationId": "sync_parts_api_v1_projects__project_id__issues__issue_number__parts_put",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -3608,13 +3664,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -3652,14 +3707,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/issues/{issue_id}/close": {
+        "/api/v1/projects/{project_id}/issues/{issue_number}/close": {
             "post": {
                 "tags": [
                     "issues"
                 ],
                 "summary": "Close Issue",
                 "description": "\uc774\uc288 \ub2eb\uae30.\n\n\uc774\uc288 \uc0c1\ud0dc\ub97c **OPEN \u2192 CLOSED**\ub85c \uc804\ud658\ud569\ub2c8\ub2e4.\n`closed_at` \ud0c0\uc784\uc2a4\ud0ec\ud504\uac00 \uc790\ub3d9 \uae30\ub85d\ub429\ub2c8\ub2e4.",
-                "operationId": "close_issue_api_v1_projects__project_id__issues__issue_id__close_post",
+                "operationId": "close_issue_api_v1_projects__project_id__issues__issue_number__close_post",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -3677,13 +3732,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -3711,14 +3765,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/issues/{issue_id}/reopen": {
+        "/api/v1/projects/{project_id}/issues/{issue_number}/reopen": {
             "post": {
                 "tags": [
                     "issues"
                 ],
                 "summary": "Reopen Issue",
                 "description": "\uc774\uc288 \uc7ac\uac1c.\n\n\ub2eb\ud78c \uc774\uc288 \uc0c1\ud0dc\ub97c **CLOSED \u2192 OPEN**\uc73c\ub85c \uc804\ud658\ud569\ub2c8\ub2e4.\n`closed_at`\uc774 \ucd08\uae30\ud654\ub429\ub2c8\ub2e4.",
-                "operationId": "reopen_issue_api_v1_projects__project_id__issues__issue_id__reopen_post",
+                "operationId": "reopen_issue_api_v1_projects__project_id__issues__issue_number__reopen_post",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -3736,13 +3790,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -3770,14 +3823,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/issues/{issue_id}/timeline": {
+        "/api/v1/projects/{project_id}/issues/{issue_number}/timeline": {
             "get": {
                 "tags": [
                     "issues"
                 ],
                 "summary": "Get Timeline",
                 "description": "\uc774\uc288 \ud0c0\uc784\ub77c\uc778 \uc870\ud68c.\n\n\ub313\uae00\uacfc \ud65c\ub3d9 \uc774\ub825\uc744 `created_at` \uae30\uc900\uc73c\ub85c \uc2dc\uac04\uc21c merge\ud558\uc5ec \ubc18\ud658\ud569\ub2c8\ub2e4.",
-                "operationId": "get_timeline_api_v1_projects__project_id__issues__issue_id__timeline_get",
+                "operationId": "get_timeline_api_v1_projects__project_id__issues__issue_number__timeline_get",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -3795,13 +3848,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -3829,14 +3881,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/issues/{issue_id}/comments": {
+        "/api/v1/projects/{project_id}/issues/{issue_number}/comments": {
             "post": {
                 "tags": [
                     "issues"
                 ],
                 "summary": "Create Comment",
                 "description": "\uc774\uc288 \ub313\uae00 \uc0dd\uc131.\n\n\ub313\uae00 \ubcf8\ubb38\uc740 1~10,000\uc790\uae4c\uc9c0 \uc785\ub825 \uac00\ub2a5\ud569\ub2c8\ub2e4.",
-                "operationId": "create_comment_api_v1_projects__project_id__issues__issue_id__comments_post",
+                "operationId": "create_comment_api_v1_projects__project_id__issues__issue_number__comments_post",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -3854,13 +3906,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -3898,20 +3949,30 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/issues/{issue_id}/comments/{comment_id}": {
+        "/api/v1/projects/{project_id}/issues/{issue_number}/comments/{comment_id}": {
             "patch": {
                 "tags": [
                     "issues"
                 ],
                 "summary": "Update Comment",
                 "description": "\uc774\uc288 \ub313\uae00 \uc218\uc815.\n\n\ubcf8\uc778\uc774 \uc791\uc131\ud55c \ub313\uae00\ub9cc \uc218\uc815\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
-                "operationId": "update_comment_api_v1_projects__project_id__issues__issue_id__comments__comment_id__patch",
+                "operationId": "update_comment_api_v1_projects__project_id__issues__issue_number__comments__comment_id__patch",
                 "security": [
                     {
                         "HTTPBearer": []
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "comment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Comment Id"
+                        }
+                    },
                     {
                         "name": "project_id",
                         "in": "path",
@@ -3923,23 +3984,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
-                        }
-                    },
-                    {
-                        "name": "comment_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Comment Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -3982,13 +4032,23 @@
                 ],
                 "summary": "Delete Comment",
                 "description": "\uc774\uc288 \ub313\uae00 \uc0ad\uc81c.\n\n\ubcf8\uc778\uc774 \uc791\uc131\ud55c \ub313\uae00\ub9cc \uc0ad\uc81c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
-                "operationId": "delete_comment_api_v1_projects__project_id__issues__issue_id__comments__comment_id__delete",
+                "operationId": "delete_comment_api_v1_projects__project_id__issues__issue_number__comments__comment_id__delete",
                 "security": [
                     {
                         "HTTPBearer": []
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "comment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Comment Id"
+                        }
+                    },
                     {
                         "name": "project_id",
                         "in": "path",
@@ -4000,23 +4060,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
-                        }
-                    },
-                    {
-                        "name": "comment_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Comment Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -4037,14 +4086,14 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/issues/{issue_id}/files": {
+        "/api/v1/projects/{project_id}/issues/{issue_number}/files": {
             "post": {
                 "tags": [
                     "issues"
                 ],
                 "summary": "Add Files",
                 "description": "\uc774\uc288\uc5d0 \ucca8\ubd80\ud30c\uc77c \ubc30\uce58 \uc5f0\uacb0.\n\n\uc5c5\ub85c\ub4dc \uc644\ub8cc(`UPLOADED`) \uc0c1\ud0dc\uc774\uba70 \uc544\uc9c1 \uc18c\uc720\uc790\uac00 \uc5c6\ub294 \ud30c\uc77c\ub9cc \uc5f0\uacb0 \uac00\ub2a5\ud569\ub2c8\ub2e4.\n\ucd5c\ub300 20\uac1c\uae4c\uc9c0 \ud55c \ubc88\uc5d0 \uc5f0\uacb0\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
-                "operationId": "add_files_api_v1_projects__project_id__issues__issue_id__files_post",
+                "operationId": "add_files_api_v1_projects__project_id__issues__issue_number__files_post",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -4062,13 +4111,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -4092,7 +4140,7 @@
                                     "items": {
                                         "$ref": "#/components/schemas/FileItem"
                                     },
-                                    "title": "Response Add Files Api V1 Projects  Project Id  Issues  Issue Id  Files Post"
+                                    "title": "Response Add Files Api V1 Projects  Project Id  Issues  Issue Number  Files Post"
                                 }
                             }
                         }
@@ -4110,20 +4158,30 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/issues/{issue_id}/files/{file_id}": {
+        "/api/v1/projects/{project_id}/issues/{issue_number}/files/{file_id}": {
             "delete": {
                 "tags": [
                     "issues"
                 ],
                 "summary": "Delete File",
                 "description": "\uc774\uc288 \ucca8\ubd80\ud30c\uc77c 1\uac74 \uc0ad\uc81c.\n\n\ud574\ub2f9 \uc774\uc288\uc5d0 \uc5f0\uacb0\ub41c \ud30c\uc77c\ub9cc \uc0ad\uc81c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\ud30c\uc77c\uc740 \uc18c\ud504\ud2b8 \uc0ad\uc81c \ucc98\ub9ac\ub429\ub2c8\ub2e4.",
-                "operationId": "delete_file_api_v1_projects__project_id__issues__issue_id__files__file_id__delete",
+                "operationId": "delete_file_api_v1_projects__project_id__issues__issue_number__files__file_id__delete",
                 "security": [
                     {
                         "HTTPBearer": []
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "file_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "File Id"
+                        }
+                    },
                     {
                         "name": "project_id",
                         "in": "path",
@@ -4135,23 +4193,12 @@
                         }
                     },
                     {
-                        "name": "issue_id",
+                        "name": "issue_number",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Issue Id"
-                        }
-                    },
-                    {
-                        "name": "file_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "File Id"
+                            "type": "integer",
+                            "title": "Issue Number"
                         }
                     }
                 ],
@@ -8675,6 +8722,19 @@
                 ],
                 "title": "PlanResponse"
             },
+            "ProfileImageResponse": {
+                "properties": {
+                    "profile_image_url": {
+                        "type": "string",
+                        "title": "Profile Image Url"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "profile_image_url"
+                ],
+                "title": "ProfileImageResponse"
+            },
             "ProjectDetailResponse": {
                 "properties": {
                     "id": {
@@ -8697,6 +8757,18 @@
                         ],
                         "title": "Description"
                     },
+                    "part_count": {
+                        "type": "integer",
+                        "title": "Part Count"
+                    },
+                    "open_issue_count": {
+                        "type": "integer",
+                        "title": "Open Issue Count"
+                    },
+                    "open_change_request_count": {
+                        "type": "integer",
+                        "title": "Open Change Request Count"
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -8712,6 +8784,9 @@
                 "required": [
                     "id",
                     "name",
+                    "part_count",
+                    "open_issue_count",
+                    "open_change_request_count",
                     "created_at",
                     "updated_at"
                 ],
@@ -9485,6 +9560,20 @@
                     "message"
                 ],
                 "title": "SendVerificationResponse"
+            },
+            "SetProfileImageRequest": {
+                "properties": {
+                    "file_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "File Id"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file_id"
+                ],
+                "title": "SetProfileImageRequest"
             },
             "SheetPreview": {
                 "properties": {
@@ -10571,6 +10660,18 @@
                             }
                         ],
                         "title": "Full Name"
+                    },
+                    "phone": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 20
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Phone"
                     }
                 },
                 "type": "object",
@@ -10590,6 +10691,28 @@
                     "full_name": {
                         "type": "string",
                         "title": "Full Name"
+                    },
+                    "phone": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Phone"
+                    },
+                    "profile_image_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Profile Image Url"
                     },
                     "updated_at": {
                         "type": "string",
@@ -10620,6 +10743,28 @@
                     "full_name": {
                         "type": "string",
                         "title": "Full Name"
+                    },
+                    "phone": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Phone"
+                    },
+                    "profile_image_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Profile Image Url"
                     },
                     "is_active": {
                         "type": "boolean",

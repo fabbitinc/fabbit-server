@@ -63,6 +63,32 @@ def count_crs_by_state(
     return counts
 
 
+def count_open_issues(db: Session, project_id: uuid.UUID) -> int:
+    """프로젝트 내 열린 Issue 건수 조회 (CR 제외)."""
+    return (
+        db.query(func.count())
+        .filter(
+            Issue.project_id == project_id,
+            Issue.type == IssueType.ISSUE,
+            Issue.state == IssueState.OPEN,
+        )
+        .scalar()
+    )
+
+
+def count_open_crs(db: Session, project_id: uuid.UUID) -> int:
+    """프로젝트 내 열린 ChangeRequest 건수 조회."""
+    return (
+        db.query(func.count())
+        .filter(
+            Issue.project_id == project_id,
+            Issue.type == IssueType.CHANGE_REQUEST,
+            Issue.state == IssueState.OPEN,
+        )
+        .scalar()
+    )
+
+
 def list_issues_paginated(
     db: Session,
     project_id: uuid.UUID,
