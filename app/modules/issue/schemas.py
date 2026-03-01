@@ -201,6 +201,7 @@ class IssueLookupItem(BaseModel):
     number: int
     title: str
     state: str
+    type: str
 
 
 class IssueLookupResponse(BaseModel):

@@ -47,6 +47,7 @@ class ActivityIssueInfo(BaseModel):
     issue_id: str
     number: int
     title: str
+    type: str  # "ISSUE" | "CHANGE_REQUEST"
 
 
 # -- 상태 전이 (from 은 Python 예약어이므로 alias + model_serializer 사용) --
@@ -166,6 +167,17 @@ class FileDetachedDetail(BaseModel):
 # -- CR-이슈 연결 --
 
 
+class IssueMentionedDetail(BaseModel):
+    """다른 이슈에서 멘션됨."""
+
+    action: Literal["issue_mentioned"]
+    source_issue_id: str
+    source_number: int
+    source_title: str
+    source_issue_type: str  # "issue" | "change_request"
+    is_comment: bool
+
+
 class IssueLinkedDetail(BaseModel):
     """CR에 이슈 연결."""
 
@@ -242,6 +254,7 @@ IssueActivityDetail = (
     | FileDetachedDetail
     | IssueLinkedDetail
     | IssueUnlinkedDetail
+    | IssueMentionedDetail
     | dict[str, Any]
 )
 

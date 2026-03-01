@@ -4157,7 +4157,7 @@
                     "issues"
                 ],
                 "summary": "Lookup Issues",
-                "description": "\ud504\ub85c\uc81d\ud2b8 \uc774\uc288 lookup \uc870\ud68c.\n\n\uc774\uc288 \uc5f0\uacb0 picker UI\ub97c \uc704\ud55c \uacbd\ub7c9 \ubaa9\ub85d \uc5d4\ub4dc\ud3ec\uc778\ud2b8\uc785\ub2c8\ub2e4.\nid, number, title, state\ub9cc \ubc18\ud658\ud569\ub2c8\ub2e4 (\ubcc0\uacbd \uc694\uccad \uc81c\uc678).",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \uc774\uc288 lookup \uc870\ud68c.\n\n\uc774\uc288 \uc5f0\uacb0 picker UI\ub97c \uc704\ud55c \uacbd\ub7c9 \ubaa9\ub85d \uc5d4\ub4dc\ud3ec\uc778\ud2b8\uc785\ub2c8\ub2e4.\nid, number, title, state\ub9cc \ubc18\ud658\ud569\ub2c8\ub2e4.\n`type` \ud544\ud130\ub85c \uc77c\ubc18 \uc774\uc288/\ubcc0\uacbd \uc694\uccad\uc744 \uad6c\ubd84\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
                 "operationId": "lookup_issues_api_v1_projects__project_id__issues_lookup_get",
                 "security": [
                     {
@@ -4188,10 +4188,28 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "\uc81c\ubaa9 \uac80\uc0c9 (ILIKE)",
+                            "description": "\uc81c\ubaa9 \ub610\ub294 \uc774\uc288 \ubc88\ud638 \uac80\uc0c9",
                             "title": "Search"
                         },
-                        "description": "\uc81c\ubaa9 \uac80\uc0c9 (ILIKE)"
+                        "description": "\uc81c\ubaa9 \ub610\ub294 \uc774\uc288 \ubc88\ud638 \uac80\uc0c9"
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "\uc774\uc288 \uc720\ud615 \ud544\ud130 (ISSUE|CHANGE_REQUEST)",
+                            "title": "Type"
+                        },
+                        "description": "\uc774\uc288 \uc720\ud615 \ud544\ud130 (ISSUE|CHANGE_REQUEST)"
                     },
                     {
                         "name": "limit",
@@ -6403,13 +6421,18 @@
                     "title": {
                         "type": "string",
                         "title": "Title"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type"
                     }
                 },
                 "type": "object",
                 "required": [
                     "issue_id",
                     "number",
-                    "title"
+                    "title",
+                    "type"
                 ],
                 "title": "ActivityIssueInfo",
                 "description": "Activity\uc5d0 \uae30\ub85d\ub418\ub294 \uc774\uc288 \uc815\ubcf4."
@@ -6581,6 +6604,7 @@
                     "reviewer",
                     "label",
                     "file",
+                    "mention",
                     "project"
                 ],
                 "title": "ActivityScope",
@@ -7166,6 +7190,10 @@
                         "format": "date-time",
                         "title": "Updated At"
                     },
+                    "is_modified": {
+                        "type": "boolean",
+                        "title": "Is Modified"
+                    },
                     "created_by": {
                         "anyOf": [
                             {
@@ -7276,6 +7304,7 @@
                     "state",
                     "created_at",
                     "updated_at",
+                    "is_modified",
                     "cr_state"
                 ],
                 "title": "ChangeRequestResponse"
@@ -7521,6 +7550,10 @@
                         "format": "date-time",
                         "title": "Updated At"
                     },
+                    "is_modified": {
+                        "type": "boolean",
+                        "title": "Is Modified"
+                    },
                     "created_by": {
                         "anyOf": [
                             {
@@ -7539,7 +7572,8 @@
                     "id",
                     "issue_id",
                     "created_at",
-                    "updated_at"
+                    "updated_at",
+                    "is_modified"
                 ],
                 "title": "CommentResponse"
             },
@@ -8346,6 +8380,10 @@
                     "state": {
                         "type": "string",
                         "title": "State"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type"
                     }
                 },
                 "type": "object",
@@ -8353,7 +8391,8 @@
                     "id",
                     "number",
                     "title",
-                    "state"
+                    "state",
+                    "type"
                 ],
                 "title": "IssueLookupItem",
                 "description": "\uc774\uc288 lookup \ud56d\ubaa9 (picker/autocomplete\uc6a9)."
@@ -8374,6 +8413,46 @@
                 ],
                 "title": "IssueLookupResponse",
                 "description": "\uc774\uc288 lookup \uc751\ub2f5."
+            },
+            "IssueMentionedDetail": {
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "const": "issue_mentioned",
+                        "title": "Action"
+                    },
+                    "source_issue_id": {
+                        "type": "string",
+                        "title": "Source Issue Id"
+                    },
+                    "source_number": {
+                        "type": "integer",
+                        "title": "Source Number"
+                    },
+                    "source_title": {
+                        "type": "string",
+                        "title": "Source Title"
+                    },
+                    "source_issue_type": {
+                        "type": "string",
+                        "title": "Source Issue Type"
+                    },
+                    "is_comment": {
+                        "type": "boolean",
+                        "title": "Is Comment"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "action",
+                    "source_issue_id",
+                    "source_number",
+                    "source_title",
+                    "source_issue_type",
+                    "is_comment"
+                ],
+                "title": "IssueMentionedDetail",
+                "description": "\ub2e4\ub978 \uc774\uc288\uc5d0\uc11c \uba58\uc158\ub428."
             },
             "IssueReopenedDetail": {
                 "properties": {
@@ -8467,6 +8546,10 @@
                         "format": "date-time",
                         "title": "Updated At"
                     },
+                    "is_modified": {
+                        "type": "boolean",
+                        "title": "Is Modified"
+                    },
                     "created_by": {
                         "anyOf": [
                             {
@@ -8532,7 +8615,8 @@
                     "title",
                     "state",
                     "created_at",
-                    "updated_at"
+                    "updated_at",
+                    "is_modified"
                 ],
                 "title": "IssueResponse"
             },
@@ -11996,6 +12080,9 @@
                             },
                             {
                                 "$ref": "#/components/schemas/IssueUnlinkedDetail"
+                            },
+                            {
+                                "$ref": "#/components/schemas/IssueMentionedDetail"
                             },
                             {
                                 "additionalProperties": true,

@@ -32,6 +32,7 @@ class Action(str, Enum):
     FILE_DETACHED = ("file_detached", "file")
     CR_ISSUE_LINKED = ("cr_issue_linked", "cr")
     CR_ISSUE_UNLINKED = ("cr_issue_unlinked", "cr")
+    ISSUE_MENTIONED = ("issue_mentioned", "mention")
 
     # -- Project 피드 --
     ISSUE_CREATED = ("issue_created", "issue")
@@ -54,6 +55,7 @@ class ActivityScope(str, Enum):
     REVIEWER = "reviewer"
     LABEL = "label"
     FILE = "file"
+    MENTION = "mention"
     PROJECT = "project"
 
 

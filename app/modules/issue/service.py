@@ -20,11 +20,56 @@ from app.modules.issue.events import (
     IssueFileDetached,
     IssueFilesAttached,
     IssueLabelsChanged,
+    IssueMentioned,
     IssuePartsChanged,
     ReviewersChanged,
+    UserMentioned,
 )
 from app.modules.issue.constants import IssueType
+from app.modules.issue.mention import extract_mentions
 from app.modules.issue.models import ChangeRequest, Issue, IssueComment
+
+
+def _register_mention_events(
+    issue: Issue,
+    new_body: str | None,
+    old_body: str | None = None,
+    *,
+    is_comment: bool = False,
+) -> None:
+    """new_body에서 새로 추가된 mention을 추출하여 이벤트 등록."""
+    new_users, new_issues = extract_mentions(new_body)
+    old_users, old_issues = extract_mentions(old_body)
+    added_users = new_users - old_users
+    added_issues = new_issues - old_issues
+    # 자기 자신 멘션 제외
+    added_issues.discard(issue.id)
+
+    issue_type = issue.type.value.lower()  # "issue" | "change_request"
+    for target_issue_id in added_issues:
+        issue.register_event(
+            IssueMentioned(
+                project_id=issue.project_id,
+                target_issue_id=target_issue_id,
+                source_issue_id=issue.id,
+                source_number=issue.number,
+                source_title=issue.title,
+                source_issue_type=issue_type,
+                is_comment=is_comment,
+            )
+        )
+    for mentioned_user_id in added_users:
+        issue.register_event(
+            UserMentioned(
+                project_id=issue.project_id,
+                mentioned_user_id=mentioned_user_id,
+                source_issue_id=issue.id,
+                source_number=issue.number,
+                source_title=issue.title,
+                source_issue_type=issue_type,
+                is_comment=is_comment,
+            )
+        )
 
 
 def get_or_raise(db: Session, issue_id: uuid.UUID) -> Issue:
@@ -72,6 +117,7 @@ def create_issue(
             title=title,
         )
     )
+    _register_mention_events(issue, body)
     return issue
 
 
@@ -98,6 +144,7 @@ def create_change_request(
             title=title,
         )
     )
+    _register_mention_events(cr, body)
     return cr
 
 
@@ -108,10 +155,12 @@ def update_issue(
     body: str | None = None,
 ) -> Issue:
     """이슈 제목/본문 수정."""
+    old_body = issue.body if body is not None else None
     if title is not None:
         issue.title = title
     if body is not None:
         issue.body = body
+        _register_mention_events(issue, body, old_body)
     db.flush()
     return issue
 
@@ -286,7 +335,7 @@ def link_issues(db: Session, cr: ChangeRequest, issue_ids: list[uuid.UUID]) -> i
                 cr_number=cr.number,
                 cr_title=cr.title,
                 linked_issues=[
-                    {"issue_id": str(i.id), "number": i.number, "title": i.title}
+                    {"issue_id": str(i.id), "number": i.number, "title": i.title, "type": i.type.value}
                     for i in issues
                 ],
             )
@@ -306,7 +355,7 @@ def unlink_issues(db: Session, cr: ChangeRequest, issue_ids: list[uuid.UUID]) ->
                 cr_number=cr.number,
                 cr_title=cr.title,
                 unlinked_issues=[
-                    {"issue_id": str(i.id), "number": i.number, "title": i.title}
+                    {"issue_id": str(i.id), "number": i.number, "title": i.title, "type": i.type.value}
                     for i in issues
                 ],
             )
@@ -387,15 +436,21 @@ def get_comment_or_raise(db: Session, comment_id: uuid.UUID) -> IssueComment:
     return comment
 
 
-def create_comment(db: Session, issue_id: uuid.UUID, body: str) -> IssueComment:
+def create_comment(db: Session, issue: Issue, body: str) -> IssueComment:
     """댓글 생성."""
-    comment = IssueComment(issue_id=issue_id, body=body)
-    return repo.add_comment(db, comment)
+    comment = IssueComment(issue_id=issue.id, body=body)
+    repo.add_comment(db, comment)
+    _register_mention_events(issue, body, is_comment=True)
+    return comment
 
 
-def update_comment(db: Session, comment: IssueComment, body: str) -> IssueComment:
+def update_comment(
+    db: Session, issue: Issue, comment: IssueComment, body: str
+) -> IssueComment:
     """댓글 본문 수정."""
+    old_body = comment.body
     comment.body = body
+    _register_mention_events(issue, body, old_body, is_comment=True)
     db.flush()
     return comment
 

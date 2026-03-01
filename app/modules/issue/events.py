@@ -98,7 +98,7 @@ class CRIssuesLinked(DomainEvent):
     issue_id: UUID
     cr_number: int
     cr_title: str
-    linked_issues: list[dict]  # [{"issue_id": str, "number": int, "title": str}]
+    linked_issues: list[dict]  # [{"issue_id": str, "number": int, "title": str, "type": str}]
 
 
 class CRIssuesUnlinked(DomainEvent):
@@ -107,4 +107,28 @@ class CRIssuesUnlinked(DomainEvent):
     issue_id: UUID
     cr_number: int
     cr_title: str
-    unlinked_issues: list[dict]  # [{"issue_id": str, "number": int, "title": str}]
+    unlinked_issues: list[dict]  # [{"issue_id": str, "number": int, "title": str, "type": str}]
+
+
+class IssueMentioned(DomainEvent):
+    """본문/댓글에서 다른 이슈가 멘션됨."""
+
+    project_id: UUID
+    target_issue_id: UUID      # 멘션된 이슈 (Activity 대상)
+    source_issue_id: UUID      # 멘션이 작성된 이슈/CR
+    source_number: int
+    source_title: str
+    source_issue_type: str     # "issue" | "change_request"
+    is_comment: bool
+
+
+class UserMentioned(DomainEvent):
+    """본문/댓글에서 사용자가 멘션됨 — 향후 notification 모듈에서 구독."""
+
+    project_id: UUID
+    mentioned_user_id: UUID
+    source_issue_id: UUID
+    source_number: int
+    source_title: str
+    source_issue_type: str     # "issue" | "change_request"
+    is_comment: bool

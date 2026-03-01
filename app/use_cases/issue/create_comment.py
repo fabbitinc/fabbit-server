@@ -18,6 +18,6 @@ def create_comment(
     body: str,
 ) -> CommentResponse:
     """이슈 댓글 생성."""
-    issue_service.get_or_raise(db, issue_id)
-    comment = issue_service.create_comment(db, issue_id, body)
+    issue = issue_service.get_or_raise(db, issue_id)
+    comment = issue_service.create_comment(db, issue, body)
     return mapper.to_comment_response(comment)

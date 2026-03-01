@@ -20,6 +20,7 @@ from app.modules.issue.events import (
     IssueFileDetached,
     IssueFilesAttached,
     IssueLabelsChanged,
+    IssueMentioned,
     IssuePartsChanged,
     IssueStateChanged,
     ReviewersChanged,
@@ -264,6 +265,24 @@ def _on_cr_issues_unlinked(event: CRIssuesUnlinked) -> None:
         )
 
 
+def _on_issue_mentioned(event: IssueMentioned) -> None:
+    """이슈 멘션 → 멘션된 이슈 타임라인에 기록."""
+    actor_id = _get_actor_id()
+    _add_activity(
+        TargetType.ISSUE,
+        event.target_issue_id,
+        Action.ISSUE_MENTIONED,
+        actor_id,
+        {
+            "source_issue_id": str(event.source_issue_id),
+            "source_number": event.source_number,
+            "source_title": event.source_title,
+            "source_issue_type": event.source_issue_type,
+            "is_comment": event.is_comment,
+        },
+    )
+
+
 # ── Project 이벤트 ──
 
 
@@ -317,6 +336,7 @@ event_bus.subscribe(IssueFilesAttached, _on_issue_files_attached)
 event_bus.subscribe(IssueFileDetached, _on_issue_file_detached)
 event_bus.subscribe(CRIssuesLinked, _on_cr_issues_linked)
 event_bus.subscribe(CRIssuesUnlinked, _on_cr_issues_unlinked)
+event_bus.subscribe(IssueMentioned, _on_issue_mentioned)
 event_bus.subscribe(ProjectPartsLinked, _on_project_parts_linked)
 event_bus.subscribe(ProjectPartsUnlinked, _on_project_parts_unlinked)
 event_bus.subscribe(ProjectUpdated, _on_project_updated)

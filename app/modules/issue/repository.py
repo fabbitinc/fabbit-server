@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import func
+from sqlalchemy import String, cast, func, or_
 from sqlalchemy.orm import Session
 
 from app.modules.file.models import File
@@ -31,9 +31,7 @@ def get_next_number(db: Session, project_id: uuid.UUID) -> int:
     return project.next_issue_number()
 
 
-def count_issues_by_state(
-    db: Session, project_id: uuid.UUID
-) -> dict[str, int]:
+def count_issues_by_state(db: Session, project_id: uuid.UUID) -> dict[str, int]:
     """프로젝트 내 Issue 상태별 건수 조회 (CR 제외)."""
     rows = (
         db.query(Issue.state, func.count())
@@ -47,9 +45,7 @@ def count_issues_by_state(
     return counts
 
 
-def count_crs_by_state(
-    db: Session, project_id: uuid.UUID
-) -> dict[str, int]:
+def count_crs_by_state(db: Session, project_id: uuid.UUID) -> dict[str, int]:
     """프로젝트 내 ChangeRequest 이슈 상태별 건수 조회."""
     rows = (
         db.query(Issue.state, func.count())
@@ -133,7 +129,12 @@ def list_crs_paginated(
     if search:
         query = query.filter(ChangeRequest.title.ilike(f"%{search}%"))
     total = query.count()
-    rows = query.order_by(ChangeRequest.created_at.desc()).offset(offset).limit(limit).all()
+    rows = (
+        query.order_by(ChangeRequest.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
     return rows, total
 
 
@@ -237,16 +238,19 @@ def lookup_issues(
     project_id: uuid.UUID,
     *,
     search: str | None = None,
+    type: IssueType | None = None,
     limit: int = 10,
 ) -> list[Issue]:
-    """프로젝트 내 이슈 lookup 조회 (picker/autocomplete용, CR 제외)."""
-    query = db.query(Issue).filter(
-        Issue.project_id == project_id,
-        Issue.type == IssueType.ISSUE,
-    )
+    """프로젝트 내 이슈 lookup 조회 (picker/autocomplete용)."""
+    query = db.query(Issue).filter(Issue.project_id == project_id)
+    if type is not None:
+        query = query.filter(Issue.type == type)
     if search:
-        query = query.filter(Issue.title.ilike(f"%{search}%"))
-    return query.order_by(Issue.created_at.desc()).limit(limit).all()
+        conditions = [Issue.title.ilike(f"%{search}%")]
+        if search.isdigit():
+            conditions.append(cast(Issue.number, String).like(f"%{search}%"))
+        query = query.filter(or_(*conditions))
+    return query.order_by(Issue.number.desc()).limit(limit).all()
 
 
 def get_by_id(db: Session, issue_id: uuid.UUID) -> Issue | None:
@@ -410,9 +414,7 @@ def sync_labels(
 # ── CR-Issue 연결 ──
 
 
-def link_issues(
-    db: Session, cr_id: uuid.UUID, issue_ids: list[uuid.UUID]
-) -> int:
+def link_issues(db: Session, cr_id: uuid.UUID, issue_ids: list[uuid.UUID]) -> int:
     """CR에 이슈 배치 연결 — 이미 연결된 건은 무시, 신규 연결 건수 반환."""
     existing = set(
         row[0]
@@ -431,9 +433,7 @@ def link_issues(
     return len(new_ids)
 
 
-def unlink_issues(
-    db: Session, cr_id: uuid.UUID, issue_ids: list[uuid.UUID]
-) -> int:
+def unlink_issues(db: Session, cr_id: uuid.UUID, issue_ids: list[uuid.UUID]) -> int:
     """CR에서 이슈 배치 해제 — 삭제 건수 반환."""
     count = (
         db.query(ChangeRequestIssue)

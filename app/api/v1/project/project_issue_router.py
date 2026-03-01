@@ -9,6 +9,7 @@ from app.api.deps import get_tenant_db, require_auth, resolve_issue
 from app.core.auth_context import AuthContext
 from app.modules.activity.schemas import TimelineResponse
 from app.modules.file.schemas import FileItem
+from app.modules.issue.constants import IssueType
 from app.modules.issue.models import Issue
 from app.modules.issue.schemas import (
     AttachFilesRequest,
@@ -36,7 +37,8 @@ router = APIRouter(prefix="/api/v1/projects/{project_id}/issues", tags=["issues"
 @router.get("/lookup", response_model=IssueLookupResponse)
 def lookup_issues(
     project_id: uuid.UUID,
-    search: str | None = Query(None, description="제목 검색 (ILIKE)"),
+    search: str | None = Query(None, description="제목 또는 이슈 번호 검색"),
+    type: str | None = Query(None, description="이슈 유형 필터 (ISSUE|CHANGE_REQUEST)"),
     limit: int = Query(10, ge=1, le=50, description="조회 건수"),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
@@ -44,9 +46,13 @@ def lookup_issues(
     """프로젝트 이슈 lookup 조회.
 
     이슈 연결 picker UI를 위한 경량 목록 엔드포인트입니다.
-    id, number, title, state만 반환합니다 (변경 요청 제외).
+    id, number, title, state만 반환합니다.
+    `type` 필터로 일반 이슈/변경 요청을 구분할 수 있습니다.
     """
-    return issue_queries.lookup_issues(db, auth, project_id, search=search, limit=limit)
+    issue_type = IssueType(type) if type else None
+    return issue_queries.lookup_issues(
+        db, auth, project_id, search=search, type=issue_type, limit=limit
+    )
 
 
 @router.get("", response_model=IssueListResponse)
