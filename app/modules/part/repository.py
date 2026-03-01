@@ -267,6 +267,46 @@ def count_all(db: Session) -> int:
     return db.query(func.count(Part.id)).scalar() or 0
 
 
+def count_children(db: Session, part_id: uuid.UUID) -> int:
+    """하위 부품 수 (RDS)."""
+    return (
+        db.query(func.count(BomLink.id))
+        .filter(BomLink.parent_part_id == part_id)
+        .scalar()
+        or 0
+    )
+
+
+def count_parents(db: Session, part_id: uuid.UUID) -> int:
+    """상위 부품 수 (RDS)."""
+    return (
+        db.query(func.count(BomLink.id))
+        .filter(BomLink.child_part_id == part_id)
+        .scalar()
+        or 0
+    )
+
+
+def count_suppliers(db: Session, part_id: uuid.UUID) -> int:
+    """공급사 수 (RDS)."""
+    return (
+        db.query(func.count(PartSupplier.id))
+        .filter(PartSupplier.part_id == part_id)
+        .scalar()
+        or 0
+    )
+
+
+def count_projects(db: Session, part_id: uuid.UUID) -> int:
+    """소속 프로젝트 수 (RDS)."""
+    return (
+        db.query(func.count(ProjectPart.id))
+        .filter(ProjectPart.part_id == part_id)
+        .scalar()
+        or 0
+    )
+
+
 def bulk_get_parts(db: Session, part_numbers: list[str]) -> dict[str, dict]:
     """품번 목록에 대한 Part 상세 필드 일괄 조회 (RDS).
 

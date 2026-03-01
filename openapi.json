@@ -2090,7 +2090,7 @@
                     "parts"
                 ],
                 "summary": "Get Part",
-                "description": "Part \uc0c1\uc138 \uc870\ud68c.\n\nPart\uc758 \uc804\uccb4 \uc18d\uc131, BOM \uad00\uacc4(\ubd80\ubaa8/\uc790\uc2dd), \ub3c4\uba74, \uacf5\uae09\uc0ac \uc815\ubcf4\ub97c \ud3ec\ud568\ud569\ub2c8\ub2e4.",
+                "description": "Part \uc0c1\uc138 \uc870\ud68c.\n\nPart\uc758 \uc804\uccb4 \uc18d\uc131\uacfc \uad00\uacc4 count(children, parents, suppliers, files, projects)\ub97c \ud3ec\ud568\ud569\ub2c8\ub2e4.\n\ub3c4\uba74(drawing)\uc740 1:1 \uad00\uacc4\uc774\ubbc0\ub85c \uc9c1\uc811 \ud3ec\ud568\ub429\ub2c8\ub2e4.\n\uc0c1\uc138 \uad00\uacc4 \ubaa9\ub85d\uc740 \ubcc4\ub3c4 \uc5d4\ub4dc\ud3ec\uc778\ud2b8(`/bom`, `/suppliers`, `/files`)\uc5d0\uc11c \uc870\ud68c\ud558\uc138\uc694.",
                 "operationId": "get_part_api_v1_parts__part_id__get",
                 "security": [
                     {
@@ -2116,6 +2116,351 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/PartDetailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/parts/{part_id}/bom": {
+            "get": {
+                "tags": [
+                    "parts"
+                ],
+                "summary": "Get Part Bom",
+                "description": "Part BOM \uc9c1\uc811 \uad00\uacc4 \uc870\ud68c (1-depth).\n\n\ud574\ub2f9 Part\uc758 \uc9c1\uc811 \uc790\uc2dd(children)\uacfc \uc9c1\uc811 \ubd80\ubaa8(parents) \ubaa9\ub85d\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uc7ac\uadc0 \ud2b8\ub9ac\uac00 \ud544\uc694\ud558\uba74 `GET /{part_id}/bom/tree`\ub97c \uc0ac\uc6a9\ud558\uc138\uc694.",
+                "operationId": "get_part_bom_api_v1_parts__part_id__bom_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PartBomResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/parts/{part_id}/bom/tree": {
+            "get": {
+                "tags": [
+                    "parts"
+                ],
+                "summary": "Get Bom Tree",
+                "description": "Part BOM \ud2b8\ub9ac \uc870\ud68c.\n\n\ud574\ub2f9 Part\ub97c \uae30\uc900\uc73c\ub85c BOM \uacc4\uce35 \uad6c\uc870\ub97c \ud2b8\ub9ac \ud615\ud0dc\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\n- **forward**(\uae30\ubcf8\uac12): \uc815\uc804\uac1c \u2014 \ud558\uc704 \ubd80\ud488 \ud0d0\uc0c9\n- **reverse**: \uc5ed\uc804\uac1c \u2014 \uc0c1\uc704 \ubd80\ud488(where-used) \ud0d0\uc0c9",
+                "operationId": "get_bom_tree_api_v1_parts__part_id__bom_tree_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    },
+                    {
+                        "name": "direction",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/BomDirection",
+                            "description": "\uc804\uac1c \ubc29\ud5a5: forward(\uc815\uc804\uac1c) | reverse(\uc5ed\uc804\uac1c)",
+                            "default": "forward"
+                        },
+                        "description": "\uc804\uac1c \ubc29\ud5a5: forward(\uc815\uc804\uac1c) | reverse(\uc5ed\uc804\uac1c)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BomTreeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/parts/{part_id}/bom/tree/export": {
+            "get": {
+                "tags": [
+                    "parts"
+                ],
+                "summary": "Export Bom",
+                "description": "Part BOM \ud2b8\ub9ac Excel \ub0b4\ubcf4\ub0b4\uae30.\n\n`GET /{part_id}/bom/tree`\uc640 \ub3d9\uc77c\ud55c BOM \ud2b8\ub9ac\ub97c flat rows\ub85c \ud3bc\uccd0\uc11c xlsx \ud30c\uc77c\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.\n`mapping_id`\ub97c \uc9c0\uc815\ud558\uba74 \uc6d0\ubcf8 \uc5d1\uc140 \ud5e4\ub354\uba85(\uc608: \"\ud488\ubc88\", \"\uc218\ub7c9\")\uc744 \uc0ac\uc6a9\ud569\ub2c8\ub2e4.",
+                "operationId": "export_bom_api_v1_parts__part_id__bom_tree_export_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    },
+                    {
+                        "name": "direction",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/BomDirection",
+                            "description": "\uc804\uac1c \ubc29\ud5a5: forward(\uc815\uc804\uac1c) | reverse(\uc5ed\uc804\uac1c)",
+                            "default": "forward"
+                        },
+                        "description": "\uc804\uac1c \ubc29\ud5a5: forward(\uc815\uc804\uac1c) | reverse(\uc5ed\uc804\uac1c)"
+                    },
+                    {
+                        "name": "mapping_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "\ub9e4\ud551 ID (\uc6d0\ubcf8 \ud5e4\ub354\uba85 \uc0ac\uc6a9)",
+                            "title": "Mapping Id"
+                        },
+                        "description": "\ub9e4\ud551 ID (\uc6d0\ubcf8 \ud5e4\ub354\uba85 \uc0ac\uc6a9)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/parts/{part_id}/suppliers": {
+            "get": {
+                "tags": [
+                    "parts"
+                ],
+                "summary": "Get Part Suppliers",
+                "description": "Part \uacf5\uae09\uc0ac \ubaa9\ub85d \uc870\ud68c.\n\n\ud574\ub2f9 Part\uc5d0 \uc5f0\uacb0\ub41c \uacf5\uae09\uc0ac(Supplier) \ubaa9\ub85d\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "get_part_suppliers_api_v1_parts__part_id__suppliers_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PartSuppliersResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/parts/{part_id}/files": {
+            "get": {
+                "tags": [
+                    "parts"
+                ],
+                "summary": "Get Part Files",
+                "description": "Part \ucca8\ubd80\ud30c\uc77c \ubaa9\ub85d \uc870\ud68c.\n\n\ud574\ub2f9 Part\uc5d0 \uc5f0\uacb0\ub41c \ucca8\ubd80\ud30c\uc77c \ubaa9\ub85d\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uc5c5\ub85c\ub4dc \uc644\ub8cc(`UPLOADED`) \uc0c1\ud0dc\uc778 \ud30c\uc77c\ub9cc \ud3ec\ud568\ub429\ub2c8\ub2e4.",
+                "operationId": "get_part_files_api_v1_parts__part_id__files_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PartFilesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "parts"
+                ],
+                "summary": "Attach Files",
+                "description": "Part\uc5d0 \ucca8\ubd80\ud30c\uc77c \ubc30\uce58 \uc5f0\uacb0.\n\n\uc5c5\ub85c\ub4dc \uc644\ub8cc(`UPLOADED`) \uc0c1\ud0dc\uc778 \ud30c\uc77c\ub9cc \uc5f0\uacb0\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\n## \uc5c5\ub85c\ub4dc \ud750\ub984\n\n1. `POST /api/v1/files` \u2014 presigned URL \ubc1c\uae09\n2. S3\uc5d0 \ud30c\uc77c \uc5c5\ub85c\ub4dc (presigned URL PUT)\n3. `POST /api/v1/files/{file_id}/complete` \u2014 \uc5c5\ub85c\ub4dc \ud655\uc778\n4. **\uc774 \uc5d4\ub4dc\ud3ec\uc778\ud2b8** \u2014 Part\uc5d0 \ud30c\uc77c \uc5f0\uacb0",
+                "operationId": "attach_files_api_v1_parts__part_id__files_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/app__modules__part__schemas__AttachFilesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FileItem"
+                                    },
+                                    "title": "Response Attach Files Api V1 Parts  Part Id  Files Post"
                                 }
                             }
                         }
@@ -2182,69 +2527,6 @@
                 }
             }
         },
-        "/api/v1/parts/{part_id}/files": {
-            "post": {
-                "tags": [
-                    "parts"
-                ],
-                "summary": "Attach Files",
-                "description": "Part\uc5d0 \ucca8\ubd80\ud30c\uc77c \ubc30\uce58 \uc5f0\uacb0.\n\n\uc5c5\ub85c\ub4dc \uc644\ub8cc(`UPLOADED`) \uc0c1\ud0dc\uc778 \ud30c\uc77c\ub9cc \uc5f0\uacb0\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\n## \uc5c5\ub85c\ub4dc \ud750\ub984\n\n1. `POST /api/v1/files` \u2014 presigned URL \ubc1c\uae09\n2. S3\uc5d0 \ud30c\uc77c \uc5c5\ub85c\ub4dc (presigned URL PUT)\n3. `POST /api/v1/files/{file_id}/complete` \u2014 \uc5c5\ub85c\ub4dc \ud655\uc778\n4. **\uc774 \uc5d4\ub4dc\ud3ec\uc778\ud2b8** \u2014 Part\uc5d0 \ud30c\uc77c \uc5f0\uacb0",
-                "operationId": "attach_files_api_v1_parts__part_id__files_post",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "part_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Part Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/app__modules__part__schemas__AttachFilesRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/FileItem"
-                                    },
-                                    "title": "Response Attach Files Api V1 Parts  Part Id  Files Post"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/parts/{part_id}/files/{file_id}": {
             "delete": {
                 "tags": [
@@ -2283,143 +2565,6 @@
                 "responses": {
                     "204": {
                         "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/parts/{part_id}/bom": {
-            "get": {
-                "tags": [
-                    "parts"
-                ],
-                "summary": "Get Bom Tree",
-                "description": "Part BOM \ud2b8\ub9ac \uc870\ud68c.\n\n\ud574\ub2f9 Part\ub97c \uae30\uc900\uc73c\ub85c BOM \uacc4\uce35 \uad6c\uc870\ub97c \ud2b8\ub9ac \ud615\ud0dc\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\n- **forward**(\uae30\ubcf8\uac12): \uc815\uc804\uac1c \u2014 \ud558\uc704 \ubd80\ud488 \ud0d0\uc0c9\n- **reverse**: \uc5ed\uc804\uac1c \u2014 \uc0c1\uc704 \ubd80\ud488(where-used) \ud0d0\uc0c9",
-                "operationId": "get_bom_tree_api_v1_parts__part_id__bom_get",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "part_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Part Id"
-                        }
-                    },
-                    {
-                        "name": "direction",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "$ref": "#/components/schemas/BomDirection",
-                            "description": "\uc804\uac1c \ubc29\ud5a5: forward(\uc815\uc804\uac1c) | reverse(\uc5ed\uc804\uac1c)",
-                            "default": "forward"
-                        },
-                        "description": "\uc804\uac1c \ubc29\ud5a5: forward(\uc815\uc804\uac1c) | reverse(\uc5ed\uc804\uac1c)"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/BomTreeResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/parts/{part_id}/bom/export": {
-            "get": {
-                "tags": [
-                    "parts"
-                ],
-                "summary": "Export Bom",
-                "description": "Part BOM \ud2b8\ub9ac Excel \ub0b4\ubcf4\ub0b4\uae30.\n\n`GET /{part_id}/bom`\uacfc \ub3d9\uc77c\ud55c BOM \ud2b8\ub9ac\ub97c flat rows\ub85c \ud3bc\uccd0\uc11c xlsx \ud30c\uc77c\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.\n`mapping_id`\ub97c \uc9c0\uc815\ud558\uba74 \uc6d0\ubcf8 \uc5d1\uc140 \ud5e4\ub354\uba85(\uc608: \"\ud488\ubc88\", \"\uc218\ub7c9\")\uc744 \uc0ac\uc6a9\ud569\ub2c8\ub2e4.",
-                "operationId": "export_bom_api_v1_parts__part_id__bom_export_get",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "part_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Part Id"
-                        }
-                    },
-                    {
-                        "name": "direction",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "$ref": "#/components/schemas/BomDirection",
-                            "description": "\uc804\uac1c \ubc29\ud5a5: forward(\uc815\uc804\uac1c) | reverse(\uc5ed\uc804\uac1c)",
-                            "default": "forward"
-                        },
-                        "description": "\uc804\uac1c \ubc29\ud5a5: forward(\uc815\uc804\uac1c) | reverse(\uc5ed\uc804\uac1c)"
-                    },
-                    {
-                        "name": "mapping_id",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string",
-                                    "format": "uuid"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "\ub9e4\ud551 ID (\uc6d0\ubcf8 \ud5e4\ub354\uba85 \uc0ac\uc6a9)",
-                            "title": "Mapping Id"
-                        },
-                        "description": "\ub9e4\ud551 ID (\uc6d0\ubcf8 \ud5e4\ub354\uba85 \uc0ac\uc6a9)"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -9921,6 +10066,29 @@
                 "title": "PartBadge",
                 "description": "\uc5f0\uacb0 \ubd80\ud488 \ubc30\uc9c0 (\ubaa9\ub85d \ud45c\uc2dc\uc6a9)."
             },
+            "PartBomResponse": {
+                "properties": {
+                    "children": {
+                        "items": {
+                            "$ref": "#/components/schemas/BomChild"
+                        },
+                        "type": "array",
+                        "title": "Children",
+                        "default": []
+                    },
+                    "parents": {
+                        "items": {
+                            "$ref": "#/components/schemas/BomParent"
+                        },
+                        "type": "array",
+                        "title": "Parents",
+                        "default": []
+                    }
+                },
+                "type": "object",
+                "title": "PartBomResponse",
+                "description": "Part BOM \uc9c1\uc811 \uad00\uacc4 \uc751\ub2f5 (1-depth)"
+            },
             "PartDetailResponse": {
                 "properties": {
                     "id": {
@@ -10041,37 +10209,30 @@
                             }
                         ]
                     },
-                    "children": {
-                        "items": {
-                            "$ref": "#/components/schemas/BomChild"
-                        },
-                        "type": "array",
-                        "title": "Children",
-                        "default": []
+                    "children_count": {
+                        "type": "integer",
+                        "title": "Children Count",
+                        "default": 0
                     },
-                    "parents": {
-                        "items": {
-                            "$ref": "#/components/schemas/BomParent"
-                        },
-                        "type": "array",
-                        "title": "Parents",
-                        "default": []
+                    "parents_count": {
+                        "type": "integer",
+                        "title": "Parents Count",
+                        "default": 0
                     },
-                    "suppliers": {
-                        "items": {
-                            "$ref": "#/components/schemas/RelatedSupplier"
-                        },
-                        "type": "array",
-                        "title": "Suppliers",
-                        "default": []
+                    "suppliers_count": {
+                        "type": "integer",
+                        "title": "Suppliers Count",
+                        "default": 0
                     },
-                    "files": {
-                        "items": {
-                            "$ref": "#/components/schemas/FileItem"
-                        },
-                        "type": "array",
-                        "title": "Files",
-                        "default": []
+                    "files_count": {
+                        "type": "integer",
+                        "title": "Files Count",
+                        "default": 0
+                    },
+                    "projects_count": {
+                        "type": "integer",
+                        "title": "Projects Count",
+                        "default": 0
                     }
                 },
                 "type": "object",
@@ -10081,6 +10242,28 @@
                 ],
                 "title": "PartDetailResponse",
                 "description": "Part \uc0c1\uc138 \uc751\ub2f5"
+            },
+            "PartFilesResponse": {
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "title": "Total"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/FileItem"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "total",
+                    "items"
+                ],
+                "title": "PartFilesResponse",
+                "description": "Part \ucca8\ubd80\ud30c\uc77c \ubaa9\ub85d \uc751\ub2f5"
             },
             "PartFilterOptions": {
                 "properties": {
@@ -10352,6 +10535,28 @@
                 ],
                 "title": "PartSummary",
                 "description": "Part \ubaa9\ub85d \uc544\uc774\ud15c"
+            },
+            "PartSuppliersResponse": {
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "title": "Total"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/RelatedSupplier"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "total",
+                    "items"
+                ],
+                "title": "PartSuppliersResponse",
+                "description": "Part \uacf5\uae09\uc0ac \ubaa9\ub85d \uc751\ub2f5"
             },
             "PartsChangedDetail": {
                 "properties": {

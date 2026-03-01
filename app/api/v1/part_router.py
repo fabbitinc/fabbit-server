@@ -16,9 +16,12 @@ from app.modules.file.schemas import FileItem
 from app.modules.part.schemas import (
     AttachFilesRequest,
     BomTreeResponse,
+    PartBomResponse,
     PartDetailResponse,
+    PartFilesResponse,
     PartFilterOptions,
     PartListResponse,
+    PartSuppliersResponse,
 )
 from app.modules.project.schemas import PartProjectsResponse
 from app.queries import part as part_queries
@@ -129,9 +132,100 @@ def get_part(
 ):
     """Part 상세 조회.
 
-    Part의 전체 속성, BOM 관계(부모/자식), 도면, 공급사 정보를 포함합니다.
+    Part의 전체 속성과 관계 count(children, parents, suppliers, files, projects)를 포함합니다.
+    도면(drawing)은 1:1 관계이므로 직접 포함됩니다.
+    상세 관계 목록은 별도 엔드포인트(`/bom`, `/suppliers`, `/files`)에서 조회하세요.
     """
     return part_queries.get_part_detail(db, auth, part_id)
+
+
+@router.get("/{part_id}/bom", response_model=PartBomResponse)
+def get_part_bom(
+    part_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """Part BOM 직접 관계 조회 (1-depth).
+
+    해당 Part의 직접 자식(children)과 직접 부모(parents) 목록을 반환합니다.
+    재귀 트리가 필요하면 `GET /{part_id}/bom/tree`를 사용하세요.
+    """
+    return part_queries.get_part_bom(db, auth, part_id)
+
+
+@router.get("/{part_id}/bom/tree", response_model=BomTreeResponse)
+def get_bom_tree(
+    part_id: uuid.UUID,
+    direction: BomDirection = Query(
+        BomDirection.FORWARD, description="전개 방향: forward(정전개) | reverse(역전개)"
+    ),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """Part BOM 트리 조회.
+
+    해당 Part를 기준으로 BOM 계층 구조를 트리 형태로 반환합니다.
+
+    - **forward**(기본값): 정전개 — 하위 부품 탐색
+    - **reverse**: 역전개 — 상위 부품(where-used) 탐색
+    """
+    return part_queries.get_bom_tree(db, auth, part_id, direction)
+
+
+@router.get("/{part_id}/bom/tree/export")
+def export_bom(
+    part_id: uuid.UUID,
+    direction: BomDirection = Query(
+        BomDirection.FORWARD, description="전개 방향: forward(정전개) | reverse(역전개)"
+    ),
+    mapping_id: uuid.UUID | None = Query(None, description="매핑 ID (원본 헤더명 사용)"),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """Part BOM 트리 Excel 내보내기.
+
+    `GET /{part_id}/bom/tree`와 동일한 BOM 트리를 flat rows로 펼쳐서 xlsx 파일로 반환합니다.
+    `mapping_id`를 지정하면 원본 엑셀 헤더명(예: "품번", "수량")을 사용합니다.
+    """
+    content = part_queries.export_bom_excel(
+        db,
+        auth,
+        part_id,
+        direction=direction,
+        mapping_id=mapping_id,
+    )
+    return StreamingResponse(
+        BytesIO(content),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=BOM.xlsx"},
+    )
+
+
+@router.get("/{part_id}/suppliers", response_model=PartSuppliersResponse)
+def get_part_suppliers(
+    part_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """Part 공급사 목록 조회.
+
+    해당 Part에 연결된 공급사(Supplier) 목록을 반환합니다.
+    """
+    return part_queries.get_part_suppliers(db, auth, part_id)
+
+
+@router.get("/{part_id}/files", response_model=PartFilesResponse)
+def get_part_files(
+    part_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """Part 첨부파일 목록 조회.
+
+    해당 Part에 연결된 첨부파일 목록을 반환합니다.
+    업로드 완료(`UPLOADED`) 상태인 파일만 포함됩니다.
+    """
+    return part_queries.get_part_files(db, auth, part_id)
 
 
 @router.get("/{part_id}/projects", response_model=PartProjectsResponse)
@@ -177,54 +271,6 @@ def detach_file(
     파일은 소프트 삭제되며, S3 파일은 보존 기간 후 배치 정리됩니다.
     """
     part_commands.delete_file(db, auth, part_id, file_id)
-
-
-@router.get("/{part_id}/bom", response_model=BomTreeResponse)
-def get_bom_tree(
-    part_id: uuid.UUID,
-    direction: BomDirection = Query(
-        BomDirection.FORWARD, description="전개 방향: forward(정전개) | reverse(역전개)"
-    ),
-    auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(get_tenant_db),
-):
-    """Part BOM 트리 조회.
-
-    해당 Part를 기준으로 BOM 계층 구조를 트리 형태로 반환합니다.
-
-    - **forward**(기본값): 정전개 — 하위 부품 탐색
-    - **reverse**: 역전개 — 상위 부품(where-used) 탐색
-    """
-    return part_queries.get_bom_tree(db, auth, part_id, direction)
-
-
-@router.get("/{part_id}/bom/export")
-def export_bom(
-    part_id: uuid.UUID,
-    direction: BomDirection = Query(
-        BomDirection.FORWARD, description="전개 방향: forward(정전개) | reverse(역전개)"
-    ),
-    mapping_id: uuid.UUID | None = Query(None, description="매핑 ID (원본 헤더명 사용)"),
-    auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(get_tenant_db),
-):
-    """Part BOM 트리 Excel 내보내기.
-
-    `GET /{part_id}/bom`과 동일한 BOM 트리를 flat rows로 펼쳐서 xlsx 파일로 반환합니다.
-    `mapping_id`를 지정하면 원본 엑셀 헤더명(예: "품번", "수량")을 사용합니다.
-    """
-    content = part_queries.export_bom_excel(
-        db,
-        auth,
-        part_id,
-        direction=direction,
-        mapping_id=mapping_id,
-    )
-    return StreamingResponse(
-        BytesIO(content),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=BOM.xlsx"},
-    )
 
 
 @router.delete("/{part_id}/drawings", status_code=204)

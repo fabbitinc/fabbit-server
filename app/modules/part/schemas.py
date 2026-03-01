@@ -135,10 +135,35 @@ class PartDetailResponse(BaseModel):
     extended_properties: dict[str, Any] = {}
 
     drawing: RelatedDrawing | None = None
+    children_count: int = 0
+    parents_count: int = 0
+    suppliers_count: int = 0
+    files_count: int = 0
+    projects_count: int = 0
+
+
+# ── 관계 별도 조회 응답 ──
+
+
+class PartBomResponse(BaseModel):
+    """Part BOM 직접 관계 응답 (1-depth)"""
+
     children: list[BomChild] = []
     parents: list[BomParent] = []
-    suppliers: list[RelatedSupplier] = []
-    files: list[FileItem] = []
+
+
+class PartSuppliersResponse(BaseModel):
+    """Part 공급사 목록 응답"""
+
+    total: int
+    items: list[RelatedSupplier]
+
+
+class PartFilesResponse(BaseModel):
+    """Part 첨부파일 목록 응답"""
+
+    total: int
+    items: list[FileItem]
 
 
 # ── BOM 트리 ──

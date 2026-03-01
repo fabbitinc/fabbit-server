@@ -2,21 +2,16 @@
 
 import uuid
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
-from app.modules.file import repository as file_repo
 from app.modules.file.constants import FileStatus
-from app.modules.file.mapper import to_file_item
+from app.modules.file.models import File
 from app.modules.part import repository as repo
-from app.modules.part.mapper import (
-    to_bom_child,
-    to_bom_parent,
-    to_related_drawing,
-    to_related_supplier,
-)
+from app.modules.part.mapper import to_related_drawing
 from app.modules.part.schemas import PartDetailResponse
 
 
@@ -31,20 +26,30 @@ def get_part_detail(
             message=f"Part '{part_id}'을(를) 찾을 수 없습니다", code="NOT_FOUND"
         )
 
-    # BOM 관계: RDS JOIN (name 포함)
-    children_rows = repo.get_children(db, part.id)
-    parents_rows = repo.get_parents(db, part.id)
-
-    # Drawing/Supplier 관계: RDS
+    # Drawing: RDS (1:1, 가벼움)
     drawing_row = repo.get_drawing(db, part.id)
-    suppliers_rows = repo.get_suppliers(db, part.id)
+
+    # count 쿼리
+    children_count = repo.count_children(db, part.id)
+    parents_count = repo.count_parents(db, part.id)
+    suppliers_count = repo.count_suppliers(db, part.id)
+    projects_count = repo.count_projects(db, part.id)
+
+    # 파일 count: UPLOADED 상태만
+    files_count = (
+        db.query(func.count(File.id))
+        .filter(
+            File.owner_type == "part",
+            File.owner_id == part.id,
+            File.status == FileStatus.UPLOADED,
+        )
+        .scalar()
+        or 0
+    )
 
     extended = {
         k: v for k, v in (part.extended_properties or {}).items() if v is not None
     }
-
-    # 첨부파일: UPLOADED 상태만
-    all_files = file_repo.get_files_by_owner(db, "part", part.id)
 
     return PartDetailResponse(
         id=part.id,
@@ -59,9 +64,10 @@ def get_part_detail(
         is_phantom=part.is_phantom,
         lead_time_days=part.lead_time_days,
         extended_properties=extended,
-        children=[to_bom_child(r) for r in children_rows],
-        parents=[to_bom_parent(r) for r in parents_rows],
         drawing=to_related_drawing(drawing_row),
-        suppliers=[to_related_supplier(r) for r in suppliers_rows],
-        files=[to_file_item(f) for f in all_files if f.status == FileStatus.UPLOADED],
+        children_count=children_count,
+        parents_count=parents_count,
+        suppliers_count=suppliers_count,
+        files_count=files_count,
+        projects_count=projects_count,
     )
