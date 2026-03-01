@@ -43,6 +43,7 @@ def list_by_target_cursor(
     cursor: uuid.UUID | None = None,
     limit: int = 20,
     actions: list[str] | None = None,
+    actor_id: uuid.UUID | None = None,
 ) -> list[Activity]:
     """대상별 Activity cursor 기반 조회 (최신순).
 
@@ -57,4 +58,6 @@ def list_by_target_cursor(
         query = query.filter(Activity.id < cursor)
     if actions:
         query = query.filter(Activity.action.in_(actions))
+    if actor_id is not None:
+        query = query.filter(Activity.actor_id == actor_id)
     return query.order_by(Activity.id.desc()).limit(limit).all()

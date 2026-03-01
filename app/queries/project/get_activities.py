@@ -21,17 +21,17 @@ def get_activities(
     *,
     cursor: uuid.UUID | None = None,
     limit: int = 20,
-    scope: list[ActivityScope] | None = None,
+    scope: ActivityScope | None = None,
+    user_id: uuid.UUID | None = None,
 ) -> ActivityListResponse:
     """Project scope 활동 피드 cursor 기반 조회."""
     # scope → action 문자열 목록 변환
     actions: list[str] | None = None
     if scope:
-        scope_values = {s.value for s in scope}
-        actions = [a.value for a in Action if a.scope in scope_values]
+        actions = [a.value for a in Action if a.scope == scope.value]
 
     activities = activity_repo.list_by_target_cursor(
-        db, TargetType.PROJECT, project_id, cursor=cursor, limit=limit, actions=actions
+        db, TargetType.PROJECT, project_id, cursor=cursor, limit=limit, actions=actions, actor_id=user_id
     )
     items = [mapper.to_activity_response(a) for a in activities]
     next_cursor = activities[-1].id if len(activities) == limit else None

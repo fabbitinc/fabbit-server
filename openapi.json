@@ -2919,7 +2919,7 @@
                     "projects"
                 ],
                 "summary": "Get Project Activities",
-                "description": "\ud504\ub85c\uc81d\ud2b8 \ud65c\ub3d9 \ud53c\ub4dc \uc870\ud68c.\n\n\ud504\ub85c\uc81d\ud2b8 \ubc94\uc704\uc758 \ud65c\ub3d9 \uc774\ub825\uc744 \ucd5c\uc2e0\uc21c\uc73c\ub85c \uc870\ud68c\ud569\ub2c8\ub2e4.\ncursor\uc5d0 \uc774\uc804 \uc751\ub2f5\uc758 `next_cursor` \uac12\uc744 \uc804\ub2ec\ud558\uba74 \ub2e4\uc74c \ud398\uc774\uc9c0\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n`next_cursor`\uac00 null\uc774\uba74 \ub9c8\uc9c0\ub9c9 \ud398\uc774\uc9c0\uc785\ub2c8\ub2e4.\nscope\ub97c \uc9c0\uc815\ud558\uba74 \ud574\ub2f9 \ub3c4\uba54\uc778 \uc601\uc5ed\uc758 \ud65c\ub3d9\ub9cc \ud544\ud130\ub9c1\ud569\ub2c8\ub2e4 (\ubcf5\uc218 \uc9c0\uc815 \uac00\ub2a5).",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \ud65c\ub3d9 \ud53c\ub4dc \uc870\ud68c.\n\n\ud504\ub85c\uc81d\ud2b8 \ubc94\uc704\uc758 \ud65c\ub3d9 \uc774\ub825\uc744 \ucd5c\uc2e0\uc21c\uc73c\ub85c \uc870\ud68c\ud569\ub2c8\ub2e4.\ncursor\uc5d0 \uc774\uc804 \uc751\ub2f5\uc758 `next_cursor` \uac12\uc744 \uc804\ub2ec\ud558\uba74 \ub2e4\uc74c \ud398\uc774\uc9c0\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n`next_cursor`\uac00 null\uc774\uba74 \ub9c8\uc9c0\ub9c9 \ud398\uc774\uc9c0\uc785\ub2c8\ub2e4.\nscope\ub97c \uc9c0\uc815\ud558\uba74 \ud574\ub2f9 \ub3c4\uba54\uc778 \uc601\uc5ed\uc758 \ud65c\ub3d9\ub9cc \ud544\ud130\ub9c1\ud569\ub2c8\ub2e4.\nuser_id\ub97c \uc9c0\uc815\ud558\uba74 \ud574\ub2f9 \uc0ac\uc6a9\uc790\uc758 \ud65c\ub3d9\ub9cc \ud544\ud130\ub9c1\ud569\ub2c8\ub2e4.",
                 "operationId": "get_project_activities_api_v1_projects__project_id__activities_get",
                 "security": [
                     {
@@ -2977,10 +2977,7 @@
                         "schema": {
                             "anyOf": [
                                 {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/ActivityScope"
-                                    }
+                                    "$ref": "#/components/schemas/ActivityScope"
                                 },
                                 {
                                     "type": "null"
@@ -2990,6 +2987,25 @@
                             "title": "Scope"
                         },
                         "description": "\ud65c\ub3d9 scope \ud544\ud130 (issue, cr, part, assignee, label, project)"
+                    },
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "\ud2b9\uc815 \uc0ac\uc6a9\uc790\uc758 \ud65c\ub3d9\ub9cc \ud544\ud130\ub9c1",
+                            "title": "User Id"
+                        },
+                        "description": "\ud2b9\uc815 \uc0ac\uc6a9\uc790\uc758 \ud65c\ub3d9\ub9cc \ud544\ud130\ub9c1"
                     }
                 ],
                 "responses": {
