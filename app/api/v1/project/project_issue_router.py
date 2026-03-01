@@ -115,6 +115,7 @@ def update_issue(
     """이슈 제목/본문 수정.
 
     `title`, `body` 중 전달된 필드만 수정합니다.
+    OPEN 상태에서만 수정 가능합니다.
     """
     body = req.body.model_dump_json(exclude_none=True) if req.body else None
     return issue_commands.update_issue(

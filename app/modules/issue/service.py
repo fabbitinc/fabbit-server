@@ -148,6 +148,17 @@ def create_change_request(
     return cr
 
 
+def ensure_issue_editable(issue: Issue) -> None:
+    """이슈가 수정 가능 상태인지 검증 (CLOSED → 수정 불가)."""
+    from app.modules.issue.constants import IssueState
+
+    if issue.state == IssueState.CLOSED:
+        raise AppError(
+            message="닫힌 이슈는 수정할 수 없습니다",
+            code="INVALID_STATE",
+        )
+
+
 def update_issue(
     db: Session,
     issue: Issue,

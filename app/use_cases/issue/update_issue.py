@@ -18,7 +18,8 @@ def update_issue(
     title: str | None = None,
     body: str | None = None,
 ) -> IssueResponse:
-    """이슈 제목/본문 수정."""
+    """이슈 제목/본문 수정 (CLOSED 상태에서는 수정 불가)."""
     issue = issue_service.get_or_raise(db, issue_id)
+    issue_service.ensure_issue_editable(issue)
     issue = issue_service.update_issue(db, issue, title=title, body=body)
     return mapper.to_issue_response(issue)

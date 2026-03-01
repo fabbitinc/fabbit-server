@@ -11,14 +11,40 @@ class IssueType(str, Enum):
 
 
 class IssueState(str, Enum):
-    """이슈 상태."""
+    """이슈 상태.
+
+    상태 전이::
+
+        OPEN ←→ CLOSED
+
+    수정 규칙:
+        - OPEN: 수정 가능
+        - CLOSED: 수정 불가 (다시 열고 수정)
+    """
 
     OPEN = "OPEN"      # 열림
     CLOSED = "CLOSED"  # 닫힘
 
 
 class CRState(str, Enum):
-    """변경 요청 상태."""
+    """변경 요청 상태.
+
+    상태 전이::
+
+        DRAFT → SUBMITTED → MERGED (불변)
+          │         │
+          └→ CLOSED ←┘
+               │
+               └→ SUBMITTED (reopen)
+
+    수정 규칙:
+        - DRAFT, SUBMITTED: 수정 가능
+        - MERGED, CLOSED: 수정 불가
+
+    issue.state 동기화:
+        - DRAFT, SUBMITTED → issue.state = OPEN
+        - MERGED, CLOSED   → issue.state = CLOSED
+    """
 
     DRAFT = "DRAFT"          # 초안
     SUBMITTED = "SUBMITTED"  # 검토 중 (제출됨)

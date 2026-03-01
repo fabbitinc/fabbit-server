@@ -4539,7 +4539,7 @@
                     "issues"
                 ],
                 "summary": "Update Issue",
-                "description": "\uc774\uc288 \uc81c\ubaa9/\ubcf8\ubb38 \uc218\uc815.\n\n`title`, `body` \uc911 \uc804\ub2ec\ub41c \ud544\ub4dc\ub9cc \uc218\uc815\ud569\ub2c8\ub2e4.",
+                "description": "\uc774\uc288 \uc81c\ubaa9/\ubcf8\ubb38 \uc218\uc815.\n\n`title`, `body` \uc911 \uc804\ub2ec\ub41c \ud544\ub4dc\ub9cc \uc218\uc815\ud569\ub2c8\ub2e4.\nOPEN \uc0c1\ud0dc\uc5d0\uc11c\ub9cc \uc218\uc815 \uac00\ub2a5\ud569\ub2c8\ub2e4.",
                 "operationId": "update_issue_api_v1_projects__project_id__issues__issue_number__patch",
                 "security": [
                     {
