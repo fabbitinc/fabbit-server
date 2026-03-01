@@ -11,6 +11,7 @@ from app.modules.issue.constants import IssueState, IssueType
 from app.modules.issue.models import (
     ChangeRequest,
     ChangeRequestIssue,
+    ChangeRequestReviewer,
     Issue,
     IssueAssignee,
     IssueComment,
@@ -171,6 +172,23 @@ def batch_load_assignee_ids(
     return result
 
 
+def batch_load_reviewer_ids(
+    db: Session, cr_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, list[uuid.UUID]]:
+    """CR ID 목록에 대한 검토자 ID 배치 조회."""
+    if not cr_ids:
+        return {}
+    rows = (
+        db.query(ChangeRequestReviewer.change_request_id, ChangeRequestReviewer.user_id)
+        .filter(ChangeRequestReviewer.change_request_id.in_(cr_ids))
+        .all()
+    )
+    result: dict[uuid.UUID, list[uuid.UUID]] = {}
+    for cr_id, user_id in rows:
+        result.setdefault(cr_id, []).append(user_id)
+    return result
+
+
 def batch_load_comment_counts(
     db: Session, issue_ids: list[uuid.UUID]
 ) -> dict[uuid.UUID, int]:
@@ -290,6 +308,35 @@ def sync_assignees(
 
     for uid in to_add:
         db.add(IssueAssignee(issue_id=issue_id, user_id=uid))
+
+    if to_add or to_remove:
+        db.flush()
+
+    return list(to_add), list(to_remove)
+
+
+def sync_reviewers(
+    db: Session, cr_id: uuid.UUID, user_ids: list[uuid.UUID]
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """CR 검토자 동기화 — diff 기반으로 추가/제거 수행, (added, removed) 반환."""
+    current = set(
+        row[0]
+        for row in db.query(ChangeRequestReviewer.user_id)
+        .filter(ChangeRequestReviewer.change_request_id == cr_id)
+        .all()
+    )
+    desired = set(user_ids)
+    to_add = desired - current
+    to_remove = current - desired
+
+    if to_remove:
+        db.query(ChangeRequestReviewer).filter(
+            ChangeRequestReviewer.change_request_id == cr_id,
+            ChangeRequestReviewer.user_id.in_(to_remove),
+        ).delete(synchronize_session="fetch")
+
+    for uid in to_add:
+        db.add(ChangeRequestReviewer(change_request_id=cr_id, user_id=uid))
 
     if to_add or to_remove:
         db.flush()

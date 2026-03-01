@@ -3276,6 +3276,538 @@
                 }
             }
         },
+        "/api/v1/projects/{project_id}/changes/{issue_number}/labels": {
+            "put": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Sync Labels",
+                "description": "\uc774\uc288 \ub77c\ubca8 \ub3d9\uae30\ud654.\n\n\uc804\ub2ec\ub41c `label_ids`\ub97c \uc774\uc288\uc758 \ucd5c\uc885 \ub77c\ubca8 \ubaa9\ub85d\uc73c\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\uae30\uc874 \ub77c\ubca8\uacfc diff\ub97c \ube44\uad50\ud558\uc5ec \ucd94\uac00/\uc81c\uac70\ub97c \uc790\ub3d9 \ucc98\ub9ac\ud569\ub2c8\ub2e4.\n\ube48 \ubaa9\ub85d \uc804\ub2ec \uc2dc \ubaa8\ub4e0 \ub77c\ubca8\uc774 \ud574\uc81c\ub429\ub2c8\ub2e4.",
+                "operationId": "sync_labels_api_v1_projects__project_id__changes__issue_number__labels_put",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyncLabelsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyncLabelsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/changes/{issue_number}/parts": {
+            "put": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Sync Parts",
+                "description": "\uc774\uc288 \ubd80\ud488 \ub3d9\uae30\ud654.\n\n\uc804\ub2ec\ub41c `part_ids`\ub97c \uc774\uc288\uc758 \ucd5c\uc885 \ubd80\ud488 \ubaa9\ub85d\uc73c\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\uae30\uc874 \ubd80\ud488\uacfc diff\ub97c \ube44\uad50\ud558\uc5ec \ucd94\uac00/\uc81c\uac70\ub97c \uc790\ub3d9 \ucc98\ub9ac\ud569\ub2c8\ub2e4.\n\ube48 \ubaa9\ub85d \uc804\ub2ec \uc2dc \ubaa8\ub4e0 \ubd80\ud488\uc774 \ud574\uc81c\ub429\ub2c8\ub2e4.",
+                "operationId": "sync_parts_api_v1_projects__project_id__changes__issue_number__parts_put",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyncPartsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyncPartsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/changes/{issue_number}/timeline": {
+            "get": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Get Timeline",
+                "description": "\uc774\uc288 \ud0c0\uc784\ub77c\uc778 \uc870\ud68c.\n\n\ub313\uae00\uacfc \ud65c\ub3d9 \uc774\ub825\uc744 `created_at` \uae30\uc900\uc73c\ub85c \uc2dc\uac04\uc21c merge\ud558\uc5ec \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "get_timeline_api_v1_projects__project_id__changes__issue_number__timeline_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TimelineResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/changes/{issue_number}/comments": {
+            "post": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Create Comment",
+                "description": "\uc774\uc288 \ub313\uae00 \uc0dd\uc131.\n\n\ub313\uae00 \ubcf8\ubb38\uc740 1~10,000\uc790\uae4c\uc9c0 \uc785\ub825 \uac00\ub2a5\ud569\ub2c8\ub2e4.",
+                "operationId": "create_comment_api_v1_projects__project_id__changes__issue_number__comments_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateCommentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/changes/{issue_number}/comments/{comment_id}": {
+            "patch": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Update Comment",
+                "description": "\uc774\uc288 \ub313\uae00 \uc218\uc815.\n\n\ubcf8\uc778\uc774 \uc791\uc131\ud55c \ub313\uae00\ub9cc \uc218\uc815\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+                "operationId": "update_comment_api_v1_projects__project_id__changes__issue_number__comments__comment_id__patch",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "comment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Comment Id"
+                        }
+                    },
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateCommentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Delete Comment",
+                "description": "\uc774\uc288 \ub313\uae00 \uc0ad\uc81c.\n\n\ubcf8\uc778\uc774 \uc791\uc131\ud55c \ub313\uae00\ub9cc \uc0ad\uc81c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+                "operationId": "delete_comment_api_v1_projects__project_id__changes__issue_number__comments__comment_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "comment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Comment Id"
+                        }
+                    },
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/changes/{issue_number}/files": {
+            "post": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Add Files",
+                "description": "\uc774\uc288\uc5d0 \ucca8\ubd80\ud30c\uc77c \ubc30\uce58 \uc5f0\uacb0.\n\n\uc5c5\ub85c\ub4dc \uc644\ub8cc(`UPLOADED`) \uc0c1\ud0dc\uc774\uba70 \uc544\uc9c1 \uc18c\uc720\uc790\uac00 \uc5c6\ub294 \ud30c\uc77c\ub9cc \uc5f0\uacb0 \uac00\ub2a5\ud569\ub2c8\ub2e4.\n\ucd5c\ub300 20\uac1c\uae4c\uc9c0 \ud55c \ubc88\uc5d0 \uc5f0\uacb0\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+                "operationId": "add_files_api_v1_projects__project_id__changes__issue_number__files_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/app__modules__issue__schemas__AttachFilesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FileItem"
+                                    },
+                                    "title": "Response Add Files Api V1 Projects  Project Id  Changes  Issue Number  Files Post"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/changes/{issue_number}/files/{file_id}": {
+            "delete": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Delete File",
+                "description": "\uc774\uc288 \ucca8\ubd80\ud30c\uc77c 1\uac74 \uc0ad\uc81c.\n\n\ud574\ub2f9 \uc774\uc288\uc5d0 \uc5f0\uacb0\ub41c \ud30c\uc77c\ub9cc \uc0ad\uc81c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\ud30c\uc77c\uc740 \uc18c\ud504\ud2b8 \uc0ad\uc81c \ucc98\ub9ac\ub429\ub2c8\ub2e4.",
+                "operationId": "delete_file_api_v1_projects__project_id__changes__issue_number__files__file_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "file_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "File Id"
+                        }
+                    },
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/projects/{project_id}/issues": {
             "get": {
                 "tags": [
@@ -3571,6 +4103,122 @@
                 }
             }
         },
+        "/api/v1/projects/{project_id}/issues/{issue_number}/close": {
+            "post": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Close Issue",
+                "description": "\uc774\uc288 \ub2eb\uae30.\n\n\uc774\uc288 \uc0c1\ud0dc\ub97c **OPEN \u2192 CLOSED**\ub85c \uc804\ud658\ud569\ub2c8\ub2e4.\n`closed_at` \ud0c0\uc784\uc2a4\ud0ec\ud504\uac00 \uc790\ub3d9 \uae30\ub85d\ub429\ub2c8\ub2e4.",
+                "operationId": "close_issue_api_v1_projects__project_id__issues__issue_number__close_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IssueResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/issues/{issue_number}/reopen": {
+            "post": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Reopen Issue",
+                "description": "\uc774\uc288 \uc7ac\uac1c.\n\n\ub2eb\ud78c \uc774\uc288 \uc0c1\ud0dc\ub97c **CLOSED \u2192 OPEN**\uc73c\ub85c \uc804\ud658\ud569\ub2c8\ub2e4.\n`closed_at`\uc774 \ucd08\uae30\ud654\ub429\ub2c8\ub2e4.",
+                "operationId": "reopen_issue_api_v1_projects__project_id__issues__issue_number__reopen_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IssueResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/projects/{project_id}/issues/{issue_number}/labels": {
             "put": {
                 "tags": [
@@ -3690,122 +4338,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/SyncPartsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects/{project_id}/issues/{issue_number}/close": {
-            "post": {
-                "tags": [
-                    "issues"
-                ],
-                "summary": "Close Issue",
-                "description": "\uc774\uc288 \ub2eb\uae30.\n\n\uc774\uc288 \uc0c1\ud0dc\ub97c **OPEN \u2192 CLOSED**\ub85c \uc804\ud658\ud569\ub2c8\ub2e4.\n`closed_at` \ud0c0\uc784\uc2a4\ud0ec\ud504\uac00 \uc790\ub3d9 \uae30\ub85d\ub429\ub2c8\ub2e4.",
-                "operationId": "close_issue_api_v1_projects__project_id__issues__issue_number__close_post",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "issue_number",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "title": "Issue Number"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/IssueResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects/{project_id}/issues/{issue_number}/reopen": {
-            "post": {
-                "tags": [
-                    "issues"
-                ],
-                "summary": "Reopen Issue",
-                "description": "\uc774\uc288 \uc7ac\uac1c.\n\n\ub2eb\ud78c \uc774\uc288 \uc0c1\ud0dc\ub97c **CLOSED \u2192 OPEN**\uc73c\ub85c \uc804\ud658\ud569\ub2c8\ub2e4.\n`closed_at`\uc774 \ucd08\uae30\ud654\ub429\ub2c8\ub2e4.",
-                "operationId": "reopen_issue_api_v1_projects__project_id__issues__issue_number__reopen_post",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "issue_number",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "title": "Issue Number"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/IssueResponse"
                                 }
                             }
                         }

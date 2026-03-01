@@ -17,6 +17,7 @@ from app.modules.issue.events import (
     IssueLabelsChanged,
     IssuePartsChanged,
     IssueStateChanged,
+    ReviewersChanged,
 )
 from app.modules.label.models import Label
 from app.modules.project.events import ProjectPartsLinked, ProjectPartsUnlinked
@@ -124,6 +125,16 @@ def _on_assignees_changed(event: AssigneesChanged) -> None:
         "removed": [str(uid) for uid in event.removed_user_ids],
     }
     _add_activity(TargetType.ISSUE, event.issue_id, Action.ASSIGNEE_CHANGED, actor_id, detail)
+
+
+def _on_reviewers_changed(event: ReviewersChanged) -> None:
+    """검토자 동기화 → Issue 피드."""
+    actor_id = _get_actor_id()
+    detail = {
+        "added": [str(uid) for uid in event.added_user_ids],
+        "removed": [str(uid) for uid in event.removed_user_ids],
+    }
+    _add_activity(TargetType.ISSUE, event.issue_id, Action.REVIEWER_CHANGED, actor_id, detail)
 
 
 def _on_issue_labels_changed(event: IssueLabelsChanged) -> None:
@@ -242,6 +253,7 @@ event_bus.subscribe(IssueCreated, _on_issue_created)
 event_bus.subscribe(IssueStateChanged, _on_issue_state_changed)
 event_bus.subscribe(CRStateChanged, _on_cr_state_changed)
 event_bus.subscribe(AssigneesChanged, _on_assignees_changed)
+event_bus.subscribe(ReviewersChanged, _on_reviewers_changed)
 event_bus.subscribe(IssueLabelsChanged, _on_issue_labels_changed)
 event_bus.subscribe(IssuePartsChanged, _on_issue_parts_changed)
 event_bus.subscribe(CRIssuesLinked, _on_cr_issues_linked)

@@ -17,6 +17,7 @@ from app.modules.issue.events import (
     IssueCreated,
     IssueLabelsChanged,
     IssuePartsChanged,
+    ReviewersChanged,
 )
 from app.modules.file.models import File
 from app.modules.issue.models import ChangeRequest, Issue, IssueComment
@@ -102,6 +103,20 @@ def sync_assignees(
     if added or removed:
         issue.register_event(AssigneesChanged(
             issue_id=issue.id,
+            added_user_ids=added,
+            removed_user_ids=removed,
+        ))
+    return added, removed
+
+
+def sync_reviewers(
+    db: Session, cr: ChangeRequest, user_ids: list[uuid.UUID]
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """CR 검토자 동기화 — (added, removed) 반환."""
+    added, removed = repo.sync_reviewers(db, cr.id, user_ids)
+    if added or removed:
+        cr.register_event(ReviewersChanged(
+            issue_id=cr.id,
             added_user_ids=added,
             removed_user_ids=removed,
         ))

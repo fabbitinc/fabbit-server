@@ -45,6 +45,14 @@ class AssigneesChanged(DomainEvent):
     removed_user_ids: list[UUID]
 
 
+class ReviewersChanged(DomainEvent):
+    """검토자 동기화 — 추가/제거를 한 번에 기록."""
+
+    issue_id: UUID
+    added_user_ids: list[UUID]
+    removed_user_ids: list[UUID]
+
+
 class IssueLabelsChanged(DomainEvent):
     """이슈 라벨 동기화 — 추가/제거를 한 번에 기록."""
 

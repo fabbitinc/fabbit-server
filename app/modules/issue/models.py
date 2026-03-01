@@ -304,6 +304,35 @@ class IssueLabel(TimestampMixin, PkMixin, TenantBase):
     )
 
 
+class ChangeRequestReviewer(TimestampMixin, PkMixin, TenantBase):
+    """변경 요청 검토자 (M:N)."""
+
+    __tablename__ = "change_request_reviewers"
+
+    __table_args__ = (
+        # 동일 CR-사용자 관계 중복 방지
+        UniqueConstraint(
+            "change_request_id", "user_id",
+            name="uq_cr_reviewers_cr_id_user_id",
+        ),
+        # CR 기준 검토자 조회 최적화
+        Index("ix_cr_reviewers_change_request_id", "change_request_id"),
+        # 사용자 기준 검토 CR 조회 최적화
+        Index("ix_cr_reviewers_user_id", "user_id"),
+    )
+
+    change_request_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("change_requests.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    # User id 논리적 참조 (cross-schema FK 없음)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=False,
+    )
+
+
 class ChangeRequestIssue(TimestampMixin, PkMixin, TenantBase):
     """변경 요청 ↔ 이슈 연결 (M:N)."""
 

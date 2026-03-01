@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.modules.file.mapper import to_file_item
 from app.modules.file.schemas import FileItem
 from app.modules.issue import repository as repo
-from app.modules.issue.models import Issue
+from app.modules.issue.models import ChangeRequest, Issue
 from app.modules.issue.schemas import (
     AssigneeSummary,
     LabelBadge,
@@ -23,6 +23,7 @@ class IssueEnrichment:
     created_by_name: str | None = None
     labels: list[LabelBadge] = field(default_factory=list)
     assignees: list[AssigneeSummary] = field(default_factory=list)
+    reviewers: list[AssigneeSummary] = field(default_factory=list)
     parts: list[PartBadge] = field(default_factory=list)
     files: list[FileItem] = field(default_factory=list)
     comments_count: int = 0
@@ -44,12 +45,18 @@ def load_enrichments(
     files_map = repo.batch_load_files(db, issue_ids)
     comment_counts = repo.batch_load_comment_counts(db, issue_ids)
 
+    # CR 검토자 배치 조회 (CR만 해당)
+    cr_ids = [i.id for i in issues if isinstance(i, ChangeRequest)]
+    reviewer_ids_map = repo.batch_load_reviewer_ids(db, cr_ids) if cr_ids else {}
+
     # User 이름 일괄 조회
     all_user_ids: set[uuid.UUID] = set()
     for issue in issues:
         if issue.created_by:
             all_user_ids.add(issue.created_by)
     for ids in assignee_ids_map.values():
+        all_user_ids.update(ids)
+    for ids in reviewer_ids_map.values():
         all_user_ids.update(ids)
     user_names = repo.batch_load_user_names(db, list(all_user_ids))
 
@@ -62,6 +69,10 @@ def load_enrichments(
         issue_assignees = [
             AssigneeSummary(id=uid, full_name=user_names.get(uid, ""))
             for uid in assignee_ids_map.get(issue.id, [])
+        ]
+        issue_reviewers = [
+            AssigneeSummary(id=uid, full_name=user_names.get(uid, ""))
+            for uid in reviewer_ids_map.get(issue.id, [])
         ]
         issue_parts = [
             PartBadge(id=p.id, part_number=p.part_number, name=p.name)
@@ -77,6 +88,7 @@ def load_enrichments(
             ),
             labels=issue_labels,
             assignees=issue_assignees,
+            reviewers=issue_reviewers,
             parts=issue_parts,
             files=issue_files,
             comments_count=comment_counts.get(issue.id, 0),

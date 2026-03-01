@@ -104,6 +104,45 @@ def sync_assignees(
     return issue_commands.sync_assignees(db, auth, issue.id, user_ids=req.user_ids)
 
 
+# ── 이슈 상태 전이 ──
+
+
+@router.post(
+    "/{issue_number}/close",
+    response_model=IssueResponse,
+    status_code=200,
+)
+def close_issue(
+    issue: Issue = Depends(resolve_issue),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 닫기.
+
+    이슈 상태를 **OPEN → CLOSED**로 전환합니다.
+    `closed_at` 타임스탬프가 자동 기록됩니다.
+    """
+    return issue_commands.close_issue(db, auth, issue.id)
+
+
+@router.post(
+    "/{issue_number}/reopen",
+    response_model=IssueResponse,
+    status_code=200,
+)
+def reopen_issue(
+    issue: Issue = Depends(resolve_issue),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 재개.
+
+    닫힌 이슈 상태를 **CLOSED → OPEN**으로 전환합니다.
+    `closed_at`이 초기화됩니다.
+    """
+    return issue_commands.reopen_issue(db, auth, issue.id)
+
+
 # ── 라벨 동기화 ──
 
 
@@ -150,45 +189,6 @@ def sync_parts(
     return issue_commands.sync_parts(
         db, auth, issue.project_id, issue.id, part_ids=req.part_ids
     )
-
-
-# ── 이슈 상태 전이 ──
-
-
-@router.post(
-    "/{issue_number}/close",
-    response_model=IssueResponse,
-    status_code=200,
-)
-def close_issue(
-    issue: Issue = Depends(resolve_issue),
-    auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(get_tenant_db),
-):
-    """이슈 닫기.
-
-    이슈 상태를 **OPEN → CLOSED**로 전환합니다.
-    `closed_at` 타임스탬프가 자동 기록됩니다.
-    """
-    return issue_commands.close_issue(db, auth, issue.id)
-
-
-@router.post(
-    "/{issue_number}/reopen",
-    response_model=IssueResponse,
-    status_code=200,
-)
-def reopen_issue(
-    issue: Issue = Depends(resolve_issue),
-    auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(get_tenant_db),
-):
-    """이슈 재개.
-
-    닫힌 이슈 상태를 **CLOSED → OPEN**으로 전환합니다.
-    `closed_at`이 초기화됩니다.
-    """
-    return issue_commands.reopen_issue(db, auth, issue.id)
 
 
 # ── 타임라인 ──

@@ -25,6 +25,7 @@ class Action(str, Enum):
     ISSUE_TITLE_CHANGED = ("issue_title_changed", "issue")
     CR_STATE_CHANGED = ("cr_state_changed", "cr")
     ASSIGNEE_CHANGED = ("assignee_changed", "assignee")
+    REVIEWER_CHANGED = ("reviewer_changed", "reviewer")
     LABEL_CHANGED = ("label_changed", "label")
     PART_CHANGED = ("part_changed", "part")
     CR_ISSUE_LINKED = ("cr_issue_linked", "cr")
@@ -47,6 +48,7 @@ class ActivityScope(str, Enum):
     CR = "cr"
     PART = "part"
     ASSIGNEE = "assignee"
+    REVIEWER = "reviewer"
     LABEL = "label"
     PROJECT = "project"
 

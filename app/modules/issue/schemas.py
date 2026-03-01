@@ -162,6 +162,7 @@ class ChangeRequestSummary(IssueSummary):
     cr_state: str
     merged_at: datetime | None = None
     merged_by: uuid.UUID | None = None
+    reviewers: list[AssigneeSummary] = []
 
 
 class ChangeRequestListResponse(BaseModel):
@@ -200,6 +201,7 @@ class ChangeRequestResponse(IssueResponse):
     cr_state: str
     merged_at: datetime | None = None
     merged_by: uuid.UUID | None = None
+    reviewers: list[AssigneeSummary] = []
 
 
 # ── 담당자 동기화 ──
@@ -212,6 +214,20 @@ class SyncAssigneesRequest(BaseModel):
 
 
 class SyncAssigneesResponse(BaseModel):
+    added_count: int
+    removed_count: int
+
+
+# ── 검토자 동기화 ──
+
+
+class SyncReviewersRequest(BaseModel):
+    user_ids: list[uuid.UUID] = Field(
+        default_factory=list, description="동기화할 검토자 ID 목록 (빈 목록 = 모든 검토자 해제)"
+    )
+
+
+class SyncReviewersResponse(BaseModel):
     added_count: int
     removed_count: int
 

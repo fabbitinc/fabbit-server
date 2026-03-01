@@ -46,6 +46,7 @@ def list_change_requests(
                 created_by_name=e.created_by_name,
                 labels=e.labels,
                 assignees=e.assignees,
+                reviewers=e.reviewers,
                 parts=e.parts,
                 files=e.files,
                 comments_count=e.comments_count,

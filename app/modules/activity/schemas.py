@@ -60,6 +60,17 @@ class AssigneesChangedDetail(BaseModel):
     removed: list[str]
 
 
+# -- 검토자 --
+
+
+class ReviewersChangedDetail(BaseModel):
+    """검토자 변경 (추가/제거)."""
+
+    action: Literal["reviewer_changed"]
+    added: list[str]
+    removed: list[str]
+
+
 # -- 라벨 --
 
 
@@ -160,6 +171,7 @@ IssueActivityDetail = (
     StateChangedDetail
     | CRStateChangedDetail
     | AssigneesChangedDetail
+    | ReviewersChangedDetail
     | LabelsChangedDetail
     | PartsChangedDetail
     | IssueLinkedDetail

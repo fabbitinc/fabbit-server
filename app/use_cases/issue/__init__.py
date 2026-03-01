@@ -15,6 +15,7 @@ from app.use_cases.issue.reopen_issue import reopen_issue
 from app.use_cases.issue.sync_assignees import sync_assignees
 from app.use_cases.issue.sync_labels import sync_labels
 from app.use_cases.issue.sync_parts import sync_parts
+from app.use_cases.issue.sync_reviewers import sync_reviewers
 from app.use_cases.issue.unlink_issues import unlink_issues
 from app.use_cases.issue.update_comment import update_comment
 
@@ -34,6 +35,7 @@ __all__ = [
     "sync_assignees",
     "sync_labels",
     "sync_parts",
+    "sync_reviewers",
     "unlink_issues",
     "update_comment",
 ]

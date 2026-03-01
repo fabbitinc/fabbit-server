@@ -7,13 +7,25 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth, resolve_change_request
 from app.core.auth_context import AuthContext
+from app.modules.activity.schemas import TimelineResponse
+from app.modules.file.schemas import FileItem
 from app.modules.issue.models import ChangeRequest
 from app.modules.issue.schemas import (
+    AttachFilesRequest,
     ChangeRequestListResponse,
     ChangeRequestResponse,
+    CommentResponse,
     CreateChangeRequestRequest,
+    CreateCommentRequest,
     LinkIssuesRequest,
     LinkIssuesResponse,
+    SyncLabelsRequest,
+    SyncLabelsResponse,
+    SyncPartsRequest,
+    SyncPartsResponse,
+    SyncReviewersRequest,
+    SyncReviewersResponse,
+    UpdateCommentRequest,
 )
 from app.queries import issue as issue_queries
 from app.use_cases import issue as issue_commands
@@ -176,3 +188,193 @@ def unlink_issues(
     요청된 이슈 ID에 해당하는 연결을 해제합니다.
     """
     issue_commands.unlink_issues(db, auth, cr.id, issue_ids=req.issue_ids)
+
+
+# ── 검토자 동기화 ──
+
+
+@router.put(
+    "/{issue_number}/reviewers",
+    response_model=SyncReviewersResponse,
+    status_code=200,
+)
+def sync_reviewers(
+    req: SyncReviewersRequest,
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """변경 요청 검토자 동기화.
+
+    전달된 `user_ids`를 CR의 최종 검토자 목록으로 설정합니다.
+    기존 검토자와 diff를 비교하여 추가/제거를 자동 처리합니다.
+    빈 목록 전달 시 모든 검토자가 해제됩니다.
+    """
+    return issue_commands.sync_reviewers(db, auth, cr.id, user_ids=req.user_ids)
+
+
+# ── 라벨 동기화 ──
+
+
+@router.put(
+    "/{issue_number}/labels",
+    response_model=SyncLabelsResponse,
+    status_code=200,
+)
+def sync_labels(
+    req: SyncLabelsRequest,
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 라벨 동기화.
+
+    전달된 `label_ids`를 이슈의 최종 라벨 목록으로 설정합니다.
+    기존 라벨과 diff를 비교하여 추가/제거를 자동 처리합니다.
+    빈 목록 전달 시 모든 라벨이 해제됩니다.
+    """
+    return issue_commands.sync_labels(db, auth, cr.id, label_ids=req.label_ids)
+
+
+# ── 부품 동기화 ──
+
+
+@router.put(
+    "/{issue_number}/parts",
+    response_model=SyncPartsResponse,
+    status_code=200,
+)
+def sync_parts(
+    req: SyncPartsRequest,
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 부품 동기화.
+
+    전달된 `part_ids`를 이슈의 최종 부품 목록으로 설정합니다.
+    기존 부품과 diff를 비교하여 추가/제거를 자동 처리합니다.
+    빈 목록 전달 시 모든 부품이 해제됩니다.
+    """
+    return issue_commands.sync_parts(
+        db, auth, cr.project_id, cr.id, part_ids=req.part_ids
+    )
+
+
+# ── 타임라인 ──
+
+
+@router.get(
+    "/{issue_number}/timeline",
+    response_model=TimelineResponse,
+    status_code=200,
+)
+def get_timeline(
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 타임라인 조회.
+
+    댓글과 활동 이력을 `created_at` 기준으로 시간순 merge하여 반환합니다.
+    """
+    return issue_queries.get_timeline(db, auth, cr.id)
+
+
+# ── 댓글 ──
+
+
+@router.post(
+    "/{issue_number}/comments",
+    response_model=CommentResponse,
+    status_code=201,
+)
+def create_comment(
+    req: CreateCommentRequest,
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 댓글 생성.
+
+    댓글 본문은 1~10,000자까지 입력 가능합니다.
+    """
+    body = req.body.model_dump_json(exclude_none=True)
+    return issue_commands.create_comment(db, auth, cr.id, body=body)
+
+
+@router.patch(
+    "/{issue_number}/comments/{comment_id}",
+    response_model=CommentResponse,
+    status_code=200,
+)
+def update_comment(
+    comment_id: uuid.UUID,
+    req: UpdateCommentRequest,
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 댓글 수정.
+
+    본인이 작성한 댓글만 수정할 수 있습니다.
+    """
+    body = req.body.model_dump_json(exclude_none=True)
+    return issue_commands.update_comment(db, auth, cr.id, comment_id, body=body)
+
+
+@router.delete(
+    "/{issue_number}/comments/{comment_id}",
+    status_code=204,
+)
+def delete_comment(
+    comment_id: uuid.UUID,
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 댓글 삭제.
+
+    본인이 작성한 댓글만 삭제할 수 있습니다.
+    """
+    issue_commands.delete_comment(db, auth, cr.id, comment_id)
+
+
+# ── 첨부파일 ──
+
+
+@router.post(
+    "/{issue_number}/files",
+    response_model=list[FileItem],
+    status_code=200,
+)
+def add_files(
+    req: AttachFilesRequest,
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈에 첨부파일 배치 연결.
+
+    업로드 완료(`UPLOADED`) 상태이며 아직 소유자가 없는 파일만 연결 가능합니다.
+    최대 20개까지 한 번에 연결할 수 있습니다.
+    """
+    return issue_commands.add_files(db, auth, cr.id, file_ids=req.file_ids)
+
+
+@router.delete(
+    "/{issue_number}/files/{file_id}",
+    status_code=204,
+)
+def delete_file(
+    file_id: uuid.UUID,
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 첨부파일 1건 삭제.
+
+    해당 이슈에 연결된 파일만 삭제할 수 있습니다.
+    파일은 소프트 삭제 처리됩니다.
+    """
+    issue_commands.delete_file(db, auth, cr.id, file_id)
