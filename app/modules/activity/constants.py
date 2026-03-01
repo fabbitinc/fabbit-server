@@ -43,6 +43,8 @@ class Action(str, Enum):
     PART_ADDED = ("part_added", "part")
     PART_REMOVED = ("part_removed", "part")
     PROJECT_UPDATED = ("project_updated", "project")
+    PROJECT_ARCHIVED = ("project_archived", "project")
+    PROJECT_UNARCHIVED = ("project_unarchived", "project")
 
 
 class ActivityScope(str, Enum):

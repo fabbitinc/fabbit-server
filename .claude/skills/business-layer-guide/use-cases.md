@@ -18,6 +18,15 @@
 
 - service (단일 도메인이라도 반드시 service 경유)
 
+## 배치 판단 기준
+
+use_case는 **도메인 경계를 넘는 조합**을 위해 존재한다. 같은 도메인 service 함수를 여러 번 호출하고 있다면, 그 로직은 service 내부에 하나의 메서드로 묶여야 한다 — service는 자기 도메인 repo에 전부 접근할 수 있으므로 바깥에서 조율할 구조적 이유가 없다.
+
+```
+✓ use_case: project_service.create_project() + label_service.seed_defaults()  ← 다른 도메인 조합
+✗ use_case: project_service.create_project() + project_service.add_members()  ← 같은 도메인, service 내부로
+```
+
 ## 규칙
 
 - 비즈니스 로직을 직접 갖지 않음 — service에 위임

@@ -28,6 +28,7 @@ def list_projects(
             name=p.name,
             description=p.description,
             part_count=part_count,
+            is_archived=p.is_archived,
         )
         for p, part_count in rows
     ]

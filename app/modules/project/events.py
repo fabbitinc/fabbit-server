@@ -24,3 +24,15 @@ class ProjectUpdated(DomainEvent):
 
     project_id: UUID
     changes: dict  # {"name": {"from": "old", "to": "new"}, ...}
+
+
+class ProjectArchived(DomainEvent):
+    """프로젝트 보관."""
+
+    project_id: UUID
+
+
+class ProjectUnarchived(DomainEvent):
+    """프로젝트 보관 해제."""
+
+    project_id: UUID

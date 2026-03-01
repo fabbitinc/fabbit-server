@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -10,20 +10,35 @@ from app.modules.project.constants import ProjectRole
 
 from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase
-from app.core.mixins import AuditMixin, PkMixin, TimestampMixin, UpdatableMixin
+from app.core.mixins import AuditMixin, PkMixin, SoftDeleteMixin, TimestampMixin, UpdatableMixin
 
 
-class Project(AggregateRoot, AuditMixin, UpdatableMixin, PkMixin, TenantBase):
+class Project(AggregateRoot, SoftDeleteMixin, AuditMixin, UpdatableMixin, PkMixin, TenantBase):
     __tablename__ = "projects"
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     issue_counter: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     def next_issue_number(self) -> int:
         """이슈 번호 채번 — 카운터를 1 증가시키고 새 번호를 반환한다."""
         self.issue_counter += 1
         return self.issue_counter
+
+    def archive(self) -> None:
+        """프로젝트 보관 — 읽기만 허용."""
+        from app.modules.project.events import ProjectArchived
+
+        self.is_archived = True
+        self.register_event(ProjectArchived(project_id=self.id))
+
+    def unarchive(self) -> None:
+        """프로젝트 보관 해제 — 쓰기 다시 허용."""
+        from app.modules.project.events import ProjectUnarchived
+
+        self.is_archived = False
+        self.register_event(ProjectUnarchived(project_id=self.id))
 
 
 class ProjectMember(TimestampMixin, PkMixin, TenantBase):

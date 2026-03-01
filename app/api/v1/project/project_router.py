@@ -31,9 +31,10 @@ def create_project(
 
     프로젝트 생성 시 기본 라벨(버그, 기능, 개선, 긴급)이 자동으로 추가됩니다.
     """
-    return project_commands.create_project(
+    project = project_commands.create_project(
         db, auth, name=req.name, description=req.description
     )
+    return project_queries.get_project_detail(db, auth, project.id)
 
 
 @router.get("", response_model=ProjectListResponse)
@@ -48,7 +49,9 @@ def list_projects(
 
     name으로 ILIKE 검색을 지원합니다.
     """
-    return project_queries.list_projects(db, auth, search=search, offset=offset, limit=limit)
+    return project_queries.list_projects(
+        db, auth, search=search, offset=offset, limit=limit
+    )
 
 
 @router.patch("/{project_id}", response_model=ProjectDetailResponse)
@@ -63,9 +66,10 @@ def update_project(
     `name`, `description` 필드를 선택적으로 수정합니다.
     전달된 필드만 변경되며, 생략된 필드는 기존 값을 유지합니다.
     """
-    return project_commands.update_project(
+    project = project_commands.update_project(
         db, auth, project_id, name=req.name, description=req.description
     )
+    return project_queries.get_project_detail(db, auth, project.id)
 
 
 @router.get("/{project_id}", response_model=ProjectDetailResponse)
@@ -78,12 +82,57 @@ def get_project(
     return project_queries.get_project_detail(db, auth, project_id)
 
 
+@router.post("/{project_id}/archive", status_code=204)
+def archive_project(
+    project_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """프로젝트 보관.
+
+    프로젝트를 보관 상태로 전환합니다.
+    보관된 프로젝트는 읽기만 가능하며, 모든 쓰기 작업이 차단됩니다.
+    프로젝트 ADMIN 권한이 필요합니다.
+    """
+    project_commands.archive_project(db, auth, project_id)
+
+
+@router.post("/{project_id}/unarchive", status_code=204)
+def unarchive_project(
+    project_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """프로젝트 보관 해제.
+
+    보관된 프로젝트를 다시 활성 상태로 복원합니다.
+    프로젝트 ADMIN 권한이 필요합니다.
+    """
+    project_commands.unarchive_project(db, auth, project_id)
+
+
+@router.delete("/{project_id}", status_code=204)
+def delete_project(
+    project_id: uuid.UUID,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """프로젝트 삭제 (소프트 삭제).
+
+    프로젝트를 소프트 삭제합니다. 삭제 후 목록에서 자동 제외됩니다.
+    프로젝트 ADMIN 권한이 필요합니다.
+    """
+    project_commands.delete_project(db, auth, project_id)
+
+
 @router.get("/{project_id}/activities", response_model=ActivityListResponse)
 def get_project_activities(
     project_id: uuid.UUID,
     cursor: uuid.UUID | None = Query(None, description="이전 페이지 마지막 항목의 id"),
     limit: int = Query(20, ge=1, le=100, description="조회 건수"),
-    scope: ActivityScope | None = Query(None, description="활동 scope 필터 (issue, cr, part, assignee, label, project)"),
+    scope: ActivityScope | None = Query(
+        None, description="활동 scope 필터 (issue, cr, part, assignee, label, project)"
+    ),
     user_id: uuid.UUID | None = Query(None, description="특정 사용자의 활동만 필터링"),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),

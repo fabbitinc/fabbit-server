@@ -26,8 +26,10 @@ from app.modules.issue.events import (
     ReviewersChanged,
 )
 from app.modules.project.events import (
+    ProjectArchived,
     ProjectPartsLinked,
     ProjectPartsUnlinked,
+    ProjectUnarchived,
     ProjectUpdated,
 )
 
@@ -322,6 +324,28 @@ def _on_project_updated(event: ProjectUpdated) -> None:
     )
 
 
+def _on_project_archived(event: ProjectArchived) -> None:
+    """프로젝트 보관 → Project 피드."""
+    actor_id = _get_actor_id()
+    _add_activity(
+        TargetType.PROJECT,
+        event.project_id,
+        Action.PROJECT_ARCHIVED,
+        actor_id,
+    )
+
+
+def _on_project_unarchived(event: ProjectUnarchived) -> None:
+    """프로젝트 보관 해제 → Project 피드."""
+    actor_id = _get_actor_id()
+    _add_activity(
+        TargetType.PROJECT,
+        event.project_id,
+        Action.PROJECT_UNARCHIVED,
+        actor_id,
+    )
+
+
 # ── 구독 등록 ──
 
 event_bus.subscribe(IssueCreated, _on_issue_created)
@@ -340,3 +364,5 @@ event_bus.subscribe(IssueMentioned, _on_issue_mentioned)
 event_bus.subscribe(ProjectPartsLinked, _on_project_parts_linked)
 event_bus.subscribe(ProjectPartsUnlinked, _on_project_parts_unlinked)
 event_bus.subscribe(ProjectUpdated, _on_project_updated)
+event_bus.subscribe(ProjectArchived, _on_project_archived)
+event_bus.subscribe(ProjectUnarchived, _on_project_unarchived)

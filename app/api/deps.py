@@ -156,6 +156,26 @@ def get_tenant_db(
         db.close()
 
 
+def guard_archived_project(
+    request: Request,
+    project_id: uuid.UUID,
+    db: Session = Depends(get_tenant_db),
+):
+    """쓰기 요청 시 보관된 프로젝트 차단."""
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return
+    from app.modules.project.models import Project
+
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if project is None:
+        raise AppError(message="프로젝트를 찾을 수 없습니다", code="NOT_FOUND")
+    if project.is_archived:
+        raise AppError(
+            message="보관된 프로젝트는 수정할 수 없습니다",
+            code="PROJECT_ARCHIVED",
+        )
+
+
 def resolve_issue(
     project_id: uuid.UUID,
     issue_number: int,

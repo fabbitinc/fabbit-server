@@ -133,6 +133,20 @@ def get_linked_project_ids(db: Session, part_id: uuid.UUID) -> list[uuid.UUID]:
     return [r[0] for r in rows]
 
 
+def get_member(
+    db: Session, project_id: uuid.UUID, user_id: uuid.UUID
+) -> ProjectMember | None:
+    """Project 멤버 단건 조회 — ADMIN 역할 확인용."""
+    return (
+        db.query(ProjectMember)
+        .filter(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == user_id,
+        )
+        .first()
+    )
+
+
 # ── Project ↔ Member ──
 
 

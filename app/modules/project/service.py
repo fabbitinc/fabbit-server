@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError
 from app.modules.project import repository as repo
+from app.modules.project.constants import ProjectRole
 from app.modules.project.events import ProjectPartsLinked, ProjectPartsUnlinked, ProjectUpdated
 from app.modules.project.models import Project
 
@@ -22,14 +23,54 @@ def get_or_raise(db: Session, project_id: uuid.UUID) -> Project:
     return project
 
 
+def ensure_project_active(project: Project) -> None:
+    """프로젝트가 활성 상태인지 검증 — 보관된 프로젝트는 수정 불가."""
+    if project.is_archived:
+        raise AppError(
+            message="보관된 프로젝트는 수정할 수 없습니다",
+            code="PROJECT_ARCHIVED",
+        )
+
+
+def ensure_project_admin(
+    db: Session, project_id: uuid.UUID, user_id: uuid.UUID
+) -> None:
+    """프로젝트 ADMIN 역할 검증 — ADMIN이 아니면 FORBIDDEN."""
+    member = repo.get_member(db, project_id, user_id)
+    if not member or member.role != ProjectRole.ADMIN:
+        raise AppError(
+            message="프로젝트 관리자 권한이 필요합니다",
+            code="FORBIDDEN",
+        )
+
+
+def archive_project(db: Session, project: Project) -> None:
+    """프로젝트 보관."""
+    project.archive()
+
+
+def unarchive_project(db: Session, project: Project) -> None:
+    """프로젝트 보관 해제."""
+    project.unarchive()
+
+
+def delete_project(db: Session, project: Project) -> None:
+    """프로젝트 소프트 삭제."""
+    project.soft_delete()
+
+
 def create_project(
     db: Session,
     name: str,
     description: str | None = None,
+    owner_id: uuid.UUID | None = None,
 ) -> Project:
-    """프로젝트 생성."""
+    """프로젝트 생성 — owner_id가 주어지면 ADMIN 멤버로 등록."""
     project = Project(name=name, description=description)
-    return repo.add(db, project)
+    repo.add(db, project)
+    if owner_id is not None:
+        repo.add_members(db, project.id, [owner_id], role=ProjectRole.ADMIN)
+    return project
 
 
 def update_project(

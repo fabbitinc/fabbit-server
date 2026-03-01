@@ -28,6 +28,7 @@ def get_project_detail(
         name=project.name,
         description=project.description,
         part_count=repo.count_linked_parts(db, project_id),
+        is_archived=project.is_archived,
         open_issue_count=issue_repo.count_open_issues(db, project_id),
         open_change_request_count=issue_repo.count_open_crs(db, project_id),
         created_at=project.created_at,
