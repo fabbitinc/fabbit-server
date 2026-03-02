@@ -1,0 +1,80 @@
+"""팀(Team) API Pydantic 스키마."""
+
+import uuid
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+
+# ── 요청 ──
+
+
+class CreateTeamRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="팀 이름")
+    description: str | None = Field(None, description="팀 설명")
+
+
+class UpdateTeamRequest(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=100, description="팀 이름")
+    description: str | None = Field(None, description="팀 설명")
+
+
+# ── 응답 ──
+
+
+class TeamSummary(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: str | None = None
+    member_count: int
+    created_by: uuid.UUID
+    created_at: datetime
+
+
+class TeamListResponse(BaseModel):
+    items: list[TeamSummary]
+
+
+class TeamDetailResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: str | None = None
+    member_count: int
+    created_by: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+# ── 멤버 ──
+
+
+class AddTeamMembersRequest(BaseModel):
+    """멤버 추가 요청."""
+
+    user_ids: list[uuid.UUID]
+
+
+class RemoveTeamMembersRequest(BaseModel):
+    """멤버 제거 요청."""
+
+    user_ids: list[uuid.UUID]
+
+
+class ManageTeamMembersResponse(BaseModel):
+    """멤버 추가/제거 결과."""
+
+    count: int
+
+
+class TeamMemberSummary(BaseModel):
+    """팀 멤버 요약."""
+
+    user_id: uuid.UUID
+    full_name: str
+    email: str
+
+
+class TeamMemberListResponse(BaseModel):
+    """팀 멤버 목록."""
+
+    items: list[TeamMemberSummary]
