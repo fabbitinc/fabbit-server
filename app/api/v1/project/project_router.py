@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth
 from app.core.auth_context import AuthContext
-from app.modules.activity.constants import ActivityScope
 from app.modules.activity.schemas import ActivityListResponse
 from app.modules.project.schemas import (
     CreateProjectRequest,
@@ -130,8 +129,8 @@ def get_project_activities(
     project_id: uuid.UUID,
     cursor: uuid.UUID | None = Query(None, description="이전 페이지 마지막 항목의 id"),
     limit: int = Query(20, ge=1, le=100, description="조회 건수"),
-    scope: ActivityScope | None = Query(
-        None, description="활동 scope 필터 (issue, cr, part, assignee, label, project)"
+    scope: str | None = Query(
+        None, description="활동 scope 필터 (issue, cr, project 등)"
     ),
     user_id: uuid.UUID | None = Query(None, description="특정 사용자의 활동만 필터링"),
     auth: AuthContext = Depends(require_auth),

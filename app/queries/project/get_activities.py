@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.transactional import transactional
 from app.modules.activity import mapper, repository as activity_repo
-from app.modules.activity.constants import Action, ActivityScope, TargetType
+from app.modules.activity.constants import Action, TargetType, get_scope
 from app.modules.activity.schemas import ActivityListResponse
 from app.modules.user import mapper as user_mapper
 from app.modules.user import repository as user_repo
@@ -21,14 +21,14 @@ def get_activities(
     *,
     cursor: uuid.UUID | None = None,
     limit: int = 20,
-    scope: ActivityScope | None = None,
+    scope: str | None = None,
     user_id: uuid.UUID | None = None,
 ) -> ActivityListResponse:
     """Project scope 활동 피드 cursor 기반 조회."""
     # scope → action 문자열 목록 변환
     actions: list[str] | None = None
     if scope:
-        actions = [a.value for a in Action if a.scope == scope.value]
+        actions = [a.value for a in Action if get_scope(a.value) == scope]
 
     activities = activity_repo.list_by_target_cursor(
         db, TargetType.PROJECT, project_id, cursor=cursor, limit=limit, actions=actions, actor_id=user_id

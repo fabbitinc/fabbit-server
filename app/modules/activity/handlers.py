@@ -51,6 +51,39 @@ def _add_activity(target_type, target_id, action: Action, actor_id, detail=None)
     db.add(activity)
 
 
+# ── Ref 변환 헬퍼 ──
+
+
+def _user_ref(d: dict) -> dict:
+    """이벤트의 사용자 dict → Ref 형태."""
+    return {"id": d["user_id"], "type": "user", "label": d["name"]}
+
+
+def _label_ref(d: dict) -> dict:
+    """이벤트의 라벨 dict → Ref 형태."""
+    return {"id": d["label_id"], "type": "label", "label": d["name"], "meta": {"color": d["color"]}}
+
+
+def _part_ref(d: dict) -> dict:
+    """이벤트의 부품 dict → Ref 형태."""
+    return {"id": d["part_id"], "type": "part", "label": d["part_number"]}
+
+
+def _file_ref(d: dict) -> dict:
+    """이벤트의 파일 dict → Ref 형태."""
+    return {"id": d["file_id"], "type": "file", "label": d["original_name"]}
+
+
+def _issue_ref(d: dict) -> dict:
+    """이벤트의 이슈 dict → Ref 형태."""
+    return {
+        "id": d["issue_id"],
+        "type": d["type"],
+        "label": f"#{d['number']} {d['title']}",
+        "meta": {"number": d["number"]},
+    }
+
+
 # ── Issue 이벤트 ──
 
 
@@ -62,7 +95,7 @@ def _on_issue_state_changed(event: IssueStateChanged) -> None:
         event.issue_id,
         Action.ISSUE_STATE_CHANGED,
         actor_id,
-        {"from": event.old_state, "to": event.new_state},
+        {"changes": {"state": {"old": event.old_state, "new": event.new_state}}},
     )
 
 
@@ -74,7 +107,7 @@ def _on_cr_state_changed(event: CRStateChanged) -> None:
         event.issue_id,
         Action.CR_STATE_CHANGED,
         actor_id,
-        {"from": event.old_state, "to": event.new_state},
+        {"changes": {"state": {"old": event.old_state, "new": event.new_state}}},
     )
 
 
@@ -86,7 +119,10 @@ def _on_assignees_changed(event: AssigneesChanged) -> None:
         event.issue_id,
         Action.ASSIGNEE_CHANGED,
         actor_id,
-        {"added": event.added, "removed": event.removed},
+        {
+            "added": [_user_ref(d) for d in event.added],
+            "removed": [_user_ref(d) for d in event.removed],
+        },
     )
 
 
@@ -98,7 +134,10 @@ def _on_reviewers_changed(event: ReviewersChanged) -> None:
         event.issue_id,
         Action.REVIEWER_CHANGED,
         actor_id,
-        {"added": event.added, "removed": event.removed},
+        {
+            "added": [_user_ref(d) for d in event.added],
+            "removed": [_user_ref(d) for d in event.removed],
+        },
     )
 
 
@@ -110,7 +149,10 @@ def _on_issue_labels_changed(event: IssueLabelsChanged) -> None:
         event.issue_id,
         Action.LABEL_CHANGED,
         actor_id,
-        {"added": event.added, "removed": event.removed},
+        {
+            "added": [_label_ref(d) for d in event.added],
+            "removed": [_label_ref(d) for d in event.removed],
+        },
     )
 
 
@@ -122,7 +164,10 @@ def _on_issue_parts_changed(event: IssuePartsChanged) -> None:
         event.issue_id,
         Action.PART_CHANGED,
         actor_id,
-        {"added": event.added, "removed": event.removed},
+        {
+            "added": [_part_ref(d) for d in event.added],
+            "removed": [_part_ref(d) for d in event.removed],
+        },
     )
 
 
@@ -134,7 +179,10 @@ def _on_issue_files_attached(event: IssueFilesAttached) -> None:
         event.issue_id,
         Action.FILE_ATTACHED,
         actor_id,
-        {"files": event.files},
+        {
+            "added": [_file_ref(d) for d in event.files],
+            "removed": [],
+        },
     )
 
 
@@ -146,7 +194,10 @@ def _on_issue_file_detached(event: IssueFileDetached) -> None:
         event.issue_id,
         Action.FILE_DETACHED,
         actor_id,
-        {"file_id": str(event.file_id), "file_name": event.file_name},
+        {
+            "added": [],
+            "removed": [{"id": str(event.file_id), "type": "file", "label": event.file_name}],
+        },
     )
 
 
@@ -159,7 +210,10 @@ def _on_cr_issues_linked(event: CRIssuesLinked) -> None:
         event.issue_id,
         Action.CR_ISSUE_LINKED,
         actor_id,
-        {"linked_issues": event.linked_issues},
+        {
+            "added": [_issue_ref(d) for d in event.linked_issues],
+            "removed": [],
+        },
     )
     # 연결된 각 이슈 피드
     for issue_info in event.linked_issues:
@@ -169,9 +223,13 @@ def _on_cr_issues_linked(event: CRIssuesLinked) -> None:
             Action.CR_ISSUE_LINKED,
             actor_id,
             {
-                "cr_id": str(event.issue_id),
-                "cr_number": event.cr_number,
-                "cr_title": event.cr_title,
+                "added": [{
+                    "id": str(event.issue_id),
+                    "type": "cr",
+                    "label": f"#{event.cr_number} {event.cr_title}",
+                    "meta": {"number": event.cr_number},
+                }],
+                "removed": [],
             },
         )
 
@@ -185,7 +243,10 @@ def _on_cr_issues_unlinked(event: CRIssuesUnlinked) -> None:
         event.issue_id,
         Action.CR_ISSUE_UNLINKED,
         actor_id,
-        {"unlinked_issues": event.unlinked_issues},
+        {
+            "added": [],
+            "removed": [_issue_ref(d) for d in event.unlinked_issues],
+        },
     )
     # 연결 해제된 각 이슈 피드
     for issue_info in event.unlinked_issues:
@@ -195,9 +256,13 @@ def _on_cr_issues_unlinked(event: CRIssuesUnlinked) -> None:
             Action.CR_ISSUE_UNLINKED,
             actor_id,
             {
-                "cr_id": str(event.issue_id),
-                "cr_number": event.cr_number,
-                "cr_title": event.cr_title,
+                "added": [],
+                "removed": [{
+                    "id": str(event.issue_id),
+                    "type": "cr",
+                    "label": f"#{event.cr_number} {event.cr_title}",
+                    "meta": {"number": event.cr_number},
+                }],
             },
         )
 
@@ -211,11 +276,12 @@ def _on_issue_mentioned(event: IssueMentioned) -> None:
         Action.ISSUE_MENTIONED,
         actor_id,
         {
-            "source_issue_id": str(event.source_issue_id),
-            "source_number": event.source_number,
-            "source_title": event.source_title,
-            "source_issue_type": event.source_issue_type,
-            "is_comment": event.is_comment,
+            "refs": [{
+                "id": str(event.source_issue_id),
+                "type": event.source_issue_type,
+                "label": f"#{event.source_number} {event.source_title}",
+                "meta": {"number": event.source_number, "is_comment": event.is_comment},
+            }],
         },
     )
 
@@ -231,7 +297,10 @@ def _on_project_parts_linked(event: ProjectPartsLinked) -> None:
         event.project_id,
         Action.PART_ADDED,
         actor_id,
-        {"parts": event.parts},
+        {
+            "added": [_part_ref(d) for d in event.parts],
+            "removed": [],
+        },
     )
 
 
@@ -243,7 +312,10 @@ def _on_project_parts_unlinked(event: ProjectPartsUnlinked) -> None:
         event.project_id,
         Action.PART_REMOVED,
         actor_id,
-        {"parts": event.parts},
+        {
+            "added": [],
+            "removed": [_part_ref(d) for d in event.parts],
+        },
     )
 
 
@@ -255,7 +327,7 @@ def _on_project_updated(event: ProjectUpdated) -> None:
         event.project_id,
         Action.PROJECT_UPDATED,
         actor_id,
-        {"changes": event.changes},
+        {"changes": {k: {"old": v["from"], "new": v["to"]} for k, v in event.changes.items()}},
     )
 
 

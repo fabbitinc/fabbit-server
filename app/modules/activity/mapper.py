@@ -2,7 +2,7 @@
 
 import json
 
-from app.modules.activity.constants import Action
+from app.modules.activity.constants import get_scope
 from app.modules.activity.models import Activity
 from app.modules.activity.schemas import (
     ActivityResponse,
@@ -22,29 +22,14 @@ def _parse_body(body: str | None) -> dict | None:
         return None
 
 
-def _inject_action(detail: dict | None, action: str) -> dict | None:
-    """detail dict에 action 키를 주입하여 union 분기에 사용."""
-    if detail is None:
-        return None
-    return {**detail, "action": action}
-
-
-def _resolve_scope(action: str) -> str | None:
-    """action 문자열로부터 scope를 역매핑."""
-    try:
-        return Action(action).scope
-    except ValueError:
-        return None
-
-
 def to_activity_response(activity: Activity) -> ActivityResponse:
     """Activity 모델 → ActivityResponse 변환."""
     return ActivityResponse(
         id=activity.id,
         action=activity.action,
-        scope=_resolve_scope(activity.action),
+        scope=get_scope(activity.action),
         actor_id=activity.actor_id,
-        detail=_inject_action(activity.detail, activity.action),
+        detail=activity.detail,
         created_at=activity.created_at,
     )
 
@@ -54,9 +39,9 @@ def to_timeline_activity_item(activity: Activity) -> TimelineActivityItem:
     return TimelineActivityItem(
         id=activity.id,
         action=activity.action,
-        scope=_resolve_scope(activity.action),
+        scope=get_scope(activity.action),
         actor_id=activity.actor_id,
-        detail=_inject_action(activity.detail, activity.action),
+        detail=activity.detail,
         created_at=activity.created_at,
     )
 

@@ -14,7 +14,7 @@ from app.modules.issue import repository as issue_repo
 from app.modules.user import mapper as user_mapper
 from app.modules.user import repository as user_repo
 
-# detail에 user ID가 포함되는 액션 (added/removed 필드)
+# detail에 user ID가 포함되는 액션 (added/removed Ref 필드)
 _USER_ID_ACTIONS = {Action.ASSIGNEE_CHANGED.value, Action.REVIEWER_CHANGED.value}
 
 
@@ -29,14 +29,15 @@ def _collect_user_ids(comment_items, activity_items, activities) -> set[uuid.UUI
     for item in activity_items:
         ids.add(item.actor_id)
 
-    # assignee_changed, reviewer_changed detail의 added/removed
+    # assignee_changed, reviewer_changed detail의 added/removed Ref에서 user ID 추출
     for a in activities:
         if a.action in _USER_ID_ACTIONS and a.detail:
-            for uid_str in a.detail.get("added", []) + a.detail.get("removed", []):
-                try:
-                    ids.add(uuid.UUID(uid_str))
-                except (ValueError, AttributeError):
-                    pass
+            for ref in a.detail.get("added", []) + a.detail.get("removed", []):
+                if isinstance(ref, dict) and ref.get("type") == "user":
+                    try:
+                        ids.add(uuid.UUID(ref["id"]))
+                    except (ValueError, KeyError):
+                        pass
 
     return ids
 

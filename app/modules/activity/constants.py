@@ -1,72 +1,46 @@
 """Activity 도메인 상수."""
 
-from collections import defaultdict
 from enum import Enum
 
 
 class TargetType(str, Enum):
     """활동 기록 대상 유형."""
 
-    PROJECT = "PROJECT"  # 프로젝트 피드
-    ISSUE = "ISSUE"      # 이슈 타임라인
+    PROJECT = "PROJECT"
+    ISSUE = "ISSUE"
+    ORGANIZATION = "ORGANIZATION"
 
 
 class Action(str, Enum):
-    """Activity action 열거형. scope를 내장하여 단일 진실 공급원 역할."""
-
-    def __new__(cls, value: str, scope: str) -> "Action":
-        obj = str.__new__(cls, value)
-        obj._value_ = value
-        obj.scope = scope  # type: ignore[attr-defined]
-        return obj
+    """Activity action 열거형. '{resource}:{verb}' 형식."""
 
     # -- Issue 타임라인 --
-    ISSUE_STATE_CHANGED = ("issue_state_changed", "issue")
-    ISSUE_TITLE_CHANGED = ("issue_title_changed", "issue")
-    CR_STATE_CHANGED = ("cr_state_changed", "cr")
-    ASSIGNEE_CHANGED = ("assignee_changed", "assignee")
-    REVIEWER_CHANGED = ("reviewer_changed", "reviewer")
-    LABEL_CHANGED = ("label_changed", "label")
-    PART_CHANGED = ("part_changed", "part")
-    FILE_ATTACHED = ("file_attached", "file")
-    FILE_DETACHED = ("file_detached", "file")
-    CR_ISSUE_LINKED = ("cr_issue_linked", "cr")
-    CR_ISSUE_UNLINKED = ("cr_issue_unlinked", "cr")
-    ISSUE_MENTIONED = ("issue_mentioned", "mention")
+    ISSUE_STATE_CHANGED = "issue:state_changed"
+    ISSUE_TITLE_CHANGED = "issue:title_changed"
+    CR_STATE_CHANGED = "cr:state_changed"
+    ASSIGNEE_CHANGED = "issue:assignee_changed"
+    REVIEWER_CHANGED = "issue:reviewer_changed"
+    LABEL_CHANGED = "issue:label_changed"
+    PART_CHANGED = "issue:part_changed"
+    FILE_ATTACHED = "issue:file_attached"
+    FILE_DETACHED = "issue:file_detached"
+    CR_ISSUE_LINKED = "cr:issue_linked"
+    CR_ISSUE_UNLINKED = "cr:issue_unlinked"
+    ISSUE_MENTIONED = "issue:mentioned"
 
     # -- Project 피드 --
-    ISSUE_CREATED = ("issue_created", "issue")
-    CR_CREATED = ("cr_created", "cr")
-    ISSUE_CLOSED = ("issue_closed", "issue")
-    ISSUE_REOPENED = ("issue_reopened", "issue")
-    CR_MERGED = ("cr_merged", "cr")
-    PART_ADDED = ("part_added", "part")
-    PART_REMOVED = ("part_removed", "part")
-    PROJECT_UPDATED = ("project_updated", "project")
-    PROJECT_ARCHIVED = ("project_archived", "project")
-    PROJECT_UNARCHIVED = ("project_unarchived", "project")
+    ISSUE_CREATED = "issue:created"
+    CR_CREATED = "cr:created"
+    ISSUE_CLOSED = "issue:closed"
+    ISSUE_REOPENED = "issue:reopened"
+    CR_MERGED = "cr:merged"
+    PART_ADDED = "project:part_added"
+    PART_REMOVED = "project:part_removed"
+    PROJECT_UPDATED = "project:updated"
+    PROJECT_ARCHIVED = "project:archived"
+    PROJECT_UNARCHIVED = "project:unarchived"
 
 
-class ActivityScope(str, Enum):
-    """Activity scope — API query param 타입 검증용."""
-
-    ISSUE = "issue"
-    CR = "cr"
-    PART = "part"
-    ASSIGNEE = "assignee"
-    REVIEWER = "reviewer"
-    LABEL = "label"
-    FILE = "file"
-    MENTION = "mention"
-    PROJECT = "project"
-
-
-# Action enum에서 자동 유도 — 하위호환용 변수명 유지
-SCOPE_ACTIONS: dict[ActivityScope, list[Action]] = defaultdict(list)
-for _action in Action:
-    SCOPE_ACTIONS[ActivityScope(_action.scope)].append(_action)
-SCOPE_ACTIONS = dict(SCOPE_ACTIONS)
-
-ACTION_SCOPE: dict[Action, ActivityScope] = {
-    action: ActivityScope(action.scope) for action in Action
-}
+def get_scope(action: str) -> str:
+    """action 문자열에서 scope(리소스)를 추출. 예: 'issue:created' → 'issue'."""
+    return action.split(":")[0]

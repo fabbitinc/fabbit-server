@@ -4,270 +4,42 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_serializer
+from pydantic import BaseModel
 
 from app.modules.user.schemas import UserSummary
 
-# ── Activity Detail 스키마 (action별 타입 정의) ──
+# ── 통일 Detail 구조 ──
 
 
-class ActivityUserInfo(BaseModel):
-    """Activity에 기록되는 사용자 정보."""
+class Ref(BaseModel):
+    """Activity detail에서 참조되는 엔티티."""
 
-    user_id: str
-    name: str
+    id: str
+    type: str
+    label: str
+    meta: dict[str, Any] | None = None
 
 
-class ActivityPartInfo(BaseModel):
-    """Activity에 기록되는 부품 정보."""
+class ChangesDetail(BaseModel):
+    """필드 변경 이력. changes: {field: {old: str, new: str}}"""
 
-    part_id: str
-    part_number: str
+    changes: dict[str, dict[str, str]]
 
 
-class ActivityFileInfo(BaseModel):
-    """Activity에 기록되는 파일 정보."""
+class DiffDetail(BaseModel):
+    """추가/제거 목록."""
 
-    file_id: str
-    original_name: str
+    added: list[Ref] = []
+    removed: list[Ref] = []
 
 
-class ActivityLabelInfo(BaseModel):
-    """Activity에 기록되는 라벨 정보."""
+class RefsDetail(BaseModel):
+    """참조 목록."""
 
-    label_id: str
-    name: str
-    color: str
+    refs: list[Ref]
 
 
-class ActivityIssueInfo(BaseModel):
-    """Activity에 기록되는 이슈 정보."""
-
-    issue_id: str
-    number: int
-    title: str
-    type: str  # "ISSUE" | "CHANGE_REQUEST"
-
-
-# -- 상태 전이 (from 은 Python 예약어이므로 alias + model_serializer 사용) --
-
-
-class StateChangedDetail(BaseModel):
-    """이슈 상태 변경 (OPEN ↔ CLOSED)."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    action: Literal["issue_state_changed"]
-    from_: str = Field(alias="from", description="변경 전 상태")
-    to: str = Field(description="변경 후 상태")
-
-    @model_serializer
-    def _serialize(self):
-        return {"action": self.action, "from": self.from_, "to": self.to}
-
-
-class CRStateChangedDetail(BaseModel):
-    """CR 상태 변경 (DRAFT → OPEN → MERGED/CLOSED)."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    action: Literal["cr_state_changed"]
-    from_: str = Field(alias="from", description="변경 전 상태")
-    to: str = Field(description="변경 후 상태")
-
-    @model_serializer
-    def _serialize(self):
-        return {"action": self.action, "from": self.from_, "to": self.to}
-
-
-# -- 담당자 --
-
-
-class AssigneesChangedDetail(BaseModel):
-    """담당자 변경 (추가/제거)."""
-
-    action: Literal["assignee_changed"]
-    added: list[ActivityUserInfo]
-    removed: list[ActivityUserInfo]
-
-
-# -- 검토자 --
-
-
-class ReviewersChangedDetail(BaseModel):
-    """검토자 변경 (추가/제거)."""
-
-    action: Literal["reviewer_changed"]
-    added: list[ActivityUserInfo]
-    removed: list[ActivityUserInfo]
-
-
-# -- 라벨 --
-
-
-class LabelsChangedDetail(BaseModel):
-    """라벨 변경 (추가/제거)."""
-
-    action: Literal["label_changed"]
-    added: list[ActivityLabelInfo]
-    removed: list[ActivityLabelInfo]
-
-
-# -- 부품 --
-
-
-class PartsChangedDetail(BaseModel):
-    """부품 변경 (추가/제거) — 이슈 스코프."""
-
-    action: Literal["part_changed"]
-    added: list[ActivityPartInfo]
-    removed: list[ActivityPartInfo]
-
-
-class ProjectUpdatedDetail(BaseModel):
-    """프로젝트 정보 수정."""
-
-    action: Literal["project_updated"]
-    changes: dict[str, Any]
-
-
-class PartAddedDetail(BaseModel):
-    """부품 연결 — 프로젝트 스코프."""
-
-    action: Literal["part_added"]
-    parts: list[ActivityPartInfo]
-
-
-class PartRemovedDetail(BaseModel):
-    """부품 해제 — 프로젝트 스코프."""
-
-    action: Literal["part_removed"]
-    parts: list[ActivityPartInfo]
-
-
-# -- 파일 첨부/분리 --
-
-
-class FileAttachedDetail(BaseModel):
-    """파일 첨부."""
-
-    action: Literal["file_attached"]
-    files: list[ActivityFileInfo]
-
-
-class FileDetachedDetail(BaseModel):
-    """파일 분리."""
-
-    action: Literal["file_detached"]
-    file_id: str
-    file_name: str
-
-
-# -- CR-이슈 연결 --
-
-
-class IssueMentionedDetail(BaseModel):
-    """다른 이슈에서 멘션됨."""
-
-    action: Literal["issue_mentioned"]
-    source_issue_id: str
-    source_number: int
-    source_title: str
-    source_issue_type: str  # "issue" | "change_request"
-    is_comment: bool
-
-
-class IssueLinkedDetail(BaseModel):
-    """CR에 이슈 연결."""
-
-    action: Literal["cr_issue_linked"]
-    linked_issues: list[ActivityIssueInfo]
-
-
-class IssueUnlinkedDetail(BaseModel):
-    """CR에서 이슈 해제."""
-
-    action: Literal["cr_issue_unlinked"]
-    unlinked_issues: list[ActivityIssueInfo]
-
-
-# -- 프로젝트 스코프 --
-
-
-class IssueCreatedDetail(BaseModel):
-    """이슈 생성."""
-
-    action: Literal["issue_created"]
-    issue_id: str
-    number: int
-    title: str
-
-
-class CRCreatedDetail(BaseModel):
-    """변경 요청 생성."""
-
-    action: Literal["cr_created"]
-    issue_id: str
-    number: int
-    title: str
-
-
-class IssueClosedDetail(BaseModel):
-    """이슈 닫힘."""
-
-    action: Literal["issue_closed"]
-    issue_id: str
-    number: int
-    title: str
-
-
-class IssueReopenedDetail(BaseModel):
-    """이슈 재오픈."""
-
-    action: Literal["issue_reopened"]
-    issue_id: str
-    number: int
-    title: str
-
-
-class CRMergedDetail(BaseModel):
-    """CR 머지."""
-
-    action: Literal["cr_merged"]
-    issue_id: str
-    number: int
-    title: str
-
-
-# -- Detail 유니온 (typed 스키마 → dict fallback 순서 중요) --
-# Pydantic smart union이 action Literal로 자연 분기, 미매칭 시 dict 폴백.
-
-IssueActivityDetail = (
-    StateChangedDetail
-    | CRStateChangedDetail
-    | AssigneesChangedDetail
-    | ReviewersChangedDetail
-    | LabelsChangedDetail
-    | PartsChangedDetail
-    | FileAttachedDetail
-    | FileDetachedDetail
-    | IssueLinkedDetail
-    | IssueUnlinkedDetail
-    | IssueMentionedDetail
-    | dict[str, Any]
-)
-
-ProjectActivityDetail = (
-    IssueCreatedDetail
-    | CRCreatedDetail
-    | IssueClosedDetail
-    | IssueReopenedDetail
-    | CRMergedDetail
-    | PartAddedDetail
-    | PartRemovedDetail
-    | ProjectUpdatedDetail
-    | dict[str, Any]
-)
+ActivityDetail = ChangesDetail | DiffDetail | RefsDetail | dict[str, Any]
 
 
 # ── Activity 응답 ──
@@ -278,7 +50,7 @@ class ActivityResponse(BaseModel):
     action: str
     scope: str | None = None
     actor_id: uuid.UUID
-    detail: ProjectActivityDetail | None = None
+    detail: ActivityDetail | None = None
     created_at: datetime
 
 
@@ -307,7 +79,7 @@ class TimelineActivityItem(BaseModel):
     action: str
     scope: str | None = None
     actor_id: uuid.UUID
-    detail: IssueActivityDetail | None = None
+    detail: ActivityDetail | None = None
     created_at: datetime
 
 
