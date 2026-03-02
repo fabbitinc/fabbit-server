@@ -2911,6 +2911,130 @@
                         }
                     }
                 }
+            },
+            "delete": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Delete Project",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \uc0ad\uc81c (\uc18c\ud504\ud2b8 \uc0ad\uc81c).\n\n\ud504\ub85c\uc81d\ud2b8\ub97c \uc18c\ud504\ud2b8 \uc0ad\uc81c\ud569\ub2c8\ub2e4. \uc0ad\uc81c \ud6c4 \ubaa9\ub85d\uc5d0\uc11c \uc790\ub3d9 \uc81c\uc678\ub429\ub2c8\ub2e4.\n\ud504\ub85c\uc81d\ud2b8 ADMIN \uad8c\ud55c\uc774 \ud544\uc694\ud569\ub2c8\ub2e4.",
+                "operationId": "delete_project_api_v1_projects__project_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/archive": {
+            "post": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Archive Project",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \ubcf4\uad00.\n\n\ud504\ub85c\uc81d\ud2b8\ub97c \ubcf4\uad00 \uc0c1\ud0dc\ub85c \uc804\ud658\ud569\ub2c8\ub2e4.\n\ubcf4\uad00\ub41c \ud504\ub85c\uc81d\ud2b8\ub294 \uc77d\uae30\ub9cc \uac00\ub2a5\ud558\uba70, \ubaa8\ub4e0 \uc4f0\uae30 \uc791\uc5c5\uc774 \ucc28\ub2e8\ub429\ub2c8\ub2e4.\n\ud504\ub85c\uc81d\ud2b8 ADMIN \uad8c\ud55c\uc774 \ud544\uc694\ud569\ub2c8\ub2e4.",
+                "operationId": "archive_project_api_v1_projects__project_id__archive_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/projects/{project_id}/unarchive": {
+            "post": {
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Unarchive Project",
+                "description": "\ud504\ub85c\uc81d\ud2b8 \ubcf4\uad00 \ud574\uc81c.\n\n\ubcf4\uad00\ub41c \ud504\ub85c\uc81d\ud2b8\ub97c \ub2e4\uc2dc \ud65c\uc131 \uc0c1\ud0dc\ub85c \ubcf5\uc6d0\ud569\ub2c8\ub2e4.\n\ud504\ub85c\uc81d\ud2b8 ADMIN \uad8c\ud55c\uc774 \ud544\uc694\ud569\ub2c8\ub2e4.",
+                "operationId": "unarchive_project_api_v1_projects__project_id__unarchive_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/projects/{project_id}/activities": {
@@ -10692,6 +10816,10 @@
                         "type": "integer",
                         "title": "Part Count"
                     },
+                    "is_archived": {
+                        "type": "boolean",
+                        "title": "Is Archived"
+                    },
                     "open_issue_count": {
                         "type": "integer",
                         "title": "Open Issue Count"
@@ -10716,6 +10844,7 @@
                     "id",
                     "name",
                     "part_count",
+                    "is_archived",
                     "open_issue_count",
                     "open_change_request_count",
                     "created_at",
@@ -10887,13 +11016,18 @@
                     "part_count": {
                         "type": "integer",
                         "title": "Part Count"
+                    },
+                    "is_archived": {
+                        "type": "boolean",
+                        "title": "Is Archived"
                     }
                 },
                 "type": "object",
                 "required": [
                     "id",
                     "name",
-                    "part_count"
+                    "part_count",
+                    "is_archived"
                 ],
                 "title": "ProjectSummary"
             },
