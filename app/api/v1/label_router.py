@@ -16,42 +16,39 @@ from app.modules.label.schemas import (
 from app.queries import label as label_queries
 from app.use_cases import label as label_commands
 
-router = APIRouter(prefix="/api/v1/projects/{project_id}/labels", tags=["labels"])
+router = APIRouter(prefix="/api/v1/labels", tags=["labels"])
 
 
 @router.get("", response_model=LabelListResponse)
 def list_labels(
-    project_id: uuid.UUID,
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    """프로젝트 라벨 목록 조회.
+    """라벨 목록 조회.
 
-    프로젝트에 등록된 모든 라벨을 이름순으로 반환합니다.
+    테넌트에 등록된 모든 라벨을 이름순으로 반환합니다.
     """
-    return label_queries.list_labels(db, auth, project_id)
+    return label_queries.list_labels(db, auth)
 
 
 @router.post("", response_model=LabelResponse, status_code=201)
 def create_label(
-    project_id: uuid.UUID,
     req: CreateLabelRequest,
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """라벨 생성.
 
-    프로젝트 내에서 라벨 이름은 고유해야 합니다.
+    테넌트 내에서 라벨 이름은 고유해야 합니다.
     색상은 `#RRGGBB` 형식의 hex 코드입니다.
     """
     return label_commands.create_label(
-        db, auth, project_id, name=req.name, color=req.color, description=req.description
+        db, auth, name=req.name, color=req.color, description=req.description
     )
 
 
 @router.patch("/{label_id}", response_model=LabelResponse)
 def update_label(
-    project_id: uuid.UUID,
     label_id: uuid.UUID,
     req: UpdateLabelRequest,
     auth: AuthContext = Depends(require_auth),
@@ -79,7 +76,6 @@ def update_label(
 
 @router.delete("/{label_id}", status_code=204)
 def delete_label(
-    project_id: uuid.UUID,
     label_id: uuid.UUID,
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),

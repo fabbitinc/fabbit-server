@@ -30,7 +30,6 @@ class UpdateLabelRequest(BaseModel):
 
 class LabelResponse(BaseModel):
     id: uuid.UUID
-    project_id: uuid.UUID
     name: str
     description: str | None = None
     color: str

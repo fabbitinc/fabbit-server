@@ -1,6 +1,4 @@
-"""프로젝트 라벨 목록 조회."""
-
-import uuid
+"""라벨 목록 조회."""
 
 from sqlalchemy.orm import Session
 
@@ -14,9 +12,8 @@ from app.modules.label.schemas import LabelListResponse
 def list_labels(
     db: Session,
     auth: AuthContext,
-    project_id: uuid.UUID,
 ) -> LabelListResponse:
-    """프로젝트의 전체 라벨 목록 조회."""
-    labels = repo.list_by_project(db, project_id)
+    """테넌트 전체 라벨 목록 조회."""
+    labels = repo.list_all(db)
     items = [mapper.to_label_response(label) for label in labels]
     return LabelListResponse(total=len(items), items=items)

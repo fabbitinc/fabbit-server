@@ -44,6 +44,9 @@ def provision_tenant(db: Session, org_id: uuid.UUID) -> str:
     # ── 2-1. 현재 tenant 마이그레이션 head를 스탬프 ──
     _stamp_tenant_alembic_version(conn, graph_name)
 
+    # ── 2-2. 기본 라벨 시딩 ──
+    _seed_default_labels(db)
+
     # search_path 복원 (이후 작업이 ag_catalog를 참조하므로)
     conn.exec_driver_sql("SET search_path = ag_catalog, public")
 
@@ -83,6 +86,15 @@ def _stamp_tenant_alembic_version(conn, schema_name: str) -> None:
         schema=schema_name,
         rev=head,
     )
+
+
+def _seed_default_labels(db: Session) -> None:
+    """테넌트에 기본 라벨 시딩."""
+    from app.modules.label.constants import DEFAULT_LABELS
+    from app.modules.label.models import Label
+
+    db.add_all([Label(**data) for data in DEFAULT_LABELS])
+    db.flush()
 
 
 def _create_ontology_indexes(conn, graph_name: str) -> None:

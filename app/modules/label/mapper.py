@@ -8,7 +8,6 @@ def to_label_response(label: Label) -> LabelResponse:
     """Label 모델 → LabelResponse 변환."""
     return LabelResponse(
         id=label.id,
-        project_id=label.project_id,
         name=label.name,
         description=label.description,
         color=label.color,

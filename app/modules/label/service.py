@@ -27,20 +27,18 @@ def get_or_raise(db: Session, label_id: uuid.UUID) -> Label:
 
 def create_label(
     db: Session,
-    project_id: uuid.UUID,
     name: str,
     color: str,
     description: str | None = None,
 ) -> Label:
-    """라벨 생성 — 프로젝트 내 이름 중복 검사."""
-    existing = repo.get_by_project_and_name(db, project_id, name)
+    """라벨 생성 — 이름 중복 검사."""
+    existing = repo.get_by_name(db, name)
     if existing:
         raise AppError(
-            message=f"동일 프로젝트에 '{name}' 라벨이 이미 존재합니다",
+            message=f"동일한 이름의 '{name}' 라벨이 이미 존재합니다",
             code="ALREADY_EXISTS",
         )
     label = Label(
-        project_id=project_id,
         name=name,
         color=color,
         description=description,
@@ -61,10 +59,10 @@ def update_label(
     label = get_or_raise(db, label_id)
 
     if name is not None and name != label.name:
-        existing = repo.get_by_project_and_name(db, label.project_id, name)
+        existing = repo.get_by_name(db, name)
         if existing:
             raise AppError(
-                message=f"동일 프로젝트에 '{name}' 라벨이 이미 존재합니다",
+                message=f"동일한 이름의 '{name}' 라벨이 이미 존재합니다",
                 code="ALREADY_EXISTS",
             )
         label.name = name
@@ -87,9 +85,7 @@ def delete_label(db: Session, label_id: uuid.UUID) -> None:
     repo.delete(db, label)
 
 
-def seed_defaults(db: Session, project_id: uuid.UUID) -> list[Label]:
-    """프로젝트에 기본 라벨 일괄 생성."""
-    labels = [
-        Label(project_id=project_id, **data) for data in DEFAULT_LABELS
-    ]
+def seed_defaults(db: Session) -> list[Label]:
+    """기본 라벨 일괄 생성."""
+    labels = [Label(**data) for data in DEFAULT_LABELS]
     return repo.add_all(db, labels)
