@@ -23,12 +23,12 @@ def create_organization(
     # 유저 존재 확인
     user = user_service.get_user_or_raise(db, user_id)
 
-    # 조직 + 멤버십(ADMIN) + 프로비저닝
+    # 조직 + 멤버십(OWNER) + 프로비저닝
     org = org_service.create_organization(db, user.id, req)
 
     # 토큰 발급
     tokens = auth_service.issue_tokens(
-        db, user.id, user.email, org.id, MembershipRole.ADMIN
+        db, user.id, user.email, org.id, MembershipRole.OWNER
     )
 
     return CreateOrganizationResponse(

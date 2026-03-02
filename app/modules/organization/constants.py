@@ -10,6 +10,29 @@ class MembershipRole(str, Enum):
 
     MEMBER = "MEMBER"   # 일반 멤버
     ADMIN = "ADMIN"     # 관리자
+    OWNER = "OWNER"     # 소유자
+
+
+# 역할 계층 레벨 — 숫자가 높을수록 상위 권한
+ROLE_LEVEL: dict[MembershipRole, int] = {
+    MembershipRole.MEMBER: 0,
+    MembershipRole.ADMIN: 1,
+    MembershipRole.OWNER: 2,
+}
+
+
+def can_manage_role(actor_role: MembershipRole, target_role: MembershipRole) -> bool:
+    """actor가 target 역할의 멤버를 관리(초대/제거)할 수 있는지 판단.
+
+    - OWNER: 모든 역할 관리 가능 (같은 레벨 O)
+    - ADMIN: MEMBER만 관리 가능 (같은 레벨 X)
+    - MEMBER: 관리 불가
+    """
+    actor_level = ROLE_LEVEL.get(actor_role, 0)
+    target_level = ROLE_LEVEL.get(target_role, 0)
+    if actor_role == MembershipRole.OWNER:
+        return True
+    return actor_level > target_level
 
 
 class PlanType(str, Enum):

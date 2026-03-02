@@ -236,6 +236,8 @@ def create_invitation_record(
     email: str,
     invited_by: _uuid.UUID,
     role: str,
+    *,
+    actor_role: str | None = None,
 ) -> tuple[Invitation, str]:
     """초대 레코드 생성 (검증 + DB 저장). raw_token 반환.
 
@@ -243,9 +245,18 @@ def create_invitation_record(
     """
     # 역할 검증
     try:
-        MembershipRole(role)
+        invited_role = MembershipRole(role)
     except ValueError:
         raise AppError(message="유효하지 않은 역할입니다", code="VALIDATION_ERROR")
+
+    # 초대자의 역할 권한 검증
+    if actor_role is not None:
+        from app.modules.organization.constants import can_manage_role
+
+        if not can_manage_role(MembershipRole(actor_role), invited_role):
+            raise AppError(
+                message="해당 역할로 초대할 권한이 없습니다", code="FORBIDDEN"
+            )
 
     # PENDING 초대 중복 확인
     pending = repo.get_pending_invitation(db, org_id, email)

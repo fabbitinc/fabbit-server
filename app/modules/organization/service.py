@@ -20,6 +20,7 @@ from app.modules.organization.constants import (
     RESERVED_SLUGS,
     MembershipRole,
     PlanType,
+    can_manage_role,
     validate_slug_format,
 )
 from app.modules.organization.models import Membership, Organization
@@ -40,7 +41,7 @@ def _slugify(name: str) -> str:
 def create_organization(
     db: Session, user_id: _uuid.UUID, req: CreateOrganizationRequest
 ) -> Organization:
-    """조직 생성 + 멤버십(ADMIN) + 프로비저닝 (토큰 발급 제외).
+    """조직 생성 + 멤버십(OWNER) + 프로비저닝 (토큰 발급 제외).
 
     @transactional 없음 — use_case에서 트랜잭션 관리.
     Returns: Organization 모델 (use_case에서 토큰 발급 시 사용).
@@ -79,8 +80,8 @@ def create_organization(
         plan_type=plan.value,
     )
 
-    # 멤버십 (ADMIN)
-    repo.create_membership(db, user_id, org.id, role=MembershipRole.ADMIN)
+    # 멤버십 (OWNER)
+    repo.create_membership(db, user_id, org.id, role=MembershipRole.OWNER)
 
     # 테넌트 프로비저닝
     schema_name = provision_tenant(db, org.id)
@@ -112,19 +113,29 @@ def remove_member(
     """조직에서 멤버 제거.
 
     @transactional 없음 — use_case에서 트랜잭션 관리.
-    RBAC(ADMIN 검증)은 router Depends(require_admin)에서 처리.
+    RBAC(ADMIN 이상 검증)은 router Depends(require_admin)에서 처리.
     """
     if auth.user_id == user_id:
         raise AppError(message="자신을 제거할 수 없습니다", code="VALIDATION_ERROR")
 
-    # 소유자 보호
-    org = repo.get_org_by_id(db, auth.org_id)
-    if org and org.owner_id == user_id:
-        raise AppError(message="조직 소유자는 제거할 수 없습니다", code="FORBIDDEN")
-
     membership = repo.get_membership(db, user_id, auth.org_id)
     if not membership:
         raise AppError(message="해당 멤버를 찾을 수 없습니다", code="NOT_FOUND")
+
+    # 역할 계층 권한 체크
+    actor_role = MembershipRole(auth.role)
+    target_role = MembershipRole(membership.role)
+    if not can_manage_role(actor_role, target_role):
+        raise AppError(
+            message="해당 멤버를 제거할 권한이 없습니다", code="FORBIDDEN"
+        )
+
+    # 마지막 OWNER 보호
+    if target_role == MembershipRole.OWNER:
+        if repo.count_owners(db, auth.org_id) <= 1:
+            raise AppError(
+                message="마지막 소유자는 제거할 수 없습니다", code="FORBIDDEN"
+            )
 
     repo.delete_membership(db, auth.org_id, user_id)
 

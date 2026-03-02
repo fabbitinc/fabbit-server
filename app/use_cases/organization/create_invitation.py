@@ -24,7 +24,8 @@ def create_invitation(
 
     # 초대 레코드 생성
     invitation, raw_token = auth_service.create_invitation_record(
-        db, auth.org_id, req.email, auth.user_id, req.role
+        db, auth.org_id, req.email, auth.user_id, req.role,
+        actor_role=auth.role,
     )
 
     # 이메일 발송

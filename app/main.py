@@ -218,7 +218,7 @@ def _bootstrap_test_account_once() -> None:
                 db,
                 user_id=user.id,
                 org_id=org.id,
-                role=MembershipRole.ADMIN,
+                role=MembershipRole.OWNER,
             )
 
         db.commit()

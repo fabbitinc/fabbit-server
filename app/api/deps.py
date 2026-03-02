@@ -18,7 +18,7 @@ from app.core.exceptions import AppError
 from app.infrastructure.token_provider import token_provider
 from app.modules.issue.models import ChangeRequest, Issue
 from app.modules.issue.constants import IssueType
-from app.modules.organization.constants import MembershipRole
+from app.modules.organization.constants import ROLE_LEVEL, MembershipRole
 from app.modules.organization.provisioning import org_id_to_schema
 
 # Swagger UI에 Authorize 버튼 표시 (실제 검증은 AuthMiddleware에서 처리)
@@ -53,22 +53,26 @@ def require_auth(
     return ctx
 
 
-def require_role(role: MembershipRole):
-    """역할 기반 접근 제어 의존성 팩토리.
+def require_role(min_role: MembershipRole):
+    """역할 계층 기반 접근 제어 의존성 팩토리.
 
+    min_role 이상의 역할만 통과시킨다.
     사용: auth: AuthContext = Depends(require_role(MembershipRole.ADMIN))
     """
+    min_level = ROLE_LEVEL[min_role]
+
     def _check(auth: AuthContext = Depends(require_auth)) -> AuthContext:
-        if auth.role != role:
+        actor_level = ROLE_LEVEL.get(MembershipRole(auth.role), 0)
+        if actor_level < min_level:
             raise AppError(
-                message=f"{role.value} 권한이 필요합니다", code="FORBIDDEN"
+                message=f"{min_role.value} 이상 권한이 필요합니다", code="FORBIDDEN"
             )
         return auth
     return _check
 
 
 require_admin = require_role(MembershipRole.ADMIN)
-"""ADMIN 역할 필수 의존성. 사용: auth: AuthContext = Depends(require_admin)"""
+"""ADMIN 이상 역할 필수 의존성. 사용: auth: AuthContext = Depends(require_admin)"""
 
 
 # TODO: DB 기반 Permission RBAC 도입 시 활성화

@@ -26,7 +26,7 @@ def register(db: Session, req: RegisterRequest) -> RegisterResponse:
     # 3. 유저 생성
     user = user_service.create_user(db, email, req.password, req.full_name)
 
-    # 4. 조직 생성 + 멤버십(ADMIN) + 프로비저닝
+    # 4. 조직 생성 + 멤버십(OWNER) + 프로비저닝
     org_req = CreateOrganizationRequest(
         org_name=req.org_name,
         slug=req.slug,
@@ -38,7 +38,7 @@ def register(db: Session, req: RegisterRequest) -> RegisterResponse:
 
     # 5. 토큰 발급
     tokens = auth_service.issue_tokens(
-        db, user.id, user.email, org.id, MembershipRole.ADMIN
+        db, user.id, user.email, org.id, MembershipRole.OWNER
     )
 
     return RegisterResponse(

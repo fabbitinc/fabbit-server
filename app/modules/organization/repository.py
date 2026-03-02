@@ -2,9 +2,10 @@
 
 import uuid
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.modules.organization.constants import MembershipRole
 from app.modules.organization.models import Membership, Organization
 from app.modules.user.models import User
 
@@ -137,6 +138,16 @@ def delete_membership(db: Session, org_id: uuid.UUID, user_id: uuid.UUID) -> Non
         )
     )
     db.flush()
+
+
+def count_owners(db: Session, org_id: uuid.UUID) -> int:
+    """조직의 OWNER 역할 멤버 수 조회."""
+    return db.scalar(
+        select(func.count()).where(
+            Membership.org_id == org_id,
+            Membership.role == MembershipRole.OWNER,
+        )
+    ) or 0
 
 
 # ── User 조회 (MeResponse 조립용, cross-domain JOIN 허용) ──

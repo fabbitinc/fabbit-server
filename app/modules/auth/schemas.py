@@ -104,7 +104,7 @@ class CreateOrganizationResponse(BaseModel):
 
 class CreateInvitationRequest(BaseModel):
     email: EmailStr
-    role: str = Field("MEMBER", description="초대할 역할 (MEMBER / ADMIN)")
+    role: str = Field("MEMBER", description="초대할 역할 (MEMBER / ADMIN / OWNER)")
 
 
 class VerifyInvitationResponse(BaseModel):
