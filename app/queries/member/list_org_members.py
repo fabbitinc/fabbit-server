@@ -21,9 +21,10 @@ def list_org_members(
             user_id=user.id,
             full_name=user.full_name,
             email=user.email,
+            phone=user.phone,
+            profile_image_url=get_file_url(user.profile_image_file_key),
             role=membership.role,
             job_role=membership.job_role,
-            profile_image_url=get_file_url(user.profile_image_file_key),
         )
         for user, membership in rows
     ]

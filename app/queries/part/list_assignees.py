@@ -8,6 +8,7 @@ from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
 from app.modules.part import repository as part_repo
+from app.modules.file.mapper import get_file_url
 from app.modules.part.schemas import PartAssigneeListResponse, PartAssigneeSummary
 from app.modules.user.models import User
 
@@ -37,6 +38,8 @@ def list_assignees(
             user_id=a.user_id,
             full_name=user_map[a.user_id].full_name if a.user_id in user_map else "",
             email=user_map[a.user_id].email if a.user_id in user_map else "",
+            phone=user_map[a.user_id].phone if a.user_id in user_map else None,
+            profile_image_url=get_file_url(user_map[a.user_id].profile_image_file_key) if a.user_id in user_map else None,
             discipline=a.discipline,
         )
         for a in assignees

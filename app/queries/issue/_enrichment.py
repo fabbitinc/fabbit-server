@@ -53,6 +53,8 @@ def _build_reviewer_summaries(
                     user_id=r.user_id,
                     full_name=us.full_name,
                     email=us.email,
+                    phone=us.phone,
+                    profile_image_url=us.profile_image_url,
                     review_status=r.review_status,
                     reviewed_at=r.reviewed_at,
                 )

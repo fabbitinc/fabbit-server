@@ -8,6 +8,7 @@ from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
 from app.modules.project import repository as project_repo
+from app.modules.file.mapper import get_file_url
 from app.modules.project.schemas import ProjectMemberListResponse, ProjectMemberSummary
 from app.modules.user.models import User
 
@@ -36,6 +37,8 @@ def list_members(
             user_id=m.user_id,
             full_name=user_map[m.user_id].full_name if m.user_id in user_map else "",
             email=user_map[m.user_id].email if m.user_id in user_map else "",
+            phone=user_map[m.user_id].phone if m.user_id in user_map else None,
+            profile_image_url=get_file_url(user_map[m.user_id].profile_image_file_key) if m.user_id in user_map else None,
             role=m.role,
         )
         for m in members
