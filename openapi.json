@@ -747,14 +747,85 @@
                 ]
             }
         },
-        "/api/v1/organizations/members": {
+        "/api/v1/members/lookup": {
             "get": {
                 "tags": [
-                    "organizations"
+                    "members"
+                ],
+                "summary": "Lookup Members",
+                "description": "\uc870\uc9c1 \uba64\ubc84 lookup \uc870\ud68c.\n\npicker/autocomplete UI\ub97c \uc704\ud55c \uacbd\ub7c9 \ubaa9\ub85d \uc5d4\ub4dc\ud3ec\uc778\ud2b8\uc785\ub2c8\ub2e4.",
+                "operationId": "lookup_members_api_v1_members_lookup_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "\uc774\ub984 \uac80\uc0c9 (ILIKE)",
+                            "title": "Search"
+                        },
+                        "description": "\uc774\ub984 \uac80\uc0c9 (ILIKE)"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 50,
+                            "minimum": 1,
+                            "description": "\uc870\ud68c \uac74\uc218",
+                            "default": 10,
+                            "title": "Limit"
+                        },
+                        "description": "\uc870\ud68c \uac74\uc218"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MemberLookupResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/members": {
+            "get": {
+                "tags": [
+                    "members"
                 ],
                 "summary": "List Org Members",
                 "description": "\uc870\uc9c1 \uba64\ubc84 \ubaa9\ub85d \uc870\ud68c.\n\n\ud604\uc7ac \uc778\uc99d\ub41c \uc0ac\uc6a9\uc790\uac00 \uc18d\ud55c \uc870\uc9c1\uc758 \uc804\uccb4 \uba64\ubc84 \ubaa9\ub85d\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
-                "operationId": "list_org_members_api_v1_organizations_members_get",
+                "operationId": "list_org_members_api_v1_members_get",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -774,14 +845,14 @@
                 ]
             }
         },
-        "/api/v1/organizations/members/{user_id}": {
+        "/api/v1/members/{user_id}": {
             "delete": {
                 "tags": [
-                    "organizations"
+                    "members"
                 ],
                 "summary": "Remove Member",
                 "description": "\uc870\uc9c1\uc5d0\uc11c \uba64\ubc84 \uc81c\uac70.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \uc81c\uac70\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\uc870\uc9c1 \uc18c\uc720\uc790\uc640 \uc790\uae30 \uc790\uc2e0\uc740 \uc81c\uac70\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.",
-                "operationId": "remove_member_api_v1_organizations_members__user_id__delete",
+                "operationId": "remove_member_api_v1_members__user_id__delete",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -6064,6 +6135,77 @@
                         "HTTPBearer": []
                     }
                 ]
+            }
+        },
+        "/api/v1/teams/lookup": {
+            "get": {
+                "tags": [
+                    "teams"
+                ],
+                "summary": "Lookup Teams",
+                "description": "\ud300 lookup \uc870\ud68c.\n\npicker/autocomplete UI\ub97c \uc704\ud55c \uacbd\ub7c9 \ubaa9\ub85d \uc5d4\ub4dc\ud3ec\uc778\ud2b8\uc785\ub2c8\ub2e4.",
+                "operationId": "lookup_teams_api_v1_teams_lookup_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "\ud300 \uc774\ub984 \uac80\uc0c9 (ILIKE)",
+                            "title": "Search"
+                        },
+                        "description": "\ud300 \uc774\ub984 \uac80\uc0c9 (ILIKE)"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 50,
+                            "minimum": 1,
+                            "description": "\uc870\ud68c \uac74\uc218",
+                            "default": 10,
+                            "title": "Limit"
+                        },
+                        "description": "\uc870\ud68c \uac74\uc218"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TeamLookupResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/teams/{team_id}": {
@@ -12922,6 +13064,43 @@
                     "items"
                 ],
                 "title": "TeamListResponse"
+            },
+            "TeamLookupItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "TeamLookupItem",
+                "description": "\ud300 lookup \ud56d\ubaa9 (picker/autocomplete\uc6a9)."
+            },
+            "TeamLookupResponse": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/TeamLookupItem"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "title": "TeamLookupResponse",
+                "description": "\ud300 lookup \uc751\ub2f5 (picker/autocomplete\uc6a9)."
             },
             "TeamMemberListResponse": {
                 "properties": {

@@ -1,4 +1,4 @@
-"""조직 멤버 API 라우터."""
+"""멤버(Member) API 라우터."""
 
 import uuid
 
@@ -11,7 +11,7 @@ from app.modules.project.schemas import MemberListResponse, MemberLookupResponse
 from app.queries import organization as org_queries
 from app.use_cases import organization as org_commands
 
-router = APIRouter(prefix="/api/v1/organizations/members", tags=["organizations"])
+router = APIRouter(prefix="/api/v1/members", tags=["members"])
 
 
 @router.get("/lookup", response_model=MemberLookupResponse)
