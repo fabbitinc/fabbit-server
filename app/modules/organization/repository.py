@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import case, delete, func, select
 from sqlalchemy.orm import Session
 
 from app.modules.organization.constants import MembershipRole
@@ -78,12 +78,17 @@ def list_org_members(
     db: Session, org_id: uuid.UUID
 ) -> list[tuple[User, Membership]]:
     """조직 멤버 목록 조회 (User JOIN Membership)."""
+    role_order = case(
+        (Membership.role == MembershipRole.OWNER, 0),
+        (Membership.role == MembershipRole.ADMIN, 1),
+        else_=2,
+    )
     return list(
         db.execute(
             select(User, Membership)
             .join(Membership, User.id == Membership.user_id)
             .where(Membership.org_id == org_id)
-            .order_by(User.full_name)
+            .order_by(role_order, User.full_name)
         ).all()
     )
 
