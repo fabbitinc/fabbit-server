@@ -5,6 +5,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.modules.user.schemas import UserSummary
+
 
 # ── 요청 ──
 
@@ -82,12 +84,10 @@ class ManageTeamMembersResponse(BaseModel):
     count: int
 
 
-class TeamMemberSummary(BaseModel):
+class TeamMemberSummary(UserSummary):
     """팀 멤버 요약."""
 
-    user_id: uuid.UUID
-    full_name: str
-    email: str
+    pass
 
 
 class TeamMemberListResponse(BaseModel):

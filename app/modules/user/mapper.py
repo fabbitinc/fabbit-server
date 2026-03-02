@@ -8,7 +8,9 @@ from app.modules.user.schemas import UserSummary
 def to_user_summary(user: User) -> UserSummary:
     """User 모델 → UserSummary 변환."""
     return UserSummary(
-        id=user.id,
+        user_id=user.id,
         full_name=user.full_name,
+        email=user.email,
+        phone=user.phone,
         profile_image_url=get_file_url(user.profile_image_file_key),
     )

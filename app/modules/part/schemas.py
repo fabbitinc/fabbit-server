@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from app.modules.drawing.constants import ConversionStatus
 from app.modules.file.schemas import FileItem
 from app.modules.part.constants import Discipline
+from app.modules.user.schemas import UserSummary
 
 # ── 관계 서브 모델 ──
 
@@ -229,12 +230,9 @@ class ManageAssignmentsResponse(BaseModel):
     count: int
 
 
-class PartAssigneeSummary(BaseModel):
+class PartAssigneeSummary(UserSummary):
     """Part 담당자 요약"""
 
-    user_id: uuid.UUID
-    full_name: str
-    email: str
     discipline: Discipline
 
 

@@ -155,12 +155,9 @@ class PartBadge(BaseModel):
     name: str | None = None
 
 
-class ReviewerSummary(BaseModel):
+class ReviewerSummary(UserSummary):
     """검토자 상세 (review_status 포함)."""
 
-    user_id: uuid.UUID
-    full_name: str
-    email: str
     review_status: str    # PENDING | APPROVED | REJECTED
     reviewed_at: datetime | None = None
 

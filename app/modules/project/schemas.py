@@ -95,14 +95,10 @@ class MemberLookupResponse(BaseModel):
 # ── 멤버 ──
 
 
-class MemberSummary(BaseModel):
+class MemberSummary(UserSummary):
     """조직 멤버 요약."""
-    user_id: uuid.UUID
-    full_name: str
-    email: str
     role: str
     job_role: str | None = None
-    profile_image_url: str | None = None
 
 
 class MemberListResponse(BaseModel):
@@ -110,11 +106,8 @@ class MemberListResponse(BaseModel):
     items: list[MemberSummary]
 
 
-class ProjectMemberSummary(BaseModel):
+class ProjectMemberSummary(UserSummary):
     """프로젝트 멤버 요약."""
-    user_id: uuid.UUID
-    full_name: str
-    email: str
     role: str
 
 
