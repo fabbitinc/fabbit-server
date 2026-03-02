@@ -98,9 +98,18 @@ def create_issue(
     """이슈 생성.
 
     테넌트 전역 고유 번호(`number`)가 자동 부여됩니다.
+    `part_ids`, `assignee_user_ids`, `team_assignee_ids`, `label_ids`, `file_ids`를
+    함께 전달하면 단일 트랜잭션으로 연관 데이터를 일괄 연결합니다.
     """
     body = req.body.model_dump_json(exclude_none=True) if req.body else None
-    return issue_commands.create_issue(db, auth, title=req.title, body=body)
+    return issue_commands.create_issue(
+        db, auth, title=req.title, body=body,
+        part_ids=req.part_ids,
+        assignee_user_ids=req.assignee_user_ids,
+        team_assignee_ids=req.team_assignee_ids,
+        label_ids=req.label_ids,
+        file_ids=req.file_ids,
+    )
 
 
 @router.patch("/{issue_number}", response_model=IssueResponse)

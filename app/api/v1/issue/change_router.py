@@ -93,10 +93,21 @@ def create_change_request(
 
     이슈 테이블에 `type=CHANGE_REQUEST`로 기록되며,
     변경 요청 고유 상태(`cr_state`)는 **DRAFT**로 시작합니다.
+    `part_ids`, `assignee_user_ids`, `team_assignee_ids`, `label_ids`, `file_ids`,
+    `reviewer_user_ids`, `team_reviewer_ids`를 함께 전달하면
+    단일 트랜잭션으로 연관 데이터를 일괄 연결합니다.
     """
     body = req.body.model_dump_json(exclude_none=True) if req.body else None
     return issue_commands.create_change_request(
-        db, auth, title=req.title, body=body, issue_number=req.issue_number
+        db, auth, title=req.title, body=body,
+        issue_number=req.issue_number,
+        part_ids=req.part_ids,
+        assignee_user_ids=req.assignee_user_ids,
+        team_assignee_ids=req.team_assignee_ids,
+        label_ids=req.label_ids,
+        file_ids=req.file_ids,
+        reviewer_user_ids=req.reviewer_user_ids,
+        team_reviewer_ids=req.team_reviewer_ids,
     )
 
 

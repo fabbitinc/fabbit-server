@@ -116,6 +116,12 @@ class TipTapDocument(BaseModel):
 class CreateIssueRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500, description="이슈 제목")
     body: TipTapDocument | None = Field(None, description="이슈 본문 (TipTap JSON)")
+    # ── 연관 데이터 (모두 optional, 빈 목록 = 연결 없음) ──
+    part_ids: list[uuid.UUID] = Field(default_factory=list, description="연결할 부품 ID 목록")
+    assignee_user_ids: list[uuid.UUID] = Field(default_factory=list, description="담당자 ID 목록")
+    team_assignee_ids: list[uuid.UUID] = Field(default_factory=list, description="팀 담당자 ID 목록")
+    label_ids: list[uuid.UUID] = Field(default_factory=list, description="라벨 ID 목록")
+    file_ids: list[uuid.UUID] = Field(default_factory=list, max_length=20, description="첨부파일 ID 목록 (최대 20개)")
 
 
 class UpdateIssueRequest(BaseModel):
@@ -127,6 +133,14 @@ class CreateChangeRequestRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500, description="변경 요청 제목")
     body: TipTapDocument | None = Field(None, description="변경 요청 본문 (TipTap JSON)")
     issue_number: int | None = Field(None, description="연결할 이슈 번호 (ISSUE 타입만 허용)")
+    # ── 연관 데이터 (모두 optional, 빈 목록 = 연결 없음) ──
+    part_ids: list[uuid.UUID] = Field(default_factory=list, description="연결할 부품 ID 목록")
+    assignee_user_ids: list[uuid.UUID] = Field(default_factory=list, description="담당자 ID 목록")
+    team_assignee_ids: list[uuid.UUID] = Field(default_factory=list, description="팀 담당자 ID 목록")
+    label_ids: list[uuid.UUID] = Field(default_factory=list, description="라벨 ID 목록")
+    file_ids: list[uuid.UUID] = Field(default_factory=list, max_length=20, description="첨부파일 ID 목록 (최대 20개)")
+    reviewer_user_ids: list[uuid.UUID] = Field(default_factory=list, description="검토자 ID 목록")
+    team_reviewer_ids: list[uuid.UUID] = Field(default_factory=list, description="팀 검토자 ID 목록")
 
 
 # ── 목록 응답 (body 제외한 요약) ──
