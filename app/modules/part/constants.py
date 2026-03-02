@@ -13,6 +13,7 @@ class BomDirection(str, Enum):
 class Discipline(str, Enum):
     """제조업 PLM 표준 분야 (Part 담당자/팀/Issue/CR 공통)."""
 
+    ALL = "ALL"  # 전체 (총괄)
     DESIGN = "DESIGN"  # 설계
     QUALITY = "QUALITY"  # 품질
     MANUFACTURING = "MANUFACTURING"  # 생산

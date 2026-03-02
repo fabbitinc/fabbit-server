@@ -15,6 +15,7 @@ from app.modules.drawing.models import Drawing
 from app.modules.ontology.cypher_utils import escape_cypher_value
 from sqlalchemy import tuple_
 
+from app.modules.part.constants import Discipline
 from app.modules.part.models import (
     _STANDARD_ATTRS,
     BomLink,
@@ -853,6 +854,7 @@ def add_assignees(
 
     assignments: [{"user_id": UUID, "discipline": str}, ...]
     팀 배정으로 이미 커버된 (user_id, discipline)은 스킵합니다.
+    ALL과 개별 discipline은 동일 user에 대해 상호 배타적입니다.
     """
     if not assignments:
         return 0
@@ -866,18 +868,50 @@ def add_assignees(
     existing = {(r.user_id, r.discipline) for r in existing_rows}
 
     # 팀 배정으로 커버된 (user_id, discipline) 조합
-    covered_by_team = set(
+    team_coverage_rows = (
         db.query(TeamMember.user_id, PartTeamAssignment.discipline)
         .join(PartTeamAssignment, TeamMember.team_id == PartTeamAssignment.team_id)
         .filter(PartTeamAssignment.part_id == part_id)
         .all()
     )
+    covered_by_team = {(r.user_id, r.discipline) for r in team_coverage_rows}
+
+    # 팀이 ALL로 배정된 경우 해당 멤버의 모든 discipline 커버
+    all_covered_users = {
+        r.user_id for r in team_coverage_rows
+        if r.discipline == Discipline.ALL
+    }
 
     new_items = [
         a for a in assignments
         if (a["user_id"], a["discipline"]) not in existing
         and (a["user_id"], a["discipline"]) not in covered_by_team
+        and a["user_id"] not in all_covered_users
     ]
+
+    if not new_items:
+        return 0
+
+    # 상호 배타 처리: ALL ↔ 개별 discipline
+    all_user_ids = [a["user_id"] for a in new_items if a["discipline"] == Discipline.ALL]
+    individual_user_ids = [a["user_id"] for a in new_items if a["discipline"] != Discipline.ALL]
+
+    if all_user_ids:
+        # ALL 추가 → 해당 user의 기존 개별 discipline 모두 제거
+        db.query(PartAssignee).filter(
+            PartAssignee.part_id == part_id,
+            PartAssignee.user_id.in_(all_user_ids),
+            PartAssignee.discipline != Discipline.ALL,
+        ).delete(synchronize_session="fetch")
+
+    if individual_user_ids:
+        # 개별 discipline 추가 → 해당 user의 기존 ALL 제거
+        db.query(PartAssignee).filter(
+            PartAssignee.part_id == part_id,
+            PartAssignee.user_id.in_(individual_user_ids),
+            PartAssignee.discipline == Discipline.ALL,
+        ).delete(synchronize_session="fetch")
+
     for item in new_items:
         db.add(
             PartAssignee(
@@ -886,8 +920,7 @@ def add_assignees(
                 discipline=item["discipline"],
             )
         )
-    if new_items:
-        db.flush()
+    db.flush()
     return len(new_items)
 
 
@@ -937,6 +970,7 @@ def add_team_assignments(
 
     assignments: [{"team_id": UUID, "discipline": str}, ...]
     추가된 팀 멤버와 겹치는 개인 배정(PartAssignee)은 자동 제거됩니다.
+    ALL과 개별 discipline은 동일 team에 대해 상호 배타적입니다.
     """
     if not assignments:
         return 0
@@ -949,6 +983,29 @@ def add_team_assignments(
     existing = {(r.team_id, r.discipline) for r in existing_rows}
 
     new_items = [a for a in assignments if (a["team_id"], a["discipline"]) not in existing]
+    if not new_items:
+        return 0
+
+    # 상호 배타 처리: ALL ↔ 개별 discipline
+    all_team_ids = [a["team_id"] for a in new_items if a["discipline"] == Discipline.ALL]
+    individual_team_ids = [a["team_id"] for a in new_items if a["discipline"] != Discipline.ALL]
+
+    if all_team_ids:
+        # ALL 추가 → 해당 team의 기존 개별 discipline 모두 제거
+        db.query(PartTeamAssignment).filter(
+            PartTeamAssignment.part_id == part_id,
+            PartTeamAssignment.team_id.in_(all_team_ids),
+            PartTeamAssignment.discipline != Discipline.ALL,
+        ).delete(synchronize_session="fetch")
+
+    if individual_team_ids:
+        # 개별 discipline 추가 → 해당 team의 기존 ALL 제거
+        db.query(PartTeamAssignment).filter(
+            PartTeamAssignment.part_id == part_id,
+            PartTeamAssignment.team_id.in_(individual_team_ids),
+            PartTeamAssignment.discipline == Discipline.ALL,
+        ).delete(synchronize_session="fetch")
+
     for item in new_items:
         db.add(
             PartTeamAssignment(
@@ -957,17 +1014,34 @@ def add_team_assignments(
                 discipline=item["discipline"],
             )
         )
-    if new_items:
-        db.flush()
+    db.flush()
 
-        # 새 팀 멤버와 겹치는 개인 배정 자동 제거
-        new_team_ids = [a["team_id"] for a in new_items]
+    # 새 팀 멤버와 겹치는 개인 배정 자동 제거
+    new_team_ids = [a["team_id"] for a in new_items]
+
+    # ALL로 추가된 팀의 멤버 → 모든 discipline 개인 배정 제거
+    if all_team_ids:
+        all_member_ids = [
+            r.user_id for r in
+            db.query(TeamMember.user_id)
+            .filter(TeamMember.team_id.in_(all_team_ids))
+            .all()
+        ]
+        if all_member_ids:
+            db.query(PartAssignee).filter(
+                PartAssignee.part_id == part_id,
+                PartAssignee.user_id.in_(all_member_ids),
+            ).delete(synchronize_session="fetch")
+
+    # 개별 discipline로 추가된 팀 → exact match 개인 배정 제거
+    non_all_team_ids = [tid for tid in new_team_ids if tid not in all_team_ids]
+    if non_all_team_ids:
         overlapping = (
             db.query(TeamMember.user_id, PartTeamAssignment.discipline)
             .join(PartTeamAssignment, TeamMember.team_id == PartTeamAssignment.team_id)
             .filter(
                 PartTeamAssignment.part_id == part_id,
-                PartTeamAssignment.team_id.in_(new_team_ids),
+                PartTeamAssignment.team_id.in_(non_all_team_ids),
             )
             .all()
         )
@@ -977,8 +1051,8 @@ def add_team_assignments(
                 PartAssignee.part_id == part_id,
                 tuple_(PartAssignee.user_id, PartAssignee.discipline).in_(overlap_pairs),
             ).delete(synchronize_session="fetch")
-            db.flush()
 
+    db.flush()
     return len(new_items)
 
 
