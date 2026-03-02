@@ -34,6 +34,7 @@ def get_part_detail(
     parents_count = repo.count_parents(db, part.id)
     suppliers_count = repo.count_suppliers(db, part.id)
     projects_count = repo.count_projects(db, part.id)
+    assignees_count = repo.count_unique_assignees(db, part.id)
 
     # 파일 count: UPLOADED 상태만
     files_count = (
@@ -70,4 +71,5 @@ def get_part_detail(
         suppliers_count=suppliers_count,
         files_count=files_count,
         projects_count=projects_count,
+        assignees_count=assignees_count,
     )

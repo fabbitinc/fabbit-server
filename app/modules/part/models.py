@@ -26,7 +26,9 @@ from sqlalchemy.sql import func
 from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase, generate_uuid7
 from app.core.exceptions import AppError
+from app.core.mixins import PkMixin, TimestampMixin
 from app.modules.file.events import FileAttached, FileDetached
+from app.modules.part.constants import Discipline
 
 if TYPE_CHECKING:
     from app.modules.file.models import File
@@ -329,6 +331,78 @@ class PartSupplier(TenantBase):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class PartAssignee(TimestampMixin, PkMixin, TenantBase):
+    """Part 담당자 (N:M, discipline 기반)."""
+
+    __tablename__ = "part_assignees"
+
+    __table_args__ = (
+        # 동일 Part-User-Discipline 조합 중복 방지
+        UniqueConstraint(
+            "part_id",
+            "user_id",
+            "discipline",
+            name="uq_part_assignees_part_id_user_id_discipline",
+        ),
+        # Part 기준 담당자 조회 최적화
+        Index("ix_part_assignees_part_id", "part_id"),
+        # User 기준 담당 Part 조회 최적화
+        Index("ix_part_assignees_user_id", "user_id"),
+        {"comment": "Part 담당자 배정"},
+    )
+
+    part_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("parts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    # User id 논리적 참조 (cross-schema FK 없음)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=False,
+    )
+    discipline: Mapped[Discipline] = mapped_column(
+        String(30),
+        nullable=False,
+    )
+
+
+class PartTeamAssignment(TimestampMixin, PkMixin, TenantBase):
+    """Part 담당팀 (N:M, discipline 기반)."""
+
+    __tablename__ = "part_team_assignments"
+
+    __table_args__ = (
+        # 동일 Part-Team-Discipline 조합 중복 방지
+        UniqueConstraint(
+            "part_id",
+            "team_id",
+            "discipline",
+            name="uq_part_team_assignments_part_id_team_id_discipline",
+        ),
+        # Part 기준 담당팀 조회 최적화
+        Index("ix_part_team_assignments_part_id", "part_id"),
+        # Team 기준 담당 Part 조회 최적화
+        Index("ix_part_team_assignments_team_id", "team_id"),
+        {"comment": "Part 담당팀 배정"},
+    )
+
+    part_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("parts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    team_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("teams.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    discipline: Mapped[Discipline] = mapped_column(
+        String(30),
+        nullable=False,
     )
 
 

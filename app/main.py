@@ -36,7 +36,7 @@ from app.api.v1.notification_router import (  # noqa: E402
     router as notification_router,
 )
 from app.api.v1.ontology_router import router as ontology_router  # noqa: E402
-from app.api.v1.part_router import router as part_router  # noqa: E402
+from app.api.v1.part import router as part_router  # noqa: E402
 from app.api.v1.supplier_router import (  # noqa: E402
     router as supplier_router,
 )

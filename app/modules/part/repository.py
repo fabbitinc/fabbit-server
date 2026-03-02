@@ -13,15 +13,20 @@ from app.core.database import generate_uuid7
 from app.infrastructure.age_client import execute_cypher_raw
 from app.modules.drawing.models import Drawing
 from app.modules.ontology.cypher_utils import escape_cypher_value
+from sqlalchemy import tuple_
+
 from app.modules.part.models import (
     _STANDARD_ATTRS,
     BomLink,
     Part,
+    PartAssignee,
     PartRevision,
     PartSupplier,
+    PartTeamAssignment,
 )
 from app.modules.project.models import ProjectPart
 from app.modules.supplier.models import Supplier
+from app.modules.team.models import TeamMember
 
 # models.py에서 이동된 상수를 re-export (service.py 호환)
 _PART_STANDARD_ATTRS = _STANDARD_ATTRS
@@ -834,3 +839,195 @@ def _create_revision_snapshot(
         extended_properties=dict(part.extended_properties or {}),
     )
     db.add(revision)
+
+
+# ── Part 담당자 (PartAssignee) ──
+
+
+def add_assignees(
+    db: Session,
+    part_id: uuid.UUID,
+    assignments: list[dict],
+) -> int:
+    """담당자 배치 추가 — 중복·팀 커버 무시, 신규 건수 반환.
+
+    assignments: [{"user_id": UUID, "discipline": str}, ...]
+    팀 배정으로 이미 커버된 (user_id, discipline)은 스킵합니다.
+    """
+    if not assignments:
+        return 0
+
+    # 이미 개인 배정된 조합
+    existing_rows = (
+        db.query(PartAssignee.user_id, PartAssignee.discipline)
+        .filter(PartAssignee.part_id == part_id)
+        .all()
+    )
+    existing = {(r.user_id, r.discipline) for r in existing_rows}
+
+    # 팀 배정으로 커버된 (user_id, discipline) 조합
+    covered_by_team = set(
+        db.query(TeamMember.user_id, PartTeamAssignment.discipline)
+        .join(PartTeamAssignment, TeamMember.team_id == PartTeamAssignment.team_id)
+        .filter(PartTeamAssignment.part_id == part_id)
+        .all()
+    )
+
+    new_items = [
+        a for a in assignments
+        if (a["user_id"], a["discipline"]) not in existing
+        and (a["user_id"], a["discipline"]) not in covered_by_team
+    ]
+    for item in new_items:
+        db.add(
+            PartAssignee(
+                part_id=part_id,
+                user_id=item["user_id"],
+                discipline=item["discipline"],
+            )
+        )
+    if new_items:
+        db.flush()
+    return len(new_items)
+
+
+def remove_assignees(
+    db: Session,
+    part_id: uuid.UUID,
+    assignments: list[dict],
+) -> int:
+    """담당자 배치 제거 — 삭제 건수 반환.
+
+    assignments: [{"user_id": UUID, "discipline": str}, ...]
+    """
+    if not assignments:
+        return 0
+
+    pairs = [(a["user_id"], a["discipline"]) for a in assignments]
+    count = (
+        db.query(PartAssignee)
+        .filter(
+            PartAssignee.part_id == part_id,
+            tuple_(PartAssignee.user_id, PartAssignee.discipline).in_(pairs),
+        )
+        .delete(synchronize_session="fetch")
+    )
+    db.flush()
+    return count
+
+
+def list_assignees(db: Session, part_id: uuid.UUID) -> list[PartAssignee]:
+    """Part 담당자 목록 조회."""
+    return (
+        db.query(PartAssignee)
+        .filter(PartAssignee.part_id == part_id)
+        .all()
+    )
+
+
+# ── Part 담당팀 (PartTeamAssignment) ──
+
+
+def add_team_assignments(
+    db: Session,
+    part_id: uuid.UUID,
+    assignments: list[dict],
+) -> int:
+    """담당팀 배치 추가 — 중복 무시, 신규 건수 반환.
+
+    assignments: [{"team_id": UUID, "discipline": str}, ...]
+    추가된 팀 멤버와 겹치는 개인 배정(PartAssignee)은 자동 제거됩니다.
+    """
+    if not assignments:
+        return 0
+
+    existing_rows = (
+        db.query(PartTeamAssignment.team_id, PartTeamAssignment.discipline)
+        .filter(PartTeamAssignment.part_id == part_id)
+        .all()
+    )
+    existing = {(r.team_id, r.discipline) for r in existing_rows}
+
+    new_items = [a for a in assignments if (a["team_id"], a["discipline"]) not in existing]
+    for item in new_items:
+        db.add(
+            PartTeamAssignment(
+                part_id=part_id,
+                team_id=item["team_id"],
+                discipline=item["discipline"],
+            )
+        )
+    if new_items:
+        db.flush()
+
+        # 새 팀 멤버와 겹치는 개인 배정 자동 제거
+        new_team_ids = [a["team_id"] for a in new_items]
+        overlapping = (
+            db.query(TeamMember.user_id, PartTeamAssignment.discipline)
+            .join(PartTeamAssignment, TeamMember.team_id == PartTeamAssignment.team_id)
+            .filter(
+                PartTeamAssignment.part_id == part_id,
+                PartTeamAssignment.team_id.in_(new_team_ids),
+            )
+            .all()
+        )
+        if overlapping:
+            overlap_pairs = [(r.user_id, r.discipline) for r in overlapping]
+            db.query(PartAssignee).filter(
+                PartAssignee.part_id == part_id,
+                tuple_(PartAssignee.user_id, PartAssignee.discipline).in_(overlap_pairs),
+            ).delete(synchronize_session="fetch")
+            db.flush()
+
+    return len(new_items)
+
+
+def remove_team_assignments(
+    db: Session,
+    part_id: uuid.UUID,
+    assignments: list[dict],
+) -> int:
+    """담당팀 배치 제거 — 삭제 건수 반환.
+
+    assignments: [{"team_id": UUID, "discipline": str}, ...]
+    """
+    if not assignments:
+        return 0
+
+    pairs = [(a["team_id"], a["discipline"]) for a in assignments]
+    count = (
+        db.query(PartTeamAssignment)
+        .filter(
+            PartTeamAssignment.part_id == part_id,
+            tuple_(PartTeamAssignment.team_id, PartTeamAssignment.discipline).in_(pairs),
+        )
+        .delete(synchronize_session="fetch")
+    )
+    db.flush()
+    return count
+
+
+def list_team_assignments(db: Session, part_id: uuid.UUID) -> list[PartTeamAssignment]:
+    """Part 담당팀 목록 조회."""
+    return (
+        db.query(PartTeamAssignment)
+        .filter(PartTeamAssignment.part_id == part_id)
+        .all()
+    )
+
+
+def count_unique_assignees(db: Session, part_id: uuid.UUID) -> int:
+    """Part 유니크 담당 인원수 — 개인 배정 + 팀 멤버 UNION DISTINCT."""
+    # 개인 배정 user_id
+    individual = (
+        select(PartAssignee.user_id)
+        .where(PartAssignee.part_id == part_id)
+    )
+    # 팀 배정 → TeamMember user_id
+    via_team = (
+        select(TeamMember.user_id)
+        .join(PartTeamAssignment, TeamMember.team_id == PartTeamAssignment.team_id)
+        .where(PartTeamAssignment.part_id == part_id)
+    )
+    union_q = individual.union(via_team).subquery()
+    return db.query(func.count()).select_from(union_q).scalar() or 0
