@@ -20,6 +20,7 @@ from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 from app import scheduler  # noqa: E402
 from app.api.v1.auth_router import router as auth_router  # noqa: E402
 from app.api.v1.user_router import router as user_router  # noqa: E402
+from app.api.v1.member_router import router as member_router  # noqa: E402
 from app.api.v1.organization import router as org_router  # noqa: E402
 from app.api.v1.activation_router import (
     router as activation_router,  # noqa: E402
@@ -159,6 +160,7 @@ app.add_middleware(
 app.include_router(activation_router)
 app.include_router(auth_router)
 app.include_router(org_router)
+app.include_router(member_router)
 app.include_router(user_router)
 app.include_router(dashboard_router)
 app.include_router(mapping_router)
