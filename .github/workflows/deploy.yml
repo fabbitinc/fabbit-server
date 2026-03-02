@@ -31,14 +31,14 @@ jobs:
             --group-id ${{ secrets.EC2_SG_ID }} \
             --protocol tcp --port 22 --cidr $MY_IP
 
-      # docker-compose.prod.yml + initdb.d 전송
+      # docker/ 디렉토리 전송
       - name: Copy files
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "docker-compose.prod.yml,initdb.d"
+          source: "docker"
           target: ${{ env.DEPLOY_DIR }}
 
       # EC2에 배포
@@ -59,10 +59,10 @@ jobs:
 
             # GHCR 로그인 + 앱 이미지만 pull
             echo ${{ secrets.GH_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker compose -f docker-compose.prod.yml pull fabbit-server
+            docker compose -f docker/docker-compose.prod.yml pull fabbit-server
 
             # 앱 서비스만 재시작 (DB 유지)
-            docker compose -f docker-compose.prod.yml up -d fabbit-server
+            docker compose -f docker/docker-compose.prod.yml up -d fabbit-server
             docker image prune -f
 
       # SG에서 러너 IP 제거

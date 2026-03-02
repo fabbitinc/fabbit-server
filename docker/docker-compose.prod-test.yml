@@ -1,14 +1,14 @@
 services:
   fabbit-server:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile
     container_name: fabbit-server
     restart: unless-stopped
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - ../.env
     depends_on:
       fabbit-db:
         condition: service_healthy
