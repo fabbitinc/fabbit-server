@@ -14,3 +14,5 @@ class Discipline(str, Enum):
     PROCUREMENT = "PROCUREMENT"  # 구매
     TEST = "TEST"  # 시험
 ```
+
+ㅣ

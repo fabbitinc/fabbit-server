@@ -25,6 +25,8 @@ services:
       - "5432:5432"
     env_file:
       - .env
+    environment:
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=ko-KR"
     volumes:
       - ./initdb.d:/docker-entrypoint-initdb.d
       - fabbit-db-data:/var/lib/postgresql

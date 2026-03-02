@@ -43,6 +43,7 @@ services:
       POSTGRES_USER: fabbit
       POSTGRES_PASSWORD: fabbit
       POSTGRES_DB: fabbit
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=ko-KR"
     volumes:
       - ./initdb.d:/docker-entrypoint-initdb.d
       - fabbit-db-data:/var/lib/postgresql

@@ -18,6 +18,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -28,7 +29,6 @@ from app.core.database import TenantBase, generate_uuid7
 from app.core.exceptions import AppError
 from app.core.mixins import PkMixin, TimestampMixin
 from app.modules.file.events import FileAttached, FileDetached
-from app.modules.part.constants import Discipline
 
 if TYPE_CHECKING:
     from app.modules.file.models import File
@@ -59,6 +59,10 @@ class Part(AggregateRoot, TenantBase):
         Index("ix_parts_category", "category"),
         # 도면별 부품 조회 최적화
         Index("ix_parts_drawing_id", "drawing_id"),
+        # 담당자별 조회 최적화
+        Index("ix_parts_owner_id", "owner_id"),
+        # 담당팀별 조회 최적화
+        Index("ix_parts_team_id", "team_id"),
         # 확장 속성 필터링 최적화 (GIN)
         Index(
             "ix_parts_extended_properties",
@@ -73,6 +77,17 @@ class Part(AggregateRoot, TenantBase):
     drawing_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("drawings.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    # 담당자 — User id 논리적 참조 (cross-schema FK 없음)
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
+    )
+    # 담당팀
+    team_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("teams.id", ondelete="SET NULL"),
         nullable=True,
     )
     part_number: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -129,6 +144,11 @@ class Part(AggregateRoot, TenantBase):
         for attr in _STANDARD_ATTRS:
             if attr in props and props[attr] is not None:
                 setattr(part, attr, props[attr])
+        # 시스템 속성 (온톨로지 외)
+        if "owner_id" in props:
+            part.owner_id = props["owner_id"]
+        if "team_id" in props:
+            part.team_id = props["team_id"]
         # 확장 속성 설정
         if "extended_properties" in props:
             part.extended_properties = props["extended_properties"]
@@ -334,75 +354,43 @@ class PartSupplier(TenantBase):
     )
 
 
-class PartAssignee(TimestampMixin, PkMixin, TenantBase):
-    """Part 담당자 (N:M, discipline 기반)."""
+class CategoryDefaultAssignment(TimestampMixin, PkMixin, TenantBase):
+    """카테고리별 기본 담당자/팀 설정.
 
-    __tablename__ = "part_assignees"
+    category가 NULL이면 fallback 기본값 (전체 기본).
+    category가 NOT NULL이면 해당 카테고리의 기본값.
+    """
 
-    __table_args__ = (
-        # 동일 Part-User-Discipline 조합 중복 방지
-        UniqueConstraint(
-            "part_id",
-            "user_id",
-            "discipline",
-            name="uq_part_assignees_part_id_user_id_discipline",
-        ),
-        # Part 기준 담당자 조회 최적화
-        Index("ix_part_assignees_part_id", "part_id"),
-        # User 기준 담당 Part 조회 최적화
-        Index("ix_part_assignees_user_id", "user_id"),
-        {"comment": "Part 담당자 배정"},
-    )
-
-    part_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("parts.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    # User id 논리적 참조 (cross-schema FK 없음)
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        nullable=False,
-    )
-    discipline: Mapped[Discipline] = mapped_column(
-        String(30),
-        nullable=False,
-    )
-
-
-class PartTeamAssignment(TimestampMixin, PkMixin, TenantBase):
-    """Part 담당팀 (N:M, discipline 기반)."""
-
-    __tablename__ = "part_team_assignments"
+    __tablename__ = "category_default_assignments"
 
     __table_args__ = (
-        # 동일 Part-Team-Discipline 조합 중복 방지
-        UniqueConstraint(
-            "part_id",
-            "team_id",
-            "discipline",
-            name="uq_part_team_assignments_part_id_team_id_discipline",
+        # category IS NOT NULL인 행의 유일성 보장
+        Index(
+            "uq_category_default_assignments_category",
+            "category",
+            unique=True,
+            postgresql_where=text("category IS NOT NULL"),
         ),
-        # Part 기준 담당팀 조회 최적화
-        Index("ix_part_team_assignments_part_id", "part_id"),
-        # Team 기준 담당 Part 조회 최적화
-        Index("ix_part_team_assignments_team_id", "team_id"),
-        {"comment": "Part 담당팀 배정"},
+        # category IS NULL인 행은 최대 1건 (fallback)
+        Index(
+            "uq_category_default_assignments_fallback",
+            text("(true)"),
+            unique=True,
+            postgresql_where=text("category IS NULL"),
+        ),
     )
 
-    part_id: Mapped[uuid.UUID] = mapped_column(
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # 기본 담당자 — User id 논리적 참조 (cross-schema FK 없음)
+    default_owner_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("parts.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
-    team_id: Mapped[uuid.UUID] = mapped_column(
+    # 기본 담당팀
+    default_team_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("teams.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    discipline: Mapped[Discipline] = mapped_column(
-        String(30),
-        nullable=False,
+        ForeignKey("teams.id", ondelete="SET NULL"),
+        nullable=True,
     )
 
 

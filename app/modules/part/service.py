@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError
 from app.modules.part import repository as repo
-from app.modules.part.models import Part
+from app.modules.part.models import CategoryDefaultAssignment, Part
 
 if TYPE_CHECKING:
     from app.modules.file.models import File
@@ -53,40 +53,24 @@ def unassign_drawing(db: Session, part_id: uuid.UUID) -> uuid.UUID:
     return drawing_id
 
 
-# ── 담당자 / 담당팀 ──
+# ── 카테고리별 기본 담당자/팀 ──
 
 
-def add_assignees(
+def upsert_category_default(
     db: Session,
-    part_id: uuid.UUID,
-    assignments: list[dict],
-) -> int:
-    """Part에 담당자 배치 추가 — 신규 추가 건수 반환."""
-    return repo.add_assignees(db, part_id, assignments)
+    category: str | None,
+    owner_id: uuid.UUID | None,
+    team_id: uuid.UUID | None,
+) -> CategoryDefaultAssignment:
+    """카테고리별 기본 담당자/팀 설정 upsert."""
+    return repo.upsert_category_default(db, category, owner_id, team_id)
 
 
-def remove_assignees(
-    db: Session,
-    part_id: uuid.UUID,
-    assignments: list[dict],
-) -> int:
-    """Part에서 담당자 배치 제거 — 삭제 건수 반환."""
-    return repo.remove_assignees(db, part_id, assignments)
-
-
-def add_team_assignments(
-    db: Session,
-    part_id: uuid.UUID,
-    assignments: list[dict],
-) -> int:
-    """Part에 담당팀 배치 추가 — 신규 추가 건수 반환."""
-    return repo.add_team_assignments(db, part_id, assignments)
-
-
-def remove_team_assignments(
-    db: Session,
-    part_id: uuid.UUID,
-    assignments: list[dict],
-) -> int:
-    """Part에서 담당팀 배치 제거 — 삭제 건수 반환."""
-    return repo.remove_team_assignments(db, part_id, assignments)
+def delete_category_default(db: Session, category: str | None) -> None:
+    """카테고리별 기본 담당자/팀 설정 삭제 — 없으면 AppError."""
+    deleted = repo.delete_category_default(db, category)
+    if not deleted:
+        raise AppError(
+            message=f"카테고리 '{category}' 기본값 설정을 찾을 수 없습니다",
+            code="NOT_FOUND",
+        )

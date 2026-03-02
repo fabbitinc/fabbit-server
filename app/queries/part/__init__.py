@@ -8,9 +8,8 @@ from app.queries.part.get_part_bom import get_part_bom
 from app.queries.part.get_part_detail import get_part_detail
 from app.queries.part.get_part_files import get_part_files
 from app.queries.part.get_part_suppliers import get_part_suppliers
-from app.queries.part.list_assignees import list_assignees
+from app.queries.part.list_category_defaults import list_category_defaults
 from app.queries.part.list_parts import list_parts
-from app.queries.part.list_team_assignments import list_team_assignments
 
 __all__ = [
     "export_bom_excel",
@@ -21,7 +20,6 @@ __all__ = [
     "get_part_detail",
     "get_part_files",
     "get_part_suppliers",
-    "list_assignees",
+    "list_category_defaults",
     "list_parts",
-    "list_team_assignments",
 ]

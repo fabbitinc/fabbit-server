@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 
 from app.modules.drawing.constants import ConversionStatus
 from app.modules.file.schemas import FileItem
-from app.modules.part.constants import Discipline
 from app.modules.user.schemas import UserSummary
 
 # ── 관계 서브 모델 ──
@@ -136,13 +135,18 @@ class PartDetailResponse(BaseModel):
     lead_time_days: int | None = None
     extended_properties: dict[str, Any] = {}
 
+    # 담당자/팀
+    owner_id: uuid.UUID | None = None
+    owner: UserSummary | None = None
+    team_id: uuid.UUID | None = None
+    team_name: str | None = None
+
     drawing: RelatedDrawing | None = None
     children_count: int = 0
     parents_count: int = 0
     suppliers_count: int = 0
     files_count: int = 0
     projects_count: int = 0
-    assignees_count: int = 0
 
 
 # ── 관계 별도 조회 응답 ──
@@ -195,62 +199,29 @@ class BomTreeResponse(BaseModel):
     total_count: int
 
 
-# ── 담당자 / 담당팀 ──
+# ── 카테고리별 기본 담당자/팀 ──
 
 
-class AssigneeEntry(BaseModel):
-    """담당자 배정 항목"""
+class CategoryDefaultRequest(BaseModel):
+    """카테고리 기본 담당자/팀 설정 요청"""
 
-    user_id: uuid.UUID
-    discipline: Discipline
-
-
-class TeamAssignmentEntry(BaseModel):
-    """담당팀 배정 항목"""
-
-    team_id: uuid.UUID
-    discipline: Discipline
+    category: str | None = None
+    default_owner_id: uuid.UUID | None = None
+    default_team_id: uuid.UUID | None = None
 
 
-class ManageAssigneesRequest(BaseModel):
-    """담당자 배치 추가/제거 요청"""
+class CategoryDefaultItem(BaseModel):
+    """카테고리 기본 담당자/팀 설정 항목"""
 
-    assignments: list[AssigneeEntry] = Field(..., min_length=1)
-
-
-class ManageTeamAssignmentsRequest(BaseModel):
-    """담당팀 배치 추가/제거 요청"""
-
-    assignments: list[TeamAssignmentEntry] = Field(..., min_length=1)
-
-
-class ManageAssignmentsResponse(BaseModel):
-    """담당자/담당팀 추가/제거 결과"""
-
-    count: int
+    id: uuid.UUID
+    category: str | None = None
+    default_owner_id: uuid.UUID | None = None
+    default_owner: UserSummary | None = None
+    default_team_id: uuid.UUID | None = None
+    default_team_name: str | None = None
 
 
-class PartAssigneeSummary(UserSummary):
-    """Part 담당자 요약"""
+class CategoryDefaultListResponse(BaseModel):
+    """카테고리 기본 담당자/팀 설정 목록"""
 
-    discipline: Discipline
-
-
-class PartTeamAssignmentSummary(BaseModel):
-    """Part 담당팀 요약"""
-
-    team_id: uuid.UUID
-    team_name: str
-    discipline: Discipline
-
-
-class PartAssigneeListResponse(BaseModel):
-    """Part 담당자 목록"""
-
-    items: list[PartAssigneeSummary]
-
-
-class PartTeamAssignmentListResponse(BaseModel):
-    """Part 담당팀 목록"""
-
-    items: list[PartTeamAssignmentSummary]
+    items: list[CategoryDefaultItem]

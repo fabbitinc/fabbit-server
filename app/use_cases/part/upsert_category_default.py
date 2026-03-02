@@ -1,0 +1,62 @@
+"""카테고리별 기본 담당자/팀 설정 upsert."""
+
+import uuid
+
+from sqlalchemy.orm import Session
+
+from app.core.auth_context import AuthContext
+from app.core.transactional import transactional
+from app.modules.file.mapper import get_file_url
+from app.modules.part import service as part_service
+from app.modules.part.schemas import CategoryDefaultItem
+from app.modules.team.models import Team
+from app.modules.user.models import User
+from app.modules.user.schemas import UserSummary
+
+
+def _to_item(row, db: Session) -> CategoryDefaultItem:
+    """CategoryDefaultAssignment → CategoryDefaultItem 변환."""
+    owner_summary = None
+    if row.default_owner_id:
+        user = db.query(User).filter(User.id == row.default_owner_id).first()
+        if user:
+            owner_summary = UserSummary(
+                user_id=user.id,
+                full_name=user.full_name,
+                email=user.email,
+                phone=user.phone,
+                profile_image_url=get_file_url(user.profile_image_file_key),
+            )
+
+    team_name = None
+    if row.default_team_id:
+        team = db.query(Team).filter(Team.id == row.default_team_id).first()
+        if team:
+            team_name = team.name
+
+    return CategoryDefaultItem(
+        id=row.id,
+        category=row.category,
+        default_owner_id=row.default_owner_id,
+        default_owner=owner_summary,
+        default_team_id=row.default_team_id,
+        default_team_name=team_name,
+    )
+
+
+@transactional()
+def upsert_category_default(
+    db: Session,
+    auth: AuthContext,
+    category: str | None,
+    owner_id: uuid.UUID | None,
+    team_id: uuid.UUID | None,
+) -> CategoryDefaultItem:
+    """카테고리별 기본 담당자/팀 설정 upsert."""
+    row = part_service.upsert_category_default(
+        db,
+        category=category,
+        owner_id=owner_id,
+        team_id=team_id,
+    )
+    return _to_item(row, db)

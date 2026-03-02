@@ -13,21 +13,16 @@ from app.core.database import generate_uuid7
 from app.infrastructure.age_client import execute_cypher_raw
 from app.modules.drawing.models import Drawing
 from app.modules.ontology.cypher_utils import escape_cypher_value
-from sqlalchemy import tuple_
-
-from app.modules.part.constants import Discipline
 from app.modules.part.models import (
     _STANDARD_ATTRS,
     BomLink,
+    CategoryDefaultAssignment,
     Part,
-    PartAssignee,
     PartRevision,
     PartSupplier,
-    PartTeamAssignment,
 )
 from app.modules.project.models import ProjectPart
 from app.modules.supplier.models import Supplier
-from app.modules.team.models import TeamMember
 
 # models.py에서 이동된 상수를 re-export (service.py 호환)
 _PART_STANDARD_ATTRS = _STANDARD_ATTRS
@@ -403,6 +398,14 @@ def upsert_part(
         all_props["revision"] = incoming_revision or "1"
         if extended:
             all_props["extended_properties"] = extended
+
+        # 카테고리 기본 담당자/팀 자동 배정
+        cat = standard.get("category")
+        default = get_category_default(db, cat)
+        if default:
+            all_props["owner_id"] = default.default_owner_id
+            all_props["team_id"] = default.default_team_id
+
         part = Part.create(part_number, **all_props)
         db.add(part)
         db.flush()
@@ -842,266 +845,86 @@ def _create_revision_snapshot(
     db.add(revision)
 
 
-# ── Part 담당자 (PartAssignee) ──
+# ── 카테고리별 기본 담당자/팀 ──
 
 
-def add_assignees(
-    db: Session,
-    part_id: uuid.UUID,
-    assignments: list[dict],
-) -> int:
-    """담당자 배치 추가 — 중복·팀 커버 무시, 신규 건수 반환.
-
-    assignments: [{"user_id": UUID, "discipline": str}, ...]
-    팀 배정으로 이미 커버된 (user_id, discipline)은 스킵합니다.
-    ALL과 개별 discipline은 동일 user에 대해 상호 배타적입니다.
-    """
-    if not assignments:
-        return 0
-
-    # 이미 개인 배정된 조합
-    existing_rows = (
-        db.query(PartAssignee.user_id, PartAssignee.discipline)
-        .filter(PartAssignee.part_id == part_id)
-        .all()
-    )
-    existing = {(r.user_id, r.discipline) for r in existing_rows}
-
-    # 팀 배정으로 커버된 (user_id, discipline) 조합
-    team_coverage_rows = (
-        db.query(TeamMember.user_id, PartTeamAssignment.discipline)
-        .join(PartTeamAssignment, TeamMember.team_id == PartTeamAssignment.team_id)
-        .filter(PartTeamAssignment.part_id == part_id)
-        .all()
-    )
-    covered_by_team = {(r.user_id, r.discipline) for r in team_coverage_rows}
-
-    # 팀이 ALL로 배정된 경우 해당 멤버의 모든 discipline 커버
-    all_covered_users = {
-        r.user_id for r in team_coverage_rows
-        if r.discipline == Discipline.ALL
-    }
-
-    new_items = [
-        a for a in assignments
-        if (a["user_id"], a["discipline"]) not in existing
-        and (a["user_id"], a["discipline"]) not in covered_by_team
-        and a["user_id"] not in all_covered_users
-    ]
-
-    if not new_items:
-        return 0
-
-    # 상호 배타 처리: ALL ↔ 개별 discipline
-    all_user_ids = [a["user_id"] for a in new_items if a["discipline"] == Discipline.ALL]
-    individual_user_ids = [a["user_id"] for a in new_items if a["discipline"] != Discipline.ALL]
-
-    if all_user_ids:
-        # ALL 추가 → 해당 user의 기존 개별 discipline 모두 제거
-        db.query(PartAssignee).filter(
-            PartAssignee.part_id == part_id,
-            PartAssignee.user_id.in_(all_user_ids),
-            PartAssignee.discipline != Discipline.ALL,
-        ).delete(synchronize_session="fetch")
-
-    if individual_user_ids:
-        # 개별 discipline 추가 → 해당 user의 기존 ALL 제거
-        db.query(PartAssignee).filter(
-            PartAssignee.part_id == part_id,
-            PartAssignee.user_id.in_(individual_user_ids),
-            PartAssignee.discipline == Discipline.ALL,
-        ).delete(synchronize_session="fetch")
-
-    for item in new_items:
-        db.add(
-            PartAssignee(
-                part_id=part_id,
-                user_id=item["user_id"],
-                discipline=item["discipline"],
-            )
+def get_category_default(
+    db: Session, category: str | None
+) -> CategoryDefaultAssignment | None:
+    """카테고리 기본 담당자/팀 조회 — 없으면 fallback(category IS NULL) 조회."""
+    if category is not None:
+        result = (
+            db.query(CategoryDefaultAssignment)
+            .filter(CategoryDefaultAssignment.category == category)
+            .first()
         )
-    db.flush()
-    return len(new_items)
-
-
-def remove_assignees(
-    db: Session,
-    part_id: uuid.UUID,
-    assignments: list[dict],
-) -> int:
-    """담당자 배치 제거 — 삭제 건수 반환.
-
-    assignments: [{"user_id": UUID, "discipline": str}, ...]
-    """
-    if not assignments:
-        return 0
-
-    pairs = [(a["user_id"], a["discipline"]) for a in assignments]
-    count = (
-        db.query(PartAssignee)
-        .filter(
-            PartAssignee.part_id == part_id,
-            tuple_(PartAssignee.user_id, PartAssignee.discipline).in_(pairs),
-        )
-        .delete(synchronize_session="fetch")
-    )
-    db.flush()
-    return count
-
-
-def list_assignees(db: Session, part_id: uuid.UUID) -> list[PartAssignee]:
-    """Part 담당자 목록 조회."""
+        if result:
+            return result
+    # fallback: category IS NULL
     return (
-        db.query(PartAssignee)
-        .filter(PartAssignee.part_id == part_id)
-        .all()
+        db.query(CategoryDefaultAssignment)
+        .filter(CategoryDefaultAssignment.category.is_(None))
+        .first()
     )
 
 
-# ── Part 담당팀 (PartTeamAssignment) ──
-
-
-def add_team_assignments(
+def upsert_category_default(
     db: Session,
-    part_id: uuid.UUID,
-    assignments: list[dict],
-) -> int:
-    """담당팀 배치 추가 — 중복 무시, 신규 건수 반환.
-
-    assignments: [{"team_id": UUID, "discipline": str}, ...]
-    추가된 팀 멤버와 겹치는 개인 배정(PartAssignee)은 자동 제거됩니다.
-    ALL과 개별 discipline은 동일 team에 대해 상호 배타적입니다.
-    """
-    if not assignments:
-        return 0
-
-    existing_rows = (
-        db.query(PartTeamAssignment.team_id, PartTeamAssignment.discipline)
-        .filter(PartTeamAssignment.part_id == part_id)
-        .all()
-    )
-    existing = {(r.team_id, r.discipline) for r in existing_rows}
-
-    new_items = [a for a in assignments if (a["team_id"], a["discipline"]) not in existing]
-    if not new_items:
-        return 0
-
-    # 상호 배타 처리: ALL ↔ 개별 discipline
-    all_team_ids = [a["team_id"] for a in new_items if a["discipline"] == Discipline.ALL]
-    individual_team_ids = [a["team_id"] for a in new_items if a["discipline"] != Discipline.ALL]
-
-    if all_team_ids:
-        # ALL 추가 → 해당 team의 기존 개별 discipline 모두 제거
-        db.query(PartTeamAssignment).filter(
-            PartTeamAssignment.part_id == part_id,
-            PartTeamAssignment.team_id.in_(all_team_ids),
-            PartTeamAssignment.discipline != Discipline.ALL,
-        ).delete(synchronize_session="fetch")
-
-    if individual_team_ids:
-        # 개별 discipline 추가 → 해당 team의 기존 ALL 제거
-        db.query(PartTeamAssignment).filter(
-            PartTeamAssignment.part_id == part_id,
-            PartTeamAssignment.team_id.in_(individual_team_ids),
-            PartTeamAssignment.discipline == Discipline.ALL,
-        ).delete(synchronize_session="fetch")
-
-    for item in new_items:
-        db.add(
-            PartTeamAssignment(
-                part_id=part_id,
-                team_id=item["team_id"],
-                discipline=item["discipline"],
-            )
+    category: str | None,
+    owner_id: uuid.UUID | None,
+    team_id: uuid.UUID | None,
+) -> CategoryDefaultAssignment:
+    """카테고리 기본 담당자/팀 설정 upsert."""
+    if category is not None:
+        existing = (
+            db.query(CategoryDefaultAssignment)
+            .filter(CategoryDefaultAssignment.category == category)
+            .first()
         )
-    db.flush()
-
-    # 새 팀 멤버와 겹치는 개인 배정 자동 제거
-    new_team_ids = [a["team_id"] for a in new_items]
-
-    # ALL로 추가된 팀의 멤버 → 모든 discipline 개인 배정 제거
-    if all_team_ids:
-        all_member_ids = [
-            r.user_id for r in
-            db.query(TeamMember.user_id)
-            .filter(TeamMember.team_id.in_(all_team_ids))
-            .all()
-        ]
-        if all_member_ids:
-            db.query(PartAssignee).filter(
-                PartAssignee.part_id == part_id,
-                PartAssignee.user_id.in_(all_member_ids),
-            ).delete(synchronize_session="fetch")
-
-    # 개별 discipline로 추가된 팀 → exact match 개인 배정 제거
-    non_all_team_ids = [tid for tid in new_team_ids if tid not in all_team_ids]
-    if non_all_team_ids:
-        overlapping = (
-            db.query(TeamMember.user_id, PartTeamAssignment.discipline)
-            .join(PartTeamAssignment, TeamMember.team_id == PartTeamAssignment.team_id)
-            .filter(
-                PartTeamAssignment.part_id == part_id,
-                PartTeamAssignment.team_id.in_(non_all_team_ids),
-            )
-            .all()
+    else:
+        existing = (
+            db.query(CategoryDefaultAssignment)
+            .filter(CategoryDefaultAssignment.category.is_(None))
+            .first()
         )
-        if overlapping:
-            overlap_pairs = [(r.user_id, r.discipline) for r in overlapping]
-            db.query(PartAssignee).filter(
-                PartAssignee.part_id == part_id,
-                tuple_(PartAssignee.user_id, PartAssignee.discipline).in_(overlap_pairs),
-            ).delete(synchronize_session="fetch")
+
+    if existing:
+        existing.default_owner_id = owner_id
+        existing.default_team_id = team_id
+    else:
+        existing = CategoryDefaultAssignment(
+            category=category,
+            default_owner_id=owner_id,
+            default_team_id=team_id,
+        )
+        db.add(existing)
 
     db.flush()
-    return len(new_items)
+    return existing
 
 
-def remove_team_assignments(
-    db: Session,
-    part_id: uuid.UUID,
-    assignments: list[dict],
-) -> int:
-    """담당팀 배치 제거 — 삭제 건수 반환.
-
-    assignments: [{"team_id": UUID, "discipline": str}, ...]
-    """
-    if not assignments:
-        return 0
-
-    pairs = [(a["team_id"], a["discipline"]) for a in assignments]
-    count = (
-        db.query(PartTeamAssignment)
-        .filter(
-            PartTeamAssignment.part_id == part_id,
-            tuple_(PartTeamAssignment.team_id, PartTeamAssignment.discipline).in_(pairs),
+def delete_category_default(db: Session, category: str | None) -> bool:
+    """카테고리 기본 담당자/팀 설정 삭제 — 삭제 성공 여부 반환."""
+    if category is not None:
+        count = (
+            db.query(CategoryDefaultAssignment)
+            .filter(CategoryDefaultAssignment.category == category)
+            .delete()
         )
-        .delete(synchronize_session="fetch")
-    )
+    else:
+        count = (
+            db.query(CategoryDefaultAssignment)
+            .filter(CategoryDefaultAssignment.category.is_(None))
+            .delete()
+        )
     db.flush()
-    return count
+    return count > 0
 
 
-def list_team_assignments(db: Session, part_id: uuid.UUID) -> list[PartTeamAssignment]:
-    """Part 담당팀 목록 조회."""
+def list_category_defaults(db: Session) -> list[CategoryDefaultAssignment]:
+    """카테고리 기본 담당자/팀 설정 전체 목록."""
     return (
-        db.query(PartTeamAssignment)
-        .filter(PartTeamAssignment.part_id == part_id)
+        db.query(CategoryDefaultAssignment)
+        .order_by(CategoryDefaultAssignment.category.asc().nulls_first())
         .all()
     )
-
-
-def count_unique_assignees(db: Session, part_id: uuid.UUID) -> int:
-    """Part 유니크 담당 인원수 — 개인 배정 + 팀 멤버 UNION DISTINCT."""
-    # 개인 배정 user_id
-    individual = (
-        select(PartAssignee.user_id)
-        .where(PartAssignee.part_id == part_id)
-    )
-    # 팀 배정 → TeamMember user_id
-    via_team = (
-        select(TeamMember.user_id)
-        .join(PartTeamAssignment, TeamMember.team_id == PartTeamAssignment.team_id)
-        .where(PartTeamAssignment.part_id == part_id)
-    )
-    union_q = individual.union(via_team).subquery()
-    return db.query(func.count()).select_from(union_q).scalar() or 0
