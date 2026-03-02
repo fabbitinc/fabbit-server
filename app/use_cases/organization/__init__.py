@@ -5,7 +5,6 @@ from app.use_cases.organization.cancel_invitation import cancel_invitation
 from app.use_cases.organization.create_invitation import create_invitation
 from app.use_cases.organization.create_organization import create_organization
 from app.use_cases.organization.delete_profile_image import delete_profile_image
-from app.use_cases.organization.remove_member import remove_member
 from app.use_cases.organization.set_profile_image import set_profile_image
 from app.use_cases.organization.switch_org import switch_org
 
@@ -15,7 +14,6 @@ __all__ = [
     "create_invitation",
     "create_organization",
     "delete_profile_image",
-    "remove_member",
     "set_profile_image",
     "switch_org",
 ]
