@@ -747,6 +747,120 @@
                 ]
             }
         },
+        "/api/v1/organizations/invitations": {
+            "get": {
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "List Invitations",
+                "description": "\uc870\uc9c1\uc758 \ucd08\ub300 \ubaa9\ub85d \uc870\ud68c.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \uc870\ud68c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\ubaa8\ub4e0 \uc0c1\ud0dc(PENDING, ACCEPTED, CANCELLED)\uc758 \ucd08\ub300\ub97c \ucd5c\uc2e0\uc21c\uc73c\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "list_invitations_api_v1_organizations_invitations_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InvitationListResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Create Invitation",
+                "description": "\uc774\uba54\uc77c\ub85c \uc870\uc9c1 \ucd08\ub300 \ubc1c\uc1a1.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \ucd08\ub300\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\uc774\ubbf8 PENDING \uc0c1\ud0dc\uc778 \ucd08\ub300\uac00 \uc788\uc73c\uba74 \uc911\ubcf5 \uc5d0\ub7ec\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uc774\uc804\uc5d0 \ucde8\uc18c\ub41c \ucd08\ub300\uac00 \uc788\uc73c\uba74 \uc0ad\uc81c \ud6c4 \uc0c8\ub85c \uc0dd\uc131\ud569\ub2c8\ub2e4.",
+                "operationId": "create_invitation_api_v1_organizations_invitations_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateInvitationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InvitationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/organizations/invitations/{invitation_id}": {
+            "delete": {
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Cancel Invitation",
+                "description": "\ucd08\ub300 \ucde8\uc18c.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \ucde8\uc18c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\nPENDING \uc0c1\ud0dc\uc778 \ucd08\ub300\ub9cc \ucde8\uc18c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+                "operationId": "cancel_invitation_api_v1_organizations_invitations__invitation_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "invitation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Invitation Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/members/lookup": {
             "get": {
                 "tags": [
@@ -845,14 +959,14 @@
                 ]
             }
         },
-        "/api/v1/members/{user_id}": {
-            "delete": {
+        "/api/v1/members/{user_id}/role": {
+            "patch": {
                 "tags": [
                     "members"
                 ],
-                "summary": "Remove Member",
-                "description": "\uc870\uc9c1\uc5d0\uc11c \uba64\ubc84 \uc81c\uac70.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \uc81c\uac70\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\uc870\uc9c1 \uc18c\uc720\uc790\uc640 \uc790\uae30 \uc790\uc2e0\uc740 \uc81c\uac70\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.",
-                "operationId": "remove_member_api_v1_members__user_id__delete",
+                "summary": "Change Member Role",
+                "description": "\uba64\ubc84 \uc5ed\ud560 \ubcc0\uacbd.\n\n\uc18c\uc720\uc790(OWNER)\ub9cc \ubcc0\uacbd\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\uc790\uae30 \uc790\uc2e0\uc758 \uc5ed\ud560\uc740 \ubcc0\uacbd\ud560 \uc218 \uc5c6\uc73c\uba70, \ub9c8\uc9c0\ub9c9 \uc18c\uc720\uc790\ub97c \uac15\ub4f1\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.",
+                "operationId": "change_member_role_api_v1_members__user_id__role_patch",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -870,9 +984,24 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangeRoleRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
-                    "204": {
-                        "description": "Successful Response"
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -887,86 +1016,14 @@
                 }
             }
         },
-        "/api/v1/organizations/invitations": {
-            "get": {
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "List Invitations",
-                "description": "\uc870\uc9c1\uc758 \ucd08\ub300 \ubaa9\ub85d \uc870\ud68c.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \uc870\ud68c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\ubaa8\ub4e0 \uc0c1\ud0dc(PENDING, ACCEPTED, CANCELLED)\uc758 \ucd08\ub300\ub97c \ucd5c\uc2e0\uc21c\uc73c\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.",
-                "operationId": "list_invitations_api_v1_organizations_invitations_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/InvitationListResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            },
-            "post": {
-                "tags": [
-                    "organizations"
-                ],
-                "summary": "Create Invitation",
-                "description": "\uc774\uba54\uc77c\ub85c \uc870\uc9c1 \ucd08\ub300 \ubc1c\uc1a1.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \ucd08\ub300\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\uc774\ubbf8 PENDING \uc0c1\ud0dc\uc778 \ucd08\ub300\uac00 \uc788\uc73c\uba74 \uc911\ubcf5 \uc5d0\ub7ec\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uc774\uc804\uc5d0 \ucde8\uc18c\ub41c \ucd08\ub300\uac00 \uc788\uc73c\uba74 \uc0ad\uc81c \ud6c4 \uc0c8\ub85c \uc0dd\uc131\ud569\ub2c8\ub2e4.",
-                "operationId": "create_invitation_api_v1_organizations_invitations_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CreateInvitationRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "201": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/InvitationResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/api/v1/organizations/invitations/{invitation_id}": {
+        "/api/v1/members/{user_id}": {
             "delete": {
                 "tags": [
-                    "organizations"
+                    "members"
                 ],
-                "summary": "Cancel Invitation",
-                "description": "\ucd08\ub300 \ucde8\uc18c.\n\n\uad00\ub9ac\uc790(ADMIN)\ub9cc \ucde8\uc18c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\nPENDING \uc0c1\ud0dc\uc778 \ucd08\ub300\ub9cc \ucde8\uc18c\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
-                "operationId": "cancel_invitation_api_v1_organizations_invitations__invitation_id__delete",
+                "summary": "Remove Member",
+                "description": "\uc870\uc9c1\uc5d0\uc11c \uba64\ubc84 \uc81c\uac70.\n\n\uad00\ub9ac\uc790(ADMIN \uc774\uc0c1)\ub9cc \uc81c\uac70\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.\n\uc790\uae30 \uc790\uc2e0\uacfc \uc0c1\uc704 \uc5ed\ud560 \uba64\ubc84\ub294 \uc81c\uac70\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.",
+                "operationId": "remove_member_api_v1_members__user_id__delete",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -974,13 +1031,13 @@
                 ],
                 "parameters": [
                     {
-                        "name": "invitation_id",
+                        "name": "user_id",
                         "in": "path",
                         "required": true,
                         "schema": {
                             "type": "string",
                             "format": "uuid",
-                            "title": "Invitation Id"
+                            "title": "User Id"
                         }
                     }
                 ],
@@ -2749,6 +2806,318 @@
                 }
             }
         },
+        "/api/v1/parts/{part_id}/assignees": {
+            "get": {
+                "tags": [
+                    "part-assignees"
+                ],
+                "summary": "List Assignees",
+                "description": "Part \ub2f4\ub2f9\uc790 \ubaa9\ub85d \uc870\ud68c.\n\n\ud574\ub2f9 Part\uc5d0 \ubc30\uc815\ub41c \ub2f4\ub2f9\uc790(User) \ubaa9\ub85d\uc744 discipline \ud3ec\ud568\ud558\uc5ec \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "list_assignees_api_v1_parts__part_id__assignees_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PartAssigneeListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "part-assignees"
+                ],
+                "summary": "Add Assignees",
+                "description": "Part \ub2f4\ub2f9\uc790 \ubc30\uce58 \ucd94\uac00.\n\n\ub3d9\uc77c Part\uc5d0 \uac19\uc740 User + \ub2e4\ub978 discipline \uc870\ud569\uc740 \ubcc4\ub3c4 \ubc30\uc815\uc73c\ub85c \ucc98\ub9ac\ub429\ub2c8\ub2e4.\n\uc774\ubbf8 \uc874\uc7ac\ud558\ub294 (user_id, discipline) \uc870\ud569\uc740 \ubb34\uc2dc\ub429\ub2c8\ub2e4 (\uba71\ub4f1\uc131).",
+                "operationId": "add_assignees_api_v1_parts__part_id__assignees_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ManageAssigneesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ManageAssignmentsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "part-assignees"
+                ],
+                "summary": "Remove Assignees",
+                "description": "Part \ub2f4\ub2f9\uc790 \ubc30\uce58 \uc81c\uac70.\n\n\uc9c0\uc815\ub41c (user_id, discipline) \uc870\ud569\uc744 \uc77c\uad04 \uc0ad\uc81c\ud569\ub2c8\ub2e4.",
+                "operationId": "remove_assignees_api_v1_parts__part_id__assignees_delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ManageAssigneesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/parts/{part_id}/assigned-teams": {
+            "get": {
+                "tags": [
+                    "part-team-assignments"
+                ],
+                "summary": "List Team Assignments",
+                "description": "Part \ub2f4\ub2f9\ud300 \ubaa9\ub85d \uc870\ud68c.\n\n\ud574\ub2f9 Part\uc5d0 \ubc30\uc815\ub41c \ub2f4\ub2f9\ud300(Team) \ubaa9\ub85d\uc744 discipline \ud3ec\ud568\ud558\uc5ec \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "list_team_assignments_api_v1_parts__part_id__assigned_teams_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PartTeamAssignmentListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "part-team-assignments"
+                ],
+                "summary": "Add Team Assignments",
+                "description": "Part \ub2f4\ub2f9\ud300 \ubc30\uce58 \ucd94\uac00.\n\n\ub3d9\uc77c Part\uc5d0 \uac19\uc740 Team + \ub2e4\ub978 discipline \uc870\ud569\uc740 \ubcc4\ub3c4 \ubc30\uc815\uc73c\ub85c \ucc98\ub9ac\ub429\ub2c8\ub2e4.\n\uc774\ubbf8 \uc874\uc7ac\ud558\ub294 (team_id, discipline) \uc870\ud569\uc740 \ubb34\uc2dc\ub429\ub2c8\ub2e4 (\uba71\ub4f1\uc131).",
+                "operationId": "add_team_assignments_api_v1_parts__part_id__assigned_teams_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ManageTeamAssignmentsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ManageAssignmentsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "part-team-assignments"
+                ],
+                "summary": "Remove Team Assignments",
+                "description": "Part \ub2f4\ub2f9\ud300 \ubc30\uce58 \uc81c\uac70.\n\n\uc9c0\uc815\ub41c (team_id, discipline) \uc870\ud569\uc744 \uc77c\uad04 \uc0ad\uc81c\ud569\ub2c8\ub2e4.",
+                "operationId": "remove_team_assignments_api_v1_parts__part_id__assigned_teams_delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ManageTeamAssignmentsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/projects": {
             "post": {
                 "tags": [
@@ -4381,6 +4750,64 @@
                 }
             }
         },
+        "/api/v1/issues/{issue_number}/assigned-teams": {
+            "put": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Sync Team Assignees",
+                "description": "\uc774\uc288 \ud300 \ub2f4\ub2f9\uc790 \ub3d9\uae30\ud654.\n\n\uc804\ub2ec\ub41c `team_ids`\ub97c \uc774\uc288\uc758 \ucd5c\uc885 \ud300 \ub2f4\ub2f9\uc790 \ubaa9\ub85d\uc73c\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\uae30\uc874 \ud300\uacfc diff\ub97c \ube44\uad50\ud558\uc5ec \ucd94\uac00/\uc81c\uac70\ub97c \uc790\ub3d9 \ucc98\ub9ac\ud569\ub2c8\ub2e4.\n\ucd94\uac00\ub41c \ud300 \uba64\ubc84\uc640 \uacb9\uce58\ub294 \uac1c\uc778 \ub2f4\ub2f9\uc790\ub294 \uc790\ub3d9 \uc81c\uac70\ub429\ub2c8\ub2e4.\n\ube48 \ubaa9\ub85d \uc804\ub2ec \uc2dc \ubaa8\ub4e0 \ud300 \ub2f4\ub2f9\uc790\uac00 \ud574\uc81c\ub429\ub2c8\ub2e4.",
+                "operationId": "sync_team_assignees_api_v1_issues__issue_number__assigned_teams_put",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyncTeamAssigneesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyncTeamAssigneesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/issues/{issue_number}/close": {
             "post": {
                 "tags": [
@@ -5555,6 +5982,64 @@
                 }
             }
         },
+        "/api/v1/changes/{issue_number}/assigned-teams": {
+            "put": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Sync Team Assignees",
+                "description": "\ubcc0\uacbd \uc694\uccad \ud300 \ub2f4\ub2f9\uc790 \ub3d9\uae30\ud654.\n\n\uc804\ub2ec\ub41c `team_ids`\ub97c CR\uc758 \ucd5c\uc885 \ud300 \ub2f4\ub2f9\uc790 \ubaa9\ub85d\uc73c\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\ucd94\uac00\ub41c \ud300 \uba64\ubc84\uc640 \uacb9\uce58\ub294 \uac1c\uc778 \ub2f4\ub2f9\uc790\ub294 \uc790\ub3d9 \uc81c\uac70\ub429\ub2c8\ub2e4.\n\ube48 \ubaa9\ub85d \uc804\ub2ec \uc2dc \ubaa8\ub4e0 \ud300 \ub2f4\ub2f9\uc790\uac00 \ud574\uc81c\ub429\ub2c8\ub2e4.",
+                "operationId": "sync_team_assignees_api_v1_changes__issue_number__assigned_teams_put",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyncTeamAssigneesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyncTeamAssigneesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/changes/{issue_number}/reviewers": {
             "put": {
                 "tags": [
@@ -5596,6 +6081,122 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/SyncReviewersResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/changes/{issue_number}/reviewer-teams": {
+            "put": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Sync Team Reviewers",
+                "description": "\ubcc0\uacbd \uc694\uccad \ud300 \uac80\ud1a0\uc790 \ub3d9\uae30\ud654.\n\n\uc804\ub2ec\ub41c `team_ids`\ub97c CR\uc758 \ucd5c\uc885 \ud300 \uac80\ud1a0\uc790 \ubaa9\ub85d\uc73c\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\ucd94\uac00\ub41c \ud300 \uba64\ubc84\uc640 \uacb9\uce58\ub294 \uac1c\uc778 \uac80\ud1a0\uc790\ub294 \uc790\ub3d9 \uc81c\uac70\ub429\ub2c8\ub2e4.\n\ube48 \ubaa9\ub85d \uc804\ub2ec \uc2dc \ubaa8\ub4e0 \ud300 \uac80\ud1a0\uc790\uac00 \ud574\uc81c\ub429\ub2c8\ub2e4.",
+                "operationId": "sync_team_reviewers_api_v1_changes__issue_number__reviewer_teams_put",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyncTeamReviewersRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyncTeamReviewersResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/changes/{issue_number}/review": {
+            "post": {
+                "tags": [
+                    "changes"
+                ],
+                "summary": "Submit Review",
+                "description": "\ubcc0\uacbd \uc694\uccad \ub9ac\ubdf0 \uc81c\ucd9c.\n\n\ubcf8\uc778\uc774 \uac80\ud1a0\uc790\ub85c \ubc30\uc815\ub41c \uacbd\uc6b0\uc5d0\ub9cc \ud638\ucd9c \uac00\ub2a5\ud569\ub2c8\ub2e4.\n`status`\uc5d0 **APPROVED** \ub610\ub294 **REJECTED**\ub97c \uc804\ub2ec\ud569\ub2c8\ub2e4.\n`review_status`\uc640 `reviewed_at`\uc774 \uc5c5\ub370\uc774\ud2b8\ub429\ub2c8\ub2e4.",
+                "operationId": "submit_review_api_v1_changes__issue_number__review_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SubmitReviewRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SubmitReviewResponse"
                                 }
                             }
                         }
@@ -7363,6 +7964,25 @@
                 "title": "AddTeamMembersRequest",
                 "description": "\uba64\ubc84 \ucd94\uac00 \uc694\uccad."
             },
+            "AssigneeEntry": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "User Id"
+                    },
+                    "discipline": {
+                        "$ref": "#/components/schemas/Discipline"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "discipline"
+                ],
+                "title": "AssigneeEntry",
+                "description": "\ub2f4\ub2f9\uc790 \ubc30\uc815 \ud56d\ubaa9"
+            },
             "AssigneesChangedDetail": {
                 "properties": {
                     "action": {
@@ -7949,6 +8569,14 @@
                         "title": "Assignees",
                         "default": []
                     },
+                    "assigned_teams": {
+                        "items": {
+                            "$ref": "#/components/schemas/TeamBadge"
+                        },
+                        "type": "array",
+                        "title": "Assigned Teams",
+                        "default": []
+                    },
                     "parts": {
                         "items": {
                             "$ref": "#/components/schemas/PartBadge"
@@ -8008,10 +8636,18 @@
                     },
                     "reviewers": {
                         "items": {
-                            "$ref": "#/components/schemas/UserSummary"
+                            "$ref": "#/components/schemas/ReviewerSummary"
                         },
                         "type": "array",
                         "title": "Reviewers",
+                        "default": []
+                    },
+                    "reviewer_teams": {
+                        "items": {
+                            "$ref": "#/components/schemas/TeamBadge"
+                        },
+                        "type": "array",
+                        "title": "Reviewer Teams",
                         "default": []
                     },
                     "linked_issues": {
@@ -8108,6 +8744,14 @@
                         "title": "Assignees",
                         "default": []
                     },
+                    "assigned_teams": {
+                        "items": {
+                            "$ref": "#/components/schemas/TeamBadge"
+                        },
+                        "type": "array",
+                        "title": "Assigned Teams",
+                        "default": []
+                    },
                     "parts": {
                         "items": {
                             "$ref": "#/components/schemas/PartBadge"
@@ -8159,10 +8803,18 @@
                     },
                     "reviewers": {
                         "items": {
-                            "$ref": "#/components/schemas/UserSummary"
+                            "$ref": "#/components/schemas/ReviewerSummary"
                         },
                         "type": "array",
                         "title": "Reviewers",
+                        "default": []
+                    },
+                    "reviewer_teams": {
+                        "items": {
+                            "$ref": "#/components/schemas/TeamBadge"
+                        },
+                        "type": "array",
+                        "title": "Reviewer Teams",
                         "default": []
                     }
                 },
@@ -8178,6 +8830,20 @@
                     "cr_state"
                 ],
                 "title": "ChangeRequestSummary"
+            },
+            "ChangeRoleRequest": {
+                "properties": {
+                    "role": {
+                        "type": "string",
+                        "title": "Role",
+                        "description": "\ubcc0\uacbd\ud560 \uc5ed\ud560 (MEMBER / ADMIN / OWNER)"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "role"
+                ],
+                "title": "ChangeRoleRequest"
             },
             "CheckEmailResponse": {
                 "properties": {
@@ -8449,7 +9115,7 @@
                     "role": {
                         "type": "string",
                         "title": "Role",
-                        "description": "\ucd08\ub300\ud560 \uc5ed\ud560 (MEMBER / ADMIN)",
+                        "description": "\ucd08\ub300\ud560 \uc5ed\ud560 (MEMBER / ADMIN / OWNER)",
                         "default": "MEMBER"
                     }
                 },
@@ -8683,6 +9349,18 @@
                     "last_synthesis"
                 ],
                 "title": "DashboardStatsResponse"
+            },
+            "Discipline": {
+                "type": "string",
+                "enum": [
+                    "DESIGN",
+                    "QUALITY",
+                    "MANUFACTURING",
+                    "PROCUREMENT",
+                    "TEST"
+                ],
+                "title": "Discipline",
+                "description": "\uc81c\uc870\uc5c5 PLM \ud45c\uc900 \ubd84\uc57c (Part \ub2f4\ub2f9\uc790/\ud300/Issue/CR \uacf5\ud1b5)."
             },
             "FileAttachedDetail": {
                 "properties": {
@@ -9321,6 +9999,14 @@
                         "title": "Assignees",
                         "default": []
                     },
+                    "assigned_teams": {
+                        "items": {
+                            "$ref": "#/components/schemas/TeamBadge"
+                        },
+                        "type": "array",
+                        "title": "Assigned Teams",
+                        "default": []
+                    },
                     "parts": {
                         "items": {
                             "$ref": "#/components/schemas/PartBadge"
@@ -9433,6 +10119,14 @@
                         },
                         "type": "array",
                         "title": "Assignees",
+                        "default": []
+                    },
+                    "assigned_teams": {
+                        "items": {
+                            "$ref": "#/components/schemas/TeamBadge"
+                        },
+                        "type": "array",
+                        "title": "Assigned Teams",
                         "default": []
                     },
                     "parts": {
@@ -9832,6 +10526,38 @@
                 ],
                 "title": "LoginResponse"
             },
+            "ManageAssigneesRequest": {
+                "properties": {
+                    "assignments": {
+                        "items": {
+                            "$ref": "#/components/schemas/AssigneeEntry"
+                        },
+                        "type": "array",
+                        "minItems": 1,
+                        "title": "Assignments"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "assignments"
+                ],
+                "title": "ManageAssigneesRequest",
+                "description": "\ub2f4\ub2f9\uc790 \ubc30\uce58 \ucd94\uac00/\uc81c\uac70 \uc694\uccad"
+            },
+            "ManageAssignmentsResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count"
+                ],
+                "title": "ManageAssignmentsResponse",
+                "description": "\ub2f4\ub2f9\uc790/\ub2f4\ub2f9\ud300 \ucd94\uac00/\uc81c\uac70 \uacb0\uacfc"
+            },
             "ManageMembersRequest": {
                 "properties": {
                     "user_ids": {
@@ -9863,6 +10589,24 @@
                 ],
                 "title": "ManageMembersResponse",
                 "description": "\uba64\ubc84 \ucd94\uac00/\uc81c\uac70 \uacb0\uacfc."
+            },
+            "ManageTeamAssignmentsRequest": {
+                "properties": {
+                    "assignments": {
+                        "items": {
+                            "$ref": "#/components/schemas/TeamAssignmentEntry"
+                        },
+                        "type": "array",
+                        "minItems": 1,
+                        "title": "Assignments"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "assignments"
+                ],
+                "title": "ManageTeamAssignmentsRequest",
+                "description": "\ub2f4\ub2f9\ud300 \ubc30\uce58 \ucd94\uac00/\uc81c\uac70 \uc694\uccad"
             },
             "ManageTeamMembersResponse": {
                 "properties": {
@@ -10696,6 +11440,52 @@
                 "title": "PartAddedDetail",
                 "description": "\ubd80\ud488 \uc5f0\uacb0 \u2014 \ud504\ub85c\uc81d\ud2b8 \uc2a4\ucf54\ud504."
             },
+            "PartAssigneeListResponse": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/PartAssigneeSummary"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "title": "PartAssigneeListResponse",
+                "description": "Part \ub2f4\ub2f9\uc790 \ubaa9\ub85d"
+            },
+            "PartAssigneeSummary": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "User Id"
+                    },
+                    "full_name": {
+                        "type": "string",
+                        "title": "Full Name"
+                    },
+                    "email": {
+                        "type": "string",
+                        "title": "Email"
+                    },
+                    "discipline": {
+                        "$ref": "#/components/schemas/Discipline"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "full_name",
+                    "email",
+                    "discipline"
+                ],
+                "title": "PartAssigneeSummary",
+                "description": "Part \ub2f4\ub2f9\uc790 \uc694\uc57d"
+            },
             "PartBadge": {
                 "properties": {
                     "id": {
@@ -10893,6 +11683,11 @@
                     "projects_count": {
                         "type": "integer",
                         "title": "Projects Count",
+                        "default": 0
+                    },
+                    "assignees_count": {
+                        "type": "integer",
+                        "title": "Assignees Count",
                         "default": 0
                     }
                 },
@@ -11218,6 +12013,47 @@
                 ],
                 "title": "PartSuppliersResponse",
                 "description": "Part \uacf5\uae09\uc0ac \ubaa9\ub85d \uc751\ub2f5"
+            },
+            "PartTeamAssignmentListResponse": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/PartTeamAssignmentSummary"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "title": "PartTeamAssignmentListResponse",
+                "description": "Part \ub2f4\ub2f9\ud300 \ubaa9\ub85d"
+            },
+            "PartTeamAssignmentSummary": {
+                "properties": {
+                    "team_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Team Id"
+                    },
+                    "team_name": {
+                        "type": "string",
+                        "title": "Team Name"
+                    },
+                    "discipline": {
+                        "$ref": "#/components/schemas/Discipline"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "team_id",
+                    "team_name",
+                    "discipline"
+                ],
+                "title": "PartTeamAssignmentSummary",
+                "description": "Part \ub2f4\ub2f9\ud300 \uc694\uc57d"
             },
             "PartsChangedDetail": {
                 "properties": {
@@ -12135,6 +12971,48 @@
                 "title": "RemoveTeamMembersRequest",
                 "description": "\uba64\ubc84 \uc81c\uac70 \uc694\uccad."
             },
+            "ReviewerSummary": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "User Id"
+                    },
+                    "full_name": {
+                        "type": "string",
+                        "title": "Full Name"
+                    },
+                    "email": {
+                        "type": "string",
+                        "title": "Email"
+                    },
+                    "review_status": {
+                        "type": "string",
+                        "title": "Review Status"
+                    },
+                    "reviewed_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Reviewed At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "full_name",
+                    "email",
+                    "review_status"
+                ],
+                "title": "ReviewerSummary",
+                "description": "\uac80\ud1a0\uc790 \uc0c1\uc138 (review_status \ud3ec\ud568)."
+            },
             "ReviewersChangedDetail": {
                 "properties": {
                     "action": {
@@ -12381,6 +13259,39 @@
                 "title": "StateChangedDetail",
                 "description": "\uc774\uc288 \uc0c1\ud0dc \ubcc0\uacbd (OPEN \u2194 CLOSED)."
             },
+            "SubmitReviewRequest": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "title": "Status",
+                        "description": "\ub9ac\ubdf0 \uc0c1\ud0dc (APPROVED | REJECTED)"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status"
+                ],
+                "title": "SubmitReviewRequest"
+            },
+            "SubmitReviewResponse": {
+                "properties": {
+                    "review_status": {
+                        "type": "string",
+                        "title": "Review Status"
+                    },
+                    "reviewed_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Reviewed At"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "review_status",
+                    "reviewed_at"
+                ],
+                "title": "SubmitReviewResponse"
+            },
             "SupplierListResponse": {
                 "properties": {
                     "total": {
@@ -12600,6 +13511,72 @@
                     "removed_count"
                 ],
                 "title": "SyncReviewersResponse"
+            },
+            "SyncTeamAssigneesRequest": {
+                "properties": {
+                    "team_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Team Ids",
+                        "description": "\ub3d9\uae30\ud654\ud560 \ud300 ID \ubaa9\ub85d (\ube48 \ubaa9\ub85d = \ubaa8\ub4e0 \ud300 \ud574\uc81c)"
+                    }
+                },
+                "type": "object",
+                "title": "SyncTeamAssigneesRequest"
+            },
+            "SyncTeamAssigneesResponse": {
+                "properties": {
+                    "added_count": {
+                        "type": "integer",
+                        "title": "Added Count"
+                    },
+                    "removed_count": {
+                        "type": "integer",
+                        "title": "Removed Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "added_count",
+                    "removed_count"
+                ],
+                "title": "SyncTeamAssigneesResponse"
+            },
+            "SyncTeamReviewersRequest": {
+                "properties": {
+                    "team_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Team Ids",
+                        "description": "\ub3d9\uae30\ud654\ud560 \ud300 ID \ubaa9\ub85d (\ube48 \ubaa9\ub85d = \ubaa8\ub4e0 \ud300 \ud574\uc81c)"
+                    }
+                },
+                "type": "object",
+                "title": "SyncTeamReviewersRequest"
+            },
+            "SyncTeamReviewersResponse": {
+                "properties": {
+                    "added_count": {
+                        "type": "integer",
+                        "title": "Added Count"
+                    },
+                    "removed_count": {
+                        "type": "integer",
+                        "title": "Removed Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "added_count",
+                    "removed_count"
+                ],
+                "title": "SyncTeamReviewersResponse"
             },
             "SynthesisBatchFailure": {
                 "properties": {
@@ -12995,6 +13972,45 @@
                 ],
                 "title": "SynthesisUploadItem",
                 "description": "\ud569\uc131 \ub300\uc0c1 \ud30c\uc77c \ud56d\ubaa9."
+            },
+            "TeamAssignmentEntry": {
+                "properties": {
+                    "team_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Team Id"
+                    },
+                    "discipline": {
+                        "$ref": "#/components/schemas/Discipline"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "team_id",
+                    "discipline"
+                ],
+                "title": "TeamAssignmentEntry",
+                "description": "\ub2f4\ub2f9\ud300 \ubc30\uc815 \ud56d\ubaa9"
+            },
+            "TeamBadge": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "TeamBadge",
+                "description": "\ud300 \ubc30\uc9c0 (\ubaa9\ub85d/\uc0c1\uc138 \ud45c\uc2dc\uc6a9)."
             },
             "TeamDetailResponse": {
                 "properties": {
