@@ -169,11 +169,13 @@ def update_issue(
     return issue
 
 
-def attach_files(db: Session, issue_id: uuid.UUID, files: list[File]) -> None:
+def attach_files(
+    db: Session, issue_id: uuid.UUID, files: list[File], *, emit_event: bool = True
+) -> None:
     """Issue에 검증된 파일들을 연결."""
     issue = get_or_raise(db, issue_id)
     issue.attach_files(files)
-    if files:
+    if emit_event and files:
         issue.register_event(
             IssueFilesAttached(
                 issue_id=issue.id,
@@ -202,11 +204,11 @@ def detach_file(db: Session, issue_id: uuid.UUID, file_id: uuid.UUID) -> None:
 
 
 def sync_assignees(
-    db: Session, issue: Issue, user_ids: list[uuid.UUID]
+    db: Session, issue: Issue, user_ids: list[uuid.UUID], *, emit_event: bool = True
 ) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
     """이슈 담당자 동기화 — (added, removed) 반환."""
     added, removed = repo.sync_assignees(db, issue.id, user_ids)
-    if added or removed:
+    if emit_event and (added or removed):
         from app.modules.user.models import User
 
         all_ids = list(set(added) | set(removed))
@@ -227,11 +229,11 @@ def sync_assignees(
 
 
 def sync_reviewers(
-    db: Session, cr: ChangeRequest, user_ids: list[uuid.UUID]
+    db: Session, cr: ChangeRequest, user_ids: list[uuid.UUID], *, emit_event: bool = True
 ) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
     """CR 검토자 동기화 — (added, removed) 반환."""
     added, removed = repo.sync_reviewers(db, cr.id, user_ids)
-    if added or removed:
+    if emit_event and (added or removed):
         from app.modules.user.models import User
 
         all_ids = list(set(added) | set(removed))
@@ -252,11 +254,11 @@ def sync_reviewers(
 
 
 def sync_labels(
-    db: Session, issue: Issue, label_ids: list[uuid.UUID]
+    db: Session, issue: Issue, label_ids: list[uuid.UUID], *, emit_event: bool = True
 ) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
     """이슈 라벨 동기화 — (added, removed) 반환."""
     added, removed = repo.sync_labels(db, issue.id, label_ids)
-    if added or removed:
+    if emit_event and (added or removed):
         from app.modules.label.models import Label
 
         all_ids = list(set(added) | set(removed))
@@ -281,11 +283,11 @@ def sync_labels(
 
 
 def sync_parts(
-    db: Session, issue: Issue, part_ids: list[uuid.UUID]
+    db: Session, issue: Issue, part_ids: list[uuid.UUID], *, emit_event: bool = True
 ) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
     """이슈 부품 동기화 — (added, removed) 반환."""
     added, removed = repo.sync_parts(db, issue.id, part_ids)
-    if added or removed:
+    if emit_event and (added or removed):
         from app.modules.part.models import Part
 
         all_ids = list(set(added) | set(removed))
@@ -327,10 +329,12 @@ def get_cr_or_raise(db: Session, issue_id: uuid.UUID) -> ChangeRequest:
 # ── CR-Issue 연결 ──
 
 
-def link_issues(db: Session, cr: ChangeRequest, issue_ids: list[uuid.UUID]) -> int:
+def link_issues(
+    db: Session, cr: ChangeRequest, issue_ids: list[uuid.UUID], *, emit_event: bool = True
+) -> int:
     """CR에 이슈 배치 연결 — 신규 연결 건수 반환."""
     count = repo.link_issues(db, cr.id, issue_ids)
-    if count > 0:
+    if emit_event and count > 0:
         # 스냅샷용 이슈 조회
         issues = db.query(Issue).filter(Issue.id.in_(issue_ids)).all()
         cr.register_event(
@@ -493,11 +497,11 @@ def delete_comment(db: Session, comment: IssueComment) -> None:
 
 
 def sync_team_assignees(
-    db: Session, issue: Issue, team_ids: list[uuid.UUID]
+    db: Session, issue: Issue, team_ids: list[uuid.UUID], *, emit_event: bool = True
 ) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
     """이슈 팀 담당자 동기화 — (added, removed) 반환."""
     added, removed = repo.sync_team_assignees(db, issue.id, team_ids)
-    if added or removed:
+    if emit_event and (added or removed):
         from app.modules.team.models import Team
 
         all_ids = list(set(added) | set(removed))
@@ -521,11 +525,11 @@ def sync_team_assignees(
 
 
 def sync_team_reviewers(
-    db: Session, cr: ChangeRequest, team_ids: list[uuid.UUID]
+    db: Session, cr: ChangeRequest, team_ids: list[uuid.UUID], *, emit_event: bool = True
 ) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
     """CR 팀 검토자 동기화 — (added, removed) 반환."""
     added, removed = repo.sync_team_reviewers(db, cr.id, team_ids)
-    if added or removed:
+    if emit_event and (added or removed):
         from app.modules.team.models import Team
 
         all_ids = list(set(added) | set(removed))

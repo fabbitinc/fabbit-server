@@ -2806,29 +2806,17 @@
                 }
             }
         },
-        "/api/v1/parts/{part_id}/assignees": {
+        "/api/v1/parts/category-defaults": {
             "get": {
                 "tags": [
-                    "part-assignees"
+                    "part-category-defaults"
                 ],
-                "summary": "List Assignees",
-                "description": "Part \ub2f4\ub2f9\uc790 \ubaa9\ub85d \uc870\ud68c.\n\n\ud574\ub2f9 Part\uc5d0 \ubc30\uc815\ub41c \ub2f4\ub2f9\uc790(User) \ubaa9\ub85d\uc744 discipline \ud3ec\ud568\ud558\uc5ec \ubc18\ud658\ud569\ub2c8\ub2e4.",
-                "operationId": "list_assignees_api_v1_parts__part_id__assignees_get",
+                "summary": "List Category Defaults",
+                "description": "\uce74\ud14c\uace0\ub9ac\ubcc4 \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \ubaa9\ub85d \uc870\ud68c.\n\n\ubaa8\ub4e0 \uce74\ud14c\uace0\ub9ac \uae30\ubcf8\uac12 \uc124\uc815\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.\ncategory\uac00 NULL\uc778 \ud56d\ubaa9\uc740 fallback(\uc804\uccb4 \uae30\ubcf8\uac12)\uc785\ub2c8\ub2e4.",
+                "operationId": "list_category_defaults_api_v1_parts_category_defaults_get",
                 "security": [
                     {
                         "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "part_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Part Id"
-                        }
                     }
                 ],
                 "responses": {
@@ -2837,45 +2825,23 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PartAssigneeListResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                    "$ref": "#/components/schemas/CategoryDefaultListResponse"
                                 }
                             }
                         }
                     }
                 }
             },
-            "post": {
+            "put": {
                 "tags": [
-                    "part-assignees"
+                    "part-category-defaults"
                 ],
-                "summary": "Add Assignees",
-                "description": "Part \ub2f4\ub2f9\uc790 \ubc30\uce58 \ucd94\uac00.\n\n\ub3d9\uc77c Part\uc5d0 \uac19\uc740 User + \ub2e4\ub978 discipline \uc870\ud569\uc740 \ubcc4\ub3c4 \ubc30\uc815\uc73c\ub85c \ucc98\ub9ac\ub429\ub2c8\ub2e4.\n\uc774\ubbf8 \uc874\uc7ac\ud558\ub294 (user_id, discipline) \uc870\ud569\uc740 \ubb34\uc2dc\ub429\ub2c8\ub2e4 (\uba71\ub4f1\uc131).",
-                "operationId": "add_assignees_api_v1_parts__part_id__assignees_post",
+                "summary": "Upsert Category Default",
+                "description": "\uce74\ud14c\uace0\ub9ac\ubcc4 \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 upsert.\n\n- **category=null**: \uc804\uccb4 fallback \uae30\ubcf8\uac12 \uc124\uc815\n- **category=\"\uc804\uc790\"**: \ud574\ub2f9 \uce74\ud14c\uace0\ub9ac \uae30\ubcf8\uac12 \uc124\uc815\n\n\ub3d9\uc77c category\uac00 \uc774\ubbf8 \uc874\uc7ac\ud558\uba74 \ub36e\uc5b4\uc501\ub2c8\ub2e4.",
+                "operationId": "upsert_category_default_api_v1_parts_category_defaults_put",
                 "security": [
                     {
                         "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "part_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Part Id"
-                        }
                     }
                 ],
                 "requestBody": {
@@ -2883,18 +2849,18 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ManageAssigneesRequest"
+                                "$ref": "#/components/schemas/CategoryDefaultRequest"
                             }
                         }
                     }
                 },
                 "responses": {
-                    "201": {
+                    "200": {
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ManageAssignmentsResponse"
+                                    "$ref": "#/components/schemas/CategoryDefaultItem"
                                 }
                             }
                         }
@@ -2913,11 +2879,11 @@
             },
             "delete": {
                 "tags": [
-                    "part-assignees"
+                    "part-category-defaults"
                 ],
-                "summary": "Remove Assignees",
-                "description": "Part \ub2f4\ub2f9\uc790 \ubc30\uce58 \uc81c\uac70.\n\n\uc9c0\uc815\ub41c (user_id, discipline) \uc870\ud569\uc744 \uc77c\uad04 \uc0ad\uc81c\ud569\ub2c8\ub2e4.",
-                "operationId": "remove_assignees_api_v1_parts__part_id__assignees_delete",
+                "summary": "Delete Category Default",
+                "description": "\uce74\ud14c\uace0\ub9ac\ubcc4 \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \uc0ad\uc81c.\n\n\ud574\ub2f9 \uce74\ud14c\uace0\ub9ac\uc758 \uae30\ubcf8\uac12 \uc124\uc815\uc744 \uc81c\uac70\ud569\ub2c8\ub2e4.\ncategory \ubbf8\uc9c0\uc815 \uc2dc fallback(\uc804\uccb4 \uae30\ubcf8\uac12)\uc744 \uc0ad\uc81c\ud569\ub2c8\ub2e4.",
+                "operationId": "delete_category_default_api_v1_parts_category_defaults_delete",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -2925,182 +2891,24 @@
                 ],
                 "parameters": [
                     {
-                        "name": "part_id",
-                        "in": "path",
-                        "required": true,
+                        "name": "category",
+                        "in": "query",
+                        "required": false,
                         "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Part Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ManageAssigneesRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
                                 }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/parts/{part_id}/assigned-teams": {
-            "get": {
-                "tags": [
-                    "part-team-assignments"
-                ],
-                "summary": "List Team Assignments",
-                "description": "Part \ub2f4\ub2f9\ud300 \ubaa9\ub85d \uc870\ud68c.\n\n\ud574\ub2f9 Part\uc5d0 \ubc30\uc815\ub41c \ub2f4\ub2f9\ud300(Team) \ubaa9\ub85d\uc744 discipline \ud3ec\ud568\ud558\uc5ec \ubc18\ud658\ud569\ub2c8\ub2e4.",
-                "operationId": "list_team_assignments_api_v1_parts__part_id__assigned_teams_get",
-                "security": [
-                    {
-                        "HTTPBearer": []
+                            ],
+                            "description": "\uc0ad\uc81c\ud560 \uce74\ud14c\uace0\ub9ac (NULL=fallback)",
+                            "title": "Category"
+                        },
+                        "description": "\uc0ad\uc81c\ud560 \uce74\ud14c\uace0\ub9ac (NULL=fallback)"
                     }
                 ],
-                "parameters": [
-                    {
-                        "name": "part_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Part Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PartTeamAssignmentListResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "tags": [
-                    "part-team-assignments"
-                ],
-                "summary": "Add Team Assignments",
-                "description": "Part \ub2f4\ub2f9\ud300 \ubc30\uce58 \ucd94\uac00.\n\n\ub3d9\uc77c Part\uc5d0 \uac19\uc740 Team + \ub2e4\ub978 discipline \uc870\ud569\uc740 \ubcc4\ub3c4 \ubc30\uc815\uc73c\ub85c \ucc98\ub9ac\ub429\ub2c8\ub2e4.\n\uc774\ubbf8 \uc874\uc7ac\ud558\ub294 (team_id, discipline) \uc870\ud569\uc740 \ubb34\uc2dc\ub429\ub2c8\ub2e4 (\uba71\ub4f1\uc131).",
-                "operationId": "add_team_assignments_api_v1_parts__part_id__assigned_teams_post",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "part_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Part Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ManageTeamAssignmentsRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ManageAssignmentsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "part-team-assignments"
-                ],
-                "summary": "Remove Team Assignments",
-                "description": "Part \ub2f4\ub2f9\ud300 \ubc30\uce58 \uc81c\uac70.\n\n\uc9c0\uc815\ub41c (team_id, discipline) \uc870\ud569\uc744 \uc77c\uad04 \uc0ad\uc81c\ud569\ub2c8\ub2e4.",
-                "operationId": "remove_team_assignments_api_v1_parts__part_id__assigned_teams_delete",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "part_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Part Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ManageTeamAssignmentsRequest"
-                            }
-                        }
-                    }
-                },
                 "responses": {
                     "204": {
                         "description": "Successful Response"
@@ -4322,7 +4130,7 @@
                     "issues"
                 ],
                 "summary": "Create Issue",
-                "description": "\uc774\uc288 \uc0dd\uc131.\n\n\ud14c\ub10c\ud2b8 \uc804\uc5ed \uace0\uc720 \ubc88\ud638(`number`)\uac00 \uc790\ub3d9 \ubd80\uc5ec\ub429\ub2c8\ub2e4.",
+                "description": "\uc774\uc288 \uc0dd\uc131.\n\n\ud14c\ub10c\ud2b8 \uc804\uc5ed \uace0\uc720 \ubc88\ud638(`number`)\uac00 \uc790\ub3d9 \ubd80\uc5ec\ub429\ub2c8\ub2e4.\n`part_ids`, `assignee_user_ids`, `team_assignee_ids`, `label_ids`, `file_ids`\ub97c\n\ud568\uaed8 \uc804\ub2ec\ud558\uba74 \ub2e8\uc77c \ud2b8\ub79c\uc7ad\uc158\uc73c\ub85c \uc5f0\uad00 \ub370\uc774\ud130\ub97c \uc77c\uad04 \uc5f0\uacb0\ud569\ub2c8\ub2e4.",
                 "operationId": "create_issue_api_v1_issues_post",
                 "security": [
                     {
@@ -5255,7 +5063,7 @@
                     "changes"
                 ],
                 "summary": "Create Change Request",
-                "description": "\ubcc0\uacbd \uc694\uccad(Change Request) \uc0dd\uc131.\n\n\uc774\uc288 \ud14c\uc774\ube14\uc5d0 `type=CHANGE_REQUEST`\ub85c \uae30\ub85d\ub418\uba70,\n\ubcc0\uacbd \uc694\uccad \uace0\uc720 \uc0c1\ud0dc(`cr_state`)\ub294 **DRAFT**\ub85c \uc2dc\uc791\ud569\ub2c8\ub2e4.",
+                "description": "\ubcc0\uacbd \uc694\uccad(Change Request) \uc0dd\uc131.\n\n\uc774\uc288 \ud14c\uc774\ube14\uc5d0 `type=CHANGE_REQUEST`\ub85c \uae30\ub85d\ub418\uba70,\n\ubcc0\uacbd \uc694\uccad \uace0\uc720 \uc0c1\ud0dc(`cr_state`)\ub294 **DRAFT**\ub85c \uc2dc\uc791\ud569\ub2c8\ub2e4.\n`part_ids`, `assignee_user_ids`, `team_assignee_ids`, `label_ids`, `file_ids`,\n`reviewer_user_ids`, `team_reviewer_ids`\ub97c \ud568\uaed8 \uc804\ub2ec\ud558\uba74\n\ub2e8\uc77c \ud2b8\ub79c\uc7ad\uc158\uc73c\ub85c \uc5f0\uad00 \ub370\uc774\ud130\ub97c \uc77c\uad04 \uc5f0\uacb0\ud569\ub2c8\ub2e4.",
                 "operationId": "create_change_request_api_v1_changes_post",
                 "security": [
                     {
@@ -7769,25 +7577,6 @@
                 "title": "AddTeamMembersRequest",
                 "description": "\uba64\ubc84 \ucd94\uac00 \uc694\uccad."
             },
-            "AssigneeEntry": {
-                "properties": {
-                    "user_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "User Id"
-                    },
-                    "discipline": {
-                        "$ref": "#/components/schemas/Discipline"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "user_id",
-                    "discipline"
-                ],
-                "title": "AssigneeEntry",
-                "description": "\ub2f4\ub2f9\uc790 \ubc30\uc815 \ud56d\ubaa9"
-            },
             "BatchCompleteFailure": {
                 "properties": {
                     "file_id": {
@@ -8107,6 +7896,136 @@
                 ],
                 "title": "BomTreeResponse",
                 "description": "BOM \ud2b8\ub9ac \uc751\ub2f5"
+            },
+            "CategoryDefaultItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "category": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Category"
+                    },
+                    "default_owner_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Owner Id"
+                    },
+                    "default_owner": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/UserSummary"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "default_team_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Team Id"
+                    },
+                    "default_team_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Team Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id"
+                ],
+                "title": "CategoryDefaultItem",
+                "description": "\uce74\ud14c\uace0\ub9ac \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \ud56d\ubaa9"
+            },
+            "CategoryDefaultListResponse": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/CategoryDefaultItem"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "title": "CategoryDefaultListResponse",
+                "description": "\uce74\ud14c\uace0\ub9ac \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \ubaa9\ub85d"
+            },
+            "CategoryDefaultRequest": {
+                "properties": {
+                    "category": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Category"
+                    },
+                    "default_owner_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Owner Id"
+                    },
+                    "default_team_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Team Id"
+                    }
+                },
+                "type": "object",
+                "title": "CategoryDefaultRequest",
+                "description": "\uce74\ud14c\uace0\ub9ac \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \uc694\uccad"
             },
             "ChangePasswordRequest": {
                 "properties": {
@@ -8713,6 +8632,70 @@
                         ],
                         "title": "Issue Number",
                         "description": "\uc5f0\uacb0\ud560 \uc774\uc288 \ubc88\ud638 (ISSUE \ud0c0\uc785\ub9cc \ud5c8\uc6a9)"
+                    },
+                    "part_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Part Ids",
+                        "description": "\uc5f0\uacb0\ud560 \ubd80\ud488 ID \ubaa9\ub85d"
+                    },
+                    "assignee_user_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Assignee User Ids",
+                        "description": "\ub2f4\ub2f9\uc790 ID \ubaa9\ub85d"
+                    },
+                    "team_assignee_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Team Assignee Ids",
+                        "description": "\ud300 \ub2f4\ub2f9\uc790 ID \ubaa9\ub85d"
+                    },
+                    "label_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Label Ids",
+                        "description": "\ub77c\ubca8 ID \ubaa9\ub85d"
+                    },
+                    "file_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "maxItems": 20,
+                        "title": "File Ids",
+                        "description": "\ucca8\ubd80\ud30c\uc77c ID \ubaa9\ub85d (\ucd5c\ub300 20\uac1c)"
+                    },
+                    "reviewer_user_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Reviewer User Ids",
+                        "description": "\uac80\ud1a0\uc790 ID \ubaa9\ub85d"
+                    },
+                    "team_reviewer_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Team Reviewer Ids",
+                        "description": "\ud300 \uac80\ud1a0\uc790 ID \ubaa9\ub85d"
                     }
                 },
                 "type": "object",
@@ -8851,6 +8834,52 @@
                             }
                         ],
                         "description": "\uc774\uc288 \ubcf8\ubb38 (TipTap JSON)"
+                    },
+                    "part_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Part Ids",
+                        "description": "\uc5f0\uacb0\ud560 \ubd80\ud488 ID \ubaa9\ub85d"
+                    },
+                    "assignee_user_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Assignee User Ids",
+                        "description": "\ub2f4\ub2f9\uc790 ID \ubaa9\ub85d"
+                    },
+                    "team_assignee_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Team Assignee Ids",
+                        "description": "\ud300 \ub2f4\ub2f9\uc790 ID \ubaa9\ub85d"
+                    },
+                    "label_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Label Ids",
+                        "description": "\ub77c\ubca8 ID \ubaa9\ub85d"
+                    },
+                    "file_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "maxItems": 20,
+                        "title": "File Ids",
+                        "description": "\ucca8\ubd80\ud30c\uc77c ID \ubaa9\ub85d (\ucd5c\ub300 20\uac1c)"
                     }
                 },
                 "type": "object",
@@ -9079,19 +9108,6 @@
                 "type": "object",
                 "title": "DiffDetail",
                 "description": "\ucd94\uac00/\uc81c\uac70 \ubaa9\ub85d."
-            },
-            "Discipline": {
-                "type": "string",
-                "enum": [
-                    "ALL",
-                    "DESIGN",
-                    "QUALITY",
-                    "MANUFACTURING",
-                    "PROCUREMENT",
-                    "TEST"
-                ],
-                "title": "Discipline",
-                "description": "\uc81c\uc870\uc5c5 PLM \ud45c\uc900 \ubd84\uc57c (Part \ub2f4\ub2f9\uc790/\ud300/Issue/CR \uacf5\ud1b5)."
             },
             "FileCompleteResponse": {
                 "properties": {
@@ -9996,38 +10012,6 @@
                 ],
                 "title": "LoginResponse"
             },
-            "ManageAssigneesRequest": {
-                "properties": {
-                    "assignments": {
-                        "items": {
-                            "$ref": "#/components/schemas/AssigneeEntry"
-                        },
-                        "type": "array",
-                        "minItems": 1,
-                        "title": "Assignments"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "assignments"
-                ],
-                "title": "ManageAssigneesRequest",
-                "description": "\ub2f4\ub2f9\uc790 \ubc30\uce58 \ucd94\uac00/\uc81c\uac70 \uc694\uccad"
-            },
-            "ManageAssignmentsResponse": {
-                "properties": {
-                    "count": {
-                        "type": "integer",
-                        "title": "Count"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "count"
-                ],
-                "title": "ManageAssignmentsResponse",
-                "description": "\ub2f4\ub2f9\uc790/\ub2f4\ub2f9\ud300 \ucd94\uac00/\uc81c\uac70 \uacb0\uacfc"
-            },
             "ManageMembersRequest": {
                 "properties": {
                     "user_ids": {
@@ -10059,24 +10043,6 @@
                 ],
                 "title": "ManageMembersResponse",
                 "description": "\uba64\ubc84 \ucd94\uac00/\uc81c\uac70 \uacb0\uacfc."
-            },
-            "ManageTeamAssignmentsRequest": {
-                "properties": {
-                    "assignments": {
-                        "items": {
-                            "$ref": "#/components/schemas/TeamAssignmentEntry"
-                        },
-                        "type": "array",
-                        "minItems": 1,
-                        "title": "Assignments"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "assignments"
-                ],
-                "title": "ManageTeamAssignmentsRequest",
-                "description": "\ub2f4\ub2f9\ud300 \ubc30\uce58 \ucd94\uac00/\uc81c\uac70 \uc694\uccad"
             },
             "ManageTeamMembersResponse": {
                 "properties": {
@@ -10898,74 +10864,6 @@
                 ],
                 "title": "OrganizationResponse"
             },
-            "PartAssigneeListResponse": {
-                "properties": {
-                    "items": {
-                        "items": {
-                            "$ref": "#/components/schemas/PartAssigneeSummary"
-                        },
-                        "type": "array",
-                        "title": "Items"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "items"
-                ],
-                "title": "PartAssigneeListResponse",
-                "description": "Part \ub2f4\ub2f9\uc790 \ubaa9\ub85d"
-            },
-            "PartAssigneeSummary": {
-                "properties": {
-                    "user_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "User Id"
-                    },
-                    "full_name": {
-                        "type": "string",
-                        "title": "Full Name"
-                    },
-                    "email": {
-                        "type": "string",
-                        "title": "Email"
-                    },
-                    "phone": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Phone"
-                    },
-                    "profile_image_url": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Profile Image Url"
-                    },
-                    "discipline": {
-                        "$ref": "#/components/schemas/Discipline"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "user_id",
-                    "full_name",
-                    "email",
-                    "discipline"
-                ],
-                "title": "PartAssigneeSummary",
-                "description": "Part \ub2f4\ub2f9\uc790 \uc694\uc57d"
-            },
             "PartBadge": {
                 "properties": {
                     "id": {
@@ -11130,6 +11028,51 @@
                         "title": "Extended Properties",
                         "default": {}
                     },
+                    "owner_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Owner Id"
+                    },
+                    "owner": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/UserSummary"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "team_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Team Id"
+                    },
+                    "team_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Team Name"
+                    },
                     "drawing": {
                         "anyOf": [
                             {
@@ -11163,11 +11106,6 @@
                     "projects_count": {
                         "type": "integer",
                         "title": "Projects Count",
-                        "default": 0
-                    },
-                    "assignees_count": {
-                        "type": "integer",
-                        "title": "Assignees Count",
                         "default": 0
                     }
                 },
@@ -11470,47 +11408,6 @@
                 ],
                 "title": "PartSuppliersResponse",
                 "description": "Part \uacf5\uae09\uc0ac \ubaa9\ub85d \uc751\ub2f5"
-            },
-            "PartTeamAssignmentListResponse": {
-                "properties": {
-                    "items": {
-                        "items": {
-                            "$ref": "#/components/schemas/PartTeamAssignmentSummary"
-                        },
-                        "type": "array",
-                        "title": "Items"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "items"
-                ],
-                "title": "PartTeamAssignmentListResponse",
-                "description": "Part \ub2f4\ub2f9\ud300 \ubaa9\ub85d"
-            },
-            "PartTeamAssignmentSummary": {
-                "properties": {
-                    "team_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Team Id"
-                    },
-                    "team_name": {
-                        "type": "string",
-                        "title": "Team Name"
-                    },
-                    "discipline": {
-                        "$ref": "#/components/schemas/Discipline"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "team_id",
-                    "team_name",
-                    "discipline"
-                ],
-                "title": "PartTeamAssignmentSummary",
-                "description": "Part \ub2f4\ub2f9\ud300 \uc694\uc57d"
             },
             "PlanResponse": {
                 "properties": {
@@ -13416,25 +13313,6 @@
                 ],
                 "title": "SynthesisUploadItem",
                 "description": "\ud569\uc131 \ub300\uc0c1 \ud30c\uc77c \ud56d\ubaa9."
-            },
-            "TeamAssignmentEntry": {
-                "properties": {
-                    "team_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Team Id"
-                    },
-                    "discipline": {
-                        "$ref": "#/components/schemas/Discipline"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "team_id",
-                    "discipline"
-                ],
-                "title": "TeamAssignmentEntry",
-                "description": "\ub2f4\ub2f9\ud300 \ubc30\uc815 \ud56d\ubaa9"
             },
             "TeamBadge": {
                 "properties": {

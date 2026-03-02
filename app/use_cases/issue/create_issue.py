@@ -33,17 +33,17 @@ def create_issue(
     issue = issue_service.create_issue(db, title, body)
 
     if part_ids:
-        issue_service.sync_parts(db, issue, part_ids)
+        issue_service.sync_parts(db, issue, part_ids, emit_event=False)
     if assignee_user_ids:
-        issue_service.sync_assignees(db, issue, assignee_user_ids)
+        issue_service.sync_assignees(db, issue, assignee_user_ids, emit_event=False)
     if team_assignee_ids:
-        issue_service.sync_team_assignees(db, issue, team_assignee_ids)
+        issue_service.sync_team_assignees(db, issue, team_assignee_ids, emit_event=False)
     if label_ids:
         for lid in label_ids:
             label_service.get_or_raise(db, lid)
-        issue_service.sync_labels(db, issue, label_ids)
+        issue_service.sync_labels(db, issue, label_ids, emit_event=False)
     if file_ids:
         files = file_service.validate_attachable(db, file_ids)
-        issue_service.attach_files(db, issue.id, files)
+        issue_service.attach_files(db, issue.id, files, emit_event=False)
 
     return mapper.to_issue_response(issue)

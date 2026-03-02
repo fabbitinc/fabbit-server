@@ -38,27 +38,27 @@ def create_change_request(
 
     if issue_number is not None:
         issue = issue_service.get_issue_by_number_or_raise(db, issue_number)
-        issue_service.link_issues(db, cr, [issue.id])
+        issue_service.link_issues(db, cr, [issue.id], emit_event=False)
 
     # 공통 (Issue와 동일)
     if part_ids:
-        issue_service.sync_parts(db, cr, part_ids)
+        issue_service.sync_parts(db, cr, part_ids, emit_event=False)
     if assignee_user_ids:
-        issue_service.sync_assignees(db, cr, assignee_user_ids)
+        issue_service.sync_assignees(db, cr, assignee_user_ids, emit_event=False)
     if team_assignee_ids:
-        issue_service.sync_team_assignees(db, cr, team_assignee_ids)
+        issue_service.sync_team_assignees(db, cr, team_assignee_ids, emit_event=False)
     if label_ids:
         for lid in label_ids:
             label_service.get_or_raise(db, lid)
-        issue_service.sync_labels(db, cr, label_ids)
+        issue_service.sync_labels(db, cr, label_ids, emit_event=False)
     if file_ids:
         files = file_service.validate_attachable(db, file_ids)
-        issue_service.attach_files(db, cr.id, files)
+        issue_service.attach_files(db, cr.id, files, emit_event=False)
 
     # CR 특화
     if reviewer_user_ids:
-        issue_service.sync_reviewers(db, cr, reviewer_user_ids)
+        issue_service.sync_reviewers(db, cr, reviewer_user_ids, emit_event=False)
     if team_reviewer_ids:
-        issue_service.sync_team_reviewers(db, cr, team_reviewer_ids)
+        issue_service.sync_team_reviewers(db, cr, team_reviewer_ids, emit_event=False)
 
     return mapper.to_change_request_response(cr)
