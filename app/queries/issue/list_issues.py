@@ -1,7 +1,5 @@
 """이슈 목록 조회."""
 
-import uuid
-
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
@@ -16,17 +14,16 @@ from app.queries.issue._enrichment import load_enrichments
 def list_issues(
     db: Session,
     auth: AuthContext,
-    project_id: uuid.UUID,
     *,
     state: str | None = None,
     search: str | None = None,
     offset: int = 0,
     limit: int = 20,
 ) -> IssueListResponse:
-    """프로젝트 내 Issue 목록 페이징 조회 (CR 제외)."""
-    state_counts = repo.count_issues_by_state(db, project_id)
+    """Issue 목록 페이징 조회 (CR 제외)."""
+    state_counts = repo.count_issues_by_state(db)
     rows, total = repo.list_issues_paginated(
-        db, project_id, state=state, search=search, offset=offset, limit=limit
+        db, state=state, search=search, offset=offset, limit=limit
     )
 
     enrichments = load_enrichments(db, rows)

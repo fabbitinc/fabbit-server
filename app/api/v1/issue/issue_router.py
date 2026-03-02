@@ -31,19 +31,18 @@ from app.modules.issue.schemas import (
 from app.queries import issue as issue_queries
 from app.use_cases import issue as issue_commands
 
-router = APIRouter(prefix="/api/v1/projects/{project_id}/issues", tags=["issues"])
+router = APIRouter(prefix="/api/v1/issues", tags=["issues"])
 
 
 @router.get("/lookup", response_model=IssueLookupResponse)
 def lookup_issues(
-    project_id: uuid.UUID,
     search: str | None = Query(None, description="제목 또는 이슈 번호 검색"),
     type: str | None = Query(None, description="이슈 유형 필터 (ISSUE|CHANGE_REQUEST)"),
     limit: int = Query(10, ge=1, le=50, description="조회 건수"),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    """프로젝트 이슈 lookup 조회.
+    """이슈 lookup 조회.
 
     이슈 연결 picker UI를 위한 경량 목록 엔드포인트입니다.
     id, number, title, state만 반환합니다.
@@ -51,13 +50,12 @@ def lookup_issues(
     """
     issue_type = IssueType(type) if type else None
     return issue_queries.lookup_issues(
-        db, auth, project_id, search=search, type=issue_type, limit=limit
+        db, auth, search=search, type=issue_type, limit=limit
     )
 
 
 @router.get("", response_model=IssueListResponse)
 def list_issues(
-    project_id: uuid.UUID,
     search: str | None = Query(None, description="제목 검색 (ILIKE)"),
     state: str | None = Query(None, description="상태 필터 (OPEN|CLOSED)"),
     offset: int = Query(0, ge=0, description="시작 위치"),
@@ -65,44 +63,42 @@ def list_issues(
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    """프로젝트 내 이슈 목록 조회.
+    """이슈 목록 조회.
 
     변경 요청(CR)은 제외하고 일반 이슈만 반환합니다.
     `state` 필터로 열린/닫힌 이슈를 구분할 수 있습니다.
     """
     return issue_queries.list_issues(
-        db, auth, project_id, state=state, search=search, offset=offset, limit=limit
+        db, auth, state=state, search=search, offset=offset, limit=limit
     )
 
 
 @router.get("/{issue_number}", response_model=IssueResponse)
 def get_issue(
-    project_id: uuid.UUID,
     issue_number: int,
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """이슈 상세 조회.
 
-    프로젝트 내 이슈 번호(`number`)로 조회합니다.
+    이슈 번호(`number`)로 조회합니다.
     라벨, 담당자, 댓글 수, 작성자 이름 등 상세 정보를 포함합니다.
     """
-    return issue_queries.get_issue(db, auth, project_id, issue_number)
+    return issue_queries.get_issue(db, auth, issue_number)
 
 
 @router.post("", response_model=IssueResponse, status_code=201)
 def create_issue(
-    project_id: uuid.UUID,
     req: CreateIssueRequest,
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
     """이슈 생성.
 
-    프로젝트 내 고유 번호(`number`)가 자동 부여됩니다.
+    테넌트 전역 고유 번호(`number`)가 자동 부여됩니다.
     """
     body = req.body.model_dump_json(exclude_none=True) if req.body else None
-    return issue_commands.create_issue(db, auth, project_id, title=req.title, body=body)
+    return issue_commands.create_issue(db, auth, title=req.title, body=body)
 
 
 @router.patch("/{issue_number}", response_model=IssueResponse)
@@ -229,7 +225,7 @@ def sync_parts(
     빈 목록 전달 시 모든 부품이 해제됩니다.
     """
     return issue_commands.sync_parts(
-        db, auth, issue.project_id, issue.id, part_ids=req.part_ids
+        db, auth, issue.id, part_ids=req.part_ids
     )
 
 

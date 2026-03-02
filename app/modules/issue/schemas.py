@@ -150,7 +150,6 @@ class PartBadge(BaseModel):
 
 class IssueSummary(BaseModel):
     id: uuid.UUID
-    project_id: uuid.UUID
     number: int
     type: str
     title: str
@@ -234,7 +233,6 @@ class LinkedChangeRequestBadge(BaseModel):
 
 class IssueResponse(BaseModel):
     id: uuid.UUID
-    project_id: uuid.UUID
     number: int
     type: str
     title: str

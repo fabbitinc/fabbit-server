@@ -46,8 +46,6 @@ class ProjectDetailResponse(BaseModel):
     description: str | None = None
     part_count: int
     is_archived: bool
-    open_issue_count: int
-    open_change_request_count: int
     created_at: datetime
     updated_at: datetime
 

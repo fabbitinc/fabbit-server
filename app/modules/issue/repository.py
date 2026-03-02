@@ -5,6 +5,8 @@ import uuid
 from sqlalchemy import String, cast, func, or_
 from sqlalchemy.orm import Session
 
+from sqlalchemy import text as sa_text
+
 from app.modules.file.models import File
 from app.modules.issue.constants import CRState, IssueState, IssueType
 from app.modules.issue.models import (
@@ -19,23 +21,24 @@ from app.modules.issue.models import (
 )
 from app.modules.label.models import Label
 from app.modules.part.models import Part
-from app.modules.project.models import Project
 
 
-def get_next_number(db: Session, project_id: uuid.UUID) -> int:
-    """프로젝트 내 다음 이슈 번호 채번 (동시성 안전).
+def get_next_number(db: Session) -> int:
+    """테넌트 전역 다음 이슈 번호 채번 (동시성 안전).
 
-    Project 행을 FOR UPDATE로 잠그고 카운터를 증가시켜 채번을 직렬화한다.
+    pg_advisory_xact_lock으로 직렬화하고 MAX(number)+1로 채번한다.
+    트랜잭션 종료 시 잠금이 자동 해제된다.
     """
-    project = db.query(Project).filter(Project.id == project_id).with_for_update().one()
-    return project.next_issue_number()
+    db.execute(sa_text("SELECT pg_advisory_xact_lock(1)"))
+    max_number = db.query(func.max(Issue.number)).scalar()
+    return (max_number or 0) + 1
 
 
-def count_issues_by_state(db: Session, project_id: uuid.UUID) -> dict[str, int]:
-    """프로젝트 내 Issue 상태별 건수 조회 (CR 제외)."""
+def count_issues_by_state(db: Session) -> dict[str, int]:
+    """Issue 상태별 건수 조회 (CR 제외)."""
     rows = (
         db.query(Issue.state, func.count())
-        .filter(Issue.project_id == project_id, Issue.type == IssueType.ISSUE)
+        .filter(Issue.type == IssueType.ISSUE)
         .group_by(Issue.state)
         .all()
     )
@@ -45,11 +48,11 @@ def count_issues_by_state(db: Session, project_id: uuid.UUID) -> dict[str, int]:
     return counts
 
 
-def count_crs_by_state(db: Session, project_id: uuid.UUID) -> dict[str, int]:
-    """프로젝트 내 ChangeRequest 이슈 상태별 건수 조회."""
+def count_crs_by_state(db: Session) -> dict[str, int]:
+    """ChangeRequest 이슈 상태별 건수 조회."""
     rows = (
         db.query(Issue.state, func.count())
-        .filter(Issue.project_id == project_id, Issue.type == IssueType.CHANGE_REQUEST)
+        .filter(Issue.type == IssueType.CHANGE_REQUEST)
         .group_by(Issue.state)
         .all()
     )
@@ -57,46 +60,18 @@ def count_crs_by_state(db: Session, project_id: uuid.UUID) -> dict[str, int]:
     for state, cnt in rows:
         counts[state.value] = cnt
     return counts
-
-
-def count_open_issues(db: Session, project_id: uuid.UUID) -> int:
-    """프로젝트 내 열린 Issue 건수 조회 (CR 제외)."""
-    return (
-        db.query(func.count())
-        .filter(
-            Issue.project_id == project_id,
-            Issue.type == IssueType.ISSUE,
-            Issue.state == IssueState.OPEN,
-        )
-        .scalar()
-    )
-
-
-def count_open_crs(db: Session, project_id: uuid.UUID) -> int:
-    """프로젝트 내 열린 ChangeRequest 건수 조회."""
-    return (
-        db.query(func.count())
-        .filter(
-            Issue.project_id == project_id,
-            Issue.type == IssueType.CHANGE_REQUEST,
-            Issue.state == IssueState.OPEN,
-        )
-        .scalar()
-    )
 
 
 def list_issues_paginated(
     db: Session,
-    project_id: uuid.UUID,
     *,
     state: str | None = None,
     search: str | None = None,
     offset: int = 0,
     limit: int = 20,
 ) -> tuple[list[Issue], int]:
-    """프로젝트 내 Issue 목록 페이징 조회 (CR 제외)."""
+    """Issue 목록 페이징 조회 (CR 제외)."""
     query = db.query(Issue).filter(
-        Issue.project_id == project_id,
         Issue.type == IssueType.ISSUE,
     )
     if state:
@@ -110,7 +85,6 @@ def list_issues_paginated(
 
 def list_crs_paginated(
     db: Session,
-    project_id: uuid.UUID,
     *,
     state: str | None = None,
     cr_state: str | None = None,
@@ -118,10 +92,8 @@ def list_crs_paginated(
     offset: int = 0,
     limit: int = 20,
 ) -> tuple[list[ChangeRequest], int]:
-    """프로젝트 내 ChangeRequest 목록 페이징 조회."""
-    query = db.query(ChangeRequest).filter(
-        ChangeRequest.project_id == project_id,
-    )
+    """ChangeRequest 목록 페이징 조회."""
+    query = db.query(ChangeRequest)
     if state:
         query = query.filter(ChangeRequest.state == state)
     if cr_state:
@@ -235,14 +207,13 @@ def batch_load_files(
 
 def lookup_issues(
     db: Session,
-    project_id: uuid.UUID,
     *,
     search: str | None = None,
     type: IssueType | None = None,
     limit: int = 10,
 ) -> list[Issue]:
-    """프로젝트 내 이슈 lookup 조회 (picker/autocomplete용)."""
-    query = db.query(Issue).filter(Issue.project_id == project_id)
+    """이슈 lookup 조회 (picker/autocomplete용)."""
+    query = db.query(Issue)
     if type is not None:
         query = query.filter(Issue.type == type)
     if search:
@@ -258,15 +229,9 @@ def get_by_id(db: Session, issue_id: uuid.UUID) -> Issue | None:
     return db.query(Issue).filter(Issue.id == issue_id).first()
 
 
-def get_by_project_and_number(
-    db: Session, project_id: uuid.UUID, number: int
-) -> Issue | None:
-    """프로젝트 내 이슈 번호로 단건 조회."""
-    return (
-        db.query(Issue)
-        .filter(Issue.project_id == project_id, Issue.number == number)
-        .first()
-    )
+def get_by_number(db: Session, number: int) -> Issue | None:
+    """이슈 번호로 단건 조회."""
+    return db.query(Issue).filter(Issue.number == number).first()
 
 
 def get_cr_by_id(db: Session, issue_id: uuid.UUID) -> ChangeRequest | None:
@@ -274,15 +239,9 @@ def get_cr_by_id(db: Session, issue_id: uuid.UUID) -> ChangeRequest | None:
     return db.query(ChangeRequest).filter(ChangeRequest.id == issue_id).first()
 
 
-def get_cr_by_project_and_number(
-    db: Session, project_id: uuid.UUID, number: int
-) -> ChangeRequest | None:
-    """프로젝트 내 이슈 번호로 ChangeRequest 단건 조회."""
-    return (
-        db.query(ChangeRequest)
-        .filter(ChangeRequest.project_id == project_id, ChangeRequest.number == number)
-        .first()
-    )
+def get_cr_by_number(db: Session, number: int) -> ChangeRequest | None:
+    """이슈 번호로 ChangeRequest 단건 조회."""
+    return db.query(ChangeRequest).filter(ChangeRequest.number == number).first()
 
 
 def add(db: Session, entity: Issue) -> Issue:

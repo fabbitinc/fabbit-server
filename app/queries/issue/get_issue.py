@@ -1,7 +1,5 @@
 """이슈 상세 조회."""
 
-import uuid
-
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
@@ -17,11 +15,10 @@ from app.queries.issue._enrichment import load_enrichments
 def get_issue(
     db: Session,
     auth: AuthContext,
-    project_id: uuid.UUID,
     issue_number: int,
 ) -> IssueResponse:
-    """Issue 상세 조회 (프로젝트 + 번호 기반)."""
-    issue = repo.get_by_project_and_number(db, project_id, issue_number)
+    """Issue 상세 조회 (번호 기반)."""
+    issue = repo.get_by_number(db, issue_number)
     if not issue:
         raise AppError(
             message=f"Issue #{issue_number}을(를) 찾을 수 없습니다", code="NOT_FOUND"

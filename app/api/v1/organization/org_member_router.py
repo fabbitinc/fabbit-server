@@ -2,16 +2,30 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_tenant_db, require_admin, require_auth
 from app.core.auth_context import AuthContext
-from app.modules.project.schemas import MemberListResponse
+from app.modules.project.schemas import MemberListResponse, MemberLookupResponse
 from app.queries import organization as org_queries
 from app.use_cases import organization as org_commands
 
 router = APIRouter(prefix="/api/v1/organizations/members", tags=["organizations"])
+
+
+@router.get("/lookup", response_model=MemberLookupResponse)
+def lookup_members(
+    search: str | None = Query(None, description="이름 검색 (ILIKE)"),
+    limit: int = Query(10, ge=1, le=50, description="조회 건수"),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """조직 멤버 lookup 조회.
+
+    picker/autocomplete UI를 위한 경량 목록 엔드포인트입니다.
+    """
+    return org_queries.lookup_members(db, auth, search=search, limit=limit)
 
 
 @router.get("", response_model=MemberListResponse)

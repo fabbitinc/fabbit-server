@@ -49,7 +49,6 @@ def _register_mention_events(
     for target_issue_id in added_issues:
         issue.register_event(
             IssueMentioned(
-                project_id=issue.project_id,
                 target_issue_id=target_issue_id,
                 source_issue_id=issue.id,
                 source_number=issue.number,
@@ -61,7 +60,6 @@ def _register_mention_events(
     for mentioned_user_id in added_users:
         issue.register_event(
             UserMentioned(
-                project_id=issue.project_id,
                 mentioned_user_id=mentioned_user_id,
                 source_issue_id=issue.id,
                 source_number=issue.number,
@@ -82,11 +80,9 @@ def get_or_raise(db: Session, issue_id: uuid.UUID) -> Issue:
     return issue
 
 
-def get_issue_by_number_or_raise(
-    db: Session, project_id: uuid.UUID, number: int
-) -> Issue:
-    """프로젝트 내 이슈 번호로 ISSUE 타입 조회 — 없거나 타입 불일치 시 AppError."""
-    issue = repo.get_by_project_and_number(db, project_id, number)
+def get_issue_by_number_or_raise(db: Session, number: int) -> Issue:
+    """이슈 번호로 ISSUE 타입 조회 — 없거나 타입 불일치 시 AppError."""
+    issue = repo.get_by_number(db, number)
     if not issue or issue.type != IssueType.ISSUE:
         raise AppError(
             message=f"이슈 #{number}을(를) 찾을 수 없습니다", code="NOT_FOUND"
@@ -96,14 +92,12 @@ def get_issue_by_number_or_raise(
 
 def create_issue(
     db: Session,
-    project_id: uuid.UUID,
     title: str,
     body: str | None = None,
 ) -> Issue:
     """일반 이슈 생성."""
-    number = repo.get_next_number(db, project_id)
+    number = repo.get_next_number(db)
     issue = Issue(
-        project_id=project_id,
         number=number,
         title=title,
         body=body,
@@ -111,7 +105,6 @@ def create_issue(
     repo.add(db, issue)
     issue.register_event(
         IssueCreated(
-            project_id=project_id,
             issue_id=issue.id,
             number=issue.number,
             title=title,
@@ -123,14 +116,12 @@ def create_issue(
 
 def create_change_request(
     db: Session,
-    project_id: uuid.UUID,
     title: str,
     body: str | None = None,
 ) -> ChangeRequest:
     """변경 요청 생성."""
-    number = repo.get_next_number(db, project_id)
+    number = repo.get_next_number(db)
     cr = ChangeRequest(
-        project_id=project_id,
         number=number,
         title=title,
         body=body,
@@ -138,7 +129,6 @@ def create_change_request(
     repo.add(db, cr)
     cr.register_event(
         CRCreated(
-            project_id=project_id,
             issue_id=cr.id,
             number=cr.number,
             title=title,

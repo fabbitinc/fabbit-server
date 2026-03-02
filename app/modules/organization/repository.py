@@ -87,6 +87,24 @@ def list_org_members(
     )
 
 
+def lookup_members(
+    db: Session,
+    org_id: uuid.UUID,
+    *,
+    search: str | None = None,
+    limit: int = 10,
+) -> list[User]:
+    """조직 멤버 lookup 조회 (picker/autocomplete용)."""
+    query = (
+        db.query(User)
+        .join(Membership, User.id == Membership.user_id)
+        .filter(Membership.org_id == org_id)
+    )
+    if search:
+        query = query.filter(User.full_name.ilike(f"%{search}%"))
+    return query.order_by(User.full_name).limit(limit).all()
+
+
 def get_membership_by_slug(
     db: Session, user_id: uuid.UUID, slug: str
 ) -> Membership | None:

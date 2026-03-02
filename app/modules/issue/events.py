@@ -6,27 +6,24 @@ from app.core.domain_event import DomainEvent
 
 
 class IssueCreated(DomainEvent):
-    """일반 이슈 생성 — Project 피드용."""
+    """일반 이슈 생성."""
 
-    project_id: UUID
     issue_id: UUID
     number: int
     title: str
 
 
 class CRCreated(DomainEvent):
-    """변경 요청 생성 — Project 피드용."""
+    """변경 요청 생성."""
 
-    project_id: UUID
     issue_id: UUID
     number: int
     title: str
 
 
 class IssueStateChanged(DomainEvent):
-    """이슈 상태 변경 (OPEN ↔ CLOSED) — 양쪽 피드."""
+    """이슈 상태 변경 (OPEN ↔ CLOSED) — Issue 피드."""
 
-    project_id: UUID
     issue_id: UUID
     number: int
     title: str
@@ -35,9 +32,8 @@ class IssueStateChanged(DomainEvent):
 
 
 class CRStateChanged(DomainEvent):
-    """변경요청 상태 변경 — 양쪽 피드 (MERGED만 Project)."""
+    """변경요청 상태 변경 — Issue 피드."""
 
-    project_id: UUID
     issue_id: UUID
     number: int
     title: str
@@ -113,7 +109,6 @@ class CRIssuesUnlinked(DomainEvent):
 class IssueMentioned(DomainEvent):
     """본문/댓글에서 다른 이슈가 멘션됨."""
 
-    project_id: UUID
     target_issue_id: UUID      # 멘션된 이슈 (Activity 대상)
     source_issue_id: UUID      # 멘션이 작성된 이슈/CR
     source_number: int
@@ -123,9 +118,8 @@ class IssueMentioned(DomainEvent):
 
 
 class UserMentioned(DomainEvent):
-    """본문/댓글에서 사용자가 멘션됨 — 향후 notification 모듈에서 구독."""
+    """본문/댓글에서 사용자가 멘션됨 — notification 모듈에서 구독."""
 
-    project_id: UUID
     mentioned_user_id: UUID
     source_issue_id: UUID
     source_number: int

@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,13 +18,7 @@ class Project(AggregateRoot, SoftDeleteMixin, AuditMixin, UpdatableMixin, PkMixi
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    issue_counter: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-
-    def next_issue_number(self) -> int:
-        """이슈 번호 채번 — 카운터를 1 증가시키고 새 번호를 반환한다."""
-        self.issue_counter += 1
-        return self.issue_counter
 
     def archive(self) -> None:
         """프로젝트 보관 — 읽기만 허용."""

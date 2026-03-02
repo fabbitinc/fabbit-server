@@ -1,7 +1,5 @@
 """변경 요청 목록 조회."""
 
-import uuid
-
 from sqlalchemy.orm import Session
 
 from app.core.auth_context import AuthContext
@@ -16,7 +14,6 @@ from app.queries.issue._enrichment import load_enrichments
 def list_change_requests(
     db: Session,
     auth: AuthContext,
-    project_id: uuid.UUID,
     *,
     state: str | None = None,
     cr_state: str | None = None,
@@ -24,11 +21,10 @@ def list_change_requests(
     offset: int = 0,
     limit: int = 20,
 ) -> ChangeRequestListResponse:
-    """프로젝트 내 ChangeRequest 목록 페이징 조회."""
-    state_counts = repo.count_crs_by_state(db, project_id)
+    """ChangeRequest 목록 페이징 조회."""
+    state_counts = repo.count_crs_by_state(db)
     rows, total = repo.list_crs_paginated(
         db,
-        project_id,
         state=state,
         cr_state=cr_state,
         search=search,

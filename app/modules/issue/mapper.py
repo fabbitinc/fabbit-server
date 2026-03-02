@@ -42,7 +42,6 @@ def to_issue_response(
     """Issue 모델 → IssueResponse 변환."""
     return IssueResponse(
         id=issue.id,
-        project_id=issue.project_id,
         number=issue.number,
         type=issue.type.value,
         title=issue.title,
@@ -77,7 +76,6 @@ def to_change_request_response(
     """ChangeRequest 모델 → ChangeRequestResponse 변환."""
     return ChangeRequestResponse(
         id=cr.id,
-        project_id=cr.project_id,
         number=cr.number,
         type=cr.type.value,
         title=cr.title,
@@ -114,7 +112,6 @@ def to_issue_summary(
     """Issue 모델 → IssueSummary 변환 (body 제외)."""
     return IssueSummary(
         id=issue.id,
-        project_id=issue.project_id,
         number=issue.number,
         type=issue.type.value,
         title=issue.title,
@@ -145,7 +142,6 @@ def to_cr_summary(
     """ChangeRequest 모델 → ChangeRequestSummary 변환 (body 제외)."""
     return ChangeRequestSummary(
         id=cr.id,
-        project_id=cr.project_id,
         number=cr.number,
         type=cr.type.value,
         title=cr.title,

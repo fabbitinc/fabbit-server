@@ -45,6 +45,22 @@ class TeamDetailResponse(BaseModel):
     updated_at: datetime
 
 
+# ── Lookup ──
+
+
+class TeamLookupItem(BaseModel):
+    """팀 lookup 항목 (picker/autocomplete용)."""
+
+    id: uuid.UUID
+    name: str
+
+
+class TeamLookupResponse(BaseModel):
+    """팀 lookup 응답 (picker/autocomplete용)."""
+
+    items: list[TeamLookupItem]
+
+
 # ── 멤버 ──
 
 

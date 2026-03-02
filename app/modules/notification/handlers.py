@@ -87,7 +87,6 @@ def _on_user_mentioned(event: UserMentioned) -> None:
         "type": NotificationType.MENTION,
         "actor_id": actor_id,
         "payload": {
-            "project_id": str(event.project_id),
             "source_issue_id": str(event.source_issue_id),
             "source_number": event.source_number,
             "source_title": event.source_title,

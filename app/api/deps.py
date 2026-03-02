@@ -17,6 +17,7 @@ from app.core.database import SessionLocal
 from app.core.exceptions import AppError
 from app.infrastructure.token_provider import token_provider
 from app.modules.issue.models import ChangeRequest, Issue
+from app.modules.issue.constants import IssueType
 from app.modules.organization.constants import MembershipRole
 from app.modules.organization.provisioning import org_id_to_schema
 
@@ -177,14 +178,13 @@ def guard_archived_project(
 
 
 def resolve_issue(
-    project_id: uuid.UUID,
     issue_number: int,
     db: Session = Depends(get_tenant_db),
 ) -> Issue:
-    """프로젝트 내 이슈 번호로 Issue를 resolve하는 의존성."""
+    """이슈 번호로 Issue를 resolve하는 의존성."""
     issue = (
         db.query(Issue)
-        .filter(Issue.project_id == project_id, Issue.number == issue_number)
+        .filter(Issue.number == issue_number, Issue.type == IssueType.ISSUE)
         .first()
     )
     if issue is None:
@@ -193,14 +193,13 @@ def resolve_issue(
 
 
 def resolve_change_request(
-    project_id: uuid.UUID,
     issue_number: int,
     db: Session = Depends(get_tenant_db),
 ) -> ChangeRequest:
-    """프로젝트 내 이슈 번호로 ChangeRequest를 resolve하는 의존성."""
+    """이슈 번호로 ChangeRequest를 resolve하는 의존성."""
     cr = (
         db.query(ChangeRequest)
-        .filter(ChangeRequest.project_id == project_id, ChangeRequest.number == issue_number)
+        .filter(ChangeRequest.number == issue_number)
         .first()
     )
     if cr is None:

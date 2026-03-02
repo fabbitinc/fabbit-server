@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth
@@ -11,6 +11,7 @@ from app.modules.team.schemas import (
     CreateTeamRequest,
     TeamDetailResponse,
     TeamListResponse,
+    TeamLookupResponse,
     UpdateTeamRequest,
 )
 from app.queries import team as team_queries
@@ -33,6 +34,20 @@ def create_team(
         db, auth, name=req.name, description=req.description
     )
     return team_queries.get_team_detail(db, auth, team.id)
+
+
+@router.get("/lookup", response_model=TeamLookupResponse)
+def lookup_teams(
+    search: str | None = Query(None, description="팀 이름 검색 (ILIKE)"),
+    limit: int = Query(10, ge=1, le=50, description="조회 건수"),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """팀 lookup 조회.
+
+    picker/autocomplete UI를 위한 경량 목록 엔드포인트입니다.
+    """
+    return team_queries.lookup_teams(db, auth, search=search, limit=limit)
 
 
 @router.get("", response_model=TeamListResponse)

@@ -12,11 +12,9 @@ from app.modules.activity.constants import Action, TargetType
 from app.modules.activity.models import Activity
 from app.modules.issue.events import (
     AssigneesChanged,
-    CRCreated,
     CRIssuesLinked,
     CRIssuesUnlinked,
     CRStateChanged,
-    IssueCreated,
     IssueFileDetached,
     IssueFilesAttached,
     IssueLabelsChanged,
@@ -56,42 +54,9 @@ def _add_activity(target_type, target_id, action: Action, actor_id, detail=None)
 # ── Issue 이벤트 ──
 
 
-def _on_issue_created(event: IssueCreated) -> None:
-    """이슈 생성 → Project 피드."""
-    actor_id = _get_actor_id()
-    _add_activity(
-        TargetType.PROJECT,
-        event.project_id,
-        Action.ISSUE_CREATED,
-        actor_id,
-        {
-            "issue_id": str(event.issue_id),
-            "number": event.number,
-            "title": event.title,
-        },
-    )
-
-
-def _on_cr_created(event: CRCreated) -> None:
-    """변경 요청 생성 → Project 피드."""
-    actor_id = _get_actor_id()
-    _add_activity(
-        TargetType.PROJECT,
-        event.project_id,
-        Action.CR_CREATED,
-        actor_id,
-        {
-            "issue_id": str(event.issue_id),
-            "number": event.number,
-            "title": event.title,
-        },
-    )
-
-
 def _on_issue_state_changed(event: IssueStateChanged) -> None:
-    """이슈 상태 변경 → 양쪽 피드."""
+    """이슈 상태 변경 → Issue 피드."""
     actor_id = _get_actor_id()
-    # Issue 피드
     _add_activity(
         TargetType.ISSUE,
         event.issue_id,
@@ -99,28 +64,11 @@ def _on_issue_state_changed(event: IssueStateChanged) -> None:
         actor_id,
         {"from": event.old_state, "to": event.new_state},
     )
-    # Project 피드
-    if event.new_state == "CLOSED":
-        action = Action.ISSUE_CLOSED
-    else:
-        action = Action.ISSUE_REOPENED
-    _add_activity(
-        TargetType.PROJECT,
-        event.project_id,
-        action,
-        actor_id,
-        {
-            "issue_id": str(event.issue_id),
-            "number": event.number,
-            "title": event.title,
-        },
-    )
 
 
 def _on_cr_state_changed(event: CRStateChanged) -> None:
-    """CR 상태 변경 → Issue 피드 + (MERGED만) Project 피드."""
+    """CR 상태 변경 → Issue 피드."""
     actor_id = _get_actor_id()
-    # Issue 피드
     _add_activity(
         TargetType.ISSUE,
         event.issue_id,
@@ -128,19 +76,6 @@ def _on_cr_state_changed(event: CRStateChanged) -> None:
         actor_id,
         {"from": event.old_state, "to": event.new_state},
     )
-    # MERGED만 Project 피드
-    if event.new_state == "MERGED":
-        _add_activity(
-            TargetType.PROJECT,
-            event.project_id,
-            Action.CR_MERGED,
-            actor_id,
-            {
-                "issue_id": str(event.issue_id),
-                "number": event.number,
-                "title": event.title,
-            },
-        )
 
 
 def _on_assignees_changed(event: AssigneesChanged) -> None:
@@ -348,8 +283,6 @@ def _on_project_unarchived(event: ProjectUnarchived) -> None:
 
 # ── 구독 등록 ──
 
-event_bus.subscribe(IssueCreated, _on_issue_created)
-event_bus.subscribe(CRCreated, _on_cr_created)
 event_bus.subscribe(IssueStateChanged, _on_issue_state_changed)
 event_bus.subscribe(CRStateChanged, _on_cr_state_changed)
 event_bus.subscribe(AssigneesChanged, _on_assignees_changed)

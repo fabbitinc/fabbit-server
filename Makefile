@@ -1,25 +1,54 @@
 .PHONY: dev-start dev-stop dev-db-reset openapi test test-e2e test-e2e-llm migrate-public migrate-tenant migrate-all revision-public revision-tenant lint
 
-# 개발환경 시작 (PostgreSQL + API 서버)
-dev-start:
+# 개발환경 디비 시작
+dev-db-start:
 	docker compose -f docker-compose.dev.yml up -d 
 	@echo "PostgreSQL 준비 대기..."
 	@until docker exec fabbit-db pg_isready -U fabbit -q 2>/dev/null; do sleep 0.5; done
 	@echo "PostgreSQL 준비 완료"
-	uv run alembic upgrade head
-	uv run alembic -c alembic_tenant.ini upgrade head
-	@echo "마이그레이션 완료"
-	uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# 개발환경 종료
-dev-stop:
-	-@lsof -ti:8000 | xargs kill 2>/dev/null || true
+# 개발환경 디비 종료
+dev-db-stop:
 	docker compose -f docker-compose.dev.yml down
 
 # DB 초기화 (볼륨 삭제)
 dev-db-reset:
 	docker compose -f docker-compose.dev.yml down -v
-	@echo "DB 볼륨 삭제 완료. make dev-start로 재시작하세요."
+	@echo "DB 볼륨 삭제 완료."
+	@find alembic/versions -type f -name "*.py" -delete
+	@find alembic_tenant/versions -type f -name "*.py" -delete
+	@echo "마이그래이션 삭제 완료."
+	$(MAKE) dev-db-start
+	@nohup uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 & echo $$! > uvicorn.pid
+	@echo "서버 응답 대기 중 (http://localhost:8000/health)..."
+	@for i in $$(seq 1 30); do \
+		if curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health | grep -q "200"; then \
+			echo "\n서버 준비 완료!"; \
+			break; \
+		fi; \
+		echo -n "."; \
+		sleep 1; \
+		if [ $$i -eq 30 ]; then \
+			echo "\n서버 시작 시간 초과!"; \
+			$(MAKE) dev-db-cleanup; \
+			exit 1; \
+		fi; \
+	done
+	$(MAKE) revision-all
+	-@kill $$(cat uvicorn.pid) 2>/dev/null || true
+	-@rm uvicorn.pid uvicorn.log 2>/dev/null || true
+	@echo "DB 리셋 및 마이그레이션 생성 완료."
+
+# 개발환경 시작 (PostgreSQL + API 서버)
+dev-start:
+	$(MAKE) dev-db-start
+	$(MAKE) migrate-all
+	uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+dev-reset:
+	$(MAKE) dev-stop
+	$(MAKE) dev-db-reset
+	$(MAKE) dev-start
 
 # OpenAPI 스펙 파일 생성
 openapi:
@@ -28,10 +57,7 @@ openapi:
 	@cp ./openapi.json ../web/openapi.json
 	@echo "openapi.json 복사 완료"
 
-dev-reset:
-	$(MAKE) dev-stop
-	$(MAKE) dev-db-reset
-	$(MAKE) dev-start
+
 
 # ── 마이그레이션 ──
 
@@ -47,6 +73,7 @@ migrate-tenant:
 migrate-all:
 	uv run alembic upgrade head
 	uv run alembic -c alembic_tenant.ini upgrade head
+	@echo "마이그레이션 완료"
 
 # public revision 자동 생성 (사용: make revision-public m="설명")
 revision-public:
@@ -59,6 +86,8 @@ revision-tenant:
 revision-all:
 	uv run alembic revision --autogenerate -m "$(m)"
 	uv run alembic -c alembic_tenant.ini revision --autogenerate -m "$(m)"
+	@echo "마이그레이션 파일 생성 완료"
+
 
 # ── 테스트 ──
 

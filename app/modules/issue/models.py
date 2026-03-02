@@ -38,10 +38,8 @@ class Issue(AggregateRoot, AuditMixin, UpdatableMixin, PkMixin, TenantBase):
     __tablename__ = "issues"
 
     __table_args__ = (
-        # 프로젝트 내 이슈 번호 유일성 보장
-        UniqueConstraint("project_id", "number", name="uq_issues_project_id_number"),
-        # 프로젝트별 이슈 조회 최적화
-        Index("ix_issues_project_id", "project_id"),
+        # 테넌트 전역 이슈 번호 유일성 보장
+        UniqueConstraint("number", name="uq_issues_number"),
     )
 
     __mapper_args__ = {
@@ -49,11 +47,6 @@ class Issue(AggregateRoot, AuditMixin, UpdatableMixin, PkMixin, TenantBase):
         "polymorphic_identity": IssueType.ISSUE,
     }
 
-    project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("projects.id", ondelete="CASCADE"),
-        nullable=False,
-    )
     number: Mapped[int] = mapped_column(Integer, nullable=False)
     type: Mapped[IssueType] = mapped_column(
         Enum(IssueType, name="issue_type"), nullable=False
@@ -112,7 +105,6 @@ class Issue(AggregateRoot, AuditMixin, UpdatableMixin, PkMixin, TenantBase):
         self.state = IssueState.CLOSED
         self.closed_at = now
         self.register_event(IssueStateChanged(
-            project_id=self.project_id,
             issue_id=self.id,
             number=self.number,
             title=self.title,
@@ -126,7 +118,6 @@ class Issue(AggregateRoot, AuditMixin, UpdatableMixin, PkMixin, TenantBase):
         self.state = IssueState.OPEN
         self.closed_at = None
         self.register_event(IssueStateChanged(
-            project_id=self.project_id,
             issue_id=self.id,
             number=self.number,
             title=self.title,
@@ -175,7 +166,6 @@ class ChangeRequest(Issue):
         old_state = self.cr_state.value
         self.cr_state = CRState.SUBMITTED
         self.register_event(CRStateChanged(
-            project_id=self.project_id,
             issue_id=self.id,
             number=self.number,
             title=self.title,
@@ -195,7 +185,6 @@ class ChangeRequest(Issue):
         self.merged_at = now
         self.merged_by = user_id
         self.register_event(CRStateChanged(
-            project_id=self.project_id,
             issue_id=self.id,
             number=self.number,
             title=self.title,
@@ -216,7 +205,6 @@ class ChangeRequest(Issue):
         old_state = self.cr_state.value
         self.cr_state = CRState.CLOSED
         self.register_event(CRStateChanged(
-            project_id=self.project_id,
             issue_id=self.id,
             number=self.number,
             title=self.title,
@@ -237,7 +225,6 @@ class ChangeRequest(Issue):
         old_state = self.cr_state.value
         self.cr_state = CRState.SUBMITTED
         self.register_event(CRStateChanged(
-            project_id=self.project_id,
             issue_id=self.id,
             number=self.number,
             title=self.title,

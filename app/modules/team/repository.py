@@ -84,6 +84,19 @@ def list_members(db: Session, team_id: uuid.UUID) -> list[TeamMember]:
     )
 
 
+def lookup_teams(
+    db: Session,
+    *,
+    search: str | None = None,
+    limit: int = 10,
+) -> list[Team]:
+    """팀 lookup 조회 (picker/autocomplete용)."""
+    query = db.query(Team)
+    if search:
+        query = query.filter(Team.name.ilike(f"%{search}%"))
+    return query.order_by(Team.name).limit(limit).all()
+
+
 def count_members(db: Session, team_id: uuid.UUID) -> int:
     """Team 멤버 수 조회."""
     return (

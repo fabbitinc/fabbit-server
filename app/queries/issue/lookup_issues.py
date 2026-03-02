@@ -1,6 +1,4 @@
-"""프로젝트 이슈 lookup 조회."""
-
-import uuid
+"""이슈 lookup 조회."""
 
 from sqlalchemy.orm import Session
 
@@ -15,14 +13,13 @@ from app.modules.issue.schemas import IssueLookupItem, IssueLookupResponse
 def lookup_issues(
     db: Session,
     auth: AuthContext,
-    project_id: uuid.UUID,
     *,
     search: str | None = None,
     type: IssueType | None = None,
     limit: int = 10,
 ) -> IssueLookupResponse:
-    """프로젝트 내 이슈 lookup 조회 (picker/autocomplete용)."""
-    issues = repo.lookup_issues(db, project_id, search=search, type=type, limit=limit)
+    """이슈 lookup 조회 (picker/autocomplete용)."""
+    issues = repo.lookup_issues(db, search=search, type=type, limit=limit)
     items = [
         IssueLookupItem(
             id=issue.id,
