@@ -3596,231 +3596,6 @@
                 }
             }
         },
-        "/api/v1/projects/{project_id}/labels": {
-            "get": {
-                "tags": [
-                    "labels"
-                ],
-                "summary": "List Labels",
-                "description": "\ud504\ub85c\uc81d\ud2b8 \ub77c\ubca8 \ubaa9\ub85d \uc870\ud68c.\n\n\ud504\ub85c\uc81d\ud2b8\uc5d0 \ub4f1\ub85d\ub41c \ubaa8\ub4e0 \ub77c\ubca8\uc744 \uc774\ub984\uc21c\uc73c\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.",
-                "operationId": "list_labels_api_v1_projects__project_id__labels_get",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LabelListResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "tags": [
-                    "labels"
-                ],
-                "summary": "Create Label",
-                "description": "\ub77c\ubca8 \uc0dd\uc131.\n\n\ud504\ub85c\uc81d\ud2b8 \ub0b4\uc5d0\uc11c \ub77c\ubca8 \uc774\ub984\uc740 \uace0\uc720\ud574\uc57c \ud569\ub2c8\ub2e4.\n\uc0c9\uc0c1\uc740 `#RRGGBB` \ud615\uc2dd\uc758 hex \ucf54\ub4dc\uc785\ub2c8\ub2e4.",
-                "operationId": "create_label_api_v1_projects__project_id__labels_post",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CreateLabelRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LabelResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects/{project_id}/labels/{label_id}": {
-            "patch": {
-                "tags": [
-                    "labels"
-                ],
-                "summary": "Update Label",
-                "description": "\ub77c\ubca8 \uc218\uc815.\n\n\ubcc0\uacbd\ud560 \ud544\ub4dc\ub9cc \uc694\uccad \ubcf8\ubb38\uc5d0 \ud3ec\ud568\ud558\uba74 \ub429\ub2c8\ub2e4.\n`description`\uc744 `null`\ub85c \ubcf4\ub0b4\uba74 \uc124\uba85\uc774 \uc81c\uac70\ub429\ub2c8\ub2e4.",
-                "operationId": "update_label_api_v1_projects__project_id__labels__label_id__patch",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "label_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Label Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/UpdateLabelRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LabelResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "labels"
-                ],
-                "summary": "Delete Label",
-                "description": "\ub77c\ubca8 \uc0ad\uc81c.\n\n\uc0ad\uc81c\ub41c \ub77c\ubca8\uc740 \ubcf5\uad6c\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.",
-                "operationId": "delete_label_api_v1_projects__project_id__labels__label_id__delete",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Project Id"
-                        }
-                    },
-                    {
-                        "name": "label_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Label Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/projects/{project_id}/members/lookup": {
             "get": {
                 "tags": [
@@ -6666,6 +6441,177 @@
                 }
             }
         },
+        "/api/v1/labels": {
+            "get": {
+                "tags": [
+                    "labels"
+                ],
+                "summary": "List Labels",
+                "description": "\ub77c\ubca8 \ubaa9\ub85d \uc870\ud68c.\n\n\ud14c\ub10c\ud2b8\uc5d0 \ub4f1\ub85d\ub41c \ubaa8\ub4e0 \ub77c\ubca8\uc744 \uc774\ub984\uc21c\uc73c\ub85c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "list_labels_api_v1_labels_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LabelListResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "labels"
+                ],
+                "summary": "Create Label",
+                "description": "\ub77c\ubca8 \uc0dd\uc131.\n\n\ud14c\ub10c\ud2b8 \ub0b4\uc5d0\uc11c \ub77c\ubca8 \uc774\ub984\uc740 \uace0\uc720\ud574\uc57c \ud569\ub2c8\ub2e4.\n\uc0c9\uc0c1\uc740 `#RRGGBB` \ud615\uc2dd\uc758 hex \ucf54\ub4dc\uc785\ub2c8\ub2e4.",
+                "operationId": "create_label_api_v1_labels_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateLabelRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LabelResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/labels/{label_id}": {
+            "patch": {
+                "tags": [
+                    "labels"
+                ],
+                "summary": "Update Label",
+                "description": "\ub77c\ubca8 \uc218\uc815.\n\n\ubcc0\uacbd\ud560 \ud544\ub4dc\ub9cc \uc694\uccad \ubcf8\ubb38\uc5d0 \ud3ec\ud568\ud558\uba74 \ub429\ub2c8\ub2e4.\n`description`\uc744 `null`\ub85c \ubcf4\ub0b4\uba74 \uc124\uba85\uc774 \uc81c\uac70\ub429\ub2c8\ub2e4.",
+                "operationId": "update_label_api_v1_labels__label_id__patch",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "label_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Label Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateLabelRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LabelResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "labels"
+                ],
+                "summary": "Delete Label",
+                "description": "\ub77c\ubca8 \uc0ad\uc81c.\n\n\uc0ad\uc81c\ub41c \ub77c\ubca8\uc740 \ubcf5\uad6c\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.",
+                "operationId": "delete_label_api_v1_labels__label_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "label_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Label Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/teams": {
             "get": {
                 "tags": [
@@ -6697,7 +6643,7 @@
                     "teams"
                 ],
                 "summary": "Create Team",
-                "description": "\ud300 \uc0dd\uc131.\n\n\ud300 \uc0dd\uc131 \uc2dc \uc0dd\uc131\uc790\uac00 \uc790\ub3d9\uc73c\ub85c \uba64\ubc84\uc5d0 \ucd94\uac00\ub429\ub2c8\ub2e4.",
+                "description": "\ud300 \uc0dd\uc131.\n\n\ud300 \uc0dd\uc131 \uc2dc \uba64\ubc84\ub294 \ube44\uc5b4\uc788\uc2b5\ub2c8\ub2e4..",
                 "operationId": "create_team_api_v1_teams_post",
                 "requestBody": {
                     "content": {
@@ -9353,6 +9299,7 @@
             "Discipline": {
                 "type": "string",
                 "enum": [
+                    "ALL",
                     "DESIGN",
                     "QUALITY",
                     "MANUFACTURING",
@@ -10239,11 +10186,6 @@
                         "format": "uuid",
                         "title": "Id"
                     },
-                    "project_id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Project Id"
-                    },
                     "name": {
                         "type": "string",
                         "title": "Name"
@@ -10284,7 +10226,6 @@
                 "type": "object",
                 "required": [
                     "id",
-                    "project_id",
                     "name",
                     "color",
                     "created_at"

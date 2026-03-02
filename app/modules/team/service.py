@@ -17,7 +17,9 @@ def get_or_raise(db: Session, team_id: uuid.UUID) -> Team:
     """Team 조회 — 없으면 AppError(NOT_FOUND)."""
     team = repo.get_by_id(db, team_id)
     if not team:
-        raise AppError(message=f"Team '{team_id}'을(를) 찾을 수 없습니다", code="NOT_FOUND")
+        raise AppError(
+            message=f"Team '{team_id}'을(를) 찾을 수 없습니다", code="NOT_FOUND"
+        )
     return team
 
 
@@ -30,8 +32,6 @@ def create_team(
     """팀 생성 — created_by가 주어지면 자동 멤버 등록."""
     team = Team(name=name, description=description, created_by=created_by)
     repo.add(db, team)
-    if created_by is not None:
-        repo.add_members(db, team.id, [created_by])
     return team
 
 
@@ -63,8 +63,6 @@ def add_members(
     return repo.add_members(db, team_id, user_ids)
 
 
-def remove_members(
-    db: Session, team_id: uuid.UUID, user_ids: list[uuid.UUID]
-) -> int:
+def remove_members(db: Session, team_id: uuid.UUID, user_ids: list[uuid.UUID]) -> int:
     """Team에서 멤버 배치 제거 — 삭제 건수 반환."""
     return repo.remove_members(db, team_id, user_ids)

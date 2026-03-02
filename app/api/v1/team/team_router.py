@@ -28,7 +28,7 @@ def create_team(
 ):
     """팀 생성.
 
-    팀 생성 시 생성자가 자동으로 멤버에 추가됩니다.
+    팀 생성 시 멤버는 비어있습니다..
     """
     team = team_commands.create_team(
         db, auth, name=req.name, description=req.description

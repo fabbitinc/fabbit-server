@@ -15,7 +15,7 @@ def create_team(
     name: str,
     description: str | None = None,
 ) -> Team:
-    """팀 생성 — 생성자를 자동 멤버로 등록."""
+    """팀 생성 — 빈 멤버"""
     return team_service.create_team(
         db, name=name, description=description, created_by=auth.user_id
     )
