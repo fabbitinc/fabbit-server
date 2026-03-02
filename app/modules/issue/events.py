@@ -126,3 +126,27 @@ class UserMentioned(DomainEvent):
     source_title: str
     source_issue_type: str     # "issue" | "change_request"
     is_comment: bool
+
+
+class TeamAssigneesChanged(DomainEvent):
+    """이슈 팀 담당자 동기화 — 스냅샷 포함."""
+
+    issue_id: UUID
+    added: list[dict]    # [{"team_id": str, "name": str}]
+    removed: list[dict]  # [{"team_id": str, "name": str}]
+
+
+class TeamReviewersChanged(DomainEvent):
+    """CR 팀 검토자 동기화 — 스냅샷 포함."""
+
+    issue_id: UUID
+    added: list[dict]    # [{"team_id": str, "name": str}]
+    removed: list[dict]  # [{"team_id": str, "name": str}]
+
+
+class ReviewSubmitted(DomainEvent):
+    """CR 리뷰 제출."""
+
+    issue_id: UUID
+    reviewer_user_id: UUID
+    review_status: str   # APPROVED | REJECTED

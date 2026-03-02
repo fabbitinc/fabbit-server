@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     DateTime,
@@ -18,14 +19,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.aggregate import AggregateRoot
 from app.core.database import TenantBase
-from app.core.mixins import AuditMixin, PkMixin, TimestampMixin, UpdatableMixin
-
-from typing import TYPE_CHECKING
-
 from app.core.exceptions import AppError
+from app.core.mixins import AuditMixin, PkMixin, TimestampMixin, UpdatableMixin
 from app.modules.file.events import FileAttached, FileDetached
 
-from .constants import CRState, IssueState, IssueType
+from .constants import CRState, IssueState, IssueType, ReviewStatus
 from .events import CRStateChanged, IssueStateChanged
 
 if TYPE_CHECKING:
@@ -69,8 +67,7 @@ class Issue(AggregateRoot, AuditMixin, UpdatableMixin, PkMixin, TenantBase):
     files: Mapped[list["File"]] = relationship(
         "File",
         primaryjoin=(
-            "and_(Issue.id == foreign(File.owner_id),"
-            " File.owner_type == 'issue')"
+            "and_(Issue.id == foreign(File.owner_id), File.owner_type == 'issue')"
         ),
         viewonly=True,
     )
@@ -104,26 +101,30 @@ class Issue(AggregateRoot, AuditMixin, UpdatableMixin, PkMixin, TenantBase):
         old_state = self.state.value
         self.state = IssueState.CLOSED
         self.closed_at = now
-        self.register_event(IssueStateChanged(
-            issue_id=self.id,
-            number=self.number,
-            title=self.title,
-            old_state=old_state,
-            new_state=IssueState.CLOSED.value,
-        ))
+        self.register_event(
+            IssueStateChanged(
+                issue_id=self.id,
+                number=self.number,
+                title=self.title,
+                old_state=old_state,
+                new_state=IssueState.CLOSED.value,
+            )
+        )
 
     def reopen(self) -> None:
         """닫힌 이슈를 다시 연다."""
         old_state = self.state.value
         self.state = IssueState.OPEN
         self.closed_at = None
-        self.register_event(IssueStateChanged(
-            issue_id=self.id,
-            number=self.number,
-            title=self.title,
-            old_state=old_state,
-            new_state=IssueState.OPEN.value,
-        ))
+        self.register_event(
+            IssueStateChanged(
+                issue_id=self.id,
+                number=self.number,
+                title=self.title,
+                old_state=old_state,
+                new_state=IssueState.OPEN.value,
+            )
+        )
 
 
 class ChangeRequest(Issue):
@@ -165,13 +166,15 @@ class ChangeRequest(Issue):
             )
         old_state = self.cr_state.value
         self.cr_state = CRState.SUBMITTED
-        self.register_event(CRStateChanged(
-            issue_id=self.id,
-            number=self.number,
-            title=self.title,
-            old_state=old_state,
-            new_state=CRState.SUBMITTED.value,
-        ))
+        self.register_event(
+            CRStateChanged(
+                issue_id=self.id,
+                number=self.number,
+                title=self.title,
+                old_state=old_state,
+                new_state=CRState.SUBMITTED.value,
+            )
+        )
 
     def merge(self, now: datetime, user_id: uuid.UUID) -> None:
         """변경 요청을 반영한다 (SUBMITTED → MERGED)."""
@@ -184,13 +187,15 @@ class ChangeRequest(Issue):
         self.cr_state = CRState.MERGED
         self.merged_at = now
         self.merged_by = user_id
-        self.register_event(CRStateChanged(
-            issue_id=self.id,
-            number=self.number,
-            title=self.title,
-            old_state=old_state,
-            new_state=CRState.MERGED.value,
-        ))
+        self.register_event(
+            CRStateChanged(
+                issue_id=self.id,
+                number=self.number,
+                title=self.title,
+                old_state=old_state,
+                new_state=CRState.MERGED.value,
+            )
+        )
         # issue.state 동기화 (IssueStateChanged 이벤트 없이 필드만 설정)
         self.state = IssueState.CLOSED
         self.closed_at = now
@@ -204,13 +209,15 @@ class ChangeRequest(Issue):
             )
         old_state = self.cr_state.value
         self.cr_state = CRState.CLOSED
-        self.register_event(CRStateChanged(
-            issue_id=self.id,
-            number=self.number,
-            title=self.title,
-            old_state=old_state,
-            new_state=CRState.CLOSED.value,
-        ))
+        self.register_event(
+            CRStateChanged(
+                issue_id=self.id,
+                number=self.number,
+                title=self.title,
+                old_state=old_state,
+                new_state=CRState.CLOSED.value,
+            )
+        )
         # issue.state 동기화 (IssueStateChanged 이벤트 없이 필드만 설정)
         self.state = IssueState.CLOSED
         self.closed_at = now
@@ -224,13 +231,15 @@ class ChangeRequest(Issue):
             )
         old_state = self.cr_state.value
         self.cr_state = CRState.SUBMITTED
-        self.register_event(CRStateChanged(
-            issue_id=self.id,
-            number=self.number,
-            title=self.title,
-            old_state=old_state,
-            new_state=CRState.SUBMITTED.value,
-        ))
+        self.register_event(
+            CRStateChanged(
+                issue_id=self.id,
+                number=self.number,
+                title=self.title,
+                old_state=old_state,
+                new_state=CRState.SUBMITTED.value,
+            )
+        )
         # issue.state 동기화 (IssueStateChanged 이벤트 없이 필드만 설정)
         self.state = IssueState.OPEN
         self.closed_at = None
@@ -243,7 +252,9 @@ class IssueAssignee(TimestampMixin, PkMixin, TenantBase):
 
     __table_args__ = (
         # 동일 이슈-사용자 관계 중복 방지
-        UniqueConstraint("issue_id", "user_id", name="uq_issue_assignees_issue_id_user_id"),
+        UniqueConstraint(
+            "issue_id", "user_id", name="uq_issue_assignees_issue_id_user_id"
+        ),
         # 이슈 기준 담당자 조회 최적화
         Index("ix_issue_assignees_issue_id", "issue_id"),
         # 사용자 기준 담당 이슈 조회 최적화
@@ -313,7 +324,9 @@ class IssueLabel(TimestampMixin, PkMixin, TenantBase):
 
     __table_args__ = (
         # 동일 이슈-라벨 관계 중복 방지
-        UniqueConstraint("issue_id", "label_id", name="uq_issue_labels_issue_id_label_id"),
+        UniqueConstraint(
+            "issue_id", "label_id", name="uq_issue_labels_issue_id_label_id"
+        ),
         # 이슈 기준 라벨 조회 최적화
         Index("ix_issue_labels_issue_id", "issue_id"),
         # 라벨 기준 이슈 조회 최적화 (역추적)
@@ -340,7 +353,8 @@ class ChangeRequestReviewer(TimestampMixin, PkMixin, TenantBase):
     __table_args__ = (
         # 동일 CR-사용자 관계 중복 방지
         UniqueConstraint(
-            "change_request_id", "user_id",
+            "change_request_id",
+            "user_id",
             name="uq_cr_reviewers_cr_id_user_id",
         ),
         # CR 기준 검토자 조회 최적화
@@ -359,6 +373,15 @@ class ChangeRequestReviewer(TimestampMixin, PkMixin, TenantBase):
         UUID(as_uuid=True),
         nullable=False,
     )
+    review_status: Mapped[str] = mapped_column(
+        String(20),
+        default=ReviewStatus.PENDING,
+        nullable=False,
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
 
 class ChangeRequestIssue(TimestampMixin, PkMixin, TenantBase):
@@ -369,7 +392,8 @@ class ChangeRequestIssue(TimestampMixin, PkMixin, TenantBase):
     __table_args__ = (
         # 동일 CR-이슈 관계 중복 방지
         UniqueConstraint(
-            "change_request_id", "issue_id",
+            "change_request_id",
+            "issue_id",
             name="uq_change_request_issues_cr_id_issue_id",
         ),
         # CR 기준 연결 이슈 조회 최적화
@@ -386,5 +410,65 @@ class ChangeRequestIssue(TimestampMixin, PkMixin, TenantBase):
     issue_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("issues.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+
+class IssueTeamAssignee(TimestampMixin, PkMixin, TenantBase):
+    """이슈 팀 담당자 (M:N)."""
+
+    __tablename__ = "issue_team_assignees"
+
+    __table_args__ = (
+        # 동일 이슈-팀 관계 중복 방지
+        UniqueConstraint(
+            "issue_id",
+            "team_id",
+            name="uq_issue_team_assignees_issue_id_team_id",
+        ),
+        # 이슈 기준 담당팀 조회 최적화
+        Index("ix_issue_team_assignees_issue_id", "issue_id"),
+        # 팀 기준 이슈 조회 최적화
+        Index("ix_issue_team_assignees_team_id", "team_id"),
+    )
+
+    issue_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("issues.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    team_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("teams.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+
+class ChangeRequestTeamReviewer(TimestampMixin, PkMixin, TenantBase):
+    """변경 요청 팀 검토자 (M:N)."""
+
+    __tablename__ = "cr_team_reviewers"
+
+    __table_args__ = (
+        # 동일 CR-팀 관계 중복 방지
+        UniqueConstraint(
+            "change_request_id",
+            "team_id",
+            name="uq_cr_team_reviewers_cr_id_team_id",
+        ),
+        # CR 기준 검토팀 조회 최적화
+        Index("ix_cr_team_reviewers_change_request_id", "change_request_id"),
+        # 팀 기준 CR 조회 최적화
+        Index("ix_cr_team_reviewers_team_id", "team_id"),
+    )
+
+    change_request_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("change_requests.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    team_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("teams.id", ondelete="CASCADE"),
         nullable=False,
     )

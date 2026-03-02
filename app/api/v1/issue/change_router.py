@@ -19,6 +19,8 @@ from app.modules.issue.schemas import (
     CreateCommentRequest,
     LinkIssuesRequest,
     LinkIssuesResponse,
+    SubmitReviewRequest,
+    SubmitReviewResponse,
     SyncAssigneesRequest,
     SyncAssigneesResponse,
     SyncLabelsRequest,
@@ -27,6 +29,10 @@ from app.modules.issue.schemas import (
     SyncPartsResponse,
     SyncReviewersRequest,
     SyncReviewersResponse,
+    SyncTeamAssigneesRequest,
+    SyncTeamAssigneesResponse,
+    SyncTeamReviewersRequest,
+    SyncTeamReviewersResponse,
     UpdateCommentRequest,
     UpdateIssueRequest,
 )
@@ -250,6 +256,31 @@ def sync_assignees(
     return issue_commands.sync_assignees(db, auth, cr.id, user_ids=req.user_ids)
 
 
+# ── 팀 담당자 동기화 ──
+
+
+@router.put(
+    "/{issue_number}/assigned-teams",
+    response_model=SyncTeamAssigneesResponse,
+    status_code=200,
+)
+def sync_team_assignees(
+    req: SyncTeamAssigneesRequest,
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """변경 요청 팀 담당자 동기화.
+
+    전달된 `team_ids`를 CR의 최종 팀 담당자 목록으로 설정합니다.
+    추가된 팀 멤버와 겹치는 개인 담당자는 자동 제거됩니다.
+    빈 목록 전달 시 모든 팀 담당자가 해제됩니다.
+    """
+    return issue_commands.sync_team_assignees(
+        db, auth, cr.id, team_ids=req.team_ids
+    )
+
+
 # ── 검토자 동기화 ──
 
 
@@ -271,6 +302,56 @@ def sync_reviewers(
     빈 목록 전달 시 모든 검토자가 해제됩니다.
     """
     return issue_commands.sync_reviewers(db, auth, cr.id, user_ids=req.user_ids)
+
+
+# ── 팀 검토자 동기화 ──
+
+
+@router.put(
+    "/{issue_number}/reviewer-teams",
+    response_model=SyncTeamReviewersResponse,
+    status_code=200,
+)
+def sync_team_reviewers(
+    req: SyncTeamReviewersRequest,
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """변경 요청 팀 검토자 동기화.
+
+    전달된 `team_ids`를 CR의 최종 팀 검토자 목록으로 설정합니다.
+    추가된 팀 멤버와 겹치는 개인 검토자는 자동 제거됩니다.
+    빈 목록 전달 시 모든 팀 검토자가 해제됩니다.
+    """
+    return issue_commands.sync_team_reviewers(
+        db, auth, cr.id, team_ids=req.team_ids
+    )
+
+
+# ── 리뷰 제출 ──
+
+
+@router.post(
+    "/{issue_number}/review",
+    response_model=SubmitReviewResponse,
+    status_code=200,
+)
+def submit_review(
+    req: SubmitReviewRequest,
+    cr: ChangeRequest = Depends(resolve_change_request),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """변경 요청 리뷰 제출.
+
+    본인이 검토자로 배정된 경우에만 호출 가능합니다.
+    `status`에 **APPROVED** 또는 **REJECTED**를 전달합니다.
+    `review_status`와 `reviewed_at`이 업데이트됩니다.
+    """
+    return issue_commands.submit_review(
+        db, auth, cr.id, status=req.status
+    )
 
 
 # ── 라벨 동기화 ──

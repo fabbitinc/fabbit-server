@@ -3,24 +3,26 @@
 import uuid
 
 from sqlalchemy import String, cast, func, or_
+from sqlalchemy import text as sa_text
 from sqlalchemy.orm import Session
 
-from sqlalchemy import text as sa_text
-
 from app.modules.file.models import File
-from app.modules.issue.constants import CRState, IssueState, IssueType
+from app.modules.issue.constants import CRState, IssueState, IssueType, ReviewStatus
 from app.modules.issue.models import (
     ChangeRequest,
     ChangeRequestIssue,
     ChangeRequestReviewer,
+    ChangeRequestTeamReviewer,
     Issue,
     IssueAssignee,
     IssueComment,
     IssueLabel,
     IssuePart,
+    IssueTeamAssignee,
 )
 from app.modules.label.models import Label
 from app.modules.part.models import Part
+from app.modules.team.models import Team, TeamMember
 
 
 def get_next_number(db: Session) -> int:
@@ -254,7 +256,10 @@ def add(db: Session, entity: Issue) -> Issue:
 def sync_assignees(
     db: Session, issue_id: uuid.UUID, user_ids: list[uuid.UUID]
 ) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
-    """이슈 담당자 동기화 — diff 기반으로 추가/제거 수행, (added, removed) 반환."""
+    """이슈 담당자 동기화 — diff 기반으로 추가/제거 수행, (added, removed) 반환.
+
+    팀 배정으로 이미 커버된 user_id는 추가 대상에서 스킵합니다.
+    """
     current = set(
         row[0]
         for row in db.query(IssueAssignee.user_id)
@@ -262,7 +267,17 @@ def sync_assignees(
         .all()
     )
     desired = set(user_ids)
-    to_add = desired - current
+
+    # 팀 배정으로 커버된 user_id 조합
+    covered_by_team = set(
+        row[0]
+        for row in db.query(TeamMember.user_id)
+        .join(IssueTeamAssignee, TeamMember.team_id == IssueTeamAssignee.team_id)
+        .filter(IssueTeamAssignee.issue_id == issue_id)
+        .all()
+    )
+
+    to_add = desired - current - covered_by_team
     to_remove = current - desired
 
     if to_remove:
@@ -283,7 +298,10 @@ def sync_assignees(
 def sync_reviewers(
     db: Session, cr_id: uuid.UUID, user_ids: list[uuid.UUID]
 ) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
-    """CR 검토자 동기화 — diff 기반으로 추가/제거 수행, (added, removed) 반환."""
+    """CR 검토자 동기화 — diff 기반으로 추가/제거 수행, (added, removed) 반환.
+
+    팀 검토자로 이미 커버된 user_id는 추가 대상에서 스킵합니다.
+    """
     current = set(
         row[0]
         for row in db.query(ChangeRequestReviewer.user_id)
@@ -291,7 +309,20 @@ def sync_reviewers(
         .all()
     )
     desired = set(user_ids)
-    to_add = desired - current
+
+    # 팀 검토자로 커버된 user_id 조합
+    covered_by_team = set(
+        row[0]
+        for row in db.query(TeamMember.user_id)
+        .join(
+            ChangeRequestTeamReviewer,
+            TeamMember.team_id == ChangeRequestTeamReviewer.team_id,
+        )
+        .filter(ChangeRequestTeamReviewer.change_request_id == cr_id)
+        .all()
+    )
+
+    to_add = desired - current - covered_by_team
     to_remove = current - desired
 
     if to_remove:
@@ -495,3 +526,200 @@ def delete_comment(db: Session, comment: IssueComment) -> None:
     """댓글 하드 삭제."""
     db.delete(comment)
     db.flush()
+
+
+# ── 팀 담당자 (Issue) ──
+
+
+def sync_team_assignees(
+    db: Session, issue_id: uuid.UUID, team_ids: list[uuid.UUID]
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """이슈 팀 담당자 동기화 — diff 기반 추가/제거, (added, removed) 반환.
+
+    추가된 팀 멤버와 겹치는 개인 IssueAssignee는 자동 제거합니다.
+    """
+    current = set(
+        row[0]
+        for row in db.query(IssueTeamAssignee.team_id)
+        .filter(IssueTeamAssignee.issue_id == issue_id)
+        .all()
+    )
+    desired = set(team_ids)
+    to_add = desired - current
+    to_remove = current - desired
+
+    if to_remove:
+        db.query(IssueTeamAssignee).filter(
+            IssueTeamAssignee.issue_id == issue_id,
+            IssueTeamAssignee.team_id.in_(to_remove),
+        ).delete(synchronize_session="fetch")
+
+    for tid in to_add:
+        db.add(IssueTeamAssignee(issue_id=issue_id, team_id=tid))
+
+    if to_add or to_remove:
+        db.flush()
+
+    # 추가된 팀 멤버와 겹치는 개인 배정 자동 제거
+    if to_add:
+        overlapping_user_ids = set(
+            row[0]
+            for row in db.query(TeamMember.user_id)
+            .filter(TeamMember.team_id.in_(to_add))
+            .all()
+        )
+        if overlapping_user_ids:
+            db.query(IssueAssignee).filter(
+                IssueAssignee.issue_id == issue_id,
+                IssueAssignee.user_id.in_(overlapping_user_ids),
+            ).delete(synchronize_session="fetch")
+            db.flush()
+
+    return list(to_add), list(to_remove)
+
+
+# ── 팀 검토자 (CR) ──
+
+
+def sync_team_reviewers(
+    db: Session, cr_id: uuid.UUID, team_ids: list[uuid.UUID]
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """CR 팀 검토자 동기화 — diff 기반 추가/제거, (added, removed) 반환.
+
+    추가된 팀 멤버와 겹치는 개인 ChangeRequestReviewer는 자동 제거합니다.
+    """
+    current = set(
+        row[0]
+        for row in db.query(ChangeRequestTeamReviewer.team_id)
+        .filter(ChangeRequestTeamReviewer.change_request_id == cr_id)
+        .all()
+    )
+    desired = set(team_ids)
+    to_add = desired - current
+    to_remove = current - desired
+
+    if to_remove:
+        db.query(ChangeRequestTeamReviewer).filter(
+            ChangeRequestTeamReviewer.change_request_id == cr_id,
+            ChangeRequestTeamReviewer.team_id.in_(to_remove),
+        ).delete(synchronize_session="fetch")
+
+    for tid in to_add:
+        db.add(ChangeRequestTeamReviewer(change_request_id=cr_id, team_id=tid))
+
+    if to_add or to_remove:
+        db.flush()
+
+    # 추가된 팀 멤버와 겹치는 개인 검토자 자동 제거
+    if to_add:
+        overlapping_user_ids = set(
+            row[0]
+            for row in db.query(TeamMember.user_id)
+            .filter(TeamMember.team_id.in_(to_add))
+            .all()
+        )
+        if overlapping_user_ids:
+            db.query(ChangeRequestReviewer).filter(
+                ChangeRequestReviewer.change_request_id == cr_id,
+                ChangeRequestReviewer.user_id.in_(overlapping_user_ids),
+            ).delete(synchronize_session="fetch")
+            db.flush()
+
+    return list(to_add), list(to_remove)
+
+
+# ── 리뷰 상태 ──
+
+
+def update_review_status(
+    db: Session,
+    cr_id: uuid.UUID,
+    user_id: uuid.UUID,
+    status: ReviewStatus,
+    now,
+) -> ChangeRequestReviewer:
+    """검토자의 리뷰 상태를 업데이트한다."""
+    reviewer = (
+        db.query(ChangeRequestReviewer)
+        .filter(
+            ChangeRequestReviewer.change_request_id == cr_id,
+            ChangeRequestReviewer.user_id == user_id,
+        )
+        .first()
+    )
+    if not reviewer:
+        from app.core.exceptions import AppError
+
+        raise AppError(
+            message="해당 변경 요청의 검토자가 아닙니다",
+            code="FORBIDDEN",
+        )
+    reviewer.review_status = status.value
+    reviewer.reviewed_at = now
+    db.flush()
+    return reviewer
+
+
+# ── 팀 배치 로드 (enrichment용) ──
+
+
+def batch_load_team_assignee_ids(
+    db: Session, issue_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, list[uuid.UUID]]:
+    """이슈 ID 목록에 대한 팀 담당자 ID 배치 조회."""
+    if not issue_ids:
+        return {}
+    rows = (
+        db.query(IssueTeamAssignee.issue_id, IssueTeamAssignee.team_id)
+        .filter(IssueTeamAssignee.issue_id.in_(issue_ids))
+        .all()
+    )
+    result: dict[uuid.UUID, list[uuid.UUID]] = {}
+    for issue_id, team_id in rows:
+        result.setdefault(issue_id, []).append(team_id)
+    return result
+
+
+def batch_load_team_reviewer_ids(
+    db: Session, cr_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, list[uuid.UUID]]:
+    """CR ID 목록에 대한 팀 검토자 ID 배치 조회."""
+    if not cr_ids:
+        return {}
+    rows = (
+        db.query(
+            ChangeRequestTeamReviewer.change_request_id,
+            ChangeRequestTeamReviewer.team_id,
+        )
+        .filter(ChangeRequestTeamReviewer.change_request_id.in_(cr_ids))
+        .all()
+    )
+    result: dict[uuid.UUID, list[uuid.UUID]] = {}
+    for cr_id, team_id in rows:
+        result.setdefault(cr_id, []).append(team_id)
+    return result
+
+
+def batch_load_reviewer_details(
+    db: Session, cr_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, list[ChangeRequestReviewer]]:
+    """CR ID 목록에 대한 검토자 상세 배치 조회 (review_status 포함)."""
+    if not cr_ids:
+        return {}
+    rows = (
+        db.query(ChangeRequestReviewer)
+        .filter(ChangeRequestReviewer.change_request_id.in_(cr_ids))
+        .all()
+    )
+    result: dict[uuid.UUID, list[ChangeRequestReviewer]] = {}
+    for reviewer in rows:
+        result.setdefault(reviewer.change_request_id, []).append(reviewer)
+    return result
+
+
+def batch_load_teams(db: Session, team_ids: list[uuid.UUID]) -> dict[uuid.UUID, Team]:
+    """Team ID 목록에 대한 Team 배치 조회."""
+    if not team_ids:
+        return {}
+    teams = db.query(Team).filter(Team.id.in_(team_ids)).all()
+    return {t.id: t for t in teams}

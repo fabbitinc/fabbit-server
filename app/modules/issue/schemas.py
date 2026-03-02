@@ -140,12 +140,29 @@ class LabelBadge(BaseModel):
     color: str
 
 
+class TeamBadge(BaseModel):
+    """팀 배지 (목록/상세 표시용)."""
+
+    id: uuid.UUID
+    name: str
+
+
 class PartBadge(BaseModel):
     """연결 부품 배지 (목록 표시용)."""
 
     id: uuid.UUID
     part_number: str
     name: str | None = None
+
+
+class ReviewerSummary(BaseModel):
+    """검토자 상세 (review_status 포함)."""
+
+    user_id: uuid.UUID
+    full_name: str
+    email: str
+    review_status: str    # PENDING | APPROVED | REJECTED
+    reviewed_at: datetime | None = None
 
 
 class IssueSummary(BaseModel):
@@ -160,6 +177,7 @@ class IssueSummary(BaseModel):
     created_by: UserSummary | None = None
     labels: list[LabelBadge] = []
     assignees: list[UserSummary] = []
+    assigned_teams: list[TeamBadge] = []
     parts: list[PartBadge] = []
     files: list[FileItem] = []
     comments_count: int = 0
@@ -178,7 +196,8 @@ class ChangeRequestSummary(IssueSummary):
     cr_state: str
     merged_at: datetime | None = None
     merged_by: uuid.UUID | None = None
-    reviewers: list[UserSummary] = []
+    reviewers: list[ReviewerSummary] = []
+    reviewer_teams: list[TeamBadge] = []
 
 
 class ChangeRequestListResponse(BaseModel):
@@ -245,6 +264,7 @@ class IssueResponse(BaseModel):
     created_by: UserSummary | None = None
     labels: list[LabelBadge] = []
     assignees: list[UserSummary] = []
+    assigned_teams: list[TeamBadge] = []
     parts: list[PartBadge] = []
     files: list[FileItem] = []
     comments_count: int = 0
@@ -255,7 +275,8 @@ class ChangeRequestResponse(IssueResponse):
     cr_state: str
     merged_at: datetime | None = None
     merged_by: uuid.UUID | None = None
-    reviewers: list[UserSummary] = []
+    reviewers: list[ReviewerSummary] = []
+    reviewer_teams: list[TeamBadge] = []
     linked_issues: list[LinkedIssueBadge] = []
 
 
@@ -357,3 +378,43 @@ class AttachFilesRequest(BaseModel):
     file_ids: list[uuid.UUID] = Field(
         ..., min_length=1, max_length=20, description="첨부할 파일 ID 목록 (최대 20개)"
     )
+
+
+# ── 팀 담당자 동기화 ──
+
+
+class SyncTeamAssigneesRequest(BaseModel):
+    team_ids: list[uuid.UUID] = Field(
+        default_factory=list, description="동기화할 팀 ID 목록 (빈 목록 = 모든 팀 해제)"
+    )
+
+
+class SyncTeamAssigneesResponse(BaseModel):
+    added_count: int
+    removed_count: int
+
+
+# ── 팀 검토자 동기화 ──
+
+
+class SyncTeamReviewersRequest(BaseModel):
+    team_ids: list[uuid.UUID] = Field(
+        default_factory=list, description="동기화할 팀 ID 목록 (빈 목록 = 모든 팀 해제)"
+    )
+
+
+class SyncTeamReviewersResponse(BaseModel):
+    added_count: int
+    removed_count: int
+
+
+# ── 리뷰 제출 ──
+
+
+class SubmitReviewRequest(BaseModel):
+    status: str = Field(..., description="리뷰 상태 (APPROVED | REJECTED)")
+
+
+class SubmitReviewResponse(BaseModel):
+    review_status: str
+    reviewed_at: datetime

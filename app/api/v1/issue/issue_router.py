@@ -25,6 +25,8 @@ from app.modules.issue.schemas import (
     SyncLabelsResponse,
     SyncPartsRequest,
     SyncPartsResponse,
+    SyncTeamAssigneesRequest,
+    SyncTeamAssigneesResponse,
     UpdateCommentRequest,
     UpdateIssueRequest,
 )
@@ -140,6 +142,32 @@ def sync_assignees(
     빈 목록 전달 시 모든 담당자가 해제됩니다.
     """
     return issue_commands.sync_assignees(db, auth, issue.id, user_ids=req.user_ids)
+
+
+# ── 팀 담당자 동기화 ──
+
+
+@router.put(
+    "/{issue_number}/assigned-teams",
+    response_model=SyncTeamAssigneesResponse,
+    status_code=200,
+)
+def sync_team_assignees(
+    req: SyncTeamAssigneesRequest,
+    issue: Issue = Depends(resolve_issue),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 팀 담당자 동기화.
+
+    전달된 `team_ids`를 이슈의 최종 팀 담당자 목록으로 설정합니다.
+    기존 팀과 diff를 비교하여 추가/제거를 자동 처리합니다.
+    추가된 팀 멤버와 겹치는 개인 담당자는 자동 제거됩니다.
+    빈 목록 전달 시 모든 팀 담당자가 해제됩니다.
+    """
+    return issue_commands.sync_team_assignees(
+        db, auth, issue.id, team_ids=req.team_ids
+    )
 
 
 # ── 이슈 상태 전이 ──

@@ -23,11 +23,14 @@ from app.modules.issue.events import (
     IssueMentioned,
     IssuePartsChanged,
     ReviewersChanged,
+    ReviewSubmitted,
+    TeamAssigneesChanged,
+    TeamReviewersChanged,
     UserMentioned,
 )
 from app.modules.issue.constants import IssueType
 from app.modules.issue.mention import extract_mentions
-from app.modules.issue.models import ChangeRequest, Issue, IssueComment
+from app.modules.issue.models import ChangeRequest, ChangeRequestReviewer, Issue, IssueComment
 
 
 def _register_mention_events(
@@ -484,3 +487,84 @@ def update_comment(
 def delete_comment(db: Session, comment: IssueComment) -> None:
     """댓글 삭제."""
     repo.delete_comment(db, comment)
+
+
+# ── 팀 담당자 (Issue) ──
+
+
+def sync_team_assignees(
+    db: Session, issue: Issue, team_ids: list[uuid.UUID]
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """이슈 팀 담당자 동기화 — (added, removed) 반환."""
+    added, removed = repo.sync_team_assignees(db, issue.id, team_ids)
+    if added or removed:
+        from app.modules.team.models import Team
+
+        all_ids = list(set(added) | set(removed))
+        teams = {t.id: t for t in db.query(Team).filter(Team.id.in_(all_ids)).all()}
+
+        def _snap(tid: uuid.UUID) -> dict:
+            t = teams.get(tid)
+            return {"team_id": str(tid), "name": t.name if t else "(알 수 없음)"}
+
+        issue.register_event(
+            TeamAssigneesChanged(
+                issue_id=issue.id,
+                added=[_snap(tid) for tid in added],
+                removed=[_snap(tid) for tid in removed],
+            )
+        )
+    return added, removed
+
+
+# ── 팀 검토자 (CR) ──
+
+
+def sync_team_reviewers(
+    db: Session, cr: ChangeRequest, team_ids: list[uuid.UUID]
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """CR 팀 검토자 동기화 — (added, removed) 반환."""
+    added, removed = repo.sync_team_reviewers(db, cr.id, team_ids)
+    if added or removed:
+        from app.modules.team.models import Team
+
+        all_ids = list(set(added) | set(removed))
+        teams = {t.id: t for t in db.query(Team).filter(Team.id.in_(all_ids)).all()}
+
+        def _snap(tid: uuid.UUID) -> dict:
+            t = teams.get(tid)
+            return {"team_id": str(tid), "name": t.name if t else "(알 수 없음)"}
+
+        cr.register_event(
+            TeamReviewersChanged(
+                issue_id=cr.id,
+                added=[_snap(tid) for tid in added],
+                removed=[_snap(tid) for tid in removed],
+            )
+        )
+    return added, removed
+
+
+# ── 리뷰 제출 ──
+
+
+def submit_review(
+    db: Session, cr: ChangeRequest, user_id: uuid.UUID, status: str
+) -> ChangeRequestReviewer:
+    """CR 리뷰 제출 — 리뷰어 본인의 review_status 업데이트."""
+    from datetime import datetime, timezone
+
+    from app.modules.issue.constants import ReviewStatus
+
+    review_status = ReviewStatus(status)
+    reviewer = repo.update_review_status(
+        db, cr.id, user_id, review_status, datetime.now(timezone.utc)
+    )
+    cr.register_event(
+        ReviewSubmitted(
+            issue_id=cr.id,
+            reviewer_user_id=user_id,
+            review_status=status,
+        )
+    )
+    return reviewer

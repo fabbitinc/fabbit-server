@@ -36,6 +36,7 @@ def list_issues(
                 created_by=e.created_by,
                 labels=e.labels,
                 assignees=e.assignees,
+                assigned_teams=e.assigned_teams,
                 parts=e.parts,
                 files=e.files,
                 comments_count=e.comments_count,

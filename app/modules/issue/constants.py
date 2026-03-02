@@ -50,3 +50,11 @@ class CRState(str, Enum):
     SUBMITTED = "SUBMITTED"  # 검토 중 (제출됨)
     MERGED = "MERGED"        # 반영 완료
     CLOSED = "CLOSED"        # 닫힘
+
+
+class ReviewStatus(str, Enum):
+    """CR 검토자 리뷰 상태."""
+
+    PENDING = "PENDING"      # 대기
+    APPROVED = "APPROVED"    # 승인
+    REJECTED = "REJECTED"    # 반려
