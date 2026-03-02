@@ -5,8 +5,10 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, get_tenant_db, require_admin, require_auth
+from app.api.deps import get_db, get_tenant_db, require_admin, require_auth, require_role
 from app.core.auth_context import AuthContext
+from app.modules.organization.constants import MembershipRole
+from app.modules.organization.schemas import ChangeRoleRequest
 from app.modules.project.schemas import MemberListResponse, MemberLookupResponse
 from app.queries import member as member_queries
 from app.use_cases import member as member_commands
@@ -40,6 +42,21 @@ def list_org_members(
     return member_queries.list_org_members(db, auth)
 
 
+@router.patch("/{user_id}/role", status_code=200)
+def change_member_role(
+    user_id: uuid.UUID,
+    req: ChangeRoleRequest,
+    db: Session = Depends(get_db),
+    auth: AuthContext = Depends(require_role(MembershipRole.OWNER)),
+):
+    """멤버 역할 변경.
+
+    소유자(OWNER)만 변경할 수 있습니다.
+    자기 자신의 역할은 변경할 수 없으며, 마지막 소유자를 강등할 수 없습니다.
+    """
+    member_commands.change_member_role(db, auth, user_id, req.role)
+
+
 @router.delete("/{user_id}", status_code=204)
 def remove_member(
     user_id: uuid.UUID,
@@ -48,7 +65,7 @@ def remove_member(
 ):
     """조직에서 멤버 제거.
 
-    관리자(ADMIN)만 제거할 수 있습니다.
-    조직 소유자와 자기 자신은 제거할 수 없습니다.
+    관리자(ADMIN 이상)만 제거할 수 있습니다.
+    자기 자신과 상위 역할 멤버는 제거할 수 없습니다.
     """
     member_commands.remove_member(db, auth, user_id)

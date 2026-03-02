@@ -72,6 +72,13 @@ class SwitchOrgRequest(BaseModel):
     slug: str = Field(min_length=1, max_length=50, description="전환할 워크스페이스 주소")
 
 
+# ── 역할 변경 ──
+
+
+class ChangeRoleRequest(BaseModel):
+    role: str = Field(description="변경할 역할 (MEMBER / ADMIN / OWNER)")
+
+
 # ── 프로필 이미지 ──
 
 

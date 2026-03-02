@@ -140,6 +140,42 @@ def remove_member(
     repo.delete_membership(db, auth.org_id, user_id)
 
 
+def change_member_role(
+    db: Session, auth: AuthContext, user_id: _uuid.UUID, new_role: str
+) -> Membership:
+    """멤버 역할 변경.
+
+    @transactional 없음 — use_case에서 트랜잭션 관리.
+    RBAC(OWNER 검증)은 router Depends에서 처리.
+    """
+    if auth.user_id == user_id:
+        raise AppError(message="자신의 역할은 변경할 수 없습니다", code="VALIDATION_ERROR")
+
+    # 역할 검증
+    try:
+        new_role_enum = MembershipRole(new_role)
+    except ValueError:
+        raise AppError(message="유효하지 않은 역할입니다", code="VALIDATION_ERROR")
+
+    membership = repo.get_membership(db, user_id, auth.org_id)
+    if not membership:
+        raise AppError(message="해당 멤버를 찾을 수 없습니다", code="NOT_FOUND")
+
+    current_role = MembershipRole(membership.role)
+    if current_role == new_role_enum:
+        raise AppError(message="이미 해당 역할입니다", code="VALIDATION_ERROR")
+
+    # 마지막 OWNER 강등 방지
+    if current_role == MembershipRole.OWNER:
+        if repo.count_owners(db, auth.org_id) <= 1:
+            raise AppError(
+                message="마지막 소유자의 역할은 변경할 수 없습니다", code="FORBIDDEN"
+            )
+
+    membership.role = new_role_enum.value
+    return membership
+
+
 def get_first_membership_or_raise(
     db: Session, user_id: _uuid.UUID
 ) -> Membership:
