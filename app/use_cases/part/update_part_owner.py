@@ -9,11 +9,10 @@ from app.core.transactional import transactional
 from app.modules.file.mapper import get_file_url
 from app.modules.part import service as part_service
 from app.modules.part.schemas import PartOwnerResponse
+from app.modules.part.service import _SENTINEL
 from app.modules.team.models import Team
 from app.modules.user.models import User
 from app.modules.user.schemas import UserSummary
-
-_SENTINEL = object()
 
 
 @transactional()
