@@ -8,7 +8,7 @@ from app.use_cases.issue.create_comment import create_comment
 from app.use_cases.issue.create_issue import create_issue
 from app.use_cases.issue.delete_comment import delete_comment
 from app.use_cases.issue.delete_file import delete_file
-from app.use_cases.issue.link_issues import link_issues
+from app.use_cases.issue.sync_changes import sync_changes
 from app.use_cases.issue.merge_cr import merge_cr
 from app.use_cases.issue.reopen_cr import reopen_cr
 from app.use_cases.issue.submit_cr import submit_cr
@@ -20,7 +20,7 @@ from app.use_cases.issue.sync_parts import sync_parts
 from app.use_cases.issue.sync_reviewers import sync_reviewers
 from app.use_cases.issue.sync_team_assignees import sync_team_assignees
 from app.use_cases.issue.sync_team_reviewers import sync_team_reviewers
-from app.use_cases.issue.unlink_issues import unlink_issues
+from app.use_cases.issue.sync_issues import sync_issues
 from app.use_cases.issue.update_change_request import update_change_request
 from app.use_cases.issue.update_comment import update_comment
 from app.use_cases.issue.update_issue import update_issue
@@ -34,7 +34,7 @@ __all__ = [
     "create_issue",
     "delete_comment",
     "delete_file",
-    "link_issues",
+    "sync_changes",
     "merge_cr",
     "reopen_cr",
     "submit_cr",
@@ -46,7 +46,7 @@ __all__ = [
     "sync_reviewers",
     "sync_team_assignees",
     "sync_team_reviewers",
-    "unlink_issues",
+    "sync_issues",
     "update_change_request",
     "update_comment",
     "update_issue",

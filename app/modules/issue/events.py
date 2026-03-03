@@ -88,22 +88,24 @@ class IssueFileDetached(DomainEvent):
     file_name: str
 
 
-class CRIssuesLinked(DomainEvent):
-    """변경 요청에 이슈 연결 — 스냅샷 포함."""
+class CRIssuesChanged(DomainEvent):
+    """CR-Issue 연결 동기화 — 스냅샷 포함."""
 
     issue_id: UUID
     cr_number: int
     cr_title: str
-    linked_issues: list[dict]  # [{"issue_id": str, "number": int, "title": str, "type": str}]
+    added_issues: list[dict]    # [{"issue_id": str, "number": int, "title": str, "type": str}]
+    removed_issues: list[dict]  # [{"issue_id": str, "number": int, "title": str, "type": str}]
 
 
-class CRIssuesUnlinked(DomainEvent):
-    """변경 요청에서 이슈 해제 — 스냅샷 포함."""
+class IssueCRsChanged(DomainEvent):
+    """Issue-CR 연결 동기화 — 스냅샷 포함."""
 
     issue_id: UUID
-    cr_number: int
-    cr_title: str
-    unlinked_issues: list[dict]  # [{"issue_id": str, "number": int, "title": str, "type": str}]
+    issue_number: int
+    issue_title: str
+    added_crs: list[dict]    # [{"cr_id": str, "number": int, "title": str}]
+    removed_crs: list[dict]  # [{"cr_id": str, "number": int, "title": str}]
 
 
 class IssueMentioned(DomainEvent):

@@ -4568,6 +4568,64 @@
                 }
             }
         },
+        "/api/v1/issues/{issue_number}/changes": {
+            "put": {
+                "tags": [
+                    "issues"
+                ],
+                "summary": "Sync Changes",
+                "description": "\uc774\uc288 \uc5f0\uacb0 \ubcc0\uacbd \uc694\uccad \ub3d9\uae30\ud654.\n\n\uc804\ub2ec\ub41c `cr_ids`\ub97c \uc774\uc288\uc758 \ucd5c\uc885 \uc5f0\uacb0 \ubcc0\uacbd \uc694\uccad \ubaa9\ub85d\uc73c\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\uae30\uc874 \uc5f0\uacb0\uacfc diff\ub97c \ube44\uad50\ud558\uc5ec \ucd94\uac00/\uc81c\uac70\ub97c \uc790\ub3d9 \ucc98\ub9ac\ud569\ub2c8\ub2e4.\n\ube48 \ubaa9\ub85d \uc804\ub2ec \uc2dc \ubaa8\ub4e0 \ubcc0\uacbd \uc694\uccad \uc5f0\uacb0\uc774 \ud574\uc81c\ub429\ub2c8\ub2e4.",
+                "operationId": "sync_changes_api_v1_issues__issue_number__changes_put",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "issue_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Issue Number"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SyncChangesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyncChangesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/issues/{issue_number}/close": {
             "post": {
                 "tags": [
@@ -5578,13 +5636,13 @@
             }
         },
         "/api/v1/changes/{issue_number}/issues": {
-            "post": {
+            "put": {
                 "tags": [
                     "changes"
                 ],
-                "summary": "Link Issues",
-                "description": "\ubcc0\uacbd \uc694\uccad\uc5d0 \uc774\uc288 \ubc30\uce58 \uc5f0\uacb0.\n\n\uc774\ubbf8 \uc5f0\uacb0\ub41c \uc774\uc288\ub294 \ubb34\uc2dc\ud558\uace0, \uc2e0\uaddc \uc5f0\uacb0 \uac74\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uac01 \uc774\uc288\uc758 \uc874\uc7ac \uc5ec\ubd80\ub97c \uc0ac\uc804 \uac80\uc99d\ud569\ub2c8\ub2e4.",
-                "operationId": "link_issues_api_v1_changes__issue_number__issues_post",
+                "summary": "Sync Issues",
+                "description": "\ubcc0\uacbd \uc694\uccad \uc5f0\uacb0 \uc774\uc288 \ub3d9\uae30\ud654.\n\n\uc804\ub2ec\ub41c `issue_ids`\ub97c CR\uc758 \ucd5c\uc885 \uc5f0\uacb0 \uc774\uc288 \ubaa9\ub85d\uc73c\ub85c \uc124\uc815\ud569\ub2c8\ub2e4.\n\uae30\uc874 \uc5f0\uacb0\uacfc diff\ub97c \ube44\uad50\ud558\uc5ec \ucd94\uac00/\uc81c\uac70\ub97c \uc790\ub3d9 \ucc98\ub9ac\ud569\ub2c8\ub2e4.\n\ube48 \ubaa9\ub85d \uc804\ub2ec \uc2dc \ubaa8\ub4e0 \uc774\uc288 \uc5f0\uacb0\uc774 \ud574\uc81c\ub429\ub2c8\ub2e4.",
+                "operationId": "sync_issues_api_v1_changes__issue_number__issues_put",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -5606,7 +5664,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/LinkIssuesRequest"
+                                "$ref": "#/components/schemas/SyncIssuesRequest"
                             }
                         }
                     }
@@ -5617,59 +5675,10 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/LinkIssuesResponse"
+                                    "$ref": "#/components/schemas/SyncIssuesResponse"
                                 }
                             }
                         }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "changes"
-                ],
-                "summary": "Unlink Issues",
-                "description": "\ubcc0\uacbd \uc694\uccad\uc5d0\uc11c \uc774\uc288 \ubc30\uce58 \ud574\uc81c.\n\n\uc694\uccad\ub41c \uc774\uc288 ID\uc5d0 \ud574\ub2f9\ud558\ub294 \uc5f0\uacb0\uc744 \ud574\uc81c\ud569\ub2c8\ub2e4.",
-                "operationId": "unlink_issues_api_v1_changes__issue_number__issues_delete",
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "issue_number",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "title": "Issue Number"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/LinkIssuesRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "204": {
-                        "description": "Successful Response"
                     },
                     "422": {
                         "description": "Validation Error",
@@ -10010,38 +10019,6 @@
                 ],
                 "title": "LastSynthesis"
             },
-            "LinkIssuesRequest": {
-                "properties": {
-                    "issue_ids": {
-                        "items": {
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "type": "array",
-                        "minItems": 1,
-                        "title": "Issue Ids",
-                        "description": "\uc5f0\uacb0\ud560 \uc774\uc288 ID \ubaa9\ub85d"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "issue_ids"
-                ],
-                "title": "LinkIssuesRequest"
-            },
-            "LinkIssuesResponse": {
-                "properties": {
-                    "linked_count": {
-                        "type": "integer",
-                        "title": "Linked Count"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "linked_count"
-                ],
-                "title": "LinkIssuesResponse"
-            },
             "LinkPartsRequest": {
                 "properties": {
                     "part_ids": {
@@ -13095,6 +13072,72 @@
                     "removed_count"
                 ],
                 "title": "SyncAssigneesResponse"
+            },
+            "SyncChangesRequest": {
+                "properties": {
+                    "cr_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Cr Ids",
+                        "description": "\ub3d9\uae30\ud654\ud560 \ubcc0\uacbd \uc694\uccad ID \ubaa9\ub85d (\ube48 \ubaa9\ub85d = \ubaa8\ub4e0 CR \ud574\uc81c)"
+                    }
+                },
+                "type": "object",
+                "title": "SyncChangesRequest"
+            },
+            "SyncChangesResponse": {
+                "properties": {
+                    "added_count": {
+                        "type": "integer",
+                        "title": "Added Count"
+                    },
+                    "removed_count": {
+                        "type": "integer",
+                        "title": "Removed Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "added_count",
+                    "removed_count"
+                ],
+                "title": "SyncChangesResponse"
+            },
+            "SyncIssuesRequest": {
+                "properties": {
+                    "issue_ids": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Issue Ids",
+                        "description": "\ub3d9\uae30\ud654\ud560 \uc774\uc288 ID \ubaa9\ub85d (\ube48 \ubaa9\ub85d = \ubaa8\ub4e0 \uc774\uc288 \ud574\uc81c)"
+                    }
+                },
+                "type": "object",
+                "title": "SyncIssuesRequest"
+            },
+            "SyncIssuesResponse": {
+                "properties": {
+                    "added_count": {
+                        "type": "integer",
+                        "title": "Added Count"
+                    },
+                    "removed_count": {
+                        "type": "integer",
+                        "title": "Removed Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "added_count",
+                    "removed_count"
+                ],
+                "title": "SyncIssuesResponse"
             },
             "SyncLabelsRequest": {
                 "properties": {

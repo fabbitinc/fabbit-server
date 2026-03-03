@@ -371,15 +371,32 @@ class CommentResponse(BaseModel):
     created_by: uuid.UUID | None = None
 
 
-# ── CR-Issue 연결 ──
+# ── CR-Issue 동기화 ──
 
 
-class LinkIssuesRequest(BaseModel):
-    issue_ids: list[uuid.UUID] = Field(..., min_length=1, description="연결할 이슈 ID 목록")
+class SyncIssuesRequest(BaseModel):
+    issue_ids: list[uuid.UUID] = Field(
+        default_factory=list, description="동기화할 이슈 ID 목록 (빈 목록 = 모든 이슈 해제)"
+    )
 
 
-class LinkIssuesResponse(BaseModel):
-    linked_count: int
+class SyncIssuesResponse(BaseModel):
+    added_count: int
+    removed_count: int
+
+
+# ── Issue-CR 동기화 ──
+
+
+class SyncChangesRequest(BaseModel):
+    cr_ids: list[uuid.UUID] = Field(
+        default_factory=list, description="동기화할 변경 요청 ID 목록 (빈 목록 = 모든 CR 해제)"
+    )
+
+
+class SyncChangesResponse(BaseModel):
+    added_count: int
+    removed_count: int
 
 
 # ── 첨부파일 ──

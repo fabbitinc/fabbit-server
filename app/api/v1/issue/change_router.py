@@ -17,8 +17,8 @@ from app.modules.issue.schemas import (
     CommentResponse,
     CreateChangeRequestRequest,
     CreateCommentRequest,
-    LinkIssuesRequest,
-    LinkIssuesResponse,
+    SyncIssuesRequest,
+    SyncIssuesResponse,
     SubmitReviewRequest,
     SubmitReviewResponse,
     SyncAssigneesRequest,
@@ -208,40 +208,24 @@ def reopen_cr(
 # ── CR-Issue 연결 ──
 
 
-@router.post(
+@router.put(
     "/{issue_number}/issues",
-    response_model=LinkIssuesResponse,
+    response_model=SyncIssuesResponse,
     status_code=200,
 )
-def link_issues(
-    req: LinkIssuesRequest,
+def sync_issues(
+    req: SyncIssuesRequest,
     cr: ChangeRequest = Depends(resolve_change_request),
     auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    """변경 요청에 이슈 배치 연결.
+    """변경 요청 연결 이슈 동기화.
 
-    이미 연결된 이슈는 무시하고, 신규 연결 건수를 반환합니다.
-    각 이슈의 존재 여부를 사전 검증합니다.
+    전달된 `issue_ids`를 CR의 최종 연결 이슈 목록으로 설정합니다.
+    기존 연결과 diff를 비교하여 추가/제거를 자동 처리합니다.
+    빈 목록 전달 시 모든 이슈 연결이 해제됩니다.
     """
-    return issue_commands.link_issues(db, auth, cr.id, issue_ids=req.issue_ids)
-
-
-@router.delete(
-    "/{issue_number}/issues",
-    status_code=204,
-)
-def unlink_issues(
-    req: LinkIssuesRequest,
-    cr: ChangeRequest = Depends(resolve_change_request),
-    auth: AuthContext = Depends(require_auth),
-    db: Session = Depends(get_tenant_db),
-):
-    """변경 요청에서 이슈 배치 해제.
-
-    요청된 이슈 ID에 해당하는 연결을 해제합니다.
-    """
-    issue_commands.unlink_issues(db, auth, cr.id, issue_ids=req.issue_ids)
+    return issue_commands.sync_issues(db, auth, cr.id, issue_ids=req.issue_ids)
 
 
 # ── 담당자 동기화 ──

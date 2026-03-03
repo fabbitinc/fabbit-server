@@ -14,9 +14,9 @@ from app.modules.issue import repository as repo
 from app.modules.issue.events import (
     AssigneesChanged,
     CRCreated,
-    CRIssuesLinked,
-    CRIssuesUnlinked,
+    CRIssuesChanged,
     IssueCreated,
+    IssueCRsChanged,
     IssueFileDetached,
     IssueFilesAttached,
     IssueLabelsChanged,
@@ -329,46 +329,63 @@ def get_cr_or_raise(db: Session, issue_id: uuid.UUID) -> ChangeRequest:
 # ── CR-Issue 연결 ──
 
 
-def link_issues(
+def sync_issues(
     db: Session, cr: ChangeRequest, issue_ids: list[uuid.UUID], *, emit_event: bool = True
-) -> int:
-    """CR에 이슈 배치 연결 — 신규 연결 건수 반환."""
-    count = repo.link_issues(db, cr.id, issue_ids)
-    if emit_event and count > 0:
-        # 스냅샷용 이슈 조회
-        issues = db.query(Issue).filter(Issue.id.in_(issue_ids)).all()
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """CR-Issue 연결 동기화 — (added, removed) 반환."""
+    added, removed = repo.sync_issues(db, cr.id, issue_ids)
+    if emit_event and (added or removed):
+        all_ids = list(set(added) | set(removed))
+        issues = {i.id: i for i in db.query(Issue).filter(Issue.id.in_(all_ids)).all()}
+
+        def _snap(iid: uuid.UUID) -> dict:
+            i = issues.get(iid)
+            return {
+                "issue_id": str(iid),
+                "number": i.number if i else 0,
+                "title": i.title if i else "(알 수 없음)",
+                "type": i.type.value if i else "ISSUE",
+            }
+
         cr.register_event(
-            CRIssuesLinked(
+            CRIssuesChanged(
                 issue_id=cr.id,
                 cr_number=cr.number,
                 cr_title=cr.title,
-                linked_issues=[
-                    {"issue_id": str(i.id), "number": i.number, "title": i.title, "type": i.type.value}
-                    for i in issues
-                ],
+                added_issues=[_snap(iid) for iid in added],
+                removed_issues=[_snap(iid) for iid in removed],
             )
         )
-    return count
+    return added, removed
 
 
-def unlink_issues(db: Session, cr: ChangeRequest, issue_ids: list[uuid.UUID]) -> int:
-    """CR에서 이슈 배치 해제 — 삭제 건수 반환."""
-    count = repo.unlink_issues(db, cr.id, issue_ids)
-    if count > 0:
-        # 스냅샷용 이슈 조회
-        issues = db.query(Issue).filter(Issue.id.in_(issue_ids)).all()
-        cr.register_event(
-            CRIssuesUnlinked(
-                issue_id=cr.id,
-                cr_number=cr.number,
-                cr_title=cr.title,
-                unlinked_issues=[
-                    {"issue_id": str(i.id), "number": i.number, "title": i.title, "type": i.type.value}
-                    for i in issues
-                ],
+def sync_changes(
+    db: Session, issue: Issue, cr_ids: list[uuid.UUID], *, emit_event: bool = True
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """Issue-CR 연결 동기화 (역방향) — (added, removed) 반환."""
+    added, removed = repo.sync_changes(db, issue.id, cr_ids)
+    if emit_event and (added or removed):
+        all_ids = list(set(added) | set(removed))
+        crs = {c.id: c for c in db.query(ChangeRequest).filter(ChangeRequest.id.in_(all_ids)).all()}
+
+        def _snap(cid: uuid.UUID) -> dict:
+            c = crs.get(cid)
+            return {
+                "cr_id": str(cid),
+                "number": c.number if c else 0,
+                "title": c.title if c else "(알 수 없음)",
+            }
+
+        issue.register_event(
+            IssueCRsChanged(
+                issue_id=issue.id,
+                issue_number=issue.number,
+                issue_title=issue.title,
+                added_crs=[_snap(cid) for cid in added],
+                removed_crs=[_snap(cid) for cid in removed],
             )
         )
-    return count
+    return added, removed
 
 
 # ── 상태 전이 ──

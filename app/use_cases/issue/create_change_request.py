@@ -38,7 +38,7 @@ def create_change_request(
 
     if issue_number is not None:
         issue = issue_service.get_issue_by_number_or_raise(db, issue_number)
-        issue_service.link_issues(db, cr, [issue.id], emit_event=False)
+        issue_service.sync_issues(db, cr, [issue.id], emit_event=False)
 
     # 공통 (Issue와 동일)
     if part_ids:

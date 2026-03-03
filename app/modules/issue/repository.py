@@ -404,37 +404,62 @@ def sync_labels(
 # ── CR-Issue 연결 ──
 
 
-def link_issues(db: Session, cr_id: uuid.UUID, issue_ids: list[uuid.UUID]) -> int:
-    """CR에 이슈 배치 연결 — 이미 연결된 건은 무시, 신규 연결 건수 반환."""
-    existing = set(
+def sync_issues(
+    db: Session, cr_id: uuid.UUID, issue_ids: list[uuid.UUID]
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """CR-Issue 연결 동기화 — diff 기반으로 추가/제거 수행, (added, removed) 반환."""
+    current = set(
         row[0]
         for row in db.query(ChangeRequestIssue.issue_id)
-        .filter(
-            ChangeRequestIssue.change_request_id == cr_id,
-            ChangeRequestIssue.issue_id.in_(issue_ids),
-        )
+        .filter(ChangeRequestIssue.change_request_id == cr_id)
         .all()
     )
-    new_ids = [iid for iid in issue_ids if iid not in existing]
-    for iid in new_ids:
-        db.add(ChangeRequestIssue(change_request_id=cr_id, issue_id=iid))
-    if new_ids:
-        db.flush()
-    return len(new_ids)
+    desired = set(issue_ids)
+    to_add = desired - current
+    to_remove = current - desired
 
-
-def unlink_issues(db: Session, cr_id: uuid.UUID, issue_ids: list[uuid.UUID]) -> int:
-    """CR에서 이슈 배치 해제 — 삭제 건수 반환."""
-    count = (
-        db.query(ChangeRequestIssue)
-        .filter(
+    if to_remove:
+        db.query(ChangeRequestIssue).filter(
             ChangeRequestIssue.change_request_id == cr_id,
-            ChangeRequestIssue.issue_id.in_(issue_ids),
-        )
-        .delete(synchronize_session="fetch")
+            ChangeRequestIssue.issue_id.in_(to_remove),
+        ).delete(synchronize_session="fetch")
+
+    for iid in to_add:
+        db.add(ChangeRequestIssue(change_request_id=cr_id, issue_id=iid))
+
+    if to_add or to_remove:
+        db.flush()
+
+    return list(to_add), list(to_remove)
+
+
+def sync_changes(
+    db: Session, issue_id: uuid.UUID, cr_ids: list[uuid.UUID]
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    """Issue-CR 연결 동기화 (역방향) — diff 기반으로 추가/제거 수행, (added, removed) 반환."""
+    current = set(
+        row[0]
+        for row in db.query(ChangeRequestIssue.change_request_id)
+        .filter(ChangeRequestIssue.issue_id == issue_id)
+        .all()
     )
-    db.flush()
-    return count
+    desired = set(cr_ids)
+    to_add = desired - current
+    to_remove = current - desired
+
+    if to_remove:
+        db.query(ChangeRequestIssue).filter(
+            ChangeRequestIssue.issue_id == issue_id,
+            ChangeRequestIssue.change_request_id.in_(to_remove),
+        ).delete(synchronize_session="fetch")
+
+    for cid in to_add:
+        db.add(ChangeRequestIssue(change_request_id=cid, issue_id=issue_id))
+
+    if to_add or to_remove:
+        db.flush()
+
+    return list(to_add), list(to_remove)
 
 
 def list_linked_issue_ids(db: Session, cr_id: uuid.UUID) -> list[uuid.UUID]:

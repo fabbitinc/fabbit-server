@@ -21,6 +21,8 @@ from app.modules.issue.schemas import (
     IssueResponse,
     SyncAssigneesRequest,
     SyncAssigneesResponse,
+    SyncChangesRequest,
+    SyncChangesResponse,
     SyncLabelsRequest,
     SyncLabelsResponse,
     SyncPartsRequest,
@@ -177,6 +179,29 @@ def sync_team_assignees(
     return issue_commands.sync_team_assignees(
         db, auth, issue.id, team_ids=req.team_ids
     )
+
+
+# ── 변경 요청 연결 동기화 ──
+
+
+@router.put(
+    "/{issue_number}/changes",
+    response_model=SyncChangesResponse,
+    status_code=200,
+)
+def sync_changes(
+    req: SyncChangesRequest,
+    issue: Issue = Depends(resolve_issue),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """이슈 연결 변경 요청 동기화.
+
+    전달된 `cr_ids`를 이슈의 최종 연결 변경 요청 목록으로 설정합니다.
+    기존 연결과 diff를 비교하여 추가/제거를 자동 처리합니다.
+    빈 목록 전달 시 모든 변경 요청 연결이 해제됩니다.
+    """
+    return issue_commands.sync_changes(db, auth, issue.id, cr_ids=req.cr_ids)
 
 
 # ── 이슈 상태 전이 ──

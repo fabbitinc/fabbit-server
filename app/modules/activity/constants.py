@@ -24,8 +24,8 @@ class Action(str, Enum):
     PART_CHANGED = "issue:part_changed"
     FILE_ATTACHED = "issue:file_attached"
     FILE_DETACHED = "issue:file_detached"
-    CR_ISSUE_LINKED = "cr:issue_linked"
-    CR_ISSUE_UNLINKED = "cr:issue_unlinked"
+    CR_ISSUE_CHANGED = "cr:issue_changed"
+    ISSUE_CR_CHANGED = "issue:cr_changed"
     ISSUE_MENTIONED = "issue:mentioned"
 
     # -- Project 피드 --

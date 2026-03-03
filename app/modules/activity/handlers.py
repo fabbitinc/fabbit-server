@@ -12,9 +12,9 @@ from app.modules.activity.constants import Action, TargetType
 from app.modules.activity.models import Activity
 from app.modules.issue.events import (
     AssigneesChanged,
-    CRIssuesLinked,
-    CRIssuesUnlinked,
+    CRIssuesChanged,
     CRStateChanged,
+    IssueCRsChanged,
     IssueFileDetached,
     IssueFilesAttached,
     IssueLabelsChanged,
@@ -79,6 +79,16 @@ def _issue_ref(d: dict) -> dict:
     return {
         "id": d["issue_id"],
         "type": d["type"],
+        "label": f"#{d['number']} {d['title']}",
+        "meta": {"number": d["number"]},
+    }
+
+
+def _cr_ref(d: dict) -> dict:
+    """이벤트의 CR dict → Ref 형태."""
+    return {
+        "id": d["cr_id"],
+        "type": "cr",
         "label": f"#{d['number']} {d['title']}",
         "meta": {"number": d["number"]},
     }
@@ -201,69 +211,83 @@ def _on_issue_file_detached(event: IssueFileDetached) -> None:
     )
 
 
-def _on_cr_issues_linked(event: CRIssuesLinked) -> None:
-    """CR에 이슈 연결 → CR 피드 + 각 이슈 피드."""
+def _on_cr_issues_changed(event: CRIssuesChanged) -> None:
+    """CR-Issue 연결 동기화 → CR 피드 + 각 이슈 피드."""
     actor_id = _get_actor_id()
     # CR 피드
     _add_activity(
         TargetType.ISSUE,
         event.issue_id,
-        Action.CR_ISSUE_LINKED,
+        Action.CR_ISSUE_CHANGED,
         actor_id,
         {
-            "added": [_issue_ref(d) for d in event.linked_issues],
-            "removed": [],
+            "added": [_issue_ref(d) for d in event.added_issues],
+            "removed": [_issue_ref(d) for d in event.removed_issues],
         },
     )
-    # 연결된 각 이슈 피드
-    for issue_info in event.linked_issues:
+    # 추가된 각 이슈 피드
+    cr_ref = {
+        "id": str(event.issue_id),
+        "type": "cr",
+        "label": f"#{event.cr_number} {event.cr_title}",
+        "meta": {"number": event.cr_number},
+    }
+    for issue_info in event.added_issues:
         _add_activity(
             TargetType.ISSUE,
             UUID(issue_info["issue_id"]),
-            Action.CR_ISSUE_LINKED,
+            Action.CR_ISSUE_CHANGED,
             actor_id,
-            {
-                "added": [{
-                    "id": str(event.issue_id),
-                    "type": "cr",
-                    "label": f"#{event.cr_number} {event.cr_title}",
-                    "meta": {"number": event.cr_number},
-                }],
-                "removed": [],
-            },
+            {"added": [cr_ref], "removed": []},
+        )
+    # 제거된 각 이슈 피드
+    for issue_info in event.removed_issues:
+        _add_activity(
+            TargetType.ISSUE,
+            UUID(issue_info["issue_id"]),
+            Action.CR_ISSUE_CHANGED,
+            actor_id,
+            {"added": [], "removed": [cr_ref]},
         )
 
 
-def _on_cr_issues_unlinked(event: CRIssuesUnlinked) -> None:
-    """CR에서 이슈 해제 → CR 피드 + 각 이슈 피드."""
+def _on_issue_crs_changed(event: IssueCRsChanged) -> None:
+    """Issue-CR 연결 동기화 → Issue 피드 + 각 CR 피드."""
     actor_id = _get_actor_id()
-    # CR 피드
+    # Issue 피드
     _add_activity(
         TargetType.ISSUE,
         event.issue_id,
-        Action.CR_ISSUE_UNLINKED,
+        Action.ISSUE_CR_CHANGED,
         actor_id,
         {
-            "added": [],
-            "removed": [_issue_ref(d) for d in event.unlinked_issues],
+            "added": [_cr_ref(d) for d in event.added_crs],
+            "removed": [_cr_ref(d) for d in event.removed_crs],
         },
     )
-    # 연결 해제된 각 이슈 피드
-    for issue_info in event.unlinked_issues:
+    # 추가된 각 CR 피드
+    issue_ref = {
+        "id": str(event.issue_id),
+        "type": "issue",
+        "label": f"#{event.issue_number} {event.issue_title}",
+        "meta": {"number": event.issue_number},
+    }
+    for cr_info in event.added_crs:
         _add_activity(
             TargetType.ISSUE,
-            UUID(issue_info["issue_id"]),
-            Action.CR_ISSUE_UNLINKED,
+            UUID(cr_info["cr_id"]),
+            Action.ISSUE_CR_CHANGED,
             actor_id,
-            {
-                "added": [],
-                "removed": [{
-                    "id": str(event.issue_id),
-                    "type": "cr",
-                    "label": f"#{event.cr_number} {event.cr_title}",
-                    "meta": {"number": event.cr_number},
-                }],
-            },
+            {"added": [issue_ref], "removed": []},
+        )
+    # 제거된 각 CR 피드
+    for cr_info in event.removed_crs:
+        _add_activity(
+            TargetType.ISSUE,
+            UUID(cr_info["cr_id"]),
+            Action.ISSUE_CR_CHANGED,
+            actor_id,
+            {"added": [], "removed": [issue_ref]},
         )
 
 
@@ -363,8 +387,8 @@ event_bus.subscribe(IssueLabelsChanged, _on_issue_labels_changed)
 event_bus.subscribe(IssuePartsChanged, _on_issue_parts_changed)
 event_bus.subscribe(IssueFilesAttached, _on_issue_files_attached)
 event_bus.subscribe(IssueFileDetached, _on_issue_file_detached)
-event_bus.subscribe(CRIssuesLinked, _on_cr_issues_linked)
-event_bus.subscribe(CRIssuesUnlinked, _on_cr_issues_unlinked)
+event_bus.subscribe(CRIssuesChanged, _on_cr_issues_changed)
+event_bus.subscribe(IssueCRsChanged, _on_issue_crs_changed)
 event_bus.subscribe(IssueMentioned, _on_issue_mentioned)
 event_bus.subscribe(ProjectPartsLinked, _on_project_parts_linked)
 event_bus.subscribe(ProjectPartsUnlinked, _on_project_parts_unlinked)
