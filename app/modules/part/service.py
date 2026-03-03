@@ -84,17 +84,49 @@ def update_owner(
 
 
 def rename_category(db: Session, old_name: str, new_name: str) -> int:
-    """카테고리 이름 일괄 변경 — 해당 카테고리 없으면 AppError."""
-    # 동일 이름 체크
+    """카테고리 이름 일괄 변경 — 해당 카테고리 없으면 AppError.
+
+    대상 카테고리(new_name)가 이미 존재하면 병합:
+    - 원본 카테고리의 기본 담당자 삭제
+    - 원본 Part들의 담당자를 대상 카테고리 기본 담당자로 갱신
+      (대상 담당자도 비어있으면 fallback(category=NULL) 참조, 그것도 없으면 NULL)
+    """
     if old_name == new_name:
         raise AppError(message="변경 전후 카테고리 이름이 동일합니다", code="BAD_REQUEST")
-    # 대상 존재 여부 확인
+
     existing = repo.get_category_stats(db)
     if not any(cat == old_name for cat, _ in existing):
         raise AppError(
             message=f"카테고리 '{old_name}'을(를) 찾을 수 없습니다", code="NOT_FOUND"
         )
-    return repo.rename_category(db, old_name, new_name)
+
+    # 병합 여부 판단: 대상 카테고리에 기본 담당자가 존재하는지
+    target_owner = repo.get_default_owner(db, new_name)
+    is_merge = target_owner is not None and target_owner.category == new_name
+
+    if is_merge:
+        # 카테고리 변경 전에 원본 Part ID 수집
+        old_part_ids = repo.get_part_ids_by_category(db, old_name)
+
+    # Part.category 일괄 변경
+    count = repo.rename_parts_category(db, old_name, new_name)
+
+    if is_merge:
+        # 원본 카테고리의 기본 담당자 삭제
+        repo.delete_default_owner(db, old_name)
+
+        # 담당자 결정: 대상 카테고리 → fallback(category=NULL) → NULL
+        resolved = repo.get_default_owner(db, new_name)
+        owner_id = resolved.default_owner_id if resolved else None
+        owner_team_id = resolved.default_owner_team_id if resolved else None
+
+        # 원본 Part들의 담당자 갱신
+        repo.bulk_update_owner(db, old_part_ids, owner_id, owner_team_id)
+    else:
+        # 단순 이름 변경
+        repo.rename_default_owner_category(db, old_name, new_name)
+
+    return count
 
 
 # ── 기본 담당자/팀 ──

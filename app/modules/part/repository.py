@@ -263,22 +263,44 @@ def get_distinct_categories(db: Session) -> list[str]:
     return [r[0] for r in rows]
 
 
-def rename_category(db: Session, old_name: str, new_name: str) -> int:
-    """카테고리 이름 일괄 변경 (parts + part_default_owners).
-
-    Returns:
-        변경된 Part 건수
-    """
+def rename_parts_category(db: Session, old_name: str, new_name: str) -> int:
+    """Part.category 일괄 변경. 변경된 건수 반환."""
     count = (
         db.query(Part)
         .filter(Part.category == old_name)
         .update({Part.category: new_name})
     )
+    db.flush()
+    return count
+
+
+def get_part_ids_by_category(db: Session, category: str) -> list[uuid.UUID]:
+    """특정 카테고리에 속한 Part ID 목록 조회."""
+    rows = db.query(Part.id).filter(Part.category == category).all()
+    return [row[0] for row in rows]
+
+
+def bulk_update_owner(
+    db: Session,
+    part_ids: list[uuid.UUID],
+    owner_id: uuid.UUID | None,
+    owner_team_id: uuid.UUID | None,
+) -> None:
+    """Part 담당자 일괄 갱신."""
+    if not part_ids:
+        return
+    db.query(Part).filter(Part.id.in_(part_ids)).update(
+        {Part.owner_id: owner_id, Part.owner_team_id: owner_team_id},
+    )
+    db.flush()
+
+
+def rename_default_owner_category(db: Session, old_name: str, new_name: str) -> None:
+    """PartDefaultOwner의 카테고리 이름 변경."""
     db.query(PartDefaultOwner).filter(
         PartDefaultOwner.category == old_name
     ).update({PartDefaultOwner.category: new_name})
     db.flush()
-    return count
 
 
 def get_distinct_lifecycle_states(db: Session) -> list[str]:
