@@ -36,16 +36,23 @@
 - `SUPPLIED_BY`(Part→Supplier) — RDS `part_suppliers` + Graph (M:N)
   **확장 속성**: 온톨로지에 없는 컬럼은 `_ext_` 프리픽스로 노드 속성 저장 (JSONB `extended_properties`)
 
-## 주요 스킬
+## 스킬 (MUST — 코드 작성 전 반드시 Skill 도구로 로드)
 
-- rotuer 작성시 사용 스킬: api-guide
-- service, quires, use_cases 작성시 사용 스킬: business-layer-guide
-- model 작성시 사용 스킬: models-guide
+아래 파일을 **생성하거나 수정하기 전에** 반드시 해당 스킬을 `Skill` 도구로 로드하라. 로드하지 않고 코드를 작성하면 안 된다.
 
-## 서브 스킬
+| 트리거 (수정 대상)                      | 스킬                   | 비고                       |
+| --------------------------------------- | ---------------------- | -------------------------- |
+| `models.py` — 모델, 컬럼, 인덱스, mixin | `models-guide`         | Mixin 패턴, MRO 순서 등    |
+| `router.py` — API 엔드포인트, Depends   | `api-guide`            | 라우터 구조, OpenAPI 문서  |
+| `service.py`, `use_cases/`, `queries/`  | `business-layer-guide` | 트랜잭션 경계, 레이어 규칙 |
+| `repository.py` — 데이터 접근, Cypher   | `repository-guide`     | RDS-Graph 듀얼라이트       |
 
-- 데이터베이스 설정시 사용 스킬: database-guide
-- 로깅 작성시 사용 스킬:logging-guide
+### 서브 스킬 (해당 작업 시 로드)
+
+| 트리거                                   | 스킬             |
+| ---------------------------------------- | ---------------- |
+| DB 설정, 마이그레이션, 테넌트 프로비저닝 | `database-guide` |
+| 로깅 코드 (`logger`, `log.*`)            | `logging-guide`  |
 
 ## 마이그레이션
 
