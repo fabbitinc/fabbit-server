@@ -62,7 +62,7 @@ class Part(AggregateRoot, TenantBase):
         # 담당자별 조회 최적화
         Index("ix_parts_owner_id", "owner_id"),
         # 담당팀별 조회 최적화
-        Index("ix_parts_team_id", "team_id"),
+        Index("ix_parts_owner_team_id", "owner_team_id"),
         # 확장 속성 필터링 최적화 (GIN)
         Index(
             "ix_parts_extended_properties",
@@ -85,7 +85,7 @@ class Part(AggregateRoot, TenantBase):
         nullable=True,
     )
     # 담당팀
-    team_id: Mapped[uuid.UUID | None] = mapped_column(
+    owner_team_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("teams.id", ondelete="SET NULL"),
         nullable=True,
@@ -147,8 +147,8 @@ class Part(AggregateRoot, TenantBase):
         # 시스템 속성 (온톨로지 외)
         if "owner_id" in props:
             part.owner_id = props["owner_id"]
-        if "team_id" in props:
-            part.team_id = props["team_id"]
+        if "owner_team_id" in props:
+            part.owner_team_id = props["owner_team_id"]
         # 확장 속성 설정
         if "extended_properties" in props:
             part.extended_properties = props["extended_properties"]
@@ -387,7 +387,7 @@ class CategoryDefaultAssignment(TimestampMixin, PkMixin, TenantBase):
         nullable=True,
     )
     # 기본 담당팀
-    default_team_id: Mapped[uuid.UUID | None] = mapped_column(
+    default_owner_team_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("teams.id", ondelete="SET NULL"),
         nullable=True,

@@ -404,7 +404,7 @@ def upsert_part(
         default = get_category_default(db, cat)
         if default:
             all_props["owner_id"] = default.default_owner_id
-            all_props["team_id"] = default.default_team_id
+            all_props["owner_team_id"] = default.default_owner_team_id
 
         part = Part.create(part_number, **all_props)
         db.add(part)
@@ -872,7 +872,7 @@ def upsert_category_default(
     db: Session,
     category: str | None,
     owner_id: uuid.UUID | None,
-    team_id: uuid.UUID | None,
+    owner_team_id: uuid.UUID | None,
 ) -> CategoryDefaultAssignment:
     """카테고리 기본 담당자/팀 설정 upsert."""
     if category is not None:
@@ -890,12 +890,12 @@ def upsert_category_default(
 
     if existing:
         existing.default_owner_id = owner_id
-        existing.default_team_id = team_id
+        existing.default_owner_team_id = owner_team_id
     else:
         existing = CategoryDefaultAssignment(
             category=category,
             default_owner_id=owner_id,
-            default_team_id=team_id,
+            default_owner_team_id=owner_team_id,
         )
         db.add(existing)
 

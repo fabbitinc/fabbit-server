@@ -28,19 +28,19 @@ def _to_item(row, db: Session) -> CategoryDefaultItem:
                 profile_image_url=get_file_url(user.profile_image_file_key),
             )
 
-    team_name = None
-    if row.default_team_id:
-        team = db.query(Team).filter(Team.id == row.default_team_id).first()
+    owner_team_name = None
+    if row.default_owner_team_id:
+        team = db.query(Team).filter(Team.id == row.default_owner_team_id).first()
         if team:
-            team_name = team.name
+            owner_team_name = team.name
 
     return CategoryDefaultItem(
         id=row.id,
         category=row.category,
         default_owner_id=row.default_owner_id,
         default_owner=owner_summary,
-        default_team_id=row.default_team_id,
-        default_team_name=team_name,
+        default_owner_team_id=row.default_owner_team_id,
+        default_owner_team_name=owner_team_name,
     )
 
 
@@ -50,13 +50,13 @@ def upsert_category_default(
     auth: AuthContext,
     category: str | None,
     owner_id: uuid.UUID | None,
-    team_id: uuid.UUID | None,
+    owner_team_id: uuid.UUID | None,
 ) -> CategoryDefaultItem:
     """카테고리별 기본 담당자/팀 설정 upsert."""
     row = part_service.upsert_category_default(
         db,
         category=category,
         owner_id=owner_id,
-        team_id=team_id,
+        owner_team_id=owner_team_id,
     )
     return _to_item(row, db)

@@ -60,10 +60,10 @@ def upsert_category_default(
     db: Session,
     category: str | None,
     owner_id: uuid.UUID | None,
-    team_id: uuid.UUID | None,
+    owner_team_id: uuid.UUID | None,
 ) -> CategoryDefaultAssignment:
     """카테고리별 기본 담당자/팀 설정 upsert."""
-    return repo.upsert_category_default(db, category, owner_id, team_id)
+    return repo.upsert_category_default(db, category, owner_id, owner_team_id)
 
 
 def delete_category_default(db: Session, category: str | None) -> None:

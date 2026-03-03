@@ -67,11 +67,17 @@ openapi:
 
 # public 마이그레이션 적용
 migrate-public:
+	uv run alembic revision --autogenerate -m "$(m)"
+	@echo "public 마이그레이션 생성 완료"
 	uv run alembic upgrade head
+	@echo "public 마이그레이션 완료"
 
 # tenant 마이그레이션 적용 (모든 tenant_* 스키마 순회)
 migrate-tenant:
+	uv run alembic -c alembic_tenant.ini revision --autogenerate -m "$(m)"
+	@echo "tenant 마이그레이션 생성 완료"
 	uv run alembic -c alembic_tenant.ini upgrade head
+	@echo "tenant 마이그레이션 완료"
 
 # public + tenant 마이그레이션 적용
 migrate-all:

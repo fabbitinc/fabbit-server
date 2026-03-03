@@ -44,11 +44,11 @@ def get_part_detail(
             )
 
     # 담당팀
-    team_name = None
-    if part.team_id:
-        team = db.query(Team).filter(Team.id == part.team_id).first()
+    owner_team_name = None
+    if part.owner_team_id:
+        team = db.query(Team).filter(Team.id == part.owner_team_id).first()
         if team:
-            team_name = team.name
+            owner_team_name = team.name
 
     # Drawing: RDS (1:1, 가벼움)
     drawing_row = repo.get_drawing(db, part.id)
@@ -90,8 +90,8 @@ def get_part_detail(
         extended_properties=extended,
         owner_id=part.owner_id,
         owner=owner_summary,
-        team_id=part.team_id,
-        team_name=team_name,
+        owner_team_id=part.owner_team_id,
+        owner_team_name=owner_team_name,
         drawing=to_related_drawing(drawing_row),
         children_count=children_count,
         parents_count=parents_count,

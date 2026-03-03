@@ -50,7 +50,7 @@ def upsert_category_default(
         auth,
         category=req.category,
         owner_id=req.default_owner_id,
-        team_id=req.default_team_id,
+        owner_team_id=req.default_owner_team_id,
     )
 
 

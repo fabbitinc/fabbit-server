@@ -138,8 +138,8 @@ class PartDetailResponse(BaseModel):
     # 담당자/팀
     owner_id: uuid.UUID | None = None
     owner: UserSummary | None = None
-    team_id: uuid.UUID | None = None
-    team_name: str | None = None
+    owner_team_id: uuid.UUID | None = None
+    owner_team_name: str | None = None
 
     drawing: RelatedDrawing | None = None
     children_count: int = 0
@@ -207,7 +207,7 @@ class CategoryDefaultRequest(BaseModel):
 
     category: str | None = None
     default_owner_id: uuid.UUID | None = None
-    default_team_id: uuid.UUID | None = None
+    default_owner_team_id: uuid.UUID | None = None
 
 
 class CategoryDefaultItem(BaseModel):
@@ -217,8 +217,8 @@ class CategoryDefaultItem(BaseModel):
     category: str | None = None
     default_owner_id: uuid.UUID | None = None
     default_owner: UserSummary | None = None
-    default_team_id: uuid.UUID | None = None
-    default_team_name: str | None = None
+    default_owner_team_id: uuid.UUID | None = None
+    default_owner_team_name: str | None = None
 
 
 class CategoryDefaultListResponse(BaseModel):
