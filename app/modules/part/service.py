@@ -99,9 +99,8 @@ def rename_category(db: Session, old_name: str, new_name: str) -> int:
             message=f"카테고리 '{old_name}'을(를) 찾을 수 없습니다", code="NOT_FOUND"
         )
 
-    # 병합 여부 판단: 대상 카테고리에 기본 담당자가 존재하는지
-    target_owner = repo.get_default_owner(db, new_name)
-    is_merge = target_owner is not None and target_owner.category == new_name
+    # 병합 여부 판단: 대상 카테고리(Part.category)가 이미 존재하는지
+    is_merge = any(cat == new_name for cat, _ in existing)
 
     # Part.category 일괄 변경
     count = repo.rename_parts_category(db, old_name, new_name)
