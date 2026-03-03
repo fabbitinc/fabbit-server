@@ -1,4 +1,4 @@
-.PHONY: dev-start dev-stop dev-db-reset openapi test test-e2e test-e2e-llm migrate-public migrate-tenant migrate-all revision-public revision-tenant lint
+.PHONY: dev-start dev-db-reset openapi test test-e2e test-e2e-llm migrate-public migrate-tenant migrate-all revision-public revision-tenant lint
 
 # 개발환경 디비 시작
 dev-db-start:
@@ -18,26 +18,6 @@ dev-db-reset:
 	@find alembic/versions -type f -name "*.py" -delete
 	@find alembic_tenant/versions -type f -name "*.py" -delete
 	@echo "마이그래이션 삭제 완료."
-	$(MAKE) dev-db-start
-	@nohup uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 & echo $$! > uvicorn.pid
-	@echo "서버 응답 대기 중 (http://localhost:8000/health)..."
-	@for i in $$(seq 1 30); do \
-		if curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health | grep -q "200"; then \
-			echo "\n서버 준비 완료!"; \
-			break; \
-		fi; \
-		echo -n "."; \
-		sleep 1; \
-		if [ $$i -eq 30 ]; then \
-			echo "\n서버 시작 시간 초과!"; \
-			$(MAKE) dev-db-cleanup; \
-			exit 1; \
-		fi; \
-	done
-	$(MAKE) revision-all
-	-@kill $$(cat uvicorn.pid) 2>/dev/null || true
-	-@rm uvicorn.pid uvicorn.log 2>/dev/null || true
-	@echo "DB 리셋 및 마이그레이션 생성 완료."
 
 # 개발환경 시작 (PostgreSQL + API 서버)
 dev-start:
@@ -46,7 +26,6 @@ dev-start:
 	uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 dev-reset:
-	$(MAKE) dev-stop
 	$(MAKE) dev-db-reset
 	$(MAKE) dev-start
 

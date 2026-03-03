@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" && make openapi"
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && curl -sf http://localhost:8000/health > /dev/null 2>&1 && make openapi || true"
           },
           {
             "type": "command",
