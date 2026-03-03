@@ -2081,6 +2081,116 @@
                 }
             }
         },
+        "/api/v1/parts/categories": {
+            "get": {
+                "tags": [
+                    "parts"
+                ],
+                "summary": "List Categories",
+                "description": "\uce74\ud14c\uace0\ub9ac \ubaa9\ub85d + \ubd80\ud488 \uac1c\uc218 \uc870\ud68c.\n\n\uac01 \uce74\ud14c\uace0\ub9ac\ubcc4 \ubd80\ud488 \uac1c\uc218\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.\n\uae30\ubcf8 \ub2f4\ub2f9\uc790 \uc124\uc815 \uc2dc \uce74\ud14c\uace0\ub9ac \ud604\ud669 \ud30c\uc545\uc5d0 \uc0ac\uc6a9\ub429\ub2c8\ub2e4.",
+                "operationId": "list_categories_api_v1_parts_categories_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CategoryStatsResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/parts/categories/lookup": {
+            "get": {
+                "tags": [
+                    "parts"
+                ],
+                "summary": "Lookup Categories",
+                "description": "\uce74\ud14c\uace0\ub9ac \uc120\ud0dd\uc6a9 \uacbd\ub7c9 \ubaa9\ub85d \uc870\ud68c.\n\n\uce74\ud14c\uace0\ub9ac \ubb38\uc790\uc5f4 \ubaa9\ub85d\ub9cc \ubc18\ud658\ud558\ub294 \uacbd\ub7c9 \uc5d4\ub4dc\ud3ec\uc778\ud2b8\uc785\ub2c8\ub2e4.\npicker/select UI\uc5d0\uc11c \uce74\ud14c\uace0\ub9ac \uc120\ud0dd\uc9c0 \uad6c\uc131\uc5d0 \uc0ac\uc6a9\ub429\ub2c8\ub2e4.",
+                "operationId": "lookup_categories_api_v1_parts_categories_lookup_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CategoryLookupResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/parts/categories/{category}": {
+            "patch": {
+                "tags": [
+                    "parts"
+                ],
+                "summary": "Rename Category",
+                "description": "\uce74\ud14c\uace0\ub9ac \uc774\ub984 \uc77c\uad04 \ubcc0\uacbd.\n\n\ud574\ub2f9 \uce74\ud14c\uace0\ub9ac\ub97c \uac00\uc9c4 \ubaa8\ub4e0 Part\uc640 \uae30\ubcf8 \ub2f4\ub2f9\uc790 \uc124\uc815\uc758 \uce74\ud14c\uace0\ub9ac \uc774\ub984\uc744 \ubcc0\uacbd\ud569\ub2c8\ub2e4.",
+                "operationId": "rename_category_api_v1_parts_categories__category__patch",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "category",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Category"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RenameCategoryRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/parts/filter-options": {
             "get": {
                 "tags": [
@@ -8225,6 +8335,59 @@
                 "title": "BomTreeResponse",
                 "description": "BOM \ud2b8\ub9ac \uc751\ub2f5"
             },
+            "CategoryLookupResponse": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "title": "CategoryLookupResponse",
+                "description": "\uce74\ud14c\uace0\ub9ac \uc120\ud0dd\uc6a9 \uacbd\ub7c9 \ubaa9\ub85d \uc751\ub2f5"
+            },
+            "CategoryStatsItem": {
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "title": "Category"
+                    },
+                    "part_count": {
+                        "type": "integer",
+                        "title": "Part Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "category",
+                    "part_count"
+                ],
+                "title": "CategoryStatsItem",
+                "description": "\uce74\ud14c\uace0\ub9ac\ubcc4 \ubd80\ud488 \uac1c\uc218"
+            },
+            "CategoryStatsResponse": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/CategoryStatsItem"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "title": "CategoryStatsResponse",
+                "description": "\uce74\ud14c\uace0\ub9ac\ubcc4 \ubd80\ud488 \uac1c\uc218 \uc751\ub2f5"
+            },
             "ChangePasswordRequest": {
                 "properties": {
                     "current_password": {
@@ -12789,6 +12952,22 @@
                 ],
                 "title": "RemoveTeamMembersRequest",
                 "description": "\uba64\ubc84 \uc81c\uac70 \uc694\uccad."
+            },
+            "RenameCategoryRequest": {
+                "properties": {
+                    "new_name": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "minLength": 1,
+                        "title": "New Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "new_name"
+                ],
+                "title": "RenameCategoryRequest",
+                "description": "\uce74\ud14c\uace0\ub9ac \uc774\ub984 \ubcc0\uacbd \uc694\uccad"
             },
             "ReviewerSummary": {
                 "properties": {

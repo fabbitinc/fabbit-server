@@ -16,6 +16,8 @@ from app.modules.file.schemas import FileItem
 from app.modules.part.schemas import (
     AttachFilesRequest,
     BomTreeResponse,
+    CategoryLookupResponse,
+    CategoryStatsResponse,
     PartBomResponse,
     PartDetailResponse,
     PartFilesResponse,
@@ -23,6 +25,7 @@ from app.modules.part.schemas import (
     PartListResponse,
     PartLookupResponse,
     PartSuppliersResponse,
+    RenameCategoryRequest,
 )
 from app.modules.project.schemas import PartProjectsResponse
 from app.queries import part as part_queries
@@ -89,6 +92,47 @@ def export_parts(
             "Content-Disposition": f"attachment; filename*=UTF-8''{quote('부품목록.xlsx')}"
         },
     )
+
+
+@router.get("/categories", response_model=CategoryStatsResponse)
+def list_categories(
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """카테고리 목록 + 부품 개수 조회.
+
+    각 카테고리별 부품 개수를 반환합니다.
+    기본 담당자 설정 시 카테고리 현황 파악에 사용됩니다.
+    """
+    return part_queries.list_categories(db, auth)
+
+
+@router.get("/categories/lookup", response_model=CategoryLookupResponse)
+def lookup_categories(
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """카테고리 선택용 경량 목록 조회.
+
+    카테고리 문자열 목록만 반환하는 경량 엔드포인트입니다.
+    picker/select UI에서 카테고리 선택지 구성에 사용됩니다.
+    """
+    return part_queries.lookup_categories(db, auth)
+
+
+@router.patch("/categories/{category}")
+def rename_category(
+    category: str,
+    req: RenameCategoryRequest,
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """카테고리 이름 일괄 변경.
+
+    해당 카테고리를 가진 모든 Part와 기본 담당자 설정의 카테고리 이름을 변경합니다.
+    """
+    count = part_commands.rename_category(db, auth, category, req.new_name)
+    return {"updated_count": count}
 
 
 @router.get("/filter-options", response_model=PartFilterOptions)

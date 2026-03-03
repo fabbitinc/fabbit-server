@@ -80,6 +80,23 @@ def update_owner(
     return part
 
 
+# ── 카테고리 ──
+
+
+def rename_category(db: Session, old_name: str, new_name: str) -> int:
+    """카테고리 이름 일괄 변경 — 해당 카테고리 없으면 AppError."""
+    # 동일 이름 체크
+    if old_name == new_name:
+        raise AppError(message="변경 전후 카테고리 이름이 동일합니다", code="BAD_REQUEST")
+    # 대상 존재 여부 확인
+    existing = repo.get_category_stats(db)
+    if not any(cat == old_name for cat, _ in existing):
+        raise AppError(
+            message=f"카테고리 '{old_name}'을(를) 찾을 수 없습니다", code="NOT_FOUND"
+        )
+    return repo.rename_category(db, old_name, new_name)
+
+
 # ── 기본 담당자/팀 ──
 
 

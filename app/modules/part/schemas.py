@@ -222,6 +222,34 @@ class UpdatePartOwnerRequest(BaseModel):
     owner_team_id: uuid.UUID | None = None
 
 
+# ── 카테고리 ──
+
+
+class CategoryStatsItem(BaseModel):
+    """카테고리별 부품 개수"""
+
+    category: str
+    part_count: int
+
+
+class CategoryStatsResponse(BaseModel):
+    """카테고리별 부품 개수 응답"""
+
+    items: list[CategoryStatsItem]
+
+
+class CategoryLookupResponse(BaseModel):
+    """카테고리 선택용 경량 목록 응답"""
+
+    items: list[str]
+
+
+class RenameCategoryRequest(BaseModel):
+    """카테고리 이름 변경 요청"""
+
+    new_name: str = Field(..., min_length=1, max_length=200)
+
+
 # ── 카테고리별 기본 담당자/팀 ──
 
 

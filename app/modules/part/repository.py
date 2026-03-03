@@ -239,6 +239,18 @@ def list_parts_for_export(
     return query.order_by(Part.part_number).all()
 
 
+def get_category_stats(db: Session) -> list[tuple[str, int]]:
+    """카테고리별 부품 개수 조회 (NULL 제외)."""
+    rows = (
+        db.query(Part.category, func.count(Part.id))
+        .filter(Part.category.isnot(None))
+        .group_by(Part.category)
+        .order_by(Part.category)
+        .all()
+    )
+    return [(r[0], r[1]) for r in rows]
+
+
 def get_distinct_categories(db: Session) -> list[str]:
     """Part category DISTINCT 값 목록 (NULL 제외)."""
     rows = (
@@ -249,6 +261,24 @@ def get_distinct_categories(db: Session) -> list[str]:
         .all()
     )
     return [r[0] for r in rows]
+
+
+def rename_category(db: Session, old_name: str, new_name: str) -> int:
+    """카테고리 이름 일괄 변경 (parts + part_default_owners).
+
+    Returns:
+        변경된 Part 건수
+    """
+    count = (
+        db.query(Part)
+        .filter(Part.category == old_name)
+        .update({Part.category: new_name})
+    )
+    db.query(PartDefaultOwner).filter(
+        PartDefaultOwner.category == old_name
+    ).update({PartDefaultOwner.category: new_name})
+    db.flush()
+    return count
 
 
 def get_distinct_lifecycle_states(db: Session) -> list[str]:

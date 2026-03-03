@@ -3,6 +3,7 @@
 from app.use_cases.part.add_drawing import add_drawing
 from app.use_cases.part.add_files import add_files
 from app.use_cases.part.delete_default_owner import delete_default_owner
+from app.use_cases.part.rename_category import rename_category
 from app.use_cases.part.delete_drawing import delete_drawing
 from app.use_cases.part.delete_file import delete_file
 from app.use_cases.part.update_part_owner import update_part_owner
@@ -13,6 +14,7 @@ __all__ = [
     "add_files",
     "delete_default_owner",
     "delete_drawing",
+    "rename_category",
     "delete_file",
     "update_part_owner",
     "upsert_default_owner",
