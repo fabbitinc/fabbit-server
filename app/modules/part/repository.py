@@ -16,7 +16,7 @@ from app.modules.ontology.cypher_utils import escape_cypher_value
 from app.modules.part.models import (
     _STANDARD_ATTRS,
     BomLink,
-    CategoryDefaultAssignment,
+    PartDefaultOwner,
     Part,
     PartRevision,
     PartSupplier,
@@ -401,7 +401,7 @@ def upsert_part(
 
         # 카테고리 기본 담당자/팀 자동 배정
         cat = standard.get("category")
-        default = get_category_default(db, cat)
+        default = get_default_owner(db, cat)
         if default:
             all_props["owner_id"] = default.default_owner_id
             all_props["owner_team_id"] = default.default_owner_team_id
@@ -845,46 +845,46 @@ def _create_revision_snapshot(
     db.add(revision)
 
 
-# ── 카테고리별 기본 담당자/팀 ──
+# ── 기본 담당자/팀 ──
 
 
-def get_category_default(
+def get_default_owner(
     db: Session, category: str | None
-) -> CategoryDefaultAssignment | None:
-    """카테고리 기본 담당자/팀 조회 — 없으면 fallback(category IS NULL) 조회."""
+) -> PartDefaultOwner | None:
+    """기본 담당자/팀 조회 — 없으면 fallback(category IS NULL) 조회."""
     if category is not None:
         result = (
-            db.query(CategoryDefaultAssignment)
-            .filter(CategoryDefaultAssignment.category == category)
+            db.query(PartDefaultOwner)
+            .filter(PartDefaultOwner.category == category)
             .first()
         )
         if result:
             return result
     # fallback: category IS NULL
     return (
-        db.query(CategoryDefaultAssignment)
-        .filter(CategoryDefaultAssignment.category.is_(None))
+        db.query(PartDefaultOwner)
+        .filter(PartDefaultOwner.category.is_(None))
         .first()
     )
 
 
-def upsert_category_default(
+def upsert_default_owner(
     db: Session,
     category: str | None,
     owner_id: uuid.UUID | None,
     owner_team_id: uuid.UUID | None,
-) -> CategoryDefaultAssignment:
-    """카테고리 기본 담당자/팀 설정 upsert."""
+) -> PartDefaultOwner:
+    """기본 담당자/팀 설정 upsert."""
     if category is not None:
         existing = (
-            db.query(CategoryDefaultAssignment)
-            .filter(CategoryDefaultAssignment.category == category)
+            db.query(PartDefaultOwner)
+            .filter(PartDefaultOwner.category == category)
             .first()
         )
     else:
         existing = (
-            db.query(CategoryDefaultAssignment)
-            .filter(CategoryDefaultAssignment.category.is_(None))
+            db.query(PartDefaultOwner)
+            .filter(PartDefaultOwner.category.is_(None))
             .first()
         )
 
@@ -892,7 +892,7 @@ def upsert_category_default(
         existing.default_owner_id = owner_id
         existing.default_owner_team_id = owner_team_id
     else:
-        existing = CategoryDefaultAssignment(
+        existing = PartDefaultOwner(
             category=category,
             default_owner_id=owner_id,
             default_owner_team_id=owner_team_id,
@@ -903,28 +903,28 @@ def upsert_category_default(
     return existing
 
 
-def delete_category_default(db: Session, category: str | None) -> bool:
-    """카테고리 기본 담당자/팀 설정 삭제 — 삭제 성공 여부 반환."""
+def delete_default_owner(db: Session, category: str | None) -> bool:
+    """기본 담당자/팀 설정 삭제 — 삭제 성공 여부 반환."""
     if category is not None:
         count = (
-            db.query(CategoryDefaultAssignment)
-            .filter(CategoryDefaultAssignment.category == category)
+            db.query(PartDefaultOwner)
+            .filter(PartDefaultOwner.category == category)
             .delete()
         )
     else:
         count = (
-            db.query(CategoryDefaultAssignment)
-            .filter(CategoryDefaultAssignment.category.is_(None))
+            db.query(PartDefaultOwner)
+            .filter(PartDefaultOwner.category.is_(None))
             .delete()
         )
     db.flush()
     return count > 0
 
 
-def list_category_defaults(db: Session) -> list[CategoryDefaultAssignment]:
-    """카테고리 기본 담당자/팀 설정 전체 목록."""
+def list_default_owners(db: Session) -> list[PartDefaultOwner]:
+    """기본 담당자/팀 설정 전체 목록."""
     return (
-        db.query(CategoryDefaultAssignment)
-        .order_by(CategoryDefaultAssignment.category.asc().nulls_first())
+        db.query(PartDefaultOwner)
+        .order_by(PartDefaultOwner.category.asc().nulls_first())
         .all()
     )

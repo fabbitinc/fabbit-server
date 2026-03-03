@@ -40,3 +40,20 @@ class LabelResponse(BaseModel):
 class LabelListResponse(BaseModel):
     total: int
     items: list[LabelResponse]
+
+
+# ── Lookup ──
+
+
+class LabelLookupItem(BaseModel):
+    """라벨 lookup 항목 (picker/autocomplete용)."""
+
+    id: uuid.UUID
+    name: str
+    color: str
+
+
+class LabelLookupResponse(BaseModel):
+    """라벨 lookup 응답."""
+
+    items: list[LabelLookupItem]

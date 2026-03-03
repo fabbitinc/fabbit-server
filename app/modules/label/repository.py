@@ -22,6 +22,19 @@ def list_all(db: Session) -> list[Label]:
     return db.query(Label).order_by(Label.name).all()
 
 
+def lookup_labels(
+    db: Session,
+    *,
+    search: str | None = None,
+    limit: int = 10,
+) -> list[Label]:
+    """라벨 lookup 조회 (picker/autocomplete용)."""
+    query = db.query(Label)
+    if search:
+        query = query.filter(Label.name.ilike(f"%{search}%"))
+    return query.order_by(Label.name).limit(limit).all()
+
+
 def add(db: Session, entity: Label) -> Label:
     """Label 저장."""
     db.add(entity)

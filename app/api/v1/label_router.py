@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_tenant_db, require_auth
@@ -10,6 +10,7 @@ from app.core.auth_context import AuthContext
 from app.modules.label.schemas import (
     CreateLabelRequest,
     LabelListResponse,
+    LabelLookupResponse,
     LabelResponse,
     UpdateLabelRequest,
 )
@@ -17,6 +18,21 @@ from app.queries import label as label_queries
 from app.use_cases import label as label_commands
 
 router = APIRouter(prefix="/api/v1/labels", tags=["labels"])
+
+
+@router.get("/lookup", response_model=LabelLookupResponse)
+def lookup_labels(
+    search: str | None = Query(None, description="라벨 이름 검색 (ILIKE)"),
+    limit: int = Query(10, ge=1, le=50, description="조회 건수"),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """라벨 lookup 조회.
+
+    picker/autocomplete UI를 위한 경량 목록 엔드포인트입니다.
+    id, name, color만 반환합니다.
+    """
+    return label_queries.lookup_labels(db, auth, search=search, limit=limit)
 
 
 @router.get("", response_model=LabelListResponse)

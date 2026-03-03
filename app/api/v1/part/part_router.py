@@ -21,6 +21,7 @@ from app.modules.part.schemas import (
     PartFilesResponse,
     PartFilterOptions,
     PartListResponse,
+    PartLookupResponse,
     PartSuppliersResponse,
 )
 from app.modules.project.schemas import PartProjectsResponse
@@ -29,6 +30,21 @@ from app.queries import project as project_queries
 from app.use_cases import part as part_commands
 
 router = APIRouter(prefix="/api/v1/parts", tags=["parts"])
+
+
+@router.get("/lookup", response_model=PartLookupResponse)
+def lookup_parts(
+    search: str | None = Query(None, description="품번 또는 품명 검색 (ILIKE)"),
+    limit: int = Query(10, ge=1, le=50, description="조회 건수"),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """부품 lookup 조회.
+
+    picker/autocomplete UI를 위한 경량 목록 엔드포인트입니다.
+    id, part_number, name만 반환합니다.
+    """
+    return part_queries.lookup_parts(db, auth, search=search, limit=limit)
 
 
 @router.get("/export")

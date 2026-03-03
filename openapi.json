@@ -1823,6 +1823,77 @@
                 }
             }
         },
+        "/api/v1/parts/lookup": {
+            "get": {
+                "tags": [
+                    "parts"
+                ],
+                "summary": "Lookup Parts",
+                "description": "\ubd80\ud488 lookup \uc870\ud68c.\n\npicker/autocomplete UI\ub97c \uc704\ud55c \uacbd\ub7c9 \ubaa9\ub85d \uc5d4\ub4dc\ud3ec\uc778\ud2b8\uc785\ub2c8\ub2e4.\nid, part_number, name\ub9cc \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "lookup_parts_api_v1_parts_lookup_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "\ud488\ubc88 \ub610\ub294 \ud488\uba85 \uac80\uc0c9 (ILIKE)",
+                            "title": "Search"
+                        },
+                        "description": "\ud488\ubc88 \ub610\ub294 \ud488\uba85 \uac80\uc0c9 (ILIKE)"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 50,
+                            "minimum": 1,
+                            "description": "\uc870\ud68c \uac74\uc218",
+                            "default": 10,
+                            "title": "Limit"
+                        },
+                        "description": "\uc870\ud68c \uac74\uc218"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PartLookupResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/parts/export": {
             "get": {
                 "tags": [
@@ -2806,17 +2877,29 @@
                 }
             }
         },
-        "/api/v1/parts/category-defaults": {
+        "/api/v1/parts/{part_id}/owner": {
             "get": {
                 "tags": [
-                    "part-category-defaults"
+                    "part-owner"
                 ],
-                "summary": "List Category Defaults",
-                "description": "\uce74\ud14c\uace0\ub9ac\ubcc4 \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \ubaa9\ub85d \uc870\ud68c.\n\n\ubaa8\ub4e0 \uce74\ud14c\uace0\ub9ac \uae30\ubcf8\uac12 \uc124\uc815\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.\ncategory\uac00 NULL\uc778 \ud56d\ubaa9\uc740 fallback(\uc804\uccb4 \uae30\ubcf8\uac12)\uc785\ub2c8\ub2e4.",
-                "operationId": "list_category_defaults_api_v1_parts_category_defaults_get",
+                "summary": "Get Part Owner",
+                "description": "Part \ub2f4\ub2f9\uc790/\ud300 \uc870\ud68c.\n\n\ud574\ub2f9 Part\uc5d0 \uc124\uc815\ub41c \ub2f4\ub2f9\uc790(owner)\uc640 \ub2f4\ub2f9\ud300(owner_team) \uc815\ubcf4\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "get_part_owner_api_v1_parts__part_id__owner_get",
                 "security": [
                     {
                         "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
                     }
                 ],
                 "responses": {
@@ -2825,23 +2908,45 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/CategoryDefaultListResponse"
+                                    "$ref": "#/components/schemas/PartOwnerResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
                                 }
                             }
                         }
                     }
                 }
             },
-            "put": {
+            "patch": {
                 "tags": [
-                    "part-category-defaults"
+                    "part-owner"
                 ],
-                "summary": "Upsert Category Default",
-                "description": "\uce74\ud14c\uace0\ub9ac\ubcc4 \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 upsert.\n\n- **category=null**: \uc804\uccb4 fallback \uae30\ubcf8\uac12 \uc124\uc815\n- **category=\"\uc804\uc790\"**: \ud574\ub2f9 \uce74\ud14c\uace0\ub9ac \uae30\ubcf8\uac12 \uc124\uc815\n\n\ub3d9\uc77c category\uac00 \uc774\ubbf8 \uc874\uc7ac\ud558\uba74 \ub36e\uc5b4\uc501\ub2c8\ub2e4.",
-                "operationId": "upsert_category_default_api_v1_parts_category_defaults_put",
+                "summary": "Update Part Owner",
+                "description": "Part \ub2f4\ub2f9\uc790/\ud300 \uc218\uc815.\n\nPATCH \uc2dc\ub9e8\ud2f1\uc73c\ub85c \ub3d9\uc791\ud569\ub2c8\ub2e4:\n- body\uc5d0 \ud3ec\ud568\ub41c \ud544\ub4dc\ub9cc \ubcc0\uacbd\ud569\ub2c8\ub2e4\n- **null \uac12**: \ud574\ub2f9 \ud544\ub4dc\ub97c \ud574\uc81c\ud569\ub2c8\ub2e4 (\uc608: `{\"owner_id\": null}` \u2192 \ub2f4\ub2f9\uc790 \ud574\uc81c)\n- **UUID \uac12**: \ud574\ub2f9 \ud544\ub4dc\ub97c \uc124\uc815\ud569\ub2c8\ub2e4 (\uc608: `{\"owner_team_id\": \"uuid\"}` \u2192 \ud300 \uc124\uc815)\n- **\ubbf8\ud3ec\ud568 \ud544\ub4dc**: \ubcc0\uacbd\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4",
+                "operationId": "update_part_owner_api_v1_parts__part_id__owner_patch",
                 "security": [
                     {
                         "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "part_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Part Id"
+                        }
                     }
                 ],
                 "requestBody": {
@@ -2849,7 +2954,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/CategoryDefaultRequest"
+                                "$ref": "#/components/schemas/UpdatePartOwnerRequest"
                             }
                         }
                     }
@@ -2860,7 +2965,79 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/CategoryDefaultItem"
+                                    "$ref": "#/components/schemas/PartOwnerResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/parts/owner/defaults": {
+            "get": {
+                "tags": [
+                    "part-owner-defaults"
+                ],
+                "summary": "List Default Owners",
+                "description": "\uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \ubaa9\ub85d \uc870\ud68c.\n\n\ubaa8\ub4e0 \uce74\ud14c\uace0\ub9ac \uae30\ubcf8\uac12 \uc124\uc815\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.\ncategory\uac00 NULL\uc778 \ud56d\ubaa9\uc740 fallback(\uc804\uccb4 \uae30\ubcf8\uac12)\uc785\ub2c8\ub2e4.",
+                "operationId": "list_default_owners_api_v1_parts_owner_defaults_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PartDefaultOwnerListResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "part-owner-defaults"
+                ],
+                "summary": "Upsert Default Owner",
+                "description": "\uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 upsert.\n\n- **category=null**: \uc804\uccb4 fallback \uae30\ubcf8\uac12 \uc124\uc815\n- **category=\"\uc804\uc790\"**: \ud574\ub2f9 \uce74\ud14c\uace0\ub9ac \uae30\ubcf8\uac12 \uc124\uc815\n\n\ub3d9\uc77c category\uac00 \uc774\ubbf8 \uc874\uc7ac\ud558\uba74 \ub36e\uc5b4\uc501\ub2c8\ub2e4.",
+                "operationId": "upsert_default_owner_api_v1_parts_owner_defaults_put",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PartDefaultOwnerRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PartDefaultOwnerItem"
                                 }
                             }
                         }
@@ -2879,11 +3056,11 @@
             },
             "delete": {
                 "tags": [
-                    "part-category-defaults"
+                    "part-owner-defaults"
                 ],
-                "summary": "Delete Category Default",
-                "description": "\uce74\ud14c\uace0\ub9ac\ubcc4 \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \uc0ad\uc81c.\n\n\ud574\ub2f9 \uce74\ud14c\uace0\ub9ac\uc758 \uae30\ubcf8\uac12 \uc124\uc815\uc744 \uc81c\uac70\ud569\ub2c8\ub2e4.\ncategory \ubbf8\uc9c0\uc815 \uc2dc fallback(\uc804\uccb4 \uae30\ubcf8\uac12)\uc744 \uc0ad\uc81c\ud569\ub2c8\ub2e4.",
-                "operationId": "delete_category_default_api_v1_parts_category_defaults_delete",
+                "summary": "Delete Default Owner",
+                "description": "\uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \uc0ad\uc81c.\n\n\ud574\ub2f9 \uce74\ud14c\uace0\ub9ac\uc758 \uae30\ubcf8\uac12 \uc124\uc815\uc744 \uc81c\uac70\ud569\ub2c8\ub2e4.\ncategory \ubbf8\uc9c0\uc815 \uc2dc fallback(\uc804\uccb4 \uae30\ubcf8\uac12)\uc744 \uc0ad\uc81c\ud569\ub2c8\ub2e4.",
+                "operationId": "delete_default_owner_api_v1_parts_owner_defaults_delete",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -6249,6 +6426,77 @@
                 }
             }
         },
+        "/api/v1/labels/lookup": {
+            "get": {
+                "tags": [
+                    "labels"
+                ],
+                "summary": "Lookup Labels",
+                "description": "\ub77c\ubca8 lookup \uc870\ud68c.\n\npicker/autocomplete UI\ub97c \uc704\ud55c \uacbd\ub7c9 \ubaa9\ub85d \uc5d4\ub4dc\ud3ec\uc778\ud2b8\uc785\ub2c8\ub2e4.\nid, name, color\ub9cc \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "lookup_labels_api_v1_labels_lookup_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "\ub77c\ubca8 \uc774\ub984 \uac80\uc0c9 (ILIKE)",
+                            "title": "Search"
+                        },
+                        "description": "\ub77c\ubca8 \uc774\ub984 \uac80\uc0c9 (ILIKE)"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 50,
+                            "minimum": 1,
+                            "description": "\uc870\ud68c \uac74\uc218",
+                            "default": 10,
+                            "title": "Limit"
+                        },
+                        "description": "\uc870\ud68c \uac74\uc218"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LabelLookupResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/labels": {
             "get": {
                 "tags": [
@@ -7896,136 +8144,6 @@
                 ],
                 "title": "BomTreeResponse",
                 "description": "BOM \ud2b8\ub9ac \uc751\ub2f5"
-            },
-            "CategoryDefaultItem": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Id"
-                    },
-                    "category": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Category"
-                    },
-                    "default_owner_id": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uuid"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Default Owner Id"
-                    },
-                    "default_owner": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/UserSummary"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "default_team_id": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uuid"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Default Team Id"
-                    },
-                    "default_team_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Default Team Name"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id"
-                ],
-                "title": "CategoryDefaultItem",
-                "description": "\uce74\ud14c\uace0\ub9ac \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \ud56d\ubaa9"
-            },
-            "CategoryDefaultListResponse": {
-                "properties": {
-                    "items": {
-                        "items": {
-                            "$ref": "#/components/schemas/CategoryDefaultItem"
-                        },
-                        "type": "array",
-                        "title": "Items"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "items"
-                ],
-                "title": "CategoryDefaultListResponse",
-                "description": "\uce74\ud14c\uace0\ub9ac \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \ubaa9\ub85d"
-            },
-            "CategoryDefaultRequest": {
-                "properties": {
-                    "category": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Category"
-                    },
-                    "default_owner_id": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uuid"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Default Owner Id"
-                    },
-                    "default_team_id": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uuid"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Default Team Id"
-                    }
-                },
-                "type": "object",
-                "title": "CategoryDefaultRequest",
-                "description": "\uce74\ud14c\uace0\ub9ac \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \uc694\uccad"
             },
             "ChangePasswordRequest": {
                 "properties": {
@@ -9755,6 +9873,48 @@
                 ],
                 "title": "LabelListResponse"
             },
+            "LabelLookupItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "color": {
+                        "type": "string",
+                        "title": "Color"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "color"
+                ],
+                "title": "LabelLookupItem",
+                "description": "\ub77c\ubca8 lookup \ud56d\ubaa9 (picker/autocomplete\uc6a9)."
+            },
+            "LabelLookupResponse": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/LabelLookupItem"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "title": "LabelLookupResponse",
+                "description": "\ub77c\ubca8 lookup \uc751\ub2f5."
+            },
             "LabelResponse": {
                 "properties": {
                     "id": {
@@ -10918,6 +11078,136 @@
                 "title": "PartBomResponse",
                 "description": "Part BOM \uc9c1\uc811 \uad00\uacc4 \uc751\ub2f5 (1-depth)"
             },
+            "PartDefaultOwnerItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id"
+                    },
+                    "category": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Category"
+                    },
+                    "default_owner_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Owner Id"
+                    },
+                    "default_owner": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/UserSummary"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "default_owner_team_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Owner Team Id"
+                    },
+                    "default_owner_team_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Owner Team Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id"
+                ],
+                "title": "PartDefaultOwnerItem",
+                "description": "\uce74\ud14c\uace0\ub9ac \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \ud56d\ubaa9"
+            },
+            "PartDefaultOwnerListResponse": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/PartDefaultOwnerItem"
+                        },
+                        "type": "array",
+                        "title": "Items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "title": "PartDefaultOwnerListResponse",
+                "description": "\uce74\ud14c\uace0\ub9ac \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \ubaa9\ub85d"
+            },
+            "PartDefaultOwnerRequest": {
+                "properties": {
+                    "category": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Category"
+                    },
+                    "default_owner_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Owner Id"
+                    },
+                    "default_owner_team_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Owner Team Id"
+                    }
+                },
+                "type": "object",
+                "title": "PartDefaultOwnerRequest",
+                "description": "\uce74\ud14c\uace0\ub9ac \uae30\ubcf8 \ub2f4\ub2f9\uc790/\ud300 \uc124\uc815 \uc694\uccad"
+            },
             "PartDetailResponse": {
                 "properties": {
                     "id": {
@@ -11050,7 +11340,7 @@
                             }
                         ]
                     },
-                    "team_id": {
+                    "owner_team_id": {
                         "anyOf": [
                             {
                                 "type": "string",
@@ -11060,9 +11350,9 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Team Id"
+                        "title": "Owner Team Id"
                     },
-                    "team_name": {
+                    "owner_team_name": {
                         "anyOf": [
                             {
                                 "type": "string"
@@ -11071,7 +11361,7 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Team Name"
+                        "title": "Owner Team Name"
                     },
                     "drawing": {
                         "anyOf": [
@@ -11243,6 +11533,58 @@
                 ],
                 "title": "PartLookupResponse",
                 "description": "\ubd80\ud488 lookup \uc751\ub2f5."
+            },
+            "PartOwnerResponse": {
+                "properties": {
+                    "owner_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Owner Id"
+                    },
+                    "owner": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/UserSummary"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "owner_team_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Owner Team Id"
+                    },
+                    "owner_team_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Owner Team Name"
+                    }
+                },
+                "type": "object",
+                "title": "PartOwnerResponse",
+                "description": "Part \ub2f4\ub2f9\uc790/\ud300 \uc751\ub2f5"
             },
             "PartProjectSummary": {
                 "properties": {
@@ -13957,6 +14299,37 @@
                 },
                 "type": "object",
                 "title": "UpdateLabelRequest"
+            },
+            "UpdatePartOwnerRequest": {
+                "properties": {
+                    "owner_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Owner Id"
+                    },
+                    "owner_team_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Owner Team Id"
+                    }
+                },
+                "type": "object",
+                "title": "UpdatePartOwnerRequest",
+                "description": "Part \ub2f4\ub2f9\uc790/\ud300 \uc218\uc815 \uc694\uccad (PATCH \uc2dc\ub9e8\ud2f1)\n\n\ud544\ub4dc\uac00 body\uc5d0 \ud3ec\ud568\ub418\uba74 \ud574\ub2f9 \uac12\uc73c\ub85c \uc124\uc815 (null\uc774\uba74 \ud574\uc81c),\n\ubbf8\ud3ec\ud568\uc774\uba74 \ubcc0\uacbd\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4."
             },
             "UpdateProfileRequest": {
                 "properties": {

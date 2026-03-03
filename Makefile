@@ -65,38 +65,39 @@ openapi:
 
 # ── 마이그레이션 ──
 
-# public 마이그레이션 적용
-migrate-public:
+
+
+# public revision 자동 생성 (사용: make revision-public m="설명")
+revision-public:
 	uv run alembic revision --autogenerate -m "$(m)"
 	@echo "public 마이그레이션 생성 완료"
+
+# tenant revision 자동 생성 (사용: make revision-tenant m="설명")
+revision-tenant:
+	uv run alembic -c alembic_tenant.ini revision --autogenerate -m "$(m)"
+	@echo "tenant 마이그레이션 생성 완료"
+
+revision-all:
+	$(MAKE) revision-public
+	$(MAKE) revision-tenant
+
+
+# public 마이그레이션 적용
+migrate-public:
+	$(MAKE) revision-public
 	uv run alembic upgrade head
 	@echo "public 마이그레이션 완료"
 
 # tenant 마이그레이션 적용 (모든 tenant_* 스키마 순회)
 migrate-tenant:
-	uv run alembic -c alembic_tenant.ini revision --autogenerate -m "$(m)"
-	@echo "tenant 마이그레이션 생성 완료"
+	$(MAKE) revision-tenant
 	uv run alembic -c alembic_tenant.ini upgrade head
 	@echo "tenant 마이그레이션 완료"
 
 # public + tenant 마이그레이션 적용
 migrate-all:
-	uv run alembic upgrade head
-	uv run alembic -c alembic_tenant.ini upgrade head
-	@echo "마이그레이션 완료"
-
-# public revision 자동 생성 (사용: make revision-public m="설명")
-revision-public:
-	uv run alembic revision --autogenerate -m "$(m)"
-
-# tenant revision 자동 생성 (사용: make revision-tenant m="설명")
-revision-tenant:
-	uv run alembic -c alembic_tenant.ini revision --autogenerate -m "$(m)"
-
-revision-all:
-	uv run alembic revision --autogenerate -m "$(m)"
-	uv run alembic -c alembic_tenant.ini revision --autogenerate -m "$(m)"
-	@echo "마이그레이션 파일 생성 완료"
+	$(MAKE) migrate-public
+	$(MAKE) migrate-tenant
 
 # ── 테스트 ──
 

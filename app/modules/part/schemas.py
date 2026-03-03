@@ -199,10 +199,33 @@ class BomTreeResponse(BaseModel):
     total_count: int
 
 
+# ── Part 담당자/팀 ──
+
+
+class PartOwnerResponse(BaseModel):
+    """Part 담당자/팀 응답"""
+
+    owner_id: uuid.UUID | None = None
+    owner: UserSummary | None = None
+    owner_team_id: uuid.UUID | None = None
+    owner_team_name: str | None = None
+
+
+class UpdatePartOwnerRequest(BaseModel):
+    """Part 담당자/팀 수정 요청 (PATCH 시맨틱)
+
+    필드가 body에 포함되면 해당 값으로 설정 (null이면 해제),
+    미포함이면 변경하지 않습니다.
+    """
+
+    owner_id: uuid.UUID | None = None
+    owner_team_id: uuid.UUID | None = None
+
+
 # ── 카테고리별 기본 담당자/팀 ──
 
 
-class CategoryDefaultRequest(BaseModel):
+class PartDefaultOwnerRequest(BaseModel):
     """카테고리 기본 담당자/팀 설정 요청"""
 
     category: str | None = None
@@ -210,7 +233,7 @@ class CategoryDefaultRequest(BaseModel):
     default_owner_team_id: uuid.UUID | None = None
 
 
-class CategoryDefaultItem(BaseModel):
+class PartDefaultOwnerItem(BaseModel):
     """카테고리 기본 담당자/팀 설정 항목"""
 
     id: uuid.UUID
@@ -221,7 +244,7 @@ class CategoryDefaultItem(BaseModel):
     default_owner_team_name: str | None = None
 
 
-class CategoryDefaultListResponse(BaseModel):
+class PartDefaultOwnerListResponse(BaseModel):
     """카테고리 기본 담당자/팀 설정 목록"""
 
-    items: list[CategoryDefaultItem]
+    items: list[PartDefaultOwnerItem]

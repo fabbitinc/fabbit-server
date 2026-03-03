@@ -183,6 +183,22 @@ class Part(AggregateRoot, TenantBase):
                 self.extended_properties = merged
         return changed
 
+    def assign_owner(self, owner_id: uuid.UUID) -> None:
+        """담당자 설정."""
+        self.owner_id = owner_id
+
+    def unassign_owner(self) -> None:
+        """담당자 해제."""
+        self.owner_id = None
+
+    def assign_owner_team(self, owner_team_id: uuid.UUID) -> None:
+        """담당팀 설정."""
+        self.owner_team_id = owner_team_id
+
+    def unassign_owner_team(self) -> None:
+        """담당팀 해제."""
+        self.owner_team_id = None
+
     def assign_drawing(self, drawing_id: uuid.UUID) -> None:
         """도면 연결."""
         self.drawing_id = drawing_id
@@ -354,26 +370,26 @@ class PartSupplier(TenantBase):
     )
 
 
-class CategoryDefaultAssignment(TimestampMixin, PkMixin, TenantBase):
+class PartDefaultOwner(TimestampMixin, PkMixin, TenantBase):
     """카테고리별 기본 담당자/팀 설정.
 
     category가 NULL이면 fallback 기본값 (전체 기본).
     category가 NOT NULL이면 해당 카테고리의 기본값.
     """
 
-    __tablename__ = "category_default_assignments"
+    __tablename__ = "part_default_owners"
 
     __table_args__ = (
         # category IS NOT NULL인 행의 유일성 보장
         Index(
-            "uq_category_default_assignments_category",
+            "uq_part_default_owners_category",
             "category",
             unique=True,
             postgresql_where=text("category IS NOT NULL"),
         ),
         # category IS NULL인 행은 최대 1건 (fallback)
         Index(
-            "uq_category_default_assignments_fallback",
+            "uq_part_default_owners_fallback",
             text("(true)"),
             unique=True,
             postgresql_where=text("category IS NULL"),

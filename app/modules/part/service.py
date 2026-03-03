@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError
 from app.modules.part import repository as repo
-from app.modules.part.models import CategoryDefaultAssignment, Part
+from app.modules.part.models import Part, PartDefaultOwner
 
 if TYPE_CHECKING:
     from app.modules.file.models import File
@@ -53,22 +53,49 @@ def unassign_drawing(db: Session, part_id: uuid.UUID) -> uuid.UUID:
     return drawing_id
 
 
-# ── 카테고리별 기본 담당자/팀 ──
+# ── Part 담당자/팀 ──
+
+_SENTINEL = object()
 
 
-def upsert_category_default(
+def update_owner(
+    db: Session,
+    part_id: uuid.UUID,
+    owner_id: uuid.UUID | None | object = _SENTINEL,
+    owner_team_id: uuid.UUID | None | object = _SENTINEL,
+) -> Part:
+    """Part 담당자/팀 수정 (PATCH 시맨틱)."""
+    part = get_or_raise(db, part_id)
+    if owner_id is not _SENTINEL:
+        if owner_id is None:
+            part.unassign_owner()
+        else:
+            part.assign_owner(owner_id)  # type: ignore[arg-type]
+    if owner_team_id is not _SENTINEL:
+        if owner_team_id is None:
+            part.unassign_owner_team()
+        else:
+            part.assign_owner_team(owner_team_id)  # type: ignore[arg-type]
+    db.flush()
+    return part
+
+
+# ── 기본 담당자/팀 ──
+
+
+def upsert_default_owner(
     db: Session,
     category: str | None,
     owner_id: uuid.UUID | None,
     owner_team_id: uuid.UUID | None,
-) -> CategoryDefaultAssignment:
-    """카테고리별 기본 담당자/팀 설정 upsert."""
-    return repo.upsert_category_default(db, category, owner_id, owner_team_id)
+) -> PartDefaultOwner:
+    """기본 담당자/팀 설정 upsert."""
+    return repo.upsert_default_owner(db, category, owner_id, owner_team_id)
 
 
-def delete_category_default(db: Session, category: str | None) -> None:
-    """카테고리별 기본 담당자/팀 설정 삭제 — 없으면 AppError."""
-    deleted = repo.delete_category_default(db, category)
+def delete_default_owner(db: Session, category: str | None) -> None:
+    """기본 담당자/팀 설정 삭제 — 없으면 AppError."""
+    deleted = repo.delete_default_owner(db, category)
     if not deleted:
         raise AppError(
             message=f"카테고리 '{category}' 기본값 설정을 찾을 수 없습니다",
