@@ -7875,6 +7875,35 @@
                 ],
                 "title": "AcceptInvitationResponse"
             },
+            "Action": {
+                "type": "string",
+                "enum": [
+                    "issue:state_changed",
+                    "issue:title_changed",
+                    "cr:state_changed",
+                    "issue:assignee_changed",
+                    "issue:reviewer_changed",
+                    "issue:label_changed",
+                    "issue:part_changed",
+                    "issue:file_attached",
+                    "issue:file_detached",
+                    "cr:issue_changed",
+                    "issue:cr_changed",
+                    "issue:mentioned",
+                    "issue:created",
+                    "cr:created",
+                    "issue:closed",
+                    "issue:reopened",
+                    "cr:merged",
+                    "project:part_added",
+                    "project:part_removed",
+                    "project:updated",
+                    "project:archived",
+                    "project:unarchived"
+                ],
+                "title": "Action",
+                "description": "Activity action \uc5f4\uac70\ud615. '{resource}:{verb}' \ud615\uc2dd."
+            },
             "ActivityListResponse": {
                 "properties": {
                     "items": {
@@ -7919,8 +7948,7 @@
                         "title": "Id"
                     },
                     "action": {
-                        "type": "string",
-                        "title": "Action"
+                        "$ref": "#/components/schemas/Action"
                     },
                     "scope": {
                         "anyOf": [
@@ -14252,8 +14280,7 @@
                         "title": "Id"
                     },
                     "action": {
-                        "type": "string",
-                        "title": "Action"
+                        "$ref": "#/components/schemas/Action"
                     },
                     "scope": {
                         "anyOf": [

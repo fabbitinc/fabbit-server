@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
+from app.modules.activity.constants import Action
 from app.modules.user.schemas import UserSummary
 
 # ── 통일 Detail 구조 ──
@@ -47,7 +48,7 @@ ActivityDetail = ChangesDetail | DiffDetail | RefsDetail | dict[str, Any]
 
 class ActivityResponse(BaseModel):
     id: uuid.UUID
-    action: str
+    action: Action
     scope: str | None = None
     actor_id: uuid.UUID
     detail: ActivityDetail | None = None
@@ -76,7 +77,7 @@ class TimelineCommentItem(BaseModel):
 class TimelineActivityItem(BaseModel):
     type: Literal["activity"] = "activity"
     id: uuid.UUID
-    action: str
+    action: Action
     scope: str | None = None
     actor_id: uuid.UUID
     detail: ActivityDetail | None = None
