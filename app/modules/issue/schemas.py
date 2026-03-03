@@ -239,6 +239,22 @@ class IssueLookupResponse(BaseModel):
     items: list[IssueLookupItem]
 
 
+class ChangeRequestLookupItem(BaseModel):
+    """변경 요청 lookup 항목 (picker/autocomplete용)."""
+
+    id: uuid.UUID
+    number: int
+    title: str
+    state: str
+    cr_state: str
+
+
+class ChangeRequestLookupResponse(BaseModel):
+    """변경 요청 lookup 응답."""
+
+    items: list[ChangeRequestLookupItem]
+
+
 class LinkedIssueBadge(BaseModel):
     """연결된 이슈 요약 (CR 상세에서 사용)."""
 

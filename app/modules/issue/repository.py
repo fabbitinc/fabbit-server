@@ -226,6 +226,22 @@ def lookup_issues(
     return query.order_by(Issue.number.desc()).limit(limit).all()
 
 
+def lookup_change_requests(
+    db: Session,
+    *,
+    search: str | None = None,
+    limit: int = 10,
+) -> list[ChangeRequest]:
+    """변경 요청 lookup 조회 (picker/autocomplete용)."""
+    query = db.query(ChangeRequest)
+    if search:
+        conditions = [ChangeRequest.title.ilike(f"%{search}%")]
+        if search.isdigit():
+            conditions.append(cast(ChangeRequest.number, String).like(f"%{search}%"))
+        query = query.filter(or_(*conditions))
+    return query.order_by(ChangeRequest.number.desc()).limit(limit).all()
+
+
 def get_by_id(db: Session, issue_id: uuid.UUID) -> Issue | None:
     """Issue 단건 조회."""
     return db.query(Issue).filter(Issue.id == issue_id).first()

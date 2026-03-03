@@ -13,6 +13,7 @@ from app.modules.issue.models import ChangeRequest
 from app.modules.issue.schemas import (
     AttachFilesRequest,
     ChangeRequestListResponse,
+    ChangeRequestLookupResponse,
     ChangeRequestResponse,
     CommentResponse,
     CreateChangeRequestRequest,
@@ -67,6 +68,21 @@ def list_change_requests(
         offset=offset,
         limit=limit,
     )
+
+
+@router.get("/lookup", response_model=ChangeRequestLookupResponse)
+def lookup_change_requests(
+    search: str | None = Query(None, description="제목 또는 번호 검색 (ILIKE)"),
+    limit: int = Query(10, ge=1, le=50, description="조회 건수"),
+    auth: AuthContext = Depends(require_auth),
+    db: Session = Depends(get_tenant_db),
+):
+    """변경 요청 lookup 조회.
+
+    변경 요청 연결 picker UI를 위한 경량 목록 엔드포인트입니다.
+    id, number, title, state, cr_state만 반환합니다.
+    """
+    return issue_queries.lookup_change_requests(db, auth, search=search, limit=limit)
 
 
 @router.get("/{issue_number}", response_model=ChangeRequestResponse)
