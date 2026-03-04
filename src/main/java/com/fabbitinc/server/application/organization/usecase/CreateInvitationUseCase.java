@@ -8,10 +8,10 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
 import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.domain.auth.model.Invitation;
-import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
 import com.fabbitinc.server.domain.user.model.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,8 +25,9 @@ public class CreateInvitationUseCase {
     private final AuthInvitationService authInvitationService;
 
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public InvitationResponse execute(CreateInvitationRequest request) {
-        AuthContext auth = currentAuthProvider.getCurrentAuth(MembershipRole.ADMIN);
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
 
         userService.getUserByEmail(request.email())
                 .ifPresent(existingUser -> organizationService.checkNotMember(auth.orgId(), existingUser.getId()));

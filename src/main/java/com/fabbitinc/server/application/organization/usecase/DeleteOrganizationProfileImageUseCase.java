@@ -6,6 +6,7 @@ import com.fabbitinc.server.application.file.service.FileService;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
 import com.fabbitinc.server.domain.file.model.File;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,8 +21,9 @@ public class DeleteOrganizationProfileImageUseCase {
     private final OrganizationService organizationService;
 
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public void execute() {
-        AuthContext auth = currentAuthProvider.getAdminAuth();
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
 
         List<File> files = fileService.getFilesByOwner("organization", auth.orgId());
         if (files.isEmpty()) {

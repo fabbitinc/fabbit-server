@@ -5,8 +5,8 @@ import com.fabbitinc.server.application.auth.dto.response.InvitationResponse;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.domain.auth.repository.InvitationRepository;
-import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,8 +18,9 @@ public class OrganizationInvitationQuery {
     private final InvitationRepository invitationRepository;
 
     @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('ADMIN')")
     public InvitationListResponse listInvitations() {
-        AuthContext auth = currentAuthProvider.getCurrentAuth(MembershipRole.ADMIN);
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
 
         return new InvitationListResponse(
                 invitationRepository.findByOrgIdOrderByCreatedAtDesc(auth.orgId()).stream()

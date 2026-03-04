@@ -8,6 +8,7 @@ import com.fabbitinc.server.application.organization.dto.response.ProfileImageRe
 import com.fabbitinc.server.application.organization.service.OrganizationService;
 import com.fabbitinc.server.domain.file.model.File;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +25,9 @@ public class SetOrganizationProfileImageUseCase {
     private final FileUrlResolver fileUrlResolver;
 
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public ProfileImageResponse execute(UUID fileId) {
-        AuthContext auth = currentAuthProvider.getAdminAuth();
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
 
         List<File> files = fileService.validateAttachable(List.of(fileId));
         File file = files.getFirst();

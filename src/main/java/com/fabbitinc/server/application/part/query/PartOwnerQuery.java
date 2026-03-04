@@ -17,6 +17,7 @@ import com.fabbitinc.server.domain.team.repository.TeamRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,8 +48,9 @@ public class PartOwnerQuery {
     }
 
     @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('ADMIN')")
     public PartDefaultOwnerListResponse listDefaultOwners() {
-        currentAuthProvider.getAdminAuth();
+        currentAuthProvider.getCurrentAuth();
 
         List<PartDefaultOwnerItemResponse> items = partDefaultOwnerRepository.findAllOrderByCategoryNullsFirst()
                 .stream()
@@ -58,8 +60,9 @@ public class PartOwnerQuery {
     }
 
     @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('ADMIN')")
     public PartDefaultOwnerItemResponse getDefaultOwner(UUID defaultOwnerId) {
-        currentAuthProvider.getAdminAuth();
+        currentAuthProvider.getCurrentAuth();
 
         PartDefaultOwner row = partDefaultOwnerRepository.findById(defaultOwnerId)
                 .orElseThrow(() -> new AppException(

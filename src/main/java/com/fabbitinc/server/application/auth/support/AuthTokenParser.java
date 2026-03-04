@@ -74,18 +74,6 @@ public class AuthTokenParser {
         }
     }
 
-    public AuthContext requireRole(String authorizationHeader, MembershipRole minimumRole) {
-        AuthContext auth = requireAuth(authorizationHeader);
-        if (!auth.role().atLeast(minimumRole)) {
-            throw new AppException(ErrorCode.FORBIDDEN, minimumRole.name() + " 이상 권한이 필요합니다");
-        }
-        return auth;
-    }
-
-    public AuthContext requireAdmin(String authorizationHeader) {
-        return requireRole(authorizationHeader, MembershipRole.ADMIN);
-    }
-
     public CreateOrgContext requireCreateOrgToken(String authorizationHeader) {
         String token = extractBearerToken(authorizationHeader);
         DecodedJWT decoded = verify(token, "조직 생성 토큰이 만료되었습니다", "유효하지 않은 조직 생성 토큰입니다");
