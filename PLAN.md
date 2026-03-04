@@ -229,20 +229,23 @@ com.fabbitinc.server
 
 ## 8. 현재 진행 현황 (2026-03-04)
 
-- FastAPI 기준 API `152`개를 Spring Boot로 전부 매핑 완료 (`/health`는 Spring 전용 추가 엔드포인트로 유지)
+- FastAPI 기준 API `152`개 중, Spring Boot 구현 엔드포인트는 현재 `29`개(Health 포함)
 - 레이어 규칙 준수:
   - `Controller -> UseCase/Query`
   - `Query -> Repository`
   - `UseCase -> Service -> Repository`
 - Auth 도메인:
   - `send-verification`, `verify-email`, `register`, `login`, `refresh`, `logout` 연결 완료
-  - refresh 토큰은 DB(`refresh_tokens`) 저장/회전/폐기 방식으로 동작
-- 비-Auth 도메인:
-  - FastAPI 계약과 동일한 경로/HTTP 메서드로 전부 이관
-  - 도메인별로 `Controller`, `UseCase`, `Service`, `Query`, `Repository` 코드 생성 완료
+  - `verify-invitation`, `accept-invitation`을 타입 기반 DTO로 이관 완료 (Map 우회 제거)
+  - refresh 토큰은 DB(`refresh_tokens`) 저장/회전/재사용 감지(전체 폐기) 방식으로 동작
+- Organization/Member/User 도메인:
+  - `Controller`, `UseCase`, `Service`, `Query`, `Repository` 실구현 완료
+  - 권한 규칙(`require_auth`, `require_admin`, `require_role(OWNER)`)을 JWT claim 기반으로 반영
+  - 초대 상태 전이(`PENDING -> ACCEPTED/CANCELLED`) 및 멤버 역할/제거 가드 반영
+- 미구현 도메인:
+  - `activation`, `dashboard`, `file`, `mapping`, `supplier`, `synthesis`, `part`, `project`, `issue`, `label`, `team`, `notification`, `ontology`, `usage`
 - Swagger 문서화:
-  - Controller 단위 `tag` 적용
-  - 엔드포인트 단위 `summary/description` 적용
+  - 구현된 Controller에 `tag`, 엔드포인트별 `summary/description` 적용
 
 ## 9. 남은 논의/결정 포인트
 
@@ -250,6 +253,7 @@ com.fabbitinc.server
   - 요청 단위 tenant 식별 전략(도메인/헤더/JWT 우선순위)
   - `search_path` 설정 위치(Filter/Interceptor/DataSource proxy)
   - 커넥션 풀 재사용 시 tenant 컨텍스트 누수 방지 정책
-- 도메인별 실비즈니스 로직 정교화 우선순위:
-  - `File -> Mapping -> Synthesis -> Activation` 우선
-  - 이후 `Organization/Member/User/Team/Project/Part/Issue/Notification/Usage` 순으로 고도화
+- 남은 도메인 API 이관 우선순위:
+  - `File -> Mapping -> Synthesis -> Activation`
+  - 이후 `Project/Part/Issue/Label/Team`
+  - 이후 `Notification/Ontology/Usage/Supplier/Dashboard`

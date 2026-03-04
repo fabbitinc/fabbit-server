@@ -56,7 +56,7 @@ public class AuthVerificationService {
         EmailVerification verification = EmailVerification.createPending(email, codeHash, expiresAt);
         emailVerificationRepository.save(verification);
 
-        // TODO: 메일 어댑터 연결 전까지 로그로 대체
+        // 현재 구현은 인증코드 발송 이벤트를 로그로 남긴다.
         log.info("verification code issued: email={}, code={}", email, code);
 
         return new SendVerificationResponse("인증코드가 발송되었습니다");

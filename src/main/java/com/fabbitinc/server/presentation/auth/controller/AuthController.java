@@ -2,9 +2,11 @@ package com.fabbitinc.server.presentation.auth.controller;
 
 import com.fabbitinc.server.application.auth.dto.request.SendVerificationRequest;
 import com.fabbitinc.server.application.auth.dto.request.VerifyEmailRequest;
+import com.fabbitinc.server.application.auth.dto.request.AcceptInvitationRequest;
 import com.fabbitinc.server.application.auth.dto.request.LoginRequest;
 import com.fabbitinc.server.application.auth.dto.request.RefreshRequest;
 import com.fabbitinc.server.application.auth.dto.request.RegisterRequest;
+import com.fabbitinc.server.application.auth.dto.response.AcceptInvitationResponse;
 import com.fabbitinc.server.application.auth.dto.response.CheckEmailResponse;
 import com.fabbitinc.server.application.auth.dto.response.CheckSlugResponse;
 import com.fabbitinc.server.application.auth.dto.response.LoginResponse;
@@ -15,6 +17,7 @@ import com.fabbitinc.server.application.auth.dto.response.SendVerificationRespon
 import com.fabbitinc.server.application.auth.dto.response.SiteResponse;
 import com.fabbitinc.server.application.auth.dto.response.TokenResponse;
 import com.fabbitinc.server.application.auth.dto.response.VerifyEmailResponse;
+import com.fabbitinc.server.application.auth.dto.response.VerifyInvitationResponse;
 import com.fabbitinc.server.application.auth.query.AuthInvitationQuery;
 import com.fabbitinc.server.application.auth.query.AuthQuery;
 import com.fabbitinc.server.application.auth.usecase.AcceptInvitationUseCase;
@@ -42,7 +45,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 @Validated
 @RestController
@@ -134,22 +136,24 @@ public class AuthController {
 
     @Operation(summary = "POST /api/v1/auth/logout", description = "리프레시 토큰 폐기")
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshRequest request) {
-        logoutUseCase.execute(request);
+    public ResponseEntity<Void> logout(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @Valid @RequestBody RefreshRequest request
+    ) {
+        logoutUseCase.execute(authorizationHeader, request);
         return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "GET /api/v1/auth/invitations/verify", description = "초대 토큰 검증")
     @GetMapping("/invitations/verify")
-    public Map<String, Object> verifyInvitation(@RequestParam("token") String token) {
-        return authInvitationQuery.execute("GET /api/v1/auth/invitations/verify", Map.of("query", Map.of("token", token)));
+    public VerifyInvitationResponse verifyInvitation(@RequestParam("token") String token) {
+        return authInvitationQuery.verifyInvitation(token);
     }
 
     @Operation(summary = "POST /api/v1/auth/accept-invitation", description = "조직 초대 수락")
     @PostMapping("/accept-invitation")
-    public Map<String, Object> acceptInvitation(@RequestBody(required = false) Map<String, Object> body) {
-        Map<String, Object> payload = body == null || body.isEmpty() ? Map.of() : Map.of("body", body);
-        return acceptInvitationUseCase.execute("POST /api/v1/auth/accept-invitation", payload);
+    public AcceptInvitationResponse acceptInvitation(@Valid @RequestBody AcceptInvitationRequest request) {
+        return acceptInvitationUseCase.execute(request);
     }
 
     private String extractOriginSlug(String origin) {

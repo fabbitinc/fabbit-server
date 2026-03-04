@@ -30,6 +30,12 @@ public class User extends AbstractAuditableEntity {
     @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    @Column(name = "profile_image_file_key", length = 1000)
+    private String profileImageFileKey;
+
     @Column(name = "is_active", nullable = false)
     private boolean active;
 
@@ -39,5 +45,26 @@ public class User extends AbstractAuditableEntity {
         this.hashedPassword = hashedPassword;
         this.fullName = fullName;
         this.active = true;
+    }
+
+    public void updateProfile(String fullName, String phone) {
+        if (fullName != null) {
+            this.fullName = fullName;
+        }
+        if (phone != null) {
+            this.phone = phone;
+        }
+    }
+
+    public void changePassword(String hashedPassword) {
+        this.hashedPassword = hashedPassword;
+    }
+
+    public void setProfileImage(String profileImageFileKey) {
+        this.profileImageFileKey = profileImageFileKey;
+    }
+
+    public void removeProfileImage() {
+        this.profileImageFileKey = null;
     }
 }

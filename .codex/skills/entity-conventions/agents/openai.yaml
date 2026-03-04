@@ -1,0 +1,4 @@
+interface:
+  display_name: "Entity Conventions"
+  short_description: "Rich domain model entity rules"
+  default_prompt: "Use $entity-conventions to apply DDD entity rules in this Spring project."

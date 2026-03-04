@@ -1,0 +1,4 @@
+interface:
+  display_name: "Query Conventions"
+  short_description: "Spring query naming and read-model rules"
+  default_prompt: "Use $query-conventions to define query naming and read-model rules for this Spring project."

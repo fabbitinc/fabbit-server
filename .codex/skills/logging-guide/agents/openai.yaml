@@ -1,0 +1,4 @@
+interface:
+  display_name: "Logging Guide"
+  short_description: "OTel-native logging writing rules"
+  default_prompt: "Use $logging-guide to apply OTel-native logging writing rules in this Spring project."

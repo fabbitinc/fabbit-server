@@ -4,6 +4,7 @@ import com.fabbitinc.server.application.auth.dto.response.CheckSlugResponse;
 import com.fabbitinc.server.application.auth.dto.response.CheckEmailResponse;
 import com.fabbitinc.server.application.auth.dto.response.PlanResponse;
 import com.fabbitinc.server.application.auth.dto.response.SiteResponse;
+import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.config.AppProperties;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
@@ -30,6 +31,7 @@ public class AuthQuery {
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
     private final AppProperties appProperties;
+    private final FileUrlResolver fileUrlResolver;
 
     @Transactional(readOnly = true)
     public List<PlanResponse> getPlans() {
@@ -76,7 +78,7 @@ public class AuthQuery {
         return new SiteResponse(
                 organization.getSlug(),
                 organization.getName(),
-                organization.getProfileImageFileKey()
+                fileUrlResolver.resolve(organization.getProfileImageFileKey())
         );
     }
 

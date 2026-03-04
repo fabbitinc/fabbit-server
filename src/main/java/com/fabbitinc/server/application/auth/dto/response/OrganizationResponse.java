@@ -6,6 +6,8 @@ public record OrganizationResponse(
         UUID id,
         String slug,
         String name,
+        String industry,
+        String teamSize,
         String planType,
         String profileImageUrl
 ) {

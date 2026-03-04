@@ -1,0 +1,4 @@
+interface:
+  display_name: "EventHandler Conventions"
+  short_description: "Spring event handler naming and rules"
+  default_prompt: "Use $eventhandler-conventions to define event handler naming and implementation rules for this Spring project."

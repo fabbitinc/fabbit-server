@@ -1,0 +1,4 @@
+interface:
+  display_name: "Controller Conventions"
+  short_description: "Spring controller naming and DTO rules"
+  default_prompt: "Use $controller-conventions to define controller naming and API DTO conventions for this Spring project."

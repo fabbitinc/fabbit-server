@@ -1,0 +1,41 @@
+package com.fabbitinc.server.application.part.dto.request;
+
+import com.fasterxml.jackson.annotation.JsonSetter;
+
+import java.util.UUID;
+
+public class UpdatePartOwnerRequest {
+
+    private UUID ownerId;
+    private UUID ownerTeamId;
+    private boolean ownerIdSet;
+    private boolean ownerTeamIdSet;
+
+    public UUID getOwnerId() {
+        return ownerId;
+    }
+
+    @JsonSetter("owner_id")
+    public void setOwnerId(UUID ownerId) {
+        this.ownerId = ownerId;
+        this.ownerIdSet = true;
+    }
+
+    public UUID getOwnerTeamId() {
+        return ownerTeamId;
+    }
+
+    @JsonSetter("owner_team_id")
+    public void setOwnerTeamId(UUID ownerTeamId) {
+        this.ownerTeamId = ownerTeamId;
+        this.ownerTeamIdSet = true;
+    }
+
+    public boolean isOwnerIdSet() {
+        return ownerIdSet;
+    }
+
+    public boolean isOwnerTeamIdSet() {
+        return ownerTeamIdSet;
+    }
+}

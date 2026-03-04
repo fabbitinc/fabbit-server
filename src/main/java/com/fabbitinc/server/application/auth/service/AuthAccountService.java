@@ -8,6 +8,7 @@ import com.fabbitinc.server.application.auth.dto.response.RegisterResponse;
 import com.fabbitinc.server.application.auth.dto.response.ScopedLoginResponse;
 import com.fabbitinc.server.application.auth.dto.response.TokenResponse;
 import com.fabbitinc.server.application.auth.dto.response.UserResponse;
+import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.domain.auth.model.EmailVerification;
@@ -43,6 +44,7 @@ public class AuthAccountService {
     private final MembershipRepository membershipRepository;
     private final PasswordService passwordService;
     private final JwtTokenService jwtTokenService;
+    private final FileUrlResolver fileUrlResolver;
 
     public RegisterResponse register(RegisterRequest request) {
         EmailVerification verification = validateAndConsumeVerification(
@@ -84,9 +86,10 @@ public class AuthAccountService {
                 user.getId(),
                 organization.getId(),
                 MembershipRole.OWNER,
-                request.teamSize()
+                null
         );
         membershipRepository.save(ownerMembership);
+        organizationRepository.reserveMemberSeat(organization.getId());
 
         TokenResponse tokens = jwtTokenService.issueTokens(
                 user.getId(),
@@ -222,7 +225,15 @@ public class AuthAccountService {
     }
 
     private UserResponse toUserResponse(User user) {
-        return new UserResponse(user.getId(), user.getEmail(), user.getFullName());
+        return new UserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getPhone(),
+                fileUrlResolver.resolve(user.getProfileImageFileKey()),
+                user.isActive(),
+                user.getCreatedAt()
+        );
     }
 
     private OrganizationResponse toOrganizationResponse(Organization organization) {
@@ -230,8 +241,10 @@ public class AuthAccountService {
                 organization.getId(),
                 organization.getSlug(),
                 organization.getName(),
+                organization.getIndustry(),
+                organization.getTeamSize(),
                 organization.getPlanType().name(),
-                organization.getProfileImageFileKey()
+                fileUrlResolver.resolve(organization.getProfileImageFileKey())
         );
     }
 }

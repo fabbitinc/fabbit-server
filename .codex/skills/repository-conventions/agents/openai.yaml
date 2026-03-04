@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repository Conventions"
+  short_description: "Spring repository naming and persistence rules"
+  default_prompt: "Use $repository-conventions to define repository naming and persistence rules for this Spring project."

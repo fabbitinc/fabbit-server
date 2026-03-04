@@ -1,0 +1,40 @@
+services:
+  fabbit-server:
+    image: ghcr.io/fabbitinc/fabbit-server:latest
+    container_name: fabbit-server
+    restart: unless-stopped
+    ports:
+      - "80:8000"
+    env_file:
+      - ../.env
+    depends_on:
+      fabbit-db:
+        condition: service_healthy
+    command:
+      [
+        "sh",
+        "-c",
+        "alembic upgrade head && alembic -c alembic_tenant.ini upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000",
+      ]
+
+  fabbit-db:
+    image: apache/age:latest
+    container_name: fabbit-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=ko-KR"
+    volumes:
+      - ./initdb.d:/docker-entrypoint-initdb.d
+      - fabbit-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-fabbit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  fabbit-db-data:

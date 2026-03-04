@@ -26,7 +26,7 @@ public class Organization extends AbstractIdEntity {
     @Column(name = "slug", nullable = false, unique = true, length = 50)
     private String slug;
 
-    @Column(name = "name", nullable = false, length = 120)
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
 
     @Column(name = "owner_id", nullable = false)
@@ -48,8 +48,20 @@ public class Organization extends AbstractIdEntity {
     @Column(name = "plan_credits_remaining", nullable = false)
     private int planCreditsRemaining;
 
+    @Column(name = "bonus_credits_remaining", nullable = false)
+    private int bonusCreditsRemaining;
+
     @Column(name = "storage_bytes_limit", nullable = false)
     private long storageBytesLimit;
+
+    @Column(name = "storage_bytes_used", nullable = false)
+    private long storageBytesUsed;
+
+    @Column(name = "allow_storage_overage", nullable = false)
+    private boolean allowStorageOverage;
+
+    @Column(name = "used_members", nullable = false)
+    private int usedMembers;
 
     @Column(name = "profile_image_file_key")
     private String profileImageFileKey;
@@ -74,14 +86,22 @@ public class Organization extends AbstractIdEntity {
         this.planType = planType;
         this.maxMembers = maxMembers;
         this.planCreditsRemaining = planCreditsRemaining;
+        this.bonusCreditsRemaining = 0;
         this.storageBytesLimit = storageBytesLimit;
+        this.storageBytesUsed = 0L;
+        this.allowStorageOverage = false;
+        this.usedMembers = 0;
     }
 
     public void rename(String name) {
         this.name = name;
     }
 
-    public void changeProfileImage(String profileImageFileKey) {
+    public void setProfileImage(String profileImageFileKey) {
         this.profileImageFileKey = profileImageFileKey;
+    }
+
+    public void removeProfileImage() {
+        this.profileImageFileKey = null;
     }
 }

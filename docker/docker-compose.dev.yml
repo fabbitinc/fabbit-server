@@ -1,0 +1,60 @@
+services:
+  fabbit-db:
+    image: apache/age:latest
+    container_name: fabbit-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: fabbit
+      POSTGRES_PASSWORD: fabbit
+      POSTGRES_DB: fabbit
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=ko-KR"
+    volumes:
+      - ./initdb.d:/docker-entrypoint-initdb.d
+      - fabbit-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-fabbit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  fabbit-minio:
+    image: minio/minio:latest
+    container_name: fabbit-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - fabbit-minio-data:/data
+
+  # MinIO 초기화 — 기본 버킷 자동 생성
+  fabbit-minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - fabbit-minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://fabbit-minio:9000 minioadmin minioadmin;
+      mc mb local/fabbit --ignore-existing;
+      mc anonymous set download local/fabbit;
+      echo 'Bucket fabbit ready (public download)';
+      "
+
+  fabbit-mailpit:
+    image: axllent/mailpit:latest
+    container_name: fabbit-mailpit
+    ports:
+      - "8025:8025" # Web UI
+      - "1025:1025" # SMTP
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+volumes:
+  fabbit-db-data:
+  fabbit-minio-data:

@@ -8,6 +8,13 @@ public record AppProperties(
         @DefaultValue("lvh.me") String baseDomain,
         @DefaultValue("10") int emailVerificationExpireMinutes,
         @DefaultValue("5") int emailVerificationMaxAttempts,
-        @DefaultValue("60") int emailVerificationCooldownSeconds
+        @DefaultValue("60") int emailVerificationCooldownSeconds,
+        @DefaultValue("7") int invitationExpireDays,
+        @DefaultValue("http://localhost:5173") String invitationBaseUrl,
+        @DefaultValue("http://localhost:9000") String storageEndpoint,
+        @DefaultValue("minioadmin") String storageAccessKey,
+        @DefaultValue("minioadmin") String storageSecretKey,
+        @DefaultValue("fabbit") String storageBucket,
+        @DefaultValue("") String storagePublicUrl
 ) {
 }

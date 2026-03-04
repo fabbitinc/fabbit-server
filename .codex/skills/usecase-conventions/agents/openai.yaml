@@ -1,0 +1,4 @@
+interface:
+  display_name: "UseCase Conventions"
+  short_description: "Spring usecase naming and boundary rules"
+  default_prompt: "Use $usecase-conventions to define usecase naming and boundary rules for this Spring project."

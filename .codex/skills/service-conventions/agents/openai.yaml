@@ -1,0 +1,4 @@
+interface:
+  display_name: "Service Conventions"
+  short_description: "Spring service naming and contract rules"
+  default_prompt: "Use $service-conventions to define service naming and contract rules for this Spring project."
