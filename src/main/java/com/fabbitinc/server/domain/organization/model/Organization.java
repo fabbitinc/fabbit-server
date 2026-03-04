@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "organizations",
+        schema = "public",
         indexes = {
                 @Index(name = "ix_organizations_owner_id", columnList = "owner_id")
         }

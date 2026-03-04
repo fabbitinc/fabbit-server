@@ -3,6 +3,7 @@ package com.fabbitinc.server.application.organization.service;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.organization.port.TenantProvisioningPort;
 import com.fabbitinc.server.application.organization.dto.request.CreateOrganizationRequest;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.organization.model.Membership;
@@ -29,6 +30,7 @@ public class OrganizationService {
 
     private final OrganizationRepository organizationRepository;
     private final MembershipRepository membershipRepository;
+    private final TenantProvisioningPort tenantProvisioningPort;
 
     public Organization createOrganization(UUID userId, CreateOrganizationRequest request) {
         PlanType planType = resolvePlanType(request.planType());
@@ -52,6 +54,7 @@ public class OrganizationService {
 
         membershipRepository.save(new Membership(userId, organization.getId(), MembershipRole.OWNER, null));
         organizationRepository.reserveMemberSeat(organization.getId());
+        tenantProvisioningPort.provisionTenant(organization.getId());
 
         return organization;
     }

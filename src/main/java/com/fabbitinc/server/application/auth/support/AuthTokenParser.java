@@ -12,6 +12,7 @@ import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -39,6 +40,38 @@ public class AuthTokenParser {
         }
 
         return new AuthContext(userId, requiredClaim(decoded, "email"), orgId, role);
+    }
+
+    public Optional<UUID> resolveOrgIdForTenant(String authorizationHeader) {
+        if (authorizationHeader == null || authorizationHeader.isBlank() || !authorizationHeader.startsWith("Bearer ")) {
+            return Optional.empty();
+        }
+
+        String token = authorizationHeader.substring(7);
+        DecodedJWT decoded;
+        try {
+            decoded = JWT.require(algorithm())
+                    .withIssuer(jwtProperties.issuer())
+                    .build()
+                    .verify(token);
+        } catch (JWTVerificationException ex) {
+            return Optional.empty();
+        }
+
+        if (!"ACCESS".equals(decoded.getClaim("type").asString())) {
+            return Optional.empty();
+        }
+
+        String rawOrgId = decoded.getClaim("orgId").asString();
+        if (rawOrgId == null || rawOrgId.isBlank()) {
+            return Optional.empty();
+        }
+
+        try {
+            return Optional.of(UUID.fromString(rawOrgId));
+        } catch (Exception ex) {
+            return Optional.empty();
+        }
     }
 
     public AuthContext requireRole(String authorizationHeader, MembershipRole minimumRole) {

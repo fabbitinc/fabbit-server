@@ -19,6 +19,7 @@ import java.util.UUID;
 @Entity
 @Table(
         name = "memberships",
+        schema = "public",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uq_memberships_user_id_org_id", columnNames = {"user_id", "org_id"})
         },

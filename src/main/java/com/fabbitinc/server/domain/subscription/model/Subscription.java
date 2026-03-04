@@ -19,6 +19,7 @@ import java.util.UUID;
 @Entity
 @Table(
         name = "subscriptions",
+        schema = "public",
         indexes = {
                 @Index(name = "ix_subscriptions_org_id", columnList = "org_id")
         }

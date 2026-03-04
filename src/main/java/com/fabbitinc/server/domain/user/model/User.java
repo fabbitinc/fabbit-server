@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "users",
+        schema = "public",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uq_users_email", columnNames = "email")
         }

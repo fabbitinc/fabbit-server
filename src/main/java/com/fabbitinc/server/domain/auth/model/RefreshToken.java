@@ -18,6 +18,7 @@ import java.util.UUID;
 @Entity
 @Table(
         name = "refresh_tokens",
+        schema = "public",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uq_refresh_tokens_token_jti", columnNames = "token_jti")
         },

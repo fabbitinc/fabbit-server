@@ -17,6 +17,7 @@ import java.util.UUID;
 @Entity
 @Table(
         name = "ai_usage_logs",
+        schema = "public",
         indexes = {
                 @Index(name = "ix_ai_usage_logs_org_id", columnList = "org_id"),
                 @Index(name = "ix_ai_usage_logs_user_id", columnList = "user_id"),

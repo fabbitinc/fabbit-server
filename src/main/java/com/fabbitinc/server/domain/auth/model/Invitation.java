@@ -21,6 +21,7 @@ import java.util.UUID;
 @Entity
 @Table(
         name = "invitations",
+        schema = "public",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uq_invitations_org_id_email", columnNames = {"org_id", "email"}),
                 @UniqueConstraint(name = "uq_invitations_token_hash", columnNames = "token_hash")

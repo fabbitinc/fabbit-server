@@ -17,6 +17,7 @@ import java.time.Instant;
 @Entity
 @Table(
         name = "email_verifications",
+        schema = "public",
         indexes = {
                 @Index(name = "ix_email_verifications_email", columnList = "email")
         }
