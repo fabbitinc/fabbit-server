@@ -1,4 +1,4 @@
-# 미테스트 API 엔드포인트 (124/150)
+# 미테스트 API 엔드포인트 (132/150)
 
 DELETE /api/v1/changes/{issue_number}/comments/{comment_id}
 DELETE /api/v1/changes/{issue_number}/files/{file_id}
@@ -18,6 +18,7 @@ DELETE /api/v1/projects/{project_id}/parts
 DELETE /api/v1/teams/{team_id}
 DELETE /api/v1/teams/{team_id}/members
 DELETE /api/v1/users/me/profile-image
+GET    /api/v1/activation/starters
 GET    /api/v1/auth/check-slug
 GET    /api/v1/auth/invitations/verify
 GET    /api/v1/auth/site
@@ -31,14 +32,18 @@ GET    /api/v1/issues/{issue_number}
 GET    /api/v1/issues/{issue_number}/timeline
 GET    /api/v1/labels
 GET    /api/v1/labels/lookup
+GET    /api/v1/mappings/{mapping_id}
 GET    /api/v1/members
 GET    /api/v1/members/lookup
 GET    /api/v1/notifications
 GET    /api/v1/notifications/stream
 GET    /api/v1/notifications/unread-count
+GET    /api/v1/ontology/nodes/search
 GET    /api/v1/organizations/invitations
 GET    /api/v1/parts/categories
 GET    /api/v1/parts/categories/lookup
+GET    /api/v1/parts/export
+GET    /api/v1/parts/filter-options
 GET    /api/v1/parts/lookup
 GET    /api/v1/parts/owner/defaults
 GET    /api/v1/parts/{part_id}/bom
@@ -55,6 +60,7 @@ GET    /api/v1/projects/{project_id}/members
 GET    /api/v1/projects/{project_id}/members/lookup
 GET    /api/v1/projects/{project_id}/parts
 GET    /api/v1/projects/{project_id}/parts/lookup
+GET    /api/v1/suppliers
 GET    /api/v1/synthesis/batches/{batch_id}
 GET    /api/v1/teams
 GET    /api/v1/teams/lookup
@@ -84,6 +90,8 @@ POST   /api/v1/changes/{issue_number}/merge
 POST   /api/v1/changes/{issue_number}/reopen
 POST   /api/v1/changes/{issue_number}/review
 POST   /api/v1/changes/{issue_number}/submit
+POST   /api/v1/files/upload/batch
+POST   /api/v1/files/upload/batch/complete
 POST   /api/v1/files/upload/{file_id}/complete
 POST   /api/v1/issues
 POST   /api/v1/issues/{issue_number}/close

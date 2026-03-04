@@ -1,4 +1,4 @@
-.PHONY: dev-start dev-db-reset openapi test test-e2e test-e2e-llm migrate-public migrate-tenant migrate-all revision-public revision-tenant lint
+.PHONY: dev-start dev-db-reset openapi test test-e2e test-e2e-llm test2-unit test2-e2e test2-e2e-llm test2-llm-eval migrate-public migrate-tenant migrate-all revision-public revision-tenant lint
 
 # 개발환경 디비 시작
 dev-db-start:
@@ -90,6 +90,22 @@ test-e2e:
 # 통합 테스트 — 실제 LLM 호출 포함 (매핑 미리보기, AI 질의)
 test-e2e-llm:
 	uv run pytest tests/integration/test_crud_flow.py -v -s --use-llm
+
+# test2 단위 테스트
+test2-unit:
+	uv run pytest test2/unit -c test2/pytest.ini -q
+
+# test2 e2e (기본: LLM API 케이스 skip)
+test2-e2e:
+	uv run pytest test2/e2e -c test2/pytest.ini -v
+
+# test2 e2e (LLM API 케이스 포함)
+test2-e2e-llm:
+	uv run pytest test2/e2e -c test2/pytest.ini -v --use-llm
+
+# test2 LLM 평가(비용/시간 큼)
+test2-llm-eval:
+	uv run pytest test2/llm -c test2/pytest.ini -v -s --use-llm --llm-runs=3 -m \"eval and costly\"
 
 # ── 린트 ──
 

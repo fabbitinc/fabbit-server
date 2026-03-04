@@ -72,8 +72,12 @@ def mapping_fixture():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _report_uncovered_endpoints(client):
+def _report_uncovered_endpoints(request, client):
     """테스트 시작 시 openapi.json 갱신, 종료 후 미테스트 엔드포인트를 파일로 출력."""
+    if request.config.option.collectonly:
+        yield
+        return
+
     # TestClient로 최신 OpenAPI 스펙 가져오기
     resp = client.get("/openapi.json")
     if resp.status_code != 200:

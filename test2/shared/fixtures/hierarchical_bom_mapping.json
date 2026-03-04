@@ -1,0 +1,68 @@
+{
+  "property_mappings": [
+    {
+      "source_column": "하위품번",
+      "target_property": "part_number",
+      "data_type": "string",
+      "confidence": 95,
+      "reason": "Header directly indicates child part number (merge key)."
+    },
+    {
+      "source_column": "하위품명",
+      "target_property": "name",
+      "data_type": "string",
+      "confidence": 95,
+      "reason": "Header corresponds to part name for the child part."
+    },
+    {
+      "source_column": "단위",
+      "target_property": "unit",
+      "data_type": "string",
+      "confidence": 90,
+      "reason": "Header matches ontology 'unit' (UOM) meaning."
+    },
+    {
+      "source_column": "재질",
+      "target_property": "material",
+      "data_type": "string",
+      "confidence": 95,
+      "reason": "Header directly maps to material/specified substance."
+    },
+    {
+      "source_column": "비고",
+      "target_property": "description",
+      "data_type": "string",
+      "confidence": 90,
+      "reason": "Remarks column contains descriptive notes appropriate for description."
+    }
+  ],
+  "relation_mappings": [
+    {
+      "rel_type": "CONSISTS_OF",
+      "target_label": "Part",
+      "node_columns": {
+        "part_number": "상위품번",
+        "name": "상위품명"
+      },
+      "rel_columns": {
+        "quantity": "수량"
+      },
+      "rel_column_types": {
+        "quantity": "integer"
+      },
+      "confidence": 95,
+      "reason": "Parent-child BOM relationship via CONSISTS_OF."
+    },
+    {
+      "rel_type": "SUPPLIED_BY",
+      "target_label": "Supplier",
+      "node_columns": {
+        "company_name": "공급업체"
+      },
+      "rel_columns": {},
+      "rel_column_types": {},
+      "confidence": 90,
+      "reason": "Supplier column maps to SUPPLIED_BY relationship."
+    }
+  ]
+}

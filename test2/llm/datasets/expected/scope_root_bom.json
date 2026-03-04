@@ -1,0 +1,23 @@
+{
+  "description": "상위품번 없는 BOM. 수량은 있지만 상위 Part 정보 없음 (rootless)",
+  "expected_scope": "root_bom",
+  "required_property_mappings": {
+    "품번": "part_number",
+    "품명": "name",
+    "재질": "material",
+    "단위": "unit",
+    "비고": "description"
+  },
+  "required_relations": [
+    {
+      "rel_type": "CONSISTS_OF",
+      "node_columns": {},
+      "rel_columns": {"quantity": "수량"}
+    },
+    {
+      "rel_type": "SUPPLIED_BY",
+      "node_columns": {"company_name": "공급업체"},
+      "rel_columns": {"unit_cost": "단가"}
+    }
+  ]
+}

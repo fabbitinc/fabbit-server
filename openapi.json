@@ -12056,21 +12056,17 @@
                         "type": "string",
                         "title": "Description"
                     },
+                    "max_members": {
+                        "type": "integer",
+                        "title": "Max Members"
+                    },
                     "storage_gb": {
                         "type": "integer",
                         "title": "Storage Gb"
                     },
-                    "max_bom": {
+                    "ai_credits": {
                         "type": "integer",
-                        "title": "Max Bom"
-                    },
-                    "max_drawing_parses": {
-                        "type": "integer",
-                        "title": "Max Drawing Parses"
-                    },
-                    "max_chats": {
-                        "type": "integer",
-                        "title": "Max Chats"
+                        "title": "Ai Credits"
                     },
                     "price_monthly": {
                         "type": "integer",
@@ -12082,10 +12078,9 @@
                     "plan_type",
                     "display_name",
                     "description",
+                    "max_members",
                     "storage_gb",
-                    "max_bom",
-                    "max_drawing_parses",
-                    "max_chats",
+                    "ai_credits",
                     "price_monthly"
                 ],
                 "title": "PlanResponse"
