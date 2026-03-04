@@ -15,7 +15,7 @@ from app.modules.label import service as label_service
 @transactional()
 def create_change_request(
     db: Session,
-    auth: AuthContext,  # noqa: ARG001
+    auth: AuthContext,
     title: str,
     body: str | None = None,
     issue_number: int | None = None,
@@ -53,7 +53,7 @@ def create_change_request(
         issue_service.sync_labels(db, cr, label_ids, emit_event=False)
     if file_ids:
         files = file_service.validate_attachable(db, file_ids)
-        issue_service.attach_files(db, cr.id, files, emit_event=False)
+        issue_service.attach_files(db, cr.id, files, auth.org_id, emit_event=False)
 
     # CR 특화
     if reviewer_user_ids:

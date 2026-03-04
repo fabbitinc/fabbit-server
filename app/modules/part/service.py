@@ -25,16 +25,16 @@ def get_or_raise(db: Session, part_id: uuid.UUID) -> Part:
     return part
 
 
-def attach_files(db: Session, part_id: uuid.UUID, files: list["File"]) -> None:
+def attach_files(db: Session, part_id: uuid.UUID, files: list["File"], org_id: uuid.UUID) -> None:
     """Part에 검증된 파일들을 연결."""
     part = get_or_raise(db, part_id)
-    part.attach_files(files)
+    part.attach_files(files, org_id)
 
 
-def detach_file(db: Session, part_id: uuid.UUID, file_id: uuid.UUID) -> None:
+def detach_file(db: Session, part_id: uuid.UUID, file_id: uuid.UUID, org_id: uuid.UUID) -> None:
     """Part 첨부파일 1건 분리."""
     part = get_or_raise(db, part_id)
-    part.detach_file(file_id)
+    part.detach_file(file_id, org_id)
 
 
 def assign_drawing(db: Session, part_id: uuid.UUID, drawing_id: uuid.UUID) -> None:

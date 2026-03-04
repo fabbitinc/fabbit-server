@@ -1,4 +1,4 @@
-.PHONY: dev-start dev-db-reset openapi test test-e2e test-e2e-llm test2-unit test2-e2e test2-e2e-llm test2-llm-eval migrate-public migrate-tenant migrate-all revision-public revision-tenant lint
+.PHONY: dev-start dev-db-reset openapi test test-e2e test-e2e-llm test2-unit test2-e2e test2-e2e-external test2-llm-eval migrate-public migrate-tenant migrate-all revision-public revision-tenant lint
 
 # 개발환경 디비 시작
 dev-db-start:
@@ -99,13 +99,13 @@ test2-unit:
 test2-e2e:
 	uv run pytest test2/e2e -c test2/pytest.ini -v
 
-# test2 e2e (LLM API 케이스 포함)
-test2-e2e-llm:
-	uv run pytest test2/e2e -c test2/pytest.ini -v --use-llm
+# test2 e2e external (실외부 호출)
+test2-e2e-external:
+	uv run pytest test2/e2e/external -c test2/pytest.ini -v --use-llm -m "e2e and external and costly"
 
 # test2 LLM 평가(비용/시간 큼)
 test2-llm-eval:
-	uv run pytest test2/llm -c test2/pytest.ini -v -s --use-llm --llm-runs=3 -m \"eval and costly\"
+	uv run pytest test2/llm_eval -c test2/pytest.ini -v -s --use-llm --llm-runs=3 -m "llm_eval and costly"
 
 # ── 린트 ──
 

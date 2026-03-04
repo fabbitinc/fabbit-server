@@ -8,6 +8,7 @@ from app.core.domain_event import DomainEvent
 class FileAttached(DomainEvent):
     """파일을 소유자에 연결."""
 
+    org_id: UUID
     owner_type: str
     owner_id: UUID
     file_ids: list[UUID]
@@ -16,6 +17,7 @@ class FileAttached(DomainEvent):
 class FileDetached(DomainEvent):
     """파일을 소유자에서 분리."""
 
+    org_id: UUID
     owner_type: str
     owner_id: UUID
     file_id: UUID

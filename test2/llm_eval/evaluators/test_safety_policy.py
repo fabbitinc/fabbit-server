@@ -6,7 +6,7 @@
 
 import pytest
 
-pytestmark = [pytest.mark.eval, pytest.mark.costly]
+pytestmark = [pytest.mark.llm_eval, pytest.mark.costly]
 
 
 def test_safety_policy_placeholder():

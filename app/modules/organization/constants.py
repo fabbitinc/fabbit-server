@@ -79,6 +79,9 @@ class PlanType(str, Enum):
     ENTERPRISE = "ENTERPRISE"
 
 
+_GB_TO_BYTES = 1_000_000_000
+
+
 @dataclass(frozen=True)
 class PlanLimits:
     max_members: int  # 최대 멤버 수 (-1 = 무제한)
@@ -87,6 +90,11 @@ class PlanLimits:
     price_monthly: int  # 월 요금 (원, -1 = 견적 기반)
     display_name: str  # 표시명
     description: str  # 설명
+
+    @property
+    def storage_bytes(self) -> int:
+        """스토리지 한도를 bytes로 변환."""
+        return self.storage_gb * _GB_TO_BYTES
 
 
 # AI 크레딧 소비 단가 (기능별)

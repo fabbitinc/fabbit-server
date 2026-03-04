@@ -42,8 +42,6 @@ def create_file(
         file_key=file_key,
         content_type=req.content_type,
         file_size=req.file_size,
-        owner_type=req.owner_type,
-        owner_id=req.owner_id,
     )
 
     presigned = _s3.generate_upload_presigned_url(
@@ -81,8 +79,6 @@ def batch_create_files(
             file_key=file_key,
             content_type=item.content_type,
             file_size=item.file_size,
-            owner_type=item.owner_type,
-            owner_id=item.owner_id,
         )
 
         presigned = _s3.generate_upload_presigned_url(

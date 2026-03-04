@@ -125,8 +125,9 @@ uv run alembic -c alembic_tenant.ini upgrade head
 `test2`는 아래 정책으로 분리되어 있습니다.
 
 - `test2/unit`: 코드 구조와 동일한 단위 테스트
-- `test2/e2e`: 서버 API 시나리오 테스트 (LLM API는 옵션)
-- `test2/llm`: 모델/프롬프트 평가(성능/품질), 기본 실행 제외
+- `test2/e2e/core`: 서버 API core 시나리오 테스트
+- `test2/e2e/external`: 외부 API 실호출 테스트
+- `test2/llm_eval`: 모델/프롬프트 평가(성능/품질), 기본 실행 제외
 
 실행 예시:
 
@@ -134,14 +135,14 @@ uv run alembic -c alembic_tenant.ini upgrade head
 # unit
 uv run pytest test2/unit -c test2/pytest.ini -q
 
-# e2e (LLM API skip)
+# e2e core
 uv run pytest test2/e2e -c test2/pytest.ini -v
 
-# e2e (LLM API 포함)
-uv run pytest test2/e2e -c test2/pytest.ini -v --use-llm
+# e2e external (실외부 호출)
+uv run pytest test2/e2e/external -c test2/pytest.ini -v --use-llm -m "e2e and external and costly"
 
 # llm eval (비용/시간 큼)
-uv run pytest test2/llm -c test2/pytest.ini -v -s --use-llm --llm-runs=3 -m "eval and costly"
+uv run pytest test2/llm_eval -c test2/pytest.ini -v -s --use-llm --llm-runs=3 -m "llm_eval and costly"
 ```
 
 `make` 단축 명령:
@@ -149,7 +150,7 @@ uv run pytest test2/llm -c test2/pytest.ini -v -s --use-llm --llm-runs=3 -m "eva
 ```bash
 make test2-unit
 make test2-e2e
-make test2-e2e-llm
+make test2-e2e-external
 make test2-llm-eval
 ```
 

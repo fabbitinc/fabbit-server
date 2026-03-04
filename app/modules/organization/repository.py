@@ -34,14 +34,14 @@ def create_organization(
     plan_type: str = "STARTER",
     max_members: int = 0,
     plan_credits_remaining: int = 0,
-    storage_mb_limit: int = 0,
+    storage_bytes_limit: int = 0,
 ) -> Organization:
     org = Organization(
         slug=slug, name=name, owner_id=owner_id,
         industry=industry, team_size=team_size, plan_type=plan_type,
         max_members=max_members,
         plan_credits_remaining=plan_credits_remaining,
-        storage_mb_limit=storage_mb_limit,
+        storage_bytes_limit=storage_bytes_limit,
     )
     db.add(org)
     db.flush()
@@ -223,26 +223,26 @@ def consume_credits(db: Session, org_id: uuid.UUID, cost: int) -> bool:
     return result.rowcount > 0
 
 
-def consume_storage_mb(db: Session, org_id: uuid.UUID, delta_mb: int) -> bool:
+def consume_storage_bytes(db: Session, org_id: uuid.UUID, delta_bytes: int) -> bool:
     """스토리지 소비. allow_storage_overage=true면 한도 무시. rowcount 0이면 한도 초과."""
     result = db.execute(
         update(Organization)
         .where(
             Organization.id == org_id,
             (Organization.allow_storage_overage == True)  # noqa: E712
-            | (Organization.storage_mb_used + delta_mb <= Organization.storage_mb_limit),
+            | (Organization.storage_bytes_used + delta_bytes <= Organization.storage_bytes_limit),
         )
-        .values(storage_mb_used=Organization.storage_mb_used + delta_mb)
+        .values(storage_bytes_used=Organization.storage_bytes_used + delta_bytes)
     )
     db.flush()
     return result.rowcount > 0
 
 
-def release_storage_mb(db: Session, org_id: uuid.UUID, delta_mb: int) -> None:
+def release_storage_bytes(db: Session, org_id: uuid.UUID, delta_bytes: int) -> None:
     """스토리지 반환 (파일 삭제 시)."""
     db.execute(
         update(Organization)
         .where(Organization.id == org_id)
-        .values(storage_mb_used=Organization.storage_mb_used - delta_mb)
+        .values(storage_bytes_used=Organization.storage_bytes_used - delta_bytes)
     )
     db.flush()

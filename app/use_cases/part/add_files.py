@@ -21,5 +21,5 @@ def add_files(
 ) -> list[FileItem]:
     """완료된 파일들을 Part에 배치 추가."""
     files = file_service.validate_attachable(db, file_ids)
-    part_service.attach_files(db, part_id, files)
+    part_service.attach_files(db, part_id, files, auth.org_id)
     return to_file_items(files)

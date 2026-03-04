@@ -42,9 +42,11 @@ def batch_create_files(
 @router.post("/upload/batch/complete", response_model=BatchCompleteResponse)
 def batch_complete_files(
     req: BatchCompleteRequest,
+    auth: AuthContext = Depends(require_auth),
     db: Session = Depends(get_tenant_db),
 ):
-    return file_commands.batch_complete_files(db, req)
+    """배치 업로드 완료 확인 + 스토리지 소비."""
+    return file_commands.batch_complete_files(db, auth, req)
 
 
 @router.post("/upload/{file_id}/complete", response_model=FileCompleteResponse)

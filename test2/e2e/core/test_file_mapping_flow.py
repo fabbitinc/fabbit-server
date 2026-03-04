@@ -1,7 +1,4 @@
-"""파일 업로드/매핑 e2e 시나리오.
-
-LLM 호출 API(`preview`, `validate`)는 `--use-llm`일 때만 실행한다.
-"""
+"""파일 업로드/매핑 e2e core 시나리오."""
 
 import httpx
 import pytest
@@ -74,63 +71,18 @@ class TestFileMappingFlow:
         assert resp.status_code == 200, resp.text
         assert resp.json()["status"] == "UPLOADED"
 
-    @pytest.mark.llm_api
-    def test_mapping_preview(self, client: TestClient, use_llm: bool):
-        if not use_llm:
-            pytest.skip("LLM 비활성 (--use-llm 없음)")
-
-        resp = client.post(
-            "/api/v1/mappings/preview",
-            headers={"Authorization": f"Bearer {TestFileMappingFlow.access_token}"},
-            json={"file_id": TestFileMappingFlow.file_id},
-        )
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert len(data["mapping"]["property_mappings"]) > 0
-        assert len(data["mapping"]["relation_mappings"]) > 0
-
-        TestFileMappingFlow._llm_mapping = data["mapping"]
-
-    @pytest.mark.llm_api
-    def test_mapping_validate(self, client: TestClient, use_llm: bool):
-        if not use_llm:
-            pytest.skip("LLM 비활성 (--use-llm 없음)")
-
-        mapping = getattr(TestFileMappingFlow, "_llm_mapping", None)
-        assert mapping, "test_mapping_preview가 선행되어야 합니다"
-
-        resp = client.post(
-            "/api/v1/mappings/validate",
-            headers={"Authorization": f"Bearer {TestFileMappingFlow.access_token}"},
-            json={
-                "file_id": TestFileMappingFlow.file_id,
-                "mapping": mapping,
-            },
-        )
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert len(data["errors"]) == 0
-        TestFileMappingFlow._llm_mapping = data["normalized_mapping"]
-
     def test_confirm_mapping(
         self,
         client: TestClient,
-        use_llm: bool,
         mapping_fixture: dict[str, object],
     ):
-        mapping = (
-            getattr(TestFileMappingFlow, "_llm_mapping", mapping_fixture)
-            if use_llm
-            else mapping_fixture
-        )
-
         resp = client.post(
             "/api/v1/mappings/confirm",
             headers={"Authorization": f"Bearer {TestFileMappingFlow.access_token}"},
             json={
                 "file_id": TestFileMappingFlow.file_id,
                 "name": "파일-매핑 e2e",
-                "mapping": mapping,
+                "mapping": mapping_fixture,
             },
         )
         assert resp.status_code == 200, resp.text

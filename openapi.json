@@ -7401,6 +7401,7 @@
                     "files"
                 ],
                 "summary": "Batch Complete Files",
+                "description": "\ubc30\uce58 \uc5c5\ub85c\ub4dc \uc644\ub8cc \ud655\uc778 + \uc2a4\ud1a0\ub9ac\uc9c0 \uc18c\ube44.",
                 "operationId": "batch_complete_files_api_v1_files_upload_batch_complete_post",
                 "requestBody": {
                     "content": {
@@ -9177,31 +9178,6 @@
                         "exclusiveMinimum": 0.0,
                         "title": "File Size",
                         "description": "\ud30c\uc77c \ud06c\uae30 (\ubc14\uc774\ud2b8)"
-                    },
-                    "owner_type": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Owner Type",
-                        "description": "\uc18c\uc720\uc790 \ud0c0\uc785 (project, folder, part, ...)"
-                    },
-                    "owner_id": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uuid"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Owner Id",
-                        "description": "\uc18c\uc720\uc790 \uc5d4\ud2f0\ud2f0 ID"
                     }
                 },
                 "type": "object",

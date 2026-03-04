@@ -85,7 +85,7 @@ def create_organization(
         plan_type=plan.value,
         max_members=limits.max_members,
         plan_credits_remaining=limits.ai_credits,
-        storage_mb_limit=limits.storage_gb * 1_000,
+        storage_bytes_limit=limits.storage_bytes,
     )
 
     # 멤버십 (OWNER)
@@ -266,17 +266,31 @@ def consume_credits(db: Session, org_id: _uuid.UUID, feature: str) -> None:
         )
 
 
-def check_storage_quota(db: Session, org_id: _uuid.UUID, additional_mb: int) -> None:
+def check_storage_quota(db: Session, org_id: _uuid.UUID, additional_bytes: int) -> None:
     """스토리지 한도 읽기 전용 체크. 초과 시 QUOTA_EXCEEDED 발생."""
     org = repo.get_org_by_id(db, org_id)
     if org is None:
         return
 
-    if not org.allow_storage_overage and org.storage_mb_used + additional_mb > org.storage_mb_limit:
+    if not org.allow_storage_overage and org.storage_bytes_used + additional_bytes > org.storage_bytes_limit:
         raise AppError(
             message="스토리지 한도를 초과했습니다. 플랜을 업그레이드해주세요.",
             code="QUOTA_EXCEEDED",
         )
+
+
+def consume_storage(db: Session, org_id: _uuid.UUID, delta_bytes: int) -> None:
+    """스토리지 원자적 소비. 한도 초과 시 QUOTA_EXCEEDED 발생."""
+    if not repo.consume_storage_bytes(db, org_id, delta_bytes):
+        raise AppError(
+            message="스토리지 한도를 초과했습니다. 플랜을 업그레이드해주세요.",
+            code="QUOTA_EXCEEDED",
+        )
+
+
+def release_storage(db: Session, org_id: _uuid.UUID, delta_bytes: int) -> None:
+    """스토리지 반환 (파일 삭제 시)."""
+    repo.release_storage_bytes(db, org_id, delta_bytes)
 
 
 def set_profile_image(db: Session, auth: AuthContext, file: File) -> None:

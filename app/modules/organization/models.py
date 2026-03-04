@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
@@ -73,11 +74,11 @@ class Organization(AggregateRoot, Base):
     bonus_credits_remaining: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
     )  # 추가 구매분. 감소만, 리셋 없음
-    storage_mb_limit: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0
+    storage_bytes_limit: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0
     )  # 캐시 — 플랜 기본 + 추가분
-    storage_mb_used: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0
+    storage_bytes_used: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0
     )  # 누적 상태, 파일 업로드/삭제 시 증감
     allow_storage_overage: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
@@ -101,6 +102,7 @@ class Organization(AggregateRoot, Base):
         self.profile_image_file_key = file.file_key
         self.register_event(
             FileAttached(
+                org_id=self.id,
                 owner_type="organization",
                 owner_id=self.id,
                 file_ids=[file.id],
@@ -112,6 +114,7 @@ class Organization(AggregateRoot, Base):
         self.profile_image_file_key = None
         self.register_event(
             FileDetached(
+                org_id=self.id,
                 owner_type="organization",
                 owner_id=self.id,
                 file_id=file_id,

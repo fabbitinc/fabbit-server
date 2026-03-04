@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 
 from dateutil.relativedelta import relativedelta
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, text
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Index, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,9 +14,6 @@ from app.core.database import Base
 from app.core.mixins import PkMixin, UpdatableMixin
 from app.modules.organization.constants import PLAN_LIMITS, PlanType
 from app.modules.subscription.constants import BillingCycle, SubscriptionStatus
-
-_GB_TO_MB = 1_000
-
 
 class Subscription(UpdatableMixin, PkMixin, Base):
     """빌링 기간 단위 구독. ACTIVE가 현재, EXPIRED가 이력."""
@@ -66,7 +63,7 @@ class Subscription(UpdatableMixin, PkMixin, Base):
 
     max_members: Mapped[int] = mapped_column(Integer, nullable=False)
     ai_credits_granted: Mapped[int] = mapped_column(Integer, nullable=False)
-    storage_mb_limit: Mapped[int] = mapped_column(Integer, nullable=False)
+    storage_bytes_limit: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
     # ── 빌링 플래그 ──
 
@@ -101,7 +98,7 @@ class Subscription(UpdatableMixin, PkMixin, Base):
             current_period_end=period_end,
             max_members=limits.max_members,
             ai_credits_granted=limits.ai_credits,
-            storage_mb_limit=limits.storage_gb * _GB_TO_MB,
+            storage_bytes_limit=limits.storage_bytes,
         )
 
     # ── 상태 전이 메서드 ──

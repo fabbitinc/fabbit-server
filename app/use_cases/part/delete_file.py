@@ -17,4 +17,4 @@ def delete_file(
     file_id: uuid.UUID,
 ) -> None:
     """Part 첨부파일 1건 삭제."""
-    part_service.detach_file(db, part_id, file_id)
+    part_service.detach_file(db, part_id, file_id, auth.org_id)

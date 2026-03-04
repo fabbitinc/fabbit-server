@@ -16,7 +16,7 @@ from app.modules.mapping.service import _determine_scope
 from app.modules.ontology import service as ontology_service
 from app.modules.ontology.service import MAPPING_SYSTEM_PROMPT
 
-pytestmark = [pytest.mark.eval, pytest.mark.costly]
+pytestmark = [pytest.mark.llm_eval, pytest.mark.costly]
 
 LLM_DIR = Path(__file__).resolve().parents[1]
 FIXTURES_DIR = LLM_DIR / "datasets" / "fixtures"

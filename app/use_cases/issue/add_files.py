@@ -21,5 +21,5 @@ def add_files(
 ) -> list[FileItem]:
     """이슈에 첨부파일 배치 연결."""
     files = file_service.validate_attachable(db, file_ids)
-    issue_service.attach_files(db, issue_id, files)
+    issue_service.attach_files(db, issue_id, files, auth.org_id)
     return to_file_items(files)

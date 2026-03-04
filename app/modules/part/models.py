@@ -207,15 +207,18 @@ class Part(AggregateRoot, TenantBase):
         """도면 연결 해제."""
         self.drawing_id = None
 
-    def attach_files(self, files: list["File"]) -> None:
+    def attach_files(self, files: list["File"], org_id: uuid.UUID) -> None:
         """검증된 파일들을 Part에 연결 — 소유자 할당은 FileHandler가 처리."""
         self.register_event(
             FileAttached(
-                owner_type="part", owner_id=self.id, file_ids=[f.id for f in files]
+                org_id=org_id,
+                owner_type="part",
+                owner_id=self.id,
+                file_ids=[f.id for f in files],
             )
         )
 
-    def detach_file(self, file_id: uuid.UUID) -> None:
+    def detach_file(self, file_id: uuid.UUID, org_id: uuid.UUID) -> None:
         """Part 첨부파일 1건 분리 — 소프트 삭제는 FileHandler가 처리."""
         target = next((f for f in self.files if f.id == file_id), None)
         if target is None:
@@ -224,7 +227,7 @@ class Part(AggregateRoot, TenantBase):
                 code="NOT_FOUND",
             )
         self.register_event(
-            FileDetached(owner_type="part", owner_id=self.id, file_id=file_id)
+            FileDetached(org_id=org_id, owner_type="part", owner_id=self.id, file_id=file_id)
         )
 
 

@@ -55,16 +55,16 @@ class User(AggregateRoot, Base):
 
     # ── 도메인 메서드 ──
 
-    def set_profile_image(self, file: "File") -> None:
+    def set_profile_image(self, file: "File", org_id: uuid.UUID) -> None:
         """프로필 이미지 설정 — 소유자 할당은 FileHandler가 처리."""
         self.profile_image_file_key = file.file_key
         self.register_event(
-            FileAttached(owner_type="user", owner_id=self.id, file_ids=[file.id])
+            FileAttached(org_id=org_id, owner_type="user", owner_id=self.id, file_ids=[file.id])
         )
 
-    def remove_profile_image(self, file_id: uuid.UUID) -> None:
+    def remove_profile_image(self, file_id: uuid.UUID, org_id: uuid.UUID) -> None:
         """프로필 이미지 제거 — 소프트 삭제는 FileHandler가 처리."""
         self.profile_image_file_key = None
         self.register_event(
-            FileDetached(owner_type="user", owner_id=self.id, file_id=file_id)
+            FileDetached(org_id=org_id, owner_type="user", owner_id=self.id, file_id=file_id)
         )

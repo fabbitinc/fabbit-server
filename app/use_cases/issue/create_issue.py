@@ -15,7 +15,7 @@ from app.modules.label import service as label_service
 @transactional()
 def create_issue(
     db: Session,
-    auth: AuthContext,  # noqa: ARG001
+    auth: AuthContext,
     title: str,
     body: str | None = None,
     *,
@@ -44,6 +44,6 @@ def create_issue(
         issue_service.sync_labels(db, issue, label_ids, emit_event=False)
     if file_ids:
         files = file_service.validate_attachable(db, file_ids)
-        issue_service.attach_files(db, issue.id, files, emit_event=False)
+        issue_service.attach_files(db, issue.id, files, auth.org_id, emit_event=False)
 
     return mapper.to_issue_response(issue)

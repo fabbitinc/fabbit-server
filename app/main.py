@@ -221,7 +221,7 @@ def _bootstrap_test_account_once() -> None:
                 plan_type="STARTER",
                 max_members=starter_limits.max_members,
                 plan_credits_remaining=starter_limits.ai_credits,
-                storage_mb_limit=starter_limits.storage_gb * 1_000,
+                storage_bytes_limit=starter_limits.storage_bytes,
             )
             provision_tenant(db, org.id)
             subscription_service.create_initial_subscription(
@@ -236,7 +236,7 @@ def _bootstrap_test_account_once() -> None:
                 limits = starter_limits
             org.max_members = limits.max_members
             org.plan_credits_remaining = limits.ai_credits
-            org.storage_mb_limit = limits.storage_gb * 1_000
+            org.storage_bytes_limit = limits.storage_bytes
 
         # 활성 구독이 없으면 보충
         if subscription_repo.get_active_subscription(db, org.id) is None:

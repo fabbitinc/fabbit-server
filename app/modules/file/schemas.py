@@ -10,8 +10,6 @@ class CreateFileRequest(BaseModel):
     original_name: str = Field(..., max_length=500, description="원본 파일명")
     content_type: str = Field(..., max_length=100, description="MIME 타입")
     file_size: int = Field(..., gt=0, description="파일 크기 (바이트)")
-    owner_type: str | None = Field(None, description="소유자 타입 (project, folder, part, ...)")
-    owner_id: uuid.UUID | None = Field(None, description="소유자 엔티티 ID")
 
 
 class CreateFileResponse(BaseModel):

@@ -16,8 +16,6 @@ def create_file_record(
     file_key: str,
     content_type: str,
     file_size: int,
-    owner_type: str | None,
-    owner_id: uuid.UUID | None,
 ) -> File:
     file = File(
         id=file_id,
@@ -25,8 +23,6 @@ def create_file_record(
         file_key=file_key,
         content_type=content_type,
         file_size=file_size,
-        owner_type=owner_type,
-        owner_id=owner_id,
     )
     db.add(file)
     return file

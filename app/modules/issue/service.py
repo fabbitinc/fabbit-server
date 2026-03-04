@@ -170,11 +170,11 @@ def update_issue(
 
 
 def attach_files(
-    db: Session, issue_id: uuid.UUID, files: list[File], *, emit_event: bool = True
+    db: Session, issue_id: uuid.UUID, files: list[File], org_id: uuid.UUID, *, emit_event: bool = True
 ) -> None:
     """Issue에 검증된 파일들을 연결."""
     issue = get_or_raise(db, issue_id)
-    issue.attach_files(files)
+    issue.attach_files(files, org_id)
     if emit_event and files:
         issue.register_event(
             IssueFilesAttached(
@@ -187,13 +187,13 @@ def attach_files(
         )
 
 
-def detach_file(db: Session, issue_id: uuid.UUID, file_id: uuid.UUID) -> None:
+def detach_file(db: Session, issue_id: uuid.UUID, file_id: uuid.UUID, org_id: uuid.UUID) -> None:
     """Issue 첨부파일 1건 분리."""
     issue = get_or_raise(db, issue_id)
     # 스냅샷용 파일명 조회 (분리 전)
     file = db.query(File).filter(File.id == file_id).first()
     file_name = file.original_name if file else "(알 수 없음)"
-    issue.detach_file(file_id)
+    issue.detach_file(file_id, org_id)
     issue.register_event(
         IssueFileDetached(
             issue_id=issue.id,

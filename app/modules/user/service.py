@@ -126,7 +126,7 @@ def set_profile_image(db: Session, auth: AuthContext, file: File) -> None:
     @transactional 없음 — use_case에서 트랜잭션 관리.
     """
     user = get_user_or_raise(db, auth.user_id)
-    user.set_profile_image(file)
+    user.set_profile_image(file, auth.org_id)
 
 
 def delete_profile_image(
@@ -137,7 +137,7 @@ def delete_profile_image(
     @transactional 없음 — use_case에서 트랜잭션 관리.
     """
     user = get_user_or_raise(db, auth.user_id)
-    user.remove_profile_image(file_id)
+    user.remove_profile_image(file_id, auth.org_id)
 
 
 def _to_update_profile_response(user: User) -> UpdateProfileResponse:

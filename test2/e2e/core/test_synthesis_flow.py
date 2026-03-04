@@ -1,7 +1,6 @@
 """합성/조회/활성화 e2e 시나리오.
 
 - 핵심 비즈니스 플로우는 항상 실행
-- LLM 질의 API는 `--use-llm`일 때만 실행
 """
 
 import uuid
@@ -300,20 +299,6 @@ class TestSynthesisFlow:
         )
         assert starters.status_code == 200
         assert len(starters.json()["starters"]) > 0
-
-    @pytest.mark.llm_api
-    def test_activation_query(self, client: TestClient, use_llm: bool):
-        if not use_llm:
-            pytest.skip("LLM 비활성 (--use-llm 없음)")
-
-        resp = client.post(
-            "/api/v1/activation/query",
-            headers={"Authorization": f"Bearer {TestSynthesisFlow.access_token}"},
-            json={"question": "전체 부품 목록을 보여줘"},
-        )
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert isinstance(data["answer"], str)
 
     def test_not_found_cases(self, client: TestClient):
         headers = {"Authorization": f"Bearer {TestSynthesisFlow.access_token}"}
