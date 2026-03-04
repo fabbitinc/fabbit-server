@@ -1,9 +1,9 @@
 package com.fabbitinc.server.application.auth.service;
 
-import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.config.AppProperties;
+import com.fabbitinc.server.application.auth.port.AuthEmailPort;
 import com.fabbitinc.server.domain.auth.model.Invitation;
 import com.fabbitinc.server.domain.auth.model.InvitationStatus;
 import com.fabbitinc.server.domain.auth.repository.InvitationRepository;
@@ -13,7 +13,6 @@ import com.fabbitinc.server.domain.organization.repository.OrganizationRepositor
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -22,7 +21,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 import java.util.UUID;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthInvitationService {
@@ -30,6 +28,7 @@ public class AuthInvitationService {
     private final InvitationRepository invitationRepository;
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
+    private final AuthEmailPort authEmailPort;
     private final AppProperties appProperties;
 
     public CreatedInvitation createInvitationRecord(
@@ -105,13 +104,7 @@ public class AuthInvitationService {
     }
 
     public void sendInvitationEmail(String email, String orgName, String inviterName, String inviteUrl) {
-        log.info(
-                "invitation email sent: email={}, orgName={}, inviterName={}, inviteUrl={}",
-                email,
-                orgName,
-                inviterName,
-                inviteUrl
-        );
+        authEmailPort.sendInvitation(email, orgName, inviterName, inviteUrl);
     }
 
     public Organization getOrganizationOrThrow(UUID orgId) {

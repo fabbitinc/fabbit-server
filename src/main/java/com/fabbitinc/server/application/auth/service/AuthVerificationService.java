@@ -4,6 +4,7 @@ import com.fabbitinc.server.application.auth.dto.request.SendVerificationRequest
 import com.fabbitinc.server.application.auth.dto.request.VerifyEmailRequest;
 import com.fabbitinc.server.application.auth.dto.response.SendVerificationResponse;
 import com.fabbitinc.server.application.auth.dto.response.VerifyEmailResponse;
+import com.fabbitinc.server.application.auth.port.AuthEmailPort;
 import com.fabbitinc.server.domain.auth.model.EmailVerification;
 import com.fabbitinc.server.domain.auth.model.EmailVerificationStatus;
 import com.fabbitinc.server.domain.auth.repository.EmailVerificationRepository;
@@ -12,7 +13,6 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -21,13 +21,13 @@ import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthVerificationService {
 
     private final UserRepository userRepository;
     private final EmailVerificationRepository emailVerificationRepository;
+    private final AuthEmailPort authEmailPort;
     private final AppProperties appProperties;
 
     public SendVerificationResponse sendVerification(SendVerificationRequest request) {
@@ -56,8 +56,7 @@ public class AuthVerificationService {
         EmailVerification verification = EmailVerification.createPending(email, codeHash, expiresAt);
         emailVerificationRepository.save(verification);
 
-        // 현재 구현은 인증코드 발송 이벤트를 로그로 남긴다.
-        log.info("verification code issued: email={}, code={}", email, code);
+        authEmailPort.sendVerificationCode(email, code);
 
         return new SendVerificationResponse("인증코드가 발송되었습니다");
     }
