@@ -1262,6 +1262,33 @@
                 ]
             }
         },
+        "/api/v1/dashboard/storage": {
+            "get": {
+                "tags": [
+                    "dashboard"
+                ],
+                "summary": "Get Storage Usage",
+                "description": "\uc2a4\ud1a0\ub9ac\uc9c0 \uc0ac\uc6a9\ub7c9 \uc870\ud68c.\n\nOrganization\uc758 \ucd1d \uc0ac\uc6a9\ub7c9/\ud55c\ub3c4\uc640 \uce74\ud14c\uace0\ub9ac\ubcc4(\ub3c4\uba74/\ucca8\ubd80\ud30c\uc77c/\uae30\ud0c0) \ub0b4\uc5ed\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "get_storage_usage_api_v1_dashboard_storage_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StorageUsageResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
         "/api/v1/mappings/preview": {
             "post": {
                 "tags": [
@@ -13219,6 +13246,60 @@
                     "starters"
                 ],
                 "title": "StartersResponse"
+            },
+            "StorageCategoryItem": {
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "title": "Category"
+                    },
+                    "display_name": {
+                        "type": "string",
+                        "title": "Display Name"
+                    },
+                    "bytes_used": {
+                        "type": "integer",
+                        "title": "Bytes Used"
+                    },
+                    "file_count": {
+                        "type": "integer",
+                        "title": "File Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "category",
+                    "display_name",
+                    "bytes_used",
+                    "file_count"
+                ],
+                "title": "StorageCategoryItem"
+            },
+            "StorageUsageResponse": {
+                "properties": {
+                    "bytes_used": {
+                        "type": "integer",
+                        "title": "Bytes Used"
+                    },
+                    "bytes_limit": {
+                        "type": "integer",
+                        "title": "Bytes Limit"
+                    },
+                    "categories": {
+                        "items": {
+                            "$ref": "#/components/schemas/StorageCategoryItem"
+                        },
+                        "type": "array",
+                        "title": "Categories"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "bytes_used",
+                    "bytes_limit",
+                    "categories"
+                ],
+                "title": "StorageUsageResponse"
             },
             "SubmitReviewRequest": {
                 "properties": {

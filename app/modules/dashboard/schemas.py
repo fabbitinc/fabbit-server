@@ -27,3 +27,16 @@ class DashboardStatsResponse(BaseModel):
     parts: PartStats
     bom_links: BomStats
     last_synthesis: LastSynthesis | None
+
+
+class StorageCategoryItem(BaseModel):
+    category: str
+    display_name: str
+    bytes_used: int
+    file_count: int
+
+
+class StorageUsageResponse(BaseModel):
+    bytes_used: int
+    bytes_limit: int
+    categories: list[StorageCategoryItem]

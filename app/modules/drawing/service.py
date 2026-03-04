@@ -41,6 +41,7 @@ def create_drawing(
         drawing_id=drawing.id,
         file_id=file.id,
         tenant_schema=org_id_to_schema(auth.org_id),
+        org_id=auth.org_id,
     )
     return drawing
 

@@ -9,6 +9,7 @@ import uuid
 
 from loguru import logger
 
+from app.core.aggregate import init_event_collection, reset_event_collection
 from app.core.database import create_tenant_session, generate_uuid7
 from app.core.uow import UnitOfWork
 from app.infrastructure.drawing_converter import convert_drawing
@@ -25,6 +26,7 @@ def run_conversion(
     drawing_id: uuid.UUID,
     file_id: uuid.UUID,
     tenant_schema: str,
+    org_id: uuid.UUID,
 ) -> None:
     """BackgroundTask — 도면 변환 실행 후 Drawing에 결과 반영."""
     status = ConversionStatus.FAILED
@@ -55,11 +57,13 @@ def run_conversion(
         )
 
     db = create_tenant_session(tenant_schema)
+    token = init_event_collection()
     try:
         _apply_conversion_result(
             db,
             drawing_id=drawing_id,
             file_id=file_id,
+            org_id=org_id,
             status=status,
             pdf_key=pdf_key,
             pdf_content_type=pdf_content_type,
@@ -74,6 +78,7 @@ def run_conversion(
         db.rollback()
         raise
     finally:
+        reset_event_collection(token)
         db.close()
 
 
@@ -81,6 +86,7 @@ def _apply_conversion_result(
     db,
     drawing_id: uuid.UUID,
     file_id: uuid.UUID,
+    org_id: uuid.UUID,
     status: ConversionStatus,
     pdf_key: str | None,
     pdf_content_type: str | None,
@@ -101,6 +107,8 @@ def _apply_conversion_result(
         return
 
     if status == ConversionStatus.COMPLETED:
+        derived_file_ids: list[uuid.UUID] = []
+
         # PDF File 레코드 — 원본과 동일하면 재사용, 다르면 새로 생성
         pdf_file_id = None
         if pdf_key:
@@ -114,11 +122,10 @@ def _apply_conversion_result(
                     file_key=pdf_key,
                     content_type=pdf_content_type or "application/pdf",
                     file_size=pdf_size or 0,
-                    owner_type="drawing",
-                    owner_id=drawing.id,
                 )
                 pdf_file.mark_uploaded()
                 pdf_file_id = pdf_file.id
+                derived_file_ids.append(pdf_file.id)
 
         # Thumbnail File 레코드 — 원본과 동일하면 재사용, 다르면 새로 생성
         thumbnail_file_id = None
@@ -133,17 +140,18 @@ def _apply_conversion_result(
                     file_key=thumbnail_key,
                     content_type=thumbnail_content_type or "image/webp",
                     file_size=thumbnail_size or 0,
-                    owner_type="drawing",
-                    owner_id=drawing.id,
                 )
                 thumb_file.mark_uploaded()
                 thumbnail_file_id = thumb_file.id
+                derived_file_ids.append(thumb_file.id)
 
         drawing.complete_conversion(
             pdf_file_id=pdf_file_id,
             pdf_key=pdf_key,
             thumbnail_file_id=thumbnail_file_id,
             thumbnail_key=thumbnail_key,
+            org_id=org_id,
+            derived_file_ids=derived_file_ids or None,
         )
     else:
         drawing.fail_conversion()
@@ -167,18 +175,17 @@ def _create_file_record(
     file_key: str,
     content_type: str,
     file_size: int,
-    owner_type: str | None,
-    owner_id: uuid.UUID | None,
 ) -> File:
-    """File 레코드 생성 — pipeline 내 cross-domain 접근."""
+    """File 레코드 생성 — pipeline 내 cross-domain 접근.
+
+    owner 할당은 FileAttached 이벤트 핸들러가 처리한다.
+    """
     file = File(
         id=file_id,
         original_name=original_name,
         file_key=file_key,
         content_type=content_type,
         file_size=file_size,
-        owner_type=owner_type,
-        owner_id=owner_id,
     )
     db.add(file)
     return file

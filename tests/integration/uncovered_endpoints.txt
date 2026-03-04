@@ -1,4 +1,4 @@
-# 미테스트 API 엔드포인트 (124/150)
+# 미테스트 API 엔드포인트 (123/151)
 
 DELETE /api/v1/changes/{issue_number}/comments/{comment_id}
 DELETE /api/v1/changes/{issue_number}/files/{file_id}
@@ -18,13 +18,12 @@ DELETE /api/v1/projects/{project_id}/parts
 DELETE /api/v1/teams/{team_id}
 DELETE /api/v1/teams/{team_id}/members
 DELETE /api/v1/users/me/profile-image
-GET    /api/v1/auth/check-slug
 GET    /api/v1/auth/invitations/verify
-GET    /api/v1/auth/site
 GET    /api/v1/changes
 GET    /api/v1/changes/lookup
 GET    /api/v1/changes/{issue_number}
 GET    /api/v1/changes/{issue_number}/timeline
+GET    /api/v1/dashboard/storage
 GET    /api/v1/issues
 GET    /api/v1/issues/lookup
 GET    /api/v1/issues/{issue_number}

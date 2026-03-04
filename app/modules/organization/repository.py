@@ -205,8 +205,6 @@ def release_member_seat(db: Session, org_id: uuid.UUID) -> None:
 
 def consume_credits(db: Session, org_id: uuid.UUID, cost: int) -> bool:
     """크레딧 소비. plan 우선 차감 → 부족분 bonus 차감. rowcount 0이면 잔액 부족."""
-    from sqlalchemy import greatest
-
     result = db.execute(
         update(Organization)
         .where(
@@ -214,9 +212,9 @@ def consume_credits(db: Session, org_id: uuid.UUID, cost: int) -> bool:
             Organization.plan_credits_remaining + Organization.bonus_credits_remaining >= cost,
         )
         .values(
-            plan_credits_remaining=greatest(Organization.plan_credits_remaining - cost, 0),
+            plan_credits_remaining=func.greatest(Organization.plan_credits_remaining - cost, 0),
             bonus_credits_remaining=Organization.bonus_credits_remaining
-            - greatest(cost - Organization.plan_credits_remaining, 0),
+            - func.greatest(cost - Organization.plan_credits_remaining, 0),
         )
     )
     db.flush()

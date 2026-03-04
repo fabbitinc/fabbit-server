@@ -146,6 +146,30 @@ class TestSynthesisFlow:
         TestSynthesisFlow.part_id = part_number_map["PRT-001"]
         TestSynthesisFlow.asm001_id = part_number_map["ASM-001"]
 
+    def test_ontology_nodes_search(self, client: TestClient):
+        resp = client.get(
+            "/api/v1/ontology/nodes/search",
+            params={"label": "Part", "search": "ASM"},
+            headers={"Authorization": f"Bearer {TestSynthesisFlow.access_token}"},
+        )
+        assert resp.status_code == 200, resp.text
+        assert len(resp.json()["items"]) > 0
+
+    def test_filter_options(self, client: TestClient):
+        resp = client.get(
+            "/api/v1/parts/filter-options",
+            headers={"Authorization": f"Bearer {TestSynthesisFlow.access_token}"},
+        )
+        assert resp.status_code == 200, resp.text
+
+    def test_list_suppliers(self, client: TestClient):
+        resp = client.get(
+            "/api/v1/suppliers",
+            headers={"Authorization": f"Bearer {TestSynthesisFlow.access_token}"},
+        )
+        assert resp.status_code == 200, resp.text
+        assert "items" in resp.json()
+
     def test_bom_and_export(self, client: TestClient):
         bom = client.get(
             f"/api/v1/parts/{TestSynthesisFlow.asm001_id}/bom",

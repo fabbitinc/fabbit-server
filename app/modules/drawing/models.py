@@ -166,6 +166,8 @@ class Drawing(SoftDeleteMixin, AggregateRoot, TenantBase):
         pdf_key: str | None,
         thumbnail_file_id: uuid.UUID | None,
         thumbnail_key: str | None,
+        org_id: uuid.UUID | None = None,
+        derived_file_ids: list[uuid.UUID] | None = None,
     ) -> None:
         """DWG 변환 완료 — PDF/썸네일 파일 연결 + 반정규화 키 설정."""
         self.conversion_status = ConversionStatus.COMPLETED
@@ -173,6 +175,18 @@ class Drawing(SoftDeleteMixin, AggregateRoot, TenantBase):
         self.pdf_key = pdf_key
         self.thumbnail_file_id = thumbnail_file_id
         self.thumbnail_key = thumbnail_key
+
+        if org_id and derived_file_ids:
+            from app.modules.file.events import FileAttached
+
+            self.register_event(
+                FileAttached(
+                    org_id=org_id,
+                    owner_type="drawing",
+                    owner_id=self.id,
+                    file_ids=derived_file_ids,
+                )
+            )
 
     def fail_conversion(self) -> None:
         """DWG 변환 실패."""

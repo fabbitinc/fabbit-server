@@ -3,6 +3,7 @@
 import uuid
 from datetime import datetime
 
+from sqlalchemy import BigInteger, case, func
 from sqlalchemy.orm import Session
 
 from app.modules.file.constants import FileStatus
@@ -94,6 +95,34 @@ def get_expired_deleted_files(
     if cursor:
         q = q.filter(File.id > cursor)
     return q.order_by(File.id).limit(limit).all()
+
+
+def get_storage_breakdown(db: Session) -> list[tuple[str, int, int]]:
+    """카테고리별 (category, file_count, bytes_used) 집계.
+
+    UPLOADED 상태 + 미삭제 + owner 있는 파일만 대상.
+    """
+    category = case(
+        (File.owner_type == "drawing", "drawing"),
+        (File.owner_type.in_(["part", "issue"]), "attachment"),
+        else_="other",
+    )
+    rows = (
+        db.query(
+            category.label("category"),
+            func.count().label("file_count"),
+            func.coalesce(func.sum(File.file_size), 0)
+            .cast(BigInteger)
+            .label("bytes_used"),
+        )
+        .filter(
+            File.status == FileStatus.UPLOADED,
+            File.owner_type.isnot(None),
+        )
+        .group_by(category)
+        .all()
+    )
+    return [(row.category, row.file_count, row.bytes_used) for row in rows]
 
 
 def get_all_file_keys(db: Session) -> set[str]:
