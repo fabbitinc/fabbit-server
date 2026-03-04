@@ -43,6 +43,7 @@ from app.api.v1.supplier_router import (  # noqa: E402
 )
 from app.api.v1.team import router as team_router  # noqa: E402
 from app.api.v1.synthesis_router import router as synthesis_router  # noqa: E402
+from app.api.v1.usage_router import router as usage_router  # noqa: E402
 from app.core.auth_context import AuthContext  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.database import (
@@ -181,6 +182,7 @@ app.include_router(team_router)
 app.include_router(file_router)
 app.include_router(notification_router)
 app.include_router(ontology_router)
+app.include_router(usage_router)
 
 
 # TODO 삭제

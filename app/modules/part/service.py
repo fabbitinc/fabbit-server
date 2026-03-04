@@ -38,8 +38,10 @@ def detach_file(db: Session, part_id: uuid.UUID, file_id: uuid.UUID, org_id: uui
 
 
 def assign_drawing(db: Session, part_id: uuid.UUID, drawing_id: uuid.UUID) -> None:
-    """Part에 Drawing 연결."""
+    """Part에 Drawing 연결. 기존 도면이 있으면 연결 해제 후 교체."""
     part = get_or_raise(db, part_id)
+    if part.drawing_id is not None:
+        part.unassign_drawing()
     part.assign_drawing(drawing_id)
 
 

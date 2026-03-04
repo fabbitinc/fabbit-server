@@ -160,23 +160,38 @@ class Drawing(SoftDeleteMixin, AggregateRoot, TenantBase):
 
     # ── 상태 전이 메서드 ──
 
+    def attach_original_file(self, file: "File", org_id: uuid.UUID) -> None:
+        """원본 파일을 Drawing에 연결 — 스토리지 과금 포함."""
+        from app.modules.file.events import FileAttached
+
+        self.register_event(
+            FileAttached(
+                org_id=org_id,
+                owner_type="drawing",
+                owner_id=self.id,
+                file_ids=[file.id],
+            )
+        )
+
     def complete_conversion(
         self,
-        pdf_file_id: uuid.UUID | None,
-        pdf_key: str | None,
-        thumbnail_file_id: uuid.UUID | None,
-        thumbnail_key: str | None,
-        org_id: uuid.UUID | None = None,
-        derived_file_ids: list[uuid.UUID] | None = None,
+        pdf_file: "File",
+        thumbnail_file: "File",
+        org_id: uuid.UUID,
     ) -> None:
-        """DWG 변환 완료 — PDF/썸네일 파일 연결 + 반정규화 키 설정."""
+        """DWG 변환 완료 — PDF/썸네일 파일 연결 + 신규 파일 attach."""
         self.conversion_status = ConversionStatus.COMPLETED
-        self.pdf_file_id = pdf_file_id
-        self.pdf_key = pdf_key
-        self.thumbnail_file_id = thumbnail_file_id
-        self.thumbnail_key = thumbnail_key
+        self.pdf_file_id = pdf_file.id
+        self.pdf_key = pdf_file.file_key
+        self.thumbnail_file_id = thumbnail_file.id
+        self.thumbnail_key = thumbnail_file.file_key
 
-        if org_id and derived_file_ids:
+        new_file_ids = [
+            f.id
+            for f in (pdf_file, thumbnail_file)
+            if f.id != self.original_file_id
+        ]
+        if new_file_ids:
             from app.modules.file.events import FileAttached
 
             self.register_event(
@@ -184,13 +199,25 @@ class Drawing(SoftDeleteMixin, AggregateRoot, TenantBase):
                     org_id=org_id,
                     owner_type="drawing",
                     owner_id=self.id,
-                    file_ids=derived_file_ids,
+                    file_ids=new_file_ids,
                 )
             )
 
-    def fail_conversion(self) -> None:
-        """DWG 변환 실패."""
+    def fail_conversion(self, org_id: uuid.UUID) -> None:
+        """DWG 변환 실패 — 원본 파일 detach하여 스토리지 반환."""
         self.conversion_status = ConversionStatus.FAILED
+
+        if self.original_file_id:
+            from app.modules.file.events import FileDetached
+
+            self.register_event(
+                FileDetached(
+                    org_id=org_id,
+                    owner_type="drawing",
+                    owner_id=self.id,
+                    file_id=self.original_file_id,
+                )
+            )
 
     def update_properties(
         self,

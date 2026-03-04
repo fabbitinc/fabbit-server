@@ -35,6 +35,7 @@ def create_drawing(
     )
     db.add(drawing)
     db.flush()
+    drawing.attach_original_file(file, org_id=auth.org_id)
     add_background_task(
         guarded(run_conversion),
         file_key=file.file_key,

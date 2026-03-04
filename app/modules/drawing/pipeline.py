@@ -8,10 +8,10 @@ cross-domain File 모델 접근은 파이프라인 특성상 필요하다.
 import uuid
 
 from loguru import logger
+from sqlalchemy.orm import Session
 
-from app.core.aggregate import init_event_collection, reset_event_collection
 from app.core.database import create_tenant_session, generate_uuid7
-from app.core.uow import UnitOfWork
+from app.core.transactional import transactional
 from app.infrastructure.drawing_converter import convert_drawing
 from app.infrastructure.s3_client import s3_client
 from app.modules.drawing import repository as repo
@@ -57,7 +57,6 @@ def run_conversion(
         )
 
     db = create_tenant_session(tenant_schema)
-    token = init_event_collection()
     try:
         _apply_conversion_result(
             db,
@@ -73,17 +72,13 @@ def run_conversion(
             thumbnail_size=thumbnail_size,
             error=error,
         )
-        UnitOfWork(db).commit()
-    except Exception:
-        db.rollback()
-        raise
     finally:
-        reset_event_collection(token)
         db.close()
 
 
+@transactional
 def _apply_conversion_result(
-    db,
+    db: Session,
     drawing_id: uuid.UUID,
     file_id: uuid.UUID,
     org_id: uuid.UUID,
@@ -107,54 +102,38 @@ def _apply_conversion_result(
         return
 
     if status == ConversionStatus.COMPLETED:
-        derived_file_ids: list[uuid.UUID] = []
+        # PDF — 원본이 이미 PDF면 재사용, DWG면 새 File 생성
+        if pdf_key == drawing.original_file_key:
+            pdf_file = db.get(File, drawing.original_file_id)
+        else:
+            pdf_file = _create_file_record(
+                db,
+                file_id=generate_uuid7(),
+                original_name=f"{drawing.name}.pdf",
+                file_key=pdf_key,
+                content_type=pdf_content_type or "application/pdf",
+                file_size=pdf_size or 0,
+            )
+            pdf_file.mark_uploaded()
 
-        # PDF File 레코드 — 원본과 동일하면 재사용, 다르면 새로 생성
-        pdf_file_id = None
-        if pdf_key:
-            if pdf_key == drawing.original_file_key:
-                pdf_file_id = drawing.original_file_id
-            else:
-                pdf_file = _create_file_record(
-                    db,
-                    file_id=generate_uuid7(),
-                    original_name=f"{drawing.name}.pdf",
-                    file_key=pdf_key,
-                    content_type=pdf_content_type or "application/pdf",
-                    file_size=pdf_size or 0,
-                )
-                pdf_file.mark_uploaded()
-                pdf_file_id = pdf_file.id
-                derived_file_ids.append(pdf_file.id)
-
-        # Thumbnail File 레코드 — 원본과 동일하면 재사용, 다르면 새로 생성
-        thumbnail_file_id = None
-        if thumbnail_key:
-            if thumbnail_key == drawing.original_file_key:
-                thumbnail_file_id = drawing.original_file_id
-            else:
-                thumb_file = _create_file_record(
-                    db,
-                    file_id=generate_uuid7(),
-                    original_name=f"{drawing.name}_thumb.webp",
-                    file_key=thumbnail_key,
-                    content_type=thumbnail_content_type or "image/webp",
-                    file_size=thumbnail_size or 0,
-                )
-                thumb_file.mark_uploaded()
-                thumbnail_file_id = thumb_file.id
-                derived_file_ids.append(thumb_file.id)
+        # Thumbnail — 항상 새로 생성
+        thumb_file = _create_file_record(
+            db,
+            file_id=generate_uuid7(),
+            original_name=f"{drawing.name}_thumb.webp",
+            file_key=thumbnail_key,
+            content_type=thumbnail_content_type or "image/webp",
+            file_size=thumbnail_size or 0,
+        )
+        thumb_file.mark_uploaded()
 
         drawing.complete_conversion(
-            pdf_file_id=pdf_file_id,
-            pdf_key=pdf_key,
-            thumbnail_file_id=thumbnail_file_id,
-            thumbnail_key=thumbnail_key,
+            pdf_file=pdf_file,
+            thumbnail_file=thumb_file,
             org_id=org_id,
-            derived_file_ids=derived_file_ids or None,
         )
     else:
-        drawing.fail_conversion()
+        drawing.fail_conversion(org_id=org_id)
         logger.warning(
             "변환 실패: drawing_id={drawing_id} error={error}",
             drawing_id=drawing_id,

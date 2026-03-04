@@ -1262,33 +1262,6 @@
                 ]
             }
         },
-        "/api/v1/dashboard/storage": {
-            "get": {
-                "tags": [
-                    "dashboard"
-                ],
-                "summary": "Get Storage Usage",
-                "description": "\uc2a4\ud1a0\ub9ac\uc9c0 \uc0ac\uc6a9\ub7c9 \uc870\ud68c.\n\nOrganization\uc758 \ucd1d \uc0ac\uc6a9\ub7c9/\ud55c\ub3c4\uc640 \uce74\ud14c\uace0\ub9ac\ubcc4(\ub3c4\uba74/\ucca8\ubd80\ud30c\uc77c/\uae30\ud0c0) \ub0b4\uc5ed\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
-                "operationId": "get_storage_usage_api_v1_dashboard_storage_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/StorageUsageResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
         "/api/v1/mappings/preview": {
             "post": {
                 "tags": [
@@ -7818,6 +7791,33 @@
                 }
             }
         },
+        "/api/v1/usage/storage": {
+            "get": {
+                "tags": [
+                    "usage"
+                ],
+                "summary": "Get Storage Usage",
+                "description": "\uc2a4\ud1a0\ub9ac\uc9c0 \uc0ac\uc6a9\ub7c9 \uc870\ud68c.\n\nOrganization\uc758 \ucd1d \uc0ac\uc6a9\ub7c9/\ud55c\ub3c4/\ucd08\uacfc\ubd84\uacfc \uce74\ud14c\uace0\ub9ac\ubcc4(\ub3c4\uba74/\ucca8\ubd80\ud30c\uc77c/\uae30\ud0c0) \ub0b4\uc5ed\uc744 \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "get_storage_usage_api_v1_usage_storage_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StorageUsageResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
         "/health": {
             "get": {
                 "summary": "Health",
@@ -13247,15 +13247,19 @@
                 ],
                 "title": "StartersResponse"
             },
+            "StorageCategory": {
+                "type": "string",
+                "enum": [
+                    "drawing",
+                    "attachment",
+                    "other"
+                ],
+                "title": "StorageCategory"
+            },
             "StorageCategoryItem": {
                 "properties": {
                     "category": {
-                        "type": "string",
-                        "title": "Category"
-                    },
-                    "display_name": {
-                        "type": "string",
-                        "title": "Display Name"
+                        "$ref": "#/components/schemas/StorageCategory"
                     },
                     "bytes_used": {
                         "type": "integer",
@@ -13269,7 +13273,6 @@
                 "type": "object",
                 "required": [
                     "category",
-                    "display_name",
                     "bytes_used",
                     "file_count"
                 ],
@@ -13285,6 +13288,14 @@
                         "type": "integer",
                         "title": "Bytes Limit"
                     },
+                    "bytes_overage": {
+                        "type": "integer",
+                        "title": "Bytes Overage"
+                    },
+                    "allow_overage": {
+                        "type": "boolean",
+                        "title": "Allow Overage"
+                    },
                     "categories": {
                         "items": {
                             "$ref": "#/components/schemas/StorageCategoryItem"
@@ -13297,6 +13308,8 @@
                 "required": [
                     "bytes_used",
                     "bytes_limit",
+                    "bytes_overage",
+                    "allow_overage",
                     "categories"
                 ],
                 "title": "StorageUsageResponse"

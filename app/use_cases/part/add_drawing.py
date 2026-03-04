@@ -20,7 +20,11 @@ def add_drawing(
     part_id: uuid.UUID,
     add_background_task,
 ) -> RegisterDrawingResponse:
-    """Part에 도면 추가."""
+    """Part에 도면 추가.
+
+    기존 도면이 있으면 연결 해제 후 새 도면을 생성한다.
+    기존 Drawing은 고아 상태로 기록 유지된다.
+    """
     file = file_service.get_uploaded_or_raise(db, file_id)
     drawing = drawing_service.create_drawing(db, file, auth, add_background_task)
     part_service.assign_drawing(db, part_id, drawing.id)
