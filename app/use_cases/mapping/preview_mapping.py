@@ -18,7 +18,7 @@ from app.modules.mapping.schemas import (
 from app.modules.ontology import service as ontology_service
 
 
-@transactional(read_only=True)
+@transactional()
 def preview_mapping(
     db: Session,
     auth: AuthContext,
@@ -73,6 +73,9 @@ def preview_mapping(
             sheet=sheet_label,
             elapsed=time.perf_counter() - t_llm,
         )
+
+        # 크레딧 차감 (LLM 성공 후 후차감)
+        org_service.consume_credits(db, auth.org_id, "bom_analysis")
 
         log_usage(
             org_id=auth.org_id,

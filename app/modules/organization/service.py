@@ -253,6 +253,19 @@ def check_credit_quota(db: Session, org_id: _uuid.UUID, feature: str) -> None:
         )
 
 
+def consume_credits(db: Session, org_id: _uuid.UUID, feature: str) -> None:
+    """AI 크레딧 원자적 차감. 잔액 부족 시 QUOTA_EXCEEDED 발생."""
+    cost = AI_CREDIT_COSTS.get(feature)
+    if cost is None:
+        return
+
+    if not repo.consume_credits(db, org_id, cost):
+        raise AppError(
+            message="AI 크레딧이 부족합니다. 플랜을 업그레이드해주세요.",
+            code="QUOTA_EXCEEDED",
+        )
+
+
 def check_storage_quota(db: Session, org_id: _uuid.UUID, additional_mb: int) -> None:
     """스토리지 한도 읽기 전용 체크. 초과 시 QUOTA_EXCEEDED 발생."""
     org = repo.get_org_by_id(db, org_id)
