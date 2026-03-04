@@ -1,0 +1,132 @@
+package com.fabbitinc.server.architecture;
+
+import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.junit.AnalyzeClasses;
+import com.tngtech.archunit.junit.ArchTest;
+import com.tngtech.archunit.lang.ArchCondition;
+import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
+
+import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+
+@AnalyzeClasses(
+        packages = "com.fabbitinc.server",
+        importOptions = {ImportOption.DoNotIncludeTests.class}
+)
+class LayerArchitectureRulesTest {
+
+    @ArchTest
+    static final ArchRule layeredDependencyRule =
+            layeredArchitecture()
+                    .consideringOnlyDependenciesInLayers()
+                    .withOptionalLayers(true)
+                    .layer("Presentation").definedBy("..presentation..")
+                    .layer("Application").definedBy("..application..")
+                    .layer("Domain").definedBy("..domain..")
+                    .layer("Infrastructure").definedBy("..infrastructure..")
+                    .whereLayer("Presentation").mayOnlyAccessLayers("Application", "Domain")
+                    .whereLayer("Application").mayOnlyAccessLayers("Domain")
+                    .whereLayer("Infrastructure").mayOnlyAccessLayers("Application", "Domain")
+                    .whereLayer("Domain").mayNotAccessAnyLayer();
+
+    @ArchTest
+    static final ArchRule controllerMustNotDependOnServiceOrRepository =
+            noClasses()
+                    .that().resideInAPackage("..controller..")
+                    .should().dependOnClassesThat().resideInAnyPackage("..service..", "..repository..")
+                    .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule eventHandlerMustNotDependOnServiceRepositoryQueryOrController =
+            noClasses()
+                    .that().resideInAPackage("..eventhandler..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "..service..",
+                            "..repository..",
+                            "..query..",
+                            "..controller.."
+                    )
+                    .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule queryMustNotDependOnUseCaseOrService =
+            noClasses()
+                    .that().resideInAPackage("..query..")
+                    .should().dependOnClassesThat().resideInAnyPackage("..usecase..", "..service..")
+                    .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule repositoryMustNotDependOnControllerUseCaseOrQuery =
+            noClasses()
+                    .that().resideInAPackage("..repository..")
+                    .should().dependOnClassesThat().resideInAnyPackage("..controller..", "..usecase..", "..query..")
+                    .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule useCaseMustNotDependOnQuery =
+            noClasses()
+                    .that().resideInAPackage("..usecase..")
+                    .should().dependOnClassesThat().resideInAPackage("..query..")
+                    .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule controllerMustNotDependOnDomainModelPackage =
+            noClasses()
+                    .that().resideInAPackage("..controller..")
+                    .should().dependOnClassesThat().resideInAPackage("..model..")
+                    .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule controllerMustNotExposeJpaEntityInMethodSignature =
+            classes()
+                    .that().resideInAPackage("..controller..")
+                    .should(notExposeJpaEntityInMethodSignature())
+                    .allowEmptyShould(true);
+
+    private static ArchCondition<JavaClass> notExposeJpaEntityInMethodSignature() {
+        return new ArchCondition<>("메서드 시그니처에서 JPA Entity를 노출하지 않는다") {
+            @Override
+            public void check(JavaClass clazz, ConditionEvents events) {
+                for (JavaMethod method : clazz.getMethods()) {
+                    if (!method.getOwner().equals(clazz)) {
+                        continue;
+                    }
+
+                    JavaClass returnType = method.getRawReturnType();
+                    if (isJpaEntity(returnType)) {
+                        String message = String.format(
+                                "%s#%s return type %s 는 Entity 노출입니다",
+                                clazz.getName(),
+                                method.getName(),
+                                returnType.getName()
+                        );
+                        events.add(SimpleConditionEvent.violated(method, message));
+                    }
+
+                    for (JavaClass parameterType : method.getRawParameterTypes()) {
+                        if (!isJpaEntity(parameterType)) {
+                            continue;
+                        }
+                        String message = String.format(
+                                "%s#%s parameter type %s 는 Entity 노출입니다",
+                                clazz.getName(),
+                                method.getName(),
+                                parameterType.getName()
+                        );
+                        events.add(SimpleConditionEvent.violated(method, message));
+                    }
+                }
+            }
+        };
+    }
+
+    private static boolean isJpaEntity(JavaClass javaClass) {
+        return javaClass.isAnnotatedWith("jakarta.persistence.Entity")
+                || javaClass.isAnnotatedWith("javax.persistence.Entity");
+    }
+}
