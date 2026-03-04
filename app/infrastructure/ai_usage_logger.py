@@ -11,11 +11,13 @@ from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
 from app.modules.ai_usage.models import AiUsageLog
+from app.modules.organization.constants import AIUsageCategory
 
 
 def log_ai_usage(
     org_id: UUID,
     user_id: UUID,
+    category: AIUsageCategory,
     feature: str,
     model: str,
     input_tokens: int,
@@ -27,11 +29,12 @@ def log_ai_usage(
         log = AiUsageLog(
             org_id=org_id,
             user_id=user_id,
+            category=category.value,
             feature=feature,
             model=model,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
-            credits_used=0,  # 크레딧 차감은 추후 과금 체계 도입 시 구현
+            credits_used=category.credit_cost,
         )
         db.add(log)
         db.commit()

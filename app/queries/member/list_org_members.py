@@ -15,6 +15,7 @@ def list_org_members(
     auth: AuthContext,
 ) -> MemberListResponse:
     """현재 조직의 멤버 목록 조회."""
+    org = org_repo.get_org_by_id(db, auth.org_id)
     rows = org_repo.list_org_members(db, auth.org_id)
     items = [
         MemberSummary(
@@ -28,4 +29,4 @@ def list_org_members(
         )
         for user, membership in rows
     ]
-    return MemberListResponse(items=items)
+    return MemberListResponse(items=items, max_members=org.max_members)

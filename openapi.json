@@ -7818,6 +7818,33 @@
                 ]
             }
         },
+        "/api/v1/usage/credits": {
+            "get": {
+                "tags": [
+                    "usage"
+                ],
+                "summary": "Get Credit Usage",
+                "description": "AI \ud06c\ub808\ub527 \uc0ac\uc6a9\ub7c9 \uc870\ud68c.\n\n\ud50c\ub79c \ud06c\ub808\ub527 \uc794\uc5ec, \ubcf4\ub108\uc2a4 \ud06c\ub808\ub527 \uc794\uc5ec, \ucd1d \uc0ac\uc6a9\ub7c9/\ud55c\ub3c4\ub97c \ubc18\ud658\ud569\ub2c8\ub2e4.",
+                "operationId": "get_credit_usage_api_v1_usage_credits_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CreditUsageResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
         "/health": {
             "get": {
                 "summary": "Health",
@@ -9503,6 +9530,87 @@
                 ],
                 "title": "CreateTeamRequest"
             },
+            "CreditCategoryItem": {
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "title": "Category"
+                    },
+                    "credits_used": {
+                        "type": "integer",
+                        "title": "Credits Used"
+                    },
+                    "usage_count": {
+                        "type": "integer",
+                        "title": "Usage Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "category",
+                    "credits_used",
+                    "usage_count"
+                ],
+                "title": "CreditCategoryItem"
+            },
+            "CreditUsageResponse": {
+                "properties": {
+                    "current_period_start": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Current Period Start"
+                    },
+                    "current_period_end": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Current Period End"
+                    },
+                    "total_credits_used": {
+                        "type": "integer",
+                        "title": "Total Credits Used"
+                    },
+                    "plan_credits_used": {
+                        "type": "integer",
+                        "title": "Plan Credits Used"
+                    },
+                    "plan_credits_limit": {
+                        "type": "integer",
+                        "title": "Plan Credits Limit"
+                    },
+                    "plan_credits_remaining": {
+                        "type": "integer",
+                        "title": "Plan Credits Remaining"
+                    },
+                    "bonus_credits_used": {
+                        "type": "integer",
+                        "title": "Bonus Credits Used"
+                    },
+                    "bonus_credits_remaining": {
+                        "type": "integer",
+                        "title": "Bonus Credits Remaining"
+                    },
+                    "categories": {
+                        "items": {
+                            "$ref": "#/components/schemas/CreditCategoryItem"
+                        },
+                        "type": "array",
+                        "title": "Categories"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "current_period_start",
+                    "current_period_end",
+                    "total_credits_used",
+                    "plan_credits_used",
+                    "plan_credits_limit",
+                    "plan_credits_remaining",
+                    "bonus_credits_used",
+                    "bonus_credits_remaining",
+                    "categories"
+                ],
+                "title": "CreditUsageResponse"
+            },
             "DashboardStatsResponse": {
                 "properties": {
                     "parts": {
@@ -10885,11 +10993,16 @@
                         },
                         "type": "array",
                         "title": "Items"
+                    },
+                    "max_members": {
+                        "type": "integer",
+                        "title": "Max Members"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "items"
+                    "items",
+                    "max_members"
                 ],
                 "title": "MemberListResponse",
                 "description": "\uc870\uc9c1 \uba64\ubc84 \ubaa9\ub85d."

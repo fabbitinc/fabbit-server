@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 from app.core.exceptions import AppError
 from app.modules.organization import repository as repo
 from app.modules.organization.constants import (
-    AI_CREDIT_COSTS,
+    AIUsageCategory,
     PLAN_LIMITS,
     RESERVED_SLUGS,
     MembershipRole,
@@ -88,8 +88,9 @@ def create_organization(
         storage_bytes_limit=limits.storage_bytes,
     )
 
-    # 멤버십 (OWNER)
+    # 멤버십 (OWNER) + 좌석 예약
     repo.create_membership(db, user_id, org.id, role=MembershipRole.OWNER)
+    repo.reserve_member_seat(db, org.id)
 
     # 테넌트 프로비저닝
     schema_name = provision_tenant(db, org.id)
@@ -236,30 +237,26 @@ def add_member(
     return repo.create_membership(db, user_id, org_id, role=role)
 
 
-def check_credit_quota(db: Session, org_id: _uuid.UUID, feature: str) -> None:
+def check_credit_quota(
+    db: Session, org_id: _uuid.UUID, category: AIUsageCategory
+) -> None:
     """AI 크레딧 잔량 읽기 전용 체크. 부족 시 QUOTA_EXCEEDED 발생."""
-    cost = AI_CREDIT_COSTS.get(feature)
-    if cost is None:
-        return
-
     org = repo.get_org_by_id(db, org_id)
     if org is None:
         return
 
-    if org.plan_credits_remaining + org.bonus_credits_remaining < cost:
+    if org.plan_credits_remaining + org.bonus_credits_remaining < category.credit_cost:
         raise AppError(
             message="AI 크레딧이 부족합니다. 플랜을 업그레이드해주세요.",
             code="QUOTA_EXCEEDED",
         )
 
 
-def consume_credits(db: Session, org_id: _uuid.UUID, feature: str) -> None:
+def consume_credits(
+    db: Session, org_id: _uuid.UUID, category: AIUsageCategory
+) -> None:
     """AI 크레딧 원자적 차감. 잔액 부족 시 QUOTA_EXCEEDED 발생."""
-    cost = AI_CREDIT_COSTS.get(feature)
-    if cost is None:
-        return
-
-    if not repo.consume_credits(db, org_id, cost):
+    if not repo.consume_credits(db, org_id, category.credit_cost):
         raise AppError(
             message="AI 크레딧이 부족합니다. 플랜을 업그레이드해주세요.",
             code="QUOTA_EXCEEDED",

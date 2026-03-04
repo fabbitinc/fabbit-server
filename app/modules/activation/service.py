@@ -17,6 +17,7 @@ from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.infrastructure.ai_usage_logger import log_ai_usage
 from app.infrastructure.llm_client import chat_completion_with_usage
+from app.modules.organization.constants import AIUsageCategory
 from app.modules.activation import repository as repo
 from app.modules.activation.schemas import (
     HealthCheckIssue,
@@ -172,6 +173,7 @@ def query_graph(
     log_ai_usage(
         org_id=auth.org_id,
         user_id=auth.user_id,
+        category=AIUsageCategory.CHAT,
         feature="activation:query_plan",
         model=plan_resp.model,
         input_tokens=plan_resp.input_tokens,
@@ -195,6 +197,7 @@ def query_graph(
         log_ai_usage(
             org_id=auth.org_id,
             user_id=auth.user_id,
+            category=AIUsageCategory.CHAT,
             feature="activation:query_plan_retry",
             model=retry_resp.model,
             input_tokens=retry_resp.input_tokens,
@@ -247,6 +250,7 @@ def query_graph(
         log_ai_usage(
             org_id=auth.org_id,
             user_id=auth.user_id,
+            category=AIUsageCategory.CHAT,
             feature="activation:answer",
             model=answer_resp.model,
             input_tokens=answer_resp.input_tokens,

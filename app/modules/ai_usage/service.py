@@ -7,11 +7,13 @@
 import uuid
 
 from app.infrastructure.ai_usage_logger import log_ai_usage
+from app.modules.organization.constants import AIUsageCategory
 
 
 def log_usage(
     org_id: uuid.UUID,
     user_id: uuid.UUID,
+    category: AIUsageCategory,
     feature: str,
     model: str,
     input_tokens: int,
@@ -21,6 +23,7 @@ def log_usage(
     log_ai_usage(
         org_id=org_id,
         user_id=user_id,
+        category=category,
         feature=feature,
         model=model,
         input_tokens=input_tokens,

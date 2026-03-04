@@ -8,6 +8,7 @@ from app.core.exceptions import AppError
 from app.core.transactional import transactional
 from app.modules.ai_usage.service import log_usage
 from app.modules.organization import service as org_service
+from app.modules.organization.constants import AIUsageCategory
 from app.modules.mapping import service as mapping_service
 from app.modules.mapping.schemas import (
     MappingPreviewRequest,
@@ -24,7 +25,7 @@ def preview_mapping(
     auth: AuthContext,
     req: MappingPreviewRequest,
 ) -> MappingPreviewResponse:
-    org_service.check_credit_quota(db, auth.org_id, "bom_analysis")
+    org_service.check_credit_quota(db, auth.org_id, AIUsageCategory.BOM_ANALYSIS)
     t_total = time.perf_counter()
 
     file = mapping_service.get_uploaded_file_or_raise(db, req.file_id)
@@ -75,11 +76,12 @@ def preview_mapping(
         )
 
         # 크레딧 차감 (LLM 성공 후 후차감)
-        org_service.consume_credits(db, auth.org_id, "bom_analysis")
+        org_service.consume_credits(db, auth.org_id, AIUsageCategory.BOM_ANALYSIS)
 
         log_usage(
             org_id=auth.org_id,
             user_id=auth.user_id,
+            category=AIUsageCategory.BOM_ANALYSIS,
             feature="mapping:preview",
             model=llm_resp.model,
             input_tokens=llm_resp.input_tokens,

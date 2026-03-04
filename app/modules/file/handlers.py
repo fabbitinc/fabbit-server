@@ -5,6 +5,7 @@
 """
 
 from app.core.event_bus import event_bus
+from app.core.exceptions import AppError
 from app.core.transactional import get_active_session
 from app.modules.file.events import FileAttached, FileDetached
 from app.modules.file.models import File
@@ -21,7 +22,11 @@ def _on_file_attached(event: FileAttached) -> None:
             file.assign_owner(event.owner_type, event.owner_id)
             total_bytes += file.file_size
     if total_bytes > 0:
-        org_repo.consume_storage_bytes(db, event.org_id, total_bytes)
+        if not org_repo.consume_storage_bytes(db, event.org_id, total_bytes):
+            raise AppError(
+                message="스토리지 한도를 초과했습니다. 플랜을 업그레이드해주세요.",
+                code="QUOTA_EXCEEDED",
+            )
 
 
 def _on_file_detached(event: FileDetached) -> None:

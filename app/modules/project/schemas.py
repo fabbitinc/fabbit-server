@@ -104,6 +104,7 @@ class MemberSummary(UserSummary):
 class MemberListResponse(BaseModel):
     """조직 멤버 목록."""
     items: list[MemberSummary]
+    max_members: int
 
 
 class ProjectMemberSummary(UserSummary):

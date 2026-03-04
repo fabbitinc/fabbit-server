@@ -97,11 +97,22 @@ class PlanLimits:
         return self.storage_gb * _GB_TO_BYTES
 
 
-# AI 크레딧 소비 단가 (기능별)
-AI_CREDIT_COSTS: dict[str, int] = {
-    "chat": 1,  # AI 채팅 1회
-    "bom_analysis": 5,  # BOM 분석 1건
-    "drawing_parse": 10,  # 도면 분석 1건
+class AIUsageCategory(str, Enum):
+    """AI 크레딧 소비 카테고리."""
+
+    CHAT = "CHAT"
+    BOM_ANALYSIS = "BOM_ANALYSIS"
+    DRAWING_PARSE = "DRAWING_PARSE"
+
+    @property
+    def credit_cost(self) -> int:
+        return _CATEGORY_CREDIT_COSTS[self]
+
+
+_CATEGORY_CREDIT_COSTS: dict[AIUsageCategory, int] = {
+    AIUsageCategory.CHAT: 1,
+    AIUsageCategory.BOM_ANALYSIS: 5,
+    AIUsageCategory.DRAWING_PARSE: 10,
 }
 
 

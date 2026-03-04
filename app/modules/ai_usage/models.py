@@ -40,6 +40,7 @@ class AiUsageLog(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
+    category: Mapped[str] = mapped_column(String(30), nullable=False)
     feature: Mapped[str] = mapped_column(String(50), nullable=False)
     model: Mapped[str] = mapped_column(String(50), nullable=False)
     input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
