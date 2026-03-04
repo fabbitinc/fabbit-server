@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.issue.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.file.service.FileService;
 import com.fabbitinc.server.application.issue.dto.request.CreateIssueRequest;
 import com.fabbitinc.server.application.issue.service.IssueService;
@@ -14,13 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CreateIssueUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final FileService fileService;
     private final IssueService issueService;
 
     @Transactional
-    public int execute(String authorizationHeader, CreateIssueRequest request) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+    public int execute(CreateIssueRequest request) {
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
 
         Issue issue = issueService.createIssue(auth.userId(), request.title(), request.body());
 

@@ -3,7 +3,7 @@ package com.fabbitinc.server.application.user.query;
 import com.fabbitinc.server.application.auth.dto.response.OrganizationResponse;
 import com.fabbitinc.server.application.auth.dto.response.UserResponse;
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
@@ -25,15 +25,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final UserRepository userRepository;
     private final MembershipRepository membershipRepository;
     private final OrganizationRepository organizationRepository;
     private final FileUrlResolver fileUrlResolver;
 
     @Transactional(readOnly = true)
-    public MeResponse getMe(String authorizationHeader) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+    public MeResponse getMe() {
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
 
         User user = userRepository.findById(auth.userId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다"));

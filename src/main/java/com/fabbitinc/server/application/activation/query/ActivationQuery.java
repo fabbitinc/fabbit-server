@@ -2,7 +2,7 @@ package com.fabbitinc.server.application.activation.query;
 
 import com.fabbitinc.server.application.activation.dto.response.StarterQuestionResponse;
 import com.fabbitinc.server.application.activation.dto.response.StartersResponse;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,11 +13,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ActivationQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
 
     @Transactional(readOnly = true)
-    public StartersResponse getStarters(String authorizationHeader) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public StartersResponse getStarters() {
+        currentAuthProvider.getCurrentAuth();
 
         return new StartersResponse(List.of(
                 new StarterQuestionResponse(

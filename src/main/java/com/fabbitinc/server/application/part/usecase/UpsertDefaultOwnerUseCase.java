@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.part.usecase;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.part.dto.request.PartDefaultOwnerRequest;
 import com.fabbitinc.server.application.part.service.PartService;
 import lombok.RequiredArgsConstructor;
@@ -13,12 +13,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UpsertDefaultOwnerUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final PartService partService;
 
     @Transactional
-    public UUID execute(String authorizationHeader, PartDefaultOwnerRequest request) {
-        authTokenParser.requireAdmin(authorizationHeader);
+    public UUID execute(PartDefaultOwnerRequest request) {
+        currentAuthProvider.getAdminAuth();
         return partService.upsertDefaultOwner(
                 request.category(),
                 request.defaultOwnerId(),

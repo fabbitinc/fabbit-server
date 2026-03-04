@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.part.usecase;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.part.service.PartService;
 import com.fabbitinc.server.domain.file.model.File;
 import lombok.RequiredArgsConstructor;
@@ -14,12 +14,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AttachPartFilesUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final PartService partService;
 
     @Transactional
-    public List<UUID> execute(String authorizationHeader, UUID partId, List<UUID> fileIds) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public List<UUID> execute(UUID partId, List<UUID> fileIds) {
+        currentAuthProvider.getCurrentAuth();
         return partService.attachFiles(partId, fileIds).stream()
                 .map(File::getId)
                 .toList();

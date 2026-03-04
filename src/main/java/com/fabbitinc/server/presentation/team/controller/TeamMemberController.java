@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -41,10 +40,9 @@ public class TeamMemberController {
     )
     @GetMapping
     public TeamMemberListResponse listTeamMembers(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID teamId
     ) {
-        return teamQuery.listMembers(authorizationHeader, teamId);
+        return teamQuery.listMembers(teamId);
     }
 
     @Operation(
@@ -54,11 +52,10 @@ public class TeamMemberController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ManageTeamMembersResponse addTeamMembers(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID teamId,
             @Valid @RequestBody AddTeamMembersRequest request
     ) {
-        return addTeamMembersUseCase.execute(authorizationHeader, teamId, request.userIds());
+        return addTeamMembersUseCase.execute(teamId, request.userIds());
     }
 
     @Operation(
@@ -67,11 +64,10 @@ public class TeamMemberController {
     )
     @DeleteMapping
     public ResponseEntity<Void> removeTeamMembers(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID teamId,
             @Valid @RequestBody RemoveTeamMembersRequest request
     ) {
-        removeTeamMembersUseCase.execute(authorizationHeader, teamId, request.userIds());
+        removeTeamMembersUseCase.execute(teamId, request.userIds());
         return ResponseEntity.noContent().build();
     }
 }

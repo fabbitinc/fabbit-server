@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.organization.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.file.service.FileService;
 import com.fabbitinc.server.application.organization.dto.response.ProfileImageResponse;
@@ -18,14 +18,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SetOrganizationProfileImageUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final FileService fileService;
     private final OrganizationService organizationService;
     private final FileUrlResolver fileUrlResolver;
 
     @Transactional
-    public ProfileImageResponse execute(String authorizationHeader, UUID fileId) {
-        AuthContext auth = authTokenParser.requireAdmin(authorizationHeader);
+    public ProfileImageResponse execute(UUID fileId) {
+        AuthContext auth = currentAuthProvider.getAdminAuth();
 
         List<File> files = fileService.validateAttachable(List.of(fileId));
         File file = files.getFirst();

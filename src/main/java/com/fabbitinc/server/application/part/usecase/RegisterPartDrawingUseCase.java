@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.part.usecase;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.drawing.dto.response.RegisterDrawingResponse;
 import com.fabbitinc.server.application.drawing.service.DrawingService;
 import com.fabbitinc.server.application.part.service.PartService;
@@ -15,13 +15,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RegisterPartDrawingUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final DrawingService drawingService;
     private final PartService partService;
 
     @Transactional
-    public RegisterDrawingResponse execute(String authorizationHeader, UUID partId, UUID fileId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public RegisterDrawingResponse execute(UUID partId, UUID fileId) {
+        currentAuthProvider.getCurrentAuth();
 
         Drawing drawing = drawingService.createDrawing(fileId);
         partService.assignDrawing(partId, drawing.getId());

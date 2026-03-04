@@ -93,6 +93,43 @@ class SecurityContextCurrentAuthProviderTest {
         assertEquals(ErrorCode.UNAUTHENTICATED, ex.getErrorCode());
     }
 
+    @Test
+    void 최소권한을_충족하지_못하면_FORBIDDEN을_던진다() {
+        AuthContext authContext = new AuthContext(
+                UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                "user@fabbit.com",
+                UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                MembershipRole.MEMBER
+        );
+        TestingAuthenticationToken authentication =
+                new TestingAuthenticationToken(authContext, null, "ROLE_MEMBER");
+        setAuthentication(authentication);
+
+        AppException ex = assertThrows(
+                AppException.class,
+                () -> currentAuthProvider.getCurrentAuth(MembershipRole.ADMIN)
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
+    }
+
+    @Test
+    void 최소권한을_충족하면_인증컨텍스트를_반환한다() {
+        AuthContext authContext = new AuthContext(
+                UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                "user@fabbit.com",
+                UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                MembershipRole.OWNER
+        );
+        TestingAuthenticationToken authentication =
+                new TestingAuthenticationToken(authContext, null, "ROLE_OWNER");
+        setAuthentication(authentication);
+
+        AuthContext result = currentAuthProvider.getAdminAuth();
+
+        assertEquals(authContext, result);
+    }
+
     private void setAuthentication(org.springframework.security.core.Authentication authentication) {
         SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
         securityContext.setAuthentication(authentication);

@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.team.usecase;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.team.dto.response.ManageTeamMembersResponse;
 import com.fabbitinc.server.application.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
@@ -14,12 +14,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RemoveTeamMembersUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final TeamService teamService;
 
     @Transactional
-    public ManageTeamMembersResponse execute(String authorizationHeader, UUID teamId, List<UUID> userIds) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public ManageTeamMembersResponse execute(UUID teamId, List<UUID> userIds) {
+        currentAuthProvider.getCurrentAuth();
         int count = teamService.removeMembers(teamId, userIds);
         return new ManageTeamMembersResponse(count);
     }

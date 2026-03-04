@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -41,7 +40,6 @@ public class ProjectPartController {
     @Operation(summary = "GET /api/v1/projects/{projectId}/parts/lookup", description = "부품 picker용 lookup 목록을 조회합니다")
     @GetMapping("/lookup")
     public PartLookupResponse lookupParts(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID projectId,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "exclude_linked", defaultValue = "false") boolean excludeLinked,
@@ -50,34 +48,31 @@ public class ProjectPartController {
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
             int limit
     ) {
-        return projectQuery.lookupParts(authorizationHeader, projectId, search, excludeLinked, limit);
+        return projectQuery.lookupParts(projectId, search, excludeLinked, limit);
     }
 
     @Operation(summary = "POST /api/v1/projects/{projectId}/parts", description = "프로젝트에 부품을 배치 연결합니다")
     @PostMapping
     public LinkPartsResponse linkParts(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID projectId,
             @Valid @RequestBody LinkPartsRequest request
     ) {
-        return linkProjectPartsUseCase.execute(authorizationHeader, projectId, request.partIds());
+        return linkProjectPartsUseCase.execute(projectId, request.partIds());
     }
 
     @Operation(summary = "DELETE /api/v1/projects/{projectId}/parts", description = "프로젝트에서 부품을 배치 해제합니다")
     @DeleteMapping
     public ResponseEntity<Void> unlinkParts(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID projectId,
             @Valid @RequestBody LinkPartsRequest request
     ) {
-        unlinkProjectPartsUseCase.execute(authorizationHeader, projectId, request.partIds());
+        unlinkProjectPartsUseCase.execute(projectId, request.partIds());
         return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "GET /api/v1/projects/{projectId}/parts", description = "프로젝트에 연결된 부품 목록을 조회합니다")
     @GetMapping
     public ProjectPartsResponse getProjectParts(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID projectId,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "offset", defaultValue = "0")
@@ -88,6 +83,6 @@ public class ProjectPartController {
             @Max(value = 100, message = "limit은 100 이하여야 합니다")
             int limit
     ) {
-        return projectQuery.getProjectParts(authorizationHeader, projectId, search, offset, limit);
+        return projectQuery.getProjectParts(projectId, search, offset, limit);
     }
 }

@@ -3,7 +3,7 @@ package com.fabbitinc.server.application.issue.query;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
@@ -85,7 +85,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class IssueQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final IssueRepository issueRepository;
     private final ChangeRequestRepository changeRequestRepository;
     private final IssueAssigneeRepository issueAssigneeRepository;
@@ -106,13 +106,11 @@ public class IssueQuery {
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
-    public IssueLookupResponse lookupIssues(
-            String authorizationHeader,
-            String search,
+    public IssueLookupResponse lookupIssues(String search,
             String rawType,
             int limit
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
 
         IssueType type = parseIssueType(rawType);
         List<Issue> source = issueRepository.findAll(Sort.by(Sort.Direction.DESC, "number"));
@@ -134,14 +132,12 @@ public class IssueQuery {
     }
 
     @Transactional(readOnly = true)
-    public IssueListResponse listIssues(
-            String authorizationHeader,
-            String search,
+    public IssueListResponse listIssues(String search,
             String rawState,
             int offset,
             int limit
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
 
         IssueState state = parseIssueState(rawState);
         String normalizedSearch = normalizeSearch(search);
@@ -167,8 +163,8 @@ public class IssueQuery {
     }
 
     @Transactional(readOnly = true)
-    public IssueResponse getIssue(String authorizationHeader, int issueNumber) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public IssueResponse getIssue(int issueNumber) {
+        currentAuthProvider.getCurrentAuth();
 
         Issue issue = issueRepository.findByNumberAndType(issueNumber, IssueType.ISSUE)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "Issue #" + issueNumber + "을(를) 찾을 수 없습니다"));
@@ -178,12 +174,10 @@ public class IssueQuery {
     }
 
     @Transactional(readOnly = true)
-    public ChangeRequestLookupResponse lookupChangeRequests(
-            String authorizationHeader,
-            String search,
+    public ChangeRequestLookupResponse lookupChangeRequests(String search,
             int limit
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
 
         List<ChangeRequestLookupItemResponse> items = changeRequestRepository.findAllByOrderByNumberDesc().stream()
                 .filter(changeRequest -> matchesLookupSearch(changeRequest.getNumber(), changeRequest.getTitle(), search))
@@ -201,15 +195,13 @@ public class IssueQuery {
     }
 
     @Transactional(readOnly = true)
-    public ChangeRequestListResponse listChangeRequests(
-            String authorizationHeader,
-            String search,
+    public ChangeRequestListResponse listChangeRequests(String search,
             String rawState,
             String rawCrState,
             int offset,
             int limit
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
 
         IssueState state = parseIssueState(rawState);
         CrState crState = parseCrState(rawCrState);
@@ -237,8 +229,8 @@ public class IssueQuery {
     }
 
     @Transactional(readOnly = true)
-    public ChangeRequestResponse getChangeRequest(String authorizationHeader, int issueNumber) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public ChangeRequestResponse getChangeRequest(int issueNumber) {
+        currentAuthProvider.getCurrentAuth();
 
         ChangeRequest changeRequest = changeRequestRepository.findByNumber(issueNumber)
                 .orElseThrow(() -> new AppException(
@@ -251,12 +243,10 @@ public class IssueQuery {
     }
 
     @Transactional(readOnly = true)
-    public TimelineResponse getIssueTimeline(
-            String authorizationHeader,
-            int issueNumber,
+    public TimelineResponse getIssueTimeline(int issueNumber,
             IssueTargetType targetType
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
         IssueType type = toIssueType(targetType);
 
         Issue issue = issueRepository.findByNumberAndType(issueNumber, type)

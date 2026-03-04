@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.team.usecase;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -12,12 +12,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UpdateTeamUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final TeamService teamService;
 
     @Transactional
-    public UUID execute(String authorizationHeader, UUID teamId, String name, String description) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public UUID execute(UUID teamId, String name, String description) {
+        currentAuthProvider.getCurrentAuth();
         return teamService.updateTeam(teamId, name, description).getId();
     }
 }

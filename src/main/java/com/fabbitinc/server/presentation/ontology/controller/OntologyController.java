@@ -11,7 +11,6 @@ import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,8 +29,8 @@ public class OntologyController {
             description = "온톨로지 스키마(노드/관계 정의)를 조회합니다"
     )
     @GetMapping("/schema")
-    public OntologySchemaResponse getOntologySchema(@RequestHeader("Authorization") String authorizationHeader) {
-        return ontologyQuery.getOntologySchema(authorizationHeader);
+    public OntologySchemaResponse getOntologySchema() {
+        return ontologyQuery.getOntologySchema();
     }
 
     @Operation(
@@ -40,7 +39,6 @@ public class OntologyController {
     )
     @GetMapping("/nodes/search")
     public NodeSearchResponse searchNodes(
-            @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam("label") String label,
             @RequestParam("search")
             @Size(min = 1, message = "search는 1자 이상이어야 합니다")
@@ -50,6 +48,6 @@ public class OntologyController {
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
             int limit
     ) {
-        return ontologyQuery.searchNodes(authorizationHeader, label, search, limit);
+        return ontologyQuery.searchNodes(label, search, limit);
     }
 }

@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -50,14 +49,13 @@ public class LabelController {
     )
     @GetMapping("/lookup")
     public LabelLookupResponse lookupLabels(
-            @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
             int limit
     ) {
-        return labelQuery.lookupLabels(authorizationHeader, search, limit);
+        return labelQuery.lookupLabels(search, limit);
     }
 
     @Operation(
@@ -65,8 +63,8 @@ public class LabelController {
             description = "테넌트에 등록된 전체 라벨 목록을 이름순으로 조회합니다"
     )
     @GetMapping
-    public LabelListResponse listLabels(@RequestHeader("Authorization") String authorizationHeader) {
-        return labelQuery.listLabels(authorizationHeader);
+    public LabelListResponse listLabels() {
+        return labelQuery.listLabels();
     }
 
     @Operation(
@@ -76,10 +74,9 @@ public class LabelController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public LabelResponse createLabel(
-            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody CreateLabelRequest request
     ) {
-        return createLabelUseCase.execute(authorizationHeader, request);
+        return createLabelUseCase.execute(request);
     }
 
     @Operation(
@@ -88,11 +85,10 @@ public class LabelController {
     )
     @PatchMapping("/{labelId}")
     public LabelResponse updateLabel(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID labelId,
             @Valid @RequestBody UpdateLabelRequest request
     ) {
-        return updateLabelUseCase.execute(authorizationHeader, labelId, request);
+        return updateLabelUseCase.execute(labelId, request);
     }
 
     @Operation(
@@ -101,10 +97,9 @@ public class LabelController {
     )
     @DeleteMapping("/{labelId}")
     public ResponseEntity<Void> deleteLabel(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID labelId
     ) {
-        deleteLabelUseCase.execute(authorizationHeader, labelId);
+        deleteLabelUseCase.execute(labelId);
         return ResponseEntity.noContent().build();
     }
 }

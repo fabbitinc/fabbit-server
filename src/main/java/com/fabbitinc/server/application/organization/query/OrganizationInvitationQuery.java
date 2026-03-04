@@ -3,7 +3,7 @@ package com.fabbitinc.server.application.organization.query;
 import com.fabbitinc.server.application.auth.dto.response.InvitationListResponse;
 import com.fabbitinc.server.application.auth.dto.response.InvitationResponse;
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.domain.auth.repository.InvitationRepository;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import lombok.RequiredArgsConstructor;
@@ -14,12 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class OrganizationInvitationQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final InvitationRepository invitationRepository;
 
     @Transactional(readOnly = true)
-    public InvitationListResponse listInvitations(String authorizationHeader) {
-        AuthContext auth = authTokenParser.requireRole(authorizationHeader, MembershipRole.ADMIN);
+    public InvitationListResponse listInvitations() {
+        AuthContext auth = currentAuthProvider.getCurrentAuth(MembershipRole.ADMIN);
 
         return new InvitationListResponse(
                 invitationRepository.findByOrgIdOrderByCreatedAtDesc(auth.orgId()).stream()

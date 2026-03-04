@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.issue.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.issue.service.IssueService;
 import com.fabbitinc.server.application.issue.support.IssueTargetType;
 import lombok.RequiredArgsConstructor;
@@ -14,17 +14,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DeleteIssueFileUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final IssueService issueService;
 
     @Transactional
-    public void execute(
-            String authorizationHeader,
-            IssueTargetType targetType,
+    public void execute(IssueTargetType targetType,
             int issueNumber,
             UUID fileId
     ) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
         UUID issueId = resolveIssueId(targetType, issueNumber);
 
         issueService.detachFile(auth.userId(), issueId, fileId);

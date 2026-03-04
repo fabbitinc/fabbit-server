@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.issue.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.issue.dto.request.SyncAssigneesRequest;
 import com.fabbitinc.server.application.issue.dto.response.SyncDiffResponse;
 import com.fabbitinc.server.application.issue.service.IssueService;
@@ -16,17 +16,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SyncAssigneesUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final IssueService issueService;
 
     @Transactional
-    public SyncDiffResponse execute(
-            String authorizationHeader,
-            IssueTargetType targetType,
+    public SyncDiffResponse execute(IssueTargetType targetType,
             int issueNumber,
             SyncAssigneesRequest request
     ) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
         UUID issueId = resolveIssueId(targetType, issueNumber);
 
         IssueService.DiffResult diff = issueService.syncAssignees(

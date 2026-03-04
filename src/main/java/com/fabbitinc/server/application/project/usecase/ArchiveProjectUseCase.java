@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.project.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.project.service.ProjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -13,12 +13,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ArchiveProjectUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final ProjectService projectService;
 
     @Transactional
-    public void execute(String authorizationHeader, UUID projectId) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+    public void execute(UUID projectId) {
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
         projectService.archiveProject(projectId, auth.userId());
     }
 }

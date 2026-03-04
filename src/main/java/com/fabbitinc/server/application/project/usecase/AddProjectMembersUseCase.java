@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.project.usecase;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.project.dto.response.ManageMembersResponse;
 import com.fabbitinc.server.application.project.service.ProjectService;
 import com.fabbitinc.server.domain.project.model.ProjectRole;
@@ -15,17 +15,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AddProjectMembersUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final ProjectService projectService;
 
     @Transactional
-    public ManageMembersResponse execute(
-            String authorizationHeader,
-            UUID projectId,
+    public ManageMembersResponse execute(UUID projectId,
             List<UUID> userIds,
             ProjectRole role
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
         ProjectRole actualRole = role == null ? ProjectRole.MEMBER : role;
         int count = projectService.addMembers(projectId, userIds, actualRole);
         return new ManageMembersResponse(count);

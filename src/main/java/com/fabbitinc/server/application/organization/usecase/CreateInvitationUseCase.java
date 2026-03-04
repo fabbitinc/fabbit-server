@@ -4,7 +4,7 @@ import com.fabbitinc.server.application.auth.dto.request.CreateInvitationRequest
 import com.fabbitinc.server.application.auth.dto.response.InvitationResponse;
 import com.fabbitinc.server.application.auth.service.AuthInvitationService;
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
 import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.domain.auth.model.Invitation;
@@ -19,14 +19,14 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CreateInvitationUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final UserService userService;
     private final OrganizationService organizationService;
     private final AuthInvitationService authInvitationService;
 
     @Transactional
-    public InvitationResponse execute(String authorizationHeader, CreateInvitationRequest request) {
-        AuthContext auth = authTokenParser.requireRole(authorizationHeader, MembershipRole.ADMIN);
+    public InvitationResponse execute(CreateInvitationRequest request) {
+        AuthContext auth = currentAuthProvider.getCurrentAuth(MembershipRole.ADMIN);
 
         userService.getUserByEmail(request.email())
                 .ifPresent(existingUser -> organizationService.checkNotMember(auth.orgId(), existingUser.getId()));

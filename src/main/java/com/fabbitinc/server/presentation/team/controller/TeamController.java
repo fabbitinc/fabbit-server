@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -51,11 +50,10 @@ public class TeamController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TeamDetailResponse createTeam(
-            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody CreateTeamRequest request
     ) {
-        UUID teamId = createTeamUseCase.execute(authorizationHeader, request.name(), request.description());
-        return teamQuery.getTeamDetail(authorizationHeader, teamId);
+        UUID teamId = createTeamUseCase.execute(request.name(), request.description());
+        return teamQuery.getTeamDetail(teamId);
     }
 
     @Operation(
@@ -64,14 +62,13 @@ public class TeamController {
     )
     @GetMapping("/lookup")
     public TeamLookupResponse lookupTeams(
-            @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
             int limit
     ) {
-        return teamQuery.lookupTeams(authorizationHeader, search, limit);
+        return teamQuery.lookupTeams(search, limit);
     }
 
     @Operation(
@@ -79,8 +76,8 @@ public class TeamController {
             description = "팀 목록을 조회합니다"
     )
     @GetMapping
-    public TeamListResponse listTeams(@RequestHeader("Authorization") String authorizationHeader) {
-        return teamQuery.listTeams(authorizationHeader);
+    public TeamListResponse listTeams() {
+        return teamQuery.listTeams();
     }
 
     @Operation(
@@ -89,10 +86,9 @@ public class TeamController {
     )
     @GetMapping("/{teamId}")
     public TeamDetailResponse getTeam(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID teamId
     ) {
-        return teamQuery.getTeamDetail(authorizationHeader, teamId);
+        return teamQuery.getTeamDetail(teamId);
     }
 
     @Operation(
@@ -101,17 +97,14 @@ public class TeamController {
     )
     @PatchMapping("/{teamId}")
     public TeamDetailResponse updateTeam(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID teamId,
             @Valid @RequestBody UpdateTeamRequest request
     ) {
-        UUID updatedTeamId = updateTeamUseCase.execute(
-                authorizationHeader,
-                teamId,
+        UUID updatedTeamId = updateTeamUseCase.execute(teamId,
                 request.name(),
                 request.description()
         );
-        return teamQuery.getTeamDetail(authorizationHeader, updatedTeamId);
+        return teamQuery.getTeamDetail(updatedTeamId);
     }
 
     @Operation(
@@ -120,10 +113,9 @@ public class TeamController {
     )
     @DeleteMapping("/{teamId}")
     public ResponseEntity<Void> deleteTeam(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID teamId
     ) {
-        deleteTeamUseCase.execute(authorizationHeader, teamId);
+        deleteTeamUseCase.execute(teamId);
         return ResponseEntity.noContent().build();
     }
 }

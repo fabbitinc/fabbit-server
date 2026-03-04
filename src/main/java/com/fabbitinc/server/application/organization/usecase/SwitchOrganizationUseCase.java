@@ -5,7 +5,7 @@ import com.fabbitinc.server.application.auth.dto.response.TokenResponse;
 import com.fabbitinc.server.application.auth.dto.response.UserResponse;
 import com.fabbitinc.server.application.auth.service.JwtTokenService;
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.organization.dto.request.SwitchOrgRequest;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
@@ -20,15 +20,15 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SwitchOrganizationUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final OrganizationService organizationService;
     private final UserService userService;
     private final JwtTokenService jwtTokenService;
     private final FileUrlResolver fileUrlResolver;
 
     @Transactional
-    public LoginResponse execute(String authorizationHeader, SwitchOrgRequest request) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+    public LoginResponse execute(SwitchOrgRequest request) {
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
         Membership membership = organizationService.switchOrganization(auth.userId(), request.slug());
         User user = userService.getUserOrThrow(auth.userId());
 

@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.dashboard.query;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.dashboard.dto.response.BomStatsResponse;
 import com.fabbitinc.server.application.dashboard.dto.response.DashboardStatsResponse;
 import com.fabbitinc.server.application.dashboard.dto.response.LastSynthesisResponse;
@@ -20,14 +20,14 @@ import java.time.temporal.ChronoUnit;
 @RequiredArgsConstructor
 public class DashboardQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final PartRepository partRepository;
     private final BomLinkRepository bomLinkRepository;
     private final SynthesisJobRepository synthesisJobRepository;
 
     @Transactional(readOnly = true)
-    public DashboardStatsResponse getStats(String authorizationHeader) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public DashboardStatsResponse getStats() {
+        currentAuthProvider.getCurrentAuth();
 
         Instant since = Instant.now().minus(7, ChronoUnit.DAYS);
         int totalParts = safeToInt(partRepository.count());

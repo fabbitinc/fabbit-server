@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.file.usecase;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.file.dto.request.BatchCompleteRequest;
 import com.fabbitinc.server.application.file.dto.response.BatchCompleteResponse;
 import com.fabbitinc.server.application.file.service.FileService;
@@ -12,12 +12,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class BatchCompleteFilesUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final FileService fileService;
 
     @Transactional
-    public BatchCompleteResponse execute(String authorizationHeader, BatchCompleteRequest request) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public BatchCompleteResponse execute(BatchCompleteRequest request) {
+        currentAuthProvider.getCurrentAuth();
         return fileService.batchCompleteFiles(request);
     }
 }

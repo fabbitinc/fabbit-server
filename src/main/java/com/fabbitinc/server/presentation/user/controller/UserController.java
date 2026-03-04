@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -42,8 +41,8 @@ public class UserController {
             description = "현재 인증된 사용자의 프로필과 소속 조직 목록을 조회합니다"
     )
     @GetMapping("/me")
-    public MeResponse getMe(@RequestHeader("Authorization") String authorizationHeader) {
-        return userQuery.getMe(authorizationHeader);
+    public MeResponse getMe() {
+        return userQuery.getMe();
     }
 
     @Operation(
@@ -52,10 +51,9 @@ public class UserController {
     )
     @PatchMapping("/me")
     public UpdateProfileResponse updateProfile(
-            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody UpdateProfileRequest request
     ) {
-        return updateProfileUseCase.execute(authorizationHeader, request);
+        return updateProfileUseCase.execute(request);
     }
 
     @Operation(
@@ -64,10 +62,9 @@ public class UserController {
     )
     @PutMapping("/me/password")
     public ResponseEntity<Void> changePassword(
-            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody ChangePasswordRequest request
     ) {
-        changePasswordUseCase.execute(authorizationHeader, request);
+        changePasswordUseCase.execute(request);
         return ResponseEntity.noContent().build();
     }
 
@@ -77,10 +74,9 @@ public class UserController {
     )
     @PutMapping("/me/profile-image")
     public ProfileImageResponse setProfileImage(
-            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody SetProfileImageRequest request
     ) {
-        return setProfileImageUseCase.execute(authorizationHeader, request.fileId());
+        return setProfileImageUseCase.execute(request.fileId());
     }
 
     @Operation(
@@ -88,8 +84,8 @@ public class UserController {
             description = "사용자 프로필 이미지를 제거하고 연결된 파일을 소프트 삭제합니다"
     )
     @DeleteMapping("/me/profile-image")
-    public ResponseEntity<Void> deleteProfileImage(@RequestHeader("Authorization") String authorizationHeader) {
-        deleteProfileImageUseCase.execute(authorizationHeader);
+    public ResponseEntity<Void> deleteProfileImage() {
+        deleteProfileImageUseCase.execute();
         return ResponseEntity.noContent().build();
     }
 }

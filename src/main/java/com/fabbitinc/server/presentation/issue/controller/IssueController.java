@@ -49,7 +49,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -87,7 +86,6 @@ public class IssueController {
     )
     @GetMapping("/lookup")
     public IssueLookupResponse lookupIssues(
-            @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "type", required = false) String type,
             @RequestParam(value = "limit", defaultValue = "10")
@@ -95,7 +93,7 @@ public class IssueController {
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
             int limit
     ) {
-        return issueQuery.lookupIssues(authorizationHeader, search, type, limit);
+        return issueQuery.lookupIssues(search, type, limit);
     }
 
     @Operation(
@@ -104,7 +102,6 @@ public class IssueController {
     )
     @GetMapping
     public IssueListResponse listIssues(
-            @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "state", required = false) String state,
             @RequestParam(value = "offset", defaultValue = "0")
@@ -115,7 +112,7 @@ public class IssueController {
             @Max(value = 100, message = "limit은 100 이하여야 합니다")
             int limit
     ) {
-        return issueQuery.listIssues(authorizationHeader, search, state, offset, limit);
+        return issueQuery.listIssues(search, state, offset, limit);
     }
 
     @Operation(
@@ -124,10 +121,9 @@ public class IssueController {
     )
     @GetMapping("/{issueNumber}")
     public IssueResponse getIssue(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber
     ) {
-        return issueQuery.getIssue(authorizationHeader, issueNumber);
+        return issueQuery.getIssue(issueNumber);
     }
 
     @Operation(
@@ -137,11 +133,10 @@ public class IssueController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public IssueResponse createIssue(
-            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody CreateIssueRequest request
     ) {
-        int issueNumber = createIssueUseCase.execute(authorizationHeader, request);
-        return issueQuery.getIssue(authorizationHeader, issueNumber);
+        int issueNumber = createIssueUseCase.execute(request);
+        return issueQuery.getIssue(issueNumber);
     }
 
     @Operation(
@@ -150,12 +145,11 @@ public class IssueController {
     )
     @PatchMapping("/{issueNumber}")
     public IssueResponse updateIssue(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber,
             @Valid @RequestBody UpdateIssueRequest request
     ) {
-        updateIssueUseCase.execute(authorizationHeader, issueNumber, request);
-        return issueQuery.getIssue(authorizationHeader, issueNumber);
+        updateIssueUseCase.execute(issueNumber, request);
+        return issueQuery.getIssue(issueNumber);
     }
 
     @Operation(
@@ -164,11 +158,10 @@ public class IssueController {
     )
     @PutMapping("/{issueNumber}/assignees")
     public SyncDiffResponse syncAssignees(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncAssigneesRequest request
     ) {
-        return syncAssigneesUseCase.execute(authorizationHeader, IssueTargetType.ISSUE, issueNumber, request);
+        return syncAssigneesUseCase.execute(IssueTargetType.ISSUE, issueNumber, request);
     }
 
     @Operation(
@@ -177,11 +170,10 @@ public class IssueController {
     )
     @PutMapping("/{issueNumber}/assigned-teams")
     public SyncDiffResponse syncTeamAssignees(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncTeamAssigneesRequest request
     ) {
-        return syncTeamAssigneesUseCase.execute(authorizationHeader, IssueTargetType.ISSUE, issueNumber, request);
+        return syncTeamAssigneesUseCase.execute(IssueTargetType.ISSUE, issueNumber, request);
     }
 
     @Operation(
@@ -190,11 +182,10 @@ public class IssueController {
     )
     @PutMapping("/{issueNumber}/changes")
     public SyncDiffResponse syncChanges(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncChangesRequest request
     ) {
-        return syncChangesUseCase.execute(authorizationHeader, issueNumber, request);
+        return syncChangesUseCase.execute(issueNumber, request);
     }
 
     @Operation(
@@ -203,11 +194,10 @@ public class IssueController {
     )
     @PostMapping("/{issueNumber}/close")
     public IssueResponse closeIssue(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber
     ) {
-        closeIssueUseCase.execute(authorizationHeader, issueNumber);
-        return issueQuery.getIssue(authorizationHeader, issueNumber);
+        closeIssueUseCase.execute(issueNumber);
+        return issueQuery.getIssue(issueNumber);
     }
 
     @Operation(
@@ -216,11 +206,10 @@ public class IssueController {
     )
     @PostMapping("/{issueNumber}/reopen")
     public IssueResponse reopenIssue(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber
     ) {
-        reopenIssueUseCase.execute(authorizationHeader, issueNumber);
-        return issueQuery.getIssue(authorizationHeader, issueNumber);
+        reopenIssueUseCase.execute(issueNumber);
+        return issueQuery.getIssue(issueNumber);
     }
 
     @Operation(
@@ -229,11 +218,10 @@ public class IssueController {
     )
     @PutMapping("/{issueNumber}/labels")
     public SyncDiffResponse syncLabels(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncLabelsRequest request
     ) {
-        return syncLabelsUseCase.execute(authorizationHeader, IssueTargetType.ISSUE, issueNumber, request);
+        return syncLabelsUseCase.execute(IssueTargetType.ISSUE, issueNumber, request);
     }
 
     @Operation(
@@ -242,11 +230,10 @@ public class IssueController {
     )
     @PutMapping("/{issueNumber}/parts")
     public SyncDiffResponse syncParts(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncPartsRequest request
     ) {
-        return syncPartsUseCase.execute(authorizationHeader, IssueTargetType.ISSUE, issueNumber, request);
+        return syncPartsUseCase.execute(IssueTargetType.ISSUE, issueNumber, request);
     }
 
     @Operation(
@@ -255,10 +242,9 @@ public class IssueController {
     )
     @GetMapping("/{issueNumber}/timeline")
     public TimelineResponse getTimeline(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber
     ) {
-        return issueQuery.getIssueTimeline(authorizationHeader, issueNumber, IssueTargetType.ISSUE);
+        return issueQuery.getIssueTimeline(issueNumber, IssueTargetType.ISSUE);
     }
 
     @Operation(
@@ -268,11 +254,10 @@ public class IssueController {
     @PostMapping("/{issueNumber}/comments")
     @ResponseStatus(HttpStatus.CREATED)
     public CommentResponse createComment(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber,
             @Valid @RequestBody CreateCommentRequest request
     ) {
-        return createCommentUseCase.execute(authorizationHeader, IssueTargetType.ISSUE, issueNumber, request);
+        return createCommentUseCase.execute(IssueTargetType.ISSUE, issueNumber, request);
     }
 
     @Operation(
@@ -281,12 +266,11 @@ public class IssueController {
     )
     @PatchMapping("/{issueNumber}/comments/{commentId}")
     public CommentResponse updateComment(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber,
             @PathVariable UUID commentId,
             @Valid @RequestBody UpdateCommentRequest request
     ) {
-        return updateCommentUseCase.execute(authorizationHeader, IssueTargetType.ISSUE, issueNumber, commentId, request);
+        return updateCommentUseCase.execute(IssueTargetType.ISSUE, issueNumber, commentId, request);
     }
 
     @Operation(
@@ -295,11 +279,10 @@ public class IssueController {
     )
     @DeleteMapping("/{issueNumber}/comments/{commentId}")
     public ResponseEntity<Void> deleteComment(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber,
             @PathVariable UUID commentId
     ) {
-        deleteCommentUseCase.execute(authorizationHeader, IssueTargetType.ISSUE, issueNumber, commentId);
+        deleteCommentUseCase.execute(IssueTargetType.ISSUE, issueNumber, commentId);
         return ResponseEntity.noContent().build();
     }
 
@@ -309,11 +292,10 @@ public class IssueController {
     )
     @PostMapping("/{issueNumber}/files")
     public List<FileItemResponse> addFiles(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber,
             @Valid @RequestBody AttachFilesRequest request
     ) {
-        return addIssueFilesUseCase.execute(authorizationHeader, IssueTargetType.ISSUE, issueNumber, request);
+        return addIssueFilesUseCase.execute(IssueTargetType.ISSUE, issueNumber, request);
     }
 
     @Operation(
@@ -322,11 +304,10 @@ public class IssueController {
     )
     @DeleteMapping("/{issueNumber}/files/{fileId}")
     public ResponseEntity<Void> deleteFile(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable int issueNumber,
             @PathVariable UUID fileId
     ) {
-        deleteIssueFileUseCase.execute(authorizationHeader, IssueTargetType.ISSUE, issueNumber, fileId);
+        deleteIssueFileUseCase.execute(IssueTargetType.ISSUE, issueNumber, fileId);
         return ResponseEntity.noContent().build();
     }
 }

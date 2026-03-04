@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.team.query;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
@@ -31,15 +31,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TeamQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final UserRepository userRepository;
     private final FileUrlResolver fileUrlResolver;
 
     @Transactional(readOnly = true)
-    public TeamListResponse listTeams(String authorizationHeader) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public TeamListResponse listTeams() {
+        currentAuthProvider.getCurrentAuth();
 
         List<TeamSummaryResponse> items = teamRepository.findAllByOrderByNameAsc().stream()
                 .map(this::toTeamSummaryResponse)
@@ -48,8 +48,8 @@ public class TeamQuery {
     }
 
     @Transactional(readOnly = true)
-    public TeamLookupResponse lookupTeams(String authorizationHeader, String search, int limit) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public TeamLookupResponse lookupTeams(String search, int limit) {
+        currentAuthProvider.getCurrentAuth();
 
         List<Team> teams;
         if (search == null || search.isBlank()) {
@@ -64,8 +64,8 @@ public class TeamQuery {
     }
 
     @Transactional(readOnly = true)
-    public TeamDetailResponse getTeamDetail(String authorizationHeader, UUID teamId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public TeamDetailResponse getTeamDetail(UUID teamId) {
+        currentAuthProvider.getCurrentAuth();
 
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new AppException(
@@ -77,8 +77,8 @@ public class TeamQuery {
     }
 
     @Transactional(readOnly = true)
-    public TeamMemberListResponse listMembers(String authorizationHeader, UUID teamId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public TeamMemberListResponse listMembers(UUID teamId) {
+        currentAuthProvider.getCurrentAuth();
 
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "팀을 찾을 수 없습니다"));

@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.issue.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.issue.dto.request.CreateCommentRequest;
 import com.fabbitinc.server.application.issue.dto.response.CommentResponse;
 import com.fabbitinc.server.application.issue.service.IssueService;
@@ -21,18 +21,16 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CreateCommentUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final IssueService issueService;
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public CommentResponse execute(
-            String authorizationHeader,
-            IssueTargetType targetType,
+    public CommentResponse execute(IssueTargetType targetType,
             int issueNumber,
             CreateCommentRequest request
     ) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
         UUID issueId = resolveIssueId(targetType, issueNumber);
 
         IssueComment comment = issueService.createComment(auth.userId(), issueId, request.body());

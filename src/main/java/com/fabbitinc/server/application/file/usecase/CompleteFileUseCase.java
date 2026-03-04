@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.file.usecase;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.file.dto.response.FileCompleteResponse;
 import com.fabbitinc.server.application.file.service.FileService;
 import lombok.RequiredArgsConstructor;
@@ -13,12 +13,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CompleteFileUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final FileService fileService;
 
     @Transactional
-    public FileCompleteResponse execute(String authorizationHeader, UUID fileId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public FileCompleteResponse execute(UUID fileId) {
+        currentAuthProvider.getCurrentAuth();
         return fileService.completeFile(fileId);
     }
 }

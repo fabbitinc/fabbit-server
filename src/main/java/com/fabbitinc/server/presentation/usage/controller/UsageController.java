@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,8 +25,8 @@ public class UsageController {
             description = "스토리지 총 사용량/한도/초과분과 카테고리별 내역을 조회합니다"
     )
     @GetMapping("/storage")
-    public StorageUsageResponse getStorageUsage(@RequestHeader("Authorization") String authorizationHeader) {
-        return usageQuery.getStorageUsage(authorizationHeader);
+    public StorageUsageResponse getStorageUsage() {
+        return usageQuery.getStorageUsage();
     }
 
     @Operation(
@@ -36,10 +35,9 @@ public class UsageController {
     )
     @GetMapping("/storage/trend")
     public StorageTrendResponse getStorageTrend(
-            @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam(value = "period", defaultValue = "30d") String period
     ) {
-        return usageQuery.getStorageTrend(authorizationHeader, period);
+        return usageQuery.getStorageTrend(period);
     }
 
     @Operation(
@@ -47,7 +45,7 @@ public class UsageController {
             description = "AI 크레딧 잔여/사용량과 카테고리별 사용량을 조회합니다"
     )
     @GetMapping("/credits")
-    public CreditUsageResponse getCreditUsage(@RequestHeader("Authorization") String authorizationHeader) {
-        return usageQuery.getCreditUsage(authorizationHeader);
+    public CreditUsageResponse getCreditUsage() {
+        return usageQuery.getCreditUsage();
     }
 }

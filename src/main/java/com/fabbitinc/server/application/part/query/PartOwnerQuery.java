@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.part.query;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
@@ -27,7 +27,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PartOwnerQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final PartRepository partRepository;
     private final PartDefaultOwnerRepository partDefaultOwnerRepository;
     private final UserRepository userRepository;
@@ -35,8 +35,8 @@ public class PartOwnerQuery {
     private final FileUrlResolver fileUrlResolver;
 
     @Transactional(readOnly = true)
-    public PartOwnerResponse getPartOwner(String authorizationHeader, UUID partId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public PartOwnerResponse getPartOwner(UUID partId) {
+        currentAuthProvider.getCurrentAuth();
 
         Part part = partRepository.findById(partId)
                 .orElseThrow(() -> new AppException(
@@ -47,8 +47,8 @@ public class PartOwnerQuery {
     }
 
     @Transactional(readOnly = true)
-    public PartDefaultOwnerListResponse listDefaultOwners(String authorizationHeader) {
-        authTokenParser.requireAdmin(authorizationHeader);
+    public PartDefaultOwnerListResponse listDefaultOwners() {
+        currentAuthProvider.getAdminAuth();
 
         List<PartDefaultOwnerItemResponse> items = partDefaultOwnerRepository.findAllOrderByCategoryNullsFirst()
                 .stream()
@@ -58,8 +58,8 @@ public class PartOwnerQuery {
     }
 
     @Transactional(readOnly = true)
-    public PartDefaultOwnerItemResponse getDefaultOwner(String authorizationHeader, UUID defaultOwnerId) {
-        authTokenParser.requireAdmin(authorizationHeader);
+    public PartDefaultOwnerItemResponse getDefaultOwner(UUID defaultOwnerId) {
+        currentAuthProvider.getAdminAuth();
 
         PartDefaultOwner row = partDefaultOwnerRepository.findById(defaultOwnerId)
                 .orElseThrow(() -> new AppException(

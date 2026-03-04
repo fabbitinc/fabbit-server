@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,11 +43,10 @@ public class MemberController {
     )
     @GetMapping("/lookup")
     public MemberLookupResponse lookupMembers(
-            @RequestHeader("Authorization") String authorizationHeader,
             @Parameter(description = "이름 검색 (ILIKE)") @RequestParam(value = "search", required = false) String search,
             @Parameter(description = "조회 건수") @RequestParam(value = "limit", defaultValue = "10") @Min(1) @Max(50) int limit
     ) {
-        return memberQuery.lookupMembers(authorizationHeader, search, limit);
+        return memberQuery.lookupMembers(search, limit);
     }
 
     @Operation(
@@ -56,8 +54,8 @@ public class MemberController {
             description = "현재 조직의 전체 멤버 목록을 조회합니다"
     )
     @GetMapping
-    public MemberListResponse listMembers(@RequestHeader("Authorization") String authorizationHeader) {
-        return memberQuery.listOrgMembers(authorizationHeader);
+    public MemberListResponse listMembers() {
+        return memberQuery.listOrgMembers();
     }
 
     @Operation(
@@ -66,11 +64,10 @@ public class MemberController {
     )
     @PatchMapping("/{userId}/role")
     public ResponseEntity<Void> changeMemberRole(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID userId,
             @Valid @RequestBody ChangeRoleRequest request
     ) {
-        changeMemberRoleUseCase.execute(authorizationHeader, userId, request);
+        changeMemberRoleUseCase.execute(userId, request);
         return ResponseEntity.ok().build();
     }
 
@@ -80,10 +77,9 @@ public class MemberController {
     )
     @DeleteMapping("/{userId}")
     public ResponseEntity<Void> removeMember(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID userId
     ) {
-        removeMemberUseCase.execute(authorizationHeader, userId);
+        removeMemberUseCase.execute(userId);
         return ResponseEntity.noContent().build();
     }
 }

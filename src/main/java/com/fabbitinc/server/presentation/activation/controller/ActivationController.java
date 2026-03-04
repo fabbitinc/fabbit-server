@@ -15,7 +15,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,9 +35,8 @@ public class ActivationController {
     )
     @PostMapping("/health-check")
     public HealthCheckResponse healthCheck(
-            @RequestHeader("Authorization") String authorizationHeader
-    ) {
-        return healthCheckUseCase.execute(authorizationHeader);
+) {
+        return healthCheckUseCase.execute();
     }
 
     @Operation(
@@ -47,10 +45,9 @@ public class ActivationController {
     )
     @PostMapping("/query")
     public QueryResponse queryGraph(
-            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody QueryRequest request
     ) {
-        return queryGraphUseCase.execute(authorizationHeader, request.question());
+        return queryGraphUseCase.execute(request.question());
     }
 
     @Operation(
@@ -59,8 +56,7 @@ public class ActivationController {
     )
     @GetMapping("/starters")
     public StartersResponse getStarters(
-            @RequestHeader("Authorization") String authorizationHeader
-    ) {
-        return activationQuery.getStarters(authorizationHeader);
+) {
+        return activationQuery.getStarters();
     }
 }

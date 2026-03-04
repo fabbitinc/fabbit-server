@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.member.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.member.dto.request.ChangeRoleRequest;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
@@ -15,12 +15,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ChangeMemberRoleUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final OrganizationService organizationService;
 
     @Transactional
-    public void execute(String authorizationHeader, UUID userId, ChangeRoleRequest request) {
-        AuthContext auth = authTokenParser.requireRole(authorizationHeader, MembershipRole.OWNER);
+    public void execute(UUID userId, ChangeRoleRequest request) {
+        AuthContext auth = currentAuthProvider.getCurrentAuth(MembershipRole.OWNER);
         organizationService.changeMemberRole(auth, userId, request.role());
     }
 }

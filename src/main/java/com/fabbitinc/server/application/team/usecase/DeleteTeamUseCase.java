@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.team.usecase;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -12,12 +12,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DeleteTeamUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final TeamService teamService;
 
     @Transactional
-    public void execute(String authorizationHeader, UUID teamId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public void execute(UUID teamId) {
+        currentAuthProvider.getCurrentAuth();
         teamService.deleteTeam(teamId);
     }
 }

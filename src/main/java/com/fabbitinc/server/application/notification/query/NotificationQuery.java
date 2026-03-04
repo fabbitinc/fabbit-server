@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.notification.query;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.notification.dto.response.MentionPayloadResponse;
 import com.fabbitinc.server.application.notification.dto.response.NotificationListResponse;
@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class NotificationQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final FileUrlResolver fileUrlResolver;
@@ -39,13 +39,11 @@ public class NotificationQuery {
     private static final Pattern BOOLEAN_FIELD_PATTERN = Pattern.compile("\"%s\"\\s*:\\s*(true|false)");
 
     @Transactional(readOnly = true)
-    public NotificationListResponse listNotifications(
-            String authorizationHeader,
-            UUID cursor,
+    public NotificationListResponse listNotifications(UUID cursor,
             int limit,
             boolean unreadOnly
     ) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
         List<Notification> notifications = notificationRepository.listByUserCursor(
                 auth.userId(),
                 cursor,
@@ -84,8 +82,8 @@ public class NotificationQuery {
     }
 
     @Transactional(readOnly = true)
-    public UnreadCountResponse countUnread(String authorizationHeader) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+    public UnreadCountResponse countUnread() {
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
         long unreadCount = notificationRepository.countByUserIdAndReadAtIsNull(auth.userId());
         return new UnreadCountResponse((int) unreadCount);
     }

@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.part.usecase;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.part.service.PartService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -12,12 +12,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DetachPartFileUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final PartService partService;
 
     @Transactional
-    public void execute(String authorizationHeader, UUID partId, UUID fileId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public void execute(UUID partId, UUID fileId) {
+        currentAuthProvider.getCurrentAuth();
         partService.detachFile(partId, fileId);
     }
 }

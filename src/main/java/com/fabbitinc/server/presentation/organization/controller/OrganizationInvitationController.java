@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -39,10 +38,9 @@ public class OrganizationInvitationController {
     )
     @PostMapping
     public ResponseEntity<InvitationResponse> createInvitation(
-            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody CreateInvitationRequest request
     ) {
-        InvitationResponse response = createInvitationUseCase.execute(authorizationHeader, request);
+        InvitationResponse response = createInvitationUseCase.execute(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -51,8 +49,8 @@ public class OrganizationInvitationController {
             description = "관리자(ADMIN 이상)가 조직의 초대 목록(PENDING/ACCEPTED/CANCELLED)을 최신순으로 조회합니다"
     )
     @GetMapping
-    public InvitationListResponse listInvitations(@RequestHeader("Authorization") String authorizationHeader) {
-        return organizationInvitationQuery.listInvitations(authorizationHeader);
+    public InvitationListResponse listInvitations() {
+        return organizationInvitationQuery.listInvitations();
     }
 
     @Operation(
@@ -61,10 +59,9 @@ public class OrganizationInvitationController {
     )
     @DeleteMapping("/{invitationId}")
     public ResponseEntity<Void> cancelInvitation(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID invitationId
     ) {
-        cancelInvitationUseCase.execute(authorizationHeader, invitationId);
+        cancelInvitationUseCase.execute(invitationId);
         return ResponseEntity.noContent().build();
     }
 }

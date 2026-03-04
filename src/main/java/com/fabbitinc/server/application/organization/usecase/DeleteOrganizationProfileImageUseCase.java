@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.organization.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.file.service.FileService;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
 import com.fabbitinc.server.domain.file.model.File;
@@ -15,13 +15,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DeleteOrganizationProfileImageUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final FileService fileService;
     private final OrganizationService organizationService;
 
     @Transactional
-    public void execute(String authorizationHeader) {
-        AuthContext auth = authTokenParser.requireAdmin(authorizationHeader);
+    public void execute() {
+        AuthContext auth = currentAuthProvider.getAdminAuth();
 
         List<File> files = fileService.getFilesByOwner("organization", auth.orgId());
         if (files.isEmpty()) {

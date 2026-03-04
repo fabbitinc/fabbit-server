@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.part.query;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
@@ -71,7 +71,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class PartQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final PartRepository partRepository;
     private final FileRepository fileRepository;
     private final UserRepository userRepository;
@@ -89,8 +89,8 @@ public class PartQuery {
     private static final int MAX_BOM_DEPTH = 30;
 
     @Transactional(readOnly = true)
-    public PartLookupResponse lookupParts(String authorizationHeader, String search, int limit) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public PartLookupResponse lookupParts(String search, int limit) {
+        currentAuthProvider.getCurrentAuth();
 
         List<Part> parts;
         if (search == null || search.isBlank()) {
@@ -111,8 +111,8 @@ public class PartQuery {
     }
 
     @Transactional(readOnly = true)
-    public CategoryStatsResponse listCategories(String authorizationHeader) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public CategoryStatsResponse listCategories() {
+        currentAuthProvider.getCurrentAuth();
 
         List<CategoryStatsItemResponse> items = partRepository.findCategoryStats().stream()
                 .map(row -> new CategoryStatsItemResponse((String) row[0], ((Number) row[1]).longValue()))
@@ -121,14 +121,14 @@ public class PartQuery {
     }
 
     @Transactional(readOnly = true)
-    public CategoryLookupResponse lookupCategories(String authorizationHeader) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public CategoryLookupResponse lookupCategories() {
+        currentAuthProvider.getCurrentAuth();
         return new CategoryLookupResponse(partRepository.findDistinctCategories());
     }
 
     @Transactional(readOnly = true)
-    public PartFilterOptionsResponse getFilterOptions(String authorizationHeader) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public PartFilterOptionsResponse getFilterOptions() {
+        currentAuthProvider.getCurrentAuth();
         return new PartFilterOptionsResponse(
                 partRepository.findDistinctCategories(),
                 partRepository.findDistinctLifecycleStates()
@@ -136,9 +136,7 @@ public class PartQuery {
     }
 
     @Transactional(readOnly = true)
-    public PartListResponse listParts(
-            String authorizationHeader,
-            String search,
+    public PartListResponse listParts(String search,
             String category,
             String lifecycleState,
             Boolean hasDrawing,
@@ -147,7 +145,7 @@ public class PartQuery {
             int offset,
             int limit
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
 
         StringBuilder whereClause = new StringBuilder(" where 1=1");
         Map<String, Object> params = new HashMap<>();
@@ -219,9 +217,7 @@ public class PartQuery {
     }
 
     @Transactional(readOnly = true)
-    public byte[] exportPartsExcel(
-            String authorizationHeader,
-            String search,
+    public byte[] exportPartsExcel(String search,
             String category,
             String lifecycleState,
             Boolean hasDrawing,
@@ -230,7 +226,7 @@ public class PartQuery {
             UUID mappingId,
             UUID projectId
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
         List<Part> parts = findPartsForExport(
                 search,
                 category,
@@ -297,13 +293,11 @@ public class PartQuery {
     }
 
     @Transactional(readOnly = true)
-    public byte[] exportBomTreeExcel(
-            String authorizationHeader,
-            UUID partId,
+    public byte[] exportBomTreeExcel(UUID partId,
             String direction,
             UUID mappingId
     ) {
-        BomTreeResponse tree = getBomTree(authorizationHeader, partId, direction);
+        BomTreeResponse tree = getBomTree(partId, direction);
         List<BomFlatRow> rows = new ArrayList<>();
         flattenBomTree(tree.root(), 0, rows);
 
@@ -346,8 +340,8 @@ public class PartQuery {
     }
 
     @Transactional(readOnly = true)
-    public PartDetailResponse getPartDetail(String authorizationHeader, UUID partId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public PartDetailResponse getPartDetail(UUID partId) {
+        currentAuthProvider.getCurrentAuth();
 
         Part part = partRepository.findById(partId)
                 .orElseThrow(() -> new AppException(
@@ -401,8 +395,8 @@ public class PartQuery {
     }
 
     @Transactional(readOnly = true)
-    public PartBomResponse getPartBom(String authorizationHeader, UUID partId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public PartBomResponse getPartBom(UUID partId) {
+        currentAuthProvider.getCurrentAuth();
         assertPartExists(partId);
 
         Query childrenQuery = entityManager.createNativeQuery(
@@ -456,8 +450,8 @@ public class PartQuery {
     }
 
     @Transactional(readOnly = true)
-    public BomTreeResponse getBomTree(String authorizationHeader, UUID partId, String direction) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public BomTreeResponse getBomTree(UUID partId, String direction) {
+        currentAuthProvider.getCurrentAuth();
 
         Part rootPart = partRepository.findById(partId)
                 .orElseThrow(() -> new AppException(
@@ -483,8 +477,8 @@ public class PartQuery {
     }
 
     @Transactional(readOnly = true)
-    public PartFilesResponse getPartFiles(String authorizationHeader, UUID partId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public PartFilesResponse getPartFiles(UUID partId) {
+        currentAuthProvider.getCurrentAuth();
         assertPartExists(partId);
 
         List<FileItemResponse> items = fileRepository.findByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
@@ -499,16 +493,16 @@ public class PartQuery {
     }
 
     @Transactional(readOnly = true)
-    public List<FileItemResponse> getFilesByIds(String authorizationHeader, List<UUID> fileIds) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public List<FileItemResponse> getFilesByIds(List<UUID> fileIds) {
+        currentAuthProvider.getCurrentAuth();
         return fileRepository.findByIdIn(fileIds).stream()
                 .map(this::toFileItem)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public PartSuppliersResponse getPartSuppliers(String authorizationHeader, UUID partId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public PartSuppliersResponse getPartSuppliers(UUID partId) {
+        currentAuthProvider.getCurrentAuth();
         assertPartExists(partId);
 
         List<PartSupplier> links = partSupplierRepository.findByPartId(partId);

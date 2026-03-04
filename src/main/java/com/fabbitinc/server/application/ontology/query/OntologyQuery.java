@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.ontology.query;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.ontology.dto.response.NodeLabelSchemaResponse;
@@ -29,7 +29,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OntologyQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final PartRepository partRepository;
     private final DrawingRepository drawingRepository;
     private final SupplierRepository supplierRepository;
@@ -38,8 +38,8 @@ public class OntologyQuery {
     private OntologySchemaResponse cachedSchema;
 
     @Transactional(readOnly = true)
-    public OntologySchemaResponse getOntologySchema(String authorizationHeader) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public OntologySchemaResponse getOntologySchema() {
+        currentAuthProvider.getCurrentAuth();
         if (cachedSchema == null) {
             cachedSchema = buildSchema();
         }
@@ -47,13 +47,11 @@ public class OntologyQuery {
     }
 
     @Transactional(readOnly = true)
-    public NodeSearchResponse searchNodes(
-            String authorizationHeader,
-            String label,
+    public NodeSearchResponse searchNodes(String label,
             String search,
             int limit
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
 
         List<NodeSearchItemResponse> items = switch (label) {
             case "Part" -> searchParts(search, limit);

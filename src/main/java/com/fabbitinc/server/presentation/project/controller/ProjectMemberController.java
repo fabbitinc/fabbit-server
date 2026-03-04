@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -44,7 +43,6 @@ public class ProjectMemberController {
     @Operation(summary = "GET /api/v1/projects/{projectId}/members/lookup", description = "프로젝트 멤버 picker용 lookup 목록을 조회합니다")
     @GetMapping("/lookup")
     public MemberLookupResponse lookupMembers(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID projectId,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "limit", defaultValue = "10")
@@ -52,29 +50,25 @@ public class ProjectMemberController {
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
             int limit
     ) {
-        return projectQuery.lookupMembers(authorizationHeader, projectId, search, limit);
+        return projectQuery.lookupMembers(projectId, search, limit);
     }
 
     @Operation(summary = "GET /api/v1/projects/{projectId}/members", description = "프로젝트 멤버 목록을 조회합니다")
     @GetMapping
     public ProjectMemberListResponse listProjectMembers(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID projectId
     ) {
-        return projectQuery.listMembers(authorizationHeader, projectId);
+        return projectQuery.listMembers(projectId);
     }
 
     @Operation(summary = "POST /api/v1/projects/{projectId}/members", description = "프로젝트에 멤버를 배치 추가합니다")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ManageMembersResponse addProjectMembers(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID projectId,
             @Valid @RequestBody AddMembersRequest request
     ) {
-        return addProjectMembersUseCase.execute(
-                authorizationHeader,
-                projectId,
+        return addProjectMembersUseCase.execute(projectId,
                 request.userIds(),
                 request.role()
         );
@@ -83,11 +77,10 @@ public class ProjectMemberController {
     @Operation(summary = "DELETE /api/v1/projects/{projectId}/members", description = "프로젝트에서 멤버를 배치 제거합니다")
     @DeleteMapping
     public ResponseEntity<Void> removeProjectMembers(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID projectId,
             @Valid @RequestBody ManageMembersRequest request
     ) {
-        removeProjectMembersUseCase.execute(authorizationHeader, projectId, request.userIds());
+        removeProjectMembersUseCase.execute(projectId, request.userIds());
         return ResponseEntity.noContent().build();
     }
 }

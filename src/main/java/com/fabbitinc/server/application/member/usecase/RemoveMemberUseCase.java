@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.member.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -13,12 +13,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RemoveMemberUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final OrganizationService organizationService;
 
     @Transactional
-    public void execute(String authorizationHeader, UUID userId) {
-        AuthContext auth = authTokenParser.requireAdmin(authorizationHeader);
+    public void execute(UUID userId) {
+        AuthContext auth = currentAuthProvider.getAdminAuth();
         organizationService.removeMember(auth, userId);
     }
 }

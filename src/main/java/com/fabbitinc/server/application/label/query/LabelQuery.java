@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.label.query;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.label.dto.response.LabelListResponse;
 import com.fabbitinc.server.application.label.dto.response.LabelLookupItemResponse;
 import com.fabbitinc.server.application.label.dto.response.LabelLookupResponse;
@@ -18,12 +18,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LabelQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final LabelRepository labelRepository;
 
     @Transactional(readOnly = true)
-    public LabelListResponse listLabels(String authorizationHeader) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public LabelListResponse listLabels() {
+        currentAuthProvider.getCurrentAuth();
         List<LabelResponse> items = labelRepository.findAllByOrderByNameAsc().stream()
                 .map(this::toLabelResponse)
                 .toList();
@@ -31,12 +31,10 @@ public class LabelQuery {
     }
 
     @Transactional(readOnly = true)
-    public LabelLookupResponse lookupLabels(
-            String authorizationHeader,
-            String search,
+    public LabelLookupResponse lookupLabels(String search,
             int limit
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
         List<LabelLookupItemResponse> items = labelRepository.lookupLabels(
                         normalizeSearch(search),
                         PageRequest.of(0, limit)

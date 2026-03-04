@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -47,10 +46,9 @@ public class PartOwnerController {
     )
     @GetMapping("/{partId}/owner")
     public PartOwnerResponse getPartOwner(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID partId
     ) {
-        return partOwnerQuery.getPartOwner(authorizationHeader, partId);
+        return partOwnerQuery.getPartOwner(partId);
     }
 
     @Operation(
@@ -59,12 +57,11 @@ public class PartOwnerController {
     )
     @PatchMapping("/{partId}/owner")
     public PartOwnerResponse updatePartOwner(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID partId,
             @Valid @RequestBody UpdatePartOwnerRequest request
     ) {
-        UUID updatedPartId = updatePartOwnerUseCase.execute(authorizationHeader, partId, request);
-        return partOwnerQuery.getPartOwner(authorizationHeader, updatedPartId);
+        UUID updatedPartId = updatePartOwnerUseCase.execute(partId, request);
+        return partOwnerQuery.getPartOwner(updatedPartId);
     }
 
     @Operation(
@@ -73,9 +70,8 @@ public class PartOwnerController {
     )
     @GetMapping("/owner/defaults")
     public PartDefaultOwnerListResponse listDefaultOwners(
-            @RequestHeader("Authorization") String authorizationHeader
-    ) {
-        return partOwnerQuery.listDefaultOwners(authorizationHeader);
+) {
+        return partOwnerQuery.listDefaultOwners();
     }
 
     @Operation(
@@ -84,11 +80,10 @@ public class PartOwnerController {
     )
     @PutMapping("/owner/defaults")
     public PartDefaultOwnerItemResponse upsertDefaultOwner(
-            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody PartDefaultOwnerRequest request
     ) {
-        UUID defaultOwnerId = upsertDefaultOwnerUseCase.execute(authorizationHeader, request);
-        return partOwnerQuery.getDefaultOwner(authorizationHeader, defaultOwnerId);
+        UUID defaultOwnerId = upsertDefaultOwnerUseCase.execute(request);
+        return partOwnerQuery.getDefaultOwner(defaultOwnerId);
     }
 
     @Operation(
@@ -98,9 +93,8 @@ public class PartOwnerController {
     @DeleteMapping("/owner/defaults")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteDefaultOwner(
-            @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam(value = "category", required = false) String category
     ) {
-        deleteDefaultOwnerUseCase.execute(authorizationHeader, category);
+        deleteDefaultOwnerUseCase.execute(category);
     }
 }

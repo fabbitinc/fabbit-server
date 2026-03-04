@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.label.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.label.dto.request.UpdateLabelRequest;
 import com.fabbitinc.server.application.label.dto.response.LabelResponse;
 import com.fabbitinc.server.application.label.service.LabelService;
@@ -16,16 +16,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UpdateLabelUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final LabelService labelService;
 
     @Transactional
-    public LabelResponse execute(
-            String authorizationHeader,
-            UUID labelId,
+    public LabelResponse execute(UUID labelId,
             UpdateLabelRequest request
     ) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
         Label label = labelService.updateLabel(
                 auth.userId(),
                 labelId,

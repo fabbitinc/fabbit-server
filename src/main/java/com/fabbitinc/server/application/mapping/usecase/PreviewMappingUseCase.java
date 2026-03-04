@@ -2,7 +2,7 @@ package com.fabbitinc.server.application.mapping.usecase;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
@@ -27,15 +27,15 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PreviewMappingUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final MappingService mappingService;
     private final MappingGenerationSupport mappingGenerationSupport;
     private final MappingNormalizationSupport mappingNormalizationSupport;
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public MappingPreviewResponse execute(String authorizationHeader, MappingPreviewRequest request) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public MappingPreviewResponse execute(MappingPreviewRequest request) {
+        currentAuthProvider.getCurrentAuth();
 
         File file = mappingService.getUploadedFileOrThrow(request.fileId());
         List<String> targetSheets = mappingService.loadPreviewTargets(file, request.sheetName());

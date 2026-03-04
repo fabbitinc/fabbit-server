@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.part.usecase;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.drawing.service.DrawingService;
 import com.fabbitinc.server.application.part.service.PartService;
 import lombok.RequiredArgsConstructor;
@@ -13,13 +13,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DeletePartDrawingUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final PartService partService;
     private final DrawingService drawingService;
 
     @Transactional
-    public void execute(String authorizationHeader, UUID partId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public void execute(UUID partId) {
+        currentAuthProvider.getCurrentAuth();
         UUID drawingId = partService.unassignDrawing(partId);
         drawingService.deleteDrawing(drawingId);
     }

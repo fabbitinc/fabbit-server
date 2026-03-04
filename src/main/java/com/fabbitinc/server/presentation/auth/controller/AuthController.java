@@ -137,10 +137,9 @@ public class AuthController {
     @Operation(summary = "POST /api/v1/auth/logout", description = "리프레시 토큰 폐기")
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
-            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody RefreshRequest request
     ) {
-        logoutUseCase.execute(authorizationHeader, request);
+        logoutUseCase.execute(request);
         return ResponseEntity.noContent().build();
     }
 

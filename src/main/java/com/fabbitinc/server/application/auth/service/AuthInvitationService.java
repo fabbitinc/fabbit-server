@@ -83,11 +83,11 @@ public class AuthInvitationService {
         return invitation;
     }
 
-    public void cancelInvitation(AuthContext auth, UUID invitationId) {
+    public void cancelInvitation(UUID orgId, UUID invitationId) {
         Invitation invitation = invitationRepository.findById(invitationId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "초대를 찾을 수 없습니다"));
 
-        if (!invitation.getOrgId().equals(auth.orgId())) {
+        if (!invitation.getOrgId().equals(orgId)) {
             throw new AppException(ErrorCode.NOT_FOUND, "초대를 찾을 수 없습니다");
         }
 

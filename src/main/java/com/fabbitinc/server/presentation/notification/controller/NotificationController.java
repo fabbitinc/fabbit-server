@@ -19,7 +19,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -49,7 +48,6 @@ public class NotificationController {
     )
     @GetMapping
     public NotificationListResponse listNotifications(
-            @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam(value = "cursor", required = false) UUID cursor,
             @RequestParam(value = "limit", defaultValue = "20")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
@@ -57,7 +55,7 @@ public class NotificationController {
             int limit,
             @RequestParam(value = "unread_only", defaultValue = "false") boolean unreadOnly
     ) {
-        return notificationQuery.listNotifications(authorizationHeader, cursor, limit, unreadOnly);
+        return notificationQuery.listNotifications(cursor, limit, unreadOnly);
     }
 
     @Operation(
@@ -65,8 +63,8 @@ public class NotificationController {
             description = "현재 사용자의 미읽음 알림 개수를 조회합니다"
     )
     @GetMapping("/unread-count")
-    public UnreadCountResponse getUnreadCount(@RequestHeader("Authorization") String authorizationHeader) {
-        return notificationQuery.countUnread(authorizationHeader);
+    public UnreadCountResponse getUnreadCount() {
+        return notificationQuery.countUnread();
     }
 
     @Operation(
@@ -75,10 +73,9 @@ public class NotificationController {
     )
     @PutMapping("/{notificationId}/read")
     public ResponseEntity<Void> readNotification(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID notificationId
     ) {
-        markNotificationReadUseCase.execute(authorizationHeader, notificationId);
+        markNotificationReadUseCase.execute(notificationId);
         return ResponseEntity.noContent().build();
     }
 
@@ -87,8 +84,8 @@ public class NotificationController {
             description = "현재 사용자의 미읽음 알림을 모두 읽음 처리합니다"
     )
     @PutMapping("/read-all")
-    public ResponseEntity<Void> readAllNotifications(@RequestHeader("Authorization") String authorizationHeader) {
-        markAllNotificationsReadUseCase.execute(authorizationHeader);
+    public ResponseEntity<Void> readAllNotifications() {
+        markAllNotificationsReadUseCase.execute();
         return ResponseEntity.noContent().build();
     }
 
@@ -98,9 +95,8 @@ public class NotificationController {
     )
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<StreamingResponseBody> stream(
-            @RequestHeader("Authorization") String authorizationHeader
-    ) {
-        NotificationStreamSession session = notificationStreamUseCase.connect(authorizationHeader);
+) {
+        NotificationStreamSession session = notificationStreamUseCase.connect();
 
         StreamingResponseBody body = outputStream -> {
             try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {

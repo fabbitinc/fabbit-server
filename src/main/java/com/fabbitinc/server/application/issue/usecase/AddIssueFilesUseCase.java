@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.issue.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.file.dto.response.FileItemResponse;
 import com.fabbitinc.server.application.file.service.FileService;
@@ -20,19 +20,17 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AddIssueFilesUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final IssueService issueService;
     private final FileService fileService;
     private final FileUrlResolver fileUrlResolver;
 
     @Transactional
-    public List<FileItemResponse> execute(
-            String authorizationHeader,
-            IssueTargetType targetType,
+    public List<FileItemResponse> execute(IssueTargetType targetType,
             int issueNumber,
             AttachFilesRequest request
     ) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
         UUID issueId = resolveIssueId(targetType, issueNumber);
 
         List<File> attachableFiles = fileService.validateAttachable(request.fileIds());

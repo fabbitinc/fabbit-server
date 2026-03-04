@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.usage.query;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.usage.dto.response.CreditCategoryItem;
@@ -41,15 +41,15 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UsageQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final OrganizationRepository organizationRepository;
     private final FileRepository fileRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final AiUsageLogRepository aiUsageLogRepository;
 
     @Transactional(readOnly = true)
-    public StorageUsageResponse getStorageUsage(String authorizationHeader) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+    public StorageUsageResponse getStorageUsage() {
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
         Organization organization = organizationRepository.findById(auth.orgId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "조직을 찾을 수 없습니다"));
 
@@ -86,8 +86,8 @@ public class UsageQuery {
     }
 
     @Transactional(readOnly = true)
-    public StorageTrendResponse getStorageTrend(String authorizationHeader, String periodRaw) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public StorageTrendResponse getStorageTrend(String periodRaw) {
+        currentAuthProvider.getCurrentAuth();
         StorageTrendPeriod period = StorageTrendPeriod.from(periodRaw);
 
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
@@ -130,8 +130,8 @@ public class UsageQuery {
     }
 
     @Transactional(readOnly = true)
-    public CreditUsageResponse getCreditUsage(String authorizationHeader) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+    public CreditUsageResponse getCreditUsage() {
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
 
         Organization organization = organizationRepository.findById(auth.orgId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "조직을 찾을 수 없습니다"));

@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.project.usecase;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.project.dto.response.LinkPartsResponse;
 import com.fabbitinc.server.application.project.service.ProjectService;
 import lombok.RequiredArgsConstructor;
@@ -14,12 +14,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class LinkProjectPartsUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final ProjectService projectService;
 
     @Transactional
-    public LinkPartsResponse execute(String authorizationHeader, UUID projectId, List<UUID> partIds) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public LinkPartsResponse execute(UUID projectId, List<UUID> partIds) {
+        currentAuthProvider.getCurrentAuth();
         int linkedCount = projectService.linkParts(projectId, partIds);
         return new LinkPartsResponse(linkedCount);
     }

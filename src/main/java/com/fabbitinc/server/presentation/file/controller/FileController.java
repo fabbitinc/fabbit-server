@@ -18,7 +18,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -41,10 +40,9 @@ public class FileController {
     )
     @PostMapping("/upload")
     public CreateFileResponse createFile(
-            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody CreateFileRequest request
     ) {
-        return createFileUseCase.execute(authorizationHeader, request);
+        return createFileUseCase.execute(request);
     }
 
     @Operation(
@@ -53,10 +51,9 @@ public class FileController {
     )
     @PostMapping("/upload/batch")
     public BatchCreateFileResponse batchCreateFiles(
-            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody BatchCreateFileRequest request
     ) {
-        return batchCreateFilesUseCase.execute(authorizationHeader, request);
+        return batchCreateFilesUseCase.execute(request);
     }
 
     @Operation(
@@ -65,10 +62,9 @@ public class FileController {
     )
     @PostMapping("/upload/batch/complete")
     public BatchCompleteResponse batchCompleteFiles(
-            @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody BatchCompleteRequest request
     ) {
-        return batchCompleteFilesUseCase.execute(authorizationHeader, request);
+        return batchCompleteFilesUseCase.execute(request);
     }
 
     @Operation(
@@ -77,9 +73,8 @@ public class FileController {
     )
     @PostMapping("/upload/{fileId}/complete")
     public FileCompleteResponse completeFile(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID fileId
     ) {
-        return completeFileUseCase.execute(authorizationHeader, fileId);
+        return completeFileUseCase.execute(fileId);
     }
 }

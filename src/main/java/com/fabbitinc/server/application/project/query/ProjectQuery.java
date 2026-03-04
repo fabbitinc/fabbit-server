@@ -3,7 +3,7 @@ package com.fabbitinc.server.application.project.query;
 import com.fabbitinc.server.application.activity.dto.response.ActivityListResponse;
 import com.fabbitinc.server.application.activity.dto.response.ActivityResponse;
 import com.fabbitinc.server.application.activity.dto.response.UserSummaryResponse;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
@@ -49,7 +49,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProjectQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final ProjectRepository projectRepository;
     private final ProjectPartRepository projectPartRepository;
     private final ProjectMemberRepository projectMemberRepository;
@@ -59,13 +59,11 @@ public class ProjectQuery {
     private final FileUrlResolver fileUrlResolver;
 
     @Transactional(readOnly = true)
-    public ProjectListResponse listProjects(
-            String authorizationHeader,
-            String search,
+    public ProjectListResponse listProjects(String search,
             int offset,
             int limit
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
         String normalizedSearch = normalizeSearch(search);
 
         List<Project> projects = projectRepository.listProjectsPaginated(normalizedSearch, offset, limit);
@@ -78,8 +76,8 @@ public class ProjectQuery {
     }
 
     @Transactional(readOnly = true)
-    public ProjectDetailResponse getProjectDetail(String authorizationHeader, UUID projectId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public ProjectDetailResponse getProjectDetail(UUID projectId) {
+        currentAuthProvider.getCurrentAuth();
         Project project = projectRepository.findByIdAndDeletedFalse(projectId)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
@@ -89,13 +87,11 @@ public class ProjectQuery {
     }
 
     @Transactional(readOnly = true)
-    public MemberLookupResponse lookupMembers(
-            String authorizationHeader,
-            UUID projectId,
+    public MemberLookupResponse lookupMembers(UUID projectId,
             String search,
             int limit
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
 
         List<ProjectMember> members = projectMemberRepository.findByProjectId(projectId);
         if (members.isEmpty()) {
@@ -116,8 +112,8 @@ public class ProjectQuery {
     }
 
     @Transactional(readOnly = true)
-    public ProjectMemberListResponse listMembers(String authorizationHeader, UUID projectId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public ProjectMemberListResponse listMembers(UUID projectId) {
+        currentAuthProvider.getCurrentAuth();
 
         if (projectRepository.findByIdAndDeletedFalse(projectId).isEmpty()) {
             throw new AppException(ErrorCode.NOT_FOUND, "프로젝트를 찾을 수 없습니다");
@@ -159,14 +155,12 @@ public class ProjectQuery {
     }
 
     @Transactional(readOnly = true)
-    public PartLookupResponse lookupParts(
-            String authorizationHeader,
-            UUID projectId,
+    public PartLookupResponse lookupParts(UUID projectId,
             String search,
             boolean excludeLinked,
             int limit
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
 
         int fetchSize = Math.max(limit * 5, limit);
         String normalizedSearch = normalizeSearch(search);
@@ -193,14 +187,12 @@ public class ProjectQuery {
     }
 
     @Transactional(readOnly = true)
-    public ProjectPartsResponse getProjectParts(
-            String authorizationHeader,
-            UUID projectId,
+    public ProjectPartsResponse getProjectParts(UUID projectId,
             String search,
             int offset,
             int limit
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
 
         projectRepository.findByIdAndDeletedFalse(projectId)
                 .orElseThrow(() -> new AppException(
@@ -235,15 +227,13 @@ public class ProjectQuery {
     }
 
     @Transactional(readOnly = true)
-    public ActivityListResponse getActivities(
-            String authorizationHeader,
-            UUID projectId,
+    public ActivityListResponse getActivities(UUID projectId,
             UUID cursor,
             int limit,
             String scope,
             UUID userId
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
 
         List<Activity> filtered = activityRepository.findByTargetTypeAndTargetIdOrderByIdDesc(
                         ActivityTargetType.PROJECT,
@@ -292,8 +282,8 @@ public class ProjectQuery {
     }
 
     @Transactional(readOnly = true)
-    public PartProjectsResponse getPartProjects(String authorizationHeader, UUID partId) {
-        authTokenParser.requireAuth(authorizationHeader);
+    public PartProjectsResponse getPartProjects(UUID partId) {
+        currentAuthProvider.getCurrentAuth();
 
         partRepository.findById(partId)
                 .orElseThrow(() -> new AppException(

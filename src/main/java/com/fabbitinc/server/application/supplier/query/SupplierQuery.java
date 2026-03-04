@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.supplier.query;
 
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.supplier.dto.response.SupplierListResponse;
 import com.fabbitinc.server.application.supplier.dto.response.SupplierSummaryResponse;
 import com.fabbitinc.server.domain.supplier.model.Supplier;
@@ -15,17 +15,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SupplierQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final SupplierRepository supplierRepository;
 
     @Transactional(readOnly = true)
-    public SupplierListResponse listSuppliers(
-            String authorizationHeader,
-            String search,
+    public SupplierListResponse listSuppliers(String search,
             int offset,
             int limit
     ) {
-        authTokenParser.requireAuth(authorizationHeader);
+        currentAuthProvider.getCurrentAuth();
         String normalizedSearch = normalizeSearch(search);
 
         List<Supplier> suppliers = supplierRepository.listSuppliersPaginated(normalizedSearch, offset, limit);

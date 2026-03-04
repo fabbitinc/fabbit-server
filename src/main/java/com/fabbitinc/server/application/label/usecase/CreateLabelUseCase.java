@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.label.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.label.dto.request.CreateLabelRequest;
 import com.fabbitinc.server.application.label.dto.response.LabelResponse;
 import com.fabbitinc.server.application.label.service.LabelService;
@@ -14,12 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CreateLabelUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final LabelService labelService;
 
     @Transactional
-    public LabelResponse execute(String authorizationHeader, CreateLabelRequest request) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+    public LabelResponse execute(CreateLabelRequest request) {
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
         Label label = labelService.createLabel(
                 auth.userId(),
                 request.name(),

@@ -27,10 +27,10 @@ repositories {
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.security:spring-security-crypto")
-    implementation("org.springframework.security:spring-security-core")
     implementation("io.swagger.core.v3:swagger-annotations-jakarta:2.2.37")
     implementation("com.github.f4b6a3:uuid-creator:6.1.1")
     implementation("com.auth0:java-jwt:4.4.0")

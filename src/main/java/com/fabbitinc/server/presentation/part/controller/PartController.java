@@ -40,7 +40,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -69,14 +68,13 @@ public class PartController {
     )
     @GetMapping("/lookup")
     public PartLookupResponse lookupParts(
-            @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
             int limit
     ) {
-        return partQuery.lookupParts(authorizationHeader, search, limit);
+        return partQuery.lookupParts(search, limit);
     }
 
     @Operation(
@@ -85,7 +83,6 @@ public class PartController {
     )
     @GetMapping("/export")
     public ResponseEntity<byte[]> exportParts(
-            @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "lifecycle_state", required = false) String lifecycleState,
@@ -95,9 +92,7 @@ public class PartController {
             @RequestParam(value = "part_ids", required = false) List<UUID> partIds,
             @RequestParam(value = "project_id", required = false) UUID projectId
     ) {
-        byte[] content = partQuery.exportPartsExcel(
-                authorizationHeader,
-                search,
+        byte[] content = partQuery.exportPartsExcel(search,
                 category,
                 lifecycleState,
                 hasDrawing,
@@ -124,9 +119,8 @@ public class PartController {
     )
     @GetMapping("/categories")
     public CategoryStatsResponse listCategories(
-            @RequestHeader("Authorization") String authorizationHeader
-    ) {
-        return partQuery.listCategories(authorizationHeader);
+) {
+        return partQuery.listCategories();
     }
 
     @Operation(
@@ -135,9 +129,8 @@ public class PartController {
     )
     @GetMapping("/categories/lookup")
     public CategoryLookupResponse lookupCategories(
-            @RequestHeader("Authorization") String authorizationHeader
-    ) {
-        return partQuery.lookupCategories(authorizationHeader);
+) {
+        return partQuery.lookupCategories();
     }
 
     @Operation(
@@ -146,9 +139,8 @@ public class PartController {
     )
     @GetMapping("/filter-options")
     public PartFilterOptionsResponse getFilterOptions(
-            @RequestHeader("Authorization") String authorizationHeader
-    ) {
-        return partQuery.getFilterOptions(authorizationHeader);
+) {
+        return partQuery.getFilterOptions();
     }
 
     @Operation(
@@ -157,7 +149,6 @@ public class PartController {
     )
     @GetMapping
     public PartListResponse listParts(
-            @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "lifecycle_state", required = false) String lifecycleState,
@@ -172,9 +163,7 @@ public class PartController {
             @Max(value = 100, message = "limit은 100 이하여야 합니다")
             int limit
     ) {
-        return partQuery.listParts(
-                authorizationHeader,
-                search,
+        return partQuery.listParts(search,
                 category,
                 lifecycleState,
                 hasDrawing,
@@ -191,10 +180,9 @@ public class PartController {
     )
     @GetMapping("/{partId}")
     public PartDetailResponse getPart(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID partId
     ) {
-        return partQuery.getPartDetail(authorizationHeader, partId);
+        return partQuery.getPartDetail(partId);
     }
 
     @Operation(
@@ -203,10 +191,9 @@ public class PartController {
     )
     @GetMapping("/{partId}/bom")
     public PartBomResponse getPartBom(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID partId
     ) {
-        return partQuery.getPartBom(authorizationHeader, partId);
+        return partQuery.getPartBom(partId);
     }
 
     @Operation(
@@ -215,11 +202,10 @@ public class PartController {
     )
     @GetMapping("/{partId}/bom/tree")
     public BomTreeResponse getBomTree(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID partId,
             @RequestParam(value = "direction", defaultValue = "forward") String direction
     ) {
-        return partQuery.getBomTree(authorizationHeader, partId, direction);
+        return partQuery.getBomTree(partId, direction);
     }
 
     @Operation(
@@ -228,12 +214,11 @@ public class PartController {
     )
     @GetMapping("/{partId}/bom/tree/export")
     public ResponseEntity<byte[]> exportBomTree(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID partId,
             @RequestParam(value = "direction", defaultValue = "forward") String direction,
             @RequestParam(value = "mapping_id", required = false) UUID mappingId
     ) {
-        byte[] content = partQuery.exportBomTreeExcel(authorizationHeader, partId, direction, mappingId);
+        byte[] content = partQuery.exportBomTreeExcel(partId, direction, mappingId);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -248,10 +233,9 @@ public class PartController {
     )
     @GetMapping("/{partId}/projects")
     public PartProjectsResponse getPartProjects(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID partId
     ) {
-        return projectQuery.getPartProjects(authorizationHeader, partId);
+        return projectQuery.getPartProjects(partId);
     }
 
     @Operation(
@@ -260,10 +244,9 @@ public class PartController {
     )
     @GetMapping("/{partId}/files")
     public PartFilesResponse getPartFiles(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID partId
     ) {
-        return partQuery.getPartFiles(authorizationHeader, partId);
+        return partQuery.getPartFiles(partId);
     }
 
     @Operation(
@@ -272,10 +255,9 @@ public class PartController {
     )
     @GetMapping("/{partId}/suppliers")
     public PartSuppliersResponse getPartSuppliers(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID partId
     ) {
-        return partQuery.getPartSuppliers(authorizationHeader, partId);
+        return partQuery.getPartSuppliers(partId);
     }
 
     @Operation(
@@ -284,12 +266,11 @@ public class PartController {
     )
     @PostMapping("/{partId}/files")
     public List<FileItemResponse> attachFiles(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID partId,
             @Valid @RequestBody AttachFilesRequest request
     ) {
-        List<UUID> attachedFileIds = attachPartFilesUseCase.execute(authorizationHeader, partId, request.fileIds());
-        return partQuery.getFilesByIds(authorizationHeader, attachedFileIds);
+        List<UUID> attachedFileIds = attachPartFilesUseCase.execute(partId, request.fileIds());
+        return partQuery.getFilesByIds(attachedFileIds);
     }
 
     @Operation(
@@ -298,11 +279,10 @@ public class PartController {
     )
     @DeleteMapping("/{partId}/files/{fileId}")
     public ResponseEntity<Void> detachFile(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID partId,
             @PathVariable UUID fileId
     ) {
-        detachPartFileUseCase.execute(authorizationHeader, partId, fileId);
+        detachPartFileUseCase.execute(partId, fileId);
         return ResponseEntity.noContent().build();
     }
 
@@ -312,10 +292,9 @@ public class PartController {
     )
     @DeleteMapping("/{partId}/drawings")
     public ResponseEntity<Void> deleteDrawingFromPart(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID partId
     ) {
-        deletePartDrawingUseCase.execute(authorizationHeader, partId);
+        deletePartDrawingUseCase.execute(partId);
         return ResponseEntity.noContent().build();
     }
 
@@ -325,11 +304,10 @@ public class PartController {
     )
     @PostMapping("/{partId}/drawings")
     public RegisterDrawingResponse registerDrawingForPart(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable UUID partId,
             @Valid @RequestBody RegisterDrawingRequest request
     ) {
-        return registerPartDrawingUseCase.execute(authorizationHeader, partId, request.fileId());
+        return registerPartDrawingUseCase.execute(partId, request.fileId());
     }
 
     @Operation(
@@ -338,11 +316,10 @@ public class PartController {
     )
     @PatchMapping("/categories/{category}")
     public RenameCategoryResponse renameCategory(
-            @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable String category,
             @Valid @RequestBody RenameCategoryRequest request
     ) {
-        int updatedCount = renameCategoryUseCase.execute(authorizationHeader, category, request.newName());
+        int updatedCount = renameCategoryUseCase.execute(category, request.newName());
         return new RenameCategoryResponse(updatedCount);
     }
 }

@@ -5,7 +5,7 @@ import com.fabbitinc.server.application.auth.dto.response.OrganizationResponse;
 import com.fabbitinc.server.application.auth.dto.response.TokenResponse;
 import com.fabbitinc.server.application.auth.service.JwtTokenService;
 import com.fabbitinc.server.application.auth.support.CreateOrgContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentCreateOrgProvider;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.organization.dto.request.CreateOrganizationRequest;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
@@ -21,15 +21,15 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CreateOrganizationUseCase {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentCreateOrgProvider currentCreateOrgProvider;
     private final UserService userService;
     private final OrganizationService organizationService;
     private final JwtTokenService jwtTokenService;
     private final FileUrlResolver fileUrlResolver;
 
     @Transactional
-    public CreateOrganizationResponse execute(String authorizationHeader, CreateOrganizationRequest request) {
-        CreateOrgContext context = authTokenParser.requireCreateOrgToken(authorizationHeader);
+    public CreateOrganizationResponse execute(CreateOrganizationRequest request) {
+        CreateOrgContext context = currentCreateOrgProvider.getCurrentCreateOrg();
 
         User user = userService.getUserOrThrow(context.userId());
         Organization organization = organizationService.createOrganization(user.getId(), request);

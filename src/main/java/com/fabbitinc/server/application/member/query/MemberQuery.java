@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.member.query;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
-import com.fabbitinc.server.application.auth.support.AuthTokenParser;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
@@ -32,15 +32,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MemberQuery {
 
-    private final AuthTokenParser authTokenParser;
+    private final CurrentAuthProvider currentAuthProvider;
     private final MembershipRepository membershipRepository;
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
     private final FileUrlResolver fileUrlResolver;
 
     @Transactional(readOnly = true)
-    public MemberLookupResponse lookupMembers(String authorizationHeader, String search, int limit) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+    public MemberLookupResponse lookupMembers(String search, int limit) {
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
 
         List<Membership> memberships = membershipRepository.findOrderedByOrgId(auth.orgId());
         List<UUID> userIds = memberships.stream().map(Membership::getUserId).toList();
@@ -62,8 +62,8 @@ public class MemberQuery {
     }
 
     @Transactional(readOnly = true)
-    public MemberListResponse listOrgMembers(String authorizationHeader) {
-        AuthContext auth = authTokenParser.requireAuth(authorizationHeader);
+    public MemberListResponse listOrgMembers() {
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
 
         Organization organization = organizationRepository.findById(auth.orgId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "조직을 찾을 수 없습니다"));

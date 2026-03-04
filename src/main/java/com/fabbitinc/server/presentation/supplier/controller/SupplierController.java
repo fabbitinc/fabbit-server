@@ -9,7 +9,6 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,7 +28,6 @@ public class SupplierController {
     )
     @GetMapping
     public SupplierListResponse listSuppliers(
-            @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "offset", defaultValue = "0")
             @Min(value = 0, message = "offset은 0 이상이어야 합니다")
@@ -39,6 +37,6 @@ public class SupplierController {
             @Max(value = 100, message = "limit은 100 이하여야 합니다")
             int limit
     ) {
-        return supplierQuery.listSuppliers(authorizationHeader, search, offset, limit);
+        return supplierQuery.listSuppliers(search, offset, limit);
     }
 }
