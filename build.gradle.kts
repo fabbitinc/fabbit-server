@@ -31,6 +31,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-mail")
+    implementation("org.springframework:spring-aop")
+    implementation("org.aspectj:aspectjweaver")
     implementation("org.springframework.security:spring-security-crypto")
     implementation("io.swagger.core.v3:swagger-annotations-jakarta:2.2.37")
     implementation("com.github.f4b6a3:uuid-creator:6.1.1")

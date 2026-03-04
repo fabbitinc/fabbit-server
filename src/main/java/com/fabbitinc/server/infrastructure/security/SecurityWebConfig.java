@@ -39,6 +39,8 @@ public class SecurityWebConfig {
     };
 
     private final JwtSecurityContextFilter jwtSecurityContextFilter;
+    private final SecurityAuthenticationEntryPoint securityAuthenticationEntryPoint;
+    private final SecurityAccessDeniedHandler securityAccessDeniedHandler;
 
     @Bean
     public RoleHierarchy roleHierarchy() {
@@ -68,6 +70,10 @@ public class SecurityWebConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/organizations").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
+                )
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(securityAuthenticationEntryPoint)
+                        .accessDeniedHandler(securityAccessDeniedHandler)
                 )
                 .addFilterBefore(jwtSecurityContextFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

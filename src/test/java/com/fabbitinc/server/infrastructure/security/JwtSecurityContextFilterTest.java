@@ -23,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -90,7 +91,8 @@ class JwtSecurityContextFilterTest {
     @Test
     void 토큰이_모두_유효하지_않으면_인증정보를_세팅하지_않는다() throws Exception {
         String header = "Bearer invalid-token";
-        when(authTokenParser.requireAuth(header)).thenThrow(new AppException(ErrorCode.TOKEN_INVALID));
+        AppException authFailure = new AppException(ErrorCode.TOKEN_INVALID);
+        when(authTokenParser.requireAuth(header)).thenThrow(authFailure);
         when(authTokenParser.requireCreateOrgToken(header)).thenThrow(new AppException(ErrorCode.FORBIDDEN));
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/issues");
@@ -99,5 +101,10 @@ class JwtSecurityContextFilterTest {
         jwtSecurityContextFilter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
 
         assertNull(SecurityContextHolder.getContext().getAuthentication());
+        AppException requestAuthFailure = assertInstanceOf(
+                AppException.class,
+                request.getAttribute(JwtSecurityContextFilter.AUTH_FAILURE_ATTRIBUTE)
+        );
+        assertEquals(ErrorCode.TOKEN_INVALID, requestAuthFailure.getErrorCode());
     }
 }

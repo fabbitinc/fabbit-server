@@ -25,6 +25,8 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtSecurityContextFilter extends OncePerRequestFilter {
 
+    public static final String AUTH_FAILURE_ATTRIBUTE = JwtSecurityContextFilter.class.getName() + ".AUTH_FAILURE";
+
     private final AuthTokenParser authTokenParser;
 
     @Override
@@ -39,16 +41,18 @@ public class JwtSecurityContextFilter extends OncePerRequestFilter {
             return;
         }
 
-        populateSecurityContext(authorizationHeader);
+        populateSecurityContext(request, authorizationHeader);
         filterChain.doFilter(request, response);
     }
 
-    private void populateSecurityContext(String authorizationHeader) {
+    private void populateSecurityContext(HttpServletRequest request, String authorizationHeader) {
+        AppException authFailure;
         try {
             AuthContext authContext = authTokenParser.requireAuth(authorizationHeader);
             setAuthPrincipal(authContext);
             return;
-        } catch (AppException ignored) {
+        } catch (AppException ex) {
+            authFailure = ex;
         }
 
         try {
@@ -56,6 +60,7 @@ public class JwtSecurityContextFilter extends OncePerRequestFilter {
             setCreateOrgPrincipal(createOrgContext);
         } catch (AppException ignored) {
             SecurityContextHolder.clearContext();
+            request.setAttribute(AUTH_FAILURE_ATTRIBUTE, authFailure);
         }
     }
 
