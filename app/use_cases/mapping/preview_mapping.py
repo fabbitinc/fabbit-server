@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 from app.core.auth_context import AuthContext
 from app.core.exceptions import AppError
 from app.core.transactional import transactional
-from app.modules.ai_usage.service import check_bom_quota, log_usage
+from app.modules.ai_usage.service import log_usage
+from app.modules.organization import service as org_service
 from app.modules.mapping import service as mapping_service
 from app.modules.mapping.schemas import (
     MappingPreviewRequest,
@@ -23,7 +24,7 @@ def preview_mapping(
     auth: AuthContext,
     req: MappingPreviewRequest,
 ) -> MappingPreviewResponse:
-    check_bom_quota(auth.org_id)
+    org_service.check_credit_quota(db, auth.org_id, "bom_analysis")
     t_total = time.perf_counter()
 
     file = mapping_service.get_uploaded_file_or_raise(db, req.file_id)

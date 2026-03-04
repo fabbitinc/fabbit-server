@@ -32,6 +32,9 @@ _STATUS_MAP: dict[str, int] = {
     "VALIDATION_ERROR": 422,
     # 사용량 한도 초과
     "QUOTA_EXCEEDED": 429,
+    "MEMBER_LIMIT_EXCEEDED": 429,
+    # 구독
+    "SUBSCRIPTION_NOT_FOUND": 402,
 }
 
 _DEFAULT_STATUS = 400

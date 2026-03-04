@@ -8,6 +8,7 @@ from app.modules.auth.schemas import RegisterRequest, RegisterResponse
 from app.modules.organization import service as org_service
 from app.modules.organization.constants import MembershipRole
 from app.modules.organization.schemas import CreateOrganizationRequest, OrganizationResponse
+from app.modules.subscription import service as subscription_service
 from app.modules.user import service as user_service
 from app.modules.user.schemas import UserResponse
 
@@ -36,7 +37,10 @@ def register(db: Session, req: RegisterRequest) -> RegisterResponse:
     )
     org = org_service.create_organization(db, user.id, org_req)
 
-    # 5. 토큰 발급
+    # 5. 초기 구독 생성
+    subscription_service.create_initial_subscription(db, org.id, org.plan_type)
+
+    # 6. 토큰 발급
     tokens = auth_service.issue_tokens(
         db, user.id, user.email, org.id, MembershipRole.OWNER
     )

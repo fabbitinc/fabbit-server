@@ -11,10 +11,9 @@ def get_plans() -> list[PlanResponse]:
             plan_type=pt.value,
             display_name=limits.display_name,
             description=limits.description,
+            max_members=limits.max_members,
             storage_gb=limits.storage_gb,
-            max_bom=limits.max_bom,
-            max_drawing_parses=limits.max_drawing_parses,
-            max_chats=limits.max_chats,
+            ai_credits=limits.ai_credits,
             price_monthly=limits.price_monthly,
         )
         for pt, limits in PLAN_LIMITS.items()

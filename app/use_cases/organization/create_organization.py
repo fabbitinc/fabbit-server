@@ -10,6 +10,7 @@ from app.modules.auth.schemas import CreateOrganizationResponse
 from app.modules.organization import service as org_service
 from app.modules.organization.constants import MembershipRole
 from app.modules.organization.schemas import CreateOrganizationRequest, OrganizationResponse
+from app.modules.subscription import service as subscription_service
 from app.modules.user import service as user_service
 
 
@@ -25,6 +26,9 @@ def create_organization(
 
     # 조직 + 멤버십(OWNER) + 프로비저닝
     org = org_service.create_organization(db, user.id, req)
+
+    # 초기 구독 생성
+    subscription_service.create_initial_subscription(db, org.id, org.plan_type)
 
     # 토큰 발급
     tokens = auth_service.issue_tokens(

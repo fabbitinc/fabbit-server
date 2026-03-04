@@ -24,7 +24,7 @@ def accept_invitation(
         db, invitation.email, req.password, req.full_name
     )
 
-    # 멤버십 생성 (중복 시 에러)
+    # 멤버십 생성 (중복 시 에러, 좌석 예약 포함)
     org_service.add_member(db, user.id, invitation.org_id, invitation.role)
 
     # 초대 수락 처리

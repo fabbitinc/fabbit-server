@@ -53,8 +53,14 @@ from app.core.exceptions import register_exception_handlers  # noqa: E402
 from app.infrastructure.password_hasher import hash_password  # noqa: E402
 from app.infrastructure.token_provider import token_provider  # noqa: E402
 from app.modules.organization import repository as org_repo  # noqa: E402
-from app.modules.organization.constants import MembershipRole  # noqa: E402
+from app.modules.organization.constants import (  # noqa: E402
+    PLAN_LIMITS,
+    MembershipRole,
+    PlanType,
+)
 from app.modules.organization.provisioning import provision_tenant  # noqa: E402
+from app.modules.subscription import service as subscription_service  # noqa: E402
+from app.modules.subscription import repository as subscription_repo  # noqa: E402
 from app.modules.user import repository as user_repo  # noqa: E402
 
 app = FastAPI(
@@ -203,6 +209,8 @@ def _bootstrap_test_account_once() -> None:
                 full_name=test_full_name,
             )
 
+        starter_limits = PLAN_LIMITS[PlanType.STARTER]
+
         org = org_repo.get_org_by_slug(db, test_org_slug)
         if org is None:
             org = org_repo.create_organization(
@@ -211,8 +219,30 @@ def _bootstrap_test_account_once() -> None:
                 name=test_org_name,
                 owner_id=user.id,
                 plan_type="STARTER",
+                max_members=starter_limits.max_members,
+                plan_credits_remaining=starter_limits.ai_credits,
+                storage_mb_limit=starter_limits.storage_gb * 1_000,
             )
             provision_tenant(db, org.id)
+            subscription_service.create_initial_subscription(
+                db, org.id, "STARTER"
+            )
+
+        # 기존 org에 실행 상태가 비어있으면 보충
+        if org.max_members == 0 and org.plan_credits_remaining == 0:
+            try:
+                limits = PLAN_LIMITS[PlanType(org.plan_type)]
+            except (ValueError, KeyError):
+                limits = starter_limits
+            org.max_members = limits.max_members
+            org.plan_credits_remaining = limits.ai_credits
+            org.storage_mb_limit = limits.storage_gb * 1_000
+
+        # 활성 구독이 없으면 보충
+        if subscription_repo.get_active_subscription(db, org.id) is None:
+            subscription_service.create_initial_subscription(
+                db, org.id, org.plan_type
+            )
 
         memberships = org_repo.get_user_memberships(db, user.id)
         if not any(m.org_id == org.id for m in memberships):

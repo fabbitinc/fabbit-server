@@ -6,7 +6,15 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -50,6 +58,31 @@ class Organization(AggregateRoot, Base):
     profile_image_file_key: Mapped[str | None] = mapped_column(
         String(1000), nullable=True
     )
+
+    # ── 실행 상태 (쿼타/잔량) ──
+
+    max_members: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )  # 캐시 — 플랜 변경 시 동기화. -1=무제한
+    used_members: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )  # SSoT — 원자적 증감
+    plan_credits_remaining: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )  # 매 빌링 기간 리셋
+    bonus_credits_remaining: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )  # 추가 구매분. 감소만, 리셋 없음
+    storage_mb_limit: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )  # 캐시 — 플랜 기본 + 추가분
+    storage_mb_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )  # 누적 상태, 파일 업로드/삭제 시 증감
+    allow_storage_overage: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )  # true면 한도 초과 허용(과금)
+
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -109,7 +142,9 @@ class Membership(Base):
         ForeignKey("organizations.id", ondelete="CASCADE"),
         nullable=False,
     )
-    role: Mapped[str] = mapped_column(String(20), nullable=False, default=MembershipRole.MEMBER)
+    role: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=MembershipRole.MEMBER
+    )
     job_role: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

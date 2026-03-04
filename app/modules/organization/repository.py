@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import case, delete, func, select
+from sqlalchemy import case, delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.modules.organization.constants import MembershipRole
@@ -32,10 +32,16 @@ def create_organization(
     industry: str | None = None,
     team_size: str | None = None,
     plan_type: str = "STARTER",
+    max_members: int = 0,
+    plan_credits_remaining: int = 0,
+    storage_mb_limit: int = 0,
 ) -> Organization:
     org = Organization(
         slug=slug, name=name, owner_id=owner_id,
         industry=industry, team_size=team_size, plan_type=plan_type,
+        max_members=max_members,
+        plan_credits_remaining=plan_credits_remaining,
+        storage_mb_limit=storage_mb_limit,
     )
     db.add(org)
     db.flush()
@@ -145,6 +151,13 @@ def delete_membership(db: Session, org_id: uuid.UUID, user_id: uuid.UUID) -> Non
     db.flush()
 
 
+def count_members(db: Session, org_id: uuid.UUID) -> int:
+    """조직의 전체 멤버 수 조회."""
+    return db.scalar(
+        select(func.count()).where(Membership.org_id == org_id)
+    ) or 0
+
+
 def count_owners(db: Session, org_id: uuid.UUID) -> int:
     """조직의 OWNER 역할 멤버 수 조회."""
     return db.scalar(
@@ -161,3 +174,75 @@ def count_owners(db: Session, org_id: uuid.UUID) -> int:
 def get_user_by_id(db: Session, user_id: uuid.UUID) -> User | None:
     """MeResponse 조립용 User 조회."""
     return db.get(User, user_id)
+
+
+# ── 쿼타 원자적 연산 ──
+
+
+def reserve_member_seat(db: Session, org_id: uuid.UUID) -> bool:
+    """멤버 좌석 예약. max_members=-1이면 무제한. rowcount 0이면 한도 초과."""
+    result = db.execute(
+        update(Organization)
+        .where(
+            Organization.id == org_id,
+            (Organization.max_members == -1) | (Organization.used_members < Organization.max_members),
+        )
+        .values(used_members=Organization.used_members + 1)
+    )
+    db.flush()
+    return result.rowcount > 0
+
+
+def release_member_seat(db: Session, org_id: uuid.UUID) -> None:
+    """멤버 좌석 반환."""
+    db.execute(
+        update(Organization)
+        .where(Organization.id == org_id)
+        .values(used_members=Organization.used_members - 1)
+    )
+    db.flush()
+
+
+def consume_credits(db: Session, org_id: uuid.UUID, cost: int) -> bool:
+    """크레딧 소비. plan 우선 차감 → 부족분 bonus 차감. rowcount 0이면 잔액 부족."""
+    from sqlalchemy import greatest
+
+    result = db.execute(
+        update(Organization)
+        .where(
+            Organization.id == org_id,
+            Organization.plan_credits_remaining + Organization.bonus_credits_remaining >= cost,
+        )
+        .values(
+            plan_credits_remaining=greatest(Organization.plan_credits_remaining - cost, 0),
+            bonus_credits_remaining=Organization.bonus_credits_remaining
+            - greatest(cost - Organization.plan_credits_remaining, 0),
+        )
+    )
+    db.flush()
+    return result.rowcount > 0
+
+
+def consume_storage_mb(db: Session, org_id: uuid.UUID, delta_mb: int) -> bool:
+    """스토리지 소비. allow_storage_overage=true면 한도 무시. rowcount 0이면 한도 초과."""
+    result = db.execute(
+        update(Organization)
+        .where(
+            Organization.id == org_id,
+            (Organization.allow_storage_overage == True)  # noqa: E712
+            | (Organization.storage_mb_used + delta_mb <= Organization.storage_mb_limit),
+        )
+        .values(storage_mb_used=Organization.storage_mb_used + delta_mb)
+    )
+    db.flush()
+    return result.rowcount > 0
+
+
+def release_storage_mb(db: Session, org_id: uuid.UUID, delta_mb: int) -> None:
+    """스토리지 반환 (파일 삭제 시)."""
+    db.execute(
+        update(Organization)
+        .where(Organization.id == org_id)
+        .values(storage_mb_used=Organization.storage_mb_used - delta_mb)
+    )
+    db.flush()

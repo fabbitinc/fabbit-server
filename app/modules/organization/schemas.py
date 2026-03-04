@@ -50,10 +50,9 @@ class PlanResponse(BaseModel):
     plan_type: str
     display_name: str
     description: str
+    max_members: int
     storage_gb: int
-    max_bom: int
-    max_drawing_parses: int
-    max_chats: int
+    ai_credits: int
     price_monthly: int
 
 

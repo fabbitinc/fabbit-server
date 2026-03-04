@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 from app.core.exceptions import AppError
 from app.modules.organization import repository as repo
 from app.modules.organization.constants import (
+    AI_CREDIT_COSTS,
+    PLAN_LIMITS,
     RESERVED_SLUGS,
     MembershipRole,
     PlanType,
@@ -69,6 +71,9 @@ def create_organization(
         if slug in RESERVED_SLUGS or repo.get_org_by_slug(db, slug):
             slug = f"{slug}-{str(_uuid.uuid4())[:8]}"
 
+    # 실행 상태 초기값
+    limits = PLAN_LIMITS[plan]
+
     # 조직 생성
     org = repo.create_organization(
         db,
@@ -78,6 +83,9 @@ def create_organization(
         industry=req.industry,
         team_size=req.team_size,
         plan_type=plan.value,
+        max_members=limits.max_members,
+        plan_credits_remaining=limits.ai_credits,
+        storage_mb_limit=limits.storage_gb * 1_000,
     )
 
     # 멤버십 (OWNER)
@@ -138,6 +146,7 @@ def remove_member(
             )
 
     repo.delete_membership(db, auth.org_id, user_id)
+    repo.release_member_seat(db, auth.org_id)
 
 
 def change_member_role(
@@ -209,14 +218,52 @@ def get_org_or_raise(db: Session, org_id: _uuid.UUID) -> Organization:
 def add_member(
     db: Session, user_id: _uuid.UUID, org_id: _uuid.UUID, role: str
 ) -> Membership:
-    """멤버십 추가 — 중복 시 에러.
+    """멤버십 추가 — 중복 검증 + 좌석 예약.
 
     @transactional 없음 — use_case에서 트랜잭션 관리.
+    내부에서 원자적 좌석 예약을 수행하므로 호출부에서 별도 한도 체크 불필요.
     """
     existing = repo.get_membership(db, user_id, org_id)
     if existing:
         raise AppError(message="이미 조직에 소속된 멤버입니다", code="ALREADY_EXISTS")
+
+    if not repo.reserve_member_seat(db, org_id):
+        raise AppError(
+            message="멤버 수 한도를 초과했습니다. 플랜을 업그레이드해주세요.",
+            code="MEMBER_LIMIT_EXCEEDED",
+        )
+
     return repo.create_membership(db, user_id, org_id, role=role)
+
+
+def check_credit_quota(db: Session, org_id: _uuid.UUID, feature: str) -> None:
+    """AI 크레딧 잔량 읽기 전용 체크. 부족 시 QUOTA_EXCEEDED 발생."""
+    cost = AI_CREDIT_COSTS.get(feature)
+    if cost is None:
+        return
+
+    org = repo.get_org_by_id(db, org_id)
+    if org is None:
+        return
+
+    if org.plan_credits_remaining + org.bonus_credits_remaining < cost:
+        raise AppError(
+            message="AI 크레딧이 부족합니다. 플랜을 업그레이드해주세요.",
+            code="QUOTA_EXCEEDED",
+        )
+
+
+def check_storage_quota(db: Session, org_id: _uuid.UUID, additional_mb: int) -> None:
+    """스토리지 한도 읽기 전용 체크. 초과 시 QUOTA_EXCEEDED 발생."""
+    org = repo.get_org_by_id(db, org_id)
+    if org is None:
+        return
+
+    if not org.allow_storage_overage and org.storage_mb_used + additional_mb > org.storage_mb_limit:
+        raise AppError(
+            message="스토리지 한도를 초과했습니다. 플랜을 업그레이드해주세요.",
+            code="QUOTA_EXCEEDED",
+        )
 
 
 def set_profile_image(db: Session, auth: AuthContext, file: File) -> None:
