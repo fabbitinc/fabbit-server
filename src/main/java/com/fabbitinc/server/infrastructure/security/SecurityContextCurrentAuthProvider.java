@@ -21,9 +21,6 @@ public class SecurityContextCurrentAuthProvider implements CurrentAuthProvider {
         }
 
         Object principal = authentication.getPrincipal();
-        if (principal instanceof AuthContext authContext) {
-            return authContext;
-        }
         if (principal instanceof AuthPrincipal authPrincipal) {
             return authPrincipal.toAuthContext();
         }

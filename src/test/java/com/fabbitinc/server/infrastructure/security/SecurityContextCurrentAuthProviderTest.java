@@ -28,23 +28,6 @@ class SecurityContextCurrentAuthProviderTest {
     }
 
     @Test
-    void authContextPrincipal을_그대로_반환한다() {
-        AuthContext authContext = new AuthContext(
-                UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-                "user@fabbit.com",
-                UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                MembershipRole.ADMIN
-        );
-        TestingAuthenticationToken authentication =
-                new TestingAuthenticationToken(authContext, null, "ROLE_ADMIN");
-        setAuthentication(authentication);
-
-        AuthContext result = currentAuthProvider.getCurrentAuth();
-
-        assertEquals(authContext, result);
-    }
-
-    @Test
     void authPrincipal을_authContext로_변환해_반환한다() {
         AuthPrincipal authPrincipal = new AuthPrincipal(
                 UUID.fromString("11111111-1111-1111-1111-111111111111"),

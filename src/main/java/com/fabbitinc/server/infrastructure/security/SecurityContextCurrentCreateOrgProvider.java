@@ -21,9 +21,6 @@ public class SecurityContextCurrentCreateOrgProvider implements CurrentCreateOrg
         }
 
         Object principal = authentication.getPrincipal();
-        if (principal instanceof CreateOrgContext createOrgContext) {
-            return createOrgContext;
-        }
         if (principal instanceof CreateOrgPrincipal createOrgPrincipal) {
             return createOrgPrincipal.toCreateOrgContext();
         }

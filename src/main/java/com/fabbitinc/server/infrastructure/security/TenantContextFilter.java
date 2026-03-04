@@ -1,6 +1,5 @@
 package com.fabbitinc.server.infrastructure.security;
 
-import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.AuthPrincipal;
 import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
 import com.fabbitinc.server.application.tenant.support.TenantSchemaPolicy;
@@ -50,9 +49,6 @@ public class TenantContextFilter extends OncePerRequestFilter {
         Object principal = authentication.getPrincipal();
         if (principal instanceof AuthPrincipal authPrincipal) {
             return TenantSchemaPolicy.schemaNameForOrgId(authPrincipal.orgId());
-        }
-        if (principal instanceof AuthContext authContext) {
-            return TenantSchemaPolicy.schemaNameForOrgId(authContext.orgId());
         }
 
         return TenantSchemaPolicy.PUBLIC_SCHEMA;

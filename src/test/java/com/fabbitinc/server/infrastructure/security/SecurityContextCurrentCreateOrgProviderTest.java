@@ -28,21 +28,6 @@ class SecurityContextCurrentCreateOrgProviderTest {
     }
 
     @Test
-    void createOrgContextPrincipal을_그대로_반환한다() {
-        CreateOrgContext createOrgContext = new CreateOrgContext(
-                UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-                "user@fabbit.com"
-        );
-        TestingAuthenticationToken authentication =
-                new TestingAuthenticationToken(createOrgContext, null, "ROLE_SCOPED");
-        setAuthentication(authentication);
-
-        CreateOrgContext result = currentCreateOrgProvider.getCurrentCreateOrg();
-
-        assertEquals(createOrgContext, result);
-    }
-
-    @Test
     void createOrgPrincipal을_context로_변환해_반환한다() {
         CreateOrgPrincipal createOrgPrincipal = new CreateOrgPrincipal(
                 UUID.fromString("11111111-1111-1111-1111-111111111111"),
