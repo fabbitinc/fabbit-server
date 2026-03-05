@@ -56,7 +56,7 @@ public class LabelService {
 
     private void ensureNameNotExists(String name, UUID excludeLabelId) {
         labelRepository.findByName(name).ifPresent(existing -> {
-            if (excludeLabelId == null || !existing.getId().equals(excludeLabelId)) {
+            if (!existing.getId().equals(excludeLabelId)) {
                 throw new AppException(
                         ErrorCode.ALREADY_EXISTS,
                         "동일한 이름의 '" + name + "' 라벨이 이미 존재합니다"

@@ -30,6 +30,11 @@ public class JwtSecurityContextFilter extends OncePerRequestFilter {
     private final AuthTokenParser authTokenParser;
 
     @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        return false;
+    }
+
+    @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             @NonNull HttpServletResponse response,

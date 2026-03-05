@@ -13,6 +13,7 @@ test.describe("핵심 실패 시나리오", () => {
       token: session.owner.accessToken,
       data: {
         mapping_id: session.resources.mappingId,
+        overwrite: false,
         uploads: [
           { file_id: session.resources.fileId },
           { file_id: randomUUID() },
@@ -38,6 +39,7 @@ test.describe("핵심 실패 시나리오", () => {
       token: session.owner.accessToken,
       data: {
         mapping_id: session.resources.mappingId,
+        overwrite: false,
         uploads: [{ file_id: session.resources.fileId }],
       },
     });

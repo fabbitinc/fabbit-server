@@ -108,7 +108,7 @@ public class SynthesisExecutionService {
             job.markCompleted();
         } catch (Exception ex) {
             String message = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
-            job.markFailed(message);
+            job.markFailed(serializeErrors(List.of(message)));
         }
     }
 
@@ -336,7 +336,11 @@ public class SynthesisExecutionService {
         if (errors.isEmpty()) {
             return "[]";
         }
-        return String.join("\n", errors);
+        try {
+            return objectMapper.writeValueAsString(errors);
+        } catch (JacksonException ex) {
+            return "[]";
+        }
     }
 
     private String resolveMappedText(Map<String, Object> row, String columnName, String dataType) {

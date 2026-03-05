@@ -6,11 +6,13 @@ import com.fabbitinc.server.application.common.exception.ErrorCode;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -48,10 +50,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleMissingServletRequestParameter(
             MissingServletRequestParameterException ex
     ) {
-        String message = "필수 요청 파라미터가 누락되었습니다: " + ex.getParameterName();
-        return ResponseEntity
-                .status(ErrorCode.VALIDATION_ERROR.httpStatus())
-                .body(new ApiErrorResponse(ErrorCode.VALIDATION_ERROR.name(), message));
+        return validationError("필수 요청 파라미터가 누락되었습니다: " + ex.getParameterName());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorResponse> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException ex
+    ) {
+        return validationError("요청 파라미터 타입이 올바르지 않습니다: " + ex.getName());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex
+    ) {
+        return validationError("요청 본문 형식이 올바르지 않습니다");
     }
 
     @ExceptionHandler(Exception.class)
@@ -62,5 +75,11 @@ public class GlobalExceptionHandler {
                         ErrorCode.INTERNAL_SERVER_ERROR.name(),
                         ErrorCode.INTERNAL_SERVER_ERROR.defaultMessage()
                 ));
+    }
+
+    private ResponseEntity<ApiErrorResponse> validationError(String message) {
+        return ResponseEntity
+                .status(ErrorCode.VALIDATION_ERROR.httpStatus())
+                .body(new ApiErrorResponse(ErrorCode.VALIDATION_ERROR.name(), message));
     }
 }
