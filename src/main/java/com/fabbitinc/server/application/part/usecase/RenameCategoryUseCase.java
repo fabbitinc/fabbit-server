@@ -8,12 +8,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
+@Transactional
 public class RenameCategoryUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final PartService partService;
 
-    @Transactional
     public int execute(String oldName, String newName) {
         currentAuthProvider.getCurrentAuth();
         return partService.renameCategory(oldName, newName);

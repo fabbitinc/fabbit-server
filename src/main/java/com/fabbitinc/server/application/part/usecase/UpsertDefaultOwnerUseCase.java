@@ -12,12 +12,12 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
+@Transactional
 public class UpsertDefaultOwnerUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final PartService partService;
 
-    @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public UUID execute(PartDefaultOwnerRequest request) {
         currentAuthProvider.getCurrentAuth();

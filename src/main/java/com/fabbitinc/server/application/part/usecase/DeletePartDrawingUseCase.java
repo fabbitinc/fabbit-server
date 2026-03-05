@@ -11,13 +11,13 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
+@Transactional
 public class DeletePartDrawingUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final PartService partService;
     private final DrawingService drawingService;
 
-    @Transactional
     public void execute(UUID partId) {
         currentAuthProvider.getCurrentAuth();
         UUID drawingId = partService.unassignDrawing(partId);

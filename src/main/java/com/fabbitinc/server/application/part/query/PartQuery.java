@@ -24,30 +24,38 @@ import com.fabbitinc.server.application.part.dto.response.RelatedDrawingResponse
 import com.fabbitinc.server.application.part.dto.response.PartSummaryResponse;
 import com.fabbitinc.server.application.part.dto.response.PartSuppliersResponse;
 import com.fabbitinc.server.application.part.dto.response.RelatedSupplierResponse;
+import com.fabbitinc.server.application.project.api.ProjectApi;
+import com.fabbitinc.server.application.project.dto.response.PartProjectsResponse;
+import com.fabbitinc.server.application.team.api.TeamApi;
+import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
+import com.fabbitinc.server.domain.part.model.BomLink;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
 import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
-import com.fabbitinc.server.domain.project.repository.ProjectPartRepository;
+import com.fabbitinc.server.domain.project.model.ProjectPart;
 import com.fabbitinc.server.domain.supplier.model.Supplier;
 import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
 import com.fabbitinc.server.domain.team.model.Team;
-import com.fabbitinc.server.domain.team.repository.TeamRepository;
 import com.fabbitinc.server.domain.user.model.User;
-import com.fabbitinc.server.domain.user.repository.UserRepository;
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.PathBuilder;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
-import jakarta.persistence.TypedQuery;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import com.querydsl.jpa.JPAExpressions;
+import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,18 +77,19 @@ import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PartQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final PartRepository partRepository;
     private final FileRepository fileRepository;
-    private final UserRepository userRepository;
-    private final TeamRepository teamRepository;
+    private final UserApi userApi;
+    private final TeamApi teamApi;
     private final DrawingRepository drawingRepository;
     private final BomLinkRepository bomLinkRepository;
     private final PartSupplierRepository partSupplierRepository;
     private final SupplierRepository supplierRepository;
-    private final ProjectPartRepository projectPartRepository;
+    private final ProjectApi projectApi;
     private final FileUrlResolver fileUrlResolver;
     private final EntityManager entityManager;
 
@@ -88,7 +97,6 @@ public class PartQuery {
     private static final Pattern NUMBER_PATTERN = Pattern.compile("^-?\\d+(?:\\.\\d+)?$");
     private static final int MAX_BOM_DEPTH = 30;
 
-    @Transactional(readOnly = true)
     public PartLookupResponse lookupParts(String search, int limit) {
         currentAuthProvider.getCurrentAuth();
 
@@ -110,7 +118,6 @@ public class PartQuery {
         return new PartLookupResponse(items);
     }
 
-    @Transactional(readOnly = true)
     public CategoryStatsResponse listCategories() {
         currentAuthProvider.getCurrentAuth();
 
@@ -120,13 +127,11 @@ public class PartQuery {
         return new CategoryStatsResponse(items);
     }
 
-    @Transactional(readOnly = true)
     public CategoryLookupResponse lookupCategories() {
         currentAuthProvider.getCurrentAuth();
         return new CategoryLookupResponse(partRepository.findDistinctCategories());
     }
 
-    @Transactional(readOnly = true)
     public PartFilterOptionsResponse getFilterOptions() {
         currentAuthProvider.getCurrentAuth();
         return new PartFilterOptionsResponse(
@@ -135,7 +140,6 @@ public class PartQuery {
         );
     }
 
-    @Transactional(readOnly = true)
     public PartListResponse listParts(String search,
             String category,
             String lifecycleState,
@@ -147,76 +151,79 @@ public class PartQuery {
     ) {
         currentAuthProvider.getCurrentAuth();
 
-        StringBuilder whereClause = new StringBuilder(" where 1=1");
-        Map<String, Object> params = new HashMap<>();
+        PathBuilder<Part> part = new PathBuilder<>(Part.class, "part");
+        PathBuilder<Drawing> drawing = new PathBuilder<>(Drawing.class, "drawing");
+        PathBuilder<BomLink> bomLink = new PathBuilder<>(BomLink.class, "bomLink");
+        PathBuilder<ProjectPart> projectPart = new PathBuilder<>(ProjectPart.class, "projectPart");
 
-        if (search != null && !search.isBlank()) {
-            whereClause.append(" and (lower(p.partNumber) like :search or lower(p.name) like :search)");
-            params.put("search", "%" + search.trim().toLowerCase() + "%");
-        }
-        if (category != null && !category.isBlank()) {
-            whereClause.append(" and p.category = :category");
-            params.put("category", category);
-        }
-        if (lifecycleState != null && !lifecycleState.isBlank()) {
-            whereClause.append(" and p.lifecycleState = :lifecycleState");
-            params.put("lifecycleState", lifecycleState);
-        }
-        if (hasDrawing != null) {
-            whereClause.append(hasDrawing ? " and p.drawingId is not null" : " and p.drawingId is null");
-        }
-        if (hasChildren != null) {
-            whereClause.append(
-                    hasChildren
-                            ? " and exists (select 1 from BomLink bl where bl.parentPartId = p.id)"
-                            : " and not exists (select 1 from BomLink bl where bl.parentPartId = p.id)"
-            );
-        }
-        if (projectId != null) {
-            whereClause.append(
-                    " and exists (" +
-                            "select 1 from ProjectPart pp where pp.partId = p.id and pp.projectId = :projectId" +
-                            ")"
-            );
-            params.put("projectId", projectId);
-        }
+        var partIdExpr = part.get("id", UUID.class);
+        var partNumberExpr = part.getString("partNumber");
+        var partNameExpr = part.getString("name");
+        var partCategoryExpr = part.getString("category");
+        var partRevisionExpr = part.getString("revision");
+        var partLifecycleStateExpr = part.getString("lifecycleState");
+        var drawingIdExpr = part.get("drawingId", UUID.class);
 
-        Query countQuery = entityManager.createQuery(
-                "select count(p.id) from Part p" + whereClause
+        BooleanBuilder predicate = buildPartPredicate(
+                part,
+                bomLink,
+                projectPart,
+                search,
+                category,
+                lifecycleState,
+                hasDrawing,
+                hasChildren,
+                null,
+                projectId
         );
-        params.forEach(countQuery::setParameter);
-        long total = (Long) countQuery.getSingleResult();
 
-        Query dataQuery = entityManager.createQuery(
-                "select p.id, p.partNumber, p.name, p.category, p.revision, p.lifecycleState, " +
-                        "(select d.drawingNumber from Drawing d where d.id = p.drawingId), " +
-                        "(select count(bl.id) from BomLink bl where bl.parentPartId = p.id) " +
-                        "from Part p" +
-                        whereClause +
-                        " order by p.partNumber"
-        );
-        params.forEach(dataQuery::setParameter);
-        dataQuery.setFirstResult(offset);
-        dataQuery.setMaxResults(limit);
+        Long totalCount = queryFactory()
+                .select(partIdExpr.count())
+                .from(part)
+                .where(predicate)
+                .fetchOne();
+        long total = totalCount == null ? 0L : totalCount;
 
-        @SuppressWarnings("unchecked")
-        List<Object[]> rows = dataQuery.getResultList();
+        var drawingNumberExpr = JPAExpressions.select(drawing.getString("drawingNumber"))
+                .from(drawing)
+                .where(drawing.get("id", UUID.class).eq(drawingIdExpr));
+        var childrenCountExpr = JPAExpressions.select(bomLink.get("id", UUID.class).count())
+                .from(bomLink)
+                .where(bomLink.get("parentPartId", UUID.class).eq(partIdExpr));
+
+        List<Tuple> rows = queryFactory()
+                .select(
+                        partIdExpr,
+                        partNumberExpr,
+                        partNameExpr,
+                        partCategoryExpr,
+                        partRevisionExpr,
+                        partLifecycleStateExpr,
+                        drawingNumberExpr,
+                        childrenCountExpr
+                )
+                .from(part)
+                .where(predicate)
+                .orderBy(partNumberExpr.asc())
+                .offset(offset)
+                .limit(limit)
+                .fetch();
+
         List<PartSummaryResponse> items = rows.stream()
                 .map(row -> new PartSummaryResponse(
-                        (UUID) row[0],
-                        (String) row[1],
-                        (String) row[2],
-                        (String) row[3],
-                        row[4] == null ? "1" : (String) row[4],
-                        (String) row[5],
-                        (String) row[6],
-                        ((Number) row[7]).longValue()
+                        row.get(partIdExpr),
+                        row.get(partNumberExpr),
+                        row.get(partNameExpr),
+                        row.get(partCategoryExpr),
+                        row.get(partRevisionExpr) == null ? "1" : row.get(partRevisionExpr),
+                        row.get(partLifecycleStateExpr),
+                        row.get(drawingNumberExpr),
+                        row.get(childrenCountExpr) == null ? 0L : row.get(childrenCountExpr)
                 ))
                 .toList();
         return new PartListResponse(total, offset, limit, items);
     }
 
-    @Transactional(readOnly = true)
     public byte[] exportPartsExcel(String search,
             String category,
             String lifecycleState,
@@ -292,7 +299,6 @@ public class PartQuery {
         }
     }
 
-    @Transactional(readOnly = true)
     public byte[] exportBomTreeExcel(UUID partId,
             String direction,
             UUID mappingId
@@ -339,7 +345,6 @@ public class PartQuery {
         }
     }
 
-    @Transactional(readOnly = true)
     public PartDetailResponse getPartDetail(UUID partId) {
         currentAuthProvider.getCurrentAuth();
 
@@ -366,7 +371,7 @@ public class PartQuery {
                 part.getId(),
                 FileStatus.UPLOADED
         );
-        long projectsCount = projectPartRepository.countByPartId(part.getId());
+        long projectsCount = projectApi.countPartProjects(part.getId());
 
         return new PartDetailResponse(
                 part.getId(),
@@ -394,7 +399,11 @@ public class PartQuery {
         );
     }
 
-    @Transactional(readOnly = true)
+    public PartProjectsResponse getPartProjects(UUID partId) {
+        currentAuthProvider.getCurrentAuth();
+        return projectApi.getPartProjects(partId);
+    }
+
     public PartBomResponse getPartBom(UUID partId) {
         currentAuthProvider.getCurrentAuth();
         assertPartExists(partId);
@@ -449,7 +458,6 @@ public class PartQuery {
         return new PartBomResponse(children, parents);
     }
 
-    @Transactional(readOnly = true)
     public BomTreeResponse getBomTree(UUID partId, String direction) {
         currentAuthProvider.getCurrentAuth();
 
@@ -476,7 +484,6 @@ public class PartQuery {
         return new BomTreeResponse(root, reverse ? "reverse" : "forward", allPartNumbers.size());
     }
 
-    @Transactional(readOnly = true)
     public PartFilesResponse getPartFiles(UUID partId) {
         currentAuthProvider.getCurrentAuth();
         assertPartExists(partId);
@@ -492,7 +499,6 @@ public class PartQuery {
         return new PartFilesResponse(items.size(), items);
     }
 
-    @Transactional(readOnly = true)
     public List<FileItemResponse> getFilesByIds(List<UUID> fileIds) {
         currentAuthProvider.getCurrentAuth();
         return fileRepository.findByIdIn(fileIds).stream()
@@ -500,7 +506,6 @@ public class PartQuery {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
     public PartSuppliersResponse getPartSuppliers(UUID partId) {
         currentAuthProvider.getCurrentAuth();
         assertPartExists(partId);
@@ -537,7 +542,7 @@ public class PartQuery {
         if (userId == null) {
             return null;
         }
-        User user = userRepository.findById(userId).orElse(null);
+        User user = userApi.getUserOrNull(userId);
         if (user == null) {
             return null;
         }
@@ -554,7 +559,7 @@ public class PartQuery {
         if (teamId == null) {
             return null;
         }
-        Team team = teamRepository.findById(teamId).orElse(null);
+        Team team = teamApi.getTeamOrNull(teamId);
         return team == null ? null : team.getName();
     }
 
@@ -742,50 +747,87 @@ public class PartQuery {
             List<UUID> partIds,
             UUID projectId
     ) {
-        StringBuilder whereClause = new StringBuilder(" where 1=1");
-        Map<String, Object> params = new HashMap<>();
+        PathBuilder<Part> part = new PathBuilder<>(Part.class, "part");
+        PathBuilder<BomLink> bomLink = new PathBuilder<>(BomLink.class, "bomLink");
+        PathBuilder<ProjectPart> projectPart = new PathBuilder<>(ProjectPart.class, "projectPart");
+
+        BooleanBuilder predicate = buildPartPredicate(
+                part,
+                bomLink,
+                projectPart,
+                search,
+                category,
+                lifecycleState,
+                hasDrawing,
+                hasChildren,
+                partIds,
+                projectId
+        );
+
+        return queryFactory()
+                .selectFrom(part)
+                .where(predicate)
+                .orderBy(part.getString("partNumber").asc())
+                .fetch();
+    }
+
+    private JPAQueryFactory queryFactory() {
+        return new JPAQueryFactory(entityManager);
+    }
+
+    private BooleanBuilder buildPartPredicate(
+            PathBuilder<Part> part,
+            PathBuilder<BomLink> bomLink,
+            PathBuilder<ProjectPart> projectPart,
+            String search,
+            String category,
+            String lifecycleState,
+            Boolean hasDrawing,
+            Boolean hasChildren,
+            List<UUID> partIds,
+            UUID projectId
+    ) {
+        BooleanBuilder predicate = new BooleanBuilder();
 
         if (search != null && !search.isBlank()) {
-            whereClause.append(" and (lower(p.partNumber) like :search or lower(p.name) like :search)");
-            params.put("search", "%" + search.trim().toLowerCase() + "%");
+            String keyword = search.trim();
+            predicate.and(
+                    part.getString("partNumber").containsIgnoreCase(keyword)
+                            .or(part.getString("name").containsIgnoreCase(keyword))
+            );
         }
         if (category != null && !category.isBlank()) {
-            whereClause.append(" and p.category = :category");
-            params.put("category", category);
+            predicate.and(part.getString("category").eq(category));
         }
         if (lifecycleState != null && !lifecycleState.isBlank()) {
-            whereClause.append(" and p.lifecycleState = :lifecycleState");
-            params.put("lifecycleState", lifecycleState);
+            predicate.and(part.getString("lifecycleState").eq(lifecycleState));
         }
         if (hasDrawing != null) {
-            whereClause.append(hasDrawing ? " and p.drawingId is not null" : " and p.drawingId is null");
+            predicate.and(Boolean.TRUE.equals(hasDrawing)
+                    ? part.get("drawingId", UUID.class).isNotNull()
+                    : part.get("drawingId", UUID.class).isNull());
         }
         if (hasChildren != null) {
-            whereClause.append(
-                    hasChildren
-                            ? " and exists (select 1 from BomLink bl where bl.parentPartId = p.id)"
-                            : " and not exists (select 1 from BomLink bl where bl.parentPartId = p.id)"
-            );
+            BooleanExpression childExists = JPAExpressions.selectOne()
+                    .from(bomLink)
+                    .where(bomLink.get("parentPartId", UUID.class).eq(part.get("id", UUID.class)))
+                    .exists();
+            predicate.and(Boolean.TRUE.equals(hasChildren) ? childExists : childExists.not());
         }
         if (partIds != null && !partIds.isEmpty()) {
-            whereClause.append(" and p.id in :partIds");
-            params.put("partIds", partIds);
+            predicate.and(part.get("id", UUID.class).in(partIds));
         }
         if (projectId != null) {
-            whereClause.append(
-                    " and exists (" +
-                            "select 1 from ProjectPart pp where pp.partId = p.id and pp.projectId = :projectId" +
-                            ")"
-            );
-            params.put("projectId", projectId);
+            BooleanExpression linkedToProject = JPAExpressions.selectOne()
+                    .from(projectPart)
+                    .where(
+                            projectPart.get("partId", UUID.class).eq(part.get("id", UUID.class))
+                                    .and(projectPart.get("projectId", UUID.class).eq(projectId))
+                    )
+                    .exists();
+            predicate.and(linkedToProject);
         }
-
-        TypedQuery<Part> query = entityManager.createQuery(
-                "select p from Part p" + whereClause + " order by p.partNumber",
-                Part.class
-        );
-        params.forEach(query::setParameter);
-        return query.getResultList();
+        return predicate;
     }
 
     private void flattenBomTree(BomTreeNodeResponse node, int level, List<BomFlatRow> rows) {

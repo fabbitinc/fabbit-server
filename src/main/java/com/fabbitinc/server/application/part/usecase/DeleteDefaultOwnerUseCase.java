@@ -9,12 +9,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
+@Transactional
 public class DeleteDefaultOwnerUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final PartService partService;
 
-    @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public void execute(String category) {
         currentAuthProvider.getCurrentAuth();

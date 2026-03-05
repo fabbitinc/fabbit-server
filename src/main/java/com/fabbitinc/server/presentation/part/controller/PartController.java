@@ -22,12 +22,7 @@ import com.fabbitinc.server.application.part.usecase.DeletePartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.DetachPartFileUseCase;
 import com.fabbitinc.server.application.part.usecase.RegisterPartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.RenameCategoryUseCase;
-import com.fabbitinc.server.application.project.query.condition.PartProjectsCondition;
-import com.fabbitinc.server.application.project.query.result.PartProjectSummaryResult;
-import com.fabbitinc.server.application.project.query.result.PartProjectsResult;
 import com.fabbitinc.server.application.project.dto.response.PartProjectsResponse;
-import com.fabbitinc.server.application.project.dto.response.PartProjectSummaryResponse;
-import com.fabbitinc.server.application.project.query.ProjectQuery;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -64,7 +59,6 @@ public class PartController {
     private final DetachPartFileUseCase detachPartFileUseCase;
     private final RegisterPartDrawingUseCase registerPartDrawingUseCase;
     private final DeletePartDrawingUseCase deletePartDrawingUseCase;
-    private final ProjectQuery projectQuery;
 
     @Operation(
             summary = "GET /api/v1/parts/lookup",
@@ -239,11 +233,7 @@ public class PartController {
     public PartProjectsResponse getPartProjects(
             @PathVariable UUID partId
     ) {
-        PartProjectsResult result = projectQuery.listPartProjects(new PartProjectsCondition(partId));
-        return new PartProjectsResponse(
-                result.total(),
-                result.items().stream().map(this::toPartProjectSummaryResponse).toList()
-        );
+        return partQuery.getPartProjects(partId);
     }
 
     @Operation(
@@ -331,7 +321,4 @@ public class PartController {
         return new RenameCategoryResponse(updatedCount);
     }
 
-    private PartProjectSummaryResponse toPartProjectSummaryResponse(PartProjectSummaryResult result) {
-        return new PartProjectSummaryResponse(result.id(), result.name(), result.description());
-    }
 }

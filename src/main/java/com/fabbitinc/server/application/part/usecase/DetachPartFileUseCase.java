@@ -10,12 +10,12 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
+@Transactional
 public class DetachPartFileUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final PartService partService;
 
-    @Transactional
     public void execute(UUID partId, UUID fileId) {
         currentAuthProvider.getCurrentAuth();
         partService.detachFile(partId, fileId);

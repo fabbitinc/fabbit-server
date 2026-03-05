@@ -13,13 +13,13 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
+@Transactional
 public class RegisterPartDrawingUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final DrawingService drawingService;
     private final PartService partService;
 
-    @Transactional
     public RegisterDrawingResponse execute(UUID partId, UUID fileId) {
         currentAuthProvider.getCurrentAuth();
 

@@ -8,14 +8,14 @@ import com.fabbitinc.server.application.part.dto.response.PartDefaultOwnerItemRe
 import com.fabbitinc.server.application.part.dto.response.PartDefaultOwnerListResponse;
 import com.fabbitinc.server.application.part.dto.response.PartOwnerResponse;
 import com.fabbitinc.server.application.part.dto.response.PartOwnerUserSummaryResponse;
+import com.fabbitinc.server.application.team.api.TeamApi;
+import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartDefaultOwner;
 import com.fabbitinc.server.domain.part.repository.PartDefaultOwnerRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.team.model.Team;
-import com.fabbitinc.server.domain.team.repository.TeamRepository;
 import com.fabbitinc.server.domain.user.model.User;
-import com.fabbitinc.server.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
@@ -26,16 +26,16 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PartOwnerQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final PartRepository partRepository;
     private final PartDefaultOwnerRepository partDefaultOwnerRepository;
-    private final UserRepository userRepository;
-    private final TeamRepository teamRepository;
+    private final UserApi userApi;
+    private final TeamApi teamApi;
     private final FileUrlResolver fileUrlResolver;
 
-    @Transactional(readOnly = true)
     public PartOwnerResponse getPartOwner(UUID partId) {
         currentAuthProvider.getCurrentAuth();
 
@@ -47,7 +47,6 @@ public class PartOwnerQuery {
         return toPartOwnerResponse(part);
     }
 
-    @Transactional(readOnly = true)
     @PreAuthorize("hasRole('ADMIN')")
     public PartDefaultOwnerListResponse listDefaultOwners() {
         currentAuthProvider.getCurrentAuth();
@@ -59,7 +58,6 @@ public class PartOwnerQuery {
         return new PartDefaultOwnerListResponse(items);
     }
 
-    @Transactional(readOnly = true)
     @PreAuthorize("hasRole('ADMIN')")
     public PartDefaultOwnerItemResponse getDefaultOwner(UUID defaultOwnerId) {
         currentAuthProvider.getCurrentAuth();
@@ -96,7 +94,7 @@ public class PartOwnerQuery {
         if (userId == null) {
             return null;
         }
-        User user = userRepository.findById(userId).orElse(null);
+        User user = userApi.getUserOrNull(userId);
         if (user == null) {
             return null;
         }
@@ -113,7 +111,7 @@ public class PartOwnerQuery {
         if (teamId == null) {
             return null;
         }
-        Team team = teamRepository.findById(teamId).orElse(null);
+        Team team = teamApi.getTeamOrNull(teamId);
         return team != null ? team.getName() : null;
     }
 }

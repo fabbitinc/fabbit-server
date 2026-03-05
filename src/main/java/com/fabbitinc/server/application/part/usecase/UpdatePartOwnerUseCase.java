@@ -11,12 +11,12 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
+@Transactional
 public class UpdatePartOwnerUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final PartService partService;
 
-    @Transactional
     public UUID execute(UUID partId, UpdatePartOwnerRequest request) {
         currentAuthProvider.getCurrentAuth();
         return partService.updateOwner(

@@ -12,12 +12,12 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
+@Transactional
 public class AttachPartFilesUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final PartService partService;
 
-    @Transactional
     public List<UUID> execute(UUID partId, List<UUID> fileIds) {
         currentAuthProvider.getCurrentAuth();
         return partService.attachFiles(partId, fileIds).stream()

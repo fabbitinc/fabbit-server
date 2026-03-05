@@ -48,6 +48,13 @@ public class UserService {
         return userRepository.findAllByIdInOrderByFullName(userIds);
     }
 
+    public User getUserOrNull(UUID userId) {
+        if (userId == null) {
+            return null;
+        }
+        return userRepository.findById(userId).orElse(null);
+    }
+
     public User getUserOrThrow(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다"));

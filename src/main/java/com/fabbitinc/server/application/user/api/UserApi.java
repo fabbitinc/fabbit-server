@@ -17,4 +17,8 @@ public class UserApi {
     public List<User> getUsersByIdsOrdered(List<UUID> userIds) {
         return userService.getUsersByIdsOrdered(userIds);
     }
+
+    public User getUserOrNull(UUID userId) {
+        return userService.getUserOrNull(userId);
+    }
 }
