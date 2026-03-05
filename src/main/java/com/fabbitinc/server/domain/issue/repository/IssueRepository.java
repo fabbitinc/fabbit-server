@@ -23,34 +23,6 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
             """)
     int findMaxNumber();
 
-    @Query("""
-            select i
-            from Issue i
-            where i.type = :type
-              and (:state is null or i.state = :state)
-              and (:search = '' or lower(i.title) like lower(concat('%', :search, '%')))
-            order by i.createdAt desc
-            """)
-    List<Issue> listByType(
-            IssueType type,
-            IssueState state,
-            String search,
-            Pageable pageable
-    );
-
-    @Query("""
-            select count(i)
-            from Issue i
-            where i.type = :type
-              and (:state is null or i.state = :state)
-              and (:search = '' or lower(i.title) like lower(concat('%', :search, '%')))
-            """)
-    long countByTypeAndFilters(
-            IssueType type,
-            IssueState state,
-            String search
-    );
-
     long countByTypeAndState(IssueType type, IssueState state);
 
     List<Issue> findByTypeOrderByNumberDesc(IssueType type, Pageable pageable);

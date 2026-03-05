@@ -64,8 +64,11 @@ import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.team.repository.TeamRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.dsl.PathBuilder;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -104,6 +107,7 @@ public class IssueQuery {
     private final ActivityRepository activityRepository;
     private final FileUrlResolver fileUrlResolver;
     private final ObjectMapper objectMapper;
+    private final EntityManager entityManager;
 
     @Transactional(readOnly = true)
     public IssueLookupResponse lookupIssues(String search,
@@ -141,12 +145,23 @@ public class IssueQuery {
 
         IssueState state = parseIssueState(rawState);
         String normalizedSearch = normalizeSearch(search);
-        String searchKeyword = normalizedSearch == null ? "" : normalizedSearch;
+        PathBuilder<Issue> issuePath = new PathBuilder<>(Issue.class, "issue");
+        BooleanBuilder predicate = buildIssueListPredicate(issuePath, IssueType.ISSUE, state, normalizedSearch);
 
-        List<Issue> filtered = issueRepository.listByType(IssueType.ISSUE, state, searchKeyword, Pageable.unpaged());
-        long total = filtered.size();
+        Long totalCount = queryFactory()
+                .select(issuePath.get("id", UUID.class).count())
+                .from(issuePath)
+                .where(predicate)
+                .fetchOne();
+        long total = totalCount == null ? 0L : totalCount;
 
-        List<Issue> paged = page(filtered, offset, limit);
+        List<Issue> paged = queryFactory()
+                .selectFrom(issuePath)
+                .where(predicate)
+                .orderBy(issuePath.getDateTime("createdAt", Instant.class).desc())
+                .offset(offset)
+                .limit(limit)
+                .fetch();
         Enrichment enrichment = enrich(paged);
 
         List<IssueSummaryResponse> items = paged.stream()
@@ -207,12 +222,23 @@ public class IssueQuery {
         IssueState state = parseIssueState(rawState);
         CrState crState = parseCrState(rawCrState);
         String normalizedSearch = normalizeSearch(search);
-        String searchKeyword = normalizedSearch == null ? "" : normalizedSearch;
+        PathBuilder<ChangeRequest> changeRequestPath = new PathBuilder<>(ChangeRequest.class, "changeRequest");
+        BooleanBuilder predicate = buildChangeRequestListPredicate(changeRequestPath, state, crState, normalizedSearch);
 
-        List<ChangeRequest> filtered = changeRequestRepository.listByFilters(state, crState, searchKeyword, Pageable.unpaged());
-        long total = filtered.size();
+        Long totalCount = queryFactory()
+                .select(changeRequestPath.get("id", UUID.class).count())
+                .from(changeRequestPath)
+                .where(predicate)
+                .fetchOne();
+        long total = totalCount == null ? 0L : totalCount;
 
-        List<ChangeRequest> paged = page(filtered, offset, limit);
+        List<ChangeRequest> paged = queryFactory()
+                .selectFrom(changeRequestPath)
+                .where(predicate)
+                .orderBy(changeRequestPath.getDateTime("createdAt", Instant.class).desc())
+                .offset(offset)
+                .limit(limit)
+                .fetch();
         List<Issue> asIssues = paged.stream().map(item -> (Issue) item).toList();
         Enrichment enrichment = enrich(asIssues);
 
@@ -762,13 +788,44 @@ public class IssueQuery {
         return map;
     }
 
-    private <T> List<T> page(List<T> source, int offset, int limit) {
-        if (source.isEmpty()) {
-            return List.of();
+    private JPAQueryFactory queryFactory() {
+        return new JPAQueryFactory(entityManager);
+    }
+
+    private BooleanBuilder buildIssueListPredicate(
+            PathBuilder<Issue> issue,
+            IssueType type,
+            IssueState state,
+            String search
+    ) {
+        BooleanBuilder predicate = new BooleanBuilder();
+        predicate.and(issue.getEnum("type", IssueType.class).eq(type));
+        if (state != null) {
+            predicate.and(issue.getEnum("state", IssueState.class).eq(state));
         }
-        int fromIndex = Math.min(offset, source.size());
-        int toIndex = Math.min(offset + limit, source.size());
-        return source.subList(fromIndex, toIndex);
+        if (search != null) {
+            predicate.and(issue.getString("title").containsIgnoreCase(search));
+        }
+        return predicate;
+    }
+
+    private BooleanBuilder buildChangeRequestListPredicate(
+            PathBuilder<ChangeRequest> changeRequest,
+            IssueState state,
+            CrState crState,
+            String search
+    ) {
+        BooleanBuilder predicate = new BooleanBuilder();
+        if (state != null) {
+            predicate.and(changeRequest.getEnum("state", IssueState.class).eq(state));
+        }
+        if (crState != null) {
+            predicate.and(changeRequest.getEnum("crState", CrState.class).eq(crState));
+        }
+        if (search != null) {
+            predicate.and(changeRequest.getString("title").containsIgnoreCase(search));
+        }
+        return predicate;
     }
 
     private IssueType parseIssueType(String rawType) {
