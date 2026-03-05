@@ -1,18 +1,18 @@
 package com.fabbitinc.server.application.user.query;
 
-import com.fabbitinc.server.application.auth.dto.response.OrganizationResponse;
-import com.fabbitinc.server.application.auth.dto.response.UserResponse;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
-import com.fabbitinc.server.application.user.dto.response.MeResponse;
-import com.fabbitinc.server.application.user.dto.response.UserMembershipResponse;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
+import com.fabbitinc.server.application.user.query.condition.MeCondition;
+import com.fabbitinc.server.application.user.query.result.MeResult;
+import com.fabbitinc.server.application.user.query.result.QueryOrganizationResult;
+import com.fabbitinc.server.application.user.query.result.QueryUserResult;
+import com.fabbitinc.server.application.user.query.result.UserMembershipResult;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.Organization;
-import com.fabbitinc.server.domain.organization.repository.MembershipRepository;
-import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,37 +23,35 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class UserQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final UserRepository userRepository;
-    private final MembershipRepository membershipRepository;
-    private final OrganizationRepository organizationRepository;
+    private final OrganizationApi organizationApi;
     private final FileUrlResolver fileUrlResolver;
 
-    @Transactional(readOnly = true)
-    public MeResponse getMe() {
+    public MeResult getMe(MeCondition condition) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
 
         User user = userRepository.findById(auth.userId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다"));
 
-        List<UserMembershipResponse> membershipResponses = membershipRepository.findByUserId(user.getId()).stream()
+        List<UserMembershipResult> membershipResults = organizationApi.getMembershipsByUserId(user.getId()).stream()
                 .map(this::toMembershipResponse)
                 .toList();
 
-        return new MeResponse(toUserResponse(user), membershipResponses);
+        return new MeResult(toUserResult(user), membershipResults);
     }
 
-    private UserMembershipResponse toMembershipResponse(Membership membership) {
-        Organization organization = organizationRepository.findById(membership.getOrgId())
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "조직을 찾을 수 없습니다"));
+    private UserMembershipResult toMembershipResponse(Membership membership) {
+        Organization organization = organizationApi.getOrganizationOrThrow(membership.getOrgId());
 
-        return new UserMembershipResponse(
+        return new UserMembershipResult(
                 membership.getOrgId(),
                 membership.getRole().name(),
                 membership.getJobRole(),
-                new OrganizationResponse(
+                new QueryOrganizationResult(
                         organization.getId(),
                         organization.getSlug(),
                         organization.getName(),
@@ -65,8 +63,8 @@ public class UserQuery {
         );
     }
 
-    private UserResponse toUserResponse(User user) {
-        return new UserResponse(
+    private QueryUserResult toUserResult(User user) {
+        return new QueryUserResult(
                 user.getId(),
                 user.getEmail(),
                 user.getFullName(),

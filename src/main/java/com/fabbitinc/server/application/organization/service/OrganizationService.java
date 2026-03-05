@@ -80,6 +80,10 @@ public class OrganizationService {
                 .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN, "소속된 조직이 없습니다"));
     }
 
+    public List<Membership> getMembershipsByUserId(UUID userId) {
+        return membershipRepository.findByUserId(userId);
+    }
+
     public List<Membership> getMembershipsOrdered(UUID orgId) {
         return membershipRepository.findOrderedByOrgId(orgId);
     }

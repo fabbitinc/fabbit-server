@@ -42,6 +42,10 @@ public class OrganizationApi {
         return organizationService.getOrgOrThrow(orgId);
     }
 
+    public List<Membership> getMembershipsByUserId(UUID userId) {
+        return organizationService.getMembershipsByUserId(userId);
+    }
+
     public List<Membership> getMembershipsOrdered(UUID orgId) {
         return organizationService.getMembershipsOrdered(orgId);
     }

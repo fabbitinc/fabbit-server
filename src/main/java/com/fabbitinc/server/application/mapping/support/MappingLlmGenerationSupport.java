@@ -48,7 +48,7 @@ public class MappingLlmGenerationSupport {
                 return mappingGenerationSupport.generate(headers, sampleRows);
             }
             return generated;
-        } catch (Exception ex) {
+        } catch (LinkageError | Exception ex) {
             log.warn("event=mapping_preview_llm_failed model={} fallback=heuristic reason={}",
                     appProperties.llmModel(),
                     ex.getMessage());

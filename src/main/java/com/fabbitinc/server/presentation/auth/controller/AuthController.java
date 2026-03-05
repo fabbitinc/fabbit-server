@@ -244,6 +244,7 @@ public class AuthController {
             @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
     })
     @PostMapping("/login")
+    // TODO 응답 값 통일안됨
     public Object login(
             @Valid @RequestBody LoginRequest request,
             @Parameter(description = "요청 Origin 헤더 (워크스페이스 로그인 식별)", example = "https://fabbit.lvh.me")
