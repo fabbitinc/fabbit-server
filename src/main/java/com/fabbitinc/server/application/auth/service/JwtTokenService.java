@@ -36,7 +36,7 @@ public class JwtTokenService {
     private final MembershipRepository membershipRepository;
     private final PlatformTransactionManager transactionManager;
 
-    public TokenResponse issueTokens(UUID userId, String email, UUID orgId, String role) {
+    public IssuedTokens issueTokenBundle(UUID userId, String email, UUID orgId, String role) {
         Instant now = Instant.now();
         Instant accessExp = now.plus(jwtProperties.accessTokenExpireMinutes(), ChronoUnit.MINUTES);
         Instant refreshExp = now.plus(jwtProperties.refreshTokenExpireDays(), ChronoUnit.DAYS);
@@ -63,7 +63,12 @@ public class JwtTokenService {
                 .sign(algorithm);
 
         refreshTokenRepository.save(new RefreshToken(userId, refreshJti, refreshExp));
-        return TokenResponse.bearer(accessToken, refreshToken);
+        return new IssuedTokens(accessToken, refreshToken, "bearer");
+    }
+
+    public TokenResponse issueTokens(UUID userId, String email, UUID orgId, String role) {
+        IssuedTokens issued = issueTokenBundle(userId, email, orgId, role);
+        return new TokenResponse(issued.accessToken(), issued.refreshToken(), issued.tokenType());
     }
 
     public String issueScopedToken(UUID userId, String email, String scope) {
@@ -161,5 +166,12 @@ public class JwtTokenService {
         TransactionTemplate template = new TransactionTemplate(transactionManager);
         template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         template.executeWithoutResult(status -> refreshTokenRepository.deleteByUserId(userId));
+    }
+
+    public record IssuedTokens(
+            String accessToken,
+            String refreshToken,
+            String tokenType
+    ) {
     }
 }

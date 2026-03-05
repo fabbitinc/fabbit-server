@@ -20,6 +20,7 @@ public record AppProperties(
         @DefaultValue("Fabbit") String smtpFromName,
         @DefaultValue("false") boolean turnstileEnabled,
         @DefaultValue("") String turnstileSecretKey,
+        @DefaultValue("https://challenges.cloudflare.com/turnstile/v0/siteverify") String turnstileVerifyUrl,
         @DefaultValue("http://localhost:9000") String storageEndpoint,
         @DefaultValue("minioadmin") String storageAccessKey,
         @DefaultValue("minioadmin") String storageSecretKey,

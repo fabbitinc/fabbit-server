@@ -6,32 +6,25 @@ import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
 import com.fabbitinc.server.application.organization.port.TenantProvisioningPort;
 import com.fabbitinc.server.application.tenant.support.TenantSchemaPolicy;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
+import liquibase.Liquibase;
+import liquibase.database.DatabaseFactory;
+import liquibase.database.jvm.JdbcConnection;
+import liquibase.resource.ClassLoaderResourceAccessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -55,15 +48,6 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
 
     private final DataSource dataSource;
 
-    @Value("${spring.datasource.url}")
-    private String jdbcUrl;
-
-    @Value("${spring.datasource.username}")
-    private String dbUsername;
-
-    @Value("${spring.datasource.password}")
-    private String dbPassword;
-
     @Override
     public String provisionTenant(UUID orgId) {
         String schemaName = TenantSchemaPolicy.schemaNameForOrgId(orgId);
@@ -72,7 +56,9 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
             log.info("테넌트 프로비저닝 시작: orgId={}, schema={}", orgId, schemaName);
 
             try (Connection connection = dataSource.getConnection()) {
+                connection.setAutoCommit(true);
                 loadAge(connection);
+                setSearchPath(connection, "ag_catalog, public");
                 ensureGraph(connection, schemaName);
             }
             log.info("AGE 그래프 준비 완료: schema={}", schemaName);
@@ -81,7 +67,9 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
             log.info("테넌트 마이그레이션 완료: schema={}", schemaName);
 
             try (Connection connection = dataSource.getConnection()) {
+                connection.setAutoCommit(true);
                 loadAge(connection);
+                setSearchPath(connection, schemaName + ", ag_catalog, public");
                 seedDefaultLabels(connection, schemaName);
                 createOntologyIndexes(connection, schemaName);
             }
@@ -95,89 +83,32 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
         return schemaName;
     }
 
-    private void applyTenantMigrations(String schemaName) throws IOException, InterruptedException {
-        Path tmpDir = extractMigrationFiles();
-        try {
-            String atlasUrl = toAtlasUrl(schemaName);
-            ProcessBuilder pb = new ProcessBuilder(
-                    "atlas", "migrate", "apply",
-                    "--dir", "file://" + tmpDir.toAbsolutePath(),
-                    "--url", atlasUrl,
-                    "--lock-timeout", "3s"
-            );
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-            process.getOutputStream().close();
+    private void applyTenantMigrations(String schemaName) throws Exception {
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(true);
+            setSearchPath(connection, schemaName + ", public");
 
-            List<String> lines = new ArrayList<>();
-            Thread outputReader = Thread.ofVirtual().start(() -> readProcessOutput(process.getInputStream(), lines));
+            var database = DatabaseFactory.getInstance()
+                    .findCorrectDatabaseImplementation(new JdbcConnection(connection));
+            database.setDefaultSchemaName(schemaName);
+            database.setLiquibaseSchemaName(schemaName);
 
-            boolean finished = process.waitFor(10, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                process.waitFor(2, TimeUnit.SECONDS);
-                outputReader.join(2_000);
-                String output = String.join("\n", lines);
-                log.error("atlas migrate apply 타임아웃: schema={}, output={}", schemaName, output);
-                throw new IOException("atlas migrate apply timed out");
-            }
-
-            outputReader.join(2_000);
-            String output = String.join("\n", lines);
-            int exitCode = process.exitValue();
-            if (exitCode != 0) {
-                log.error("atlas migrate apply 실패: schema={}, output={}", schemaName, output);
-                throw new IOException("atlas migrate apply failed with exit code " + exitCode);
-            }
-            log.info("atlas migrate apply 완료: schema={}", schemaName);
-        } finally {
-            deleteDirectory(tmpDir);
-        }
-    }
-
-    private Path extractMigrationFiles() throws IOException {
-        Path tmpDir = Files.createTempDirectory("tenant-migrations-");
-        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-        Resource[] resources = resolver.getResources("classpath:tenant/*");
-        for (Resource resource : resources) {
-            String filename = resource.getFilename();
-            if (filename == null) {
-                continue;
-            }
-            try (InputStream is = resource.getInputStream()) {
-                Files.copy(is, tmpDir.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
+            try (var liquibase = new Liquibase(
+                    "tenant-changelog.xml",
+                    new ClassLoaderResourceAccessor(),
+                    database
+            )) {
+                liquibase.update();
             }
         }
-        return tmpDir;
     }
 
-    private String toAtlasUrl(String schemaName) {
-        String pgUrl = jdbcUrl
-                .replace("jdbc:postgresql://", "postgres://" + dbUsername + ":" + dbPassword + "@");
-        String separator = pgUrl.contains("?") ? "&" : "?";
-        return pgUrl + separator + "search_path=" + schemaName + "&sslmode=disable";
-    }
-
-    private void deleteDirectory(Path dir) {
-        try (var stream = Files.walk(dir)) {
-            stream.sorted(java.util.Comparator.reverseOrder())
-                    .forEach(path -> {
-                        try {
-                            Files.delete(path);
-                        } catch (IOException ignored) {
-                        }
-                    });
-        } catch (IOException ignored) {
-        }
-    }
-
-    private void readProcessOutput(InputStream inputStream, List<String> lines) {
-        try (inputStream) {
-            String output = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-            if (!output.isBlank()) {
-                lines.add(output);
-            }
-        } catch (IOException ignored) {
+    private void setSearchPath(Connection connection, String searchPath) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT set_config('search_path', ?, false)"
+        )) {
+            statement.setString(1, searchPath);
+            statement.execute();
         }
     }
 
@@ -236,12 +167,11 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
             validateGraphLabel(label);
 
             if (!createdLabels.contains(label) && !isGraphLabelPresent(connection, graphName, label)) {
-                try (PreparedStatement statement = connection.prepareStatement(
-                        "SELECT ag_catalog.create_vlabel(?, ?)"
-                )) {
-                    statement.setString(1, graphName);
-                    statement.setString(2, label);
-                    statement.execute();
+                String sql = "SELECT ag_catalog.create_vlabel('"
+                        + TenantSchemaPolicy.normalizeSqlIdentifier(graphName) + "', '"
+                        + label + "')";
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute(sql);
                 }
                 createdLabels.add(label);
             }

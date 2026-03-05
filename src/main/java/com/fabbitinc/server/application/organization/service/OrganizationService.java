@@ -4,7 +4,7 @@ import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.organization.port.TenantProvisioningPort;
-import com.fabbitinc.server.application.organization.dto.request.CreateOrganizationRequest;
+import com.fabbitinc.server.application.organization.service.input.CreateOrganizationInput;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
@@ -32,19 +32,19 @@ public class OrganizationService {
     private final MembershipRepository membershipRepository;
     private final TenantProvisioningPort tenantProvisioningPort;
 
-    public Organization createOrganization(UUID userId, CreateOrganizationRequest request) {
-        PlanType planType = resolvePlanType(request.planType());
+    public Organization createOrganization(UUID userId, CreateOrganizationInput input) {
+        PlanType planType = resolvePlanType(input.planType());
         PlanLimits limits = OrganizationPlans.limits().get(planType);
 
-        String slug = resolveAvailableSlug(request.slug(), request.orgName());
+        String slug = resolveAvailableSlug(input.slug(), input.orgName());
 
         Organization organization = organizationRepository.save(
-                new Organization(
+                Organization.create(
                         slug,
-                        request.orgName(),
+                        input.orgName(),
                         userId,
-                        request.industry(),
-                        request.teamSize(),
+                        input.industry(),
+                        input.teamSize(),
                         planType,
                         limits.maxMembers(),
                         limits.aiCredits(),
@@ -52,7 +52,7 @@ public class OrganizationService {
                 )
         );
 
-        membershipRepository.save(new Membership(userId, organization.getId(), MembershipRole.OWNER, null));
+        membershipRepository.save(Membership.createOwner(userId, organization.getId()));
         organizationRepository.reserveMemberSeat(organization.getId());
         tenantProvisioningPort.provisionTenant(organization.getId());
 
@@ -94,7 +94,7 @@ public class OrganizationService {
             throw new AppException(ErrorCode.MEMBER_LIMIT_EXCEEDED, "멤버 수 한도를 초과했습니다. 플랜을 업그레이드해주세요.");
         }
 
-        return membershipRepository.save(new Membership(userId, orgId, role, null));
+        return membershipRepository.save(Membership.create(userId, orgId, role, null));
     }
 
     public void removeMember(AuthContext auth, UUID userId) {
@@ -144,7 +144,7 @@ public class OrganizationService {
 
     public void setProfileImage(AuthContext auth, File file) {
         Organization organization = getOrgOrThrow(auth.orgId());
-        organization.setProfileImage(file.getFileKey());
+        organization.changeProfileImage(file.getFileKey());
         file.assignOwner("organization", organization.getId());
     }
 

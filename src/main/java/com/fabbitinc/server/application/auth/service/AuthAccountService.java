@@ -3,8 +3,6 @@ package com.fabbitinc.server.application.auth.service;
 import com.fabbitinc.server.application.auth.dto.request.LoginRequest;
 import com.fabbitinc.server.application.auth.dto.request.RegisterRequest;
 import com.fabbitinc.server.application.auth.dto.response.LoginResponse;
-import com.fabbitinc.server.application.auth.dto.response.OrganizationResponse;
-import com.fabbitinc.server.application.auth.dto.response.RegisterResponse;
 import com.fabbitinc.server.application.auth.dto.response.ScopedLoginResponse;
 import com.fabbitinc.server.application.auth.dto.response.TokenResponse;
 import com.fabbitinc.server.application.auth.dto.response.UserResponse;
@@ -15,14 +13,7 @@ import com.fabbitinc.server.domain.auth.model.EmailVerification;
 import com.fabbitinc.server.domain.auth.model.EmailVerificationStatus;
 import com.fabbitinc.server.domain.auth.repository.EmailVerificationRepository;
 import com.fabbitinc.server.domain.organization.model.Membership;
-import com.fabbitinc.server.domain.organization.model.MembershipRole;
-import com.fabbitinc.server.domain.organization.model.Organization;
-import com.fabbitinc.server.domain.organization.model.OrganizationPlans;
-import com.fabbitinc.server.domain.organization.model.PlanLimits;
-import com.fabbitinc.server.domain.organization.model.PlanType;
-import com.fabbitinc.server.domain.organization.model.WorkspaceSlugPolicy;
 import com.fabbitinc.server.domain.organization.repository.MembershipRepository;
-import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,23 +21,19 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Locale;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AuthAccountService {
 
-    private static final long GB_TO_BYTES = 1_000_000_000L;
-
     private final EmailVerificationRepository emailVerificationRepository;
     private final UserRepository userRepository;
-    private final OrganizationRepository organizationRepository;
     private final MembershipRepository membershipRepository;
     private final PasswordService passwordService;
     private final JwtTokenService jwtTokenService;
     private final FileUrlResolver fileUrlResolver;
 
-    public RegisterResponse register(RegisterRequest request) {
+    public User registerUser(RegisterRequest request) {
         EmailVerification verification = validateAndConsumeVerification(
                 request.verificationToken(),
                 request.code()
@@ -62,47 +49,7 @@ public class AuthAccountService {
                 passwordService.hash(request.password()),
                 request.fullName()
         );
-        user = userRepository.save(user);
-
-        PlanType planType = resolvePlanType(request.planType());
-        PlanLimits limits = OrganizationPlans.limits().get(planType);
-
-        String slug = resolveAvailableSlug(request.slug(), request.orgName());
-
-        Organization organization = new Organization(
-                slug,
-                request.orgName(),
-                user.getId(),
-                request.industry(),
-                request.teamSize(),
-                planType,
-                limits.maxMembers(),
-                limits.aiCredits(),
-                limits.storageGb() * GB_TO_BYTES
-        );
-        organization = organizationRepository.save(organization);
-
-        Membership ownerMembership = new Membership(
-                user.getId(),
-                organization.getId(),
-                MembershipRole.OWNER,
-                null
-        );
-        membershipRepository.save(ownerMembership);
-        organizationRepository.reserveMemberSeat(organization.getId());
-
-        TokenResponse tokens = jwtTokenService.issueTokens(
-                user.getId(),
-                user.getEmail(),
-                organization.getId(),
-                MembershipRole.OWNER.name()
-        );
-
-        return new RegisterResponse(
-                toUserResponse(user),
-                toOrganizationResponse(organization),
-                tokens
-        );
+        return userRepository.save(user);
     }
 
     public Object login(LoginRequest request, String slug) {
@@ -154,72 +101,6 @@ public class AuthAccountService {
         return emailVerificationRepository.save(verification);
     }
 
-    private String resolveAvailableSlug(String requestedSlug, String orgName) {
-        if (requestedSlug != null && !requestedSlug.isBlank()) {
-            String normalized = requestedSlug.trim().toLowerCase(Locale.ROOT);
-            validateSlugOrThrow(normalized);
-            if (organizationRepository.existsBySlug(normalized)) {
-                throw new AppException(ErrorCode.ALREADY_EXISTS, "이미 사용 중인 워크스페이스 주소입니다");
-            }
-            return normalized;
-        }
-
-        String base = slugify(orgName);
-        validateSlugOrThrow(base);
-
-        if (!organizationRepository.existsBySlug(base)) {
-            return base;
-        }
-
-        for (int i = 0; i < 100; i++) {
-            String candidate = base + "-" + UUID.randomUUID().toString().substring(0, 4);
-            String error = WorkspaceSlugPolicy.validateFormat(candidate);
-            if (error == null && !organizationRepository.existsBySlug(candidate)) {
-                return candidate;
-            }
-        }
-
-        throw new AppException(ErrorCode.ALREADY_EXISTS, "워크스페이스 주소를 생성할 수 없습니다");
-    }
-
-    private void validateSlugOrThrow(String slug) {
-        String error = WorkspaceSlugPolicy.validateFormat(slug);
-        if (error != null) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, error);
-        }
-    }
-
-    private String slugify(String orgName) {
-        String normalized = orgName == null ? "" : orgName.trim().toLowerCase(Locale.ROOT);
-        String slug = normalized
-                .replaceAll("[^a-z0-9]+", "-")
-                .replaceAll("^-+|-+$", "")
-                .replaceAll("-{2,}", "-");
-
-        if (slug.length() > 50) {
-            slug = slug.substring(0, 50).replaceAll("-+$", "");
-        }
-        if (slug.length() < 3) {
-            slug = "workspace";
-        }
-        return slug;
-    }
-
-    private PlanType resolvePlanType(String rawPlanType) {
-        if (rawPlanType == null || rawPlanType.isBlank()) {
-            return PlanType.STARTER;
-        }
-        String normalized = rawPlanType.trim().toUpperCase(Locale.ROOT);
-        if ("FREE".equals(normalized)) {
-            return PlanType.STARTER;
-        }
-        try {
-            return PlanType.valueOf(normalized);
-        } catch (IllegalArgumentException ex) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 plan_type입니다");
-        }
-    }
-
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
     }
@@ -233,18 +114,6 @@ public class AuthAccountService {
                 fileUrlResolver.resolve(user.getProfileImageFileKey()),
                 user.isActive(),
                 user.getCreatedAt()
-        );
-    }
-
-    private OrganizationResponse toOrganizationResponse(Organization organization) {
-        return new OrganizationResponse(
-                organization.getId(),
-                organization.getSlug(),
-                organization.getName(),
-                organization.getIndustry(),
-                organization.getTeamSize(),
-                organization.getPlanType().name(),
-                fileUrlResolver.resolve(organization.getProfileImageFileKey())
         );
     }
 }

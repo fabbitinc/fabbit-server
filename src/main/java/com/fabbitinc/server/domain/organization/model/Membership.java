@@ -43,12 +43,20 @@ public class Membership extends AbstractCreatedEntity {
     @Column(name = "job_role", length = 50)
     private String jobRole;
 
-    public Membership(UUID userId, UUID orgId, MembershipRole role, String jobRole) {
+    private Membership(UUID userId, UUID orgId, MembershipRole role, String jobRole) {
         super(UuidV7Generator.next());
         this.userId = userId;
         this.orgId = orgId;
         this.role = role;
         this.jobRole = jobRole;
+    }
+
+    public static Membership create(UUID userId, UUID orgId, MembershipRole role, String jobRole) {
+        return new Membership(userId, orgId, role, jobRole);
+    }
+
+    public static Membership createOwner(UUID userId, UUID orgId) {
+        return new Membership(userId, orgId, MembershipRole.OWNER, null);
     }
 
     public void changeRole(MembershipRole role) {

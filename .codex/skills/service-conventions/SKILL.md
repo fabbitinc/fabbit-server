@@ -29,6 +29,7 @@ description: Java Spring Service 레이어 규칙을 적용한다. 서비스 네
 
 - Service는 자기 도메인의 `Repository`만 기본 참조하라.
 - Service에서 다른 도메인의 `Service/Repository`를 직접 참조하지 마라.
+- 타 도메인 경계 타입(`*Api/*Policy`)은 interface/class 중 팀 합의된 한 가지 방식으로 일관되게 사용하라. interface를 강제하지 않는다.
 
 ## 적용 절차
 

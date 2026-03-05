@@ -1,10 +1,9 @@
 package com.fabbitinc.server;
 
-import com.fabbitinc.server.application.organization.dto.request.CreateOrganizationRequest;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
+import com.fabbitinc.server.application.organization.service.input.CreateOrganizationInput;
 import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.domain.organization.model.Membership;
-import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
 import com.fabbitinc.server.domain.organization.model.OrganizationPlans;
 import com.fabbitinc.server.domain.organization.model.PlanLimits;
@@ -66,7 +65,7 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
         if (existingOrganization == null) {
             organization = organizationService.createOrganization(
                     user.getId(),
-                    new CreateOrganizationRequest(
+                    new CreateOrganizationInput(
                             TEST_ORG_NAME,
                             TEST_ORG_SLUG,
                             null,
@@ -141,7 +140,7 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
             return;
         }
 
-        membershipRepository.save(new Membership(userId, orgId, MembershipRole.OWNER, null));
+        membershipRepository.save(Membership.createOwner(userId, orgId));
         organizationRepository.reserveMemberSeat(orgId);
     }
 

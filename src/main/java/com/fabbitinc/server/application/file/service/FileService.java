@@ -17,6 +17,7 @@ import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FileService {
@@ -36,6 +38,7 @@ public class FileService {
     private final StoragePort storagePort;
 
     public CreateFileResponse createFile(AuthContext auth, CreateFileRequest request) {
+        log.info("auth: " + auth + " request: " + request + "");
         UUID fileId = UuidV7Generator.next();
         String fileKey = "tenants/" + auth.orgId() + "/uploaded/" + fileId + "/" + request.originalName();
 

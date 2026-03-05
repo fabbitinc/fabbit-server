@@ -67,7 +67,7 @@ public class Organization extends AbstractIdEntity {
     @Column(name = "profile_image_file_key")
     private String profileImageFileKey;
 
-    public Organization(
+    private Organization(
             String slug,
             String name,
             java.util.UUID ownerId,
@@ -94,11 +94,35 @@ public class Organization extends AbstractIdEntity {
         this.usedMembers = 0;
     }
 
+    public static Organization create(
+            String slug,
+            String name,
+            java.util.UUID ownerId,
+            String industry,
+            String teamSize,
+            PlanType planType,
+            int maxMembers,
+            int planCreditsRemaining,
+            long storageBytesLimit
+    ) {
+        return new Organization(
+                slug,
+                name,
+                ownerId,
+                industry,
+                teamSize,
+                planType,
+                maxMembers,
+                planCreditsRemaining,
+                storageBytesLimit
+        );
+    }
+
     public void rename(String name) {
         this.name = name;
     }
 
-    public void setProfileImage(String profileImageFileKey) {
+    public void changeProfileImage(String profileImageFileKey) {
         this.profileImageFileKey = profileImageFileKey;
     }
 

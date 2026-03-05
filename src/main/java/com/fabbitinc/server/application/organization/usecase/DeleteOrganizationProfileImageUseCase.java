@@ -4,6 +4,7 @@ import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.file.service.FileService;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
+import com.fabbitinc.server.application.organization.usecase.command.DeleteOrganizationProfileImageCommand;
 import com.fabbitinc.server.domain.file.model.File;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,15 +15,15 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
+@Transactional
 public class DeleteOrganizationProfileImageUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final FileService fileService;
     private final OrganizationService organizationService;
 
-    @Transactional
     @PreAuthorize("hasRole('ADMIN')")
-    public void execute() {
+    public void execute(DeleteOrganizationProfileImageCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
 
         List<File> files = fileService.getFilesByOwner("organization", auth.orgId());

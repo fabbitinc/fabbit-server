@@ -25,7 +25,6 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class CloudflareTurnstileAdapter implements TurnstilePort {
 
-    private static final String SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
 
     private final AppProperties appProperties;
@@ -47,7 +46,7 @@ public class CloudflareTurnstileAdapter implements TurnstilePort {
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "Turnstile 비밀키가 설정되지 않았습니다");
         }
 
-        HttpRequest request = HttpRequest.newBuilder(URI.create(SITEVERIFY_URL))
+        HttpRequest request = HttpRequest.newBuilder(URI.create(appProperties.turnstileVerifyUrl()))
                 .timeout(REQUEST_TIMEOUT)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .POST(HttpRequest.BodyPublishers.ofString(buildFormBody(token)))

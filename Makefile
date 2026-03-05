@@ -41,7 +41,7 @@ LB_URL      = jdbc:postgresql://localhost:5432/fabbit
 LB_USER     = fabbit
 LB_PASS     = fabbit
 LB_DEV_PORT = 5433
-LB = liquibase --username=$(LB_USER) --password=$(LB_PASS) --search-path=.
+LB = liquibase --username=$(LB_USER) --password=$(LB_PASS) --search-path=migrations
 
 # public diff 자동 생성 (기존 마이그레이션 vs Hibernate DDL)
 revision-public:
@@ -51,14 +51,14 @@ revision-public:
 	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE current_state"
 	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE desired_state"
 	@# current: 기존 마이그레이션 적용
-	liquibase --username=postgres --password=dev --search-path=. \
+	liquibase --username=postgres --password=dev --search-path=migrations \
 		--url="jdbc:postgresql://localhost:$(LB_DEV_PORT)/current_state" \
-		--changelog-file=migrations/public-changelog.xml \
+		--changelog-file=public-changelog.xml \
 		update 2>/dev/null || true
 	@# desired: Hibernate DDL 적용
 	@./gradlew -q schemaExportPublic | docker exec -i lb-dev-db psql -U postgres -d desired_state -q 2>/dev/null
-	@# diff: desired vs current
-	liquibase --username=postgres --password=dev --search-path=. \
+	@# diff: desired vs current (search-path 없이 CWD 기준 출력)
+	liquibase --username=postgres --password=dev \
 		--url="jdbc:postgresql://localhost:$(LB_DEV_PORT)/current_state" \
 		--referenceUrl="jdbc:postgresql://localhost:$(LB_DEV_PORT)/desired_state" \
 		--referenceUsername=postgres --referencePassword=dev \
@@ -75,14 +75,14 @@ revision-tenant:
 	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE current_state"
 	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE desired_state"
 	@# current: 기존 마이그레이션 적용
-	liquibase --username=postgres --password=dev --search-path=. \
+	liquibase --username=postgres --password=dev --search-path=migrations \
 		--url="jdbc:postgresql://localhost:$(LB_DEV_PORT)/current_state" \
-		--changelog-file=migrations/tenant-changelog.xml \
+		--changelog-file=tenant-changelog.xml \
 		update 2>/dev/null || true
 	@# desired: Hibernate DDL 적용
 	@./gradlew -q schemaExportTenant | docker exec -i lb-dev-db psql -U postgres -d desired_state -q 2>/dev/null
-	@# diff: desired vs current
-	liquibase --username=postgres --password=dev --search-path=. \
+	@# diff: desired vs current (search-path 없이 CWD 기준 출력)
+	liquibase --username=postgres --password=dev \
 		--url="jdbc:postgresql://localhost:$(LB_DEV_PORT)/current_state" \
 		--referenceUrl="jdbc:postgresql://localhost:$(LB_DEV_PORT)/desired_state" \
 		--referenceUsername=postgres --referencePassword=dev \
@@ -98,7 +98,7 @@ revision-all:
 # public 마이그레이션 적용
 migrate-public:
 	$(LB) --url="$(LB_URL)" --default-schema-name=public \
-		--changelog-file=migrations/public-changelog.xml \
+		--changelog-file=public-changelog.xml \
 		update
 	@echo "public 마이그레이션 완료"
 
@@ -111,7 +111,7 @@ migrate-tenant:
 		for s in $$SCHEMAS; do \
 			echo "tenant 마이그레이션 적용: $$s"; \
 			$(LB) --url="$(LB_URL)" --default-schema-name=$$s --liquibase-schema-name=$$s \
-				--changelog-file=migrations/tenant-changelog.xml \
+				--changelog-file=tenant-changelog.xml \
 				update; \
 		done; \
 		echo "tenant 마이그레이션 완료"; \
