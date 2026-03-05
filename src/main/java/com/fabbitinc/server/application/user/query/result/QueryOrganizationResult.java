@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.user.query.result;
 
+import com.fabbitinc.server.domain.organization.model.PlanType;
+
 import java.util.UUID;
 
 public record QueryOrganizationResult(
@@ -8,7 +10,7 @@ public record QueryOrganizationResult(
         String name,
         String industry,
         String teamSize,
-        String planType,
+        PlanType planType,
         String profileImageUrl
 ) {
 }

@@ -1,8 +1,12 @@
 package com.fabbitinc.server.domain.part.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
+import com.fabbitinc.server.domain.drawing.model.Drawing;
+import com.fabbitinc.server.domain.synthesis.model.SynthesisJob;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
@@ -36,6 +40,9 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PartRevision extends AbstractCreatedEntity {
 
+    public static final String CODE_PART_REVISION_PART_REQUIRED = "PART_REVISION_PART_REQUIRED";
+    public static final String CODE_PART_REVISION_SYNTHESIS_JOB_REQUIRED = "PART_REVISION_SYNTHESIS_JOB_REQUIRED";
+
     @Column(name = "part_id", nullable = false)
     private UUID partId;
 
@@ -46,8 +53,16 @@ public class PartRevision extends AbstractCreatedEntity {
     @Column(name = "synthesis_job_id")
     private UUID synthesisJobId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "synthesis_job_id", insertable = false, updatable = false)
+    private SynthesisJob synthesisJob;
+
     @Column(name = "drawing_id")
     private UUID drawingId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "drawing_id", insertable = false, updatable = false)
+    private Drawing drawing;
 
     @Column(name = "part_number", nullable = false, length = 100)
     private String partNumber;
@@ -73,8 +88,9 @@ public class PartRevision extends AbstractCreatedEntity {
     @Column(name = "is_phantom")
     private Boolean phantom;
 
+    @Convert(converter = PartLifecycleStateConverter.class)
     @Column(name = "lifecycle_state", length = 50)
-    private String lifecycleState;
+    private PartLifecycleState lifecycleState;
 
     @Column(name = "lead_time_days")
     private Integer leadTimeDays;
@@ -85,25 +101,44 @@ public class PartRevision extends AbstractCreatedEntity {
 
     private PartRevision(Part part, UUID synthesisJobId) {
         super(UuidV7Generator.next());
-        this.partId = part.getId();
+        Part requiredPart = requirePart(part);
+        this.partId = requiredPart.getId();
+        this.part = requiredPart;
         this.synthesisJobId = synthesisJobId;
-        this.drawingId = part.getDrawingId();
-        this.partNumber = part.getPartNumber();
-        this.name = part.getName();
-        this.revision = part.getRevision();
-        this.material = part.getMaterial();
-        this.unit = part.getUnit();
-        this.description = part.getDescription();
-        this.category = part.getCategory();
-        this.phantom = part.getPhantom();
-        this.lifecycleState = part.getLifecycleState();
-        this.leadTimeDays = part.getLeadTimeDays();
-        this.extendedProperties = part.getExtendedProperties() == null || part.getExtendedProperties().isBlank()
+        this.drawingId = requiredPart.getDrawingId();
+        this.drawing = requiredPart.getDrawing();
+        this.partNumber = requiredPart.getPartNumber();
+        this.name = requiredPart.getName();
+        this.revision = requiredPart.getRevision();
+        this.material = requiredPart.getMaterial();
+        this.unit = requiredPart.getUnit();
+        this.description = requiredPart.getDescription();
+        this.category = requiredPart.getCategory();
+        this.phantom = requiredPart.getPhantom();
+        this.lifecycleState = requiredPart.getLifecycleState();
+        this.leadTimeDays = requiredPart.getLeadTimeDays();
+        this.extendedProperties = requiredPart.getExtendedProperties() == null || requiredPart.getExtendedProperties().isBlank()
                 ? "{}"
-                : part.getExtendedProperties();
+                : requiredPart.getExtendedProperties();
     }
 
     public static PartRevision capture(Part part, UUID synthesisJobId) {
         return new PartRevision(part, synthesisJobId);
+    }
+
+    public static PartRevision capture(Part part, SynthesisJob synthesisJob) {
+        if (synthesisJob == null) {
+            throw new DomainException(CODE_PART_REVISION_SYNTHESIS_JOB_REQUIRED, "합성 작업 ID는 필수입니다");
+        }
+        PartRevision snapshot = new PartRevision(part, synthesisJob.getId());
+        snapshot.synthesisJob = synthesisJob;
+        return snapshot;
+    }
+
+    private Part requirePart(Part value) {
+        if (value == null) {
+            throw new DomainException(CODE_PART_REVISION_PART_REQUIRED, "파트는 필수입니다");
+        }
+        return value;
     }
 }

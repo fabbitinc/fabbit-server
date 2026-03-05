@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.auth.dto.response;
 
+import com.fabbitinc.server.domain.auth.model.InvitationStatus;
+import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
@@ -13,9 +15,9 @@ public record InvitationResponse(
         @Schema(description = "초대 이메일")
         String email,
         @Schema(description = "초대 역할")
-        String role,
+        MembershipRole role,
         @Schema(description = "초대 상태")
-        String status,
+        InvitationStatus status,
         @Schema(description = "초대한 사용자 ID")
         UUID invitedBy,
         @Schema(description = "초대 만료 시각")

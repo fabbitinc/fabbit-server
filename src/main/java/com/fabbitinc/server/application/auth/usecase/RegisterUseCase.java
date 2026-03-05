@@ -90,7 +90,7 @@ public class RegisterUseCase {
                 organization.getName(),
                 organization.getIndustry(),
                 organization.getTeamSize(),
-                organization.getPlanType().name(),
+                organization.getPlanType(),
                 fileUrlResolver.resolve(organization.getProfileImageFileKey())
         );
     }

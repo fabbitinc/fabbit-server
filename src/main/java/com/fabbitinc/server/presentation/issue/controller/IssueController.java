@@ -33,6 +33,8 @@ import com.fabbitinc.server.application.issue.usecase.SyncPartsUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncTeamAssigneesUseCase;
 import com.fabbitinc.server.application.issue.usecase.UpdateCommentUseCase;
 import com.fabbitinc.server.application.issue.usecase.UpdateIssueUseCase;
+import com.fabbitinc.server.domain.issue.model.IssueState;
+import com.fabbitinc.server.domain.issue.model.IssueType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -87,7 +89,7 @@ public class IssueController {
     @GetMapping("/lookup")
     public IssueLookupResponse lookupIssues(
             @RequestParam(value = "search", required = false) String search,
-            @RequestParam(value = "type", required = false) String type,
+            @RequestParam(value = "type", required = false) IssueType type,
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
@@ -103,7 +105,7 @@ public class IssueController {
     @GetMapping
     public IssueListResponse listIssues(
             @RequestParam(value = "search", required = false) String search,
-            @RequestParam(value = "state", required = false) String state,
+            @RequestParam(value = "state", required = false) IssueState state,
             @RequestParam(value = "offset", defaultValue = "0")
             @Min(value = 0, message = "offset은 0 이상이어야 합니다")
             int offset,

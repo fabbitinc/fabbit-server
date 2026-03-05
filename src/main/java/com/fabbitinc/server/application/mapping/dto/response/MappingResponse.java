@@ -1,6 +1,7 @@
 package com.fabbitinc.server.application.mapping.dto.response;
 
 import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
+import com.fabbitinc.server.domain.mapping.model.MappingScope;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
@@ -24,7 +25,7 @@ public record MappingResponse(
         @Schema(description = "매핑 본문")
         MappingResultDto mapping,
         @Schema(description = "매핑 스코프", example = "FULL_BOM")
-        String scope,
+        MappingScope scope,
         @Schema(description = "활성 여부")
         boolean isActive,
         @Schema(description = "누적 사용 횟수")

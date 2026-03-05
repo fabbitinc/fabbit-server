@@ -1,6 +1,7 @@
 package com.fabbitinc.server.presentation.project.controller;
 
 import com.fabbitinc.server.application.activity.dto.response.ActivityListResponse;
+import com.fabbitinc.server.application.activity.dto.response.ActivityScope;
 import com.fabbitinc.server.application.activity.dto.response.ActivityResponse;
 import com.fabbitinc.server.application.activity.dto.response.UserSummaryResponse;
 import com.fabbitinc.server.application.project.dto.request.CreateProjectRequest;
@@ -212,7 +213,7 @@ public class ProjectController {
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 100, message = "limit은 100 이하여야 합니다")
             int limit,
-            @RequestParam(value = "scope", required = false) String scope,
+            @RequestParam(value = "scope", required = false) ActivityScope scope,
             @RequestParam(value = "user_id", required = false) UUID userId
     ) {
         ProjectActivityListResult result = projectQuery.listActivities(

@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.issue.dto.response;
 
+import com.fabbitinc.server.application.activity.dto.response.ActivityAction;
+import com.fabbitinc.server.application.activity.dto.response.ActivityScope;
 import tools.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -8,10 +10,10 @@ import java.util.UUID;
 
 @Schema(description = "타임라인 항목")
 public record TimelineItemResponse(
-        String type,
+        TimelineItemType type,
         UUID id,
-        String action,
-        String scope,
+        ActivityAction action,
+        ActivityScope scope,
         UUID actorId,
         JsonNode detail,
         JsonNode body,

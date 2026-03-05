@@ -55,7 +55,7 @@ public class CreateOrganizationUseCase {
                 organization.getName(),
                 organization.getIndustry(),
                 organization.getTeamSize(),
-                organization.getPlanType().name(),
+                organization.getPlanType(),
                 fileUrlResolver.resolve(organization.getProfileImageFileKey()),
                 tokens.accessToken(),
                 tokens.refreshToken(),

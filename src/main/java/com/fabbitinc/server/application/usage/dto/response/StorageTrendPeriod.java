@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.usage.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 
@@ -14,10 +16,12 @@ public enum StorageTrendPeriod {
         this.value = value;
     }
 
+    @JsonValue
     public String value() {
         return value;
     }
 
+    @JsonCreator
     public static StorageTrendPeriod from(String rawValue) {
         for (StorageTrendPeriod candidate : values()) {
             if (candidate.value.equals(rawValue)) {

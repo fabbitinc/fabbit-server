@@ -70,7 +70,7 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
                             TEST_ORG_SLUG,
                             null,
                             null,
-                            PlanType.STARTER.name()
+                            PlanType.STARTER
                     )
             );
         } else {
@@ -122,7 +122,7 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
         Instant periodEnd = ZonedDateTime.ofInstant(now, ZoneOffset.UTC).plusMonths(1).toInstant();
 
         subscriptionRepository.save(
-                new Subscription(
+                Subscription.create(
                         organization.getId(),
                         planType.name(),
                         SubscriptionStatus.ACTIVE,

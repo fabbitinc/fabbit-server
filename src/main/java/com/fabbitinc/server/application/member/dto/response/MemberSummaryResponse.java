@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.member.dto.response;
 
+import com.fabbitinc.server.domain.organization.model.MembershipRole;
+
 import java.util.UUID;
 
 public record MemberSummaryResponse(
@@ -8,7 +10,7 @@ public record MemberSummaryResponse(
         String email,
         String phone,
         String profileImageUrl,
-        String role,
+        MembershipRole role,
         String jobRole
 ) {
 }

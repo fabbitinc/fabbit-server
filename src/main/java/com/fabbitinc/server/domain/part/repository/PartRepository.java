@@ -1,6 +1,7 @@
 package com.fabbitinc.server.domain.part.repository;
 
 import com.fabbitinc.server.domain.part.model.Part;
+import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -57,7 +58,7 @@ public interface PartRepository extends JpaRepository<Part, UUID> {
                     "where p.lifecycleState is not null " +
                     "order by p.lifecycleState"
     )
-    List<String> findDistinctLifecycleStates();
+    List<PartLifecycleState> findDistinctLifecycleStates();
 
     boolean existsByCategory(String category);
 

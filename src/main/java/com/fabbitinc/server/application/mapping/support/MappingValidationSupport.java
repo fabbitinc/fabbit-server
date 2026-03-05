@@ -5,7 +5,10 @@ import com.fabbitinc.server.application.mapping.dto.common.PropertyMappingDto;
 import com.fabbitinc.server.application.mapping.dto.common.RelationMappingDto;
 import com.fabbitinc.server.application.mapping.dto.response.MappingImpactSummaryResponse;
 import com.fabbitinc.server.application.mapping.dto.response.ValidationIssueResponse;
+import com.fabbitinc.server.application.mapping.dto.response.ValidationSeverity;
+import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
+import com.fabbitinc.server.application.ontology.support.RelationshipType;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -26,7 +29,7 @@ public class MappingValidationSupport {
         List<ValidationIssueResponse> errors = new ArrayList<>();
         List<ValidationIssueResponse> warnings = new ArrayList<>();
 
-        Set<String> validRelTypes = new LinkedHashSet<>();
+        Set<RelationshipType> validRelTypes = new LinkedHashSet<>();
         Map<String, Set<String>> mergeKeysByLabel = ManufacturingOntology.ONTOLOGY.nodeLabels().stream()
                 .collect(java.util.stream.Collectors.toMap(
                         ManufacturingOntology.NodeLabelDef::label,
@@ -70,7 +73,7 @@ public class MappingValidationSupport {
             if (property.sourceColumn() == null || !headerSet.contains(property.sourceColumn())) {
                 errors.add(new ValidationIssueResponse(
                         "MISSING_SOURCE_COLUMN",
-                        "error",
+                        ValidationSeverity.ERROR,
                         "컬럼 '" + property.sourceColumn() + "'을(를) 파일에서 찾을 수 없습니다",
                         "property_mappings[" + index + "].source_column",
                         "missing_source_column"
@@ -81,7 +84,7 @@ public class MappingValidationSupport {
             if (isNumericType(property.dataType()) && hasNonNumericSample(sampleRows, property.sourceColumn())) {
                 warnings.add(new ValidationIssueResponse(
                         "NUMERIC_PARSE_WARNING",
-                        "warning",
+                        ValidationSeverity.WARNING,
                         "컬럼 '" + property.sourceColumn() + "'에 숫자로 해석하기 어려운 값이 있습니다",
                         "property_mappings[" + index + "].data_type",
                         null
@@ -94,7 +97,7 @@ public class MappingValidationSupport {
             List<RelationMappingDto> relations,
             Set<String> headerSet,
             List<Map<String, Object>> sampleRows,
-            Set<String> validRelTypes,
+            Set<RelationshipType> validRelTypes,
             Map<String, Set<String>> mergeKeysByLabel,
             List<ValidationIssueResponse> errors,
             List<ValidationIssueResponse> warnings
@@ -104,7 +107,7 @@ public class MappingValidationSupport {
             if (!validRelTypes.contains(relation.relType())) {
                 errors.add(new ValidationIssueResponse(
                         "INVALID_REL_TYPE",
-                        "error",
+                        ValidationSeverity.ERROR,
                         "허용되지 않은 관계 타입입니다: " + relation.relType(),
                         "relation_mappings[" + index + "].rel_type",
                         null
@@ -120,7 +123,7 @@ public class MappingValidationSupport {
                     if (sourceColumn == null || sourceColumn.isBlank()) {
                         errors.add(new ValidationIssueResponse(
                                 "MISSING_NODE_MERGE_KEY",
-                                "error",
+                                ValidationSeverity.ERROR,
                                 "관계 '" + relation.relType() + "'의 대상 노드 merge key '" + mergeKey + "' 매핑이 누락되었습니다",
                                 "relation_mappings[" + index + "].node_columns." + mergeKey,
                                 "missing_node_merge_key"
@@ -131,7 +134,7 @@ public class MappingValidationSupport {
                     if (!headerSet.contains(sourceColumn)) {
                         errors.add(new ValidationIssueResponse(
                                 "MISSING_SOURCE_COLUMN",
-                                "error",
+                                ValidationSeverity.ERROR,
                                 "컬럼 '" + sourceColumn + "'을(를) 파일에서 찾을 수 없습니다",
                                 "relation_mappings[" + index + "].node_columns." + mergeKey,
                                 "missing_source_column"
@@ -148,7 +151,7 @@ public class MappingValidationSupport {
                 if (!headerSet.contains(sourceColumn)) {
                     errors.add(new ValidationIssueResponse(
                             "MISSING_SOURCE_COLUMN",
-                            "error",
+                            ValidationSeverity.ERROR,
                             "관계 속성 컬럼 '" + sourceColumn + "'을(를) 파일에서 찾을 수 없습니다",
                             path,
                             "missing_source_column"
@@ -156,11 +159,11 @@ public class MappingValidationSupport {
                     continue;
                 }
 
-                String dataType = relation.relColumnTypes().getOrDefault(propertyName, "string");
+                PropertyDataType dataType = relation.relColumnTypes().getOrDefault(propertyName, PropertyDataType.STRING);
                 if (isNumericType(dataType) && hasNonNumericSample(sampleRows, sourceColumn)) {
                     warnings.add(new ValidationIssueResponse(
                             "NUMERIC_PARSE_WARNING",
-                            "warning",
+                            ValidationSeverity.WARNING,
                             "관계 속성 컬럼 '" + sourceColumn + "'에 숫자로 해석하기 어려운 값이 있습니다",
                             "relation_mappings[" + index + "].rel_column_types." + propertyName,
                             null
@@ -170,8 +173,8 @@ public class MappingValidationSupport {
         }
     }
 
-    private boolean isNumericType(String dataType) {
-        return "integer".equalsIgnoreCase(dataType) || "float".equalsIgnoreCase(dataType);
+    private boolean isNumericType(PropertyDataType dataType) {
+        return dataType == PropertyDataType.INTEGER || dataType == PropertyDataType.FLOAT;
     }
 
     private boolean hasNonNumericSample(List<Map<String, Object>> sampleRows, String sourceColumn) {

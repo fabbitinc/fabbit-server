@@ -72,7 +72,7 @@ public class UsageQuery {
             if (summary == null || summary.fileCount == 0) {
                 continue;
             }
-            categories.add(new StorageCategoryItem(category.value(), summary.bytesUsed, summary.fileCount));
+            categories.add(new StorageCategoryItem(category, summary.bytesUsed, summary.fileCount));
         }
 
         long overage = Math.max(organization.getStorageBytesUsed() - organization.getStorageBytesLimit(), 0L);
@@ -86,9 +86,8 @@ public class UsageQuery {
     }
 
     @Transactional(readOnly = true)
-    public StorageTrendResponse getStorageTrend(String periodRaw) {
+    public StorageTrendResponse getStorageTrend(StorageTrendPeriod period) {
         currentAuthProvider.getCurrentAuth();
-        StorageTrendPeriod period = StorageTrendPeriod.from(periodRaw);
 
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         List<TrendPoint> points = buildPoints(period, today);

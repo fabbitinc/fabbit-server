@@ -34,7 +34,10 @@ public class OrganizationService {
     private final TenantProvisioningPort tenantProvisioningPort;
 
     public Organization createOrganization(UUID userId, CreateOrganizationInput input) {
-        PlanType planType = resolvePlanType(input.planType());
+        PlanType planType = input.planType();
+        if (planType == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 플랜입니다");
+        }
         PlanLimits limits = OrganizationPlans.limits().get(planType);
 
         String slug = resolveAvailableSlug(input.slug(), input.orgName());
@@ -125,15 +128,13 @@ public class OrganizationService {
         organizationRepository.releaseMemberSeat(auth.orgId());
     }
 
-    public Membership changeMemberRole(AuthContext auth, UUID userId, String requestedRole) {
+    public Membership changeMemberRole(AuthContext auth, UUID userId, MembershipRole requestedRole) {
         if (auth.userId().equals(userId)) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "자신의 역할은 변경할 수 없습니다");
         }
 
-        MembershipRole newRole;
-        try {
-            newRole = MembershipRole.from(requestedRole);
-        } catch (Exception ex) {
+        MembershipRole newRole = requestedRole;
+        if (newRole == null) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 역할입니다");
         }
 
@@ -160,23 +161,6 @@ public class OrganizationService {
     public void deleteProfileImage(AuthContext auth) {
         Organization organization = getOrgOrThrow(auth.orgId());
         organization.removeProfileImage();
-    }
-
-    private PlanType resolvePlanType(String rawPlanType) {
-        if (rawPlanType == null || rawPlanType.isBlank()) {
-            return PlanType.STARTER;
-        }
-
-        String normalized = rawPlanType.trim().toUpperCase(Locale.ROOT);
-        if ("FREE".equals(normalized)) {
-            return PlanType.STARTER;
-        }
-
-        try {
-            return PlanType.valueOf(normalized);
-        } catch (IllegalArgumentException ex) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 플랜입니다");
-        }
     }
 
     private String resolveAvailableSlug(String requestedSlug, String orgName) {

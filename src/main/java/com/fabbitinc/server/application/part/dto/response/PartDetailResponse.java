@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.part.dto.response;
 
+import com.fabbitinc.server.domain.part.model.PartLifecycleState;
+
 import java.util.Map;
 import java.util.UUID;
 
@@ -12,7 +14,7 @@ public record PartDetailResponse(
         String unit,
         String description,
         String category,
-        String lifecycleState,
+        PartLifecycleState lifecycleState,
         Boolean isPhantom,
         Integer leadTimeDays,
         Map<String, Object> extendedProperties,

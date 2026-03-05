@@ -7,6 +7,8 @@ import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
 import com.fabbitinc.server.application.mapping.dto.common.PropertyMappingDto;
 import com.fabbitinc.server.application.mapping.dto.common.RelationMappingDto;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
+import com.fabbitinc.server.application.ontology.support.PropertyDataType;
+import com.fabbitinc.server.application.ontology.support.RelationshipType;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.mapping.model.MappingRevision;
@@ -22,6 +24,7 @@ import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
 import com.fabbitinc.server.domain.supplier.model.Supplier;
 import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
 import com.fabbitinc.server.domain.synthesis.model.SynthesisJob;
+import com.fabbitinc.server.domain.synthesis.model.SynthesisJobStatus;
 import com.fabbitinc.server.domain.synthesis.repository.SynthesisJobRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -59,7 +62,7 @@ public class SynthesisExecutionService {
             return;
         }
 
-        if (!"PENDING".equals(job.getStatus())) {
+        if (job.getStatus() != SynthesisJobStatus.PENDING) {
             return;
         }
 
@@ -143,7 +146,7 @@ public class SynthesisExecutionService {
                     continue;
                 }
 
-                String parentName = resolveMappedText(row, relation.nodeColumns().get("name"), "string");
+                String parentName = resolveMappedText(row, relation.nodeColumns().get("name"), PropertyDataType.STRING);
                 UpsertPartResult parentResult = upsertPart(parentPartNumber, parentName, overwrite, jobId);
                 if (parentResult.created()) {
                     nodesCreated++;
@@ -178,11 +181,11 @@ public class SynthesisExecutionService {
     }
 
     private boolean isConsistsOfPartRelation(RelationMappingDto relation) {
-        return "CONSISTS_OF".equals(relation.relType()) && "Part".equals(relation.targetLabel());
+        return relation.relType() == RelationshipType.CONSISTS_OF && "Part".equals(relation.targetLabel());
     }
 
     private boolean isSuppliedBySupplierRelation(RelationMappingDto relation) {
-        return "SUPPLIED_BY".equals(relation.relType()) && "Supplier".equals(relation.targetLabel());
+        return relation.relType() == RelationshipType.SUPPLIED_BY && "Supplier".equals(relation.targetLabel());
     }
 
     private String resolveChildPartNumber(Map<String, Object> row, List<PropertyMappingDto> properties) {
@@ -216,7 +219,7 @@ public class SynthesisExecutionService {
             RelationMappingDto relation,
             Map<String, String> rootContext
     ) {
-        String value = resolveMappedText(row, relation.nodeColumns().get("part_number"), "string");
+        String value = resolveMappedText(row, relation.nodeColumns().get("part_number"), PropertyDataType.STRING);
         if (value != null) {
             return value;
         }
@@ -237,7 +240,7 @@ public class SynthesisExecutionService {
             RelationMappingDto relation,
             Map<String, String> rootContext
     ) {
-        String value = resolveMappedText(row, relation.nodeColumns().get("company_name"), "string");
+        String value = resolveMappedText(row, relation.nodeColumns().get("company_name"), PropertyDataType.STRING);
         if (value != null) {
             return value;
         }
@@ -259,7 +262,7 @@ public class SynthesisExecutionService {
             return 1;
         }
 
-        String dataType = relation.relColumnTypes().getOrDefault("quantity", "integer");
+        PropertyDataType dataType = relation.relColumnTypes().getOrDefault("quantity", PropertyDataType.INTEGER);
         Object value = castValue(row.get(column), dataType);
         Integer quantity = toInteger(value);
         if (quantity == null || quantity <= 0) {
@@ -274,7 +277,7 @@ public class SynthesisExecutionService {
             return null;
         }
 
-        String dataType = relation.relColumnTypes().getOrDefault("unit_cost", "float");
+        PropertyDataType dataType = relation.relColumnTypes().getOrDefault("unit_cost", PropertyDataType.FLOAT);
         Object value = castValue(row.get(column), dataType);
         return toDouble(value);
     }
@@ -356,7 +359,7 @@ public class SynthesisExecutionService {
         }
     }
 
-    private String resolveMappedText(Map<String, Object> row, String columnName, String dataType) {
+    private String resolveMappedText(Map<String, Object> row, String columnName, PropertyDataType dataType) {
         if (columnName == null || columnName.isBlank()) {
             return null;
         }
@@ -372,7 +375,7 @@ public class SynthesisExecutionService {
         return text.isBlank() ? null : text;
     }
 
-    private Object castValue(Object raw, String dataType) {
+    private Object castValue(Object raw, PropertyDataType dataType) {
         if (raw == null) {
             return null;
         }
@@ -382,11 +385,11 @@ public class SynthesisExecutionService {
             return null;
         }
 
-        String normalizedType = dataType == null ? "string" : dataType.trim().toLowerCase(Locale.ROOT);
+        PropertyDataType normalizedType = dataType == null ? PropertyDataType.STRING : dataType;
         return switch (normalizedType) {
-            case "integer" -> toInteger(text);
-            case "float" -> toDouble(text);
-            case "boolean" -> toBoolean(text);
+            case INTEGER -> toInteger(text);
+            case FLOAT -> toDouble(text);
+            case BOOLEAN -> toBoolean(text);
             default -> text;
         };
     }

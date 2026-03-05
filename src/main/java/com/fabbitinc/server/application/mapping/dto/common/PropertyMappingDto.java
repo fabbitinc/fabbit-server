@@ -1,5 +1,6 @@
 package com.fabbitinc.server.application.mapping.dto.common;
 
+import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "Part 속성 매핑")
@@ -9,7 +10,7 @@ public record PropertyMappingDto(
         @Schema(description = "대상 속성명", example = "part_number")
         String targetProperty,
         @Schema(description = "데이터 타입", example = "string")
-        String dataType,
+        PropertyDataType dataType,
         @Schema(description = "매핑 신뢰도(0-100)", example = "95")
         Integer confidence,
         @Schema(description = "매핑 근거", example = "header exact match")
@@ -18,20 +19,9 @@ public record PropertyMappingDto(
         Boolean isExtended
 ) {
     public PropertyMappingDto {
-        dataType = normalizeDataType(dataType);
+        dataType = dataType == null ? PropertyDataType.STRING : dataType;
         confidence = confidence == null ? 0 : confidence;
         reason = reason == null ? "" : reason;
         isExtended = isExtended != null && isExtended;
-    }
-
-    private static String normalizeDataType(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return "string";
-        }
-        String normalized = raw.trim().toLowerCase();
-        return switch (normalized) {
-            case "string", "integer", "float", "boolean" -> normalized;
-            default -> "string";
-        };
     }
 }

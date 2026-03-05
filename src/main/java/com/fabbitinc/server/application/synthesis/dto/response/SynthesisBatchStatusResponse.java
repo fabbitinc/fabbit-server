@@ -13,7 +13,7 @@ public record SynthesisBatchStatusResponse(
         int processingCount,
         int completedCount,
         int failedJobCount,
-        String status,
+        SynthesisBatchStatus status,
         List<SynthesisBatchFailure> failed,
         List<SynthesisBatchItemStatus> items,
         Instant createdAt

@@ -8,6 +8,7 @@ import com.fabbitinc.server.application.part.dto.request.RenameCategoryRequest;
 import com.fabbitinc.server.application.part.dto.response.CategoryLookupResponse;
 import com.fabbitinc.server.application.part.dto.response.CategoryStatsResponse;
 import com.fabbitinc.server.application.part.dto.response.BomTreeResponse;
+import com.fabbitinc.server.application.part.dto.response.BomDirection;
 import com.fabbitinc.server.application.part.dto.response.PartBomResponse;
 import com.fabbitinc.server.application.part.dto.response.PartDetailResponse;
 import com.fabbitinc.server.application.part.dto.response.PartFilterOptionsResponse;
@@ -23,6 +24,7 @@ import com.fabbitinc.server.application.part.usecase.DetachPartFileUseCase;
 import com.fabbitinc.server.application.part.usecase.RegisterPartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.RenameCategoryUseCase;
 import com.fabbitinc.server.application.project.dto.response.PartProjectsResponse;
+import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -83,7 +85,7 @@ public class PartController {
     public ResponseEntity<byte[]> exportParts(
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "category", required = false) String category,
-            @RequestParam(value = "lifecycle_state", required = false) String lifecycleState,
+            @RequestParam(value = "lifecycle_state", required = false) PartLifecycleState lifecycleState,
             @RequestParam(value = "has_drawing", required = false) Boolean hasDrawing,
             @RequestParam(value = "has_children", required = false) Boolean hasChildren,
             @RequestParam(value = "mapping_id", required = false) UUID mappingId,
@@ -149,7 +151,7 @@ public class PartController {
     public PartListResponse listParts(
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "category", required = false) String category,
-            @RequestParam(value = "lifecycle_state", required = false) String lifecycleState,
+            @RequestParam(value = "lifecycle_state", required = false) PartLifecycleState lifecycleState,
             @RequestParam(value = "has_drawing", required = false) Boolean hasDrawing,
             @RequestParam(value = "has_children", required = false) Boolean hasChildren,
             @RequestParam(value = "project_id", required = false) UUID projectId,
@@ -201,7 +203,7 @@ public class PartController {
     @GetMapping("/{partId}/bom/tree")
     public BomTreeResponse getBomTree(
             @PathVariable UUID partId,
-            @RequestParam(value = "direction", defaultValue = "forward") String direction
+            @RequestParam(value = "direction", defaultValue = "FORWARD") BomDirection direction
     ) {
         return partQuery.getBomTree(partId, direction);
     }
@@ -213,7 +215,7 @@ public class PartController {
     @GetMapping("/{partId}/bom/tree/export")
     public ResponseEntity<byte[]> exportBomTree(
             @PathVariable UUID partId,
-            @RequestParam(value = "direction", defaultValue = "forward") String direction,
+            @RequestParam(value = "direction", defaultValue = "FORWARD") BomDirection direction,
             @RequestParam(value = "mapping_id", required = false) UUID mappingId
     ) {
         byte[] content = partQuery.exportBomTreeExcel(partId, direction, mappingId);

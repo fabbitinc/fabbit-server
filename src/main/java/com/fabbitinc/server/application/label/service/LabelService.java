@@ -17,7 +17,7 @@ public class LabelService {
 
     public Label createLabel(UUID actorId, String name, String color, String description) {
         ensureNameNotExists(name, null);
-        Label label = new Label(name, description, color, actorId);
+        Label label = Label.create(name, description, color, actorId);
         return labelRepository.save(label);
     }
 

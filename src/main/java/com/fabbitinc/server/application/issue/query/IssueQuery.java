@@ -7,6 +7,7 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
+import com.fabbitinc.server.application.activity.dto.response.ActivityAction;
 import com.fabbitinc.server.application.issue.support.IssueTargetType;
 import com.fabbitinc.server.application.file.dto.response.FileItemResponse;
 import com.fabbitinc.server.application.issue.dto.response.ChangeRequestListResponse;
@@ -27,6 +28,7 @@ import com.fabbitinc.server.application.issue.dto.response.PartBadgeResponse;
 import com.fabbitinc.server.application.issue.dto.response.ReviewerSummaryResponse;
 import com.fabbitinc.server.application.issue.dto.response.TeamBadgeResponse;
 import com.fabbitinc.server.application.issue.dto.response.TimelineItemResponse;
+import com.fabbitinc.server.application.issue.dto.response.TimelineItemType;
 import com.fabbitinc.server.application.issue.dto.response.TimelineResponse;
 import com.fabbitinc.server.domain.activity.model.Activity;
 import com.fabbitinc.server.domain.activity.model.ActivityTargetType;
@@ -111,12 +113,11 @@ public class IssueQuery {
 
     @Transactional(readOnly = true)
     public IssueLookupResponse lookupIssues(String search,
-            String rawType,
+            IssueType type,
             int limit
     ) {
         currentAuthProvider.getCurrentAuth();
 
-        IssueType type = parseIssueType(rawType);
         List<Issue> source = issueRepository.findAll(Sort.by(Sort.Direction.DESC, "number"));
 
         List<IssueLookupItemResponse> items = source.stream()
@@ -127,8 +128,8 @@ public class IssueQuery {
                         issue.getId(),
                         issue.getNumber(),
                         issue.getTitle(),
-                        issue.getState().name(),
-                        issue.getType().name()
+                        issue.getState(),
+                        issue.getType()
                 ))
                 .toList();
 
@@ -137,13 +138,12 @@ public class IssueQuery {
 
     @Transactional(readOnly = true)
     public IssueListResponse listIssues(String search,
-            String rawState,
+            IssueState state,
             int offset,
             int limit
     ) {
         currentAuthProvider.getCurrentAuth();
 
-        IssueState state = parseIssueState(rawState);
         String normalizedSearch = normalizeSearch(search);
         PathBuilder<Issue> issuePath = new PathBuilder<>(Issue.class, "issue");
         BooleanBuilder predicate = buildIssueListPredicate(issuePath, IssueType.ISSUE, state, normalizedSearch);
@@ -202,8 +202,8 @@ public class IssueQuery {
                         changeRequest.getId(),
                         changeRequest.getNumber(),
                         changeRequest.getTitle(),
-                        changeRequest.getState().name(),
-                        changeRequest.getCrState().name()
+                        changeRequest.getState(),
+                        changeRequest.getCrState()
                 ))
                 .toList();
 
@@ -212,15 +212,13 @@ public class IssueQuery {
 
     @Transactional(readOnly = true)
     public ChangeRequestListResponse listChangeRequests(String search,
-            String rawState,
-            String rawCrState,
+            IssueState state,
+            CrState crState,
             int offset,
             int limit
     ) {
         currentAuthProvider.getCurrentAuth();
 
-        IssueState state = parseIssueState(rawState);
-        CrState crState = parseCrState(rawCrState);
         String normalizedSearch = normalizeSearch(search);
         PathBuilder<ChangeRequest> changeRequestPath = new PathBuilder<>(ChangeRequest.class, "changeRequest");
         BooleanBuilder predicate = buildChangeRequestListPredicate(changeRequestPath, state, crState, normalizedSearch);
@@ -289,7 +287,7 @@ public class IssueQuery {
         List<TimelineItemResponse> merged = new ArrayList<>();
         for (IssueComment comment : comments) {
             merged.add(new TimelineItemResponse(
-                    "comment",
+                    TimelineItemType.COMMENT,
                     comment.getId(),
                     null,
                     null,
@@ -303,11 +301,12 @@ public class IssueQuery {
             ));
         }
         for (Activity activity : activities) {
+            ActivityAction action = ActivityAction.from(activity.getAction());
             merged.add(new TimelineItemResponse(
-                    "activity",
+                    TimelineItemType.ACTIVITY,
                     activity.getId(),
-                    activity.getAction(),
-                    extractScope(activity.getAction()),
+                    action,
+                    action.scope(),
                     activity.getActorId(),
                     parseJson(activity.getDetail()),
                     null,
@@ -422,9 +421,9 @@ public class IssueQuery {
         return new IssueSummaryResponse(
                 issue.getId(),
                 issue.getNumber(),
-                issue.getType().name(),
+                issue.getType(),
                 issue.getTitle(),
-                issue.getState().name(),
+                issue.getState(),
                 issue.getClosedAt(),
                 issue.getCreatedAt(),
                 issue.getUpdatedAt(),
@@ -442,9 +441,9 @@ public class IssueQuery {
         return new ChangeRequestSummaryResponse(
                 changeRequest.getId(),
                 changeRequest.getNumber(),
-                changeRequest.getType().name(),
+                changeRequest.getType(),
                 changeRequest.getTitle(),
-                changeRequest.getState().name(),
+                changeRequest.getState(),
                 changeRequest.getClosedAt(),
                 changeRequest.getCreatedAt(),
                 changeRequest.getUpdatedAt(),
@@ -457,7 +456,7 @@ public class IssueQuery {
                 partsOf(changeRequest.getId(), enrichment),
                 filesOf(changeRequest.getId(), enrichment),
                 enrichment.commentCounts().getOrDefault(changeRequest.getId(), 0L).intValue(),
-                changeRequest.getCrState().name(),
+                changeRequest.getCrState(),
                 changeRequest.getMergedAt(),
                 changeRequest.getMergedBy()
         );
@@ -467,10 +466,10 @@ public class IssueQuery {
         return new IssueResponse(
                 issue.getId(),
                 issue.getNumber(),
-                issue.getType().name(),
+                issue.getType(),
                 issue.getTitle(),
                 parseJson(issue.getBody()),
-                issue.getState().name(),
+                issue.getState(),
                 issue.getClosedAt(),
                 issue.getCreatedAt(),
                 issue.getUpdatedAt(),
@@ -490,10 +489,10 @@ public class IssueQuery {
         return new ChangeRequestResponse(
                 changeRequest.getId(),
                 changeRequest.getNumber(),
-                changeRequest.getType().name(),
+                changeRequest.getType(),
                 changeRequest.getTitle(),
                 parseJson(changeRequest.getBody()),
-                changeRequest.getState().name(),
+                changeRequest.getState(),
                 changeRequest.getClosedAt(),
                 changeRequest.getCreatedAt(),
                 changeRequest.getUpdatedAt(),
@@ -507,7 +506,7 @@ public class IssueQuery {
                 partsOf(changeRequest.getId(), enrichment),
                 filesOf(changeRequest.getId(), enrichment),
                 enrichment.commentCounts().getOrDefault(changeRequest.getId(), 0L).intValue(),
-                changeRequest.getCrState().name(),
+                changeRequest.getCrState(),
                 changeRequest.getMergedAt(),
                 changeRequest.getMergedBy(),
                 linkedIssuesOf(changeRequest.getId(), enrichment)
@@ -619,7 +618,7 @@ public class IssueQuery {
             if (issue == null) {
                 continue;
             }
-            result.add(new LinkedIssueBadgeResponse(issue.getId(), issue.getNumber(), issue.getTitle(), issue.getState().name()));
+            result.add(new LinkedIssueBadgeResponse(issue.getId(), issue.getNumber(), issue.getTitle(), issue.getState()));
         }
         return result;
     }
@@ -635,8 +634,8 @@ public class IssueQuery {
                     changeRequest.getId(),
                     changeRequest.getNumber(),
                     changeRequest.getTitle(),
-                    changeRequest.getState().name(),
-                    changeRequest.getCrState().name()
+                    changeRequest.getState(),
+                    changeRequest.getCrState()
             ));
         }
         return result;
@@ -656,7 +655,8 @@ public class IssueQuery {
                 userIds.add(activity.getActorId());
             }
 
-            if (!ACTION_WITH_USER_REFS.contains(activity.getAction())) {
+            ActivityAction action = ActivityAction.from(activity.getAction());
+            if (!ACTION_WITH_USER_REFS.contains(action)) {
                 continue;
             }
 
@@ -828,44 +828,11 @@ public class IssueQuery {
         return predicate;
     }
 
-    private IssueType parseIssueType(String rawType) {
-        if (rawType == null || rawType.isBlank()) {
-            return null;
-        }
-        try {
-            return IssueType.valueOf(rawType);
-        } catch (Exception ex) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 이슈 타입입니다");
-        }
-    }
-
     private IssueType toIssueType(IssueTargetType targetType) {
         if (targetType == IssueTargetType.CHANGE_REQUEST) {
             return IssueType.CHANGE_REQUEST;
         }
         return IssueType.ISSUE;
-    }
-
-    private IssueState parseIssueState(String rawState) {
-        if (rawState == null || rawState.isBlank()) {
-            return null;
-        }
-        try {
-            return IssueState.valueOf(rawState);
-        } catch (Exception ex) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 이슈 상태입니다");
-        }
-    }
-
-    private CrState parseCrState(String rawCrState) {
-        if (rawCrState == null || rawCrState.isBlank()) {
-            return null;
-        }
-        try {
-            return CrState.valueOf(rawCrState);
-        } catch (Exception ex) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 변경요청 상태입니다");
-        }
     }
 
     private String normalizeSearch(String search) {
@@ -907,20 +874,9 @@ public class IssueQuery {
         return updatedAt.isAfter(createdAt);
     }
 
-    private String extractScope(String action) {
-        if (action == null) {
-            return null;
-        }
-        int index = action.indexOf(':');
-        if (index < 0) {
-            return action;
-        }
-        return action.substring(0, index);
-    }
-
-    private static final Set<String> ACTION_WITH_USER_REFS = Set.of(
-            "issue:assignee_changed",
-            "issue:reviewer_changed"
+    private static final Set<ActivityAction> ACTION_WITH_USER_REFS = Set.of(
+            ActivityAction.ISSUE_ASSIGNEE_CHANGED,
+            ActivityAction.ISSUE_REVIEWER_CHANGED
     );
 
     private record Enrichment(

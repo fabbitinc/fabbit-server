@@ -3,6 +3,7 @@ package com.fabbitinc.server.domain.drawing.model;
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -34,8 +35,9 @@ public class Drawing extends AbstractCreatedEntity {
     @Column(name = "version", length = 50)
     private String version;
 
+    @Convert(converter = DrawingStatusConverter.class)
     @Column(name = "status", length = 50)
-    private String status;
+    private DrawingStatus status;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "conversion_status", length = 30)

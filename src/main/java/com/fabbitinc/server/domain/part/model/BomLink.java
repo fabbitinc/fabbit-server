@@ -76,6 +76,19 @@ public class BomLink extends AbstractCreatedEntity {
         return new BomLink(parentPartId, childPartId, quantity, extendedProperties);
     }
 
+    public static BomLink connect(Part parentPart, Part childPart, int quantity, String extendedProperties) {
+        if (parentPart == null) {
+            throw new DomainException(CODE_BOM_PARENT_REQUIRED, "상위 부품 ID는 필수입니다");
+        }
+        if (childPart == null) {
+            throw new DomainException(CODE_BOM_CHILD_REQUIRED, "하위 부품 ID는 필수입니다");
+        }
+        BomLink link = new BomLink(parentPart.getId(), childPart.getId(), quantity, extendedProperties);
+        link.parentPart = parentPart;
+        link.childPart = childPart;
+        return link;
+    }
+
     private UUID requireParentPartId(UUID value) {
         if (value == null) {
             throw new DomainException(CODE_BOM_PARENT_REQUIRED, "상위 부품 ID는 필수입니다");

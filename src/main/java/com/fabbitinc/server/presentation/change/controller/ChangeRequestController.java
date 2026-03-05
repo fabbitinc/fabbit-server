@@ -42,6 +42,8 @@ import com.fabbitinc.server.application.issue.usecase.SyncTeamAssigneesUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncTeamReviewersUseCase;
 import com.fabbitinc.server.application.issue.usecase.UpdateChangeRequestUseCase;
 import com.fabbitinc.server.application.issue.usecase.UpdateCommentUseCase;
+import com.fabbitinc.server.domain.issue.model.CrState;
+import com.fabbitinc.server.domain.issue.model.IssueState;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -101,8 +103,8 @@ public class ChangeRequestController {
     @GetMapping
     public ChangeRequestListResponse listChangeRequests(
             @RequestParam(value = "search", required = false) String search,
-            @RequestParam(value = "state", required = false) String state,
-            @RequestParam(value = "cr_state", required = false) String crState,
+            @RequestParam(value = "state", required = false) IssueState state,
+            @RequestParam(value = "cr_state", required = false) CrState crState,
             @RequestParam(value = "offset", defaultValue = "0")
             @Min(value = 0, message = "offset은 0 이상이어야 합니다")
             int offset,

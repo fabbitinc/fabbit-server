@@ -2,6 +2,8 @@ package com.fabbitinc.server.application.notification.query;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
+import com.fabbitinc.server.application.common.exception.AppException;
+import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.notification.dto.response.MentionPayloadResponse;
 import com.fabbitinc.server.application.notification.dto.response.NotificationListResponse;
@@ -9,6 +11,7 @@ import com.fabbitinc.server.application.notification.dto.response.NotificationRe
 import com.fabbitinc.server.application.notification.dto.response.NotificationUserSummaryResponse;
 import com.fabbitinc.server.application.notification.dto.response.UnreadCountResponse;
 import com.fabbitinc.server.domain.notification.model.Notification;
+import com.fabbitinc.server.domain.notification.model.NotificationSourceIssueType;
 import com.fabbitinc.server.domain.notification.repository.NotificationRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
@@ -91,7 +94,7 @@ public class NotificationQuery {
     private NotificationResponse toNotificationResponse(Notification notification) {
         return new NotificationResponse(
                 notification.getId(),
-                notification.getType().name(),
+                notification.getType(),
                 notification.getActorId(),
                 parseMentionPayload(notification.getPayload()),
                 notification.getReadAt(),
@@ -105,9 +108,21 @@ public class NotificationQuery {
                 extractString(payload, "source_issue_id"),
                 extractInteger(payload, "source_number"),
                 extractString(payload, "source_title"),
-                extractString(payload, "source_issue_type"),
+                extractSourceIssueType(payload, "source_issue_type"),
                 extractBoolean(payload, "is_comment")
         );
+    }
+
+    private NotificationSourceIssueType extractSourceIssueType(String payload, String field) {
+        String rawValue = extractString(payload, field);
+        if (rawValue == null) {
+            return null;
+        }
+        try {
+            return NotificationSourceIssueType.from(rawValue);
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "알림 payload source_issue_type 값이 유효하지 않습니다");
+        }
     }
 
     private String extractString(String payload, String field) {

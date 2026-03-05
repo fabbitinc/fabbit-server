@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.part.dto.response;
 
+import com.fabbitinc.server.domain.part.model.PartLifecycleState;
+
 import java.util.UUID;
 
 public record PartSummaryResponse(
@@ -8,7 +10,7 @@ public record PartSummaryResponse(
         String name,
         String category,
         String revision,
-        String lifecycleState,
+        PartLifecycleState lifecycleState,
         String drawingNumber,
         long childrenCount
 ) {

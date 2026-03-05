@@ -3,6 +3,8 @@ package com.fabbitinc.server.application.mapping.support;
 import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
 import com.fabbitinc.server.application.mapping.dto.common.PropertyMappingDto;
 import com.fabbitinc.server.application.mapping.dto.common.RelationMappingDto;
+import com.fabbitinc.server.application.ontology.support.PropertyDataType;
+import com.fabbitinc.server.application.ontology.support.RelationshipType;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -28,7 +30,7 @@ public class MappingGenerationSupport {
                 List.of("품번", "part_number", "part number", "part no", "partno", "p/n", "pn"),
                 List.of("상위", "parent", "supplier", "vendor", "drawing", "project"),
                 "part_number",
-                "string",
+                PropertyDataType.STRING,
                 95,
                 "main part number"
         );
@@ -36,7 +38,7 @@ public class MappingGenerationSupport {
                 List.of("품명", "name", "part_name", "part name"),
                 List.of("상위", "parent", "supplier", "vendor", "drawing", "project"),
                 "name",
-                "string",
+                PropertyDataType.STRING,
                 92,
                 "main part name"
         );
@@ -44,7 +46,7 @@ public class MappingGenerationSupport {
                 List.of("revision", "rev", "리비전"),
                 List.of("도면", "drawing", "project"),
                 "revision",
-                "string",
+                PropertyDataType.STRING,
                 88,
                 "revision field"
         );
@@ -52,7 +54,7 @@ public class MappingGenerationSupport {
                 List.of("재질", "material"),
                 List.of("supplier", "drawing", "project"),
                 "material",
-                "string",
+                PropertyDataType.STRING,
                 85,
                 "material field"
         );
@@ -60,7 +62,7 @@ public class MappingGenerationSupport {
                 List.of("단위", "unit"),
                 List.of("단가", "cost", "supplier", "project"),
                 "unit",
-                "string",
+                PropertyDataType.STRING,
                 82,
                 "unit field"
         );
@@ -68,7 +70,7 @@ public class MappingGenerationSupport {
                 List.of("설명", "description", "desc"),
                 List.of("drawing", "project"),
                 "description",
-                "string",
+                PropertyDataType.STRING,
                 80,
                 "description field"
         );
@@ -76,7 +78,7 @@ public class MappingGenerationSupport {
                 List.of("분류", "category"),
                 List.of("project"),
                 "category",
-                "string",
+                PropertyDataType.STRING,
                 80,
                 "category field"
         );
@@ -84,7 +86,7 @@ public class MappingGenerationSupport {
                 List.of("phantom", "팬텀"),
                 List.of("project"),
                 "is_phantom",
-                "boolean",
+                PropertyDataType.BOOLEAN,
                 78,
                 "phantom indicator"
         );
@@ -92,7 +94,7 @@ public class MappingGenerationSupport {
                 List.of("lifecycle", "state", "수명주기"),
                 List.of("project", "도면", "drawing"),
                 "lifecycle_state",
-                "string",
+                PropertyDataType.STRING,
                 75,
                 "lifecycle state"
         );
@@ -100,7 +102,7 @@ public class MappingGenerationSupport {
                 List.of("lead time", "리드타임"),
                 List.of("project"),
                 "lead_time_days",
-                "integer",
+                PropertyDataType.INTEGER,
                 78,
                 "lead time"
         );
@@ -146,7 +148,7 @@ public class MappingGenerationSupport {
             propertyMappings.add(new PropertyMappingDto(
                     header,
                     extKey,
-                    "string",
+                    PropertyDataType.STRING,
                     60,
                     "extended property",
                     true
@@ -164,7 +166,7 @@ public class MappingGenerationSupport {
             List<String> includeKeywords,
             List<String> excludeKeywords,
             String targetProperty,
-            String dataType,
+            PropertyDataType dataType,
             int confidence,
             String reason
     ) {
@@ -237,7 +239,7 @@ public class MappingGenerationSupport {
     private RelationMappingDto buildConsistsOf(List<String> headers) {
         Map<String, String> nodeColumns = new LinkedHashMap<>();
         Map<String, String> relColumns = new LinkedHashMap<>();
-        Map<String, String> relColumnTypes = new LinkedHashMap<>();
+        Map<String, PropertyDataType> relColumnTypes = new LinkedHashMap<>();
 
         String parentPartNumber = findHeader(headers, List.of("상위품번", "parent part", "parent pn", "상위 pn"));
         if (parentPartNumber != null) {
@@ -252,11 +254,11 @@ public class MappingGenerationSupport {
         String quantity = findHeader(headers, List.of("수량", "qty", "quantity"));
         if (quantity != null) {
             relColumns.put("quantity", quantity);
-            relColumnTypes.put("quantity", "integer");
+            relColumnTypes.put("quantity", PropertyDataType.INTEGER);
         }
 
         return new RelationMappingDto(
-                "CONSISTS_OF",
+                RelationshipType.CONSISTS_OF,
                 "Part",
                 nodeColumns,
                 relColumns,
@@ -269,7 +271,7 @@ public class MappingGenerationSupport {
     private RelationMappingDto buildSuppliedBy(List<String> headers) {
         Map<String, String> nodeColumns = new LinkedHashMap<>();
         Map<String, String> relColumns = new LinkedHashMap<>();
-        Map<String, String> relColumnTypes = new LinkedHashMap<>();
+        Map<String, PropertyDataType> relColumnTypes = new LinkedHashMap<>();
 
         String supplierName = findHeader(headers, List.of("업체명", "공급사", "supplier", "vendor", "company"));
         if (supplierName != null) {
@@ -289,11 +291,11 @@ public class MappingGenerationSupport {
         String unitCost = findHeader(headers, List.of("단가", "unit cost", "cost"));
         if (unitCost != null) {
             relColumns.put("unit_cost", unitCost);
-            relColumnTypes.put("unit_cost", "float");
+            relColumnTypes.put("unit_cost", PropertyDataType.FLOAT);
         }
 
         return new RelationMappingDto(
-                "SUPPLIED_BY",
+                RelationshipType.SUPPLIED_BY,
                 "Supplier",
                 nodeColumns,
                 relColumns,
@@ -327,7 +329,7 @@ public class MappingGenerationSupport {
         }
 
         return new RelationMappingDto(
-                "DEFINED_BY",
+                RelationshipType.DEFINED_BY,
                 "Drawing",
                 nodeColumns,
                 Map.of(),
@@ -366,7 +368,7 @@ public class MappingGenerationSupport {
         }
 
         return new RelationMappingDto(
-                "HAS_ITEM",
+                RelationshipType.HAS_ITEM,
                 "Project",
                 nodeColumns,
                 Map.of(),

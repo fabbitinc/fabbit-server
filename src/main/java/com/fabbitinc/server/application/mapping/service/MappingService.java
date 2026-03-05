@@ -8,11 +8,11 @@ import com.fabbitinc.server.application.mapping.dto.request.MappingConfirmReques
 import com.fabbitinc.server.application.mapping.dto.request.MappingUpdateRequest;
 import com.fabbitinc.server.application.mapping.dto.response.MappingResponse;
 import com.fabbitinc.server.application.mapping.support.MappingResponseMapper;
-import com.fabbitinc.server.application.mapping.support.MappingScope;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
 import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
+import com.fabbitinc.server.domain.mapping.model.MappingScope;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.mapping.model.MappingRecord;
 import com.fabbitinc.server.domain.mapping.model.MappingRevision;
@@ -83,10 +83,10 @@ public class MappingService {
         SpreadsheetParserSupport.ParsedSheet parsed = loadHeadersAndRows(file, request.sheetName(), 0);
         MappingScope scope = determineScope(normalizedMapping);
 
-        MappingRecord record = new MappingRecord(request.name(), scope.name());
-        MappingRevision revision = new MappingRevision(
-                record.getId(),
-                request.fileId(),
+        MappingRecord record = new MappingRecord(request.name(), scope);
+        MappingRevision revision = MappingRevision.create(
+                record,
+                file,
                 1,
                 request.sheetName(),
                 mappingResponseMapper.writeHeaders(parsed.headers()),
@@ -118,11 +118,11 @@ public class MappingService {
         File file = getUploadedFileOrThrow(request.fileId());
         SpreadsheetParserSupport.ParsedSheet parsed = loadHeadersAndRows(file, request.sheetName(), 0);
 
-        record.updateScope(determineScope(normalizedMapping).name());
+        record.updateScope(determineScope(normalizedMapping));
 
-        MappingRevision revision = new MappingRevision(
-                record.getId(),
-                request.fileId(),
+        MappingRevision revision = MappingRevision.create(
+                record,
+                file,
                 latestRevision.getVersion() + 1,
                 request.sheetName(),
                 mappingResponseMapper.writeHeaders(parsed.headers()),

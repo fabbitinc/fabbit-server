@@ -4,6 +4,7 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.synthesis.dto.response.SynthesisBatchFailure;
 import com.fabbitinc.server.application.synthesis.dto.response.SynthesisBatchItemStatus;
+import com.fabbitinc.server.application.synthesis.dto.response.SynthesisBatchStatus;
 import com.fabbitinc.server.application.synthesis.dto.response.SynthesisBatchStatusResponse;
 import com.fabbitinc.server.application.synthesis.dto.response.SynthesisJobResponse;
 import com.fabbitinc.server.application.synthesis.dto.response.SynthesisListResponse;
@@ -40,12 +41,10 @@ public class SynthesisQuery {
         List<SynthesisBatchItemStatus> items = new java.util.ArrayList<>();
         for (SynthesisJob job : jobs) {
             switch (job.getStatus()) {
-                case "PENDING" -> pendingCount++;
-                case "PROCESSING" -> processingCount++;
-                case "FAILED" -> failedJobCount++;
-                case "COMPLETED" -> completedCount++;
-                default -> {
-                }
+                case PENDING -> pendingCount++;
+                case PROCESSING -> processingCount++;
+                case FAILED -> failedJobCount++;
+                case COMPLETED -> completedCount++;
             }
             items.add(new SynthesisBatchItemStatus(
                     job.getId(),
@@ -66,15 +65,17 @@ public class SynthesisQuery {
         int acceptedCount = batch.getAcceptedCount();
         int doneCount = completedCount + failedJobCount;
 
-        String status;
+        SynthesisBatchStatus status;
         if (acceptedCount == 0) {
-            status = failedCount > 0 ? "FAILED" : "PENDING";
+            status = failedCount > 0 ? SynthesisBatchStatus.FAILED : SynthesisBatchStatus.PENDING;
         } else if (doneCount == acceptedCount) {
-            status = failedJobCount == 0 ? "COMPLETED" : "COMPLETED_WITH_ERRORS";
+            status = failedJobCount == 0
+                    ? SynthesisBatchStatus.COMPLETED
+                    : SynthesisBatchStatus.COMPLETED_WITH_ERRORS;
         } else if (processingCount > 0) {
-            status = "PROCESSING";
+            status = SynthesisBatchStatus.PROCESSING;
         } else {
-            status = "PENDING";
+            status = SynthesisBatchStatus.PENDING;
         }
 
         return new SynthesisBatchStatusResponse(

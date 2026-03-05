@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.auth.usecase.result;
 
+import com.fabbitinc.server.domain.organization.model.PlanType;
+
 import java.util.UUID;
 
 public record AuthOrganizationResult(
@@ -8,7 +10,7 @@ public record AuthOrganizationResult(
         String name,
         String industry,
         String teamSize,
-        String planType,
+        PlanType planType,
         String profileImageUrl
 ) {
 }

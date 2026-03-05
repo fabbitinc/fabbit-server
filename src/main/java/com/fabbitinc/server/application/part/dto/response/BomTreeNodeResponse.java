@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.part.dto.response;
 
+import com.fabbitinc.server.domain.part.model.PartLifecycleState;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -11,7 +13,7 @@ public record BomTreeNodeResponse(
         String material,
         String unit,
         String category,
-        String lifecycleState,
+        PartLifecycleState lifecycleState,
         int quantity,
         List<BomTreeNodeResponse> children
 ) {

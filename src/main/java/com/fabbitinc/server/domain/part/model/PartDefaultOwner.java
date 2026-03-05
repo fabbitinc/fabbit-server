@@ -50,9 +50,50 @@ public class PartDefaultOwner extends AbstractAuditableEntity {
         return new PartDefaultOwner(category, defaultOwnerId, defaultOwnerTeamId);
     }
 
+    public static PartDefaultOwner create(String category, User defaultOwner, Team defaultOwnerTeam) {
+        PartDefaultOwner row = new PartDefaultOwner(
+                category,
+                defaultOwner == null ? null : defaultOwner.getId(),
+                defaultOwnerTeam == null ? null : defaultOwnerTeam.getId()
+        );
+        row.defaultOwner = defaultOwner;
+        row.defaultOwnerTeam = defaultOwnerTeam;
+        return row;
+    }
+
     public void update(UUID defaultOwnerId, UUID defaultOwnerTeamId) {
+        assignDefaultOwner(defaultOwnerId);
+        assignDefaultOwnerTeam(defaultOwnerTeamId);
+    }
+
+    public void update(User defaultOwner, Team defaultOwnerTeam) {
+        assignDefaultOwner(defaultOwner);
+        assignDefaultOwnerTeam(defaultOwnerTeam);
+    }
+
+    public void assignDefaultOwner(UUID defaultOwnerId) {
         this.defaultOwnerId = defaultOwnerId;
+        if (this.defaultOwner != null && (defaultOwnerId == null || !defaultOwnerId.equals(this.defaultOwner.getId()))) {
+            this.defaultOwner = null;
+        }
+    }
+
+    public void assignDefaultOwner(User defaultOwner) {
+        this.defaultOwner = defaultOwner;
+        this.defaultOwnerId = defaultOwner == null ? null : defaultOwner.getId();
+    }
+
+    public void assignDefaultOwnerTeam(UUID defaultOwnerTeamId) {
         this.defaultOwnerTeamId = defaultOwnerTeamId;
+        if (this.defaultOwnerTeam != null
+                && (defaultOwnerTeamId == null || !defaultOwnerTeamId.equals(this.defaultOwnerTeam.getId()))) {
+            this.defaultOwnerTeam = null;
+        }
+    }
+
+    public void assignDefaultOwnerTeam(Team defaultOwnerTeam) {
+        this.defaultOwnerTeam = defaultOwnerTeam;
+        this.defaultOwnerTeamId = defaultOwnerTeam == null ? null : defaultOwnerTeam.getId();
     }
 
     private String normalizeCategory(String rawCategory) {

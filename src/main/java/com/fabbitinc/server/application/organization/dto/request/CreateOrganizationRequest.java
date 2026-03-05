@@ -1,7 +1,9 @@
 package com.fabbitinc.server.application.organization.dto.request;
 
+import com.fabbitinc.server.domain.organization.model.PlanType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record CreateOrganizationRequest(
@@ -23,6 +25,7 @@ public record CreateOrganizationRequest(
         String teamSize,
 
         @Schema(description = "플랜 유형", example = "STARTER")
-        String planType
+        @NotNull(message = "plan_type은 필수입니다")
+        PlanType planType
 ) {
 }

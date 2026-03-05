@@ -1,6 +1,7 @@
 package com.fabbitinc.server.presentation.usage.controller;
 
 import com.fabbitinc.server.application.usage.dto.response.CreditUsageResponse;
+import com.fabbitinc.server.application.usage.dto.response.StorageTrendPeriod;
 import com.fabbitinc.server.application.usage.dto.response.StorageTrendResponse;
 import com.fabbitinc.server.application.usage.dto.response.StorageUsageResponse;
 import com.fabbitinc.server.application.usage.query.UsageQuery;
@@ -35,7 +36,7 @@ public class UsageController {
     )
     @GetMapping("/storage/trend")
     public StorageTrendResponse getStorageTrend(
-            @RequestParam(value = "period", defaultValue = "30d") String period
+            @RequestParam(value = "period", defaultValue = "30d") StorageTrendPeriod period
     ) {
         return usageQuery.getStorageTrend(period);
     }

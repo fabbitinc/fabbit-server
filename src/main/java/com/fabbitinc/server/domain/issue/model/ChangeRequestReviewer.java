@@ -1,10 +1,17 @@
 package com.fabbitinc.server.domain.issue.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
+import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -32,27 +39,70 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ChangeRequestReviewer extends AbstractCreatedEntity {
 
+    public static final String CODE_CR_REVIEWER_CHANGE_REQUEST_REQUIRED = "CR_REVIEWER_CHANGE_REQUEST_REQUIRED";
+    public static final String CODE_CR_REVIEWER_USER_REQUIRED = "CR_REVIEWER_USER_REQUIRED";
+
     @Column(name = "change_request_id", nullable = false)
     private UUID changeRequestId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "change_request_id", insertable = false, updatable = false)
+    private ChangeRequest changeRequest;
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    private User user;
+
     @Column(name = "review_status", nullable = false, length = 20)
-    private String reviewStatus;
+    @Enumerated(EnumType.STRING)
+    private ReviewStatus reviewStatus;
 
     @Column(name = "reviewed_at")
     private Instant reviewedAt;
 
     public ChangeRequestReviewer(UUID changeRequestId, UUID userId) {
         super(UuidV7Generator.next());
-        this.changeRequestId = changeRequestId;
-        this.userId = userId;
-        this.reviewStatus = ReviewStatus.PENDING.name();
+        this.changeRequestId = requireChangeRequestId(changeRequestId);
+        this.userId = requireUserId(userId);
+        this.reviewStatus = ReviewStatus.PENDING;
+    }
+
+    public static ChangeRequestReviewer assign(UUID changeRequestId, UUID userId) {
+        return new ChangeRequestReviewer(changeRequestId, userId);
+    }
+
+    public static ChangeRequestReviewer assign(ChangeRequest changeRequest, User user) {
+        if (changeRequest == null) {
+            throw new DomainException(CODE_CR_REVIEWER_CHANGE_REQUEST_REQUIRED, "변경요청 ID는 필수입니다");
+        }
+        if (user == null) {
+            throw new DomainException(CODE_CR_REVIEWER_USER_REQUIRED, "사용자 ID는 필수입니다");
+        }
+        ChangeRequestReviewer reviewer = new ChangeRequestReviewer(changeRequest.getId(), user.getId());
+        reviewer.changeRequest = changeRequest;
+        reviewer.user = user;
+        return reviewer;
     }
 
     public void submit(ReviewStatus status, Instant reviewedAt) {
-        this.reviewStatus = status.name();
+        this.reviewStatus = status;
         this.reviewedAt = reviewedAt;
+    }
+
+    private UUID requireChangeRequestId(UUID value) {
+        if (value == null) {
+            throw new DomainException(CODE_CR_REVIEWER_CHANGE_REQUEST_REQUIRED, "변경요청 ID는 필수입니다");
+        }
+        return value;
+    }
+
+    private UUID requireUserId(UUID value) {
+        if (value == null) {
+            throw new DomainException(CODE_CR_REVIEWER_USER_REQUIRED, "사용자 ID는 필수입니다");
+        }
+        return value;
     }
 }

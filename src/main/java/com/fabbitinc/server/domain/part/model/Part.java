@@ -7,6 +7,7 @@ import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
@@ -89,8 +90,9 @@ public class Part extends AbstractCreatedEntity {
     @Column(name = "is_phantom")
     private Boolean phantom;
 
+    @Convert(converter = PartLifecycleStateConverter.class)
     @Column(name = "lifecycle_state", length = 50)
-    private String lifecycleState;
+    private PartLifecycleState lifecycleState;
 
     @Column(name = "lead_time_days")
     private Integer leadTimeDays;
@@ -124,10 +126,22 @@ public class Part extends AbstractCreatedEntity {
             throw new DomainException(CODE_PART_OWNER_REQUIRED, "담당자 ID는 필수입니다");
         }
         this.ownerId = ownerId;
+        if (this.owner != null && !ownerId.equals(this.owner.getId())) {
+            this.owner = null;
+        }
+    }
+
+    public void assignOwner(User owner) {
+        if (owner == null) {
+            throw new DomainException(CODE_PART_OWNER_REQUIRED, "담당자 ID는 필수입니다");
+        }
+        this.owner = owner;
+        this.ownerId = owner.getId();
     }
 
     public void unassignOwner() {
         this.ownerId = null;
+        this.owner = null;
     }
 
     public void assignOwnerTeam(UUID ownerTeamId) {
@@ -135,10 +149,22 @@ public class Part extends AbstractCreatedEntity {
             throw new DomainException(CODE_PART_OWNER_TEAM_REQUIRED, "담당 팀 ID는 필수입니다");
         }
         this.ownerTeamId = ownerTeamId;
+        if (this.ownerTeam != null && !ownerTeamId.equals(this.ownerTeam.getId())) {
+            this.ownerTeam = null;
+        }
+    }
+
+    public void assignOwnerTeam(Team ownerTeam) {
+        if (ownerTeam == null) {
+            throw new DomainException(CODE_PART_OWNER_TEAM_REQUIRED, "담당 팀 ID는 필수입니다");
+        }
+        this.ownerTeam = ownerTeam;
+        this.ownerTeamId = ownerTeam.getId();
     }
 
     public void unassignOwnerTeam() {
         this.ownerTeamId = null;
+        this.ownerTeam = null;
     }
 
     public void assignDrawing(UUID drawingId) {
@@ -146,10 +172,22 @@ public class Part extends AbstractCreatedEntity {
             throw new DomainException(CODE_PART_DRAWING_REQUIRED, "도면 ID는 필수입니다");
         }
         this.drawingId = drawingId;
+        if (this.drawing != null && !drawingId.equals(this.drawing.getId())) {
+            this.drawing = null;
+        }
+    }
+
+    public void assignDrawing(Drawing drawing) {
+        if (drawing == null) {
+            throw new DomainException(CODE_PART_DRAWING_REQUIRED, "도면 ID는 필수입니다");
+        }
+        this.drawing = drawing;
+        this.drawingId = drawing.getId();
     }
 
     public void unassignDrawing() {
         this.drawingId = null;
+        this.drawing = null;
     }
 
     public void bumpRevision() {

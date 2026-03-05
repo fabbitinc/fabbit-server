@@ -13,6 +13,7 @@ import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.mapping.model.MappingRecord;
+import com.fabbitinc.server.domain.mapping.model.MappingScope;
 import com.fabbitinc.server.domain.mapping.model.MappingRevision;
 import com.fabbitinc.server.domain.mapping.repository.MappingRecordRepository;
 import com.fabbitinc.server.domain.mapping.repository.MappingRevisionRepository;
@@ -133,15 +134,15 @@ public class SynthesisService {
         dispatch.run();
     }
 
-    private void validateRootContext(String scope, Map<String, String> rootContext) {
+    private void validateRootContext(MappingScope scope, Map<String, String> rootContext) {
         boolean hasRootContext = rootContext != null && !rootContext.isEmpty();
-        if ("ROOT_BOM".equals(scope) && !hasRootContext) {
+        if (scope == MappingScope.ROOT_BOM && !hasRootContext) {
             throw new AppException(
                     ErrorCode.VALIDATION_ERROR,
                     "이 매핑은 ROOT_BOM입니다. root_context를 지정해주세요."
             );
         }
-        if (("PART_LIST".equals(scope) || "FULL_BOM".equals(scope)) && hasRootContext) {
+        if ((scope == MappingScope.PART_LIST || scope == MappingScope.FULL_BOM) && hasRootContext) {
             throw new AppException(
                     ErrorCode.VALIDATION_ERROR,
                     "이 매핑은 root_context가 필요하지 않습니다."

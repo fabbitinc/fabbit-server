@@ -7,6 +7,7 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.issue.support.MentionExtractor;
 import com.fabbitinc.server.application.issue.support.TipTapValidator;
+import com.fabbitinc.server.application.activity.dto.response.ActivityAction;
 import com.fabbitinc.server.domain.activity.model.Activity;
 import com.fabbitinc.server.domain.activity.model.ActivityTargetType;
 import com.fabbitinc.server.domain.activity.repository.ActivityRepository;
@@ -40,6 +41,7 @@ import com.fabbitinc.server.domain.issue.repository.IssueTeamAssigneeRepository;
 import com.fabbitinc.server.domain.label.model.Label;
 import com.fabbitinc.server.domain.label.repository.LabelRepository;
 import com.fabbitinc.server.domain.notification.model.Notification;
+import com.fabbitinc.server.domain.notification.model.NotificationSourceIssueType;
 import com.fabbitinc.server.domain.notification.model.NotificationType;
 import com.fabbitinc.server.domain.notification.repository.NotificationRepository;
 import com.fabbitinc.server.domain.part.model.Part;
@@ -70,17 +72,17 @@ public class IssueService {
 
     private static final String OWNER_TYPE_ISSUE = "issue";
 
-    private static final String ACTION_ISSUE_STATE_CHANGED = "issue:state_changed";
-    private static final String ACTION_CR_STATE_CHANGED = "cr:state_changed";
-    private static final String ACTION_ASSIGNEE_CHANGED = "issue:assignee_changed";
-    private static final String ACTION_REVIEWER_CHANGED = "issue:reviewer_changed";
-    private static final String ACTION_LABEL_CHANGED = "issue:label_changed";
-    private static final String ACTION_PART_CHANGED = "issue:part_changed";
-    private static final String ACTION_FILE_ATTACHED = "issue:file_attached";
-    private static final String ACTION_FILE_DETACHED = "issue:file_detached";
-    private static final String ACTION_CR_ISSUE_CHANGED = "cr:issue_changed";
-    private static final String ACTION_ISSUE_CR_CHANGED = "issue:cr_changed";
-    private static final String ACTION_ISSUE_MENTIONED = "issue:mentioned";
+    private static final ActivityAction ACTION_ISSUE_STATE_CHANGED = ActivityAction.ISSUE_STATE_CHANGED;
+    private static final ActivityAction ACTION_CR_STATE_CHANGED = ActivityAction.CR_STATE_CHANGED;
+    private static final ActivityAction ACTION_ASSIGNEE_CHANGED = ActivityAction.ISSUE_ASSIGNEE_CHANGED;
+    private static final ActivityAction ACTION_REVIEWER_CHANGED = ActivityAction.ISSUE_REVIEWER_CHANGED;
+    private static final ActivityAction ACTION_LABEL_CHANGED = ActivityAction.ISSUE_LABEL_CHANGED;
+    private static final ActivityAction ACTION_PART_CHANGED = ActivityAction.ISSUE_PART_CHANGED;
+    private static final ActivityAction ACTION_FILE_ATTACHED = ActivityAction.ISSUE_FILE_ATTACHED;
+    private static final ActivityAction ACTION_FILE_DETACHED = ActivityAction.ISSUE_FILE_DETACHED;
+    private static final ActivityAction ACTION_CR_ISSUE_CHANGED = ActivityAction.CR_ISSUE_CHANGED;
+    private static final ActivityAction ACTION_ISSUE_CR_CHANGED = ActivityAction.ISSUE_CR_CHANGED;
+    private static final ActivityAction ACTION_ISSUE_MENTIONED = ActivityAction.ISSUE_MENTIONED;
 
     private final IssueRepository issueRepository;
     private final ChangeRequestRepository changeRequestRepository;
@@ -550,14 +552,10 @@ public class IssueService {
         return new DiffResult(toAdd, toRemove);
     }
 
-    public ChangeRequestReviewer submitReview(UUID actorId, UUID changeRequestId, String rawStatus) {
-        ReviewStatus status;
-        try {
-            status = ReviewStatus.valueOf(rawStatus);
-        } catch (Exception ex) {
+    public ChangeRequestReviewer submitReview(UUID actorId, UUID changeRequestId, ReviewStatus status) {
+        if (status == null) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "리뷰 상태는 APPROVED 또는 REJECTED만 허용됩니다");
         }
-
         ChangeRequestReviewer reviewer = changeRequestReviewerRepository
                 .findByChangeRequestIdAndUserId(changeRequestId, actorId)
                 .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN, "해당 변경 요청의 검토자가 아닙니다"));
@@ -717,7 +715,7 @@ public class IssueService {
         }
     }
 
-    private void addStateActivity(UUID issueId, UUID actorId, String action, String oldState, String newState) {
+    private void addStateActivity(UUID issueId, UUID actorId, ActivityAction action, String oldState, String newState) {
         Map<String, Object> detail = Map.of(
                 "changes",
                 Map.of(
@@ -731,7 +729,7 @@ public class IssueService {
     private void addDiffActivity(
             UUID targetIssueId,
             UUID actorId,
-            String action,
+            ActivityAction action,
             List<Map<String, Object>> added,
             List<Map<String, Object>> removed
     ) {
@@ -741,11 +739,11 @@ public class IssueService {
         addActivity(targetIssueId, actorId, action, detail);
     }
 
-    private void addActivity(UUID targetIssueId, UUID actorId, String action, Object detail) {
+    private void addActivity(UUID targetIssueId, UUID actorId, ActivityAction action, Object detail) {
         Activity activity = new Activity(
                 ActivityTargetType.ISSUE,
                 targetIssueId,
-                action,
+                action.value(),
                 actorId,
                 toJsonString(detail)
         );
@@ -766,11 +764,13 @@ public class IssueService {
         addedIssueMentions.removeAll(oldMentions.issueIds());
         addedIssueMentions.remove(issue.getId());
 
-        String issueType = issue.getType() == IssueType.CHANGE_REQUEST ? "change_request" : "issue";
+        NotificationSourceIssueType sourceIssueType = issue.getType() == IssueType.CHANGE_REQUEST
+                ? NotificationSourceIssueType.CHANGE_REQUEST
+                : NotificationSourceIssueType.ISSUE;
         for (UUID targetIssueId : addedIssueMentions) {
             Map<String, Object> ref = new LinkedHashMap<>();
             ref.put("id", issue.getId().toString());
-            ref.put("type", issueType);
+            ref.put("type", sourceIssueType);
             ref.put("label", "#" + issue.getNumber() + " " + issue.getTitle());
             ref.put("meta", Map.of("number", issue.getNumber(), "is_comment", isComment));
 
@@ -791,7 +791,7 @@ public class IssueService {
             payload.put("source_issue_id", issue.getId().toString());
             payload.put("source_number", issue.getNumber());
             payload.put("source_title", issue.getTitle());
-            payload.put("source_issue_type", issueType);
+            payload.put("source_issue_type", sourceIssueType);
             payload.put("is_comment", isComment);
 
             notificationRepository.save(new Notification(

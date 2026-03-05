@@ -2,15 +2,23 @@ package com.fabbitinc.server.domain.organization.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractIdEntity;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
+import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Entity
@@ -32,6 +40,10 @@ public class Organization extends AbstractIdEntity {
 
     @Column(name = "owner_id", nullable = false)
     private java.util.UUID ownerId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id", insertable = false, updatable = false)
+    private User owner;
 
     @Column(name = "industry", length = 50)
     private String industry;
@@ -66,6 +78,9 @@ public class Organization extends AbstractIdEntity {
 
     @Column(name = "profile_image_file_key")
     private String profileImageFileKey;
+
+    @OneToMany(mappedBy = "organization", fetch = FetchType.LAZY)
+    private List<Membership> memberships = new ArrayList<>();
 
     private Organization(
             String slug,
@@ -128,5 +143,9 @@ public class Organization extends AbstractIdEntity {
 
     public void removeProfileImage() {
         this.profileImageFileKey = null;
+    }
+
+    public List<Membership> getMemberships() {
+        return List.copyOf(memberships);
     }
 }

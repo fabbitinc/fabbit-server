@@ -73,7 +73,7 @@ public class MemberQuery {
                 .map(membership -> toMemberSummary(membership, users.get(membership.getUserId())))
                 .filter(item -> item != null)
                 .sorted(Comparator
-                        .comparing((MemberSummaryResult item) -> roleOrder(MembershipRole.from(item.role())))
+                        .comparing((MemberSummaryResult item) -> roleOrder(item.role()))
                         .thenComparing(MemberSummaryResult::fullName))
                 .toList();
 
@@ -111,7 +111,7 @@ public class MemberQuery {
                 user.getEmail(),
                 user.getPhone(),
                 fileUrlResolver.resolve(user.getProfileImageFileKey()),
-                membership.getRole().name(),
+                membership.getRole(),
                 membership.getJobRole()
         );
     }

@@ -30,7 +30,7 @@ public class OrganizationApi {
         return organizationService.addMember(userId, orgId, role);
     }
 
-    public void changeMemberRole(AuthContext auth, UUID userId, String requestedRole) {
+    public void changeMemberRole(AuthContext auth, UUID userId, MembershipRole requestedRole) {
         organizationService.changeMemberRole(auth, userId, requestedRole);
     }
 

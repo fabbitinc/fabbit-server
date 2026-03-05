@@ -1,7 +1,9 @@
 package com.fabbitinc.server.application.auth.dto.request;
 
+import com.fabbitinc.server.domain.organization.model.PlanType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record RegisterRequest(
@@ -40,7 +42,8 @@ public record RegisterRequest(
         String teamSize,
 
         @Schema(description = "요금제 타입", example = "STARTER")
-        String planType,
+        @NotNull(message = "plan_type은 필수입니다")
+        PlanType planType,
 
         @Schema(description = "봇 방지 토큰(선택)", example = "turnstile-token")
         String turnstileToken

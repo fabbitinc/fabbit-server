@@ -1,6 +1,8 @@
 package com.fabbitinc.server.application.project.query;
 
 import com.fabbitinc.server.application.activity.api.ActivityApi;
+import com.fabbitinc.server.application.activity.dto.response.ActivityAction;
+import com.fabbitinc.server.application.activity.dto.response.ActivityScope;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
@@ -140,7 +142,7 @@ public class ProjectQuery {
                                 "",
                                 null,
                                 null,
-                                member.getRole().name()
+                                member.getRole()
                         );
                     }
                     return new ProjectMemberSummaryResult(
@@ -149,7 +151,7 @@ public class ProjectQuery {
                             user.getEmail(),
                             user.getPhone(),
                             fileUrlResolver.resolve(user.getProfileImageFileKey()),
-                            member.getRole().name()
+                            member.getRole()
                     );
                 })
                 .toList();
@@ -250,14 +252,17 @@ public class ProjectQuery {
         }
 
         List<ProjectActivityResult> items = filtered.stream()
-                .map(activity -> new ProjectActivityResult(
-                        activity.getId(),
-                        activity.getAction(),
-                        extractScope(activity.getAction()),
-                        activity.getActorId(),
-                        activity.getDetail(),
-                        activity.getCreatedAt()
-                ))
+                .map(activity -> {
+                    ActivityAction action = ActivityAction.from(activity.getAction());
+                    return new ProjectActivityResult(
+                            activity.getId(),
+                            action,
+                            action.scope(),
+                            activity.getActorId(),
+                            activity.getDetail(),
+                            activity.getCreatedAt()
+                    );
+                })
                 .toList();
 
         return new ProjectActivityListResult(items, nextCursor, userMap);
@@ -309,15 +314,8 @@ public class ProjectQuery {
         );
     }
 
-    private String extractScope(String action) {
-        if (action == null) {
-            return null;
-        }
-        int idx = action.indexOf(':');
-        if (idx < 0) {
-            return action;
-        }
-        return action.substring(0, idx);
+    private ActivityScope extractScope(String action) {
+        return ActivityScope.fromAction(action);
     }
 
     private String normalizeSearch(String search) {

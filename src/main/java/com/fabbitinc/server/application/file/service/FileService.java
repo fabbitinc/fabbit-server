@@ -172,7 +172,7 @@ public class FileService {
     private FileCompleteResponse toCompleteResponse(File file) {
         return new FileCompleteResponse(
                 file.getId(),
-                file.getStatus().name(),
+                file.getStatus(),
                 file.getOriginalName(),
                 file.getFileKey(),
                 file.getFileSize(),

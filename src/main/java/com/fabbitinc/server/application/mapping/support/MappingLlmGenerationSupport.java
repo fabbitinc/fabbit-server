@@ -168,7 +168,7 @@ public class MappingLlmGenerationSupport {
                     .append(" (merge_keys=").append(node.mergeKeys()).append(")\n");
             for (ManufacturingOntology.PropertyDef property : node.properties()) {
                 builder.append("  - ").append(property.name())
-                        .append(" : ").append(property.dataType())
+                        .append(" : ").append(property.dataType().value())
                         .append(property.required() ? " [required]" : "")
                         .append(property.isMergeKey() ? " [merge_key]" : "")
                         .append('\n');
@@ -177,13 +177,13 @@ public class MappingLlmGenerationSupport {
 
         builder.append("Relationship Types:\n");
         for (ManufacturingOntology.RelationshipTypeDef relation : ManufacturingOntology.ONTOLOGY.relationshipTypes()) {
-            builder.append("- ").append(relation.relType())
+            builder.append("- ").append(relation.relType().value())
                     .append(" : ").append(relation.fromLabel())
                     .append(" -> ").append(relation.toLabel())
                     .append('\n');
             for (ManufacturingOntology.PropertyDef property : relation.properties()) {
                 builder.append("  - ").append(property.name())
-                        .append(" : ").append(property.dataType())
+                        .append(" : ").append(property.dataType().value())
                         .append('\n');
             }
         }

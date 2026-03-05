@@ -1,5 +1,6 @@
 package com.fabbitinc.server.application.issue.dto.response;
 
+import com.fabbitinc.server.domain.issue.model.ReviewStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
@@ -12,7 +13,7 @@ public record ReviewerSummaryResponse(
         String email,
         String phone,
         String profileImageUrl,
-        String reviewStatus,
+        ReviewStatus reviewStatus,
         Instant reviewedAt
 ) {
 }

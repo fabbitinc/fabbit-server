@@ -1,10 +1,15 @@
 package com.fabbitinc.server.domain.issue.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
+import com.fabbitinc.server.domain.team.model.Team;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -31,15 +36,57 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ChangeRequestTeamReviewer extends AbstractCreatedEntity {
 
+    public static final String CODE_CR_TEAM_REVIEWER_CHANGE_REQUEST_REQUIRED = "CR_TEAM_REVIEWER_CHANGE_REQUEST_REQUIRED";
+    public static final String CODE_CR_TEAM_REVIEWER_TEAM_REQUIRED = "CR_TEAM_REVIEWER_TEAM_REQUIRED";
+
     @Column(name = "change_request_id", nullable = false)
     private UUID changeRequestId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "change_request_id", insertable = false, updatable = false)
+    private ChangeRequest changeRequest;
 
     @Column(name = "team_id", nullable = false)
     private UUID teamId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id", insertable = false, updatable = false)
+    private Team team;
+
     public ChangeRequestTeamReviewer(UUID changeRequestId, UUID teamId) {
         super(UuidV7Generator.next());
-        this.changeRequestId = changeRequestId;
-        this.teamId = teamId;
+        this.changeRequestId = requireChangeRequestId(changeRequestId);
+        this.teamId = requireTeamId(teamId);
+    }
+
+    public static ChangeRequestTeamReviewer assign(UUID changeRequestId, UUID teamId) {
+        return new ChangeRequestTeamReviewer(changeRequestId, teamId);
+    }
+
+    public static ChangeRequestTeamReviewer assign(ChangeRequest changeRequest, Team team) {
+        if (changeRequest == null) {
+            throw new DomainException(CODE_CR_TEAM_REVIEWER_CHANGE_REQUEST_REQUIRED, "변경요청 ID는 필수입니다");
+        }
+        if (team == null) {
+            throw new DomainException(CODE_CR_TEAM_REVIEWER_TEAM_REQUIRED, "팀 ID는 필수입니다");
+        }
+        ChangeRequestTeamReviewer reviewer = new ChangeRequestTeamReviewer(changeRequest.getId(), team.getId());
+        reviewer.changeRequest = changeRequest;
+        reviewer.team = team;
+        return reviewer;
+    }
+
+    private UUID requireChangeRequestId(UUID value) {
+        if (value == null) {
+            throw new DomainException(CODE_CR_TEAM_REVIEWER_CHANGE_REQUEST_REQUIRED, "변경요청 ID는 필수입니다");
+        }
+        return value;
+    }
+
+    private UUID requireTeamId(UUID value) {
+        if (value == null) {
+            throw new DomainException(CODE_CR_TEAM_REVIEWER_TEAM_REQUIRED, "팀 ID는 필수입니다");
+        }
+        return value;
     }
 }

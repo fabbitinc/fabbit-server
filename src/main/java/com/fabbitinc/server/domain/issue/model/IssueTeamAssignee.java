@@ -1,10 +1,15 @@
 package com.fabbitinc.server.domain.issue.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
+import com.fabbitinc.server.domain.team.model.Team;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -28,15 +33,57 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class IssueTeamAssignee extends AbstractCreatedEntity {
 
+    public static final String CODE_ISSUE_TEAM_ASSIGNEE_ISSUE_REQUIRED = "ISSUE_TEAM_ASSIGNEE_ISSUE_REQUIRED";
+    public static final String CODE_ISSUE_TEAM_ASSIGNEE_TEAM_REQUIRED = "ISSUE_TEAM_ASSIGNEE_TEAM_REQUIRED";
+
     @Column(name = "issue_id", nullable = false)
     private UUID issueId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "issue_id", insertable = false, updatable = false)
+    private Issue issue;
 
     @Column(name = "team_id", nullable = false)
     private UUID teamId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id", insertable = false, updatable = false)
+    private Team team;
+
     public IssueTeamAssignee(UUID issueId, UUID teamId) {
         super(UuidV7Generator.next());
-        this.issueId = issueId;
-        this.teamId = teamId;
+        this.issueId = requireIssueId(issueId);
+        this.teamId = requireTeamId(teamId);
+    }
+
+    public static IssueTeamAssignee assign(UUID issueId, UUID teamId) {
+        return new IssueTeamAssignee(issueId, teamId);
+    }
+
+    public static IssueTeamAssignee assign(Issue issue, Team team) {
+        if (issue == null) {
+            throw new DomainException(CODE_ISSUE_TEAM_ASSIGNEE_ISSUE_REQUIRED, "이슈 ID는 필수입니다");
+        }
+        if (team == null) {
+            throw new DomainException(CODE_ISSUE_TEAM_ASSIGNEE_TEAM_REQUIRED, "팀 ID는 필수입니다");
+        }
+        IssueTeamAssignee assignee = new IssueTeamAssignee(issue.getId(), team.getId());
+        assignee.issue = issue;
+        assignee.team = team;
+        return assignee;
+    }
+
+    private UUID requireIssueId(UUID value) {
+        if (value == null) {
+            throw new DomainException(CODE_ISSUE_TEAM_ASSIGNEE_ISSUE_REQUIRED, "이슈 ID는 필수입니다");
+        }
+        return value;
+    }
+
+    private UUID requireTeamId(UUID value) {
+        if (value == null) {
+            throw new DomainException(CODE_ISSUE_TEAM_ASSIGNEE_TEAM_REQUIRED, "팀 ID는 필수입니다");
+        }
+        return value;
     }
 }

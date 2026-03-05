@@ -1,5 +1,6 @@
 package com.fabbitinc.server.application.issue.dto.response;
 
+import com.fabbitinc.server.domain.issue.model.IssueState;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.UUID;
@@ -9,6 +10,6 @@ public record LinkedIssueBadgeResponse(
         UUID id,
         int number,
         String title,
-        String state
+        IssueState state
 ) {
 }

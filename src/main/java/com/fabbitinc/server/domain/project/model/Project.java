@@ -5,10 +5,15 @@ import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Entity
@@ -32,6 +37,12 @@ public class Project extends AbstractSoftDeletableEntity {
 
     @Column(name = "is_archived", nullable = false)
     private boolean archived;
+
+    @OneToMany(mappedBy = "project", fetch = FetchType.LAZY)
+    private List<ProjectMember> members = new ArrayList<>();
+
+    @OneToMany(mappedBy = "project", fetch = FetchType.LAZY)
+    private List<ProjectPart> parts = new ArrayList<>();
 
     private Project(String name, String description) {
         super(UuidV7Generator.next());
@@ -72,6 +83,14 @@ public class Project extends AbstractSoftDeletableEntity {
         if (archived) {
             throw new DomainException(CODE_PROJECT_ARCHIVED, "보관된 프로젝트는 수정할 수 없습니다");
         }
+    }
+
+    public List<ProjectMember> getMembers() {
+        return List.copyOf(members);
+    }
+
+    public List<ProjectPart> getParts() {
+        return List.copyOf(parts);
     }
 
     private String validateName(String rawName) {

@@ -5,8 +5,8 @@ import java.util.UUID;
 
 public record ActivityResponse(
         UUID id,
-        String action,
-        String scope,
+        ActivityAction action,
+        ActivityScope scope,
         UUID actorId,
         String detail,
         Instant createdAt

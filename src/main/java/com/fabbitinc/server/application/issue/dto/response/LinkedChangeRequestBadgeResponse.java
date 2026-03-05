@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.issue.dto.response;
 
+import com.fabbitinc.server.domain.issue.model.CrState;
+import com.fabbitinc.server.domain.issue.model.IssueState;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.UUID;
@@ -9,7 +11,7 @@ public record LinkedChangeRequestBadgeResponse(
         UUID id,
         int number,
         String title,
-        String state,
-        String crState
+        IssueState state,
+        CrState crState
 ) {
 }

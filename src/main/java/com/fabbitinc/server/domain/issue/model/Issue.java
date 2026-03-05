@@ -1,7 +1,9 @@
 package com.fabbitinc.server.domain.issue.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractAuditableEntity;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
+import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.DiscriminatorType;
@@ -9,9 +11,13 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -19,6 +25,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -38,6 +46,8 @@ import java.util.UUID;
 @DiscriminatorValue("ISSUE")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Issue extends AbstractAuditableEntity {
+
+    public static final String CODE_ISSUE_ACTOR_REQUIRED = "ISSUE_ACTOR_REQUIRED";
 
     @Column(name = "number", nullable = false)
     private int number;
@@ -62,8 +72,34 @@ public class Issue extends AbstractAuditableEntity {
     @Column(name = "created_by", nullable = false)
     private UUID createdBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by", insertable = false, updatable = false)
+    private User createdByUser;
+
     @Column(name = "updated_by", nullable = false)
     private UUID updatedBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by", insertable = false, updatable = false)
+    private User updatedByUser;
+
+    @OneToMany(mappedBy = "issue", fetch = FetchType.LAZY)
+    private List<IssueAssignee> assignees = new ArrayList<>();
+
+    @OneToMany(mappedBy = "issue", fetch = FetchType.LAZY)
+    private List<IssueTeamAssignee> teamAssignees = new ArrayList<>();
+
+    @OneToMany(mappedBy = "issue", fetch = FetchType.LAZY)
+    private List<IssuePart> parts = new ArrayList<>();
+
+    @OneToMany(mappedBy = "issue", fetch = FetchType.LAZY)
+    private List<IssueLabel> labels = new ArrayList<>();
+
+    @OneToMany(mappedBy = "issue", fetch = FetchType.LAZY)
+    private List<IssueComment> comments = new ArrayList<>();
+
+    @OneToMany(mappedBy = "issue", fetch = FetchType.LAZY)
+    private List<ChangeRequestIssue> linkedChangeRequests = new ArrayList<>();
 
     public Issue(int number, String title, String body, UUID actorId) {
         super(UuidV7Generator.next());
@@ -71,30 +107,95 @@ public class Issue extends AbstractAuditableEntity {
         this.title = title;
         this.body = body;
         this.state = IssueState.OPEN;
-        this.createdBy = actorId;
-        this.updatedBy = actorId;
+        UUID requiredActorId = requireActorId(actorId);
+        this.createdBy = requiredActorId;
+        this.updatedBy = requiredActorId;
+    }
+
+    public static Issue create(int number, String title, String body, UUID actorId) {
+        return new Issue(number, title, body, actorId);
+    }
+
+    public static Issue create(int number, String title, String body, User actor) {
+        if (actor == null) {
+            throw new DomainException(CODE_ISSUE_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
+        }
+        Issue issue = new Issue(number, title, body, actor.getId());
+        issue.createdByUser = actor;
+        issue.updatedByUser = actor;
+        return issue;
     }
 
     public void updateTitle(String title, UUID actorId) {
         this.title = title;
-        this.updatedBy = actorId;
+        this.updatedBy = requireActorId(actorId);
+        if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
+            this.updatedByUser = null;
+        }
+    }
+
+    public void updateTitle(String title, User actor) {
+        if (actor == null) {
+            throw new DomainException(CODE_ISSUE_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
+        }
+        this.title = title;
+        this.updatedBy = actor.getId();
+        this.updatedByUser = actor;
     }
 
     public void updateBody(String body, UUID actorId) {
         this.body = body;
-        this.updatedBy = actorId;
+        this.updatedBy = requireActorId(actorId);
+        if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
+            this.updatedByUser = null;
+        }
+    }
+
+    public void updateBody(String body, User actor) {
+        if (actor == null) {
+            throw new DomainException(CODE_ISSUE_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
+        }
+        this.body = body;
+        this.updatedBy = actor.getId();
+        this.updatedByUser = actor;
     }
 
     public void close(Instant now, UUID actorId) {
         this.state = IssueState.CLOSED;
         this.closedAt = now;
-        this.updatedBy = actorId;
+        this.updatedBy = requireActorId(actorId);
+        if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
+            this.updatedByUser = null;
+        }
+    }
+
+    public void close(Instant now, User actor) {
+        if (actor == null) {
+            throw new DomainException(CODE_ISSUE_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
+        }
+        this.state = IssueState.CLOSED;
+        this.closedAt = now;
+        this.updatedBy = actor.getId();
+        this.updatedByUser = actor;
     }
 
     public void reopen(UUID actorId) {
         this.state = IssueState.OPEN;
         this.closedAt = null;
-        this.updatedBy = actorId;
+        this.updatedBy = requireActorId(actorId);
+        if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
+            this.updatedByUser = null;
+        }
+    }
+
+    public void reopen(User actor) {
+        if (actor == null) {
+            throw new DomainException(CODE_ISSUE_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
+        }
+        this.state = IssueState.OPEN;
+        this.closedAt = null;
+        this.updatedBy = actor.getId();
+        this.updatedByUser = actor;
     }
 
     protected void markClosed(Instant now, UUID actorId) {
@@ -103,5 +204,36 @@ public class Issue extends AbstractAuditableEntity {
 
     protected void markOpen(UUID actorId) {
         reopen(actorId);
+    }
+
+    public List<IssueAssignee> getAssignees() {
+        return List.copyOf(assignees);
+    }
+
+    public List<IssueTeamAssignee> getTeamAssignees() {
+        return List.copyOf(teamAssignees);
+    }
+
+    public List<IssuePart> getParts() {
+        return List.copyOf(parts);
+    }
+
+    public List<IssueLabel> getLabels() {
+        return List.copyOf(labels);
+    }
+
+    public List<IssueComment> getComments() {
+        return List.copyOf(comments);
+    }
+
+    public List<ChangeRequestIssue> getLinkedChangeRequests() {
+        return List.copyOf(linkedChangeRequests);
+    }
+
+    private UUID requireActorId(UUID value) {
+        if (value == null) {
+            throw new DomainException(CODE_ISSUE_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
+        }
+        return value;
     }
 }

@@ -35,10 +35,13 @@ public class AuthInvitationService {
             UUID orgId,
             String email,
             UUID invitedBy,
-            String role,
+            MembershipRole role,
             MembershipRole actorRole
     ) {
-        MembershipRole invitedRole = parseRole(role);
+        if (role == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 역할입니다");
+        }
+        MembershipRole invitedRole = role;
 
         if (actorRole != null && !actorRole.canManage(invitedRole)) {
             throw new AppException(ErrorCode.FORBIDDEN, "해당 역할로 초대할 권한이 없습니다");
@@ -54,7 +57,7 @@ public class AuthInvitationService {
         invitationRepository.deleteByOrgIdAndEmailAndStatus(orgId, normalizedEmail, InvitationStatus.CANCELLED);
 
         String rawToken = createRawToken();
-        Invitation invitation = new Invitation(
+        Invitation invitation = Invitation.create(
                 orgId,
                 normalizedEmail,
                 invitedRole,
@@ -115,18 +118,6 @@ public class AuthInvitationService {
     public User getInviterOrThrow(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다"));
-    }
-
-    private MembershipRole parseRole(String rawRole) {
-        if (rawRole == null || rawRole.isBlank()) {
-            return MembershipRole.MEMBER;
-        }
-
-        try {
-            return MembershipRole.from(rawRole);
-        } catch (Exception ex) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 역할입니다");
-        }
     }
 
     private String createRawToken() {

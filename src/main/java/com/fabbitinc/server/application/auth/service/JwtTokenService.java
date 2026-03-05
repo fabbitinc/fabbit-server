@@ -61,7 +61,7 @@ public class JwtTokenService {
                 .withExpiresAt(Date.from(refreshExp))
                 .sign(algorithm);
 
-        refreshTokenRepository.save(new RefreshToken(userId, refreshJti, refreshExp));
+        refreshTokenRepository.save(RefreshToken.create(userId, refreshJti, refreshExp));
         return new IssuedTokens(accessToken, refreshToken, "bearer");
     }
 

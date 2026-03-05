@@ -7,7 +7,7 @@ public record ValidationIssueResponse(
         @Schema(description = "이슈 코드", example = "MISSING_SOURCE_COLUMN")
         String code,
         @Schema(description = "심각도", example = "error")
-        String severity,
+        ValidationSeverity severity,
         @Schema(description = "이슈 메시지")
         String message,
         @Schema(description = "필드 경로")

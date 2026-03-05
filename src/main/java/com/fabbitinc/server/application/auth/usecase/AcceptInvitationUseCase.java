@@ -89,7 +89,7 @@ public class AcceptInvitationUseCase {
                 organization.getName(),
                 organization.getIndustry(),
                 organization.getTeamSize(),
-                organization.getPlanType().name(),
+                organization.getPlanType(),
                 fileUrlResolver.resolve(organization.getProfileImageFileKey())
         );
     }

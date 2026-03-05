@@ -4,6 +4,9 @@ import com.fabbitinc.server.application.activation.dto.response.HealthCheckIssue
 import com.fabbitinc.server.application.activation.dto.response.HealthCheckResponse;
 import com.fabbitinc.server.application.activation.dto.response.QueryResponse;
 import com.fabbitinc.server.application.activation.dto.response.QueryResultResponse;
+import com.fabbitinc.server.application.activation.dto.response.ActivationResultType;
+import com.fabbitinc.server.application.activation.dto.response.HealthIssueCategory;
+import com.fabbitinc.server.application.activation.dto.response.HealthIssueSeverity;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.domain.part.model.Part;
@@ -71,8 +74,8 @@ public class ActivationService {
         List<HealthCheckIssueResponse> issues = new ArrayList<>();
         if (totalNodes == 0) {
             issues.add(new HealthCheckIssueResponse(
-                    "empty_graph",
-                    "warning",
+                    HealthIssueCategory.EMPTY_GRAPH,
+                    HealthIssueSeverity.WARNING,
                     "지식 그래프에 데이터가 없습니다. 먼저 데이터를 합성해주세요.",
                     0
             ));
@@ -90,8 +93,8 @@ public class ActivationService {
         int orphanParts = Math.max(0, partCount - connectedParts.size());
         if (orphanParts > 0) {
             issues.add(new HealthCheckIssueResponse(
-                    "orphan_parts",
-                    "warning",
+                    HealthIssueCategory.ORPHAN_PARTS,
+                    HealthIssueSeverity.WARNING,
                     "어떤 프로젝트나 조립체에도 소속되지 않은 부품 " + orphanParts + "개",
                     orphanParts
             ));
@@ -100,8 +103,8 @@ public class ActivationService {
         int noDrawingParts = safeToInt(partRepository.countByDrawingIdIsNull());
         if (noDrawingParts > 0) {
             issues.add(new HealthCheckIssueResponse(
-                    "missing_drawing",
-                    "info",
+                    HealthIssueCategory.MISSING_DRAWING,
+                    HealthIssueSeverity.INFO,
                     "도면이 연결되지 않은 부품 " + noDrawingParts + "개",
                     noDrawingParts
             ));
@@ -111,8 +114,8 @@ public class ActivationService {
         int noSupplierParts = Math.max(0, partCount - withSupplierPartCount);
         if (noSupplierParts > 0) {
             issues.add(new HealthCheckIssueResponse(
-                    "missing_supplier",
-                    "info",
+                    HealthIssueCategory.MISSING_SUPPLIER,
+                    HealthIssueSeverity.INFO,
                     "공급사가 연결되지 않은 부품 " + noSupplierParts + "개",
                     noSupplierParts
             ));
@@ -121,8 +124,8 @@ public class ActivationService {
         int incompleteBom = safeToInt(bomLinkRepository.countChildLinksWithUnnamedPart());
         if (incompleteBom > 0) {
             issues.add(new HealthCheckIssueResponse(
-                    "incomplete_bom",
-                    "warning",
+                    HealthIssueCategory.INCOMPLETE_BOM,
+                    HealthIssueSeverity.WARNING,
                     "BOM에 존재하지만 품명 정보가 없는 부품 " + incompleteBom + "개",
                     incompleteBom
             ));
@@ -159,7 +162,7 @@ public class ActivationService {
     private QueryResponse queryPartsWithoutDrawing() {
         List<QueryResultResponse> results = partRepository.findTop20ByDrawingIdIsNullOrderByPartNumberAsc().stream()
                 .map(part -> new QueryResultResponse(
-                        "part",
+                        ActivationResultType.PART,
                         part.getPartNumber(),
                         part.getName(),
                         "도면 미연결 부품",
@@ -186,7 +189,7 @@ public class ActivationService {
 
         List<QueryResultResponse> results = rows.stream()
                 .map(row -> new QueryResultResponse(
-                        "supplier",
+                        ActivationResultType.SUPPLIER,
                         (String) row[0],
                         (String) row[0],
                         "연결 부품 수",
@@ -214,7 +217,7 @@ public class ActivationService {
 
         List<QueryResultResponse> results = rows.stream()
                 .map(row -> new QueryResultResponse(
-                        "project",
+                        ActivationResultType.PROJECT,
                         (String) row[0],
                         (String) row[0],
                         "연결 부품 수",
@@ -233,7 +236,7 @@ public class ActivationService {
         );
         List<QueryResultResponse> results = parts.stream()
                 .map(part -> new QueryResultResponse(
-                        "part",
+                        ActivationResultType.PART,
                         part.getPartNumber(),
                         part.getName(),
                         part.getCategory(),

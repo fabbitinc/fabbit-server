@@ -6,6 +6,8 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -13,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -34,6 +38,15 @@ public class ChangeRequest extends Issue {
 
     @Column(name = "merged_by")
     private UUID mergedBy;
+
+    @OneToMany(mappedBy = "changeRequest", fetch = FetchType.LAZY)
+    private List<ChangeRequestIssue> linkedIssues = new ArrayList<>();
+
+    @OneToMany(mappedBy = "changeRequest", fetch = FetchType.LAZY)
+    private List<ChangeRequestReviewer> reviewers = new ArrayList<>();
+
+    @OneToMany(mappedBy = "changeRequest", fetch = FetchType.LAZY)
+    private List<ChangeRequestTeamReviewer> teamReviewers = new ArrayList<>();
 
     public ChangeRequest(int number, String title, String body, UUID actorId) {
         super(number, title, body, actorId);
@@ -84,5 +97,17 @@ public class ChangeRequest extends Issue {
         }
         this.crState = CrState.SUBMITTED;
         markOpen(actorId);
+    }
+
+    public List<ChangeRequestIssue> getLinkedIssues() {
+        return List.copyOf(linkedIssues);
+    }
+
+    public List<ChangeRequestReviewer> getReviewers() {
+        return List.copyOf(reviewers);
+    }
+
+    public List<ChangeRequestTeamReviewer> getTeamReviewers() {
+        return List.copyOf(teamReviewers);
     }
 }

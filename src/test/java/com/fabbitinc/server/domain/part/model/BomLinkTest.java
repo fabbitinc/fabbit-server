@@ -11,6 +11,19 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class BomLinkTest {
 
     @Test
+    void connect_엔티티_입력시_연관과_ID를_동기화한다() {
+        Part parent = Part.create("P-001", "Parent");
+        Part child = Part.create("P-002", "Child");
+
+        BomLink link = BomLink.connect(parent, child, 2, "{}");
+
+        assertEquals(parent, link.getParentPart());
+        assertEquals(child, link.getChildPart());
+        assertEquals(parent.getId(), link.getParentPartId());
+        assertEquals(child.getId(), link.getChildPartId());
+    }
+
+    @Test
     void connect_수량이_0이하면_예외를_던진다() {
         UUID parentId = UUID.randomUUID();
         UUID childId = UUID.randomUUID();

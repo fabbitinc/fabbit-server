@@ -4,6 +4,8 @@ import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
 import com.fabbitinc.server.application.mapping.dto.common.PropertyMappingDto;
 import com.fabbitinc.server.application.mapping.dto.common.RelationMappingDto;
 import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
+import com.fabbitinc.server.application.ontology.support.PropertyDataType;
+import com.fabbitinc.server.application.ontology.support.RelationshipType;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -19,9 +21,9 @@ public class MappingNormalizationSupport {
 
     public MappingResultDto normalize(MappingResultDto raw) {
         Set<String> validLabels = new LinkedHashSet<>();
-        Set<String> validRelTypes = new LinkedHashSet<>();
+        Set<RelationshipType> validRelTypes = new LinkedHashSet<>();
         Map<String, Set<String>> mergeKeysByLabel = new LinkedHashMap<>();
-        Map<String, Map<String, String>> relPropertyTypes = new LinkedHashMap<>();
+        Map<RelationshipType, Map<String, PropertyDataType>> relPropertyTypes = new LinkedHashMap<>();
 
         for (ManufacturingOntology.NodeLabelDef nodeLabel : ManufacturingOntology.ONTOLOGY.nodeLabels()) {
             validLabels.add(nodeLabel.label());
@@ -29,7 +31,7 @@ public class MappingNormalizationSupport {
         }
         for (ManufacturingOntology.RelationshipTypeDef relationshipType : ManufacturingOntology.ONTOLOGY.relationshipTypes()) {
             validRelTypes.add(relationshipType.relType());
-            Map<String, String> propertyTypeMap = new LinkedHashMap<>();
+            Map<String, PropertyDataType> propertyTypeMap = new LinkedHashMap<>();
             relationshipType.properties().forEach(property -> propertyTypeMap.put(property.name(), property.dataType()));
             relPropertyTypes.put(relationshipType.relType(), propertyTypeMap);
         }
@@ -114,10 +116,10 @@ public class MappingNormalizationSupport {
 
     private List<RelationMappingDto> normalizeRelations(
             List<RelationMappingDto> relations,
-            Set<String> validRelTypes,
+            Set<RelationshipType> validRelTypes,
             Set<String> validLabels,
             Map<String, Set<String>> mergeKeysByLabel,
-            Map<String, Map<String, String>> relPropertyTypes
+            Map<RelationshipType, Map<String, PropertyDataType>> relPropertyTypes
     ) {
         List<RelationMappingDto> verified = new ArrayList<>();
 
@@ -160,14 +162,14 @@ public class MappingNormalizationSupport {
 
     private RelationMappingDto fixRelationColumnTypes(
             RelationMappingDto relation,
-            Map<String, Map<String, String>> relPropertyTypes
+            Map<RelationshipType, Map<String, PropertyDataType>> relPropertyTypes
     ) {
         if (relation.relColumns().isEmpty()) {
             return relation;
         }
 
-        Map<String, String> ontologyTypes = relPropertyTypes.getOrDefault(relation.relType(), Map.of());
-        Map<String, String> fixed = new LinkedHashMap<>(relation.relColumnTypes());
+        Map<String, PropertyDataType> ontologyTypes = relPropertyTypes.getOrDefault(relation.relType(), Map.of());
+        Map<String, PropertyDataType> fixed = new LinkedHashMap<>(relation.relColumnTypes());
 
         for (String relProperty : relation.relColumns().keySet()) {
             if (!fixed.containsKey(relProperty) && ontologyTypes.containsKey(relProperty)) {

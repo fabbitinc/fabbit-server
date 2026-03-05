@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProjectTest {
 
@@ -16,6 +17,8 @@ class ProjectTest {
         assertEquals("신규 프로젝트", project.getName());
         assertEquals("설명", project.getDescription());
         assertFalse(project.isArchived());
+        assertTrue(project.getMembers().isEmpty());
+        assertTrue(project.getParts().isEmpty());
     }
 
     @Test

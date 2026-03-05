@@ -49,7 +49,7 @@ public class UserQuery {
 
         return new UserMembershipResult(
                 membership.getOrgId(),
-                membership.getRole().name(),
+                membership.getRole(),
                 membership.getJobRole(),
                 new QueryOrganizationResult(
                         organization.getId(),
@@ -57,7 +57,7 @@ public class UserQuery {
                         organization.getName(),
                         organization.getIndustry(),
                         organization.getTeamSize(),
-                        organization.getPlanType().name(),
+                        organization.getPlanType(),
                         fileUrlResolver.resolve(organization.getProfileImageFileKey())
                 )
         );

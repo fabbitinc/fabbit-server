@@ -76,6 +76,19 @@ public class PartSupplier extends AbstractCreatedEntity {
         return new PartSupplier(partId, supplierId, unitCost, extendedProperties);
     }
 
+    public static PartSupplier link(Part part, Supplier supplier, Double unitCost, String extendedProperties) {
+        if (part == null) {
+            throw new DomainException(CODE_PART_SUPPLIER_PART_REQUIRED, "부품 ID는 필수입니다");
+        }
+        if (supplier == null) {
+            throw new DomainException(CODE_PART_SUPPLIER_SUPPLIER_REQUIRED, "공급사 ID는 필수입니다");
+        }
+        PartSupplier link = new PartSupplier(part.getId(), supplier.getId(), unitCost, extendedProperties);
+        link.part = part;
+        link.supplier = supplier;
+        return link;
+    }
+
     private UUID requirePartId(UUID value) {
         if (value == null) {
             throw new DomainException(CODE_PART_SUPPLIER_PART_REQUIRED, "부품 ID는 필수입니다");

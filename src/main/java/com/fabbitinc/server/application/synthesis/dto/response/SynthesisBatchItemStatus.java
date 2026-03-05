@@ -1,12 +1,14 @@
 package com.fabbitinc.server.application.synthesis.dto.response;
 
+import com.fabbitinc.server.domain.synthesis.model.SynthesisJobStatus;
+
 import java.time.Instant;
 import java.util.UUID;
 
 public record SynthesisBatchItemStatus(
         UUID jobId,
         UUID fileId,
-        String status,
+        SynthesisJobStatus status,
         int totalRows,
         int processedRows,
         int nodesCreated,

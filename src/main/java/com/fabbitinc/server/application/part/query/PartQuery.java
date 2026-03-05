@@ -6,6 +6,7 @@ import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.file.dto.response.FileItemResponse;
 import com.fabbitinc.server.application.part.dto.response.BomChildResponse;
+import com.fabbitinc.server.application.part.dto.response.BomDirection;
 import com.fabbitinc.server.application.part.dto.response.BomParentResponse;
 import com.fabbitinc.server.application.part.dto.response.BomTreeNodeResponse;
 import com.fabbitinc.server.application.part.dto.response.BomTreeResponse;
@@ -32,6 +33,7 @@ import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.part.model.BomLink;
 import com.fabbitinc.server.domain.part.model.Part;
+import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
 import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
@@ -135,7 +137,7 @@ public class PartQuery {
 
     public PartListResponse listParts(String search,
             String category,
-            String lifecycleState,
+            PartLifecycleState lifecycleState,
             Boolean hasDrawing,
             Boolean hasChildren,
             UUID projectId,
@@ -209,7 +211,7 @@ public class PartQuery {
                         row.get(partNameExpr),
                         row.get(partCategoryExpr),
                         row.get(partRevisionExpr) == null ? "1" : row.get(partRevisionExpr),
-                        row.get(partLifecycleStateExpr),
+                        PartLifecycleState.from(row.get(partLifecycleStateExpr)),
                         row.get(drawingNumberExpr),
                         row.get(childrenCountExpr) == null ? 0L : row.get(childrenCountExpr)
                 ))
@@ -219,7 +221,7 @@ public class PartQuery {
 
     public byte[] exportPartsExcel(String search,
             String category,
-            String lifecycleState,
+            PartLifecycleState lifecycleState,
             Boolean hasDrawing,
             Boolean hasChildren,
             List<UUID> partIds,
@@ -293,7 +295,7 @@ public class PartQuery {
     }
 
     public byte[] exportBomTreeExcel(UUID partId,
-            String direction,
+            BomDirection direction,
             UUID mappingId
     ) {
         BomTreeResponse tree = getBomTree(partId, direction);
@@ -446,7 +448,7 @@ public class PartQuery {
         return new PartBomResponse(children, parents);
     }
 
-    public BomTreeResponse getBomTree(UUID partId, String direction) {
+    public BomTreeResponse getBomTree(UUID partId, BomDirection direction) {
         currentAuthProvider.getCurrentAuth();
 
         Part rootPart = partRepository.findById(partId)
@@ -455,7 +457,8 @@ public class PartQuery {
                         "Part '" + partId + "'을(를) 찾을 수 없습니다"
                 ));
 
-        boolean reverse = resolveDirection(direction);
+        BomDirection resolvedDirection = direction == null ? BomDirection.FORWARD : direction;
+        boolean reverse = resolvedDirection == BomDirection.REVERSE;
         List<BomEdge> edges = fetchBomEdges(rootPart.getId(), reverse);
 
         Set<String> allPartNumbers = new HashSet<>();
@@ -469,7 +472,7 @@ public class PartQuery {
                 .collect(java.util.stream.Collectors.toMap(Part::getPartNumber, part -> part));
         BomTreeNodeResponse root = buildBomTree(rootPart.getPartNumber(), edges, partsMap);
 
-        return new BomTreeResponse(root, reverse ? "reverse" : "forward", allPartNumbers.size());
+        return new BomTreeResponse(root, resolvedDirection, allPartNumbers.size());
     }
 
     public PartFilesResponse getPartFiles(UUID partId) {
@@ -552,7 +555,7 @@ public class PartQuery {
                 drawing.getName(),
                 drawing.getVersion(),
                 drawing.getStatus(),
-                drawing.getConversionStatus() == null ? null : drawing.getConversionStatus().name(),
+                drawing.getConversionStatus(),
                 fileUrlResolver.resolve(drawing.getThumbnailKey()),
                 fileUrlResolver.resolve(drawing.getPdfKey()),
                 fileUrlResolver.resolve(drawing.getOriginalFileKey())
@@ -567,16 +570,6 @@ public class PartQuery {
                 supplier.getCountry(),
                 link == null ? null : link.getUnitCost()
         );
-    }
-
-    private boolean resolveDirection(String direction) {
-        if (direction == null || direction.isBlank() || "forward".equalsIgnoreCase(direction)) {
-            return false;
-        }
-        if ("reverse".equalsIgnoreCase(direction)) {
-            return true;
-        }
-        throw new AppException(ErrorCode.VALIDATION_ERROR, "direction은 forward 또는 reverse 여야 합니다");
     }
 
     private List<BomEdge> fetchBomEdges(UUID rootPartId, boolean reverse) {
@@ -720,7 +713,7 @@ public class PartQuery {
     private List<Part> findPartsForExport(
             String search,
             String category,
-            String lifecycleState,
+            PartLifecycleState lifecycleState,
             Boolean hasDrawing,
             Boolean hasChildren,
             List<UUID> partIds,
@@ -760,7 +753,7 @@ public class PartQuery {
             PathBuilder<ProjectPart> projectPart,
             String search,
             String category,
-            String lifecycleState,
+            PartLifecycleState lifecycleState,
             Boolean hasDrawing,
             Boolean hasChildren,
             List<UUID> partIds,
@@ -778,8 +771,8 @@ public class PartQuery {
         if (category != null && !category.isBlank()) {
             predicate.and(part.getString("category").eq(category));
         }
-        if (lifecycleState != null && !lifecycleState.isBlank()) {
-            predicate.and(part.getString("lifecycleState").eq(lifecycleState));
+        if (lifecycleState != null) {
+            predicate.and(part.getString("lifecycleState").eq(lifecycleState.value()));
         }
         if (hasDrawing != null) {
             predicate.and(Boolean.TRUE.equals(hasDrawing)
@@ -1011,7 +1004,7 @@ public class PartQuery {
             String material,
             String unit,
             String category,
-            String lifecycleState
+            PartLifecycleState lifecycleState
     ) {
     }
 

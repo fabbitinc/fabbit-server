@@ -1,4 +1,4 @@
-package com.fabbitinc.server.application.mapping.support;
+package com.fabbitinc.server.domain.mapping.model;
 
 public enum MappingScope {
     PART_LIST,

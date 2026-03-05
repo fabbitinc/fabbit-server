@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.activation.dto.response;
 
 public record QueryResultResponse(
-        String type,
+        ActivationResultType type,
         String key,
         String label,
         String description,

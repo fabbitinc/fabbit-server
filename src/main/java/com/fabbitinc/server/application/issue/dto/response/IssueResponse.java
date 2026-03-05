@@ -1,8 +1,10 @@
 package com.fabbitinc.server.application.issue.dto.response;
 
-import tools.jackson.databind.JsonNode;
 import com.fabbitinc.server.application.file.dto.response.FileItemResponse;
+import com.fabbitinc.server.domain.issue.model.IssueState;
+import com.fabbitinc.server.domain.issue.model.IssueType;
 import io.swagger.v3.oas.annotations.media.Schema;
+import tools.jackson.databind.JsonNode;
 
 import java.time.Instant;
 import java.util.List;
@@ -12,10 +14,10 @@ import java.util.UUID;
 public record IssueResponse(
         UUID id,
         int number,
-        String type,
+        IssueType type,
         String title,
         JsonNode body,
-        String state,
+        IssueState state,
         Instant closedAt,
         Instant createdAt,
         Instant updatedAt,

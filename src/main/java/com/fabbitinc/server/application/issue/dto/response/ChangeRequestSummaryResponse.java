@@ -1,6 +1,9 @@
 package com.fabbitinc.server.application.issue.dto.response;
 
 import com.fabbitinc.server.application.file.dto.response.FileItemResponse;
+import com.fabbitinc.server.domain.issue.model.CrState;
+import com.fabbitinc.server.domain.issue.model.IssueState;
+import com.fabbitinc.server.domain.issue.model.IssueType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
@@ -11,9 +14,9 @@ import java.util.UUID;
 public record ChangeRequestSummaryResponse(
         UUID id,
         int number,
-        String type,
+        IssueType type,
         String title,
-        String state,
+        IssueState state,
         Instant closedAt,
         Instant createdAt,
         Instant updatedAt,
@@ -26,7 +29,7 @@ public record ChangeRequestSummaryResponse(
         List<PartBadgeResponse> parts,
         List<FileItemResponse> files,
         int commentsCount,
-        String crState,
+        CrState crState,
         Instant mergedAt,
         UUID mergedBy
 ) {

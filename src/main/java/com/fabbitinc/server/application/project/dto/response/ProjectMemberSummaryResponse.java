@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.project.dto.response;
 
+import com.fabbitinc.server.domain.project.model.ProjectRole;
+
 import java.util.UUID;
 
 public record ProjectMemberSummaryResponse(
@@ -8,6 +10,6 @@ public record ProjectMemberSummaryResponse(
         String email,
         String phone,
         String profileImageUrl,
-        String role
+        ProjectRole role
 ) {
 }
