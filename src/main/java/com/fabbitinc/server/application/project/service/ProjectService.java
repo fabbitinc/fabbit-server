@@ -2,7 +2,8 @@ package com.fabbitinc.server.application.project.service;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
-import com.fabbitinc.server.domain.part.repository.PartRepository;
+import com.fabbitinc.server.application.part.api.PartApi;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.project.model.Project;
 import com.fabbitinc.server.domain.project.model.ProjectMember;
 import com.fabbitinc.server.domain.project.model.ProjectPart;
@@ -25,41 +26,51 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectPartRepository projectPartRepository;
-    private final PartRepository partRepository;
+    private final PartApi partApi;
 
     public Project createProject(UUID ownerId, String name, String description) {
-        Project project = projectRepository.save(new Project(name, description));
-        projectMemberRepository.save(new ProjectMember(project.getId(), ownerId, ProjectRole.ADMIN));
-        return project;
+        try {
+            Project project = projectRepository.save(Project.create(name, description));
+            projectMemberRepository.save(ProjectMember.assign(project.getId(), ownerId, ProjectRole.ADMIN));
+            return project;
+        } catch (DomainException ex) {
+            throw toAppException(ex);
+        }
     }
 
     public Project updateProject(UUID projectId, String name, String description) {
         Project project = getOrThrow(projectId);
-        ensureProjectActive(project);
-
-        if (name != null && !name.equals(project.getName())) {
-            project.rename(name);
+        try {
+            if (name != null && !name.equals(project.getName())) {
+                project.rename(name);
+            }
+            if (description != null && !description.equals(project.getDescription())) {
+                project.changeDescription(description);
+            }
+            return project;
+        } catch (DomainException ex) {
+            throw toAppException(ex);
         }
-        if (description != null && !description.equals(project.getDescription())) {
-            project.updateDescription(description);
-        }
-        return project;
     }
 
     public void archiveProject(UUID projectId, UUID userId) {
         ensureProjectAdmin(projectId, userId);
         Project project = getOrThrow(projectId);
-        ensureProjectActive(project);
-        project.archive();
+        try {
+            project.archive();
+        } catch (DomainException ex) {
+            throw toAppException(ex);
+        }
     }
 
     public void unarchiveProject(UUID projectId, UUID userId) {
         ensureProjectAdmin(projectId, userId);
         Project project = getOrThrow(projectId);
-        if (!project.isArchived()) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "보관 상태가 아닌 프로젝트는 복원할 수 없습니다");
+        try {
+            project.unarchive();
+        } catch (DomainException ex) {
+            throw toAppException(ex);
         }
-        project.unarchive();
     }
 
     public void deleteProject(UUID projectId, UUID userId) {
@@ -70,10 +81,14 @@ public class ProjectService {
 
     public int linkParts(UUID projectId, List<UUID> partIds) {
         Project project = getOrThrow(projectId);
-        ensureProjectActive(project);
+        try {
+            project.ensureActive();
+        } catch (DomainException ex) {
+            throw toAppException(ex);
+        }
 
         for (UUID partId : partIds) {
-            if (partRepository.findById(partId).isEmpty()) {
+            if (!partApi.existsPart(partId)) {
                 throw new AppException(ErrorCode.NOT_FOUND, "Part '" + partId + "'을(를) 찾을 수 없습니다");
             }
         }
@@ -83,16 +98,20 @@ public class ProjectService {
                 .map(ProjectPart::getPartId)
                 .collect(java.util.stream.Collectors.toSet());
 
-        List<ProjectPart> newLinks = normalizedPartIds.stream()
-                .filter(partId -> !existingPartIds.contains(partId))
-                .map(partId -> new ProjectPart(projectId, partId))
-                .toList();
-        if (newLinks.isEmpty()) {
-            return 0;
-        }
+        try {
+            List<ProjectPart> newLinks = normalizedPartIds.stream()
+                    .filter(partId -> !existingPartIds.contains(partId))
+                    .map(partId -> ProjectPart.link(projectId, partId))
+                    .toList();
+            if (newLinks.isEmpty()) {
+                return 0;
+            }
 
-        projectPartRepository.saveAll(newLinks);
-        return newLinks.size();
+            projectPartRepository.saveAll(newLinks);
+            return newLinks.size();
+        } catch (DomainException ex) {
+            throw toAppException(ex);
+        }
     }
 
     public int unlinkParts(UUID projectId, List<UUID> partIds) {
@@ -109,16 +128,20 @@ public class ProjectService {
                 .map(ProjectMember::getUserId)
                 .collect(java.util.stream.Collectors.toSet());
 
-        List<ProjectMember> newMembers = normalizedUserIds.stream()
-                .filter(userId -> !existingUserIds.contains(userId))
-                .map(userId -> new ProjectMember(projectId, userId, role))
-                .toList();
-        if (newMembers.isEmpty()) {
-            return 0;
-        }
+        try {
+            List<ProjectMember> newMembers = normalizedUserIds.stream()
+                    .filter(userId -> !existingUserIds.contains(userId))
+                    .map(userId -> ProjectMember.assign(projectId, userId, role))
+                    .toList();
+            if (newMembers.isEmpty()) {
+                return 0;
+            }
 
-        projectMemberRepository.saveAll(newMembers);
-        return newMembers.size();
+            projectMemberRepository.saveAll(newMembers);
+            return newMembers.size();
+        } catch (DomainException ex) {
+            throw toAppException(ex);
+        }
     }
 
     public int removeMembers(UUID projectId, List<UUID> userIds) {
@@ -135,17 +158,30 @@ public class ProjectService {
                 ));
     }
 
-    public void ensureProjectActive(Project project) {
-        if (project.isArchived()) {
-            throw new AppException(ErrorCode.PROJECT_ARCHIVED, "보관된 프로젝트는 수정할 수 없습니다");
-        }
-    }
-
     public void ensureProjectAdmin(UUID projectId, UUID userId) {
         ProjectMember member = projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN, "프로젝트 관리자 권한이 필요합니다"));
-        if (member.getRole() != ProjectRole.ADMIN) {
+        if (!member.isAdmin()) {
             throw new AppException(ErrorCode.FORBIDDEN, "프로젝트 관리자 권한이 필요합니다");
         }
+    }
+
+    private AppException toAppException(DomainException ex) {
+        return switch (ex.getDomainCode()) {
+            case Project.CODE_PROJECT_ARCHIVED ->
+                    new AppException(ErrorCode.PROJECT_ARCHIVED, ex.getMessage());
+            case Project.CODE_PROJECT_ALREADY_ARCHIVED, Project.CODE_PROJECT_NOT_ARCHIVED ->
+                    new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
+            case Project.CODE_PROJECT_NAME_REQUIRED,
+                    Project.CODE_PROJECT_NAME_TOO_LONG,
+                    ProjectMember.CODE_PROJECT_MEMBER_PROJECT_REQUIRED,
+                    ProjectMember.CODE_PROJECT_MEMBER_USER_REQUIRED,
+                    ProjectMember.CODE_PROJECT_MEMBER_ROLE_REQUIRED,
+                    ProjectPart.CODE_PROJECT_PART_PROJECT_REQUIRED,
+                    ProjectPart.CODE_PROJECT_PART_PART_REQUIRED ->
+                    new AppException(ErrorCode.VALIDATION_ERROR, ex.getMessage());
+            default ->
+                    new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
+        };
     }
 }

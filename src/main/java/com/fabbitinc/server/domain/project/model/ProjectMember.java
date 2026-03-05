@@ -1,6 +1,7 @@
 package com.fabbitinc.server.domain.project.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -33,6 +34,10 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ProjectMember extends AbstractCreatedEntity {
 
+    public static final String CODE_PROJECT_MEMBER_PROJECT_REQUIRED = "PROJECT_MEMBER_PROJECT_REQUIRED";
+    public static final String CODE_PROJECT_MEMBER_USER_REQUIRED = "PROJECT_MEMBER_USER_REQUIRED";
+    public static final String CODE_PROJECT_MEMBER_ROLE_REQUIRED = "PROJECT_MEMBER_ROLE_REQUIRED";
+
     @Column(name = "project_id", nullable = false)
     private UUID projectId;
 
@@ -43,10 +48,39 @@ public class ProjectMember extends AbstractCreatedEntity {
     @Column(name = "role", nullable = false, length = 20)
     private ProjectRole role;
 
-    public ProjectMember(UUID projectId, UUID userId, ProjectRole role) {
+    private ProjectMember(UUID projectId, UUID userId, ProjectRole role) {
         super(UuidV7Generator.next());
-        this.projectId = projectId;
-        this.userId = userId;
-        this.role = role;
+        this.projectId = requireProjectId(projectId);
+        this.userId = requireUserId(userId);
+        this.role = requireRole(role);
+    }
+
+    public static ProjectMember assign(UUID projectId, UUID userId, ProjectRole role) {
+        return new ProjectMember(projectId, userId, role);
+    }
+
+    public boolean isAdmin() {
+        return role == ProjectRole.ADMIN;
+    }
+
+    private UUID requireProjectId(UUID value) {
+        if (value == null) {
+            throw new DomainException(CODE_PROJECT_MEMBER_PROJECT_REQUIRED, "프로젝트 ID는 필수입니다");
+        }
+        return value;
+    }
+
+    private UUID requireUserId(UUID value) {
+        if (value == null) {
+            throw new DomainException(CODE_PROJECT_MEMBER_USER_REQUIRED, "사용자 ID는 필수입니다");
+        }
+        return value;
+    }
+
+    private ProjectRole requireRole(ProjectRole value) {
+        if (value == null) {
+            throw new DomainException(CODE_PROJECT_MEMBER_ROLE_REQUIRED, "프로젝트 역할은 필수입니다");
+        }
+        return value;
     }
 }

@@ -20,7 +20,7 @@ public interface ChangeRequestRepository extends JpaRepository<ChangeRequest, UU
             from ChangeRequest cr
             where (:state is null or cr.state = :state)
               and (:crState is null or cr.crState = :crState)
-              and (:search is null or lower(cr.title) like lower(concat('%', :search, '%')))
+              and (:search = '' or lower(cr.title) like lower(concat('%', :search, '%')))
             order by cr.createdAt desc
             """)
     List<ChangeRequest> listByFilters(
@@ -35,7 +35,7 @@ public interface ChangeRequestRepository extends JpaRepository<ChangeRequest, UU
             from ChangeRequest cr
             where (:state is null or cr.state = :state)
               and (:crState is null or cr.crState = :crState)
-              and (:search is null or lower(cr.title) like lower(concat('%', :search, '%')))
+              and (:search = '' or lower(cr.title) like lower(concat('%', :search, '%')))
             """)
     long countByFilters(
             IssueState state,

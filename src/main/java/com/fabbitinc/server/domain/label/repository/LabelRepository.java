@@ -18,7 +18,7 @@ public interface LabelRepository extends JpaRepository<Label, UUID> {
     @Query("""
             select l
             from Label l
-            where (?1 is null or lower(l.name) like lower(concat('%', ?1, '%')))
+            where (?1 = '' or lower(l.name) like lower(concat('%', ?1, '%')))
             order by l.name
             """)
     List<Label> lookupLabels(String search, Pageable pageable);

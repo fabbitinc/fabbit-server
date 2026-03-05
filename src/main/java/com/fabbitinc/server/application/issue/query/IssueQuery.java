@@ -141,8 +141,9 @@ public class IssueQuery {
 
         IssueState state = parseIssueState(rawState);
         String normalizedSearch = normalizeSearch(search);
+        String searchKeyword = normalizedSearch == null ? "" : normalizedSearch;
 
-        List<Issue> filtered = issueRepository.listByType(IssueType.ISSUE, state, normalizedSearch, Pageable.unpaged());
+        List<Issue> filtered = issueRepository.listByType(IssueType.ISSUE, state, searchKeyword, Pageable.unpaged());
         long total = filtered.size();
 
         List<Issue> paged = page(filtered, offset, limit);
@@ -206,8 +207,9 @@ public class IssueQuery {
         IssueState state = parseIssueState(rawState);
         CrState crState = parseCrState(rawCrState);
         String normalizedSearch = normalizeSearch(search);
+        String searchKeyword = normalizedSearch == null ? "" : normalizedSearch;
 
-        List<ChangeRequest> filtered = changeRequestRepository.listByFilters(state, crState, normalizedSearch, Pageable.unpaged());
+        List<ChangeRequest> filtered = changeRequestRepository.listByFilters(state, crState, searchKeyword, Pageable.unpaged());
         long total = filtered.size();
 
         List<ChangeRequest> paged = page(filtered, offset, limit);

@@ -28,7 +28,7 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
             from Issue i
             where i.type = :type
               and (:state is null or i.state = :state)
-              and (:search is null or lower(i.title) like lower(concat('%', :search, '%')))
+              and (:search = '' or lower(i.title) like lower(concat('%', :search, '%')))
             order by i.createdAt desc
             """)
     List<Issue> listByType(
@@ -43,7 +43,7 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
             from Issue i
             where i.type = :type
               and (:state is null or i.state = :state)
-              and (:search is null or lower(i.title) like lower(concat('%', :search, '%')))
+              and (:search = '' or lower(i.title) like lower(concat('%', :search, '%')))
             """)
     long countByTypeAndFilters(
             IssueType type,

@@ -1,9 +1,11 @@
 package com.fabbitinc.server.application.project.query;
 
+import com.fabbitinc.server.application.activity.api.ActivityApi;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
+import com.fabbitinc.server.application.part.api.PartApi;
 import com.fabbitinc.server.application.project.query.condition.PartProjectsCondition;
 import com.fabbitinc.server.application.project.query.condition.ProjectActivitiesCondition;
 import com.fabbitinc.server.application.project.query.condition.ProjectDetailCondition;
@@ -28,11 +30,10 @@ import com.fabbitinc.server.application.project.query.result.ProjectPartSummaryR
 import com.fabbitinc.server.application.project.query.result.ProjectPartsResult;
 import com.fabbitinc.server.application.project.query.result.ProjectSummaryResult;
 import com.fabbitinc.server.application.project.query.result.ProjectUserSummaryResult;
+import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.activity.model.Activity;
 import com.fabbitinc.server.domain.activity.model.ActivityTargetType;
-import com.fabbitinc.server.domain.activity.repository.ActivityRepository;
 import com.fabbitinc.server.domain.part.model.Part;
-import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.project.model.Project;
 import com.fabbitinc.server.domain.project.model.ProjectMember;
 import com.fabbitinc.server.domain.project.model.ProjectPart;
@@ -40,9 +41,7 @@ import com.fabbitinc.server.domain.project.repository.ProjectMemberRepository;
 import com.fabbitinc.server.domain.project.repository.ProjectPartRepository;
 import com.fabbitinc.server.domain.project.repository.ProjectRepository;
 import com.fabbitinc.server.domain.user.model.User;
-import com.fabbitinc.server.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,9 +61,9 @@ public class ProjectQuery {
     private final ProjectRepository projectRepository;
     private final ProjectPartRepository projectPartRepository;
     private final ProjectMemberRepository projectMemberRepository;
-    private final PartRepository partRepository;
-    private final UserRepository userRepository;
-    private final ActivityRepository activityRepository;
+    private final PartApi partApi;
+    private final UserApi userApi;
+    private final ActivityApi activityApi;
     private final FileUrlResolver fileUrlResolver;
 
     public ProjectListResult list(ProjectListCondition condition) {
@@ -103,7 +102,7 @@ public class ProjectQuery {
         }
 
         List<UUID> userIds = members.stream().map(ProjectMember::getUserId).toList();
-        List<User> users = userRepository.findAllByIdInOrderByFullName(userIds);
+        List<User> users = userApi.getUsersByIdsOrdered(userIds);
 
         String normalizedSearch = normalizeSearch(condition.search());
         List<ProjectUserSummaryResult> items = users.stream()
@@ -128,7 +127,7 @@ public class ProjectQuery {
         }
 
         List<UUID> userIds = members.stream().map(ProjectMember::getUserId).toList();
-        List<User> users = userRepository.findAllByIdInOrderByFullName(userIds);
+        List<User> users = userApi.getUsersByIdsOrdered(userIds);
         Map<UUID, User> userMap = users.stream().collect(Collectors.toMap(User::getId, user -> user));
 
         List<ProjectMemberSummaryResult> items = members.stream()
@@ -163,11 +162,7 @@ public class ProjectQuery {
         int fetchSize = Math.max(condition.limit() * 5, condition.limit());
         String normalizedSearch = normalizeSearch(condition.search());
         String keyword = normalizedSearch == null ? "" : normalizedSearch;
-        List<Part> parts = partRepository.findByPartNumberContainingIgnoreCaseOrNameContainingIgnoreCaseOrderByPartNumberAsc(
-                keyword,
-                keyword,
-                PageRequest.of(0, fetchSize)
-        );
+        List<Part> parts = partApi.searchParts(keyword, fetchSize);
 
         Set<UUID> linkedPartIds = condition.excludeLinked()
                 ? projectPartRepository.findByProjectId(condition.projectId()).stream()
@@ -199,7 +194,7 @@ public class ProjectQuery {
         }
 
         List<UUID> partIds = links.stream().map(ProjectPart::getPartId).toList();
-        List<Part> parts = partRepository.findByIdInOrderByPartNumberAsc(partIds);
+        List<Part> parts = partApi.getPartsByIdsOrdered(partIds);
         String normalizedSearch = normalizeSearch(condition.search());
         if (normalizedSearch != null) {
             String lowered = normalizedSearch.toLowerCase();
@@ -222,7 +217,7 @@ public class ProjectQuery {
     public ProjectActivityListResult listActivities(ProjectActivitiesCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        List<Activity> filtered = activityRepository.findByTargetTypeAndTargetIdOrderByIdDesc(
+        List<Activity> filtered = activityApi.listTargetActivities(
                         ActivityTargetType.PROJECT,
                         condition.projectId()
                 ).stream()
@@ -239,7 +234,7 @@ public class ProjectQuery {
         Set<UUID> actorIds = filtered.stream().map(Activity::getActorId).collect(Collectors.toSet());
         List<User> users = actorIds.isEmpty()
                 ? List.of()
-                : userRepository.findAllByIdInOrderByFullName(actorIds);
+                : userApi.getUsersByIdsOrdered(List.copyOf(actorIds));
         Map<String, ProjectActivityUserSummaryResult> userMap = new HashMap<>();
         for (User user : users) {
             userMap.put(
@@ -271,11 +266,9 @@ public class ProjectQuery {
     public PartProjectsResult listPartProjects(PartProjectsCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        partRepository.findById(condition.partId())
-                .orElseThrow(() -> new AppException(
-                        ErrorCode.NOT_FOUND,
-                        "Part '" + condition.partId() + "'을(를) 찾을 수 없습니다"
-                ));
+        if (!partApi.existsPart(condition.partId())) {
+            throw new AppException(ErrorCode.NOT_FOUND, "Part '" + condition.partId() + "'을(를) 찾을 수 없습니다");
+        }
 
         List<ProjectPart> links = projectPartRepository.findByPartId(condition.partId());
         if (links.isEmpty()) {

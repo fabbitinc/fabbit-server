@@ -35,8 +35,10 @@ public class LabelQuery {
             int limit
     ) {
         currentAuthProvider.getCurrentAuth();
+        String normalizedSearch = normalizeSearch(search);
+        String searchKeyword = normalizedSearch == null ? "" : normalizedSearch;
         List<LabelLookupItemResponse> items = labelRepository.lookupLabels(
-                        normalizeSearch(search),
+                        searchKeyword,
                         PageRequest.of(0, limit)
                 ).stream()
                 .map(label -> new LabelLookupItemResponse(
