@@ -2,12 +2,24 @@ package com.fabbitinc.server.presentation.member.controller;
 
 import com.fabbitinc.server.application.member.dto.request.ChangeRoleRequest;
 import com.fabbitinc.server.application.member.dto.response.MemberListResponse;
+import com.fabbitinc.server.application.member.dto.response.MemberLookupItemResponse;
 import com.fabbitinc.server.application.member.dto.response.MemberLookupResponse;
+import com.fabbitinc.server.application.member.dto.response.MemberSummaryResponse;
+import com.fabbitinc.server.application.member.query.condition.MemberListCondition;
+import com.fabbitinc.server.application.member.query.condition.MemberLookupCondition;
+import com.fabbitinc.server.application.member.query.result.MemberListResult;
+import com.fabbitinc.server.application.member.query.result.MemberLookupItemResult;
+import com.fabbitinc.server.application.member.query.result.MemberLookupResult;
+import com.fabbitinc.server.application.member.query.result.MemberSummaryResult;
 import com.fabbitinc.server.application.member.query.MemberQuery;
+import com.fabbitinc.server.application.member.usecase.command.ChangeMemberRoleCommand;
+import com.fabbitinc.server.application.member.usecase.command.RemoveMemberCommand;
 import com.fabbitinc.server.application.member.usecase.ChangeMemberRoleUseCase;
 import com.fabbitinc.server.application.member.usecase.RemoveMemberUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -41,33 +53,60 @@ public class MemberController {
             summary = "GET /api/v1/members/lookup",
             description = "조직 멤버 lookup 목록을 조회합니다 (autocomplete/picker 용도)"
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping("/lookup")
     public MemberLookupResponse lookupMembers(
             @Parameter(description = "이름 검색 (ILIKE)") @RequestParam(value = "search", required = false) String search,
             @Parameter(description = "조회 건수") @RequestParam(value = "limit", defaultValue = "10") @Min(1) @Max(50) int limit
     ) {
-        return memberQuery.lookupMembers(search, limit);
+        MemberLookupResult result = memberQuery.lookup(new MemberLookupCondition(search, limit));
+        return new MemberLookupResponse(
+                result.items().stream().map(this::toLookupItemResponse).toList()
+        );
     }
 
     @Operation(
             summary = "GET /api/v1/members",
             description = "현재 조직의 전체 멤버 목록을 조회합니다"
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping
     public MemberListResponse listMembers() {
-        return memberQuery.listOrgMembers();
+        MemberListResult result = memberQuery.list(new MemberListCondition());
+        return new MemberListResponse(
+                result.items().stream().map(this::toMemberSummaryResponse).toList(),
+                result.maxMembers()
+        );
     }
 
     @Operation(
             summary = "PATCH /api/v1/members/{user_id}/role",
             description = "소유자(OWNER) 권한으로 멤버 역할을 변경합니다"
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "변경 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @PatchMapping("/{userId}/role")
     public ResponseEntity<Void> changeMemberRole(
             @PathVariable UUID userId,
             @Valid @RequestBody ChangeRoleRequest request
     ) {
-        changeMemberRoleUseCase.execute(userId, request);
+        changeMemberRoleUseCase.execute(new ChangeMemberRoleCommand(userId, request.role()));
         return ResponseEntity.ok().build();
     }
 
@@ -75,11 +114,39 @@ public class MemberController {
             summary = "DELETE /api/v1/members/{user_id}",
             description = "관리자(ADMIN 이상) 권한으로 조직 멤버를 제거합니다"
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "삭제 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @DeleteMapping("/{userId}")
     public ResponseEntity<Void> removeMember(
             @PathVariable UUID userId
     ) {
-        removeMemberUseCase.execute(userId);
+        removeMemberUseCase.execute(new RemoveMemberCommand(userId));
         return ResponseEntity.noContent().build();
+    }
+
+    private MemberLookupItemResponse toLookupItemResponse(MemberLookupItemResult result) {
+        return new MemberLookupItemResponse(
+                result.userId(),
+                result.fullName(),
+                result.email(),
+                result.phone(),
+                result.profileImageUrl()
+        );
+    }
+
+    private MemberSummaryResponse toMemberSummaryResponse(MemberSummaryResult result) {
+        return new MemberSummaryResponse(
+                result.userId(),
+                result.fullName(),
+                result.email(),
+                result.phone(),
+                result.profileImageUrl(),
+                result.role(),
+                result.jobRole()
+        );
     }
 }

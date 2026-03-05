@@ -1,4 +1,4 @@
-package com.fabbitinc.server.infrastructure.logging;
+package com.fabbitinc.server;
 
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;

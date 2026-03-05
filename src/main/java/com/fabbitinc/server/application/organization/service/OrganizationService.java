@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
 import java.util.Locale;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -77,6 +78,10 @@ public class OrganizationService {
     public Membership getFirstMembershipOrThrow(UUID userId) {
         return membershipRepository.findFirstByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN, "소속된 조직이 없습니다"));
+    }
+
+    public List<Membership> getMembershipsOrdered(UUID orgId) {
+        return membershipRepository.findOrderedByOrgId(orgId);
     }
 
     public void checkNotMember(UUID orgId, UUID userId) {

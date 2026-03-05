@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +42,10 @@ public class UserService {
 
     public Optional<User> getUserByEmail(String email) {
         return userRepository.findByEmail(normalizeEmail(email));
+    }
+
+    public List<User> getUsersByIdsOrdered(List<UUID> userIds) {
+        return userRepository.findAllByIdInOrderByFullName(userIds);
     }
 
     public User getUserOrThrow(UUID userId) {

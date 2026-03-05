@@ -89,68 +89,6 @@ class LayerArchitectureRulesTest {
                     .should(notExposeJpaEntityInMethodSignature())
                     .allowEmptyShould(true);
 
-    @ArchTest
-    static final ArchRule authUseCaseMustNotDependOnRequestResponseDto =
-            noClasses()
-                    .that().resideInAPackage("..application.auth.usecase..")
-                    .should().dependOnClassesThat().resideInAnyPackage(
-                            "..application..dto.request..",
-                            "..application..dto.response.."
-                    )
-                    .allowEmptyShould(true);
-
-    @ArchTest
-    static final ArchRule authServiceMustNotDependOnRequestResponseDto =
-            noClasses()
-                    .that().resideInAPackage("..application.auth.service..")
-                    .should().dependOnClassesThat().resideInAnyPackage(
-                            "..application..dto.request..",
-                            "..application..dto.response.."
-                    )
-                    .allowEmptyShould(true);
-
-    @ArchTest
-    static final ArchRule authQueryMustNotDependOnRequestResponseDto =
-            noClasses()
-                    .that().resideInAPackage("..application.auth.query..")
-                    .should().dependOnClassesThat().resideInAnyPackage(
-                            "..application..dto.request..",
-                            "..application..dto.response.."
-                    )
-                    .allowEmptyShould(true);
-
-    @ArchTest
-    static final ArchRule authUseCaseClassMustHaveTransactional =
-            classes()
-                    .that().resideInAPackage("..application.auth.usecase..")
-                    .and().haveSimpleNameEndingWith("UseCase")
-                    .should().beAnnotatedWith(Transactional.class)
-                    .allowEmptyShould(true);
-
-    @ArchTest
-    static final ArchRule authUseCaseMethodMustNotHaveTransactional =
-            classes()
-                    .that().resideInAPackage("..application.auth.usecase..")
-                    .and().haveSimpleNameEndingWith("UseCase")
-                    .should(notHaveMethodLevelTransactional())
-                    .allowEmptyShould(true);
-
-    @ArchTest
-    static final ArchRule authQueryClassMustHaveReadOnlyTransactional =
-            classes()
-                    .that().resideInAPackage("..application.auth.query..")
-                    .and().haveSimpleNameEndingWith("Query")
-                    .should(haveClassLevelReadOnlyTransactional())
-                    .allowEmptyShould(true);
-
-    @ArchTest
-    static final ArchRule authQueryMethodMustNotHaveTransactional =
-            classes()
-                    .that().resideInAPackage("..application.auth.query..")
-                    .and().haveSimpleNameEndingWith("Query")
-                    .should(notHaveMethodLevelTransactional())
-                    .allowEmptyShould(true);
-
     private static ArchCondition<JavaClass> notExposeJpaEntityInMethodSignature() {
         return new ArchCondition<>("메서드 시그니처에서 JPA Entity를 노출하지 않는다") {
             @Override

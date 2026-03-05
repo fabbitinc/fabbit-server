@@ -4,10 +4,14 @@ import com.fabbitinc.server.application.config.AppProperties;
 import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
 import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.ai.openai.api.ResponseFormat;
+import org.springframework.ai.template.st.StTemplateRenderer;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -23,9 +27,14 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class MappingLlmGenerationSupport {
 
+    private static final String SYSTEM_PROMPT_TEMPLATE = "classpath:prompts/mapping/system.st";
+    private static final String USER_PROMPT_TEMPLATE = "classpath:prompts/mapping/user.st";
+
     private final AppProperties appProperties;
     private final ObjectMapper objectMapper;
     private final MappingGenerationSupport mappingGenerationSupport;
+    private final ResourceLoader resourceLoader;
+    private final StTemplateRenderer templateRenderer = StTemplateRenderer.builder().build();
 
     public MappingResultDto generate(List<String> headers, List<Map<String, Object>> sampleRows) {
         if (appProperties.llmApiKey().isBlank()) {
@@ -49,8 +58,8 @@ public class MappingLlmGenerationSupport {
 
     private MappingResultDto generateByLlm(List<String> headers, List<Map<String, Object>> sampleRows)
             throws JacksonException {
-        String systemPrompt = buildSystemPrompt();
-        String userPrompt = buildUserPrompt(headers, sampleRows);
+        String systemPrompt = buildSystemPromptFromTemplate();
+        String userPrompt = buildUserPromptFromTemplate(headers, sampleRows);
 
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .model(appProperties.llmModel())
@@ -123,30 +132,31 @@ public class MappingLlmGenerationSupport {
         return "/v1/chat/completions";
     }
 
-    private String buildUserPrompt(List<String> headers, List<Map<String, Object>> sampleRows) throws JacksonException {
-        return "다음 Excel 데이터를 분석하여 매핑하세요.\n\n"
-                + "## 컬럼 헤더\n"
-                + objectMapper.writeValueAsString(headers)
-                + "\n\n## 샘플 데이터 (최대 5행)\n"
-                + objectMapper.writeValueAsString(sampleRows);
+    private String buildSystemPromptFromTemplate() {
+        return renderPrompt(
+                SYSTEM_PROMPT_TEMPLATE,
+                Map.of("ontology_text", toOntologyPromptText())
+        );
     }
 
-    private String buildSystemPrompt() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("당신은 제조업 데이터 매핑 전문가입니다.\n")
-                .append("Excel 헤더와 샘플 데이터를 분석해 제조 온톨로지 매핑 JSON을 만드세요.\n\n")
-                .append("## 온톨로지\n")
-                .append(toOntologyPromptText())
-                .append("\n\n## 출력 규칙\n")
-                .append("- JSON object 하나만 출력하세요.\n")
-                .append("- 키는 property_mappings, relation_mappings 두 개를 포함하세요.\n")
-                .append("- property_mappings: source_column, target_property, data_type, confidence, reason, is_extended\n")
-                .append("- relation_mappings: rel_type, target_label, node_columns, rel_columns, rel_column_types, confidence, reason\n")
-                .append("- relation 속성(quantity, unit_cost 등)은 rel_columns로만 매핑하세요.\n")
-                .append("- rootless relation 허용: node_columns는 비우고 rel_columns만 채울 수 있습니다.\n")
-                .append("- 온톨로지에 없는 Part 속성은 _ext_ 접두사의 snake_case로 변환하세요.\n")
-                .append("- 설명, markdown, 코드블록 없이 JSON만 반환하세요.");
-        return builder.toString();
+    private String buildUserPromptFromTemplate(List<String> headers, List<Map<String, Object>> sampleRows)
+            throws JacksonException {
+        return renderPrompt(
+                USER_PROMPT_TEMPLATE,
+                Map.of(
+                        "headers_json", objectMapper.writeValueAsString(headers),
+                        "sample_rows_json", objectMapper.writeValueAsString(sampleRows)
+                )
+        );
+    }
+
+    private String renderPrompt(String templateLocation, Map<String, Object> variables) {
+        Resource resource = resourceLoader.getResource(templateLocation);
+        PromptTemplate template = PromptTemplate.builder()
+                .resource(resource)
+                .renderer(templateRenderer)
+                .build();
+        return template.render(variables);
     }
 
     private String toOntologyPromptText() {

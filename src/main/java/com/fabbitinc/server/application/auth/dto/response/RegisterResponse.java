@@ -1,8 +1,13 @@
 package com.fabbitinc.server.application.auth.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 public record RegisterResponse(
+        @Schema(description = "가입된 사용자 정보")
         UserResponse user,
+        @Schema(description = "생성된 조직 정보")
         OrganizationResponse organization,
+        @Schema(description = "로그인 토큰")
         TokenResponse tokens
 ) {
 }

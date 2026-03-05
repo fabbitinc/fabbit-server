@@ -95,6 +95,13 @@ public class AuthController {
     private final AppProperties appProperties;
 
     @Operation(summary = "GET /api/v1/auth/plans", description = "플랜 목록 조회")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping("/plans")
     public List<PlanResponse> getPlans() {
         return authQuery.listPlans().stream()
@@ -103,8 +110,16 @@ public class AuthController {
     }
 
     @Operation(summary = "GET /api/v1/auth/check-slug", description = "워크스페이스 slug 중복/형식 검사")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "검사 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping("/check-slug")
     public CheckSlugResponse checkSlug(
+            @Parameter(description = "검사할 워크스페이스 slug", example = "fabbit")
             @RequestParam("slug")
             @Size(min = 3, max = 50, message = "길이는 3~50자여야 합니다")
             String slug
@@ -114,8 +129,16 @@ public class AuthController {
     }
 
     @Operation(summary = "GET /api/v1/auth/check-email", description = "이메일 중복 확인")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "검사 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping("/check-email")
     public CheckEmailResponse checkEmail(
+            @Parameter(description = "검사할 이메일", example = "user@example.com")
             @RequestParam("email")
             @Email(message = "유효한 이메일 형식이 아닙니다")
             String email
@@ -125,8 +148,18 @@ public class AuthController {
     }
 
     @Operation(summary = "GET /api/v1/auth/site", description = "Origin 기반 워크스페이스 정보 조회")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping("/site")
-    public SiteResponse getSite(@RequestHeader(value = "Origin", required = false) String origin) {
+    public SiteResponse getSite(
+            @Parameter(description = "요청 Origin 헤더", example = "https://fabbit.lvh.me")
+            @RequestHeader(value = "Origin", required = false) String origin
+    ) {
         SiteResult result = authQuery.getSite(new SiteCondition(origin));
         return new SiteResponse(result.slug(), result.name(), result.logoUrl());
     }
@@ -172,6 +205,14 @@ public class AuthController {
     }
 
     @Operation(summary = "POST /api/v1/auth/register", description = "회원가입")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "회원가입 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음"),
+            @ApiResponse(responseCode = "409", description = "중복 리소스")
+    })
     @PostMapping("/register")
     public RegisterResponse register(@Valid @RequestBody RegisterRequest request) {
         RegisterResult result = registerUseCase.execute(
@@ -195,9 +236,17 @@ public class AuthController {
     }
 
     @Operation(summary = "POST /api/v1/auth/login", description = "로그인")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "로그인 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @PostMapping("/login")
     public Object login(
             @Valid @RequestBody LoginRequest request,
+            @Parameter(description = "요청 Origin 헤더 (워크스페이스 로그인 식별)", example = "https://fabbit.lvh.me")
             @RequestHeader(value = "Origin", required = false) String origin
     ) {
         String slug = extractOriginSlug(origin);
@@ -219,6 +268,13 @@ public class AuthController {
     }
 
     @Operation(summary = "POST /api/v1/auth/refresh", description = "리프레시 토큰으로 액세스 토큰 재발급")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "재발급 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @PostMapping("/refresh")
     public TokenResponse refresh(@Valid @RequestBody RefreshRequest request) {
         RefreshTokenResult result = refreshTokenUseCase.execute(
@@ -228,6 +284,13 @@ public class AuthController {
     }
 
     @Operation(summary = "POST /api/v1/auth/logout", description = "리프레시 토큰 폐기")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "로그아웃 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
             @Valid @RequestBody RefreshRequest request
@@ -237,8 +300,18 @@ public class AuthController {
     }
 
     @Operation(summary = "GET /api/v1/auth/invitations/verify", description = "초대 토큰 검증")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "검증 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping("/invitations/verify")
-    public VerifyInvitationResponse verifyInvitation(@RequestParam("token") String token) {
+    public VerifyInvitationResponse verifyInvitation(
+            @Parameter(description = "초대 토큰", example = "invitation-token")
+            @RequestParam("token") String token
+    ) {
         VerifyInvitationResult result = authInvitationQuery.getVerifiedInvitation(
                 new VerifyInvitationCondition(token)
         );
@@ -253,6 +326,13 @@ public class AuthController {
     }
 
     @Operation(summary = "POST /api/v1/auth/accept-invitation", description = "조직 초대 수락")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "수락 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @PostMapping("/accept-invitation")
     public AcceptInvitationResponse acceptInvitation(@Valid @RequestBody AcceptInvitationRequest request) {
         AcceptInvitationResult result = acceptInvitationUseCase.execute(

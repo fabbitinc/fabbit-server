@@ -2,20 +2,19 @@ package com.fabbitinc.server.application.member.query;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
-import com.fabbitinc.server.application.common.exception.AppException;
-import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
-import com.fabbitinc.server.application.member.dto.response.MemberListResponse;
-import com.fabbitinc.server.application.member.dto.response.MemberLookupItemResponse;
-import com.fabbitinc.server.application.member.dto.response.MemberLookupResponse;
-import com.fabbitinc.server.application.member.dto.response.MemberSummaryResponse;
+import com.fabbitinc.server.application.member.query.condition.MemberListCondition;
+import com.fabbitinc.server.application.member.query.condition.MemberLookupCondition;
+import com.fabbitinc.server.application.member.query.result.MemberListResult;
+import com.fabbitinc.server.application.member.query.result.MemberLookupItemResult;
+import com.fabbitinc.server.application.member.query.result.MemberLookupResult;
+import com.fabbitinc.server.application.member.query.result.MemberSummaryResult;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
+import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
-import com.fabbitinc.server.domain.organization.repository.MembershipRepository;
-import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
 import com.fabbitinc.server.domain.user.model.User;
-import com.fabbitinc.server.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,58 +29,55 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class MemberQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
-    private final MembershipRepository membershipRepository;
-    private final OrganizationRepository organizationRepository;
-    private final UserRepository userRepository;
+    private final OrganizationApi organizationApi;
+    private final UserApi userApi;
     private final FileUrlResolver fileUrlResolver;
 
-    @Transactional(readOnly = true)
-    public MemberLookupResponse lookupMembers(String search, int limit) {
+    public MemberLookupResult lookup(MemberLookupCondition condition) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
 
-        List<Membership> memberships = membershipRepository.findOrderedByOrgId(auth.orgId());
+        List<Membership> memberships = organizationApi.getMembershipsOrdered(auth.orgId());
         List<UUID> userIds = memberships.stream().map(Membership::getUserId).toList();
-        Map<UUID, User> users = userRepository.findAllByIdInOrderByFullName(userIds).stream()
+        Map<UUID, User> users = userApi.getUsersByIdsOrdered(userIds).stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
-        String normalizedSearch = search == null ? null : search.toLowerCase(Locale.ROOT);
+        String normalizedSearch = condition.search() == null ? null : condition.search().toLowerCase(Locale.ROOT);
 
-        List<MemberLookupItemResponse> items = memberships.stream()
+        List<MemberLookupItemResult> items = memberships.stream()
                 .map(Membership::getUserId)
                 .map(users::get)
                 .filter(user -> user != null)
                 .filter(user -> normalizedSearch == null || user.getFullName().toLowerCase(Locale.ROOT).contains(normalizedSearch))
-                .limit(limit)
+                .limit(condition.limit())
                 .map(this::toLookupItem)
                 .toList();
 
-        return new MemberLookupResponse(items);
+        return new MemberLookupResult(items);
     }
 
-    @Transactional(readOnly = true)
-    public MemberListResponse listOrgMembers() {
+    public MemberListResult list(MemberListCondition condition) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
 
-        Organization organization = organizationRepository.findById(auth.orgId())
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "조직을 찾을 수 없습니다"));
+        Organization organization = organizationApi.getOrganizationOrThrow(auth.orgId());
 
-        List<Membership> memberships = membershipRepository.findOrderedByOrgId(auth.orgId());
+        List<Membership> memberships = organizationApi.getMembershipsOrdered(auth.orgId());
         List<UUID> userIds = memberships.stream().map(Membership::getUserId).toList();
-        Map<UUID, User> users = userRepository.findAllByIdInOrderByFullName(userIds).stream()
+        Map<UUID, User> users = userApi.getUsersByIdsOrdered(userIds).stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
-        List<MemberSummaryResponse> items = memberships.stream()
+        List<MemberSummaryResult> items = memberships.stream()
                 .map(membership -> toMemberSummary(membership, users.get(membership.getUserId())))
                 .filter(item -> item != null)
                 .sorted(Comparator
-                        .comparing((MemberSummaryResponse item) -> roleOrder(MembershipRole.from(item.role())))
-                        .thenComparing(MemberSummaryResponse::fullName))
+                        .comparing((MemberSummaryResult item) -> roleOrder(MembershipRole.from(item.role())))
+                        .thenComparing(MemberSummaryResult::fullName))
                 .toList();
 
-        return new MemberListResponse(items, organization.getMaxMembers());
+        return new MemberListResult(items, organization.getMaxMembers());
     }
 
     private int roleOrder(MembershipRole role) {
@@ -94,8 +90,8 @@ public class MemberQuery {
         return 2;
     }
 
-    private MemberLookupItemResponse toLookupItem(User user) {
-        return new MemberLookupItemResponse(
+    private MemberLookupItemResult toLookupItem(User user) {
+        return new MemberLookupItemResult(
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
@@ -104,12 +100,12 @@ public class MemberQuery {
         );
     }
 
-    private MemberSummaryResponse toMemberSummary(Membership membership, User user) {
+    private MemberSummaryResult toMemberSummary(Membership membership, User user) {
         if (user == null) {
             return null;
         }
 
-        return new MemberSummaryResponse(
+        return new MemberSummaryResult(
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
