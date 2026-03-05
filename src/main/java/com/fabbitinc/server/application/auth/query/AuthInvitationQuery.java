@@ -1,6 +1,7 @@
 package com.fabbitinc.server.application.auth.query;
 
-import com.fabbitinc.server.application.auth.dto.response.VerifyInvitationResponse;
+import com.fabbitinc.server.application.auth.query.condition.VerifyInvitationCondition;
+import com.fabbitinc.server.application.auth.query.result.VerifyInvitationResult;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.domain.auth.model.Invitation;
@@ -22,15 +23,15 @@ import java.util.HexFormat;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class AuthInvitationQuery {
 
     private final InvitationRepository invitationRepository;
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
 
-    @Transactional(readOnly = true)
-    public VerifyInvitationResponse verifyInvitation(String token) {
-        Invitation invitation = invitationRepository.findByTokenHash(sha256(token))
+    public VerifyInvitationResult getVerifiedInvitation(VerifyInvitationCondition condition) {
+        Invitation invitation = invitationRepository.findByTokenHash(sha256(condition.token()))
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "유효하지 않은 초대입니다"));
 
         if (invitation.getStatus() != InvitationStatus.PENDING) {
@@ -49,7 +50,7 @@ public class AuthInvitationQuery {
 
         boolean existingUser = userRepository.existsByEmail(invitation.getEmail());
 
-        return new VerifyInvitationResponse(
+        return new VerifyInvitationResult(
                 invitation.getEmail(),
                 organization.getName(),
                 inviter.getFullName(),

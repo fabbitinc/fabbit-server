@@ -1,9 +1,12 @@
 package com.fabbitinc.server.application.auth.query;
 
-import com.fabbitinc.server.application.auth.dto.response.CheckSlugResponse;
-import com.fabbitinc.server.application.auth.dto.response.CheckEmailResponse;
-import com.fabbitinc.server.application.auth.dto.response.PlanResponse;
-import com.fabbitinc.server.application.auth.dto.response.SiteResponse;
+import com.fabbitinc.server.application.auth.query.condition.CheckEmailCondition;
+import com.fabbitinc.server.application.auth.query.condition.CheckSlugCondition;
+import com.fabbitinc.server.application.auth.query.condition.SiteCondition;
+import com.fabbitinc.server.application.auth.query.result.CheckEmailResult;
+import com.fabbitinc.server.application.auth.query.result.CheckSlugResult;
+import com.fabbitinc.server.application.auth.query.result.PlanResult;
+import com.fabbitinc.server.application.auth.query.result.SiteResult;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.config.AppProperties;
 import com.fabbitinc.server.application.common.exception.AppException;
@@ -26,6 +29,7 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class AuthQuery {
 
     private final OrganizationRepository organizationRepository;
@@ -33,41 +37,37 @@ public class AuthQuery {
     private final AppProperties appProperties;
     private final FileUrlResolver fileUrlResolver;
 
-    @Transactional(readOnly = true)
-    public List<PlanResponse> getPlans() {
+    public List<PlanResult> listPlans() {
         return OrganizationPlans.limits().entrySet().stream()
-                .map(this::toPlanResponse)
+                .map(this::toPlanResult)
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public CheckSlugResponse checkSlug(String slug) {
-        String normalizedSlug = slug.toLowerCase(Locale.ROOT);
+    public CheckSlugResult getSlugAvailability(CheckSlugCondition condition) {
+        String normalizedSlug = condition.slug().toLowerCase(Locale.ROOT);
         String error = WorkspaceSlugPolicy.validateFormat(normalizedSlug);
         if (error != null) {
-            return new CheckSlugResponse(false, error, null);
+            return new CheckSlugResult(false, error, null);
         }
 
         if (organizationRepository.existsBySlug(normalizedSlug)) {
             String suggestion = normalizedSlug + "-" + UUID.randomUUID().toString().substring(0, 4);
-            return new CheckSlugResponse(false, "이미 사용 중인 워크스페이스 주소입니다", suggestion);
+            return new CheckSlugResult(false, "이미 사용 중인 워크스페이스 주소입니다", suggestion);
         }
-        return CheckSlugResponse.asAvailable();
+        return CheckSlugResult.asAvailable();
     }
 
-    @Transactional(readOnly = true)
-    public CheckEmailResponse checkEmail(String email) {
-        String normalizedEmail = normalizeEmail(email);
+    public CheckEmailResult getEmailAvailability(CheckEmailCondition condition) {
+        String normalizedEmail = normalizeEmail(condition.email());
         boolean exists = userRepository.existsByEmail(normalizedEmail);
-        return new CheckEmailResponse(
+        return new CheckEmailResult(
                 !exists,
                 exists ? "이미 가입된 이메일입니다" : null
         );
     }
 
-    @Transactional(readOnly = true)
-    public SiteResponse getSite(String origin) {
-        String slug = extractOriginSlug(origin, appProperties.baseDomain());
+    public SiteResult getSite(SiteCondition condition) {
+        String slug = extractOriginSlug(condition.origin(), appProperties.baseDomain());
         if (slug == null || slug.isBlank()) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "워크스페이스를 통해 접근해주세요");
         }
@@ -75,17 +75,17 @@ public class AuthQuery {
         Organization organization = organizationRepository.findBySlug(slug)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "존재하지 않는 워크스페이스입니다"));
 
-        return new SiteResponse(
+        return new SiteResult(
                 organization.getSlug(),
                 organization.getName(),
                 fileUrlResolver.resolve(organization.getProfileImageFileKey())
         );
     }
 
-    private PlanResponse toPlanResponse(Map.Entry<PlanType, PlanLimits> entry) {
+    private PlanResult toPlanResult(Map.Entry<PlanType, PlanLimits> entry) {
         PlanType planType = entry.getKey();
         PlanLimits limits = entry.getValue();
-        return new PlanResponse(
+        return new PlanResult(
                 planType.name(),
                 limits.displayName(),
                 limits.description(),

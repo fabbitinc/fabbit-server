@@ -14,6 +14,7 @@ import com.fabbitinc.server.domain.auth.model.Invitation;
 import com.fabbitinc.server.domain.organization.model.Organization;
 import com.fabbitinc.server.domain.user.model.User;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import java.time.Instant;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 @Transactional
 public class AcceptInvitationUseCase {
 
@@ -51,6 +53,14 @@ public class AcceptInvitationUseCase {
                 invitation.getOrgId(),
                 invitation.getRole().name()
         );
+
+        log.atInfo()
+                .addKeyValue("event.name", "auth.invitation.accepted")
+                .addKeyValue("invitation.id", invitation.getId())
+                .addKeyValue("user.id", user.getId())
+                .addKeyValue("organization.id", invitation.getOrgId())
+                .addKeyValue("outcome", "success")
+                .log("invitation accepted");
 
         return new AcceptInvitationResult(
                 toUserResult(user),

@@ -15,11 +15,13 @@ import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
 import com.fabbitinc.server.domain.user.model.User;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 @Transactional
 public class RegisterUseCase {
 
@@ -54,6 +56,13 @@ public class RegisterUseCase {
                 organization.getId(),
                 MembershipRole.OWNER.name()
         );
+
+        log.atInfo()
+                .addKeyValue("event.name", "auth.registered")
+                .addKeyValue("user.id", user.getId())
+                .addKeyValue("organization.id", organization.getId())
+                .addKeyValue("outcome", "success")
+                .log("register completed");
 
         return new RegisterResult(
                 toUserResult(user),

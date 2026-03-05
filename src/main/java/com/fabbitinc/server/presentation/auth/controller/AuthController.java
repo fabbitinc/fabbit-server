@@ -22,6 +22,15 @@ import com.fabbitinc.server.application.auth.dto.response.VerifyEmailResponse;
 import com.fabbitinc.server.application.auth.dto.response.VerifyInvitationResponse;
 import com.fabbitinc.server.application.auth.query.AuthInvitationQuery;
 import com.fabbitinc.server.application.auth.query.AuthQuery;
+import com.fabbitinc.server.application.auth.query.condition.CheckEmailCondition;
+import com.fabbitinc.server.application.auth.query.condition.CheckSlugCondition;
+import com.fabbitinc.server.application.auth.query.condition.SiteCondition;
+import com.fabbitinc.server.application.auth.query.condition.VerifyInvitationCondition;
+import com.fabbitinc.server.application.auth.query.result.CheckEmailResult;
+import com.fabbitinc.server.application.auth.query.result.CheckSlugResult;
+import com.fabbitinc.server.application.auth.query.result.PlanResult;
+import com.fabbitinc.server.application.auth.query.result.SiteResult;
+import com.fabbitinc.server.application.auth.query.result.VerifyInvitationResult;
 import com.fabbitinc.server.application.auth.usecase.command.AcceptInvitationCommand;
 import com.fabbitinc.server.application.auth.usecase.command.LoginCommand;
 import com.fabbitinc.server.application.auth.usecase.command.LogoutCommand;
@@ -88,7 +97,9 @@ public class AuthController {
     @Operation(summary = "GET /api/v1/auth/plans", description = "플랜 목록 조회")
     @GetMapping("/plans")
     public List<PlanResponse> getPlans() {
-        return authQuery.getPlans();
+        return authQuery.listPlans().stream()
+                .map(this::toPlanResponse)
+                .toList();
     }
 
     @Operation(summary = "GET /api/v1/auth/check-slug", description = "워크스페이스 slug 중복/형식 검사")
@@ -98,7 +109,8 @@ public class AuthController {
             @Size(min = 3, max = 50, message = "길이는 3~50자여야 합니다")
             String slug
     ) {
-        return authQuery.checkSlug(slug);
+        CheckSlugResult result = authQuery.getSlugAvailability(new CheckSlugCondition(slug));
+        return new CheckSlugResponse(result.available(), result.message(), result.suggestion());
     }
 
     @Operation(summary = "GET /api/v1/auth/check-email", description = "이메일 중복 확인")
@@ -108,13 +120,15 @@ public class AuthController {
             @Email(message = "유효한 이메일 형식이 아닙니다")
             String email
     ) {
-        return authQuery.checkEmail(email);
+        CheckEmailResult result = authQuery.getEmailAvailability(new CheckEmailCondition(email));
+        return new CheckEmailResponse(result.available(), result.message());
     }
 
     @Operation(summary = "GET /api/v1/auth/site", description = "Origin 기반 워크스페이스 정보 조회")
     @GetMapping("/site")
     public SiteResponse getSite(@RequestHeader(value = "Origin", required = false) String origin) {
-        return authQuery.getSite(origin);
+        SiteResult result = authQuery.getSite(new SiteCondition(origin));
+        return new SiteResponse(result.slug(), result.name(), result.logoUrl());
     }
 
     @Operation(summary = "POST /api/v1/auth/send-verification", description = "이메일 인증 코드 발송")
@@ -225,7 +239,17 @@ public class AuthController {
     @Operation(summary = "GET /api/v1/auth/invitations/verify", description = "초대 토큰 검증")
     @GetMapping("/invitations/verify")
     public VerifyInvitationResponse verifyInvitation(@RequestParam("token") String token) {
-        return authInvitationQuery.verifyInvitation(token);
+        VerifyInvitationResult result = authInvitationQuery.getVerifiedInvitation(
+                new VerifyInvitationCondition(token)
+        );
+        return new VerifyInvitationResponse(
+                result.email(),
+                result.organizationName(),
+                result.inviterName(),
+                result.role(),
+                result.existingUser(),
+                result.expiresAt()
+        );
     }
 
     @Operation(summary = "POST /api/v1/auth/accept-invitation", description = "조직 초대 수락")
@@ -271,6 +295,18 @@ public class AuthController {
                 token.accessToken(),
                 token.refreshToken(),
                 token.tokenType()
+        );
+    }
+
+    private PlanResponse toPlanResponse(PlanResult result) {
+        return new PlanResponse(
+                result.planType(),
+                result.displayName(),
+                result.description(),
+                result.maxMembers(),
+                result.storageGb(),
+                result.aiCredits(),
+                result.priceMonthly()
         );
     }
 
