@@ -5,10 +5,23 @@ import com.fabbitinc.server.application.project.dto.request.ManageMembersRequest
 import com.fabbitinc.server.application.project.dto.response.ManageMembersResponse;
 import com.fabbitinc.server.application.project.dto.response.MemberLookupResponse;
 import com.fabbitinc.server.application.project.dto.response.ProjectMemberListResponse;
+import com.fabbitinc.server.application.project.dto.response.ProjectMemberSummaryResponse;
+import com.fabbitinc.server.application.project.dto.response.ProjectUserSummaryResponse;
 import com.fabbitinc.server.application.project.query.ProjectQuery;
+import com.fabbitinc.server.application.project.query.condition.ProjectMembersCondition;
+import com.fabbitinc.server.application.project.query.condition.ProjectMembersLookupCondition;
+import com.fabbitinc.server.application.project.query.result.MemberLookupResult;
+import com.fabbitinc.server.application.project.query.result.ProjectMemberListResult;
+import com.fabbitinc.server.application.project.query.result.ProjectMemberSummaryResult;
+import com.fabbitinc.server.application.project.query.result.ProjectUserSummaryResult;
 import com.fabbitinc.server.application.project.usecase.AddProjectMembersUseCase;
 import com.fabbitinc.server.application.project.usecase.RemoveProjectMembersUseCase;
+import com.fabbitinc.server.application.project.usecase.command.AddProjectMembersCommand;
+import com.fabbitinc.server.application.project.usecase.command.RemoveProjectMembersCommand;
+import com.fabbitinc.server.application.project.usecase.result.AddProjectMembersResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -41,6 +54,13 @@ public class ProjectMemberController {
     private final RemoveProjectMembersUseCase removeProjectMembersUseCase;
 
     @Operation(summary = "GET /api/v1/projects/{projectId}/members/lookup", description = "프로젝트 멤버 picker용 lookup 목록을 조회합니다")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping("/lookup")
     public MemberLookupResponse lookupMembers(
             @PathVariable UUID projectId,
@@ -50,37 +70,83 @@ public class ProjectMemberController {
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
             int limit
     ) {
-        return projectQuery.lookupMembers(projectId, search, limit);
+        MemberLookupResult result = projectQuery.lookupMembers(
+                new ProjectMembersLookupCondition(projectId, search, limit)
+        );
+        return new MemberLookupResponse(result.items().stream().map(this::toProjectUserSummaryResponse).toList());
     }
 
     @Operation(summary = "GET /api/v1/projects/{projectId}/members", description = "프로젝트 멤버 목록을 조회합니다")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping
     public ProjectMemberListResponse listProjectMembers(
             @PathVariable UUID projectId
     ) {
-        return projectQuery.listMembers(projectId);
+        ProjectMemberListResult result = projectQuery.listMembers(new ProjectMembersCondition(projectId));
+        return new ProjectMemberListResponse(result.items().stream().map(this::toProjectMemberSummaryResponse).toList());
     }
 
     @Operation(summary = "POST /api/v1/projects/{projectId}/members", description = "프로젝트에 멤버를 배치 추가합니다")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "추가 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ManageMembersResponse addProjectMembers(
             @PathVariable UUID projectId,
             @Valid @RequestBody AddMembersRequest request
     ) {
-        return addProjectMembersUseCase.execute(projectId,
-                request.userIds(),
-                request.role()
+        AddProjectMembersResult result = addProjectMembersUseCase.execute(
+                new AddProjectMembersCommand(projectId, request.userIds(), request.role())
         );
+        return new ManageMembersResponse(result.count());
     }
 
     @Operation(summary = "DELETE /api/v1/projects/{projectId}/members", description = "프로젝트에서 멤버를 배치 제거합니다")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "제거 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @DeleteMapping
     public ResponseEntity<Void> removeProjectMembers(
             @PathVariable UUID projectId,
             @Valid @RequestBody ManageMembersRequest request
     ) {
-        removeProjectMembersUseCase.execute(projectId, request.userIds());
+        removeProjectMembersUseCase.execute(new RemoveProjectMembersCommand(projectId, request.userIds()));
         return ResponseEntity.noContent().build();
+    }
+
+    private ProjectUserSummaryResponse toProjectUserSummaryResponse(ProjectUserSummaryResult result) {
+        return new ProjectUserSummaryResponse(
+                result.id(),
+                result.fullName(),
+                result.email(),
+                result.phone(),
+                result.profileImageUrl()
+        );
+    }
+
+    private ProjectMemberSummaryResponse toProjectMemberSummaryResponse(ProjectMemberSummaryResult result) {
+        return new ProjectMemberSummaryResponse(
+                result.userId(),
+                result.fullName(),
+                result.email(),
+                result.phone(),
+                result.profileImageUrl(),
+                result.role()
+        );
     }
 }

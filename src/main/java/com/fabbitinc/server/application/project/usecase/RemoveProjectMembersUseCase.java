@@ -2,23 +2,21 @@ package com.fabbitinc.server.application.project.usecase;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.project.service.ProjectService;
+import com.fabbitinc.server.application.project.usecase.command.RemoveProjectMembersCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.UUID;
-
 @Component
 @RequiredArgsConstructor
+@Transactional
 public class RemoveProjectMembersUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final ProjectService projectService;
 
-    @Transactional
-    public void execute(UUID projectId, List<UUID> userIds) {
+    public void execute(RemoveProjectMembersCommand command) {
         currentAuthProvider.getCurrentAuth();
-        projectService.removeMembers(projectId, userIds);
+        projectService.removeMembers(command.projectId(), command.userIds());
     }
 }

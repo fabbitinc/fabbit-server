@@ -22,7 +22,11 @@ import com.fabbitinc.server.application.part.usecase.DeletePartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.DetachPartFileUseCase;
 import com.fabbitinc.server.application.part.usecase.RegisterPartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.RenameCategoryUseCase;
+import com.fabbitinc.server.application.project.query.condition.PartProjectsCondition;
+import com.fabbitinc.server.application.project.query.result.PartProjectSummaryResult;
+import com.fabbitinc.server.application.project.query.result.PartProjectsResult;
 import com.fabbitinc.server.application.project.dto.response.PartProjectsResponse;
+import com.fabbitinc.server.application.project.dto.response.PartProjectSummaryResponse;
 import com.fabbitinc.server.application.project.query.ProjectQuery;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -235,7 +239,11 @@ public class PartController {
     public PartProjectsResponse getPartProjects(
             @PathVariable UUID partId
     ) {
-        return projectQuery.getPartProjects(partId);
+        PartProjectsResult result = projectQuery.listPartProjects(new PartProjectsCondition(partId));
+        return new PartProjectsResponse(
+                result.total(),
+                result.items().stream().map(this::toPartProjectSummaryResponse).toList()
+        );
     }
 
     @Operation(
@@ -321,5 +329,9 @@ public class PartController {
     ) {
         int updatedCount = renameCategoryUseCase.execute(category, request.newName());
         return new RenameCategoryResponse(updatedCount);
+    }
+
+    private PartProjectSummaryResponse toPartProjectSummaryResponse(PartProjectSummaryResult result) {
+        return new PartProjectSummaryResponse(result.id(), result.name(), result.description());
     }
 }

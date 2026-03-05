@@ -2,22 +2,26 @@ package com.fabbitinc.server.application.project.usecase;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.project.service.ProjectService;
+import com.fabbitinc.server.application.project.usecase.command.UpdateProjectCommand;
+import com.fabbitinc.server.application.project.usecase.result.UpdateProjectResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 @Component
 @RequiredArgsConstructor
+@Transactional
 public class UpdateProjectUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final ProjectService projectService;
 
-    @Transactional
-    public UUID execute(UUID projectId, String name, String description) {
+    public UpdateProjectResult execute(UpdateProjectCommand command) {
         currentAuthProvider.getCurrentAuth();
-        return projectService.updateProject(projectId, name, description).getId();
+        return new UpdateProjectResult(projectService.updateProject(
+                command.projectId(),
+                command.name(),
+                command.description()
+        ).getId());
     }
 }

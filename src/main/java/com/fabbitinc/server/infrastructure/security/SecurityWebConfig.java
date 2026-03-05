@@ -1,19 +1,27 @@
 package com.fabbitinc.server.infrastructure.security;
 
+import com.fabbitinc.server.application.config.AppProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
 import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+
+import java.util.List;
+import java.util.regex.Pattern;
 
 @Configuration
 @EnableMethodSecurity
@@ -41,6 +49,7 @@ public class SecurityWebConfig {
     private final JwtSecurityContextFilter jwtSecurityContextFilter;
     private final SecurityAuthenticationEntryPoint securityAuthenticationEntryPoint;
     private final SecurityAccessDeniedHandler securityAccessDeniedHandler;
+    private final AppProperties appProperties;
 
     @Bean
     public RoleHierarchy roleHierarchy() {
@@ -58,8 +67,31 @@ public class SecurityWebConfig {
     }
 
     @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        Pattern allowedOriginPattern = Pattern.compile(
+                "^https?://([\\w-]+\\.)?" + Pattern.quote(appProperties.baseDomain()) + "(:\\d+)?$"
+        );
+
+        return request -> {
+            CorsConfiguration config = new CorsConfiguration();
+            config.setAllowCredentials(true);
+            config.setAllowedMethods(List.of("*"));
+            config.setAllowedHeaders(List.of("*"));
+            config.setExposedHeaders(List.of("Content-Disposition"));
+
+            String origin = request.getHeader(HttpHeaders.ORIGIN);
+            if (origin != null && allowedOriginPattern.matcher(origin).matches()) {
+                config.setAllowedOrigins(List.of(origin));
+            }
+
+            return config;
+        };
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
+                .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)

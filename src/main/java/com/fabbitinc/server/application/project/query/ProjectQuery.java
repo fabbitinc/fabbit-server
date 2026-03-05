@@ -1,25 +1,33 @@
 package com.fabbitinc.server.application.project.query;
 
-import com.fabbitinc.server.application.activity.dto.response.ActivityListResponse;
-import com.fabbitinc.server.application.activity.dto.response.ActivityResponse;
-import com.fabbitinc.server.application.activity.dto.response.UserSummaryResponse;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
-import com.fabbitinc.server.application.part.dto.response.PartLookupItemResponse;
-import com.fabbitinc.server.application.part.dto.response.PartLookupResponse;
-import com.fabbitinc.server.application.project.dto.response.MemberLookupResponse;
-import com.fabbitinc.server.application.project.dto.response.PartProjectSummaryResponse;
-import com.fabbitinc.server.application.project.dto.response.PartProjectsResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectDetailResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectListResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectMemberListResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectMemberSummaryResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectPartsResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectPartSummaryResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectSummaryResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectUserSummaryResponse;
+import com.fabbitinc.server.application.project.query.condition.PartProjectsCondition;
+import com.fabbitinc.server.application.project.query.condition.ProjectActivitiesCondition;
+import com.fabbitinc.server.application.project.query.condition.ProjectDetailCondition;
+import com.fabbitinc.server.application.project.query.condition.ProjectListCondition;
+import com.fabbitinc.server.application.project.query.condition.ProjectMembersCondition;
+import com.fabbitinc.server.application.project.query.condition.ProjectMembersLookupCondition;
+import com.fabbitinc.server.application.project.query.condition.ProjectPartsCondition;
+import com.fabbitinc.server.application.project.query.condition.ProjectPartsLookupCondition;
+import com.fabbitinc.server.application.project.query.result.MemberLookupResult;
+import com.fabbitinc.server.application.project.query.result.PartProjectSummaryResult;
+import com.fabbitinc.server.application.project.query.result.PartProjectsResult;
+import com.fabbitinc.server.application.project.query.result.ProjectActivityListResult;
+import com.fabbitinc.server.application.project.query.result.ProjectActivityResult;
+import com.fabbitinc.server.application.project.query.result.ProjectActivityUserSummaryResult;
+import com.fabbitinc.server.application.project.query.result.ProjectDetailResult;
+import com.fabbitinc.server.application.project.query.result.ProjectListResult;
+import com.fabbitinc.server.application.project.query.result.ProjectMemberListResult;
+import com.fabbitinc.server.application.project.query.result.ProjectMemberSummaryResult;
+import com.fabbitinc.server.application.project.query.result.ProjectPartLookupItemResult;
+import com.fabbitinc.server.application.project.query.result.ProjectPartLookupResult;
+import com.fabbitinc.server.application.project.query.result.ProjectPartSummaryResult;
+import com.fabbitinc.server.application.project.query.result.ProjectPartsResult;
+import com.fabbitinc.server.application.project.query.result.ProjectSummaryResult;
+import com.fabbitinc.server.application.project.query.result.ProjectUserSummaryResult;
 import com.fabbitinc.server.domain.activity.model.Activity;
 import com.fabbitinc.server.domain.activity.model.ActivityTargetType;
 import com.fabbitinc.server.domain.activity.repository.ActivityRepository;
@@ -47,6 +55,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ProjectQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
@@ -58,81 +67,75 @@ public class ProjectQuery {
     private final ActivityRepository activityRepository;
     private final FileUrlResolver fileUrlResolver;
 
-    @Transactional(readOnly = true)
-    public ProjectListResponse listProjects(String search,
-            int offset,
-            int limit
-    ) {
+    public ProjectListResult list(ProjectListCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        String normalizedSearch = normalizeSearch(search);
+        String normalizedSearch = normalizeSearch(condition.search());
 
-        List<Project> projects = projectRepository.listProjectsPaginated(normalizedSearch, offset, limit);
+        List<Project> projects = projectRepository.listProjectsPaginated(
+                normalizedSearch,
+                condition.offset(),
+                condition.limit()
+        );
         long total = projectRepository.countProjects(normalizedSearch);
 
-        List<ProjectSummaryResponse> items = projects.stream()
-                .map(this::toProjectSummary)
+        List<ProjectSummaryResult> items = projects.stream()
+                .map(this::toProjectSummaryResult)
                 .toList();
-        return new ProjectListResponse(total, offset, limit, items);
+        return new ProjectListResult(total, condition.offset(), condition.limit(), items);
     }
 
-    @Transactional(readOnly = true)
-    public ProjectDetailResponse getProjectDetail(UUID projectId) {
+    public ProjectDetailResult get(ProjectDetailCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        Project project = projectRepository.findByIdAndDeletedFalse(projectId)
+        Project project = projectRepository.findByIdAndDeletedFalse(condition.projectId())
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "Project '" + projectId + "'을(를) 찾을 수 없습니다"
+                        "Project '" + condition.projectId() + "'을(를) 찾을 수 없습니다"
                 ));
-        return toProjectDetail(project);
+        return toProjectDetailResult(project);
     }
 
-    @Transactional(readOnly = true)
-    public MemberLookupResponse lookupMembers(UUID projectId,
-            String search,
-            int limit
-    ) {
+    public MemberLookupResult lookupMembers(ProjectMembersLookupCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        List<ProjectMember> members = projectMemberRepository.findByProjectId(projectId);
+        List<ProjectMember> members = projectMemberRepository.findByProjectId(condition.projectId());
         if (members.isEmpty()) {
-            return new MemberLookupResponse(List.of());
+            return new MemberLookupResult(List.of());
         }
 
         List<UUID> userIds = members.stream().map(ProjectMember::getUserId).toList();
         List<User> users = userRepository.findAllByIdInOrderByFullName(userIds);
 
-        String normalizedSearch = normalizeSearch(search);
-        List<ProjectUserSummaryResponse> items = users.stream()
+        String normalizedSearch = normalizeSearch(condition.search());
+        List<ProjectUserSummaryResult> items = users.stream()
                 .filter(user -> normalizedSearch == null
                         || user.getFullName().toLowerCase().contains(normalizedSearch.toLowerCase()))
-                .limit(limit)
-                .map(this::toProjectUserSummary)
+                .limit(condition.limit())
+                .map(this::toProjectUserSummaryResult)
                 .toList();
-        return new MemberLookupResponse(items);
+        return new MemberLookupResult(items);
     }
 
-    @Transactional(readOnly = true)
-    public ProjectMemberListResponse listMembers(UUID projectId) {
+    public ProjectMemberListResult listMembers(ProjectMembersCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        if (projectRepository.findByIdAndDeletedFalse(projectId).isEmpty()) {
+        if (projectRepository.findByIdAndDeletedFalse(condition.projectId()).isEmpty()) {
             throw new AppException(ErrorCode.NOT_FOUND, "프로젝트를 찾을 수 없습니다");
         }
 
-        List<ProjectMember> members = projectMemberRepository.findByProjectId(projectId);
+        List<ProjectMember> members = projectMemberRepository.findByProjectId(condition.projectId());
         if (members.isEmpty()) {
-            return new ProjectMemberListResponse(List.of());
+            return new ProjectMemberListResult(List.of());
         }
 
         List<UUID> userIds = members.stream().map(ProjectMember::getUserId).toList();
         List<User> users = userRepository.findAllByIdInOrderByFullName(userIds);
         Map<UUID, User> userMap = users.stream().collect(Collectors.toMap(User::getId, user -> user));
 
-        List<ProjectMemberSummaryResponse> items = members.stream()
+        List<ProjectMemberSummaryResult> items = members.stream()
                 .map(member -> {
                     User user = userMap.get(member.getUserId());
                     if (user == null) {
-                        return new ProjectMemberSummaryResponse(
+                        return new ProjectMemberSummaryResult(
                                 member.getUserId(),
                                 "",
                                 "",
@@ -141,7 +144,7 @@ public class ProjectQuery {
                                 member.getRole().name()
                         );
                     }
-                    return new ProjectMemberSummaryResponse(
+                    return new ProjectMemberSummaryResult(
                             member.getUserId(),
                             user.getFullName(),
                             user.getEmail(),
@@ -151,19 +154,14 @@ public class ProjectQuery {
                     );
                 })
                 .toList();
-        return new ProjectMemberListResponse(items);
+        return new ProjectMemberListResult(items);
     }
 
-    @Transactional(readOnly = true)
-    public PartLookupResponse lookupParts(UUID projectId,
-            String search,
-            boolean excludeLinked,
-            int limit
-    ) {
+    public ProjectPartLookupResult lookupParts(ProjectPartsLookupCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        int fetchSize = Math.max(limit * 5, limit);
-        String normalizedSearch = normalizeSearch(search);
+        int fetchSize = Math.max(condition.limit() * 5, condition.limit());
+        String normalizedSearch = normalizeSearch(condition.search());
         String keyword = normalizedSearch == null ? "" : normalizedSearch;
         List<Part> parts = partRepository.findByPartNumberContainingIgnoreCaseOrNameContainingIgnoreCaseOrderByPartNumberAsc(
                 keyword,
@@ -171,43 +169,38 @@ public class ProjectQuery {
                 PageRequest.of(0, fetchSize)
         );
 
-        Set<UUID> linkedPartIds = excludeLinked
-                ? projectPartRepository.findByProjectId(projectId).stream()
+        Set<UUID> linkedPartIds = condition.excludeLinked()
+                ? projectPartRepository.findByProjectId(condition.projectId()).stream()
                 .map(ProjectPart::getPartId)
                 .collect(Collectors.toSet())
                 : Set.of();
 
-        List<PartLookupItemResponse> items = parts.stream()
-                .filter(part -> !excludeLinked || !linkedPartIds.contains(part.getId()))
-                .limit(limit)
-                .map(part -> new PartLookupItemResponse(part.getId(), part.getPartNumber(), part.getName()))
+        List<ProjectPartLookupItemResult> items = parts.stream()
+                .filter(part -> !condition.excludeLinked() || !linkedPartIds.contains(part.getId()))
+                .limit(condition.limit())
+                .map(part -> new ProjectPartLookupItemResult(part.getId(), part.getPartNumber(), part.getName()))
                 .toList();
 
-        return new PartLookupResponse(items);
+        return new ProjectPartLookupResult(items);
     }
 
-    @Transactional(readOnly = true)
-    public ProjectPartsResponse getProjectParts(UUID projectId,
-            String search,
-            int offset,
-            int limit
-    ) {
+    public ProjectPartsResult listParts(ProjectPartsCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        projectRepository.findByIdAndDeletedFalse(projectId)
+        projectRepository.findByIdAndDeletedFalse(condition.projectId())
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "Project '" + projectId + "'을(를) 찾을 수 없습니다"
+                        "Project '" + condition.projectId() + "'을(를) 찾을 수 없습니다"
                 ));
 
-        List<ProjectPart> links = projectPartRepository.findByProjectId(projectId);
+        List<ProjectPart> links = projectPartRepository.findByProjectId(condition.projectId());
         if (links.isEmpty()) {
-            return new ProjectPartsResponse(0, List.of());
+            return new ProjectPartsResult(0, List.of());
         }
 
         List<UUID> partIds = links.stream().map(ProjectPart::getPartId).toList();
         List<Part> parts = partRepository.findByIdInOrderByPartNumberAsc(partIds);
-        String normalizedSearch = normalizeSearch(search);
+        String normalizedSearch = normalizeSearch(condition.search());
         if (normalizedSearch != null) {
             String lowered = normalizedSearch.toLowerCase();
             parts = parts.stream()
@@ -217,35 +210,29 @@ public class ProjectQuery {
         }
 
         long total = parts.size();
-        int fromIndex = Math.min(offset, parts.size());
-        int toIndex = Math.min(offset + limit, parts.size());
-        List<ProjectPartSummaryResponse> items = parts.subList(fromIndex, toIndex).stream()
-                .map(part -> new ProjectPartSummaryResponse(part.getId(), part.getPartNumber(), part.getName()))
+        int fromIndex = Math.min(condition.offset(), parts.size());
+        int toIndex = Math.min(condition.offset() + condition.limit(), parts.size());
+        List<ProjectPartSummaryResult> items = parts.subList(fromIndex, toIndex).stream()
+                .map(part -> new ProjectPartSummaryResult(part.getId(), part.getPartNumber(), part.getName()))
                 .toList();
 
-        return new ProjectPartsResponse(total, items);
+        return new ProjectPartsResult(total, items);
     }
 
-    @Transactional(readOnly = true)
-    public ActivityListResponse getActivities(UUID projectId,
-            UUID cursor,
-            int limit,
-            String scope,
-            UUID userId
-    ) {
+    public ProjectActivityListResult listActivities(ProjectActivitiesCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
         List<Activity> filtered = activityRepository.findByTargetTypeAndTargetIdOrderByIdDesc(
                         ActivityTargetType.PROJECT,
-                        projectId
+                        condition.projectId()
                 ).stream()
-                .filter(activity -> cursor == null || activity.getId().compareTo(cursor) < 0)
-                .filter(activity -> scope == null || scope.equals(extractScope(activity.getAction())))
-                .filter(activity -> userId == null || userId.equals(activity.getActorId()))
-                .limit(limit)
+                .filter(activity -> condition.cursor() == null || activity.getId().compareTo(condition.cursor()) < 0)
+                .filter(activity -> condition.scope() == null || condition.scope().equals(extractScope(activity.getAction())))
+                .filter(activity -> condition.userId() == null || condition.userId().equals(activity.getActorId()))
+                .limit(condition.limit())
                 .toList();
 
-        UUID nextCursor = filtered.size() == limit
+        UUID nextCursor = filtered.size() == condition.limit()
                 ? filtered.get(filtered.size() - 1).getId()
                 : null;
 
@@ -253,11 +240,11 @@ public class ProjectQuery {
         List<User> users = actorIds.isEmpty()
                 ? List.of()
                 : userRepository.findAllByIdInOrderByFullName(actorIds);
-        Map<String, UserSummaryResponse> userMap = new HashMap<>();
+        Map<String, ProjectActivityUserSummaryResult> userMap = new HashMap<>();
         for (User user : users) {
             userMap.put(
                     user.getId().toString(),
-                    new UserSummaryResponse(
+                    new ProjectActivityUserSummaryResult(
                             user.getId(),
                             user.getFullName(),
                             user.getEmail(),
@@ -267,8 +254,8 @@ public class ProjectQuery {
             );
         }
 
-        List<ActivityResponse> items = filtered.stream()
-                .map(activity -> new ActivityResponse(
+        List<ProjectActivityResult> items = filtered.stream()
+                .map(activity -> new ProjectActivityResult(
                         activity.getId(),
                         activity.getAction(),
                         extractScope(activity.getAction()),
@@ -278,38 +265,37 @@ public class ProjectQuery {
                 ))
                 .toList();
 
-        return new ActivityListResponse(items, nextCursor, userMap);
+        return new ProjectActivityListResult(items, nextCursor, userMap);
     }
 
-    @Transactional(readOnly = true)
-    public PartProjectsResponse getPartProjects(UUID partId) {
+    public PartProjectsResult listPartProjects(PartProjectsCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        partRepository.findById(partId)
+        partRepository.findById(condition.partId())
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "Part '" + partId + "'을(를) 찾을 수 없습니다"
+                        "Part '" + condition.partId() + "'을(를) 찾을 수 없습니다"
                 ));
 
-        List<ProjectPart> links = projectPartRepository.findByPartId(partId);
+        List<ProjectPart> links = projectPartRepository.findByPartId(condition.partId());
         if (links.isEmpty()) {
-            return new PartProjectsResponse(0, List.of());
+            return new PartProjectsResult(0, List.of());
         }
 
         List<UUID> projectIds = links.stream().map(ProjectPart::getProjectId).toList();
-        List<PartProjectSummaryResponse> items = projectRepository.findByIdInAndDeletedFalseOrderByNameAsc(projectIds)
+        List<PartProjectSummaryResult> items = projectRepository.findByIdInAndDeletedFalseOrderByNameAsc(projectIds)
                 .stream()
-                .map(project -> new PartProjectSummaryResponse(
+                .map(project -> new PartProjectSummaryResult(
                         project.getId(),
                         project.getName(),
                         project.getDescription()
                 ))
                 .toList();
-        return new PartProjectsResponse(items.size(), items);
+        return new PartProjectsResult(items.size(), items);
     }
 
-    private ProjectSummaryResponse toProjectSummary(Project project) {
-        return new ProjectSummaryResponse(
+    private ProjectSummaryResult toProjectSummaryResult(Project project) {
+        return new ProjectSummaryResult(
                 project.getId(),
                 project.getName(),
                 project.getDescription(),
@@ -318,8 +304,8 @@ public class ProjectQuery {
         );
     }
 
-    private ProjectDetailResponse toProjectDetail(Project project) {
-        return new ProjectDetailResponse(
+    private ProjectDetailResult toProjectDetailResult(Project project) {
+        return new ProjectDetailResult(
                 project.getId(),
                 project.getName(),
                 project.getDescription(),
@@ -349,8 +335,8 @@ public class ProjectQuery {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private ProjectUserSummaryResponse toProjectUserSummary(User user) {
-        return new ProjectUserSummaryResponse(
+    private ProjectUserSummaryResult toProjectUserSummaryResult(User user) {
+        return new ProjectUserSummaryResult(
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),

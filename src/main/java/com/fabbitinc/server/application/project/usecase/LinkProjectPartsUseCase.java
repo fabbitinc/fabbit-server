@@ -1,26 +1,24 @@
 package com.fabbitinc.server.application.project.usecase;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
-import com.fabbitinc.server.application.project.dto.response.LinkPartsResponse;
 import com.fabbitinc.server.application.project.service.ProjectService;
+import com.fabbitinc.server.application.project.usecase.command.LinkProjectPartsCommand;
+import com.fabbitinc.server.application.project.usecase.result.LinkProjectPartsResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.UUID;
-
 @Component
 @RequiredArgsConstructor
+@Transactional
 public class LinkProjectPartsUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final ProjectService projectService;
 
-    @Transactional
-    public LinkPartsResponse execute(UUID projectId, List<UUID> partIds) {
+    public LinkProjectPartsResult execute(LinkProjectPartsCommand command) {
         currentAuthProvider.getCurrentAuth();
-        int linkedCount = projectService.linkParts(projectId, partIds);
-        return new LinkPartsResponse(linkedCount);
+        int linkedCount = projectService.linkParts(command.projectId(), command.partIds());
+        return new LinkProjectPartsResult(linkedCount);
     }
 }
