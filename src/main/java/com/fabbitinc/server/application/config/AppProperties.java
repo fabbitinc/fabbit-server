@@ -25,6 +25,10 @@ public record AppProperties(
         @DefaultValue("minioadmin") String storageAccessKey,
         @DefaultValue("minioadmin") String storageSecretKey,
         @DefaultValue("fabbit") String storageBucket,
-        @DefaultValue("") String storagePublicUrl
+        @DefaultValue("") String storagePublicUrl,
+        @DefaultValue("") String llmApiKey,
+        @DefaultValue("https://openrouter.ai/api/v1") String llmBaseUrl,
+        @DefaultValue("openai/gpt-5-mini") String llmModel,
+        @DefaultValue("30") int llmTimeoutSeconds
 ) {
 }

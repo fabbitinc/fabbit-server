@@ -1,12 +1,13 @@
 package com.fabbitinc.server.application.auth.usecase;
 
-import com.fabbitinc.server.application.auth.dto.request.RegisterRequest;
-import com.fabbitinc.server.application.auth.dto.response.OrganizationResponse;
-import com.fabbitinc.server.application.auth.dto.response.RegisterResponse;
-import com.fabbitinc.server.application.auth.dto.response.TokenResponse;
-import com.fabbitinc.server.application.auth.dto.response.UserResponse;
 import com.fabbitinc.server.application.auth.service.AuthAccountService;
 import com.fabbitinc.server.application.auth.service.JwtTokenService;
+import com.fabbitinc.server.application.auth.service.input.RegisterUserInput;
+import com.fabbitinc.server.application.auth.usecase.command.RegisterCommand;
+import com.fabbitinc.server.application.auth.usecase.result.AuthOrganizationResult;
+import com.fabbitinc.server.application.auth.usecase.result.AuthTokenResult;
+import com.fabbitinc.server.application.auth.usecase.result.AuthUserResult;
+import com.fabbitinc.server.application.auth.usecase.result.RegisterResult;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.organization.service.input.CreateOrganizationInput;
@@ -27,35 +28,42 @@ public class RegisterUseCase {
     private final JwtTokenService jwtTokenService;
     private final FileUrlResolver fileUrlResolver;
 
-    public RegisterResponse execute(RegisterRequest request) {
-        User user = authAccountService.registerUser(request);
+    public RegisterResult execute(RegisterCommand command) {
+        User user = authAccountService.registerUser(
+                new RegisterUserInput(
+                        command.verificationToken(),
+                        command.code(),
+                        command.password(),
+                        command.fullName()
+                )
+        );
         Organization organization = organizationApi.createOrganization(
                 user.getId(),
                 new CreateOrganizationInput(
-                        request.orgName(),
-                        request.slug(),
-                        request.industry(),
-                        request.teamSize(),
-                        request.planType()
+                        command.orgName(),
+                        command.slug(),
+                        command.industry(),
+                        command.teamSize(),
+                        command.planType()
                 )
         );
 
-        TokenResponse tokens = jwtTokenService.issueTokens(
+        JwtTokenService.IssuedTokens tokens = jwtTokenService.issueTokenBundle(
                 user.getId(),
                 user.getEmail(),
                 organization.getId(),
                 MembershipRole.OWNER.name()
         );
 
-        return new RegisterResponse(
-                toUserResponse(user),
-                toOrganizationResponse(organization),
-                tokens
+        return new RegisterResult(
+                toUserResult(user),
+                toOrganizationResult(organization),
+                toTokenResult(tokens)
         );
     }
 
-    private UserResponse toUserResponse(User user) {
-        return new UserResponse(
+    private AuthUserResult toUserResult(User user) {
+        return new AuthUserResult(
                 user.getId(),
                 user.getEmail(),
                 user.getFullName(),
@@ -66,8 +74,8 @@ public class RegisterUseCase {
         );
     }
 
-    private OrganizationResponse toOrganizationResponse(Organization organization) {
-        return new OrganizationResponse(
+    private AuthOrganizationResult toOrganizationResult(Organization organization) {
+        return new AuthOrganizationResult(
                 organization.getId(),
                 organization.getSlug(),
                 organization.getName(),
@@ -75,6 +83,14 @@ public class RegisterUseCase {
                 organization.getTeamSize(),
                 organization.getPlanType().name(),
                 fileUrlResolver.resolve(organization.getProfileImageFileKey())
+        );
+    }
+
+    private AuthTokenResult toTokenResult(JwtTokenService.IssuedTokens issuedTokens) {
+        return new AuthTokenResult(
+                issuedTokens.accessToken(),
+                issuedTokens.refreshToken(),
+                issuedTokens.tokenType()
         );
     }
 }

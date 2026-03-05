@@ -25,6 +25,7 @@ repositories {
 }
 
 dependencies {
+    implementation(platform("org.springframework.ai:spring-ai-bom:1.0.3"))
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")
@@ -41,6 +42,7 @@ dependencies {
     implementation("software.amazon.awssdk:s3:2.25.53")
     implementation("org.apache.poi:poi-ooxml:5.4.0")
     implementation("org.apache.commons:commons-csv:1.11.0")
+    implementation("org.springframework.ai:spring-ai-starter-model-openai")
     implementation("io.github.openfeign.querydsl:querydsl-core:7.1")
     compileOnly("org.projectlombok:lombok")
     runtimeOnly("org.postgresql:postgresql")

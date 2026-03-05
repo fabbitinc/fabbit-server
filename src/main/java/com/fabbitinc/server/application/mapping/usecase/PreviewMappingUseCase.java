@@ -11,7 +11,7 @@ import com.fabbitinc.server.application.mapping.dto.response.MappingPreviewRespo
 import com.fabbitinc.server.application.mapping.dto.response.SheetPreviewResponse;
 import com.fabbitinc.server.application.mapping.dto.response.SkippedSheetResponse;
 import com.fabbitinc.server.application.mapping.service.MappingService;
-import com.fabbitinc.server.application.mapping.support.MappingGenerationSupport;
+import com.fabbitinc.server.application.mapping.support.MappingLlmGenerationSupport;
 import com.fabbitinc.server.application.mapping.support.MappingNormalizationSupport;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
 import com.fabbitinc.server.domain.file.model.File;
@@ -29,7 +29,7 @@ public class PreviewMappingUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final MappingService mappingService;
-    private final MappingGenerationSupport mappingGenerationSupport;
+    private final MappingLlmGenerationSupport mappingLlmGenerationSupport;
     private final MappingNormalizationSupport mappingNormalizationSupport;
     private final ObjectMapper objectMapper;
 
@@ -65,7 +65,7 @@ public class PreviewMappingUseCase {
                 continue;
             }
 
-            MappingResultDto generated = mappingGenerationSupport.generate(parsed.headers(), parsed.rows());
+            MappingResultDto generated = mappingLlmGenerationSupport.generate(parsed.headers(), parsed.rows());
             MappingResultDto normalized = mappingNormalizationSupport.normalize(generated);
             if (normalized.propertyMappings().isEmpty()) {
                 if (sheet != null) {

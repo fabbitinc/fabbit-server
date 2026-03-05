@@ -108,7 +108,11 @@ class CloudflareTurnstileAdapterTest {
                 "minioadmin",
                 "minioadmin",
                 "fabbit",
-                ""
+                "",
+                "",
+                "https://openrouter.ai/api/v1",
+                "openai/gpt-5-mini",
+                30
         );
     }
 

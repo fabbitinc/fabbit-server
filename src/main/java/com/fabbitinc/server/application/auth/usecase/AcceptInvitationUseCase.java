@@ -1,14 +1,14 @@
 package com.fabbitinc.server.application.auth.usecase;
 
-import com.fabbitinc.server.application.auth.dto.request.AcceptInvitationRequest;
-import com.fabbitinc.server.application.auth.dto.response.AcceptInvitationResponse;
-import com.fabbitinc.server.application.auth.dto.response.OrganizationResponse;
-import com.fabbitinc.server.application.auth.dto.response.TokenResponse;
-import com.fabbitinc.server.application.auth.dto.response.UserResponse;
 import com.fabbitinc.server.application.auth.service.AuthInvitationService;
 import com.fabbitinc.server.application.auth.service.JwtTokenService;
+import com.fabbitinc.server.application.auth.usecase.command.AcceptInvitationCommand;
+import com.fabbitinc.server.application.auth.usecase.result.AcceptInvitationResult;
+import com.fabbitinc.server.application.auth.usecase.result.AuthOrganizationResult;
+import com.fabbitinc.server.application.auth.usecase.result.AuthTokenResult;
+import com.fabbitinc.server.application.auth.usecase.result.AuthUserResult;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
-import com.fabbitinc.server.application.organization.service.OrganizationService;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.domain.auth.model.Invitation;
 import com.fabbitinc.server.domain.organization.model.Organization;
@@ -21,47 +21,47 @@ import java.time.Instant;
 
 @Component
 @RequiredArgsConstructor
+@Transactional
 public class AcceptInvitationUseCase {
 
     private final AuthInvitationService authInvitationService;
     private final UserService userService;
-    private final OrganizationService organizationService;
+    private final OrganizationApi organizationApi;
     private final JwtTokenService jwtTokenService;
     private final FileUrlResolver fileUrlResolver;
 
-    @Transactional
-    public AcceptInvitationResponse execute(AcceptInvitationRequest request) {
-        Invitation invitation = authInvitationService.validateInvitationToken(request.token());
+    public AcceptInvitationResult execute(AcceptInvitationCommand command) {
+        Invitation invitation = authInvitationService.validateInvitationToken(command.token());
 
         UserService.UserWithNewFlag userWithNewFlag = userService.findOrCreateForInvitation(
                 invitation.getEmail(),
-                request.password(),
-                request.fullName()
+                command.password(),
+                command.fullName()
         );
 
         User user = userWithNewFlag.user();
-        organizationService.addMember(user.getId(), invitation.getOrgId(), invitation.getRole());
+        organizationApi.addMember(user.getId(), invitation.getOrgId(), invitation.getRole());
 
         invitation.accept(Instant.now());
 
         Organization organization = authInvitationService.getOrganizationOrThrow(invitation.getOrgId());
-        TokenResponse tokens = jwtTokenService.issueTokens(
+        JwtTokenService.IssuedTokens tokens = jwtTokenService.issueTokenBundle(
                 user.getId(),
                 user.getEmail(),
                 invitation.getOrgId(),
                 invitation.getRole().name()
         );
 
-        return new AcceptInvitationResponse(
-                toUserResponse(user),
-                toOrganizationResponse(organization),
-                tokens,
+        return new AcceptInvitationResult(
+                toUserResult(user),
+                toOrganizationResult(organization),
+                toTokenResult(tokens),
                 userWithNewFlag.isNewUser()
         );
     }
 
-    private UserResponse toUserResponse(User user) {
-        return new UserResponse(
+    private AuthUserResult toUserResult(User user) {
+        return new AuthUserResult(
                 user.getId(),
                 user.getEmail(),
                 user.getFullName(),
@@ -72,8 +72,8 @@ public class AcceptInvitationUseCase {
         );
     }
 
-    private OrganizationResponse toOrganizationResponse(Organization organization) {
-        return new OrganizationResponse(
+    private AuthOrganizationResult toOrganizationResult(Organization organization) {
+        return new AuthOrganizationResult(
                 organization.getId(),
                 organization.getSlug(),
                 organization.getName(),
@@ -81,6 +81,14 @@ public class AcceptInvitationUseCase {
                 organization.getTeamSize(),
                 organization.getPlanType().name(),
                 fileUrlResolver.resolve(organization.getProfileImageFileKey())
+        );
+    }
+
+    private AuthTokenResult toTokenResult(JwtTokenService.IssuedTokens issuedTokens) {
+        return new AuthTokenResult(
+                issuedTokens.accessToken(),
+                issuedTokens.refreshToken(),
+                issuedTokens.tokenType()
         );
     }
 }

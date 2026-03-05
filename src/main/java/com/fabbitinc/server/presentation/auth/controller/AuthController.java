@@ -10,18 +10,32 @@ import com.fabbitinc.server.application.auth.dto.response.AcceptInvitationRespon
 import com.fabbitinc.server.application.auth.dto.response.CheckEmailResponse;
 import com.fabbitinc.server.application.auth.dto.response.CheckSlugResponse;
 import com.fabbitinc.server.application.auth.dto.response.LoginResponse;
+import com.fabbitinc.server.application.auth.dto.response.OrganizationResponse;
 import com.fabbitinc.server.application.auth.dto.response.PlanResponse;
 import com.fabbitinc.server.application.auth.dto.response.RegisterResponse;
 import com.fabbitinc.server.application.auth.dto.response.ScopedLoginResponse;
 import com.fabbitinc.server.application.auth.dto.response.SendVerificationResponse;
 import com.fabbitinc.server.application.auth.dto.response.SiteResponse;
 import com.fabbitinc.server.application.auth.dto.response.TokenResponse;
+import com.fabbitinc.server.application.auth.dto.response.UserResponse;
 import com.fabbitinc.server.application.auth.dto.response.VerifyEmailResponse;
 import com.fabbitinc.server.application.auth.dto.response.VerifyInvitationResponse;
 import com.fabbitinc.server.application.auth.query.AuthInvitationQuery;
 import com.fabbitinc.server.application.auth.query.AuthQuery;
+import com.fabbitinc.server.application.auth.usecase.command.AcceptInvitationCommand;
+import com.fabbitinc.server.application.auth.usecase.command.LoginCommand;
+import com.fabbitinc.server.application.auth.usecase.command.LogoutCommand;
+import com.fabbitinc.server.application.auth.usecase.command.RefreshTokenCommand;
+import com.fabbitinc.server.application.auth.usecase.command.RegisterCommand;
 import com.fabbitinc.server.application.auth.usecase.command.SendVerificationCommand;
 import com.fabbitinc.server.application.auth.usecase.command.VerifyEmailCommand;
+import com.fabbitinc.server.application.auth.usecase.result.AcceptInvitationResult;
+import com.fabbitinc.server.application.auth.usecase.result.AuthOrganizationResult;
+import com.fabbitinc.server.application.auth.usecase.result.AuthTokenResult;
+import com.fabbitinc.server.application.auth.usecase.result.AuthUserResult;
+import com.fabbitinc.server.application.auth.usecase.result.LoginResult;
+import com.fabbitinc.server.application.auth.usecase.result.RefreshTokenResult;
+import com.fabbitinc.server.application.auth.usecase.result.RegisterResult;
 import com.fabbitinc.server.application.auth.usecase.result.SendVerificationResult;
 import com.fabbitinc.server.application.auth.usecase.result.VerifyEmailResult;
 import com.fabbitinc.server.application.auth.usecase.AcceptInvitationUseCase;
@@ -146,7 +160,24 @@ public class AuthController {
     @Operation(summary = "POST /api/v1/auth/register", description = "회원가입")
     @PostMapping("/register")
     public RegisterResponse register(@Valid @RequestBody RegisterRequest request) {
-        return registerUseCase.execute(request);
+        RegisterResult result = registerUseCase.execute(
+                new RegisterCommand(
+                        request.verificationToken(),
+                        request.code(),
+                        request.password(),
+                        request.fullName(),
+                        request.orgName(),
+                        request.slug(),
+                        request.industry(),
+                        request.teamSize(),
+                        request.planType()
+                )
+        );
+        return new RegisterResponse(
+                toUserResponse(result.user()),
+                toOrganizationResponse(result.organization()),
+                toTokenResponse(result.tokens())
+        );
     }
 
     @Operation(summary = "POST /api/v1/auth/login", description = "로그인")
@@ -156,17 +187,30 @@ public class AuthController {
             @RequestHeader(value = "Origin", required = false) String origin
     ) {
         String slug = extractOriginSlug(origin);
-        Object result = loginUseCase.execute(request, slug);
-        if (result instanceof LoginResponse || result instanceof ScopedLoginResponse) {
-            return result;
+        LoginResult result = loginUseCase.execute(
+                new LoginCommand(request.email(), request.password(), slug)
+        );
+
+        if (result.scoped()) {
+            return new ScopedLoginResponse(
+                    toUserResponse(result.user()),
+                    result.scopedAccessToken()
+            );
         }
-        throw new IllegalStateException("지원하지 않는 로그인 응답 타입입니다");
+
+        return new LoginResponse(
+                toUserResponse(result.user()),
+                toTokenResponse(result.tokens())
+        );
     }
 
     @Operation(summary = "POST /api/v1/auth/refresh", description = "리프레시 토큰으로 액세스 토큰 재발급")
     @PostMapping("/refresh")
     public TokenResponse refresh(@Valid @RequestBody RefreshRequest request) {
-        return refreshTokenUseCase.execute(request);
+        RefreshTokenResult result = refreshTokenUseCase.execute(
+                new RefreshTokenCommand(request.refreshToken())
+        );
+        return toTokenResponse(result.tokens());
     }
 
     @Operation(summary = "POST /api/v1/auth/logout", description = "리프레시 토큰 폐기")
@@ -174,7 +218,7 @@ public class AuthController {
     public ResponseEntity<Void> logout(
             @Valid @RequestBody RefreshRequest request
     ) {
-        logoutUseCase.execute(request);
+        logoutUseCase.execute(new LogoutCommand(request.refreshToken()));
         return ResponseEntity.noContent().build();
     }
 
@@ -187,7 +231,47 @@ public class AuthController {
     @Operation(summary = "POST /api/v1/auth/accept-invitation", description = "조직 초대 수락")
     @PostMapping("/accept-invitation")
     public AcceptInvitationResponse acceptInvitation(@Valid @RequestBody AcceptInvitationRequest request) {
-        return acceptInvitationUseCase.execute(request);
+        AcceptInvitationResult result = acceptInvitationUseCase.execute(
+                new AcceptInvitationCommand(request.token(), request.password(), request.fullName())
+        );
+        return new AcceptInvitationResponse(
+                toUserResponse(result.user()),
+                toOrganizationResponse(result.organization()),
+                toTokenResponse(result.tokens()),
+                result.isNewUser()
+        );
+    }
+
+    private UserResponse toUserResponse(AuthUserResult user) {
+        return new UserResponse(
+                user.id(),
+                user.email(),
+                user.fullName(),
+                user.phone(),
+                user.profileImageUrl(),
+                user.active(),
+                user.createdAt()
+        );
+    }
+
+    private OrganizationResponse toOrganizationResponse(AuthOrganizationResult organization) {
+        return new OrganizationResponse(
+                organization.id(),
+                organization.slug(),
+                organization.name(),
+                organization.industry(),
+                organization.teamSize(),
+                organization.planType(),
+                organization.profileImageUrl()
+        );
+    }
+
+    private TokenResponse toTokenResponse(AuthTokenResult token) {
+        return new TokenResponse(
+                token.accessToken(),
+                token.refreshToken(),
+                token.tokenType()
+        );
     }
 
     private String extractOriginSlug(String origin) {

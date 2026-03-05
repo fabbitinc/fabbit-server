@@ -5,7 +5,6 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.fabbitinc.server.application.auth.dto.response.TokenResponse;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.config.JwtProperties;
@@ -66,11 +65,6 @@ public class JwtTokenService {
         return new IssuedTokens(accessToken, refreshToken, "bearer");
     }
 
-    public TokenResponse issueTokens(UUID userId, String email, UUID orgId, String role) {
-        IssuedTokens issued = issueTokenBundle(userId, email, orgId, role);
-        return new TokenResponse(issued.accessToken(), issued.refreshToken(), issued.tokenType());
-    }
-
     public String issueScopedToken(UUID userId, String email, String scope) {
         Instant exp = Instant.now().plus(jwtProperties.accessTokenExpireMinutes(), ChronoUnit.MINUTES);
         return JWT.create()
@@ -83,7 +77,7 @@ public class JwtTokenService {
                 .sign(algorithm());
     }
 
-    public TokenResponse refreshTokens(String refreshToken) {
+    public IssuedTokens refreshTokenBundle(String refreshToken) {
         DecodedJWT decoded = verifyRefreshToken(refreshToken);
 
         String jti = requiredClaim(decoded, "jti");
@@ -111,7 +105,7 @@ public class JwtTokenService {
         Membership membership = membershipRepository.findFirstByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN, "소속된 조직이 없습니다"));
 
-        return issueTokens(
+        return issueTokenBundle(
                 userId,
                 email.isBlank() ? user.getEmail() : email,
                 membership.getOrgId(),
