@@ -26,13 +26,10 @@ import com.fabbitinc.server.application.part.dto.response.PartSuppliersResponse;
 import com.fabbitinc.server.application.part.dto.response.RelatedSupplierResponse;
 import com.fabbitinc.server.application.project.api.ProjectApi;
 import com.fabbitinc.server.application.project.dto.response.PartProjectsResponse;
-import com.fabbitinc.server.application.team.api.TeamApi;
-import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
-import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.part.model.BomLink;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
@@ -42,7 +39,6 @@ import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
 import com.fabbitinc.server.domain.project.model.ProjectPart;
 import com.fabbitinc.server.domain.supplier.model.Supplier;
 import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
-import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.user.model.User;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -83,9 +79,6 @@ public class PartQuery {
     private final CurrentAuthProvider currentAuthProvider;
     private final PartRepository partRepository;
     private final FileRepository fileRepository;
-    private final UserApi userApi;
-    private final TeamApi teamApi;
-    private final DrawingRepository drawingRepository;
     private final BomLinkRepository bomLinkRepository;
     private final PartSupplierRepository partSupplierRepository;
     private final SupplierRepository supplierRepository;
@@ -354,14 +347,9 @@ public class PartQuery {
                         "Part '" + partId + "'을(를) 찾을 수 없습니다"
                 ));
 
-        PartOwnerUserSummaryResponse owner = toUserSummary(part.getOwnerId());
-        String ownerTeamName = toTeamName(part.getOwnerTeamId());
-        RelatedDrawingResponse drawing = null;
-        if (part.getDrawingId() != null) {
-            drawing = drawingRepository.findById(part.getDrawingId())
-                    .map(this::toRelatedDrawing)
-                    .orElse(null);
-        }
+        PartOwnerUserSummaryResponse owner = toUserSummary(part.getOwner());
+        String ownerTeamName = part.getOwnerTeam() == null ? null : part.getOwnerTeam().getName();
+        RelatedDrawingResponse drawing = toRelatedDrawing(part.getDrawing());
 
         long childrenCount = bomLinkRepository.countByParentPartId(part.getId());
         long parentsCount = bomLinkRepository.countByChildPartId(part.getId());
@@ -538,11 +526,7 @@ public class PartQuery {
         );
     }
 
-    private PartOwnerUserSummaryResponse toUserSummary(UUID userId) {
-        if (userId == null) {
-            return null;
-        }
-        User user = userApi.getUserOrNull(userId);
+    private PartOwnerUserSummaryResponse toUserSummary(User user) {
         if (user == null) {
             return null;
         }
@@ -555,15 +539,10 @@ public class PartQuery {
         );
     }
 
-    private String toTeamName(UUID teamId) {
-        if (teamId == null) {
+    private RelatedDrawingResponse toRelatedDrawing(Drawing drawing) {
+        if (drawing == null) {
             return null;
         }
-        Team team = teamApi.getTeamOrNull(teamId);
-        return team == null ? null : team.getName();
-    }
-
-    private RelatedDrawingResponse toRelatedDrawing(Drawing drawing) {
         if (drawing.getDeletedAt() != null) {
             return null;
         }
@@ -573,7 +552,7 @@ public class PartQuery {
                 drawing.getName(),
                 drawing.getVersion(),
                 drawing.getStatus(),
-                drawing.getConversionStatus(),
+                drawing.getConversionStatus() == null ? null : drawing.getConversionStatus().name(),
                 fileUrlResolver.resolve(drawing.getThumbnailKey()),
                 fileUrlResolver.resolve(drawing.getPdfKey()),
                 fileUrlResolver.resolve(drawing.getOriginalFileKey())

@@ -86,7 +86,7 @@ public class AuthQuery {
         PlanType planType = entry.getKey();
         PlanLimits limits = entry.getValue();
         return new PlanResult(
-                planType.name(),
+                planType,
                 limits.displayName(),
                 limits.description(),
                 limits.maxMembers(),

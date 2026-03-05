@@ -13,9 +13,11 @@ import com.fabbitinc.server.domain.mapping.model.MappingRevision;
 import com.fabbitinc.server.domain.mapping.repository.MappingRevisionRepository;
 import com.fabbitinc.server.domain.part.model.BomLink;
 import com.fabbitinc.server.domain.part.model.Part;
+import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
 import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
+import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
 import com.fabbitinc.server.domain.supplier.model.Supplier;
 import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
@@ -44,6 +46,7 @@ public class SynthesisExecutionService {
     private final StoragePort storagePort;
     private final SpreadsheetParserSupport spreadsheetParserSupport;
     private final PartRepository partRepository;
+    private final PartRevisionRepository partRevisionRepository;
     private final BomLinkRepository bomLinkRepository;
     private final SupplierRepository supplierRepository;
     private final PartSupplierRepository partSupplierRepository;
@@ -94,7 +97,7 @@ public class SynthesisExecutionService {
             for (Map<String, Object> row : rows) {
                 processedRows++;
                 try {
-                    RowProcessResult result = processRow(row, mapping, rootContext, overwrite);
+                    RowProcessResult result = processRow(row, mapping, rootContext, overwrite, job.getId());
                     nodesCreated += result.nodesCreated();
                     relationshipsCreated += result.relationshipsCreated();
                 } catch (Exception ex) {
@@ -116,7 +119,8 @@ public class SynthesisExecutionService {
             Map<String, Object> row,
             MappingResultDto mapping,
             Map<String, String> rootContext,
-            boolean overwrite
+            boolean overwrite,
+            UUID jobId
     ) {
         int nodesCreated = 0;
         int relationshipsCreated = 0;
@@ -127,7 +131,7 @@ public class SynthesisExecutionService {
         }
 
         String childName = resolvePartName(row, mapping.propertyMappings());
-        UpsertPartResult childResult = upsertPart(childPartNumber, childName, overwrite);
+        UpsertPartResult childResult = upsertPart(childPartNumber, childName, overwrite, jobId);
         if (childResult.created()) {
             nodesCreated++;
         }
@@ -140,7 +144,7 @@ public class SynthesisExecutionService {
                 }
 
                 String parentName = resolveMappedText(row, relation.nodeColumns().get("name"), "string");
-                UpsertPartResult parentResult = upsertPart(parentPartNumber, parentName, overwrite);
+                UpsertPartResult parentResult = upsertPart(parentPartNumber, parentName, overwrite, jobId);
                 if (parentResult.created()) {
                     nodesCreated++;
                 }
@@ -275,17 +279,26 @@ public class SynthesisExecutionService {
         return toDouble(value);
     }
 
-    private UpsertPartResult upsertPart(String partNumber, String name, boolean overwrite) {
+    private UpsertPartResult upsertPart(String partNumber, String name, boolean overwrite, UUID jobId) {
         Part existing = partRepository.findByPartNumber(partNumber).orElse(null);
         if (existing != null) {
-            if (overwrite && (existing.getName() == null || existing.getName().isBlank()) && name != null) {
+            boolean changed = false;
+            if (name != null
+                    && (overwrite || existing.getName() == null || existing.getName().isBlank())
+                    && !name.equals(existing.getName())) {
                 existing.changeName(name);
+                changed = true;
+            }
+            if (changed) {
+                existing.bumpRevision();
+                partRevisionRepository.save(PartRevision.capture(existing, jobId));
             }
             return new UpsertPartResult(existing, false);
         }
 
-        Part created = new Part(partNumber, name);
+        Part created = Part.create(partNumber, name);
         partRepository.save(created);
+        partRevisionRepository.save(PartRevision.capture(created, jobId));
         return new UpsertPartResult(created, true);
     }
 
@@ -295,7 +308,7 @@ public class SynthesisExecutionService {
             return false;
         }
 
-        bomLinkRepository.save(new BomLink(parent.getId(), child.getId(), quantity, "{}"));
+        bomLinkRepository.save(BomLink.connect(parent.getId(), child.getId(), quantity, "{}"));
         return true;
     }
 
@@ -316,7 +329,7 @@ public class SynthesisExecutionService {
             return false;
         }
 
-        partSupplierRepository.save(new PartSupplier(part.getId(), supplier.getId(), unitCost, "{}"));
+        partSupplierRepository.save(PartSupplier.link(part.getId(), supplier.getId(), unitCost, "{}"));
         return true;
     }
 

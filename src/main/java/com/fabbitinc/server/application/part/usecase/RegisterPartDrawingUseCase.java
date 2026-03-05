@@ -30,7 +30,7 @@ public class RegisterPartDrawingUseCase {
                 drawing.getId(),
                 drawing.getDrawingNumber(),
                 drawing.getName(),
-                drawing.getConversionStatus()
+                drawing.getConversionStatus() == null ? null : drawing.getConversionStatus().name()
         );
     }
 }

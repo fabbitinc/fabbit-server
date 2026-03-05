@@ -8,8 +8,6 @@ import com.fabbitinc.server.application.part.dto.response.PartDefaultOwnerItemRe
 import com.fabbitinc.server.application.part.dto.response.PartDefaultOwnerListResponse;
 import com.fabbitinc.server.application.part.dto.response.PartOwnerResponse;
 import com.fabbitinc.server.application.part.dto.response.PartOwnerUserSummaryResponse;
-import com.fabbitinc.server.application.team.api.TeamApi;
-import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartDefaultOwner;
 import com.fabbitinc.server.domain.part.repository.PartDefaultOwnerRepository;
@@ -32,8 +30,6 @@ public class PartOwnerQuery {
     private final CurrentAuthProvider currentAuthProvider;
     private final PartRepository partRepository;
     private final PartDefaultOwnerRepository partDefaultOwnerRepository;
-    private final UserApi userApi;
-    private final TeamApi teamApi;
     private final FileUrlResolver fileUrlResolver;
 
     public PartOwnerResponse getPartOwner(UUID partId) {
@@ -73,9 +69,9 @@ public class PartOwnerQuery {
     private PartOwnerResponse toPartOwnerResponse(Part part) {
         return new PartOwnerResponse(
                 part.getOwnerId(),
-                toUserSummary(part.getOwnerId()),
+                toUserSummary(part.getOwner()),
                 part.getOwnerTeamId(),
-                toTeamName(part.getOwnerTeamId())
+                toTeamName(part.getOwnerTeam())
         );
     }
 
@@ -84,17 +80,13 @@ public class PartOwnerQuery {
                 row.getId(),
                 row.getCategory(),
                 row.getDefaultOwnerId(),
-                toUserSummary(row.getDefaultOwnerId()),
+                toUserSummary(row.getDefaultOwner()),
                 row.getDefaultOwnerTeamId(),
-                toTeamName(row.getDefaultOwnerTeamId())
+                toTeamName(row.getDefaultOwnerTeam())
         );
     }
 
-    private PartOwnerUserSummaryResponse toUserSummary(UUID userId) {
-        if (userId == null) {
-            return null;
-        }
-        User user = userApi.getUserOrNull(userId);
+    private PartOwnerUserSummaryResponse toUserSummary(User user) {
         if (user == null) {
             return null;
         }
@@ -107,11 +99,7 @@ public class PartOwnerQuery {
         );
     }
 
-    private String toTeamName(UUID teamId) {
-        if (teamId == null) {
-            return null;
-        }
-        Team team = teamApi.getTeamOrNull(teamId);
+    private String toTeamName(Team team) {
         return team != null ? team.getName() : null;
     }
 }

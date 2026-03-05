@@ -123,10 +123,10 @@ public class PartService {
         PartDefaultOwner defaultOwner;
         if (category != null) {
             defaultOwner = partDefaultOwnerRepository.findByCategory(category)
-                    .orElseGet(() -> new PartDefaultOwner(category, ownerId, ownerTeamId));
+                    .orElseGet(() -> PartDefaultOwner.create(category, ownerId, ownerTeamId));
         } else {
             defaultOwner = partDefaultOwnerRepository.findByCategoryIsNull()
-                    .orElseGet(() -> new PartDefaultOwner(null, ownerId, ownerTeamId));
+                    .orElseGet(() -> PartDefaultOwner.create(null, ownerId, ownerTeamId));
         }
 
         defaultOwner.update(ownerId, ownerTeamId);

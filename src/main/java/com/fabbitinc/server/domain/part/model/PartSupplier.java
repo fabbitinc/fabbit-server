@@ -1,10 +1,15 @@
 package com.fabbitinc.server.domain.part.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
+import com.fabbitinc.server.domain.supplier.model.Supplier;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -33,11 +38,22 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PartSupplier extends AbstractCreatedEntity {
 
+    public static final String CODE_PART_SUPPLIER_PART_REQUIRED = "PART_SUPPLIER_PART_REQUIRED";
+    public static final String CODE_PART_SUPPLIER_SUPPLIER_REQUIRED = "PART_SUPPLIER_SUPPLIER_REQUIRED";
+
     @Column(name = "part_id", nullable = false)
     private UUID partId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "part_id", insertable = false, updatable = false)
+    private Part part;
+
     @Column(name = "supplier_id", nullable = false)
     private UUID supplierId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supplier_id", insertable = false, updatable = false)
+    private Supplier supplier;
 
     @Column(name = "unit_cost")
     private Double unitCost;
@@ -46,13 +62,31 @@ public class PartSupplier extends AbstractCreatedEntity {
     @Column(name = "extended_properties", nullable = false, columnDefinition = "jsonb")
     private String extendedProperties;
 
-    public PartSupplier(UUID partId, UUID supplierId, Double unitCost, String extendedProperties) {
+    private PartSupplier(UUID partId, UUID supplierId, Double unitCost, String extendedProperties) {
         super(UuidV7Generator.next());
-        this.partId = partId;
-        this.supplierId = supplierId;
+        this.partId = requirePartId(partId);
+        this.supplierId = requireSupplierId(supplierId);
         this.unitCost = unitCost;
         this.extendedProperties = (extendedProperties == null || extendedProperties.isBlank())
                 ? "{}"
                 : extendedProperties;
+    }
+
+    public static PartSupplier link(UUID partId, UUID supplierId, Double unitCost, String extendedProperties) {
+        return new PartSupplier(partId, supplierId, unitCost, extendedProperties);
+    }
+
+    private UUID requirePartId(UUID value) {
+        if (value == null) {
+            throw new DomainException(CODE_PART_SUPPLIER_PART_REQUIRED, "부품 ID는 필수입니다");
+        }
+        return value;
+    }
+
+    private UUID requireSupplierId(UUID value) {
+        if (value == null) {
+            throw new DomainException(CODE_PART_SUPPLIER_SUPPLIER_REQUIRED, "공급사 ID는 필수입니다");
+        }
+        return value;
     }
 }

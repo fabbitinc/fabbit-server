@@ -1,10 +1,11 @@
 package com.fabbitinc.server.application.auth.dto.response;
 
+import com.fabbitinc.server.domain.organization.model.PlanType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record PlanResponse(
         @Schema(description = "플랜 타입", example = "STARTER")
-        String planType,
+        PlanType planType,
         @Schema(description = "플랜 표시 이름", example = "Starter")
         String displayName,
         @Schema(description = "플랜 설명", example = "소규모 팀을 위한 기본 플랜")

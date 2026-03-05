@@ -1,5 +1,6 @@
 package com.fabbitinc.server.application.auth.dto.response;
 
+import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
@@ -12,7 +13,7 @@ public record VerifyInvitationResponse(
         @Schema(description = "초대한 사용자 이름", example = "관리자")
         String inviterName,
         @Schema(description = "초대 역할", example = "MEMBER")
-        String role,
+        MembershipRole role,
         @Schema(description = "기존 가입 사용자 여부", example = "false")
         boolean isExistingUser,
         @Schema(description = "초대 만료 시각")

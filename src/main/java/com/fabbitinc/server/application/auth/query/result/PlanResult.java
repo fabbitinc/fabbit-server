@@ -1,7 +1,9 @@
 package com.fabbitinc.server.application.auth.query.result;
 
+import com.fabbitinc.server.domain.organization.model.PlanType;
+
 public record PlanResult(
-        String planType,
+        PlanType planType,
         String displayName,
         String description,
         int maxMembers,

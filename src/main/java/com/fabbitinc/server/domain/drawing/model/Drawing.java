@@ -4,6 +4,8 @@ import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -35,8 +37,9 @@ public class Drawing extends AbstractCreatedEntity {
     @Column(name = "status", length = 50)
     private String status;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "conversion_status", length = 30)
-    private String conversionStatus;
+    private DrawingConversionStatus conversionStatus;
 
     @Column(name = "thumbnail_key", length = 1000)
     private String thumbnailKey;
@@ -69,7 +72,7 @@ public class Drawing extends AbstractCreatedEntity {
     }
 
     public void markConversionPending() {
-        this.conversionStatus = "PENDING";
+        this.conversionStatus = DrawingConversionStatus.PENDING;
     }
 
     public void softDelete() {

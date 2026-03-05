@@ -2,8 +2,13 @@ package com.fabbitinc.server.domain.part.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractAuditableEntity;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
+import com.fabbitinc.server.domain.team.model.Team;
+import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -23,18 +28,38 @@ public class PartDefaultOwner extends AbstractAuditableEntity {
     @Column(name = "default_owner_id")
     private UUID defaultOwnerId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "default_owner_id", insertable = false, updatable = false)
+    private User defaultOwner;
+
     @Column(name = "default_owner_team_id")
     private UUID defaultOwnerTeamId;
 
-    public PartDefaultOwner(String category, UUID defaultOwnerId, UUID defaultOwnerTeamId) {
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "default_owner_team_id", insertable = false, updatable = false)
+    private Team defaultOwnerTeam;
+
+    private PartDefaultOwner(String category, UUID defaultOwnerId, UUID defaultOwnerTeamId) {
         super(UuidV7Generator.next());
-        this.category = category;
+        this.category = normalizeCategory(category);
         this.defaultOwnerId = defaultOwnerId;
         this.defaultOwnerTeamId = defaultOwnerTeamId;
+    }
+
+    public static PartDefaultOwner create(String category, UUID defaultOwnerId, UUID defaultOwnerTeamId) {
+        return new PartDefaultOwner(category, defaultOwnerId, defaultOwnerTeamId);
     }
 
     public void update(UUID defaultOwnerId, UUID defaultOwnerTeamId) {
         this.defaultOwnerId = defaultOwnerId;
         this.defaultOwnerTeamId = defaultOwnerTeamId;
+    }
+
+    private String normalizeCategory(String rawCategory) {
+        if (rawCategory == null) {
+            return null;
+        }
+        String trimmed = rawCategory.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }
