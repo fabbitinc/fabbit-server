@@ -2,6 +2,7 @@ plugins {
     java
     id("org.springframework.boot") version "4.0.3"
     id("io.spring.dependency-management") version "1.1.7"
+    id("io.atlasgo.hibernate-provider-gradle-plugin") version "0.1"
 }
 
 group = "com.fabbitinc"
@@ -50,6 +51,34 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+sourceSets {
+    main {
+        resources {
+            srcDir("migrations")
+        }
+    }
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.register<JavaExec>("schemaExport") {
+    dependsOn("classes")
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.fabbitinc.server.tools.SchemaExporter")
+}
+
+tasks.register<JavaExec>("schemaExportPublic") {
+    dependsOn("classes")
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.fabbitinc.server.tools.SchemaExporter")
+    args = listOf("public")
+}
+
+tasks.register<JavaExec>("schemaExportTenant") {
+    dependsOn("classes")
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.fabbitinc.server.tools.SchemaExporter")
+    args = listOf("tenant")
 }

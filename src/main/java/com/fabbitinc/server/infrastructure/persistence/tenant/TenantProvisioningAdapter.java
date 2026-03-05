@@ -7,12 +7,19 @@ import com.fabbitinc.server.application.organization.port.TenantProvisioningPort
 import com.fabbitinc.server.application.tenant.support.TenantSchemaPolicy;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.Table;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Session;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -46,6 +53,15 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
 
     private final EntityManager entityManager;
 
+    @Value("${spring.datasource.url}")
+    private String jdbcUrl;
+
+    @Value("${spring.datasource.username}")
+    private String dbUsername;
+
+    @Value("${spring.datasource.password}")
+    private String dbPassword;
+
     @Override
     public String provisionTenant(UUID orgId) {
         String schemaName = TenantSchemaPolicy.schemaNameForOrgId(orgId);
@@ -55,9 +71,13 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
             session.doWork(connection -> {
                 loadAge(connection);
                 ensureGraph(connection, schemaName);
-                ensureTenantTables(connection, schemaName);
-                seedDefaultLabels(connection, schemaName);
                 createOntologyIndexes(connection, schemaName);
+            });
+
+            applyTenantMigrations(schemaName);
+
+            session.doWork(connection -> {
+                seedDefaultLabels(connection, schemaName);
             });
         } catch (Exception ex) {
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "테넌트 프로비저닝에 실패했습니다");
@@ -65,6 +85,61 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
 
         log.info("테넌트 프로비저닝 완료: orgId={}, schema={}", orgId, schemaName);
         return schemaName;
+    }
+
+    private void applyTenantMigrations(String schemaName) throws IOException, InterruptedException {
+        Path tmpDir = extractMigrationFiles();
+        try {
+            String atlasUrl = toAtlasUrl(schemaName);
+            ProcessBuilder pb = new ProcessBuilder(
+                    "atlas", "migrate", "apply",
+                    "--dir", "file://" + tmpDir.toAbsolutePath(),
+                    "--url", atlasUrl
+            );
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            String output = new String(process.getInputStream().readAllBytes());
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                log.error("atlas migrate apply 실패: schema={}, output={}", schemaName, output);
+                throw new IOException("atlas migrate apply failed with exit code " + exitCode);
+            }
+            log.info("atlas migrate apply 완료: schema={}", schemaName);
+        } finally {
+            deleteDirectory(tmpDir);
+        }
+    }
+
+    private Path extractMigrationFiles() throws IOException {
+        Path tmpDir = Files.createTempDirectory("tenant-migrations-");
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        Resource[] resources = resolver.getResources("classpath:tenant/*");
+        for (Resource resource : resources) {
+            String filename = resource.getFilename();
+            if (filename == null) {
+                continue;
+            }
+            try (InputStream is = resource.getInputStream()) {
+                Files.copy(is, tmpDir.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+        return tmpDir;
+    }
+
+    private String toAtlasUrl(String schemaName) {
+        // jdbc:postgresql://host:port/db → postgres://user:pass@host:port/db?search_path=schema
+        String pgUrl = jdbcUrl
+                .replace("jdbc:postgresql://", "postgres://" + dbUsername + ":" + dbPassword + "@");
+        return pgUrl + "?search_path=" + schemaName + "&sslmode=disable";
+    }
+
+    private void deleteDirectory(Path dir) {
+        try (var stream = Files.walk(dir)) {
+            stream.sorted(java.util.Comparator.reverseOrder())
+                    .forEach(path -> {
+                        try { Files.delete(path); } catch (IOException ignored) {}
+                    });
+        } catch (IOException ignored) {}
     }
 
     private void loadAge(Connection connection) throws SQLException {
@@ -96,36 +171,6 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
                 return rs.getLong(1) > 0;
             }
         }
-    }
-
-    private void ensureTenantTables(Connection connection, String schemaName) throws SQLException {
-        String quotedSchema = TenantSchemaPolicy.quoteIdentifier(schemaName);
-        for (String tableName : resolveTenantTableNames()) {
-            String quotedTable = TenantSchemaPolicy.quoteIdentifier(tableName);
-            String sql = "CREATE TABLE IF NOT EXISTS "
-                    + quotedSchema + "." + quotedTable
-                    + " (LIKE public." + quotedTable + " INCLUDING ALL)";
-            try (Statement statement = connection.createStatement()) {
-                statement.execute(sql);
-            }
-        }
-    }
-
-    private Set<String> resolveTenantTableNames() {
-        Set<String> tableNames = new LinkedHashSet<>();
-        entityManager.getMetamodel().getEntities().forEach(entityType -> {
-            Table table = entityType.getJavaType().getAnnotation(Table.class);
-            if (table == null || table.name().isBlank()) {
-                return;
-            }
-
-            if (!table.schema().isBlank()) {
-                return;
-            }
-
-            tableNames.add(TenantSchemaPolicy.normalizeSqlIdentifier(table.name()));
-        });
-        return tableNames;
     }
 
     private void seedDefaultLabels(Connection connection, String schemaName) throws SQLException {

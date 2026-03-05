@@ -1,41 +1,33 @@
 .PHONY: dev-start dev-db-reset openapi test test-e2e test-e2e-llm test2-unit test2-e2e test2-e2e-external test2-llm-eval karate-generate-openapi karate-test karate-test-auth karate-test-flow-project playwright-test-all-api playwright-test-excluded-api karate-test-all-api-dry karate-test-docker karate-test-auth-docker migrate-public migrate-tenant migrate-all revision-public revision-tenant lint
 
+# 개발환경 디비 종료
+dev-db-stop:
+	docker compose -f docker/docker-compose.dev.yml down
+
 # 개발환경 디비 시작
 dev-db-start:
 	docker compose -f docker/docker-compose.dev.yml up -d 
 	@echo "PostgreSQL 준비 대기..."
 	@until docker exec fabbit-db pg_isready -U fabbit -q 2>/dev/null; do sleep 0.5; done
 	@echo "PostgreSQL 준비 완료"
+	$(MAKE) migrate-all
 
-# 개발환경 디비 종료
-dev-db-stop:
-	docker compose -f docker/docker-compose.dev.yml down
-
-# DB 초기화 (볼륨 삭제)
+# DB 초기화 (볼륨 삭제 + 마이그레이션 파일 초기화)
 dev-db-reset:
 	docker compose -f docker/docker-compose.dev.yml down -v
 	@echo "DB 볼륨 삭제 완료."
-	@find alembic/versions -type f -name "*.py" -delete
-	@find alembic_tenant/versions -type f -name "*.py" -delete
-	@echo "마이그래이션 삭제 완료."
+	@rm -f migrations/public/*.sql migrations/public/atlas.sum
+	@rm -f migrations/tenant/*.sql migrations/tenant/atlas.sum
+	@echo "마이그레이션 파일 삭제 완료."
 
-# 개발환경 시작 (PostgreSQL + API 서버)
-dev-start:
-	$(MAKE) dev-db-start
-	$(MAKE) migrate-all
-	uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-dev-reset:
+dev-db-restart:
 	$(MAKE) dev-db-reset
-	$(MAKE) dev-start
+	$(MAKE) dev-db-start
 
-dev-alembic-up:
-	$(MAKE) revision-all
-	$(MAKE) migrate-all
 
 # OpenAPI 스펙 파일 생성
 openapi:
-	@curl -s http://localhost:8000/openapi.json | python3 -m json.tool > openapi.json
+	@curl -s http://localhost:8080/openapi.json | python3 -m json.tool > openapi.json
 	@echo "openapi.json 생성 완료"
 	@cp ./openapi.json ../web/openapi.json
 	@echo "openapi.json 복사 완료"
@@ -48,30 +40,33 @@ openapi:
 
 # public revision 자동 생성 (사용: make revision-public m="설명")
 revision-public:
-	uv run alembic revision --autogenerate -m "$(m)"
+	atlas migrate diff --env public -c "file://migrations/atlas.hcl"
 	@echo "public 마이그레이션 생성 완료"
 
 # tenant revision 자동 생성 (사용: make revision-tenant m="설명")
 revision-tenant:
-	uv run alembic -c alembic_tenant.ini revision --autogenerate -m "$(m)"
+	atlas migrate diff --env tenant -c "file://migrations/atlas.hcl"
 	@echo "tenant 마이그레이션 생성 완료"
-
-revision-all:
-	$(MAKE) revision-public
-	$(MAKE) revision-tenant
-
 
 # public 마이그레이션 적용
 migrate-public:
 	$(MAKE) revision-public
-	uv run alembic upgrade head
+	atlas migrate apply --env public -c "file://migrations/atlas.hcl"
 	@echo "public 마이그레이션 완료"
 
 # tenant 마이그레이션 적용 (모든 tenant_* 스키마 순회)
 migrate-tenant:
 	$(MAKE) revision-tenant
-	uv run alembic -c alembic_tenant.ini upgrade head
-	@echo "tenant 마이그레이션 완료"
+	@SCHEMAS=$$(docker exec fabbit-db psql -U fabbit -t -A -c "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'tenant_%'"); \
+	if [ -z "$$SCHEMAS" ]; then \
+		echo "적용할 tenant 스키마 없음 (skip)"; \
+	else \
+		for s in $$SCHEMAS; do \
+			echo "tenant 마이그레이션 적용: $$s"; \
+			atlas migrate apply --dir "file://migrations/tenant" --dev-url "docker://postgres/18/dev?search_path=public" --url "postgres://fabbit:fabbit@localhost:5432/fabbit?search_path=$$s&sslmode=disable"; \
+		done; \
+		echo "tenant 마이그레이션 완료"; \
+	fi
 
 # public + tenant 마이그레이션 적용
 migrate-all:
