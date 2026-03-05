@@ -2,7 +2,6 @@ plugins {
     java
     id("org.springframework.boot") version "4.0.3"
     id("io.spring.dependency-management") version "1.1.7"
-    id("io.atlasgo.hibernate-provider-gradle-plugin") version "0.1"
 }
 
 group = "com.fabbitinc"
@@ -31,6 +30,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.liquibase:liquibase-core")
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springframework:spring-aop")
     implementation("org.aspectj:aspectjweaver")

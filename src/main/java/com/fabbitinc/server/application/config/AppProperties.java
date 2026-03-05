@@ -18,6 +18,8 @@ public record AppProperties(
         @DefaultValue("false") boolean smtpUseTls,
         @DefaultValue("noreply@fabbit.io") String smtpFromEmail,
         @DefaultValue("Fabbit") String smtpFromName,
+        @DefaultValue("false") boolean turnstileEnabled,
+        @DefaultValue("") String turnstileSecretKey,
         @DefaultValue("http://localhost:9000") String storageEndpoint,
         @DefaultValue("minioadmin") String storageAccessKey,
         @DefaultValue("minioadmin") String storageSecretKey,

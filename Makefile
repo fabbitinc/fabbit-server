@@ -10,14 +10,15 @@ dev-db-start:
 	@echo "PostgreSQL 준비 대기..."
 	@until docker exec fabbit-db pg_isready -U fabbit -q 2>/dev/null; do sleep 0.5; done
 	@echo "PostgreSQL 준비 완료"
+	$(MAKE) revision-all
 	$(MAKE) migrate-all
 
 # DB 초기화 (볼륨 삭제 + 마이그레이션 파일 초기화)
 dev-db-reset:
 	docker compose -f docker/docker-compose.dev.yml down -v
 	@echo "DB 볼륨 삭제 완료."
-	@rm -f migrations/public/*.sql migrations/public/atlas.sum
-	@rm -f migrations/tenant/*.sql migrations/tenant/atlas.sum
+	@rm -f migrations/public/[0-9]*.sql
+	@rm -f migrations/tenant/[0-9]*.sql
 	@echo "마이그레이션 파일 삭제 완료."
 
 dev-db-restart:
@@ -34,36 +35,84 @@ openapi:
 
 
 
-# ── 마이그레이션 ──
+# ── 마이그레이션 (Liquibase) ──
 
+LB_URL      = jdbc:postgresql://localhost:5432/fabbit
+LB_USER     = fabbit
+LB_PASS     = fabbit
+LB_DEV_PORT = 5433
+LB = liquibase --username=$(LB_USER) --password=$(LB_PASS) --search-path=.
 
-
-# public revision 자동 생성 (사용: make revision-public m="설명")
+# public diff 자동 생성 (기존 마이그레이션 vs Hibernate DDL)
 revision-public:
-	atlas migrate diff --env public -c "file://migrations/atlas.hcl"
-	@echo "public 마이그레이션 생성 완료"
+	@docker rm -f lb-dev-db 2>/dev/null || true
+	@docker run --rm -d --name lb-dev-db -e POSTGRES_PASSWORD=dev -p $(LB_DEV_PORT):5432 postgres:18 > /dev/null
+	@until docker exec lb-dev-db pg_isready -q 2>/dev/null; do sleep 0.5; done
+	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE current_state"
+	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE desired_state"
+	@# current: 기존 마이그레이션 적용
+	liquibase --username=postgres --password=dev --search-path=. \
+		--url="jdbc:postgresql://localhost:$(LB_DEV_PORT)/current_state" \
+		--changelog-file=migrations/public-changelog.xml \
+		update 2>/dev/null || true
+	@# desired: Hibernate DDL 적용
+	@./gradlew -q schemaExportPublic | docker exec -i lb-dev-db psql -U postgres -d desired_state -q 2>/dev/null
+	@# diff: desired vs current
+	liquibase --username=postgres --password=dev --search-path=. \
+		--url="jdbc:postgresql://localhost:$(LB_DEV_PORT)/current_state" \
+		--referenceUrl="jdbc:postgresql://localhost:$(LB_DEV_PORT)/desired_state" \
+		--referenceUsername=postgres --referencePassword=dev \
+		--changelog-file=migrations/public/$$(date +%Y%m%d%H%M%S)_diff.sql \
+		diffChangeLog || (docker rm -f lb-dev-db > /dev/null 2>&1; exit 1)
+	@docker rm -f lb-dev-db > /dev/null
+	@echo "public revision 생성 완료"
 
-# tenant revision 자동 생성 (사용: make revision-tenant m="설명")
+# tenant diff 자동 생성 (기존 마이그레이션 vs Hibernate DDL)
 revision-tenant:
-	atlas migrate diff --env tenant -c "file://migrations/atlas.hcl"
-	@echo "tenant 마이그레이션 생성 완료"
+	@docker rm -f lb-dev-db 2>/dev/null || true
+	@docker run --rm -d --name lb-dev-db -e POSTGRES_PASSWORD=dev -p $(LB_DEV_PORT):5432 postgres:18 > /dev/null
+	@until docker exec lb-dev-db pg_isready -q 2>/dev/null; do sleep 0.5; done
+	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE current_state"
+	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE desired_state"
+	@# current: 기존 마이그레이션 적용
+	liquibase --username=postgres --password=dev --search-path=. \
+		--url="jdbc:postgresql://localhost:$(LB_DEV_PORT)/current_state" \
+		--changelog-file=migrations/tenant-changelog.xml \
+		update 2>/dev/null || true
+	@# desired: Hibernate DDL 적용
+	@./gradlew -q schemaExportTenant | docker exec -i lb-dev-db psql -U postgres -d desired_state -q 2>/dev/null
+	@# diff: desired vs current
+	liquibase --username=postgres --password=dev --search-path=. \
+		--url="jdbc:postgresql://localhost:$(LB_DEV_PORT)/current_state" \
+		--referenceUrl="jdbc:postgresql://localhost:$(LB_DEV_PORT)/desired_state" \
+		--referenceUsername=postgres --referencePassword=dev \
+		--changelog-file=migrations/tenant/$$(date +%Y%m%d%H%M%S)_diff.sql \
+		diffChangeLog || (docker rm -f lb-dev-db > /dev/null 2>&1; exit 1)
+	@docker rm -f lb-dev-db > /dev/null
+	@echo "tenant revision 생성 완료"
+
+revision-all:
+	$(MAKE) revision-public
+	$(MAKE) revision-tenant
 
 # public 마이그레이션 적용
 migrate-public:
-	$(MAKE) revision-public
-	atlas migrate apply --env public -c "file://migrations/atlas.hcl"
+	$(LB) --url="$(LB_URL)" --default-schema-name=public \
+		--changelog-file=migrations/public-changelog.xml \
+		update
 	@echo "public 마이그레이션 완료"
 
 # tenant 마이그레이션 적용 (모든 tenant_* 스키마 순회)
 migrate-tenant:
-	$(MAKE) revision-tenant
 	@SCHEMAS=$$(docker exec fabbit-db psql -U fabbit -t -A -c "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'tenant_%'"); \
 	if [ -z "$$SCHEMAS" ]; then \
 		echo "적용할 tenant 스키마 없음 (skip)"; \
 	else \
 		for s in $$SCHEMAS; do \
 			echo "tenant 마이그레이션 적용: $$s"; \
-			atlas migrate apply --dir "file://migrations/tenant" --dev-url "docker://postgres/18/dev?search_path=public" --url "postgres://fabbit:fabbit@localhost:5432/fabbit?search_path=$$s&sslmode=disable"; \
+			$(LB) --url="$(LB_URL)" --default-schema-name=$$s --liquibase-schema-name=$$s \
+				--changelog-file=migrations/tenant-changelog.xml \
+				update; \
 		done; \
 		echo "tenant 마이그레이션 완료"; \
 	fi

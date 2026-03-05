@@ -6,17 +6,17 @@ import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
 import com.fabbitinc.server.application.organization.port.TenantProvisioningPort;
 import com.fabbitinc.server.application.tenant.support.TenantSchemaPolicy;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Session;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 
+import javax.sql.DataSource;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -25,11 +25,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -51,7 +53,7 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
             new DefaultLabel("시험검증", "시험·검증 요청", "#bfd4f2")
     );
 
-    private final EntityManager entityManager;
+    private final DataSource dataSource;
 
     @Value("${spring.datasource.url}")
     private String jdbcUrl;
@@ -65,21 +67,27 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
     @Override
     public String provisionTenant(UUID orgId) {
         String schemaName = TenantSchemaPolicy.schemaNameForOrgId(orgId);
-        Session session = entityManager.unwrap(Session.class);
 
         try {
-            session.doWork(connection -> {
+            log.info("테넌트 프로비저닝 시작: orgId={}, schema={}", orgId, schemaName);
+
+            try (Connection connection = dataSource.getConnection()) {
                 loadAge(connection);
                 ensureGraph(connection, schemaName);
-                createOntologyIndexes(connection, schemaName);
-            });
+            }
+            log.info("AGE 그래프 준비 완료: schema={}", schemaName);
 
             applyTenantMigrations(schemaName);
+            log.info("테넌트 마이그레이션 완료: schema={}", schemaName);
 
-            session.doWork(connection -> {
+            try (Connection connection = dataSource.getConnection()) {
+                loadAge(connection);
                 seedDefaultLabels(connection, schemaName);
-            });
+                createOntologyIndexes(connection, schemaName);
+            }
+            log.info("기본 라벨/온톨로지 인덱스 완료: schema={}", schemaName);
         } catch (Exception ex) {
+            log.error("테넌트 프로비저닝 실패: orgId={}, schema={}", orgId, schemaName, ex);
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "테넌트 프로비저닝에 실패했습니다");
         }
 
@@ -94,12 +102,29 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
             ProcessBuilder pb = new ProcessBuilder(
                     "atlas", "migrate", "apply",
                     "--dir", "file://" + tmpDir.toAbsolutePath(),
-                    "--url", atlasUrl
+                    "--url", atlasUrl,
+                    "--lock-timeout", "3s"
             );
             pb.redirectErrorStream(true);
             Process process = pb.start();
-            String output = new String(process.getInputStream().readAllBytes());
-            int exitCode = process.waitFor();
+            process.getOutputStream().close();
+
+            List<String> lines = new ArrayList<>();
+            Thread outputReader = Thread.ofVirtual().start(() -> readProcessOutput(process.getInputStream(), lines));
+
+            boolean finished = process.waitFor(10, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                process.waitFor(2, TimeUnit.SECONDS);
+                outputReader.join(2_000);
+                String output = String.join("\n", lines);
+                log.error("atlas migrate apply 타임아웃: schema={}, output={}", schemaName, output);
+                throw new IOException("atlas migrate apply timed out");
+            }
+
+            outputReader.join(2_000);
+            String output = String.join("\n", lines);
+            int exitCode = process.exitValue();
             if (exitCode != 0) {
                 log.error("atlas migrate apply 실패: schema={}, output={}", schemaName, output);
                 throw new IOException("atlas migrate apply failed with exit code " + exitCode);
@@ -127,19 +152,33 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
     }
 
     private String toAtlasUrl(String schemaName) {
-        // jdbc:postgresql://host:port/db → postgres://user:pass@host:port/db?search_path=schema
         String pgUrl = jdbcUrl
                 .replace("jdbc:postgresql://", "postgres://" + dbUsername + ":" + dbPassword + "@");
-        return pgUrl + "?search_path=" + schemaName + "&sslmode=disable";
+        String separator = pgUrl.contains("?") ? "&" : "?";
+        return pgUrl + separator + "search_path=" + schemaName + "&sslmode=disable";
     }
 
     private void deleteDirectory(Path dir) {
         try (var stream = Files.walk(dir)) {
             stream.sorted(java.util.Comparator.reverseOrder())
                     .forEach(path -> {
-                        try { Files.delete(path); } catch (IOException ignored) {}
+                        try {
+                            Files.delete(path);
+                        } catch (IOException ignored) {
+                        }
                     });
-        } catch (IOException ignored) {}
+        } catch (IOException ignored) {
+        }
+    }
+
+    private void readProcessOutput(InputStream inputStream, List<String> lines) {
+        try (inputStream) {
+            String output = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            if (!output.isBlank()) {
+                lines.add(output);
+            }
+        } catch (IOException ignored) {
+        }
     }
 
     private void loadAge(Connection connection) throws SQLException {
@@ -224,7 +263,7 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
         String sql = """
                 SELECT count(*)
                 FROM ag_catalog.ag_label l
-                JOIN ag_catalog.ag_graph g ON g.graphid = l.graphid
+                JOIN ag_catalog.ag_graph g ON g.graphid = l.graph
                 WHERE g.name = ? AND l.name = ?
                 """;
         try (PreparedStatement statement = connection.prepareStatement(sql)) {

@@ -13,7 +13,7 @@ public final class WorkspaceSlugPolicy {
     private static final Set<String> RESERVED_SLUGS = Set.copyOf(List.of(
             "www", "www1", "www2", "web", "site", "api", "app", "cdn", "static", "assets",
             "media", "mail", "smtp", "imap", "pop", "mx", "ftp", "sftp", "ssh", "ns1",
-            "ns2", "ns3", "ns4", "dns", "vpn", "proxy", "gateway", "dev", "staging", "test",
+//            "ns2", "ns3", "ns4", "dns", "vpn", "proxy", "gateway", "dev", "staging", "test",
             "qa", "uat", "sandbox", "prod", "production", "preview", "canary", "local", "localhost",
             "admin", "dashboard", "console", "panel", "auth", "login", "signup", "register", "sso", "oauth",
             "billing", "payment", "checkout", "help", "support", "docs", "wiki", "faq", "blog", "news",

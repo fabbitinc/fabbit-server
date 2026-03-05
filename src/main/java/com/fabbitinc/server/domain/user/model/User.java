@@ -25,6 +25,9 @@ public class User extends AbstractAuditableEntity {
     @Column(name = "email", nullable = false, length = 255)
     private String email;
 
+    @Column(name = "email2", nullable = false, length = 255)
+    private String email2;
+
     @Column(name = "hashed_password", nullable = false, length = 255)
     private String hashedPassword;
 

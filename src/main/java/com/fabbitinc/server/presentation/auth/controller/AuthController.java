@@ -20,6 +20,10 @@ import com.fabbitinc.server.application.auth.dto.response.VerifyEmailResponse;
 import com.fabbitinc.server.application.auth.dto.response.VerifyInvitationResponse;
 import com.fabbitinc.server.application.auth.query.AuthInvitationQuery;
 import com.fabbitinc.server.application.auth.query.AuthQuery;
+import com.fabbitinc.server.application.auth.usecase.command.SendVerificationCommand;
+import com.fabbitinc.server.application.auth.usecase.command.VerifyEmailCommand;
+import com.fabbitinc.server.application.auth.usecase.result.SendVerificationResult;
+import com.fabbitinc.server.application.auth.usecase.result.VerifyEmailResult;
 import com.fabbitinc.server.application.auth.usecase.AcceptInvitationUseCase;
 import com.fabbitinc.server.application.auth.usecase.SendVerificationUseCase;
 import com.fabbitinc.server.application.auth.usecase.VerifyEmailUseCase;
@@ -29,6 +33,9 @@ import com.fabbitinc.server.application.auth.usecase.RegisterUseCase;
 import com.fabbitinc.server.application.auth.usecase.RefreshTokenUseCase;
 import com.fabbitinc.server.application.config.AppProperties;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -97,15 +104,43 @@ public class AuthController {
     }
 
     @Operation(summary = "POST /api/v1/auth/send-verification", description = "이메일 인증 코드 발송")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "인증코드 발송 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음"),
+            @ApiResponse(responseCode = "409", description = "이미 가입된 이메일"),
+            @ApiResponse(responseCode = "429", description = "요청 제한")
+    })
     @PostMapping("/send-verification")
-    public SendVerificationResponse sendVerification(@Valid @RequestBody SendVerificationRequest request) {
-        return sendVerificationUseCase.execute(request);
+    public SendVerificationResponse sendVerification(
+            @Parameter(description = "인증코드 발송 요청")
+            @Valid @RequestBody SendVerificationRequest request
+    ) {
+        SendVerificationResult result = sendVerificationUseCase.execute(
+                new SendVerificationCommand(request.email(), request.turnstileToken())
+        );
+        return new SendVerificationResponse(result.message());
     }
 
     @Operation(summary = "POST /api/v1/auth/verify-email", description = "이메일 인증 코드 검증")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "이메일 인증 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @PostMapping("/verify-email")
-    public VerifyEmailResponse verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
-        return verifyEmailUseCase.execute(request);
+    public VerifyEmailResponse verifyEmail(
+            @Parameter(description = "이메일 인증코드 검증 요청")
+            @Valid @RequestBody VerifyEmailRequest request
+    ) {
+        VerifyEmailResult result = verifyEmailUseCase.execute(
+                new VerifyEmailCommand(request.email(), request.code())
+        );
+        return new VerifyEmailResponse(result.verificationToken(), result.email());
     }
 
     @Operation(summary = "POST /api/v1/auth/register", description = "회원가입")

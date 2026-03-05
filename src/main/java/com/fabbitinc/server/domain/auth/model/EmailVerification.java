@@ -1,6 +1,7 @@
 package com.fabbitinc.server.domain.auth.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,6 +12,7 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import java.time.Duration;
 import java.time.Instant;
 
 @Getter
@@ -24,6 +26,10 @@ import java.time.Instant;
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class EmailVerification extends AbstractCreatedEntity {
+
+    public static final String CODE_VERIFICATION_COOLDOWN = "AUTH_VERIFICATION_COOLDOWN";
+    public static final String CODE_VERIFICATION_EXPIRED = "AUTH_VERIFICATION_EXPIRED";
+    public static final String CODE_VERIFICATION_MAX_ATTEMPTS = "AUTH_VERIFICATION_MAX_ATTEMPTS";
 
     @Column(name = "email", nullable = false, length = 255)
     private String email;
@@ -67,6 +73,35 @@ public class EmailVerification extends AbstractCreatedEntity {
 
     public void incrementAttempt() {
         this.attemptCount += 1;
+    }
+
+    public void ensureResendable(Instant now, long cooldownSeconds) {
+        long elapsed = Duration.between(getCreatedAt(), now).toSeconds();
+        if (elapsed < cooldownSeconds) {
+            throw new DomainException(CODE_VERIFICATION_COOLDOWN, "잠시 후 다시 시도해 주세요");
+        }
+    }
+
+    public void ensureVerifiable(Instant now, int maxAttempts) {
+        if (isExpired(now)) {
+            throw new DomainException(CODE_VERIFICATION_EXPIRED, "인증코드가 만료되었습니다. 재발송해 주세요");
+        }
+        if (isMaxAttempts(maxAttempts)) {
+            throw new DomainException(
+                    CODE_VERIFICATION_MAX_ATTEMPTS,
+                    "인증 시도 횟수를 초과했습니다. 인증코드를 재발송해 주세요"
+            );
+        }
+    }
+
+    public void registerFailedAttempt(int maxAttempts) {
+        incrementAttempt();
+        if (isMaxAttempts(maxAttempts)) {
+            throw new DomainException(
+                    CODE_VERIFICATION_MAX_ATTEMPTS,
+                    "인증 시도 횟수를 초과했습니다. 인증코드를 재발송해 주세요"
+            );
+        }
     }
 
     public void verify(String verificationTokenHash) {
