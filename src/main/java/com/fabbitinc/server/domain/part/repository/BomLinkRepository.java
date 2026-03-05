@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface BomLinkRepository extends JpaRepository<BomLink, UUID> {
@@ -26,4 +27,6 @@ public interface BomLinkRepository extends JpaRepository<BomLink, UUID> {
             nativeQuery = true
     )
     long countChildLinksWithUnnamedPart();
+
+    Optional<BomLink> findByParentPartIdAndChildPartId(UUID parentPartId, UUID childPartId);
 }

@@ -11,6 +11,8 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.util.UUID;
 
@@ -38,6 +40,7 @@ public class Activity extends AbstractCreatedEntity {
     @Column(name = "actor_id", nullable = false)
     private UUID actorId;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "detail", columnDefinition = "jsonb")
     private String detail;
 

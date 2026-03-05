@@ -10,6 +10,8 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.util.UUID;
 
@@ -39,6 +41,7 @@ public class Supplier extends AbstractAuditableEntity {
     @Column(name = "contact_info", columnDefinition = "text")
     private String contactInfo;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "extended_properties", nullable = false, columnDefinition = "jsonb")
     private String extendedProperties;
 

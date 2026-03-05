@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface PartRepository extends JpaRepository<Part, UUID> {
@@ -30,6 +31,8 @@ public interface PartRepository extends JpaRepository<Part, UUID> {
     List<Part> findByIdInOrderByPartNumberAsc(Collection<UUID> ids);
 
     List<Part> findByPartNumberIn(Collection<String> partNumbers);
+
+    Optional<Part> findByPartNumber(String partNumber);
 
     @Query(
             "select p.category, count(p.id) " +

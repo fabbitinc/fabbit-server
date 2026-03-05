@@ -10,6 +10,8 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.util.UUID;
 
@@ -40,6 +42,7 @@ public class BomLink extends AbstractCreatedEntity {
     @Column(name = "quantity", nullable = false)
     private int quantity;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "extended_properties", nullable = false, columnDefinition = "jsonb")
     private String extendedProperties;
 

@@ -8,6 +8,7 @@ import com.fabbitinc.server.application.synthesis.dto.response.SynthesisBatchFai
 import com.fabbitinc.server.application.synthesis.dto.response.SynthesisBatchStartResponse;
 import com.fabbitinc.server.application.synthesis.dto.response.SynthesisJobResponse;
 import com.fabbitinc.server.application.synthesis.support.SynthesisResponseMapper;
+import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
@@ -21,6 +22,8 @@ import com.fabbitinc.server.domain.synthesis.repository.SynthesisBatchRepository
 import com.fabbitinc.server.domain.synthesis.repository.SynthesisJobRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +40,7 @@ public class SynthesisService {
     private final SynthesisBatchRepository synthesisBatchRepository;
     private final SynthesisJobRepository synthesisJobRepository;
     private final SynthesisResponseMapper synthesisResponseMapper;
+    private final SynthesisAsyncExecutionService synthesisAsyncExecutionService;
 
     public SynthesisBatchStartResponse startSynthesis(SynthesisStartRequest request) {
         MappingRecord record = mappingRecordRepository.findByIdAndActiveTrue(request.mappingId())
@@ -46,7 +50,7 @@ public class SynthesisService {
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "매핑 리비전을 찾을 수 없습니다"));
 
         List<SynthesisBatchFailure> failed = new ArrayList<>();
-        List<SynthesisJob> acceptedJobs = new ArrayList<>();
+        List<AcceptedSynthesisJob> acceptedJobs = new ArrayList<>();
 
         for (SynthesisUploadItem item : request.uploads()) {
             validateRootContext(record.getScope(), item.rootContext());
@@ -66,7 +70,8 @@ public class SynthesisService {
             }
 
             SynthesisJob job = new SynthesisJob(record.getId(), file.getId());
-            acceptedJobs.add(job);
+            Map<String, String> rootContext = item.rootContext() == null ? Map.of() : item.rootContext();
+            acceptedJobs.add(new AcceptedSynthesisJob(job, rootContext));
         }
 
         SynthesisBatch batch = new SynthesisBatch(
@@ -78,16 +83,18 @@ public class SynthesisService {
         );
         synthesisBatchRepository.save(batch);
 
-        for (SynthesisJob job : acceptedJobs) {
+        List<SynthesisJob> jobs = acceptedJobs.stream().map(AcceptedSynthesisJob::job).toList();
+        for (SynthesisJob job : jobs) {
             job.assignBatch(batch.getId());
         }
-        if (!acceptedJobs.isEmpty()) {
-            synthesisJobRepository.saveAll(acceptedJobs);
-            record.incrementUsage(acceptedJobs.size());
-            revision.incrementUsage(acceptedJobs.size());
+        if (!jobs.isEmpty()) {
+            synthesisJobRepository.saveAll(jobs);
+            record.incrementUsage(jobs.size());
+            revision.incrementUsage(jobs.size());
+            dispatchAfterCommit(acceptedJobs, request.overwrite());
         }
 
-        List<SynthesisJobResponse> items = acceptedJobs.stream()
+        List<SynthesisJobResponse> items = jobs.stream()
                 .map(synthesisResponseMapper::toJobResponse)
                 .toList();
 
@@ -98,6 +105,32 @@ public class SynthesisService {
                 items,
                 failed
         );
+    }
+
+    private void dispatchAfterCommit(List<AcceptedSynthesisJob> acceptedJobs, boolean overwrite) {
+        String schemaName = TenantContextHolder.getCurrentSchema();
+        Runnable dispatch = () -> {
+            for (AcceptedSynthesisJob acceptedJob : acceptedJobs) {
+                synthesisAsyncExecutionService.runJobAsync(
+                        acceptedJob.job().getId(),
+                        schemaName,
+                        acceptedJob.rootContext(),
+                        overwrite
+                );
+            }
+        };
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    dispatch.run();
+                }
+            });
+            return;
+        }
+
+        dispatch.run();
     }
 
     private void validateRootContext(String scope, Map<String, String> rootContext) {
@@ -118,5 +151,11 @@ public class SynthesisService {
 
     private boolean isProjectOwnedFile(File file, UUID projectId) {
         return "project".equals(file.getOwnerType()) && projectId.equals(file.getOwnerId());
+    }
+
+    private record AcceptedSynthesisJob(
+            SynthesisJob job,
+            Map<String, String> rootContext
+    ) {
     }
 }

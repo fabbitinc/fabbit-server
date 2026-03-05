@@ -10,6 +10,8 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.util.UUID;
 
@@ -43,9 +45,11 @@ public class MappingRevision extends AbstractCreatedEntity {
     @Column(name = "sheet_name", length = 200)
     private String sheetName;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "original_headers", nullable = false, columnDefinition = "jsonb")
     private String originalHeaders;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "mapping", nullable = false, columnDefinition = "jsonb")
     private String mapping;
 

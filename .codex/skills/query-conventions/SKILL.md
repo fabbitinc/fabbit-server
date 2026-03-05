@@ -32,8 +32,7 @@ description: Java Spring Query 레이어 규칙을 적용한다. 조회 전용 �
 - Query는 자기 도메인의 `Repository`를 기본 참조하라.
 - Query에서 다른 도메인의 `Query/Service/Repository`를 직접 참조하지 마라.
 - 다른 도메인 정책/데이터가 필요하면 공개된 `*Api/*Policy`만 참조하라.
-
-```
+- `*Api/*Policy`는 interface/class 중 팀 합의된 한 가지 방식으로 일관되게 사용하라. interface를 강제하지 않는다.
 
 ## 적용 절차
 
@@ -51,4 +50,3 @@ description: Java Spring Query 레이어 규칙을 적용한다. 조회 전용 �
 - Query 클래스에 read-only 트랜잭션이 선언됐는가?
 - 목록/상세/자동완성 반환 모델이 분리됐는가?
 - 타 도메인 접근이 `*Api/*Policy` 경계로만 이뤄지는가?
-```

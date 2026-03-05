@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface PartSupplierRepository extends JpaRepository<PartSupplier, UUID> {
@@ -15,4 +16,6 @@ public interface PartSupplierRepository extends JpaRepository<PartSupplier, UUID
 
     @Query("select count(distinct ps.partId) from PartSupplier ps")
     long countDistinctPartIds();
+
+    Optional<PartSupplier> findByPartIdAndSupplierId(UUID partId, UUID supplierId);
 }

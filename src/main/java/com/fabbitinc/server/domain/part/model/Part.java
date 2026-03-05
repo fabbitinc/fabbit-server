@@ -9,6 +9,8 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.util.UUID;
 
@@ -62,6 +64,7 @@ public class Part extends AbstractCreatedEntity {
     @Column(name = "lead_time_days")
     private Integer leadTimeDays;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "extended_properties", nullable = false, columnDefinition = "jsonb")
     private String extendedProperties = "{}";
 
@@ -75,6 +78,10 @@ public class Part extends AbstractCreatedEntity {
         this.name = name;
         this.revision = "1";
         this.extendedProperties = "{}";
+    }
+
+    public void changeName(String name) {
+        this.name = name;
     }
 
     public void changeCategory(String category) {

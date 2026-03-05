@@ -9,6 +9,8 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -56,6 +58,7 @@ public class SynthesisJob extends AbstractCreatedEntity {
     @Column(name = "relationships_created", nullable = false)
     private int relationshipsCreated;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "errors", nullable = false, columnDefinition = "jsonb")
     private String errors;
 
@@ -75,10 +78,18 @@ public class SynthesisJob extends AbstractCreatedEntity {
         this.batchId = batchId;
     }
 
+    public void setTotalRows(int totalRows) {
+        this.totalRows = Math.max(totalRows, 0);
+    }
+
     public void incrementUsageProgress(int processedRows, int nodesCreated, int relationshipsCreated) {
         this.processedRows = processedRows;
         this.nodesCreated = nodesCreated;
         this.relationshipsCreated = relationshipsCreated;
+    }
+
+    public void replaceErrors(String errors) {
+        this.errors = errors == null || errors.isBlank() ? "[]" : errors;
     }
 
     public void markProcessing() {

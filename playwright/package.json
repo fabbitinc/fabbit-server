@@ -1,0 +1,22 @@
+{
+  "name": "fabbit-playwright-api-tests",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "generate:matrix": "node ./scripts/generate-endpoint-matrix.mjs",
+    "test": "playwright test",
+    "test:contracts": "playwright test tests/contracts/openapi.contract.spec.ts",
+    "test:flows": "playwright test tests/flows",
+    "test:security": "playwright test tests/security",
+    "test:idempotency": "playwright test tests/idempotency",
+    "test:failure": "playwright test tests/failure",
+    "test:stress": "playwright test tests/stress",
+    "test:excluded": "PW_RUN_EXCLUDED=1 playwright test tests/optional/excluded-endpoints.spec.ts",
+    "check:coverage": "node ./scripts/check-matrix-coverage.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "typescript": "^5.8.2"
+  }
+}

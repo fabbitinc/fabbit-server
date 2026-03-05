@@ -9,6 +9,8 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.util.UUID;
 
@@ -36,6 +38,7 @@ public class SynthesisBatch extends AbstractCreatedEntity {
     @Column(name = "accepted_count", nullable = false)
     private int acceptedCount;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "failed_uploads", nullable = false, columnDefinition = "jsonb")
     private String failedUploads;
 

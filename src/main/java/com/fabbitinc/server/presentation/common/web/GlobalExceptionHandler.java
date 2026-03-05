@@ -8,6 +8,7 @@ import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -38,6 +39,16 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .map(ConstraintViolation::getMessage)
                 .orElse("입력값이 올바르지 않습니다");
+        return ResponseEntity
+                .status(ErrorCode.VALIDATION_ERROR.httpStatus())
+                .body(new ApiErrorResponse(ErrorCode.VALIDATION_ERROR.name(), message));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingServletRequestParameter(
+            MissingServletRequestParameterException ex
+    ) {
+        String message = "필수 요청 파라미터가 누락되었습니다: " + ex.getParameterName();
         return ResponseEntity
                 .status(ErrorCode.VALIDATION_ERROR.httpStatus())
                 .body(new ApiErrorResponse(ErrorCode.VALIDATION_ERROR.name(), message));

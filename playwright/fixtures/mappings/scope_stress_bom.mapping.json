@@ -1,0 +1,81 @@
+{
+  "property_mappings": [
+    {
+      "source_column": "하위품번",
+      "target_property": "part_number",
+      "data_type": "string",
+      "confidence": 100,
+      "reason": "하위품번은 행의 주 부품 식별자입니다",
+      "is_extended": false
+    },
+    {
+      "source_column": "하위품명",
+      "target_property": "name",
+      "data_type": "string",
+      "confidence": 100,
+      "reason": "하위품명은 부품명입니다",
+      "is_extended": false
+    },
+    {
+      "source_column": "분류",
+      "target_property": "category",
+      "data_type": "string",
+      "confidence": 100,
+      "reason": "분류는 카테고리입니다",
+      "is_extended": false
+    },
+    {
+      "source_column": "단위",
+      "target_property": "unit",
+      "data_type": "string",
+      "confidence": 100,
+      "reason": "단위는 UOM 정보입니다",
+      "is_extended": false
+    },
+    {
+      "source_column": "재질",
+      "target_property": "material",
+      "data_type": "string",
+      "confidence": 100,
+      "reason": "재질 컬럼입니다",
+      "is_extended": false
+    },
+    {
+      "source_column": "비고",
+      "target_property": "description",
+      "data_type": "string",
+      "confidence": 90,
+      "reason": "비고를 설명으로 매핑합니다",
+      "is_extended": false
+    }
+  ],
+  "relation_mappings": [
+    {
+      "rel_type": "CONSISTS_OF",
+      "target_label": "Part",
+      "node_columns": {
+        "part_number": "상위품번",
+        "name": "상위품명"
+      },
+      "rel_columns": {
+        "quantity": "수량"
+      },
+      "rel_column_types": {
+        "quantity": "integer"
+      },
+      "confidence": 100,
+      "reason": "상위품번/하위품번 관계를 BOM으로 매핑합니다"
+    },
+    {
+      "rel_type": "SUPPLIED_BY",
+      "target_label": "Supplier",
+      "node_columns": {
+        "company_name": "공급업체"
+      },
+      "rel_columns": {},
+      "rel_column_types": {},
+      "confidence": 90,
+      "reason": "공급업체를 공급사 노드로 매핑합니다"
+    }
+  ]
+}

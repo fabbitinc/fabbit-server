@@ -1,0 +1,22 @@
+[
+  {
+    "method": "POST",
+    "path": "/api/v1/mappings/preview",
+    "reason": "LLM 실호출 우회"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/activation/health-check",
+    "reason": "활성화 하위 제외"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/activation/query",
+    "reason": "활성화 하위 제외"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/activation/starters",
+    "reason": "활성화 하위 제외"
+  }
+]
