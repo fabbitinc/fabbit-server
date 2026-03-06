@@ -43,6 +43,13 @@ description: Java Spring Rich Domain Model/DDD 기준으로 Entity 규칙을 적
 - 엔티티 Lombok은 `@Getter`, `@NoArgsConstructor(access = AccessLevel.PROTECTED)`만 허용한다.
 - 엔티티 동등성은 ID 기반으로만 판단한다.
 
+## 버전 필드 규칙
+
+- 낙관적 락이 필요한 Aggregate Root에는 JPA `@Version` 필드를 선언하라.
+- `@Version`은 동시 수정 충돌 감지용으로만 사용하라. 비즈니스 의미를 부여하거나 API 계약 필수값으로 취급하지 마라.
+- `@Version` 필드 타입은 JPA 기본 지원 정수 타입을 우선 사용하라.
+- `@Version` 충돌 처리와 예외 매핑은 Entity가 아니라 UseCase/Service/Presentation에서 담당하라.
+
 ## 값 타입(VO) 규칙
 
 - 현재 단계에서는 VO를 도입하지 않고 primitive를 유지한다.

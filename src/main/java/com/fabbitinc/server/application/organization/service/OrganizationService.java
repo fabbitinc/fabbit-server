@@ -5,6 +5,8 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.organization.port.TenantProvisioningPort;
 import com.fabbitinc.server.application.organization.service.input.CreateOrganizationInput;
+import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
@@ -118,6 +120,23 @@ public class OrganizationService {
         return membershipRepository.save(organization.addMember(userId, role, null));
     }
 
+    public void checkCreditQuota(UUID orgId, AiUsageCategory category) {
+        Organization organization = getOrgOrThrow(orgId);
+        if (organization.getPlanCreditsRemaining() + organization.getBonusCreditsRemaining() < category.creditCost()) {
+            throw new AppException(ErrorCode.QUOTA_EXCEEDED, "AI 크레딧이 부족합니다. 플랜을 업그레이드해주세요.");
+        }
+    }
+
+    public void consumeCredits(UUID orgId, AiUsageCategory category) {
+        Organization organization = organizationRepository.findByIdForUpdate(orgId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "조직을 찾을 수 없습니다"));
+        try {
+            organization.useCredits(category.creditCost());
+        } catch (DomainException ex) {
+            throw new AppException(ErrorCode.QUOTA_EXCEEDED, "AI 크레딧이 부족합니다. 플랜을 업그레이드해주세요.");
+        }
+    }
+
     public void removeMember(AuthContext auth, UUID userId) {
         if (auth.userId().equals(userId)) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "자신을 제거할 수 없습니다");
@@ -158,7 +177,7 @@ public class OrganizationService {
         try {
             organization.changeMemberRole(target, newRole, ownerCount);
             return target;
-        } catch (com.fabbitinc.server.domain.common.exception.DomainException ex) {
+        } catch (DomainException ex) {
             throw new AppException(ErrorCode.FORBIDDEN, ex.getMessage());
         }
     }

@@ -23,6 +23,7 @@ import com.fabbitinc.server.domain.issue.model.Issue;
 import com.fabbitinc.server.domain.issue.model.IssueAssignee;
 import com.fabbitinc.server.domain.issue.model.IssueComment;
 import com.fabbitinc.server.domain.issue.model.IssueLabel;
+import com.fabbitinc.server.domain.issue.model.IssueNumberSequence;
 import com.fabbitinc.server.domain.issue.model.IssuePart;
 import com.fabbitinc.server.domain.issue.model.IssueState;
 import com.fabbitinc.server.domain.issue.model.IssueTeamAssignee;
@@ -35,6 +36,7 @@ import com.fabbitinc.server.domain.issue.repository.ChangeRequestTeamReviewerRep
 import com.fabbitinc.server.domain.issue.repository.IssueAssigneeRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueCommentRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueLabelRepository;
+import com.fabbitinc.server.domain.issue.repository.IssueNumberSequenceRepository;
 import com.fabbitinc.server.domain.issue.repository.IssuePartRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueTeamAssigneeRepository;
@@ -53,6 +55,7 @@ import com.fabbitinc.server.domain.team.repository.TeamRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -71,6 +74,7 @@ import java.util.UUID;
 public class IssueService {
 
     private static final String OWNER_TYPE_ISSUE = "issue";
+    private static final UUID ISSUE_NUMBER_SEQUENCE_ID = UUID.fromString("89d98a7b-6b53-4e63-a02a-73f66f606703");
 
     private static final ActivityAction ACTION_ISSUE_STATE_CHANGED = ActivityAction.ISSUE_STATE_CHANGED;
     private static final ActivityAction ACTION_CR_STATE_CHANGED = ActivityAction.CR_STATE_CHANGED;
@@ -85,6 +89,7 @@ public class IssueService {
     private static final ActivityAction ACTION_ISSUE_MENTIONED = ActivityAction.ISSUE_MENTIONED;
 
     private final IssueRepository issueRepository;
+    private final IssueNumberSequenceRepository issueNumberSequenceRepository;
     private final ChangeRequestRepository changeRequestRepository;
     private final IssueAssigneeRepository issueAssigneeRepository;
     private final IssueTeamAssigneeRepository issueTeamAssigneeRepository;
@@ -128,9 +133,7 @@ public class IssueService {
 
     public Issue createIssue(UUID actorId, String title, JsonNode body) {
         tipTapValidator.validateDocument(body);
-        int nextNumber = issueRepository.findTopByOrderByNumberDesc()
-                .map(Issue::getNumber)
-                .orElse(0) + 1;
+        int nextNumber = allocateIssueNumber();
 
         Issue issue = Issue.create(nextNumber, title, toBodyString(body), actorId);
         issueRepository.save(issue);
@@ -141,15 +144,37 @@ public class IssueService {
 
     public ChangeRequest createChangeRequest(UUID actorId, String title, JsonNode body) {
         tipTapValidator.validateDocument(body);
-        int nextNumber = issueRepository.findTopByOrderByNumberDesc()
-                .map(Issue::getNumber)
-                .orElse(0) + 1;
+        int nextNumber = allocateIssueNumber();
 
         ChangeRequest changeRequest = ChangeRequest.create(nextNumber, title, toBodyString(body), actorId);
         changeRequestRepository.save(changeRequest);
 
         registerMentions(changeRequest, actorId, body, null, false);
         return changeRequest;
+    }
+
+    private int allocateIssueNumber() {
+        IssueNumberSequence sequence = issueNumberSequenceRepository.findByIdForUpdate(ISSUE_NUMBER_SEQUENCE_ID)
+                .orElseGet(this::initializeIssueNumberSequence);
+        return sequence.allocateNextNumber();
+    }
+
+    private IssueNumberSequence initializeIssueNumberSequence() {
+        int nextNumber = issueRepository.findTopByOrderByNumberDesc()
+                .map(issue -> issue.getNumber() + 1)
+                .orElse(1);
+
+        try {
+            return issueNumberSequenceRepository.saveAndFlush(
+                    IssueNumberSequence.initialize(ISSUE_NUMBER_SEQUENCE_ID, nextNumber)
+            );
+        } catch (DataIntegrityViolationException ex) {
+            return issueNumberSequenceRepository.findByIdForUpdate(ISSUE_NUMBER_SEQUENCE_ID)
+                    .orElseThrow(() -> new AppException(
+                            ErrorCode.INTERNAL_SERVER_ERROR,
+                            "이슈 번호 시퀀스를 초기화할 수 없습니다"
+                    ));
+        }
     }
 
     public Issue updateIssue(UUID actorId, Issue issue, String title, JsonNode body) {

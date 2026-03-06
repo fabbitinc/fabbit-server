@@ -2,6 +2,9 @@ package com.fabbitinc.server.application.mapping.usecase;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import com.fabbitinc.server.application.aiusage.service.AiUsageService;
+import com.fabbitinc.server.application.aiusage.service.input.RecordAiUsageInput;
+import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
@@ -14,6 +17,8 @@ import com.fabbitinc.server.application.mapping.usecase.command.PreviewMappingCo
 import com.fabbitinc.server.application.mapping.usecase.result.PreviewMappingResult;
 import com.fabbitinc.server.application.mapping.usecase.result.PreviewSheetResult;
 import com.fabbitinc.server.application.mapping.usecase.result.SkippedSheetResult;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
+import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;
 import com.fabbitinc.server.domain.file.model.File;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -25,17 +30,19 @@ import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Transactional
 public class PreviewMappingUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final MappingService mappingService;
     private final MappingLlmGenerationSupport mappingLlmGenerationSupport;
     private final MappingNormalizationSupport mappingNormalizationSupport;
+    private final OrganizationApi organizationApi;
+    private final AiUsageService aiUsageService;
     private final ObjectMapper objectMapper;
 
     public PreviewMappingResult execute(PreviewMappingCommand command) {
-        currentAuthProvider.getCurrentAuth();
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
 
         File file = mappingService.getUploadedFileOrThrow(command.fileId());
         List<String> targetSheets = mappingService.loadPreviewTargets(file, command.sheetName());
@@ -65,8 +72,24 @@ public class PreviewMappingUseCase {
                 continue;
             }
 
-            MappingResultDto generated = mappingLlmGenerationSupport.generate(parsed.headers(), parsed.rows());
-            MappingResultDto normalized = mappingNormalizationSupport.normalize(generated);
+            if (mappingLlmGenerationSupport.isLlmEnabled()) {
+                organizationApi.checkCreditQuota(auth.orgId(), AiUsageCategory.BOM_ANALYSIS);
+            }
+            MappingLlmGenerationSupport.GenerationOutput generation = mappingLlmGenerationSupport.generate(parsed.headers(), parsed.rows());
+            if (generation.usedLlm()) {
+                organizationApi.consumeCredits(auth.orgId(), AiUsageCategory.BOM_ANALYSIS);
+                aiUsageService.record(new RecordAiUsageInput(
+                        auth.orgId(),
+                        auth.userId(),
+                        AiUsageCategory.BOM_ANALYSIS,
+                        "mapping:preview",
+                        generation.model(),
+                        generation.inputTokens(),
+                        generation.outputTokens()
+                ));
+            }
+
+            MappingResultDto normalized = mappingNormalizationSupport.normalize(generation.mapping());
             if (normalized.propertyMappings().isEmpty()) {
                 if (sheet != null) {
                     skipped.add(new SkippedSheetResult(sheet, "온톨로지에 매핑 가능한 컬럼이 없습니다"));

@@ -4,6 +4,10 @@ import com.fabbitinc.server.application.config.AppProperties;
 import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
 import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.ResponseEntity;
+import org.springframework.ai.chat.metadata.ChatResponseMetadata;
+import org.springframework.ai.chat.metadata.Usage;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -36,27 +40,31 @@ public class MappingLlmGenerationSupport {
     private final ResourceLoader resourceLoader;
     private final StTemplateRenderer templateRenderer = StTemplateRenderer.builder().build();
 
-    public MappingResultDto generate(List<String> headers, List<Map<String, Object>> sampleRows) {
-        if (appProperties.llmApiKey().isBlank()) {
-            return mappingGenerationSupport.generate(headers, sampleRows);
+    public boolean isLlmEnabled() {
+        return !appProperties.llmApiKey().isBlank();
+    }
+
+    public GenerationOutput generate(List<String> headers, List<Map<String, Object>> sampleRows) {
+        if (!isLlmEnabled()) {
+            return GenerationOutput.heuristic(mappingGenerationSupport.generate(headers, sampleRows));
         }
 
         try {
-            MappingResultDto generated = generateByLlm(headers, sampleRows);
-            if (generated.propertyMappings().isEmpty() && generated.relationMappings().isEmpty()) {
+            GenerationOutput generated = generateByLlm(headers, sampleRows);
+            if (generated.mapping().propertyMappings().isEmpty() && generated.mapping().relationMappings().isEmpty()) {
                 log.warn("event=mapping_preview_llm_empty model={} fallback=heuristic", appProperties.llmModel());
-                return mappingGenerationSupport.generate(headers, sampleRows);
+                return generated.withMapping(mappingGenerationSupport.generate(headers, sampleRows));
             }
             return generated;
         } catch (LinkageError | Exception ex) {
             log.warn("event=mapping_preview_llm_failed model={} fallback=heuristic reason={}",
                     appProperties.llmModel(),
                     ex.getMessage());
-            return mappingGenerationSupport.generate(headers, sampleRows);
+            return GenerationOutput.heuristic(mappingGenerationSupport.generate(headers, sampleRows));
         }
     }
 
-    private MappingResultDto generateByLlm(List<String> headers, List<Map<String, Object>> sampleRows)
+    private GenerationOutput generateByLlm(List<String> headers, List<Map<String, Object>> sampleRows)
             throws JacksonException {
         String systemPrompt = buildSystemPromptFromTemplate();
         String userPrompt = buildUserPromptFromTemplate(headers, sampleRows);
@@ -71,13 +79,22 @@ public class MappingLlmGenerationSupport {
                 .build();
 
         long startedAt = System.nanoTime();
-        String content = createChatClient(options)
+        ResponseEntity<ChatResponse, String> responseEntity = createChatClient(options)
                 .prompt()
                 .system(systemPrompt)
                 .user(userPrompt)
                 .options(options)
                 .call()
-                .content();
+                .responseEntity(String.class);
+        String content = responseEntity.entity();
+        ChatResponse chatResponse = responseEntity.response();
+        ChatResponseMetadata metadata = chatResponse == null ? null : chatResponse.getMetadata();
+        Usage usage = metadata == null ? null : metadata.getUsage();
+        String model = metadata != null && metadata.getModel() != null && !metadata.getModel().isBlank()
+                ? metadata.getModel()
+                : appProperties.llmModel();
+        int inputTokens = tokenOrZero(usage == null ? null : usage.getPromptTokens());
+        int outputTokens = tokenOrZero(usage == null ? null : usage.getCompletionTokens());
         double elapsedSeconds = (System.nanoTime() - startedAt) / 1_000_000_000.0;
         if (content.isBlank()) {
             throw new IllegalStateException("llm content is empty");
@@ -96,8 +113,20 @@ public class MappingLlmGenerationSupport {
             throw new IllegalStateException("llm response is not json object");
         }
 
-        log.info("event=mapping_preview_llm_completed model={} elapsed={}", appProperties.llmModel(), elapsedSeconds);
-        return objectMapper.treeToValue(generatedJson, MappingResultDto.class);
+        log.info(
+                "event=mapping_preview_llm_completed model={} elapsed={} input_tokens={} output_tokens={}",
+                model,
+                elapsedSeconds,
+                inputTokens,
+                outputTokens
+        );
+        return new GenerationOutput(
+                objectMapper.treeToValue(generatedJson, MappingResultDto.class),
+                true,
+                model,
+                inputTokens,
+                outputTokens
+        );
     }
 
     private ChatClient createChatClient(OpenAiChatOptions options) {
@@ -208,5 +237,25 @@ public class MappingLlmGenerationSupport {
             body = body.substring(0, lastFence);
         }
         return body.trim();
+    }
+
+    private int tokenOrZero(Integer value) {
+        return value == null || value < 0 ? 0 : value;
+    }
+
+    public record GenerationOutput(
+            MappingResultDto mapping,
+            boolean usedLlm,
+            String model,
+            int inputTokens,
+            int outputTokens
+    ) {
+        public static GenerationOutput heuristic(MappingResultDto mapping) {
+            return new GenerationOutput(mapping, false, null, 0, 0);
+        }
+
+        public GenerationOutput withMapping(MappingResultDto mapping) {
+            return new GenerationOutput(mapping, usedLlm, model, inputTokens, outputTokens);
+        }
     }
 }

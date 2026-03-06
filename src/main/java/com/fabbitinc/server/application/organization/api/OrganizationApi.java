@@ -3,6 +3,7 @@ package com.fabbitinc.server.application.organization.api;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
 import com.fabbitinc.server.application.organization.service.input.CreateOrganizationInput;
+import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
@@ -28,6 +29,14 @@ public class OrganizationApi {
 
     public Membership addMember(UUID userId, UUID orgId, MembershipRole role) {
         return organizationService.addMember(userId, orgId, role);
+    }
+
+    public void checkCreditQuota(UUID orgId, AiUsageCategory category) {
+        organizationService.checkCreditQuota(orgId, category);
+    }
+
+    public void consumeCredits(UUID orgId, AiUsageCategory category) {
+        organizationService.consumeCredits(orgId, category);
     }
 
     public void changeMemberRole(AuthContext auth, UUID userId, MembershipRole requestedRole) {
