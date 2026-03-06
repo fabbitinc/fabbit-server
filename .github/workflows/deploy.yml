@@ -33,7 +33,7 @@ jobs:
 
       # docker/ 디렉토리 전송
       - name: Copy files
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
