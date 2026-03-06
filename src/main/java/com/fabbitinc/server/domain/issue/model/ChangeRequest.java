@@ -60,8 +60,9 @@ public class ChangeRequest extends Issue {
                     "DRAFT 상태에서만 제출할 수 있습니다 (현재: " + crState + ")"
             );
         }
+        UUID requiredActorId = requireActorId(actorId);
+        updateTitle(getTitle(), requiredActorId);
         this.crState = CrState.SUBMITTED;
-        updateTitle(getTitle(), actorId);
     }
 
     public void merge(Instant now, UUID actorId) {
@@ -71,10 +72,11 @@ public class ChangeRequest extends Issue {
                     "SUBMITTED 상태에서만 반영할 수 있습니다 (현재: " + crState + ")"
             );
         }
+        UUID requiredActorId = requireActorId(actorId);
+        markClosed(now, requiredActorId);
         this.crState = CrState.MERGED;
         this.mergedAt = now;
-        this.mergedBy = actorId;
-        markClosed(now, actorId);
+        this.mergedBy = requiredActorId;
     }
 
     public void closeCr(Instant now, UUID actorId) {
@@ -84,8 +86,9 @@ public class ChangeRequest extends Issue {
                     "DRAFT 또는 SUBMITTED 상태에서만 닫을 수 있습니다 (현재: " + crState + ")"
             );
         }
+        UUID requiredActorId = requireActorId(actorId);
+        markClosed(now, requiredActorId);
         this.crState = CrState.CLOSED;
-        markClosed(now, actorId);
     }
 
     public void reopenCr(UUID actorId) {
@@ -95,8 +98,9 @@ public class ChangeRequest extends Issue {
                     "CLOSED 상태에서만 다시 열 수 있습니다 (현재: " + crState + ")"
             );
         }
+        UUID requiredActorId = requireActorId(actorId);
+        markOpen(requiredActorId);
         this.crState = CrState.SUBMITTED;
-        markOpen(actorId);
     }
 
     public List<ChangeRequestIssue> getLinkedIssues() {
@@ -109,5 +113,12 @@ public class ChangeRequest extends Issue {
 
     public List<ChangeRequestTeamReviewer> getTeamReviewers() {
         return List.copyOf(teamReviewers);
+    }
+
+    private UUID requireActorId(UUID actorId) {
+        if (actorId == null) {
+            throw new DomainException(Issue.CODE_ISSUE_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
+        }
+        return actorId;
     }
 }

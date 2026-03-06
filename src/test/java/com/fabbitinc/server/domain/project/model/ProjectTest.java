@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,7 +13,7 @@ class ProjectTest {
 
     @Test
     void create_프로젝트를_초기상태로_생성한다() {
-        Project project = Project.create("  신규 프로젝트  ", "설명");
+        Project project = Project.create("  신규 프로젝트  ", "  설명  ");
 
         assertEquals("신규 프로젝트", project.getName());
         assertEquals("설명", project.getDescription());
@@ -65,5 +66,14 @@ class ProjectTest {
         project.unarchive();
 
         assertFalse(project.isArchived());
+    }
+
+    @Test
+    void changeDescription_blank면_null로_정규화한다() {
+        Project project = Project.create("프로젝트", "설명");
+
+        project.changeDescription("   ");
+
+        assertNull(project.getDescription());
     }
 }

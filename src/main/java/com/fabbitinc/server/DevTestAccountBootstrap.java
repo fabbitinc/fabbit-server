@@ -5,8 +5,6 @@ import com.fabbitinc.server.application.organization.service.input.CreateOrganiz
 import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.Organization;
-import com.fabbitinc.server.domain.organization.model.OrganizationPlans;
-import com.fabbitinc.server.domain.organization.model.PlanLimits;
 import com.fabbitinc.server.domain.organization.model.PlanType;
 import com.fabbitinc.server.domain.organization.repository.MembershipRepository;
 import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
@@ -94,7 +92,7 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
             return;
         }
 
-        PlanLimits limits = resolvePlanLimits(organization.getPlanType());
+        PlanType planType = PlanType.defaultIfNull(organization.getPlanType());
         entityManager.createQuery("""
                         update Organization o
                         set o.maxMembers = :maxMembers,
@@ -104,9 +102,9 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
                           and o.maxMembers = 0
                           and o.planCreditsRemaining = 0
                         """)
-                .setParameter("maxMembers", limits.maxMembers())
-                .setParameter("planCreditsRemaining", limits.aiCredits())
-                .setParameter("storageBytesLimit", (long) limits.storageGb() * GB_TO_BYTES)
+                .setParameter("maxMembers", planType.maxMembers())
+                .setParameter("planCreditsRemaining", planType.aiCredits())
+                .setParameter("storageBytesLimit", (long) planType.storageGb() * GB_TO_BYTES)
                 .setParameter("orgId", organization.getId())
                 .executeUpdate();
     }
@@ -116,8 +114,7 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
             return;
         }
 
-        PlanType planType = organization.getPlanType() == null ? PlanType.STARTER : organization.getPlanType();
-        PlanLimits limits = resolvePlanLimits(planType);
+        PlanType planType = PlanType.defaultIfNull(organization.getPlanType());
         Instant now = Instant.now();
         Instant periodEnd = ZonedDateTime.ofInstant(now, ZoneOffset.UTC).plusMonths(1).toInstant();
 
@@ -128,9 +125,9 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
                         SubscriptionStatus.ACTIVE,
                         now,
                         periodEnd,
-                        limits.maxMembers(),
-                        limits.aiCredits(),
-                        (long) limits.storageGb() * GB_TO_BYTES
+                        planType.maxMembers(),
+                        planType.aiCredits(),
+                        (long) planType.storageGb() * GB_TO_BYTES
                 )
         );
     }
@@ -142,12 +139,5 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
 
         membershipRepository.save(Membership.createOwner(userId, orgId));
         organizationRepository.reserveMemberSeat(orgId);
-    }
-
-    private PlanLimits resolvePlanLimits(PlanType planType) {
-        if (planType == null) {
-            return OrganizationPlans.limits().get(PlanType.STARTER);
-        }
-        return OrganizationPlans.limits().getOrDefault(planType, OrganizationPlans.limits().get(PlanType.STARTER));
     }
 }

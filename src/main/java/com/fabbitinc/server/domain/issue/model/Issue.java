@@ -48,6 +48,10 @@ import java.util.UUID;
 public class Issue extends AbstractAuditableEntity {
 
     public static final String CODE_ISSUE_ACTOR_REQUIRED = "ISSUE_ACTOR_REQUIRED";
+    public static final String CODE_ISSUE_TITLE_REQUIRED = "ISSUE_TITLE_REQUIRED";
+    public static final String CODE_ISSUE_TITLE_TOO_LONG = "ISSUE_TITLE_TOO_LONG";
+
+    private static final int MAX_TITLE_LENGTH = 500;
 
     @Column(name = "number", nullable = false)
     private int number;
@@ -104,7 +108,7 @@ public class Issue extends AbstractAuditableEntity {
     public Issue(int number, String title, String body, UUID actorId) {
         super(UuidV7Generator.next());
         this.number = number;
-        this.title = title;
+        this.title = requireTitle(title);
         this.body = body;
         this.state = IssueState.OPEN;
         UUID requiredActorId = requireActorId(actorId);
@@ -127,8 +131,10 @@ public class Issue extends AbstractAuditableEntity {
     }
 
     public void updateTitle(String title, UUID actorId) {
-        this.title = title;
-        this.updatedBy = requireActorId(actorId);
+        String requiredTitle = requireTitle(title);
+        UUID requiredActorId = requireActorId(actorId);
+        this.title = requiredTitle;
+        this.updatedBy = requiredActorId;
         if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
             this.updatedByUser = null;
         }
@@ -138,14 +144,15 @@ public class Issue extends AbstractAuditableEntity {
         if (actor == null) {
             throw new DomainException(CODE_ISSUE_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
         }
-        this.title = title;
+        this.title = requireTitle(title);
         this.updatedBy = actor.getId();
         this.updatedByUser = actor;
     }
 
     public void updateBody(String body, UUID actorId) {
+        UUID requiredActorId = requireActorId(actorId);
         this.body = body;
-        this.updatedBy = requireActorId(actorId);
+        this.updatedBy = requiredActorId;
         if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
             this.updatedByUser = null;
         }
@@ -161,9 +168,10 @@ public class Issue extends AbstractAuditableEntity {
     }
 
     public void close(Instant now, UUID actorId) {
+        UUID requiredActorId = requireActorId(actorId);
         this.state = IssueState.CLOSED;
         this.closedAt = now;
-        this.updatedBy = requireActorId(actorId);
+        this.updatedBy = requiredActorId;
         if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
             this.updatedByUser = null;
         }
@@ -180,9 +188,10 @@ public class Issue extends AbstractAuditableEntity {
     }
 
     public void reopen(UUID actorId) {
+        UUID requiredActorId = requireActorId(actorId);
         this.state = IssueState.OPEN;
         this.closedAt = null;
-        this.updatedBy = requireActorId(actorId);
+        this.updatedBy = requiredActorId;
         if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
             this.updatedByUser = null;
         }
@@ -235,5 +244,16 @@ public class Issue extends AbstractAuditableEntity {
             throw new DomainException(CODE_ISSUE_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
         }
         return value;
+    }
+
+    private String requireTitle(String value) {
+        if (value == null || value.isBlank()) {
+            throw new DomainException(CODE_ISSUE_TITLE_REQUIRED, "이슈 제목은 필수입니다");
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() > MAX_TITLE_LENGTH) {
+            throw new DomainException(CODE_ISSUE_TITLE_TOO_LONG, "이슈 제목은 500자 이하여야 합니다");
+        }
+        return trimmed;
     }
 }

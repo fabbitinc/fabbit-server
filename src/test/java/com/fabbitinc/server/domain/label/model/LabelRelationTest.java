@@ -36,6 +36,23 @@ class LabelRelationTest {
     }
 
     @Test
+    void label_이름은_trim_정규화한다() {
+        Label label = Label.create("  bug  ", "  설명  ", "#ff0000", UUID.randomUUID());
+
+        assertEquals("bug", label.getName());
+        assertEquals("설명", label.getDescription());
+    }
+
+    @Test
+    void label_색상형식이_잘못되면_예외를_던진다() {
+        DomainException ex = assertThrows(DomainException.class, () ->
+                Label.create("bug", null, "red", UUID.randomUUID())
+        );
+
+        assertEquals(Label.CODE_LABEL_COLOR_INVALID, ex.getDomainCode());
+    }
+
+    @Test
     void label_수행자가_null이면_예외를_던진다() {
         DomainException ex = assertThrows(DomainException.class, () ->
                 Label.create("bug", null, "#ff0000", (UUID) null)

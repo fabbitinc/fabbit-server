@@ -47,7 +47,7 @@ public class Project extends AbstractSoftDeletableEntity {
     private Project(String name, String description) {
         super(UuidV7Generator.next());
         this.name = validateName(name);
-        this.description = description;
+        this.description = normalizeDescription(description);
         this.archived = false;
     }
 
@@ -62,7 +62,7 @@ public class Project extends AbstractSoftDeletableEntity {
 
     public void changeDescription(String description) {
         ensureActive();
-        this.description = description;
+        this.description = normalizeDescription(description);
     }
 
     public void archive() {
@@ -103,5 +103,13 @@ public class Project extends AbstractSoftDeletableEntity {
             throw new DomainException(CODE_PROJECT_NAME_TOO_LONG, "프로젝트 이름은 200자 이하여야 합니다");
         }
         return trimmed;
+    }
+
+    private String normalizeDescription(String rawDescription) {
+        if (rawDescription == null) {
+            return null;
+        }
+        String trimmed = rawDescription.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

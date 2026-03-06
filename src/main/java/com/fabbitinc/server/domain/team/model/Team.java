@@ -32,6 +32,10 @@ import java.util.UUID;
 public class Team extends AbstractAuditableEntity {
 
     public static final String CODE_TEAM_CREATED_BY_REQUIRED = "TEAM_CREATED_BY_REQUIRED";
+    public static final String CODE_TEAM_NAME_REQUIRED = "TEAM_NAME_REQUIRED";
+    public static final String CODE_TEAM_NAME_TOO_LONG = "TEAM_NAME_TOO_LONG";
+
+    private static final int MAX_NAME_LENGTH = 100;
 
     @Column(name = "name", nullable = false, length = 100)
     private String name;
@@ -51,8 +55,8 @@ public class Team extends AbstractAuditableEntity {
 
     public Team(String name, String description, UUID createdBy) {
         super(UuidV7Generator.next());
-        this.name = name;
-        this.description = description;
+        this.name = validateName(name);
+        this.description = normalizeDescription(description);
         this.createdBy = requireCreatedBy(createdBy);
     }
 
@@ -70,11 +74,11 @@ public class Team extends AbstractAuditableEntity {
     }
 
     public void changeName(String name) {
-        this.name = name;
+        this.name = validateName(name);
     }
 
     public void changeDescription(String description) {
-        this.description = description;
+        this.description = normalizeDescription(description);
     }
 
     public List<TeamMember> getMembers() {
@@ -86,5 +90,24 @@ public class Team extends AbstractAuditableEntity {
             throw new DomainException(CODE_TEAM_CREATED_BY_REQUIRED, "생성자 ID는 필수입니다");
         }
         return value;
+    }
+
+    private String validateName(String rawName) {
+        if (rawName == null || rawName.isBlank()) {
+            throw new DomainException(CODE_TEAM_NAME_REQUIRED, "팀 이름은 필수입니다");
+        }
+        String trimmed = rawName.trim();
+        if (trimmed.length() > MAX_NAME_LENGTH) {
+            throw new DomainException(CODE_TEAM_NAME_TOO_LONG, "팀 이름은 100자 이하여야 합니다");
+        }
+        return trimmed;
+    }
+
+    private String normalizeDescription(String rawDescription) {
+        if (rawDescription == null) {
+            return null;
+        }
+        String trimmed = rawDescription.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

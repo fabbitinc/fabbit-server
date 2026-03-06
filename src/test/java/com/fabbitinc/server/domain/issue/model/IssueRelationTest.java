@@ -1,14 +1,17 @@
 package com.fabbitinc.server.domain.issue.model;
 
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.label.model.Label;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.user.model.User;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class IssueRelationTest {
@@ -35,6 +38,22 @@ class IssueRelationTest {
         assertEquals(actor, issue.getCreatedByUser());
         assertEquals(actor.getId(), issue.getUpdatedBy());
         assertEquals(actor, issue.getUpdatedByUser());
+    }
+
+    @Test
+    void issue_제목은_trim_정규화한다() {
+        Issue issue = Issue.create(1, "  제목  ", "본문", UUID.randomUUID());
+
+        assertEquals("제목", issue.getTitle());
+    }
+
+    @Test
+    void issue_제목이_blank면_예외를_던진다() {
+        DomainException ex = assertThrows(DomainException.class, () ->
+                Issue.create(1, "   ", "본문", UUID.randomUUID())
+        );
+
+        assertEquals(Issue.CODE_ISSUE_TITLE_REQUIRED, ex.getDomainCode());
     }
 
     @Test
@@ -115,5 +134,58 @@ class IssueRelationTest {
         assertEquals(actor, comment.getCreatedByUser());
         assertEquals(actor.getId(), comment.getUpdatedBy());
         assertEquals(actor, comment.getUpdatedByUser());
+    }
+
+    @Test
+    void issueComment_updateBody_수행자ID가_null이면_본문과_updatedBy를_유지한다() {
+        UUID actorId = UUID.randomUUID();
+        Issue issue = new Issue(1, "제목", "본문", actorId);
+        IssueComment comment = IssueComment.write(issue, "{\"type\":\"doc\"}", actorId);
+
+        DomainException ex = assertThrows(DomainException.class, () -> comment.updateBody("{\"type\":\"text\"}", (UUID) null));
+
+        assertEquals(IssueComment.CODE_ISSUE_COMMENT_ACTOR_REQUIRED, ex.getDomainCode());
+        assertEquals("{\"type\":\"doc\"}", comment.getBody());
+        assertEquals(actorId, comment.getUpdatedBy());
+    }
+
+    @Test
+    void issue_updateBody_수행자ID가_null이면_본문과_updatedBy를_유지한다() {
+        UUID actorId = UUID.randomUUID();
+        Issue issue = Issue.create(1, "제목", "원본 본문", actorId);
+
+        DomainException ex = assertThrows(DomainException.class, () -> issue.updateBody("변경 본문", (UUID) null));
+
+        assertEquals(Issue.CODE_ISSUE_ACTOR_REQUIRED, ex.getDomainCode());
+        assertEquals("원본 본문", issue.getBody());
+        assertEquals(actorId, issue.getUpdatedBy());
+    }
+
+    @Test
+    void issue_close_수행자ID가_null이면_state와_closedAt을_유지한다() {
+        UUID actorId = UUID.randomUUID();
+        Issue issue = Issue.create(1, "제목", "본문", actorId);
+
+        DomainException ex = assertThrows(DomainException.class, () -> issue.close(Instant.now(), (UUID) null));
+
+        assertEquals(Issue.CODE_ISSUE_ACTOR_REQUIRED, ex.getDomainCode());
+        assertEquals(IssueState.OPEN, issue.getState());
+        assertEquals(null, issue.getClosedAt());
+        assertEquals(actorId, issue.getUpdatedBy());
+    }
+
+    @Test
+    void issue_reopen_수행자ID가_null이면_state와_closedAt을_유지한다() {
+        UUID actorId = UUID.randomUUID();
+        Issue issue = Issue.create(1, "제목", "본문", actorId);
+        Instant closedAt = Instant.now();
+        issue.close(closedAt, actorId);
+
+        DomainException ex = assertThrows(DomainException.class, () -> issue.reopen((UUID) null));
+
+        assertEquals(Issue.CODE_ISSUE_ACTOR_REQUIRED, ex.getDomainCode());
+        assertEquals(IssueState.CLOSED, issue.getState());
+        assertEquals(closedAt, issue.getClosedAt());
+        assertEquals(actorId, issue.getUpdatedBy());
     }
 }

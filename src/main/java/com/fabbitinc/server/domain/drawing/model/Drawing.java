@@ -1,6 +1,7 @@
 package com.fabbitinc.server.domain.drawing.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -25,6 +26,8 @@ import java.time.Instant;
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Drawing extends AbstractCreatedEntity {
+
+    public static final String CODE_DRAWING_NAME_REQUIRED = "DRAWING_NAME_REQUIRED";
 
     @Column(name = "drawing_number", length = 100)
     private String drawingNumber;
@@ -57,27 +60,57 @@ public class Drawing extends AbstractCreatedEntity {
 
     public Drawing(String drawingNumber, String name) {
         super(UuidV7Generator.next());
-        this.drawingNumber = drawingNumber;
-        this.name = name;
+        this.drawingNumber = normalizeNullable(drawingNumber);
+        this.name = requireName(name);
+    }
+
+    public static Drawing create(String drawingNumber, String name) {
+        return new Drawing(drawingNumber, name);
     }
 
     public void setOriginalFileKey(String originalFileKey) {
-        this.originalFileKey = originalFileKey;
+        this.originalFileKey = normalizeNullable(originalFileKey);
     }
 
     public void setPdfKey(String pdfKey) {
-        this.pdfKey = pdfKey;
+        this.pdfKey = normalizeNullable(pdfKey);
     }
 
     public void setThumbnailKey(String thumbnailKey) {
-        this.thumbnailKey = thumbnailKey;
+        this.thumbnailKey = normalizeNullable(thumbnailKey);
     }
 
     public void markConversionPending() {
         this.conversionStatus = DrawingConversionStatus.PENDING;
     }
 
+    public void markConversionCompleted(String pdfKey, String thumbnailKey) {
+        this.pdfKey = normalizeNullable(pdfKey);
+        this.thumbnailKey = normalizeNullable(thumbnailKey);
+        this.conversionStatus = DrawingConversionStatus.COMPLETED;
+    }
+
+    public void markConversionFailed() {
+        this.conversionStatus = DrawingConversionStatus.FAILED;
+    }
+
     public void softDelete() {
         this.deletedAt = Instant.now();
+    }
+
+    private String requireName(String value) {
+        String normalized = normalizeNullable(value);
+        if (normalized == null) {
+            throw new DomainException(CODE_DRAWING_NAME_REQUIRED, "도면명은 필수입니다");
+        }
+        return normalized;
+    }
+
+    private String normalizeNullable(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

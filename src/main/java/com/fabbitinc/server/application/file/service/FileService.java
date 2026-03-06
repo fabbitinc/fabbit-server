@@ -43,7 +43,7 @@ public class FileService {
         String fileKey = "tenants/" + auth.orgId() + "/uploaded/" + fileId + "/" + request.originalName();
 
         File file = fileRepository.save(
-                new File(fileId, request.originalName(), fileKey, request.contentType(), request.fileSize())
+                File.create(fileId, request.originalName(), fileKey, request.contentType(), request.fileSize())
         );
 
         String uploadUrl = storagePort.generateUploadPresignedUrl(
@@ -61,7 +61,7 @@ public class FileService {
             String fileKey = "tenants/" + auth.orgId() + "/raw_data/" + fileId + "/" + item.originalName();
 
             File file = fileRepository.save(
-                    new File(fileId, item.originalName(), fileKey, item.contentType(), item.fileSize())
+                    File.create(fileId, item.originalName(), fileKey, item.contentType(), item.fileSize())
             );
 
             String uploadUrl = storagePort.generateUploadPresignedUrl(

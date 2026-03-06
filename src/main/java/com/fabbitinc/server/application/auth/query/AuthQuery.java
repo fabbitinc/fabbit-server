@@ -12,8 +12,6 @@ import com.fabbitinc.server.application.config.AppProperties;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.domain.organization.model.Organization;
-import com.fabbitinc.server.domain.organization.model.OrganizationPlans;
-import com.fabbitinc.server.domain.organization.model.PlanLimits;
 import com.fabbitinc.server.domain.organization.model.PlanType;
 import com.fabbitinc.server.domain.organization.model.WorkspaceSlugPolicy;
 import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
@@ -22,9 +20,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 
 @Component
@@ -38,7 +36,7 @@ public class AuthQuery {
     private final FileUrlResolver fileUrlResolver;
 
     public List<PlanResult> listPlans() {
-        return OrganizationPlans.limits().entrySet().stream()
+        return Arrays.stream(PlanType.values())
                 .map(this::toPlanResult)
                 .toList();
     }
@@ -82,17 +80,15 @@ public class AuthQuery {
         );
     }
 
-    private PlanResult toPlanResult(Map.Entry<PlanType, PlanLimits> entry) {
-        PlanType planType = entry.getKey();
-        PlanLimits limits = entry.getValue();
+    private PlanResult toPlanResult(PlanType planType) {
         return new PlanResult(
                 planType,
-                limits.displayName(),
-                limits.description(),
-                limits.maxMembers(),
-                limits.storageGb(),
-                limits.aiCredits(),
-                limits.priceMonthly()
+                planType.displayName(),
+                planType.description(),
+                planType.maxMembers(),
+                planType.storageGb(),
+                planType.aiCredits(),
+                planType.priceMonthly()
         );
     }
 

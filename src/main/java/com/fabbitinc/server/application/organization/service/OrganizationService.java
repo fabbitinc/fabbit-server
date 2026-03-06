@@ -9,8 +9,6 @@ import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
-import com.fabbitinc.server.domain.organization.model.OrganizationPlans;
-import com.fabbitinc.server.domain.organization.model.PlanLimits;
 import com.fabbitinc.server.domain.organization.model.PlanType;
 import com.fabbitinc.server.domain.organization.model.WorkspaceSlugPolicy;
 import com.fabbitinc.server.domain.organization.repository.MembershipRepository;
@@ -38,7 +36,6 @@ public class OrganizationService {
         if (planType == null) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 플랜입니다");
         }
-        PlanLimits limits = OrganizationPlans.limits().get(planType);
 
         String slug = resolveAvailableSlug(input.slug(), input.orgName());
 
@@ -50,9 +47,9 @@ public class OrganizationService {
                         input.industry(),
                         input.teamSize(),
                         planType,
-                        limits.maxMembers(),
-                        limits.aiCredits(),
-                        limits.storageGb() * GB_TO_BYTES
+                        planType.maxMembers(),
+                        planType.aiCredits(),
+                        planType.storageGb() * GB_TO_BYTES
                 )
         );
 

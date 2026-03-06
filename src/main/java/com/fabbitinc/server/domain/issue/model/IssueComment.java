@@ -61,7 +61,7 @@ public class IssueComment extends AbstractAuditableEntity {
         this.issueId = requireIssueId(issueId);
         this.body = requireBody(body);
         this.createdBy = requireActorId(actorId);
-        this.updatedBy = actorId;
+        this.updatedBy = this.createdBy;
     }
 
     public static IssueComment write(UUID issueId, String body, UUID actorId) {
@@ -97,8 +97,10 @@ public class IssueComment extends AbstractAuditableEntity {
     }
 
     public void updateBody(String body, UUID actorId) {
-        this.body = requireBody(body);
-        this.updatedBy = requireActorId(actorId);
+        UUID requiredActorId = requireActorId(actorId);
+        String requiredBody = requireBody(body);
+        this.body = requiredBody;
+        this.updatedBy = requiredActorId;
         if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
             this.updatedByUser = null;
         }

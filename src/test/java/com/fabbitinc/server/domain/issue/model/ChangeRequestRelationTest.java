@@ -1,12 +1,15 @@
 package com.fabbitinc.server.domain.issue.model;
 
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.user.model.User;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ChangeRequestRelationTest {
@@ -58,5 +61,53 @@ class ChangeRequestRelationTest {
         assertEquals(team, reviewer.getTeam());
         assertEquals(changeRequest.getId(), reviewer.getChangeRequestId());
         assertEquals(team.getId(), reviewer.getTeamId());
+    }
+
+    @Test
+    void submit_수행자ID가_null이면_상태변경없이_예외를_던진다() {
+        ChangeRequest changeRequest = new ChangeRequest(1, "CR 제목", "CR 본문", UUID.randomUUID());
+
+        DomainException ex = assertThrows(DomainException.class, () -> changeRequest.submit(null));
+
+        assertEquals(Issue.CODE_ISSUE_ACTOR_REQUIRED, ex.getDomainCode());
+        assertEquals(CrState.DRAFT, changeRequest.getCrState());
+        assertEquals(IssueState.OPEN, changeRequest.getState());
+    }
+
+    @Test
+    void merge_수행자ID가_null이면_상태변경없이_예외를_던진다() {
+        UUID actorId = UUID.randomUUID();
+        ChangeRequest changeRequest = new ChangeRequest(1, "CR 제목", "CR 본문", actorId);
+        changeRequest.submit(actorId);
+
+        DomainException ex = assertThrows(DomainException.class, () -> changeRequest.merge(Instant.now(), null));
+
+        assertEquals(Issue.CODE_ISSUE_ACTOR_REQUIRED, ex.getDomainCode());
+        assertEquals(CrState.SUBMITTED, changeRequest.getCrState());
+        assertEquals(IssueState.OPEN, changeRequest.getState());
+    }
+
+    @Test
+    void closeCr_수행자ID가_null이면_상태변경없이_예외를_던진다() {
+        ChangeRequest changeRequest = new ChangeRequest(1, "CR 제목", "CR 본문", UUID.randomUUID());
+
+        DomainException ex = assertThrows(DomainException.class, () -> changeRequest.closeCr(Instant.now(), null));
+
+        assertEquals(Issue.CODE_ISSUE_ACTOR_REQUIRED, ex.getDomainCode());
+        assertEquals(CrState.DRAFT, changeRequest.getCrState());
+        assertEquals(IssueState.OPEN, changeRequest.getState());
+    }
+
+    @Test
+    void reopenCr_수행자ID가_null이면_상태변경없이_예외를_던진다() {
+        UUID actorId = UUID.randomUUID();
+        ChangeRequest changeRequest = new ChangeRequest(1, "CR 제목", "CR 본문", actorId);
+        changeRequest.closeCr(Instant.now(), actorId);
+
+        DomainException ex = assertThrows(DomainException.class, () -> changeRequest.reopenCr(null));
+
+        assertEquals(Issue.CODE_ISSUE_ACTOR_REQUIRED, ex.getDomainCode());
+        assertEquals(CrState.CLOSED, changeRequest.getCrState());
+        assertEquals(IssueState.CLOSED, changeRequest.getState());
     }
 }

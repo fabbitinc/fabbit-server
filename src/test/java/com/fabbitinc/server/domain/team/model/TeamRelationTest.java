@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,10 +24,30 @@ class TeamRelationTest {
     void team_엔티티_입력시_createdBy_FK와_연관을_동기화한다() {
         User creator = new User("creator@example.com", "hashed", "Creator");
 
-        Team team = Team.create("Core Team", null, creator);
+        Team team = Team.create("  Core Team  ", "  설명  ", creator);
 
+        assertEquals("Core Team", team.getName());
+        assertEquals("설명", team.getDescription());
         assertEquals(creator.getId(), team.getCreatedBy());
         assertEquals(creator, team.getCreator());
+    }
+
+    @Test
+    void team_이름이_blank면_예외를_던진다() {
+        DomainException ex = assertThrows(DomainException.class, () ->
+                Team.create("   ", null, UUID.randomUUID())
+        );
+
+        assertEquals(Team.CODE_TEAM_NAME_REQUIRED, ex.getDomainCode());
+    }
+
+    @Test
+    void team_changeDescription_blank면_null로_정규화한다() {
+        Team team = Team.create("Core Team", "설명", UUID.randomUUID());
+
+        team.changeDescription("   ");
+
+        assertNull(team.getDescription());
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.fabbitinc.server.domain.file.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -29,6 +30,13 @@ import java.util.UUID;
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class File extends AbstractCreatedEntity {
+
+    public static final String CODE_FILE_ORIGINAL_NAME_REQUIRED = "FILE_ORIGINAL_NAME_REQUIRED";
+    public static final String CODE_FILE_KEY_REQUIRED = "FILE_KEY_REQUIRED";
+    public static final String CODE_FILE_CONTENT_TYPE_REQUIRED = "FILE_CONTENT_TYPE_REQUIRED";
+    public static final String CODE_FILE_SIZE_INVALID = "FILE_SIZE_INVALID";
+    public static final String CODE_FILE_OWNER_TYPE_REQUIRED = "FILE_OWNER_TYPE_REQUIRED";
+    public static final String CODE_FILE_OWNER_ID_REQUIRED = "FILE_OWNER_ID_REQUIRED";
 
     @Column(name = "original_name", nullable = false, length = 500)
     private String originalName;
@@ -63,10 +71,10 @@ public class File extends AbstractCreatedEntity {
             long fileSize
     ) {
         super(id);
-        this.originalName = originalName;
-        this.fileKey = fileKey;
-        this.contentType = contentType;
-        this.fileSize = fileSize;
+        this.originalName = requireOriginalName(originalName);
+        this.fileKey = requireFileKey(fileKey);
+        this.contentType = requireContentType(contentType);
+        this.fileSize = requireFileSize(fileSize);
         this.status = FileStatus.PENDING;
     }
 
@@ -79,6 +87,14 @@ public class File extends AbstractCreatedEntity {
         this(UuidV7Generator.next(), originalName, fileKey, contentType, fileSize);
     }
 
+    public static File create(UUID id, String originalName, String fileKey, String contentType, long fileSize) {
+        return new File(id, originalName, fileKey, contentType, fileSize);
+    }
+
+    public static File create(String originalName, String fileKey, String contentType, long fileSize) {
+        return new File(originalName, fileKey, contentType, fileSize);
+    }
+
     public boolean isDeleted() {
         return deletedAt != null;
     }
@@ -88,6 +104,12 @@ public class File extends AbstractCreatedEntity {
     }
 
     public void assignOwner(String ownerType, UUID ownerId) {
+        if (ownerType == null || ownerType.isBlank()) {
+            throw new DomainException(CODE_FILE_OWNER_TYPE_REQUIRED, "소유자 타입은 필수입니다");
+        }
+        if (ownerId == null) {
+            throw new DomainException(CODE_FILE_OWNER_ID_REQUIRED, "소유자 ID는 필수입니다");
+        }
         this.ownerType = ownerType;
         this.ownerId = ownerId;
     }
@@ -112,5 +134,33 @@ public class File extends AbstractCreatedEntity {
 
     public void softDelete() {
         this.deletedAt = Instant.now();
+    }
+
+    private String requireOriginalName(String value) {
+        if (value == null || value.isBlank()) {
+            throw new DomainException(CODE_FILE_ORIGINAL_NAME_REQUIRED, "원본 파일명은 필수입니다");
+        }
+        return value;
+    }
+
+    private String requireFileKey(String value) {
+        if (value == null || value.isBlank()) {
+            throw new DomainException(CODE_FILE_KEY_REQUIRED, "파일 키는 필수입니다");
+        }
+        return value;
+    }
+
+    private String requireContentType(String value) {
+        if (value == null || value.isBlank()) {
+            throw new DomainException(CODE_FILE_CONTENT_TYPE_REQUIRED, "콘텐츠 타입은 필수입니다");
+        }
+        return value;
+    }
+
+    private long requireFileSize(long value) {
+        if (value < 0) {
+            throw new DomainException(CODE_FILE_SIZE_INVALID, "파일 크기는 0 이상이어야 합니다");
+        }
+        return value;
     }
 }

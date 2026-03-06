@@ -50,7 +50,7 @@ public class DrawingService {
             );
         }
 
-        Drawing drawing = new Drawing(null, file.getOriginalName());
+        Drawing drawing = Drawing.create(null, file.getOriginalName());
         drawing.setOriginalFileKey(file.getFileKey());
         drawing.markConversionPending();
         drawingRepository.save(drawing);
