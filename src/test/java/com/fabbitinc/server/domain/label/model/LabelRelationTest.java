@@ -60,4 +60,40 @@ class LabelRelationTest {
 
         assertEquals(Label.CODE_LABEL_ACTOR_REQUIRED, ex.getDomainCode());
     }
+
+    @Test
+    void label_changeColor_수행자가_null이면_색상과_updatedBy를_유지한다() {
+        UUID actorId = UUID.randomUUID();
+        Label label = Label.create("bug", null, "#ff0000", actorId);
+
+        DomainException ex = assertThrows(DomainException.class, () -> label.changeColor("#00ff00", (UUID) null));
+
+        assertEquals(Label.CODE_LABEL_ACTOR_REQUIRED, ex.getDomainCode());
+        assertEquals("#ff0000", label.getColor());
+        assertEquals(actorId, label.getUpdatedBy());
+    }
+
+    @Test
+    void label_changeDescription_수행자가_null이면_설명과_updatedBy를_유지한다() {
+        UUID actorId = UUID.randomUUID();
+        Label label = Label.create("bug", "원본", "#ff0000", actorId);
+
+        DomainException ex = assertThrows(DomainException.class, () -> label.changeDescription("변경", (UUID) null));
+
+        assertEquals(Label.CODE_LABEL_ACTOR_REQUIRED, ex.getDomainCode());
+        assertEquals("원본", label.getDescription());
+        assertEquals(actorId, label.getUpdatedBy());
+    }
+
+    @Test
+    void label_removeDescription_수행자가_null이면_설명과_updatedBy를_유지한다() {
+        UUID actorId = UUID.randomUUID();
+        Label label = Label.create("bug", "원본", "#ff0000", actorId);
+
+        DomainException ex = assertThrows(DomainException.class, () -> label.removeDescription((UUID) null));
+
+        assertEquals(Label.CODE_LABEL_ACTOR_REQUIRED, ex.getDomainCode());
+        assertEquals("원본", label.getDescription());
+        assertEquals(actorId, label.getUpdatedBy());
+    }
 }

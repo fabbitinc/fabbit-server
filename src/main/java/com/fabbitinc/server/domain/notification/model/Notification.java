@@ -36,6 +36,7 @@ public class Notification extends AbstractAuditableEntity {
     public static final String CODE_NOTIFICATION_USER_REQUIRED = "NOTIFICATION_USER_REQUIRED";
     public static final String CODE_NOTIFICATION_TYPE_REQUIRED = "NOTIFICATION_TYPE_REQUIRED";
     public static final String CODE_NOTIFICATION_ACTOR_REQUIRED = "NOTIFICATION_ACTOR_REQUIRED";
+    public static final String CODE_NOTIFICATION_READ_AT_REQUIRED = "NOTIFICATION_READ_AT_REQUIRED";
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
@@ -67,7 +68,7 @@ public class Notification extends AbstractAuditableEntity {
         this.userId = requireUserId(userId);
         this.type = requireType(type);
         this.actorId = requireActorId(actorId);
-        this.payload = payload == null || payload.isBlank() ? "{}" : payload;
+        this.payload = normalizePayload(payload);
     }
 
     public static Notification create(UUID userId, NotificationType type, UUID actorId, String payload) {
@@ -88,7 +89,7 @@ public class Notification extends AbstractAuditableEntity {
     }
 
     public void markRead(Instant readAt) {
-        this.readAt = readAt;
+        this.readAt = requireReadAt(readAt);
     }
 
     private UUID requireUserId(UUID value) {
@@ -110,5 +111,19 @@ public class Notification extends AbstractAuditableEntity {
             throw new DomainException(CODE_NOTIFICATION_ACTOR_REQUIRED, "행위자 ID는 필수입니다");
         }
         return value;
+    }
+
+    private Instant requireReadAt(Instant value) {
+        if (value == null) {
+            throw new DomainException(CODE_NOTIFICATION_READ_AT_REQUIRED, "읽음 시각은 필수입니다");
+        }
+        return value;
+    }
+
+    private String normalizePayload(String value) {
+        if (value == null || value.isBlank()) {
+            return "{}";
+        }
+        return value.trim();
     }
 }

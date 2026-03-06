@@ -13,6 +13,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FileTest {
 
     @Test
+    void file_문자열_필드는_trim_정규화한다() {
+        File file = File.create(UUID.randomUUID(), "  a.txt  ", "  key/path  ", "  text/plain  ", 1L);
+
+        assertEquals("a.txt", file.getOriginalName());
+        assertEquals("key/path", file.getFileKey());
+        assertEquals("text/plain", file.getContentType());
+    }
+
+    @Test
     void file_원본파일명이_비어있으면_예외를_던진다() {
         DomainException ex = assertThrows(DomainException.class, () ->
                 File.create(UUID.randomUUID(), " ", "key", "text/plain", 1L)
@@ -28,6 +37,17 @@ class FileTest {
         DomainException ex = assertThrows(DomainException.class, () -> file.assignOwner("issue", null));
 
         assertEquals(File.CODE_FILE_OWNER_ID_REQUIRED, ex.getDomainCode());
+    }
+
+    @Test
+    void file_assignOwner_소유자타입은_trim_정규화한다() {
+        File file = File.create("a.txt", "k", "text/plain", 1L);
+        UUID ownerId = UUID.randomUUID();
+
+        file.assignOwner("  issue  ", ownerId);
+
+        assertEquals("issue", file.getOwnerType());
+        assertEquals(ownerId, file.getOwnerId());
     }
 
     @Test

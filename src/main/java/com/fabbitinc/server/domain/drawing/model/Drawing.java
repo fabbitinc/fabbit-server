@@ -28,6 +28,8 @@ import java.time.Instant;
 public class Drawing extends AbstractCreatedEntity {
 
     public static final String CODE_DRAWING_NAME_REQUIRED = "DRAWING_NAME_REQUIRED";
+    public static final String CODE_DRAWING_PDF_KEY_REQUIRED = "DRAWING_PDF_KEY_REQUIRED";
+    public static final String CODE_DRAWING_THUMBNAIL_KEY_REQUIRED = "DRAWING_THUMBNAIL_KEY_REQUIRED";
 
     @Column(name = "drawing_number", length = 100)
     private String drawingNumber;
@@ -85,8 +87,10 @@ public class Drawing extends AbstractCreatedEntity {
     }
 
     public void markConversionCompleted(String pdfKey, String thumbnailKey) {
-        this.pdfKey = normalizeNullable(pdfKey);
-        this.thumbnailKey = normalizeNullable(thumbnailKey);
+        String requiredPdfKey = requirePdfKey(pdfKey);
+        String requiredThumbnailKey = requireThumbnailKey(thumbnailKey);
+        this.pdfKey = requiredPdfKey;
+        this.thumbnailKey = requiredThumbnailKey;
         this.conversionStatus = DrawingConversionStatus.COMPLETED;
     }
 
@@ -102,6 +106,22 @@ public class Drawing extends AbstractCreatedEntity {
         String normalized = normalizeNullable(value);
         if (normalized == null) {
             throw new DomainException(CODE_DRAWING_NAME_REQUIRED, "도면명은 필수입니다");
+        }
+        return normalized;
+    }
+
+    private String requirePdfKey(String value) {
+        String normalized = normalizeNullable(value);
+        if (normalized == null) {
+            throw new DomainException(CODE_DRAWING_PDF_KEY_REQUIRED, "PDF 키는 필수입니다");
+        }
+        return normalized;
+    }
+
+    private String requireThumbnailKey(String value) {
+        String normalized = normalizeNullable(value);
+        if (normalized == null) {
+            throw new DomainException(CODE_DRAWING_THUMBNAIL_KEY_REQUIRED, "썸네일 키는 필수입니다");
         }
         return normalized;
     }

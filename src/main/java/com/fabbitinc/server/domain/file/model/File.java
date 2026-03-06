@@ -104,13 +104,11 @@ public class File extends AbstractCreatedEntity {
     }
 
     public void assignOwner(String ownerType, UUID ownerId) {
-        if (ownerType == null || ownerType.isBlank()) {
-            throw new DomainException(CODE_FILE_OWNER_TYPE_REQUIRED, "소유자 타입은 필수입니다");
-        }
+        String normalizedOwnerType = normalizeRequiredText(ownerType, CODE_FILE_OWNER_TYPE_REQUIRED, "소유자 타입은 필수입니다");
         if (ownerId == null) {
             throw new DomainException(CODE_FILE_OWNER_ID_REQUIRED, "소유자 ID는 필수입니다");
         }
-        this.ownerType = ownerType;
+        this.ownerType = normalizedOwnerType;
         this.ownerId = ownerId;
     }
 
@@ -137,24 +135,22 @@ public class File extends AbstractCreatedEntity {
     }
 
     private String requireOriginalName(String value) {
-        if (value == null || value.isBlank()) {
-            throw new DomainException(CODE_FILE_ORIGINAL_NAME_REQUIRED, "원본 파일명은 필수입니다");
-        }
-        return value;
+        return normalizeRequiredText(value, CODE_FILE_ORIGINAL_NAME_REQUIRED, "원본 파일명은 필수입니다");
     }
 
     private String requireFileKey(String value) {
-        if (value == null || value.isBlank()) {
-            throw new DomainException(CODE_FILE_KEY_REQUIRED, "파일 키는 필수입니다");
-        }
-        return value;
+        return normalizeRequiredText(value, CODE_FILE_KEY_REQUIRED, "파일 키는 필수입니다");
     }
 
     private String requireContentType(String value) {
+        return normalizeRequiredText(value, CODE_FILE_CONTENT_TYPE_REQUIRED, "콘텐츠 타입은 필수입니다");
+    }
+
+    private String normalizeRequiredText(String value, String code, String message) {
         if (value == null || value.isBlank()) {
-            throw new DomainException(CODE_FILE_CONTENT_TYPE_REQUIRED, "콘텐츠 타입은 필수입니다");
+            throw new DomainException(code, message);
         }
-        return value;
+        return value.trim();
     }
 
     private long requireFileSize(long value) {

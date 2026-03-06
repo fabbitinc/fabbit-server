@@ -553,7 +553,7 @@ public class IssueService {
     }
 
     public ChangeRequestReviewer submitReview(UUID actorId, UUID changeRequestId, ReviewStatus status) {
-        if (status == null) {
+        if (status == null || status == ReviewStatus.PENDING) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "리뷰 상태는 APPROVED 또는 REJECTED만 허용됩니다");
         }
         ChangeRequestReviewer reviewer = changeRequestReviewerRepository

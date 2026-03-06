@@ -35,4 +35,26 @@ class BomLinkTest {
 
         assertEquals(BomLink.CODE_BOM_INVALID_QUANTITY, ex.getDomainCode());
     }
+
+    @Test
+    void connect_자기자신으로_연결하면_예외를_던진다() {
+        UUID partId = UUID.randomUUID();
+
+        DomainException ex = assertThrows(
+                DomainException.class,
+                () -> BomLink.connect(partId, partId, 1, "{}")
+        );
+
+        assertEquals(BomLink.CODE_BOM_SELF_LINK_NOT_ALLOWED, ex.getDomainCode());
+    }
+
+    @Test
+    void connect_extendedProperties는_trim_정규화한다() {
+        UUID parentId = UUID.randomUUID();
+        UUID childId = UUID.randomUUID();
+
+        BomLink link = BomLink.connect(parentId, childId, 1, "  {\"a\":1}  ");
+
+        assertEquals("{\"a\":1}", link.getExtendedProperties());
+    }
 }

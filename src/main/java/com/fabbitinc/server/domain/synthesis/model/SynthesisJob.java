@@ -39,6 +39,7 @@ public class SynthesisJob extends AbstractCreatedEntity {
     public static final String CODE_SYNTHESIS_JOB_BATCH_REQUIRED = "SYNTHESIS_JOB_BATCH_REQUIRED";
     public static final String CODE_SYNTHESIS_JOB_MAPPING_REQUIRED = "SYNTHESIS_JOB_MAPPING_REQUIRED";
     public static final String CODE_SYNTHESIS_JOB_FILE_REQUIRED = "SYNTHESIS_JOB_FILE_REQUIRED";
+    public static final String CODE_SYNTHESIS_JOB_INVALID_STATE = "SYNTHESIS_JOB_INVALID_STATE";
 
     @Column(name = "batch_id")
     private UUID batchId;
@@ -146,16 +147,25 @@ public class SynthesisJob extends AbstractCreatedEntity {
     }
 
     public void markProcessing() {
+        if (this.status != SynthesisJobStatus.PENDING) {
+            throw new DomainException(CODE_SYNTHESIS_JOB_INVALID_STATE, "PENDING 상태에서만 PROCESSING으로 전이할 수 있습니다");
+        }
         this.status = SynthesisJobStatus.PROCESSING;
         this.startedAt = Instant.now();
     }
 
     public void markCompleted() {
+        if (this.status != SynthesisJobStatus.PROCESSING) {
+            throw new DomainException(CODE_SYNTHESIS_JOB_INVALID_STATE, "PROCESSING 상태에서만 COMPLETED로 전이할 수 있습니다");
+        }
         this.status = SynthesisJobStatus.COMPLETED;
         this.completedAt = Instant.now();
     }
 
     public void markFailed(String errors) {
+        if (this.status != SynthesisJobStatus.PROCESSING) {
+            throw new DomainException(CODE_SYNTHESIS_JOB_INVALID_STATE, "PROCESSING 상태에서만 FAILED로 전이할 수 있습니다");
+        }
         this.status = SynthesisJobStatus.FAILED;
         this.errors = errors == null || errors.isBlank() ? "[]" : errors;
         this.completedAt = Instant.now();

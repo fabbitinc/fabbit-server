@@ -40,6 +40,7 @@ public class PartSupplier extends AbstractCreatedEntity {
 
     public static final String CODE_PART_SUPPLIER_PART_REQUIRED = "PART_SUPPLIER_PART_REQUIRED";
     public static final String CODE_PART_SUPPLIER_SUPPLIER_REQUIRED = "PART_SUPPLIER_SUPPLIER_REQUIRED";
+    public static final String CODE_PART_SUPPLIER_UNIT_COST_INVALID = "PART_SUPPLIER_UNIT_COST_INVALID";
 
     @Column(name = "part_id", nullable = false)
     private UUID partId;
@@ -66,10 +67,8 @@ public class PartSupplier extends AbstractCreatedEntity {
         super(UuidV7Generator.next());
         this.partId = requirePartId(partId);
         this.supplierId = requireSupplierId(supplierId);
-        this.unitCost = unitCost;
-        this.extendedProperties = (extendedProperties == null || extendedProperties.isBlank())
-                ? "{}"
-                : extendedProperties;
+        this.unitCost = normalizeUnitCost(unitCost);
+        this.extendedProperties = normalizeExtendedProperties(extendedProperties);
     }
 
     public static PartSupplier link(UUID partId, UUID supplierId, Double unitCost, String extendedProperties) {
@@ -101,5 +100,22 @@ public class PartSupplier extends AbstractCreatedEntity {
             throw new DomainException(CODE_PART_SUPPLIER_SUPPLIER_REQUIRED, "공급사 ID는 필수입니다");
         }
         return value;
+    }
+
+    private Double normalizeUnitCost(Double value) {
+        if (value == null) {
+            return null;
+        }
+        if (value < 0 || value.isNaN() || value.isInfinite()) {
+            throw new DomainException(CODE_PART_SUPPLIER_UNIT_COST_INVALID, "단가는 0 이상의 유효한 숫자여야 합니다");
+        }
+        return value;
+    }
+
+    private String normalizeExtendedProperties(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "{}";
+        }
+        return raw.trim();
     }
 }

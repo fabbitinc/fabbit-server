@@ -46,6 +46,8 @@ public class Invitation extends AbstractCreatedEntity {
     public static final String CODE_INVITATION_TOKEN_REQUIRED = "INVITATION_TOKEN_REQUIRED";
     public static final String CODE_INVITATION_INVITER_REQUIRED = "INVITATION_INVITER_REQUIRED";
     public static final String CODE_INVITATION_EXPIRES_AT_REQUIRED = "INVITATION_EXPIRES_AT_REQUIRED";
+    public static final String CODE_INVITATION_TIME_REQUIRED = "INVITATION_TIME_REQUIRED";
+    public static final String CODE_INVITATION_INVALID_STATE = "INVITATION_INVALID_STATE";
 
     @Column(name = "org_id", nullable = false)
     private UUID orgId;
@@ -138,15 +140,23 @@ public class Invitation extends AbstractCreatedEntity {
     }
 
     public boolean isExpired(Instant now) {
-        return now.isAfter(expiresAt);
+        Instant requiredNow = requireNow(now);
+        return requiredNow.isAfter(expiresAt);
     }
 
     public void accept(Instant now) {
+        if (this.status != InvitationStatus.PENDING) {
+            throw new DomainException(CODE_INVITATION_INVALID_STATE, "대기 중인 초대만 수락할 수 있습니다");
+        }
+        Instant requiredNow = requireNow(now);
         this.status = InvitationStatus.ACCEPTED;
-        this.acceptedAt = now;
+        this.acceptedAt = requiredNow;
     }
 
     public void cancel() {
+        if (this.status != InvitationStatus.PENDING) {
+            throw new DomainException(CODE_INVITATION_INVALID_STATE, "대기 중인 초대만 취소할 수 있습니다");
+        }
         this.status = InvitationStatus.CANCELLED;
     }
 
@@ -188,6 +198,13 @@ public class Invitation extends AbstractCreatedEntity {
     private Instant requireExpiresAt(Instant value) {
         if (value == null) {
             throw new DomainException(CODE_INVITATION_EXPIRES_AT_REQUIRED, "만료 시각은 필수입니다");
+        }
+        return value;
+    }
+
+    private Instant requireNow(Instant value) {
+        if (value == null) {
+            throw new DomainException(CODE_INVITATION_TIME_REQUIRED, "현재 시각은 필수입니다");
         }
         return value;
     }

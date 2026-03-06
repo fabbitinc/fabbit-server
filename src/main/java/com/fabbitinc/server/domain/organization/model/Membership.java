@@ -38,6 +38,9 @@ public class Membership extends AbstractCreatedEntity {
     public static final String CODE_MEMBERSHIP_USER_REQUIRED = "MEMBERSHIP_USER_REQUIRED";
     public static final String CODE_MEMBERSHIP_ORG_REQUIRED = "MEMBERSHIP_ORG_REQUIRED";
     public static final String CODE_MEMBERSHIP_ROLE_REQUIRED = "MEMBERSHIP_ROLE_REQUIRED";
+    public static final String CODE_MEMBERSHIP_JOB_ROLE_TOO_LONG = "MEMBERSHIP_JOB_ROLE_TOO_LONG";
+
+    private static final int MAX_JOB_ROLE_LENGTH = 50;
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
@@ -65,7 +68,7 @@ public class Membership extends AbstractCreatedEntity {
         this.userId = requireUserId(userId);
         this.orgId = requireOrgId(orgId);
         this.role = requireRole(role);
-        this.jobRole = jobRole;
+        this.jobRole = normalizeJobRole(jobRole);
     }
 
     public static Membership create(UUID userId, UUID orgId, MembershipRole role, String jobRole) {
@@ -116,5 +119,19 @@ public class Membership extends AbstractCreatedEntity {
             throw new DomainException(CODE_MEMBERSHIP_ROLE_REQUIRED, "멤버 역할은 필수입니다");
         }
         return value;
+    }
+
+    private String normalizeJobRole(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.length() > MAX_JOB_ROLE_LENGTH) {
+            throw new DomainException(CODE_MEMBERSHIP_JOB_ROLE_TOO_LONG, "직무는 50자 이하여야 합니다");
+        }
+        return trimmed;
     }
 }

@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
 
 @Getter
 @Entity
@@ -30,6 +31,12 @@ public class EmailVerification extends AbstractCreatedEntity {
     public static final String CODE_VERIFICATION_COOLDOWN = "AUTH_VERIFICATION_COOLDOWN";
     public static final String CODE_VERIFICATION_EXPIRED = "AUTH_VERIFICATION_EXPIRED";
     public static final String CODE_VERIFICATION_MAX_ATTEMPTS = "AUTH_VERIFICATION_MAX_ATTEMPTS";
+    public static final String CODE_VERIFICATION_EMAIL_REQUIRED = "AUTH_VERIFICATION_EMAIL_REQUIRED";
+    public static final String CODE_VERIFICATION_CODE_HASH_REQUIRED = "AUTH_VERIFICATION_CODE_HASH_REQUIRED";
+    public static final String CODE_VERIFICATION_EXPIRES_AT_REQUIRED = "AUTH_VERIFICATION_EXPIRES_AT_REQUIRED";
+    public static final String CODE_VERIFICATION_TIME_REQUIRED = "AUTH_VERIFICATION_TIME_REQUIRED";
+    public static final String CODE_VERIFICATION_TOKEN_REQUIRED = "AUTH_VERIFICATION_TOKEN_REQUIRED";
+    public static final String CODE_VERIFICATION_INVALID_STATE = "AUTH_VERIFICATION_INVALID_STATE";
 
     @Column(name = "email", nullable = false, length = 255)
     private String email;
@@ -52,9 +59,9 @@ public class EmailVerification extends AbstractCreatedEntity {
 
     private EmailVerification(String email, String codeHash, Instant expiresAt) {
         super(UuidV7Generator.next());
-        this.email = email;
-        this.codeHash = codeHash;
-        this.expiresAt = expiresAt;
+        this.email = requireEmail(email);
+        this.codeHash = requireCodeHash(codeHash);
+        this.expiresAt = requireExpiresAt(expiresAt);
         this.status = EmailVerificationStatus.PENDING;
         this.attemptCount = 0;
     }
@@ -64,7 +71,8 @@ public class EmailVerification extends AbstractCreatedEntity {
     }
 
     public boolean isExpired(Instant now) {
-        return now.isAfter(expiresAt);
+        Instant requiredNow = requireNow(now);
+        return requiredNow.isAfter(expiresAt);
     }
 
     public boolean isMaxAttempts(int maxAttempts) {
@@ -105,11 +113,53 @@ public class EmailVerification extends AbstractCreatedEntity {
     }
 
     public void verify(String verificationTokenHash) {
+        if (this.status != EmailVerificationStatus.PENDING) {
+            throw new DomainException(CODE_VERIFICATION_INVALID_STATE, "PENDING 상태에서만 인증할 수 있습니다");
+        }
+        String requiredTokenHash = requireVerificationTokenHash(verificationTokenHash);
         this.status = EmailVerificationStatus.VERIFIED;
-        this.verificationTokenHash = verificationTokenHash;
+        this.verificationTokenHash = requiredTokenHash;
     }
 
     public void use() {
+        if (this.status != EmailVerificationStatus.VERIFIED) {
+            throw new DomainException(CODE_VERIFICATION_INVALID_STATE, "VERIFIED 상태에서만 사용 처리할 수 있습니다");
+        }
         this.status = EmailVerificationStatus.USED;
+    }
+
+    private String requireEmail(String value) {
+        if (value == null || value.isBlank()) {
+            throw new DomainException(CODE_VERIFICATION_EMAIL_REQUIRED, "이메일은 필수입니다");
+        }
+        return value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String requireCodeHash(String value) {
+        if (value == null || value.isBlank()) {
+            throw new DomainException(CODE_VERIFICATION_CODE_HASH_REQUIRED, "인증 코드 해시는 필수입니다");
+        }
+        return value.trim();
+    }
+
+    private Instant requireExpiresAt(Instant value) {
+        if (value == null) {
+            throw new DomainException(CODE_VERIFICATION_EXPIRES_AT_REQUIRED, "만료 시각은 필수입니다");
+        }
+        return value;
+    }
+
+    private Instant requireNow(Instant value) {
+        if (value == null) {
+            throw new DomainException(CODE_VERIFICATION_TIME_REQUIRED, "현재 시각은 필수입니다");
+        }
+        return value;
+    }
+
+    private String requireVerificationTokenHash(String value) {
+        if (value == null || value.isBlank()) {
+            throw new DomainException(CODE_VERIFICATION_TOKEN_REQUIRED, "검증 토큰 해시는 필수입니다");
+        }
+        return value.trim();
     }
 }

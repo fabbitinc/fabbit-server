@@ -311,7 +311,7 @@ public class SynthesisExecutionService {
             return false;
         }
 
-        bomLinkRepository.save(BomLink.connect(parent.getId(), child.getId(), quantity, "{}"));
+        bomLinkRepository.save(BomLink.connect(parent, child, quantity, "{}"));
         return true;
     }
 
@@ -321,7 +321,7 @@ public class SynthesisExecutionService {
             return new UpsertSupplierResult(existing, false);
         }
 
-        Supplier created = new Supplier(companyName, null, null, null, "{}");
+        Supplier created = Supplier.create(companyName, null, null, null, "{}");
         supplierRepository.save(created);
         return new UpsertSupplierResult(created, true);
     }
@@ -332,7 +332,7 @@ public class SynthesisExecutionService {
             return false;
         }
 
-        partSupplierRepository.save(PartSupplier.link(part.getId(), supplier.getId(), unitCost, "{}"));
+        partSupplierRepository.save(PartSupplier.link(part, supplier, unitCost, "{}"));
         return true;
     }
 

@@ -35,4 +35,28 @@ class ProjectPartTest {
 
         assertEquals(ProjectPart.CODE_PROJECT_PART_PART_REQUIRED, ex.getDomainCode());
     }
+
+    @Test
+    void link_프로젝트가_null이면_예외를_던진다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        DomainException ex = assertThrows(
+                DomainException.class,
+                () -> ProjectPart.link((Project) null, part)
+        );
+
+        assertEquals(ProjectPart.CODE_PROJECT_PART_PROJECT_REQUIRED, ex.getDomainCode());
+    }
+
+    @Test
+    void link_부품이_null이면_예외를_던진다() {
+        Project project = Project.create("프로젝트", "설명");
+
+        DomainException ex = assertThrows(
+                DomainException.class,
+                () -> ProjectPart.link(project, null)
+        );
+
+        assertEquals(ProjectPart.CODE_PROJECT_PART_PART_REQUIRED, ex.getDomainCode());
+    }
 }

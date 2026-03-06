@@ -95,6 +95,9 @@ public class OrganizationService {
     }
 
     public Membership addMember(UUID userId, UUID orgId, MembershipRole role) {
+        if (role == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 역할입니다");
+        }
         if (membershipRepository.findByUserIdAndOrgId(userId, orgId).isPresent()) {
             throw new AppException(ErrorCode.ALREADY_EXISTS, "이미 조직에 소속된 멤버입니다");
         }

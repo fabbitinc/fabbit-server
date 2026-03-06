@@ -23,7 +23,7 @@ class DrawingTest {
         drawing.markConversionPending();
         assertEquals(DrawingConversionStatus.PENDING, drawing.getConversionStatus());
 
-        drawing.markConversionCompleted("files/a.pdf", "files/a.webp");
+        drawing.markConversionCompleted("  files/a.pdf  ", "  files/a.webp  ");
         assertEquals(DrawingConversionStatus.COMPLETED, drawing.getConversionStatus());
         assertEquals("files/a.pdf", drawing.getPdfKey());
         assertEquals("files/a.webp", drawing.getThumbnailKey());
@@ -41,6 +41,36 @@ class DrawingTest {
         drawing.setThumbnailKey(" ");
 
         assertNull(drawing.getOriginalFileKey());
+        assertNull(drawing.getPdfKey());
+        assertNull(drawing.getThumbnailKey());
+    }
+
+    @Test
+    void drawing_markConversionCompleted_pdfKey가_blank면_예외를_던진다() {
+        Drawing drawing = Drawing.create("D-001", "Assembly");
+
+        DomainException ex = assertThrows(
+                DomainException.class,
+                () -> drawing.markConversionCompleted("   ", "files/a.webp")
+        );
+
+        assertEquals(Drawing.CODE_DRAWING_PDF_KEY_REQUIRED, ex.getDomainCode());
+        assertNull(drawing.getConversionStatus());
+        assertNull(drawing.getPdfKey());
+        assertNull(drawing.getThumbnailKey());
+    }
+
+    @Test
+    void drawing_markConversionCompleted_thumbnailKey가_blank면_예외를_던진다() {
+        Drawing drawing = Drawing.create("D-001", "Assembly");
+
+        DomainException ex = assertThrows(
+                DomainException.class,
+                () -> drawing.markConversionCompleted("files/a.pdf", "   ")
+        );
+
+        assertEquals(Drawing.CODE_DRAWING_THUMBNAIL_KEY_REQUIRED, ex.getDomainCode());
+        assertNull(drawing.getConversionStatus());
         assertNull(drawing.getPdfKey());
         assertNull(drawing.getThumbnailKey());
     }

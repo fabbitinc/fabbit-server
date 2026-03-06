@@ -36,6 +36,8 @@ import java.util.UUID;
 public class SynthesisBatch extends AbstractCreatedEntity {
 
     public static final String CODE_SYNTHESIS_BATCH_MAPPING_REQUIRED = "SYNTHESIS_BATCH_MAPPING_REQUIRED";
+    public static final String CODE_SYNTHESIS_BATCH_REQUESTED_COUNT_INVALID = "SYNTHESIS_BATCH_REQUESTED_COUNT_INVALID";
+    public static final String CODE_SYNTHESIS_BATCH_ACCEPTED_COUNT_INVALID = "SYNTHESIS_BATCH_ACCEPTED_COUNT_INVALID";
 
     @Column(name = "project_id")
     private UUID projectId;
@@ -74,9 +76,9 @@ public class SynthesisBatch extends AbstractCreatedEntity {
         super(UuidV7Generator.next());
         this.projectId = projectId;
         this.mappingId = requireMappingId(mappingId);
-        this.requestedCount = requestedCount;
-        this.acceptedCount = acceptedCount;
-        this.failedUploads = (failedUploads == null || failedUploads.isBlank()) ? "[]" : failedUploads;
+        this.requestedCount = requireRequestedCount(requestedCount);
+        this.acceptedCount = requireAcceptedCount(acceptedCount, this.requestedCount);
+        this.failedUploads = (failedUploads == null || failedUploads.isBlank()) ? "[]" : failedUploads.trim();
     }
 
     public static SynthesisBatch create(
@@ -120,5 +122,22 @@ public class SynthesisBatch extends AbstractCreatedEntity {
             throw new DomainException(CODE_SYNTHESIS_BATCH_MAPPING_REQUIRED, "매핑 ID는 필수입니다");
         }
         return value;
+    }
+
+    private int requireRequestedCount(int value) {
+        if (value < 0) {
+            throw new DomainException(CODE_SYNTHESIS_BATCH_REQUESTED_COUNT_INVALID, "요청 건수는 0 이상이어야 합니다");
+        }
+        return value;
+    }
+
+    private int requireAcceptedCount(int acceptedCount, int requestedCount) {
+        if (acceptedCount < 0 || acceptedCount > requestedCount) {
+            throw new DomainException(
+                    CODE_SYNTHESIS_BATCH_ACCEPTED_COUNT_INVALID,
+                    "수락 건수는 0 이상이며 요청 건수 이하여야 합니다"
+            );
+        }
+        return acceptedCount;
     }
 }

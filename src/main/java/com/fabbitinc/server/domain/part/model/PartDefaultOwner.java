@@ -1,6 +1,7 @@
 package com.fabbitinc.server.domain.part.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractAuditableEntity;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.user.model.User;
@@ -21,6 +22,10 @@ import java.util.UUID;
 @Table(name = "part_default_owners")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PartDefaultOwner extends AbstractAuditableEntity {
+
+    public static final String CODE_PART_DEFAULT_OWNER_CATEGORY_TOO_LONG = "PART_DEFAULT_OWNER_CATEGORY_TOO_LONG";
+
+    private static final int MAX_CATEGORY_LENGTH = 100;
 
     @Column(name = "category", length = 100)
     private String category;
@@ -101,6 +106,12 @@ public class PartDefaultOwner extends AbstractAuditableEntity {
             return null;
         }
         String trimmed = rawCategory.trim();
+        if (trimmed.length() > MAX_CATEGORY_LENGTH) {
+            throw new DomainException(
+                    CODE_PART_DEFAULT_OWNER_CATEGORY_TOO_LONG,
+                    "기본 담당자 카테고리는 100자 이하여야 합니다"
+            );
+        }
         return trimmed.isEmpty() ? null : trimmed;
     }
 }

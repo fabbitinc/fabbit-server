@@ -41,6 +41,9 @@ public class ChangeRequestReviewer extends AbstractCreatedEntity {
 
     public static final String CODE_CR_REVIEWER_CHANGE_REQUEST_REQUIRED = "CR_REVIEWER_CHANGE_REQUEST_REQUIRED";
     public static final String CODE_CR_REVIEWER_USER_REQUIRED = "CR_REVIEWER_USER_REQUIRED";
+    public static final String CODE_CR_REVIEWER_STATUS_REQUIRED = "CR_REVIEWER_STATUS_REQUIRED";
+    public static final String CODE_CR_REVIEWER_INVALID_STATUS = "CR_REVIEWER_INVALID_STATUS";
+    public static final String CODE_CR_REVIEWER_REVIEWED_AT_REQUIRED = "CR_REVIEWER_REVIEWED_AT_REQUIRED";
 
     @Column(name = "change_request_id", nullable = false)
     private UUID changeRequestId;
@@ -88,8 +91,10 @@ public class ChangeRequestReviewer extends AbstractCreatedEntity {
     }
 
     public void submit(ReviewStatus status, Instant reviewedAt) {
-        this.reviewStatus = status;
-        this.reviewedAt = reviewedAt;
+        ReviewStatus requiredStatus = requireReviewStatus(status);
+        Instant requiredReviewedAt = requireReviewedAt(reviewedAt);
+        this.reviewStatus = requiredStatus;
+        this.reviewedAt = requiredReviewedAt;
     }
 
     private UUID requireChangeRequestId(UUID value) {
@@ -102,6 +107,23 @@ public class ChangeRequestReviewer extends AbstractCreatedEntity {
     private UUID requireUserId(UUID value) {
         if (value == null) {
             throw new DomainException(CODE_CR_REVIEWER_USER_REQUIRED, "사용자 ID는 필수입니다");
+        }
+        return value;
+    }
+
+    private ReviewStatus requireReviewStatus(ReviewStatus value) {
+        if (value == null) {
+            throw new DomainException(CODE_CR_REVIEWER_STATUS_REQUIRED, "리뷰 상태는 필수입니다");
+        }
+        if (value == ReviewStatus.PENDING) {
+            throw new DomainException(CODE_CR_REVIEWER_INVALID_STATUS, "리뷰 상태는 APPROVED 또는 REJECTED만 허용됩니다");
+        }
+        return value;
+    }
+
+    private Instant requireReviewedAt(Instant value) {
+        if (value == null) {
+            throw new DomainException(CODE_CR_REVIEWER_REVIEWED_AT_REQUIRED, "리뷰 시각은 필수입니다");
         }
         return value;
     }

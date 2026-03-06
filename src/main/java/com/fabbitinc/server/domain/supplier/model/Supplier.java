@@ -1,6 +1,7 @@
 package com.fabbitinc.server.domain.supplier.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractAuditableEntity;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -29,6 +30,15 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Supplier extends AbstractAuditableEntity {
 
+    public static final String CODE_SUPPLIER_COMPANY_NAME_REQUIRED = "SUPPLIER_COMPANY_NAME_REQUIRED";
+    public static final String CODE_SUPPLIER_COMPANY_NAME_TOO_LONG = "SUPPLIER_COMPANY_NAME_TOO_LONG";
+    public static final String CODE_SUPPLIER_CODE_TOO_LONG = "SUPPLIER_CODE_TOO_LONG";
+    public static final String CODE_SUPPLIER_COUNTRY_TOO_LONG = "SUPPLIER_COUNTRY_TOO_LONG";
+
+    private static final int MAX_COMPANY_NAME_LENGTH = 200;
+    private static final int MAX_CODE_LENGTH = 100;
+    private static final int MAX_COUNTRY_LENGTH = 100;
+
     @Column(name = "company_name", nullable = false, length = 200)
     private String companyName;
 
@@ -54,10 +64,10 @@ public class Supplier extends AbstractAuditableEntity {
             String extendedProperties
     ) {
         super(id);
-        this.companyName = companyName;
-        this.code = code;
-        this.country = country;
-        this.contactInfo = contactInfo;
+        this.companyName = requireCompanyName(companyName);
+        this.code = normalizeCode(code);
+        this.country = normalizeCountry(country);
+        this.contactInfo = normalizeNullableText(contactInfo);
         this.extendedProperties = normalizeExtendedProperties(extendedProperties);
     }
 
@@ -71,10 +81,55 @@ public class Supplier extends AbstractAuditableEntity {
         this(UuidV7Generator.next(), companyName, code, country, contactInfo, extendedProperties);
     }
 
+    public static Supplier create(
+            String companyName,
+            String code,
+            String country,
+            String contactInfo,
+            String extendedProperties
+    ) {
+        return new Supplier(companyName, code, country, contactInfo, extendedProperties);
+    }
+
+    private String requireCompanyName(String value) {
+        if (value == null || value.isBlank()) {
+            throw new DomainException(CODE_SUPPLIER_COMPANY_NAME_REQUIRED, "공급사명은 필수입니다");
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() > MAX_COMPANY_NAME_LENGTH) {
+            throw new DomainException(CODE_SUPPLIER_COMPANY_NAME_TOO_LONG, "공급사명은 200자 이하여야 합니다");
+        }
+        return trimmed;
+    }
+
+    private String normalizeCode(String value) {
+        String normalized = normalizeNullableText(value);
+        if (normalized != null && normalized.length() > MAX_CODE_LENGTH) {
+            throw new DomainException(CODE_SUPPLIER_CODE_TOO_LONG, "공급사 코드는 100자 이하여야 합니다");
+        }
+        return normalized;
+    }
+
+    private String normalizeCountry(String value) {
+        String normalized = normalizeNullableText(value);
+        if (normalized != null && normalized.length() > MAX_COUNTRY_LENGTH) {
+            throw new DomainException(CODE_SUPPLIER_COUNTRY_TOO_LONG, "국가는 100자 이하여야 합니다");
+        }
+        return normalized;
+    }
+
+    private String normalizeNullableText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isBlank() ? null : trimmed;
+    }
+
     private String normalizeExtendedProperties(String value) {
         if (value == null || value.isBlank()) {
             return "{}";
         }
-        return value;
+        return value.trim();
     }
 }

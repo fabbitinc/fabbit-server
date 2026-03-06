@@ -41,6 +41,123 @@ class PartTest {
     }
 
     @Test
+    void changeCategory_trim_정규화한다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        part.changeCategory("  FASTENER  ");
+
+        assertEquals("FASTENER", part.getCategory());
+    }
+
+    @Test
+    void changeCategory_빈문자열은_null로_정규화한다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        part.changeCategory("   ");
+
+        assertNull(part.getCategory());
+    }
+
+    @Test
+    void changeCategory_길이초과면_예외를_던진다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        DomainException ex = assertThrows(DomainException.class, () -> part.changeCategory("a".repeat(101)));
+
+        assertEquals(Part.CODE_PART_CATEGORY_TOO_LONG, ex.getDomainCode());
+    }
+
+    @Test
+    void changeMaterial_trim_정규화한다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        part.changeMaterial("  AL6061  ");
+
+        assertEquals("AL6061", part.getMaterial());
+    }
+
+    @Test
+    void changeMaterial_빈문자열은_null로_정규화한다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        part.changeMaterial("   ");
+
+        assertNull(part.getMaterial());
+    }
+
+    @Test
+    void changeMaterial_길이초과면_예외를_던진다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        DomainException ex = assertThrows(DomainException.class, () -> part.changeMaterial("a".repeat(201)));
+
+        assertEquals(Part.CODE_PART_MATERIAL_TOO_LONG, ex.getDomainCode());
+    }
+
+    @Test
+    void changeUnit_trim_정규화한다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        part.changeUnit("  EA  ");
+
+        assertEquals("EA", part.getUnit());
+    }
+
+    @Test
+    void changeUnit_빈문자열은_null로_정규화한다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        part.changeUnit("   ");
+
+        assertNull(part.getUnit());
+    }
+
+    @Test
+    void changeUnit_길이초과면_예외를_던진다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        DomainException ex = assertThrows(DomainException.class, () -> part.changeUnit("a".repeat(21)));
+
+        assertEquals(Part.CODE_PART_UNIT_TOO_LONG, ex.getDomainCode());
+    }
+
+    @Test
+    void changeDescription_trim_정규화한다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        part.changeDescription("  sample desc  ");
+
+        assertEquals("sample desc", part.getDescription());
+    }
+
+    @Test
+    void changeDescription_빈문자열은_null로_정규화한다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        part.changeDescription("   ");
+
+        assertNull(part.getDescription());
+    }
+
+    @Test
+    void changeExtendedProperties_blank이면_기본_json으로_정규화한다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        part.changeExtendedProperties(" ");
+
+        assertEquals("{}", part.getExtendedProperties());
+    }
+
+    @Test
+    void changeExtendedProperties_trim_정규화한다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        part.changeExtendedProperties("  {\"color\":\"silver\"}  ");
+
+        assertEquals("{\"color\":\"silver\"}", part.getExtendedProperties());
+    }
+
+    @Test
     void assignDrawing_null이면_예외를_던진다() {
         Part part = Part.create("P-001", "Bolt");
 

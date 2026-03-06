@@ -35,4 +35,28 @@ class ProjectMemberTest {
 
         assertEquals(ProjectMember.CODE_PROJECT_MEMBER_ROLE_REQUIRED, ex.getDomainCode());
     }
+
+    @Test
+    void assign_프로젝트가_null이면_예외를_던진다() {
+        User user = new User("member@example.com", "hashed", "Member");
+
+        DomainException ex = assertThrows(
+                DomainException.class,
+                () -> ProjectMember.assign((Project) null, user, ProjectRole.MEMBER)
+        );
+
+        assertEquals(ProjectMember.CODE_PROJECT_MEMBER_PROJECT_REQUIRED, ex.getDomainCode());
+    }
+
+    @Test
+    void assign_사용자가_null이면_예외를_던진다() {
+        Project project = Project.create("프로젝트", "설명");
+
+        DomainException ex = assertThrows(
+                DomainException.class,
+                () -> ProjectMember.assign(project, null, ProjectRole.MEMBER)
+        );
+
+        assertEquals(ProjectMember.CODE_PROJECT_MEMBER_USER_REQUIRED, ex.getDomainCode());
+    }
 }

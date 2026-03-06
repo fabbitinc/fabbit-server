@@ -40,6 +40,7 @@ public class BomLink extends AbstractCreatedEntity {
     public static final String CODE_BOM_PARENT_REQUIRED = "BOM_PARENT_REQUIRED";
     public static final String CODE_BOM_CHILD_REQUIRED = "BOM_CHILD_REQUIRED";
     public static final String CODE_BOM_INVALID_QUANTITY = "BOM_INVALID_QUANTITY";
+    public static final String CODE_BOM_SELF_LINK_NOT_ALLOWED = "BOM_SELF_LINK_NOT_ALLOWED";
 
     @Column(name = "parent_part_id", nullable = false)
     private UUID parentPartId;
@@ -66,10 +67,9 @@ public class BomLink extends AbstractCreatedEntity {
         super(UuidV7Generator.next());
         this.parentPartId = requireParentPartId(parentPartId);
         this.childPartId = requireChildPartId(childPartId);
+        requireDifferentParts(this.parentPartId, this.childPartId);
         this.quantity = requireQuantity(quantity);
-        this.extendedProperties = (extendedProperties == null || extendedProperties.isBlank())
-                ? "{}"
-                : extendedProperties;
+        this.extendedProperties = normalizeExtendedProperties(extendedProperties);
     }
 
     public static BomLink connect(UUID parentPartId, UUID childPartId, int quantity, String extendedProperties) {
@@ -108,5 +108,18 @@ public class BomLink extends AbstractCreatedEntity {
             throw new DomainException(CODE_BOM_INVALID_QUANTITY, "수량은 1 이상이어야 합니다");
         }
         return value;
+    }
+
+    private void requireDifferentParts(UUID parentId, UUID childId) {
+        if (parentId.equals(childId)) {
+            throw new DomainException(CODE_BOM_SELF_LINK_NOT_ALLOWED, "상위 부품과 하위 부품은 같을 수 없습니다");
+        }
+    }
+
+    private String normalizeExtendedProperties(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "{}";
+        }
+        return raw.trim();
     }
 }

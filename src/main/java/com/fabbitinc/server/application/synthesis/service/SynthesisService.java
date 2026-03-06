@@ -70,12 +70,12 @@ public class SynthesisService {
                 continue;
             }
 
-            SynthesisJob job = new SynthesisJob(record.getId(), file.getId());
+            SynthesisJob job = SynthesisJob.create(record.getId(), file.getId());
             Map<String, String> rootContext = item.rootContext() == null ? Map.of() : item.rootContext();
             acceptedJobs.add(new AcceptedSynthesisJob(job, rootContext));
         }
 
-        SynthesisBatch batch = new SynthesisBatch(
+        SynthesisBatch batch = SynthesisBatch.create(
                 request.projectId(),
                 record.getId(),
                 request.uploads().size(),
@@ -86,7 +86,7 @@ public class SynthesisService {
 
         List<SynthesisJob> jobs = acceptedJobs.stream().map(AcceptedSynthesisJob::job).toList();
         for (SynthesisJob job : jobs) {
-            job.assignBatch(batch.getId());
+            job.assignBatch(batch);
         }
         if (!jobs.isEmpty()) {
             synthesisJobRepository.saveAll(jobs);

@@ -51,6 +51,59 @@ class ChangeRequestRelationTest {
     }
 
     @Test
+    void changeRequestReviewer_submit_정상상태면_리뷰상태와_시각을_갱신한다() {
+        ChangeRequest changeRequest = new ChangeRequest(1, "CR 제목", "CR 본문", UUID.randomUUID());
+        User user = new User("reviewer@example.com", "hashed", "Reviewer");
+        ChangeRequestReviewer reviewer = ChangeRequestReviewer.assign(changeRequest, user);
+        Instant reviewedAt = Instant.now();
+
+        reviewer.submit(ReviewStatus.APPROVED, reviewedAt);
+
+        assertEquals(ReviewStatus.APPROVED, reviewer.getReviewStatus());
+        assertEquals(reviewedAt, reviewer.getReviewedAt());
+    }
+
+    @Test
+    void changeRequestReviewer_submit_pending이면_예외를_던지고_기존상태를_유지한다() {
+        ChangeRequest changeRequest = new ChangeRequest(1, "CR 제목", "CR 본문", UUID.randomUUID());
+        User user = new User("reviewer@example.com", "hashed", "Reviewer");
+        ChangeRequestReviewer reviewer = ChangeRequestReviewer.assign(changeRequest, user);
+        Instant reviewedAt = Instant.now();
+
+        DomainException ex = assertThrows(DomainException.class, () -> reviewer.submit(ReviewStatus.PENDING, reviewedAt));
+
+        assertEquals(ChangeRequestReviewer.CODE_CR_REVIEWER_INVALID_STATUS, ex.getDomainCode());
+        assertEquals(ReviewStatus.PENDING, reviewer.getReviewStatus());
+        assertEquals(null, reviewer.getReviewedAt());
+    }
+
+    @Test
+    void changeRequestReviewer_submit_status_null이면_예외를_던지고_기존상태를_유지한다() {
+        ChangeRequest changeRequest = new ChangeRequest(1, "CR 제목", "CR 본문", UUID.randomUUID());
+        User user = new User("reviewer@example.com", "hashed", "Reviewer");
+        ChangeRequestReviewer reviewer = ChangeRequestReviewer.assign(changeRequest, user);
+
+        DomainException ex = assertThrows(DomainException.class, () -> reviewer.submit(null, Instant.now()));
+
+        assertEquals(ChangeRequestReviewer.CODE_CR_REVIEWER_STATUS_REQUIRED, ex.getDomainCode());
+        assertEquals(ReviewStatus.PENDING, reviewer.getReviewStatus());
+        assertEquals(null, reviewer.getReviewedAt());
+    }
+
+    @Test
+    void changeRequestReviewer_submit_reviewedAt_null이면_예외를_던지고_기존상태를_유지한다() {
+        ChangeRequest changeRequest = new ChangeRequest(1, "CR 제목", "CR 본문", UUID.randomUUID());
+        User user = new User("reviewer@example.com", "hashed", "Reviewer");
+        ChangeRequestReviewer reviewer = ChangeRequestReviewer.assign(changeRequest, user);
+
+        DomainException ex = assertThrows(DomainException.class, () -> reviewer.submit(ReviewStatus.REJECTED, null));
+
+        assertEquals(ChangeRequestReviewer.CODE_CR_REVIEWER_REVIEWED_AT_REQUIRED, ex.getDomainCode());
+        assertEquals(ReviewStatus.PENDING, reviewer.getReviewStatus());
+        assertEquals(null, reviewer.getReviewedAt());
+    }
+
+    @Test
     void changeRequestTeamReviewer_엔티티_입력시_FK와_연관을_동기화한다() {
         ChangeRequest changeRequest = new ChangeRequest(1, "CR 제목", "CR 본문", UUID.randomUUID());
         Team team = new Team("Review Team", null, UUID.randomUUID());

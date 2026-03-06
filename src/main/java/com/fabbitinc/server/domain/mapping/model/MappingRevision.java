@@ -40,6 +40,11 @@ public class MappingRevision extends AbstractCreatedEntity {
 
     public static final String CODE_MAPPING_REVISION_RECORD_REQUIRED = "MAPPING_REVISION_RECORD_REQUIRED";
     public static final String CODE_MAPPING_REVISION_FILE_REQUIRED = "MAPPING_REVISION_FILE_REQUIRED";
+    public static final String CODE_MAPPING_REVISION_VERSION_INVALID = "MAPPING_REVISION_VERSION_INVALID";
+    public static final String CODE_MAPPING_REVISION_SHEET_NAME_TOO_LONG = "MAPPING_REVISION_SHEET_NAME_TOO_LONG";
+    public static final String CODE_MAPPING_REVISION_USAGE_INCREMENT_INVALID = "MAPPING_REVISION_USAGE_INCREMENT_INVALID";
+
+    private static final int MAX_SHEET_NAME_LENGTH = 200;
 
     @Column(name = "record_id", nullable = false)
     private UUID recordId;
@@ -83,8 +88,8 @@ public class MappingRevision extends AbstractCreatedEntity {
         super(UuidV7Generator.next());
         this.recordId = requireRecordId(recordId);
         this.fileId = requireFileId(fileId);
-        this.version = version;
-        this.sheetName = sheetName;
+        this.version = requireVersion(version);
+        this.sheetName = normalizeSheetName(sheetName);
         this.originalHeaders = normalizeJson(originalHeaders);
         this.mapping = normalizeJson(mapping);
         this.usageCount = 0;
@@ -119,6 +124,9 @@ public class MappingRevision extends AbstractCreatedEntity {
     }
 
     public void incrementUsage(int amount) {
+        if (amount <= 0) {
+            throw new DomainException(CODE_MAPPING_REVISION_USAGE_INCREMENT_INVALID, "사용량 증가는 1 이상이어야 합니다");
+        }
         this.usageCount += amount;
     }
 
@@ -126,7 +134,28 @@ public class MappingRevision extends AbstractCreatedEntity {
         if (raw == null || raw.isBlank()) {
             return "{}";
         }
-        return raw;
+        return raw.trim();
+    }
+
+    private int requireVersion(int value) {
+        if (value <= 0) {
+            throw new DomainException(CODE_MAPPING_REVISION_VERSION_INVALID, "리비전 버전은 1 이상이어야 합니다");
+        }
+        return value;
+    }
+
+    private String normalizeSheetName(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String trimmed = raw.trim();
+        if (trimmed.isBlank()) {
+            return null;
+        }
+        if (trimmed.length() > MAX_SHEET_NAME_LENGTH) {
+            throw new DomainException(CODE_MAPPING_REVISION_SHEET_NAME_TOO_LONG, "시트명은 200자 이하여야 합니다");
+        }
+        return trimmed;
     }
 
     private UUID requireRecordId(UUID value) {

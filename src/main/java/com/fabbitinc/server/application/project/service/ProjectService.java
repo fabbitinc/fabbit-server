@@ -86,6 +86,7 @@ public class ProjectService {
         } catch (DomainException ex) {
             throw toAppException(ex);
         }
+        validateIds(partIds, "part_ids");
 
         for (UUID partId : partIds) {
             if (!partApi.existsPart(partId)) {
@@ -116,12 +117,17 @@ public class ProjectService {
 
     public int unlinkParts(UUID projectId, List<UUID> partIds) {
         getOrThrow(projectId);
+        validateIds(partIds, "part_ids");
         List<UUID> normalizedPartIds = List.copyOf(new LinkedHashSet<>(partIds));
         return projectPartRepository.deleteByProjectIdAndPartIdIn(projectId, normalizedPartIds);
     }
 
     public int addMembers(UUID projectId, List<UUID> userIds, ProjectRole role) {
         getOrThrow(projectId);
+        if (role == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 역할입니다");
+        }
+        validateIds(userIds, "user_ids");
 
         List<UUID> normalizedUserIds = List.copyOf(new LinkedHashSet<>(userIds));
         Set<UUID> existingUserIds = projectMemberRepository.findByProjectIdAndUserIdIn(projectId, normalizedUserIds).stream()
@@ -146,6 +152,7 @@ public class ProjectService {
 
     public int removeMembers(UUID projectId, List<UUID> userIds) {
         getOrThrow(projectId);
+        validateIds(userIds, "user_ids");
         List<UUID> normalizedUserIds = List.copyOf(new LinkedHashSet<>(userIds));
         return projectMemberRepository.deleteByProjectIdAndUserIdIn(projectId, normalizedUserIds);
     }
@@ -183,5 +190,14 @@ public class ProjectService {
             default ->
                     new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
         };
+    }
+
+    private void validateIds(List<UUID> ids, String field) {
+        if (ids == null || ids.isEmpty()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, field + "는 1개 이상이어야 합니다");
+        }
+        if (ids.stream().anyMatch(java.util.Objects::isNull)) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, field + "에 null 값을 포함할 수 없습니다");
+        }
     }
 }

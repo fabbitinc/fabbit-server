@@ -7,6 +7,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class EmailVerificationTest {
@@ -16,7 +17,7 @@ class EmailVerificationTest {
         Instant expiresAt = Instant.now().plusSeconds(300);
 
         EmailVerification verification = EmailVerification.createPending(
-                "user@example.com",
+                " User@Example.com ",
                 "code_hash",
                 expiresAt
         );
@@ -26,6 +27,16 @@ class EmailVerificationTest {
         assertEquals(EmailVerificationStatus.PENDING, verification.getStatus());
         assertEquals(0, verification.getAttemptCount());
         assertEquals(expiresAt, verification.getExpiresAt());
+    }
+
+    @Test
+    void createPending_이메일이_blank면_예외를_던진다() {
+        DomainException ex = assertThrows(
+                DomainException.class,
+                () -> EmailVerification.createPending("   ", "code_hash", Instant.now().plusSeconds(300))
+        );
+
+        assertEquals(EmailVerification.CODE_VERIFICATION_EMAIL_REQUIRED, ex.getDomainCode());
     }
 
     @Test
@@ -80,5 +91,52 @@ class EmailVerificationTest {
 
         assertEquals(EmailVerification.CODE_VERIFICATION_MAX_ATTEMPTS, ex.getDomainCode());
         assertEquals(2, verification.getAttemptCount());
+    }
+
+    @Test
+    void verify_이미_VERIFIED면_예외를_던지고_기존상태를_유지한다() {
+        EmailVerification verification = EmailVerification.createPending(
+                "user@example.com",
+                "code_hash",
+                Instant.now().plusSeconds(300)
+        );
+        verification.verify("token_hash");
+
+        DomainException ex = assertThrows(
+                DomainException.class,
+                () -> verification.verify("new_token_hash")
+        );
+
+        assertEquals(EmailVerification.CODE_VERIFICATION_INVALID_STATE, ex.getDomainCode());
+        assertEquals(EmailVerificationStatus.VERIFIED, verification.getStatus());
+        assertEquals("token_hash", verification.getVerificationTokenHash());
+    }
+
+    @Test
+    void use_PENDING상태면_예외를_던지고_상태를_유지한다() {
+        EmailVerification verification = EmailVerification.createPending(
+                "user@example.com",
+                "code_hash",
+                Instant.now().plusSeconds(300)
+        );
+
+        DomainException ex = assertThrows(DomainException.class, verification::use);
+
+        assertEquals(EmailVerification.CODE_VERIFICATION_INVALID_STATE, ex.getDomainCode());
+        assertEquals(EmailVerificationStatus.PENDING, verification.getStatus());
+        assertNull(verification.getVerificationTokenHash());
+    }
+
+    @Test
+    void isExpired_now가_null이면_예외를_던진다() {
+        EmailVerification verification = EmailVerification.createPending(
+                "user@example.com",
+                "code_hash",
+                Instant.now().plusSeconds(300)
+        );
+
+        DomainException ex = assertThrows(DomainException.class, () -> verification.isExpired(null));
+
+        assertEquals(EmailVerification.CODE_VERIFICATION_TIME_REQUIRED, ex.getDomainCode());
     }
 }

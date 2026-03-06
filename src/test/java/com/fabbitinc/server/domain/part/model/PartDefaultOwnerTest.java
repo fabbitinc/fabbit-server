@@ -1,5 +1,6 @@
 package com.fabbitinc.server.domain.part.model;
 
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.user.model.User;
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class PartDefaultOwnerTest {
 
@@ -55,5 +57,14 @@ class PartDefaultOwnerTest {
         PartDefaultOwner row = PartDefaultOwner.create("  FASTENER  ", (UUID) null, null);
 
         assertEquals("FASTENER", row.getCategory());
+    }
+
+    @Test
+    void create_카테고리_길이초과면_예외를_던진다() {
+        DomainException ex = assertThrows(DomainException.class, () ->
+                PartDefaultOwner.create("a".repeat(101), (UUID) null, null)
+        );
+
+        assertEquals(PartDefaultOwner.CODE_PART_DEFAULT_OWNER_CATEGORY_TOO_LONG, ex.getDomainCode());
     }
 }

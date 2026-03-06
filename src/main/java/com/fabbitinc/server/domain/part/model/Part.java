@@ -37,12 +37,18 @@ public class Part extends AbstractCreatedEntity {
     public static final String CODE_PART_NUMBER_REQUIRED = "PART_NUMBER_REQUIRED";
     public static final String CODE_PART_NUMBER_TOO_LONG = "PART_NUMBER_TOO_LONG";
     public static final String CODE_PART_NAME_TOO_LONG = "PART_NAME_TOO_LONG";
+    public static final String CODE_PART_CATEGORY_TOO_LONG = "PART_CATEGORY_TOO_LONG";
+    public static final String CODE_PART_MATERIAL_TOO_LONG = "PART_MATERIAL_TOO_LONG";
+    public static final String CODE_PART_UNIT_TOO_LONG = "PART_UNIT_TOO_LONG";
     public static final String CODE_PART_DRAWING_REQUIRED = "PART_DRAWING_REQUIRED";
     public static final String CODE_PART_OWNER_REQUIRED = "PART_OWNER_REQUIRED";
     public static final String CODE_PART_OWNER_TEAM_REQUIRED = "PART_OWNER_TEAM_REQUIRED";
 
     private static final int MAX_PART_NUMBER_LENGTH = 100;
     private static final int MAX_NAME_LENGTH = 500;
+    private static final int MAX_CATEGORY_LENGTH = 100;
+    private static final int MAX_MATERIAL_LENGTH = 200;
+    private static final int MAX_UNIT_LENGTH = 20;
     private static final Pattern REVISION_SUFFIX_PATTERN = Pattern.compile("^(.*?)(\\d+|[A-Z])$", Pattern.CASE_INSENSITIVE);
 
     @Column(name = "drawing_id")
@@ -118,7 +124,23 @@ public class Part extends AbstractCreatedEntity {
     }
 
     public void changeCategory(String category) {
-        this.category = category;
+        this.category = normalizeCategory(category);
+    }
+
+    public void changeMaterial(String material) {
+        this.material = normalizeMaterial(material);
+    }
+
+    public void changeUnit(String unit) {
+        this.unit = normalizeUnit(unit);
+    }
+
+    public void changeDescription(String description) {
+        this.description = normalizeDescription(description);
+    }
+
+    public void changeExtendedProperties(String extendedProperties) {
+        this.extendedProperties = normalizeExtendedProperties(extendedProperties);
     }
 
     public void assignOwner(UUID ownerId) {
@@ -217,6 +239,55 @@ public class Part extends AbstractCreatedEntity {
             throw new DomainException(CODE_PART_NAME_TOO_LONG, "품명은 500자 이하여야 합니다");
         }
         return trimmed;
+    }
+
+    private String normalizeCategory(String rawCategory) {
+        if (rawCategory == null) {
+            return null;
+        }
+        String trimmed = rawCategory.trim();
+        if (trimmed.isBlank()) {
+            return null;
+        }
+        if (trimmed.length() > MAX_CATEGORY_LENGTH) {
+            throw new DomainException(CODE_PART_CATEGORY_TOO_LONG, "카테고리는 100자 이하여야 합니다");
+        }
+        return trimmed;
+    }
+
+    private String normalizeMaterial(String rawMaterial) {
+        return normalizeWithMaxLength(rawMaterial, MAX_MATERIAL_LENGTH, CODE_PART_MATERIAL_TOO_LONG, "재질은 200자 이하여야 합니다");
+    }
+
+    private String normalizeUnit(String rawUnit) {
+        return normalizeWithMaxLength(rawUnit, MAX_UNIT_LENGTH, CODE_PART_UNIT_TOO_LONG, "단위는 20자 이하여야 합니다");
+    }
+
+    private String normalizeDescription(String rawDescription) {
+        return normalizeNullableText(rawDescription);
+    }
+
+    private String normalizeExtendedProperties(String rawExtendedProperties) {
+        if (rawExtendedProperties == null || rawExtendedProperties.isBlank()) {
+            return "{}";
+        }
+        return rawExtendedProperties.trim();
+    }
+
+    private String normalizeWithMaxLength(String rawValue, int maxLength, String code, String message) {
+        String normalized = normalizeNullableText(rawValue);
+        if (normalized != null && normalized.length() > maxLength) {
+            throw new DomainException(code, message);
+        }
+        return normalized;
+    }
+
+    private String normalizeNullableText(String rawValue) {
+        if (rawValue == null) {
+            return null;
+        }
+        String trimmed = rawValue.trim();
+        return trimmed.isBlank() ? null : trimmed;
     }
 
     private String nextRevision(String currentRevision) {

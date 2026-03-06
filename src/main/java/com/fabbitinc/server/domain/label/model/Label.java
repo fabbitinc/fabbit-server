@@ -88,8 +88,10 @@ public class Label extends AbstractAuditableEntity {
     }
 
     public void changeName(String name, UUID actorId) {
-        this.name = requireName(name);
-        this.updatedBy = requireActorId(actorId);
+        String requiredName = requireName(name);
+        UUID requiredActorId = requireActorId(actorId);
+        this.name = requiredName;
+        this.updatedBy = requiredActorId;
         if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
             this.updatedByUser = null;
         }
@@ -105,8 +107,10 @@ public class Label extends AbstractAuditableEntity {
     }
 
     public void changeDescription(String description, UUID actorId) {
-        this.description = normalizeDescription(description);
-        this.updatedBy = requireActorId(actorId);
+        String normalizedDescription = normalizeDescription(description);
+        UUID requiredActorId = requireActorId(actorId);
+        this.description = normalizedDescription;
+        this.updatedBy = requiredActorId;
         if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
             this.updatedByUser = null;
         }
@@ -122,8 +126,9 @@ public class Label extends AbstractAuditableEntity {
     }
 
     public void removeDescription(UUID actorId) {
+        UUID requiredActorId = requireActorId(actorId);
         this.description = null;
-        this.updatedBy = requireActorId(actorId);
+        this.updatedBy = requiredActorId;
         if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
             this.updatedByUser = null;
         }
@@ -139,8 +144,10 @@ public class Label extends AbstractAuditableEntity {
     }
 
     public void changeColor(String color, UUID actorId) {
-        this.color = requireColor(color);
-        this.updatedBy = requireActorId(actorId);
+        String requiredColor = requireColor(color);
+        UUID requiredActorId = requireActorId(actorId);
+        this.color = requiredColor;
+        this.updatedBy = requiredActorId;
         if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
             this.updatedByUser = null;
         }

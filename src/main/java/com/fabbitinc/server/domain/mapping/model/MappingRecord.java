@@ -1,6 +1,7 @@
 package com.fabbitinc.server.domain.mapping.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractAuditableEntity;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -32,6 +33,13 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MappingRecord extends AbstractAuditableEntity {
 
+    public static final String CODE_MAPPING_RECORD_NAME_REQUIRED = "MAPPING_RECORD_NAME_REQUIRED";
+    public static final String CODE_MAPPING_RECORD_NAME_TOO_LONG = "MAPPING_RECORD_NAME_TOO_LONG";
+    public static final String CODE_MAPPING_RECORD_SCOPE_REQUIRED = "MAPPING_RECORD_SCOPE_REQUIRED";
+    public static final String CODE_MAPPING_RECORD_USAGE_INCREMENT_INVALID = "MAPPING_RECORD_USAGE_INCREMENT_INVALID";
+
+    private static final int MAX_NAME_LENGTH = 200;
+
     @Column(name = "name", nullable = false, length = 200)
     private String name;
 
@@ -50,18 +58,18 @@ public class MappingRecord extends AbstractAuditableEntity {
 
     public MappingRecord(String name, MappingScope scope) {
         super(UuidV7Generator.next());
-        this.name = name;
-        this.scope = scope;
+        this.name = requireName(name);
+        this.scope = requireScope(scope);
         this.active = true;
         this.usageCount = 0;
     }
 
     public void rename(String name) {
-        this.name = name;
+        this.name = requireName(name);
     }
 
     public void updateScope(MappingScope scope) {
-        this.scope = scope;
+        this.scope = requireScope(scope);
     }
 
     public void deactivate() {
@@ -69,6 +77,9 @@ public class MappingRecord extends AbstractAuditableEntity {
     }
 
     public void incrementUsage(int amount) {
+        if (amount <= 0) {
+            throw new DomainException(CODE_MAPPING_RECORD_USAGE_INCREMENT_INVALID, "사용량 증가는 1 이상이어야 합니다");
+        }
         this.usageCount += amount;
     }
 
@@ -83,5 +94,23 @@ public class MappingRecord extends AbstractAuditableEntity {
 
     public List<MappingRevision> getRevisions() {
         return List.copyOf(revisions);
+    }
+
+    private String requireName(String value) {
+        if (value == null || value.isBlank()) {
+            throw new DomainException(CODE_MAPPING_RECORD_NAME_REQUIRED, "매핑 이름은 필수입니다");
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() > MAX_NAME_LENGTH) {
+            throw new DomainException(CODE_MAPPING_RECORD_NAME_TOO_LONG, "매핑 이름은 200자 이하여야 합니다");
+        }
+        return trimmed;
+    }
+
+    private MappingScope requireScope(MappingScope value) {
+        if (value == null) {
+            throw new DomainException(CODE_MAPPING_RECORD_SCOPE_REQUIRED, "매핑 범위는 필수입니다");
+        }
+        return value;
     }
 }
