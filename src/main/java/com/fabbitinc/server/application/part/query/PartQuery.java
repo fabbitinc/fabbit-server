@@ -1,36 +1,42 @@
 package com.fabbitinc.server.application.part.query;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
+import com.fabbitinc.server.application.team.api.TeamApi;
+import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
-import com.fabbitinc.server.application.file.dto.response.FileItemResponse;
-import com.fabbitinc.server.application.part.dto.response.BomChildResponse;
-import com.fabbitinc.server.application.part.dto.response.BomDirection;
-import com.fabbitinc.server.application.part.dto.response.BomParentResponse;
-import com.fabbitinc.server.application.part.dto.response.BomTreeNodeResponse;
-import com.fabbitinc.server.application.part.dto.response.BomTreeResponse;
-import com.fabbitinc.server.application.part.dto.response.CategoryLookupResponse;
-import com.fabbitinc.server.application.part.dto.response.CategoryStatsItemResponse;
-import com.fabbitinc.server.application.part.dto.response.CategoryStatsResponse;
-import com.fabbitinc.server.application.part.dto.response.PartDetailResponse;
-import com.fabbitinc.server.application.part.dto.response.PartFilterOptionsResponse;
-import com.fabbitinc.server.application.part.dto.response.PartBomResponse;
-import com.fabbitinc.server.application.part.dto.response.PartFilesResponse;
-import com.fabbitinc.server.application.part.dto.response.PartListResponse;
-import com.fabbitinc.server.application.part.dto.response.PartLookupItemResponse;
-import com.fabbitinc.server.application.part.dto.response.PartLookupResponse;
-import com.fabbitinc.server.application.part.dto.response.PartOwnerUserSummaryResponse;
-import com.fabbitinc.server.application.part.dto.response.RelatedDrawingResponse;
-import com.fabbitinc.server.application.part.dto.response.PartSummaryResponse;
-import com.fabbitinc.server.application.part.dto.response.PartSuppliersResponse;
-import com.fabbitinc.server.application.part.dto.response.RelatedSupplierResponse;
+import com.fabbitinc.server.application.part.model.BomDirection;
+import com.fabbitinc.server.application.part.query.condition.BomTreeCondition;
+import com.fabbitinc.server.application.part.query.condition.BomTreeExportCondition;
+import com.fabbitinc.server.application.part.query.condition.FileItemsCondition;
+import com.fabbitinc.server.application.part.query.condition.PartBomCondition;
+import com.fabbitinc.server.application.part.query.condition.PartDetailCondition;
+import com.fabbitinc.server.application.part.query.condition.PartExportCondition;
+import com.fabbitinc.server.application.part.query.condition.PartFilesCondition;
+import com.fabbitinc.server.application.part.query.condition.PartListCondition;
+import com.fabbitinc.server.application.part.query.condition.PartLookupCondition;
+import com.fabbitinc.server.application.part.query.condition.PartProjectsCondition;
+import com.fabbitinc.server.application.part.query.condition.PartSuppliersCondition;
+import com.fabbitinc.server.application.part.query.result.BomTreeResult;
+import com.fabbitinc.server.application.part.query.result.CategoryLookupResult;
+import com.fabbitinc.server.application.part.query.result.CategoryStatsResult;
+import com.fabbitinc.server.application.part.query.result.PartBomResult;
+import com.fabbitinc.server.application.part.query.result.PartDetailResult;
+import com.fabbitinc.server.application.part.query.result.PartFilesResult;
+import com.fabbitinc.server.application.part.query.result.PartFilterOptionsResult;
+import com.fabbitinc.server.application.part.query.result.PartListResult;
+import com.fabbitinc.server.application.part.query.result.PartLookupResult;
+import com.fabbitinc.server.application.part.query.result.PartProjectsResult;
+import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
+import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
+import com.fabbitinc.server.application.part.query.result.RelatedDrawingResult;
 import com.fabbitinc.server.application.project.api.ProjectApi;
-import com.fabbitinc.server.application.project.dto.response.PartProjectsResponse;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
+import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.part.model.BomLink;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
@@ -41,6 +47,7 @@ import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
 import com.fabbitinc.server.domain.project.model.ProjectPart;
 import com.fabbitinc.server.domain.supplier.model.Supplier;
 import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
+import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.user.model.User;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -60,14 +67,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.Comparator;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -84,7 +91,10 @@ public class PartQuery {
     private final BomLinkRepository bomLinkRepository;
     private final PartSupplierRepository partSupplierRepository;
     private final SupplierRepository supplierRepository;
+    private final DrawingRepository drawingRepository;
     private final ProjectApi projectApi;
+    private final UserApi userApi;
+    private final TeamApi teamApi;
     private final FileUrlResolver fileUrlResolver;
     private final EntityManager entityManager;
 
@@ -92,59 +102,52 @@ public class PartQuery {
     private static final Pattern NUMBER_PATTERN = Pattern.compile("^-?\\d+(?:\\.\\d+)?$");
     private static final int MAX_BOM_DEPTH = 30;
 
-    public PartLookupResponse lookupParts(String search, int limit) {
+    public PartLookupResult lookup(PartLookupCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
         List<Part> parts;
-        if (search == null || search.isBlank()) {
-            parts = partRepository.findAllByOrderByPartNumberAsc(PageRequest.of(0, limit));
+        if (condition.search() == null || condition.search().isBlank()) {
+            parts = partRepository.findAllByOrderByPartNumberAsc(PageRequest.of(0, condition.limit()));
         } else {
-            String normalizedSearch = search.trim();
+            String normalizedSearch = condition.search().trim();
             parts = partRepository.findByPartNumberContainingIgnoreCaseOrNameContainingIgnoreCaseOrderByPartNumberAsc(
                     normalizedSearch,
                     normalizedSearch,
-                    PageRequest.of(0, limit)
+                    PageRequest.of(0, condition.limit())
             );
         }
 
-        List<PartLookupItemResponse> items = parts.stream()
-                .map(part -> new PartLookupItemResponse(part.getId(), part.getPartNumber(), part.getName()))
+        List<PartLookupResult.Item> items = parts.stream()
+                .map(part -> new PartLookupResult.Item(part.getId(), part.getPartNumber(), part.getName()))
                 .toList();
-        return new PartLookupResponse(items);
+        return new PartLookupResult(items);
     }
 
-    public CategoryStatsResponse listCategories() {
+    public CategoryStatsResult listCategories() {
         currentAuthProvider.getCurrentAuth();
 
-        List<CategoryStatsItemResponse> items = partRepository.findCategoryStats().stream()
-                .map(row -> new CategoryStatsItemResponse((String) row[0], ((Number) row[1]).longValue()))
+        List<CategoryStatsResult.Item> items = partRepository.findCategoryStats().stream()
+                .map(row -> new CategoryStatsResult.Item((String) row[0], ((Number) row[1]).longValue()))
                 .toList();
-        return new CategoryStatsResponse(items);
+        return new CategoryStatsResult(items);
     }
 
-    public CategoryLookupResponse lookupCategories() {
+    public CategoryLookupResult lookupCategories() {
         currentAuthProvider.getCurrentAuth();
-        return new CategoryLookupResponse(partRepository.findDistinctCategories());
+        return new CategoryLookupResult(partRepository.findDistinctCategories());
     }
 
-    public PartFilterOptionsResponse getFilterOptions() {
+    public PartFilterOptionsResult getFilterOptions() {
         currentAuthProvider.getCurrentAuth();
-        return new PartFilterOptionsResponse(
+        return new PartFilterOptionsResult(
                 partRepository.findDistinctCategories(),
                 partRepository.findDistinctLifecycleStates()
         );
     }
 
-    public PartListResponse listParts(String search,
-            String category,
-            PartLifecycleState lifecycleState,
-            Boolean hasDrawing,
-            Boolean hasChildren,
-            UUID projectId,
-            int offset,
-            int limit
-    ) {
+    public PartListResult list(PartListCondition condition) {
         currentAuthProvider.getCurrentAuth();
+        PartLifecycleState lifecycleState = parseLifecycleState(condition.lifecycleState());
 
         PathBuilder<Part> part = new PathBuilder<>(Part.class, "part");
         PathBuilder<Drawing> drawing = new PathBuilder<>(Drawing.class, "drawing");
@@ -163,13 +166,13 @@ public class PartQuery {
                 part,
                 bomLink,
                 projectPart,
-                search,
-                category,
+                condition.search(),
+                condition.category(),
                 lifecycleState,
-                hasDrawing,
-                hasChildren,
+                condition.hasDrawing(),
+                condition.hasChildren(),
                 null,
-                projectId
+                condition.projectId()
         );
 
         Long totalCount = queryFactory()
@@ -200,12 +203,12 @@ public class PartQuery {
                 .from(part)
                 .where(predicate)
                 .orderBy(partNumberExpr.asc())
-                .offset(offset)
-                .limit(limit)
+                .offset(condition.offset())
+                .limit(condition.limit())
                 .fetch();
 
-        List<PartSummaryResponse> items = rows.stream()
-                .map(row -> new PartSummaryResponse(
+        List<PartListResult.Item> items = rows.stream()
+                .map(row -> new PartListResult.Item(
                         row.get(partIdExpr),
                         row.get(partNumberExpr),
                         row.get(partNameExpr),
@@ -216,27 +219,20 @@ public class PartQuery {
                         row.get(childrenCountExpr) == null ? 0L : row.get(childrenCountExpr)
                 ))
                 .toList();
-        return new PartListResponse(total, offset, limit, items);
+        return new PartListResult(total, condition.offset(), condition.limit(), items);
     }
 
-    public byte[] exportPartsExcel(String search,
-            String category,
-            PartLifecycleState lifecycleState,
-            Boolean hasDrawing,
-            Boolean hasChildren,
-            List<UUID> partIds,
-            UUID mappingId,
-            UUID projectId
-    ) {
+    public byte[] export(PartExportCondition condition) {
         currentAuthProvider.getCurrentAuth();
+        PartLifecycleState lifecycleState = parseLifecycleState(condition.lifecycleState());
         List<Part> parts = findPartsForExport(
-                search,
-                category,
+                condition.search(),
+                condition.category(),
                 lifecycleState,
-                hasDrawing,
-                hasChildren,
-                partIds,
-                projectId
+                condition.hasDrawing(),
+                condition.hasChildren(),
+                condition.partIds(),
+                condition.projectId()
         );
 
         Set<String> extKeys = new TreeSet<>();
@@ -294,11 +290,8 @@ public class PartQuery {
         }
     }
 
-    public byte[] exportBomTreeExcel(UUID partId,
-            BomDirection direction,
-            UUID mappingId
-    ) {
-        BomTreeResponse tree = getBomTree(partId, direction);
+    public byte[] exportBomTree(BomTreeExportCondition condition) {
+        BomTreeResult tree = getBomTree(new BomTreeCondition(condition.partId(), condition.direction()));
         List<BomFlatRow> rows = new ArrayList<>();
         flattenBomTree(tree.root(), 0, rows);
 
@@ -340,18 +333,19 @@ public class PartQuery {
         }
     }
 
-    public PartDetailResponse getPartDetail(UUID partId) {
+    public PartDetailResult get(PartDetailCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        Part part = partRepository.findById(partId)
+        Part part = partRepository.findById(condition.partId())
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "Part '" + partId + "'을(를) 찾을 수 없습니다"
+                        "Part '" + condition.partId() + "'을(를) 찾을 수 없습니다"
                 ));
 
-        PartOwnerUserSummaryResponse owner = toUserSummary(part.getOwner());
-        String ownerTeamName = part.getOwnerTeam() == null ? null : part.getOwnerTeam().getName();
-        RelatedDrawingResponse drawing = toRelatedDrawing(part.getDrawing());
+        PartUserSummaryResult owner = toUserSummary(userApi.getUserOrNull(part.getOwnerId()));
+        Team ownerTeam = teamApi.getTeamOrNull(part.getOwnerTeamId());
+        String ownerTeamName = ownerTeam == null ? null : ownerTeam.getName();
+        RelatedDrawingResult drawing = loadDrawing(part.getDrawingId());
 
         long childrenCount = bomLinkRepository.countByParentPartId(part.getId());
         long parentsCount = bomLinkRepository.countByChildPartId(part.getId());
@@ -363,7 +357,7 @@ public class PartQuery {
         );
         long projectsCount = projectApi.countPartProjects(part.getId());
 
-        return new PartDetailResponse(
+        return new PartDetailResult(
                 part.getId(),
                 part.getPartNumber(),
                 part.getName(),
@@ -389,75 +383,98 @@ public class PartQuery {
         );
     }
 
-    public PartProjectsResponse getPartProjects(UUID partId) {
+    public PartProjectsResult get(PartProjectsCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        return projectApi.getPartProjects(partId);
+        var result = projectApi.listPartProjects(condition.partId());
+        return new PartProjectsResult(
+                result.total(),
+                result.items().stream()
+                        .map(item -> new PartProjectsResult.Item(item.id(), item.name(), item.description()))
+                        .toList()
+        );
     }
 
-    public PartBomResponse getPartBom(UUID partId) {
+    public PartBomResult get(PartBomCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        assertPartExists(partId);
+        assertPartExists(condition.partId());
 
-        Query childrenQuery = entityManager.createNativeQuery(
-                """
-                        select c.id, c.part_number, c.name, bl.quantity, bl.extended_properties
-                        from bom_links bl
-                        join parts c on c.id = bl.child_part_id
-                        where bl.parent_part_id = :partId
-                        order by c.part_number
-                        """
-        );
-        childrenQuery.setParameter("partId", partId);
+        PathBuilder<BomLink> bomLink = new PathBuilder<>(BomLink.class, "bomLink");
+        PathBuilder<Part> childPart = new PathBuilder<>(Part.class, "childPart");
+        PathBuilder<Part> parentPart = new PathBuilder<>(Part.class, "parentPart");
+        var quantityExpr = bomLink.getNumber("quantity", Integer.class);
+        var extendedPropertiesExpr = bomLink.getString("extendedProperties");
+        var childIdExpr = childPart.get("id", UUID.class);
+        var childPartNumberExpr = childPart.getString("partNumber");
+        var childNameExpr = childPart.getString("name");
+        var parentIdExpr = parentPart.get("id", UUID.class);
+        var parentPartNumberExpr = parentPart.getString("partNumber");
+        var parentNameExpr = parentPart.getString("name");
 
-        Query parentsQuery = entityManager.createNativeQuery(
-                """
-                        select p.id, p.part_number, p.name, bl.quantity, bl.extended_properties
-                        from bom_links bl
-                        join parts p on p.id = bl.parent_part_id
-                        where bl.child_part_id = :partId
-                        order by p.part_number
-                        """
-        );
-        parentsQuery.setParameter("partId", partId);
+        List<Tuple> childRows = queryFactory()
+                .select(
+                        childIdExpr,
+                        childPartNumberExpr,
+                        childNameExpr,
+                        quantityExpr,
+                        extendedPropertiesExpr
+                )
+                .from(bomLink)
+                .join(childPart).on(childIdExpr.eq(bomLink.get("childPartId", UUID.class)))
+                .where(bomLink.get("parentPartId", UUID.class).eq(condition.partId()))
+                .orderBy(childPartNumberExpr.asc())
+                .fetch();
 
-        @SuppressWarnings("unchecked")
-        List<Object[]> childRows = childrenQuery.getResultList();
-        @SuppressWarnings("unchecked")
-        List<Object[]> parentRows = parentsQuery.getResultList();
+        List<Tuple> parentRows = queryFactory()
+                .select(
+                        parentIdExpr,
+                        parentPartNumberExpr,
+                        parentNameExpr,
+                        quantityExpr,
+                        extendedPropertiesExpr
+                )
+                .from(bomLink)
+                .join(parentPart).on(parentIdExpr.eq(bomLink.get("parentPartId", UUID.class)))
+                .where(bomLink.get("childPartId", UUID.class).eq(condition.partId()))
+                .orderBy(parentPartNumberExpr.asc())
+                .fetch();
 
-        List<BomChildResponse> children = childRows.stream()
-                .map(row -> new BomChildResponse(
-                        toUuid(row[0]),
-                        (String) row[1],
-                        (String) row[2],
-                        row[3] == null ? 1 : ((Number) row[3]).intValue(),
-                        parseExtendedProperties(row[4] == null ? null : row[4].toString())
+        List<PartBomResult.Child> children = childRows.stream()
+                .map(row -> new PartBomResult.Child(
+                        row.get(childIdExpr),
+                        row.get(childPartNumberExpr),
+                        row.get(childNameExpr),
+                        row.get(quantityExpr) == null
+                                ? 1
+                                : row.get(quantityExpr),
+                        parseExtendedProperties(row.get(extendedPropertiesExpr))
                 ))
                 .toList();
 
-        List<BomParentResponse> parents = parentRows.stream()
-                .map(row -> new BomParentResponse(
-                        toUuid(row[0]),
-                        (String) row[1],
-                        (String) row[2],
-                        row[3] == null ? 1 : ((Number) row[3]).intValue(),
-                        parseExtendedProperties(row[4] == null ? null : row[4].toString())
+        List<PartBomResult.Parent> parents = parentRows.stream()
+                .map(row -> new PartBomResult.Parent(
+                        row.get(parentIdExpr),
+                        row.get(parentPartNumberExpr),
+                        row.get(parentNameExpr),
+                        row.get(quantityExpr) == null
+                                ? 1
+                                : row.get(quantityExpr),
+                        parseExtendedProperties(row.get(extendedPropertiesExpr))
                 ))
                 .toList();
 
-        return new PartBomResponse(children, parents);
+        return new PartBomResult(children, parents);
     }
 
-    public BomTreeResponse getBomTree(UUID partId, BomDirection direction) {
+    public BomTreeResult getBomTree(BomTreeCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        Part rootPart = partRepository.findById(partId)
+        Part rootPart = partRepository.findById(condition.partId())
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "Part '" + partId + "'을(를) 찾을 수 없습니다"
+                        "Part '" + condition.partId() + "'을(를) 찾을 수 없습니다"
                 ));
 
-        BomDirection resolvedDirection = direction == null ? BomDirection.FORWARD : direction;
+        BomDirection resolvedDirection = parseBomDirection(condition.direction());
         boolean reverse = resolvedDirection == BomDirection.REVERSE;
         List<BomEdge> edges = fetchBomEdges(rootPart.getId(), reverse);
 
@@ -470,56 +487,56 @@ public class PartQuery {
 
         Map<String, Part> partsMap = partRepository.findByPartNumberIn(allPartNumbers).stream()
                 .collect(java.util.stream.Collectors.toMap(Part::getPartNumber, part -> part));
-        BomTreeNodeResponse root = buildBomTree(rootPart.getPartNumber(), edges, partsMap);
+        BomTreeResult.Node root = buildBomTree(rootPart.getPartNumber(), edges, partsMap);
 
-        return new BomTreeResponse(root, resolvedDirection, allPartNumbers.size());
+        return new BomTreeResult(root, resolvedDirection, allPartNumbers.size());
     }
 
-    public PartFilesResponse getPartFiles(UUID partId) {
+    public PartFilesResult get(PartFilesCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        assertPartExists(partId);
+        assertPartExists(condition.partId());
 
-        List<FileItemResponse> items = fileRepository.findByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
+        List<PartFilesResult.Item> items = fileRepository.findByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
                         "part",
-                        partId,
+                        condition.partId(),
                         FileStatus.UPLOADED
                 ).stream()
                 .map(this::toFileItem)
                 .toList();
 
-        return new PartFilesResponse(items.size(), items);
+        return new PartFilesResult(items.size(), items);
     }
 
-    public List<FileItemResponse> getFilesByIds(List<UUID> fileIds) {
+    public List<PartFilesResult.Item> getFiles(FileItemsCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        return fileRepository.findByIdIn(fileIds).stream()
+        return fileRepository.findByIdIn(condition.fileIds()).stream()
                 .map(this::toFileItem)
                 .toList();
     }
 
-    public PartSuppliersResponse getPartSuppliers(UUID partId) {
+    public PartSuppliersResult get(PartSuppliersCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        assertPartExists(partId);
+        assertPartExists(condition.partId());
 
-        List<PartSupplier> links = partSupplierRepository.findByPartId(partId);
+        List<PartSupplier> links = partSupplierRepository.findByPartId(condition.partId());
         if (links.isEmpty()) {
-            return new PartSuppliersResponse(0, List.of());
+            return new PartSuppliersResult(0, List.of());
         }
 
         Map<UUID, PartSupplier> linkMap = links.stream()
                 .collect(java.util.stream.Collectors.toMap(PartSupplier::getSupplierId, link -> link));
 
         List<UUID> supplierIds = links.stream().map(PartSupplier::getSupplierId).toList();
-        List<RelatedSupplierResponse> items = supplierRepository.findAllById(supplierIds).stream()
+        List<PartSuppliersResult.Item> items = supplierRepository.findAllById(supplierIds).stream()
                 .map(supplier -> toRelatedSupplier(supplier, linkMap.get(supplier.getId())))
-                .sorted(Comparator.comparing(RelatedSupplierResponse::companyName, String.CASE_INSENSITIVE_ORDER))
+                .sorted(Comparator.comparing(PartSuppliersResult.Item::companyName, String.CASE_INSENSITIVE_ORDER))
                 .toList();
 
-        return new PartSuppliersResponse(items.size(), items);
+        return new PartSuppliersResult(items.size(), items);
     }
 
-    private FileItemResponse toFileItem(File file) {
-        return new FileItemResponse(
+    private PartFilesResult.Item toFileItem(File file) {
+        return new PartFilesResult.Item(
                 file.getId(),
                 file.getOriginalName(),
                 file.getContentType(),
@@ -529,11 +546,11 @@ public class PartQuery {
         );
     }
 
-    private PartOwnerUserSummaryResponse toUserSummary(User user) {
+    private PartUserSummaryResult toUserSummary(User user) {
         if (user == null) {
             return null;
         }
-        return new PartOwnerUserSummaryResponse(
+        return new PartUserSummaryResult(
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
@@ -542,14 +559,14 @@ public class PartQuery {
         );
     }
 
-    private RelatedDrawingResponse toRelatedDrawing(Drawing drawing) {
+    private RelatedDrawingResult toRelatedDrawing(Drawing drawing) {
         if (drawing == null) {
             return null;
         }
         if (drawing.getDeletedAt() != null) {
             return null;
         }
-        return new RelatedDrawingResponse(
+        return new RelatedDrawingResult(
                 drawing.getId(),
                 drawing.getDrawingNumber(),
                 drawing.getName(),
@@ -562,8 +579,8 @@ public class PartQuery {
         );
     }
 
-    private RelatedSupplierResponse toRelatedSupplier(Supplier supplier, PartSupplier link) {
-        return new RelatedSupplierResponse(
+    private PartSuppliersResult.Item toRelatedSupplier(Supplier supplier, PartSupplier link) {
+        return new PartSuppliersResult.Item(
                 supplier.getId(),
                 supplier.getCompanyName(),
                 supplier.getCode(),
@@ -648,17 +665,17 @@ public class PartQuery {
                 .toList();
     }
 
-    private BomTreeNodeResponse buildBomTree(
+    private BomTreeResult.Node buildBomTree(
             String rootPartNumber,
             List<BomEdge> edges,
             Map<String, Part> partsMap
     ) {
-        BomTreeNodeResponse rootNode = createBomTreeNode(partsMap.get(rootPartNumber), rootPartNumber, 1);
-        Map<String, BomTreeNodeResponse> nodeCache = new HashMap<>();
+        BomTreeResult.Node rootNode = createBomTreeNode(partsMap.get(rootPartNumber), rootPartNumber, 1);
+        Map<String, BomTreeResult.Node> nodeCache = new HashMap<>();
         nodeCache.put(rootPartNumber, rootNode);
 
         for (BomEdge edge : edges) {
-            BomTreeNodeResponse parentNode = nodeCache.computeIfAbsent(
+            BomTreeResult.Node parentNode = nodeCache.computeIfAbsent(
                     edge.parentPn(),
                     key -> createBomTreeNode(partsMap.get(key), key, 1)
             );
@@ -668,7 +685,7 @@ public class PartQuery {
                 continue;
             }
 
-            BomTreeNodeResponse childNode = createBomTreeNode(
+            BomTreeResult.Node childNode = createBomTreeNode(
                     partsMap.get(edge.childPn()),
                     edge.childPn(),
                     edge.quantity()
@@ -681,9 +698,9 @@ public class PartQuery {
         return rootNode;
     }
 
-    private BomTreeNodeResponse createBomTreeNode(Part part, String fallbackPartNumber, int quantity) {
+    private BomTreeResult.Node createBomTreeNode(Part part, String fallbackPartNumber, int quantity) {
         if (part == null) {
-            return new BomTreeNodeResponse(
+            return new BomTreeResult.Node(
                     null,
                     fallbackPartNumber,
                     null,
@@ -696,7 +713,7 @@ public class PartQuery {
                     new ArrayList<>()
             );
         }
-        return new BomTreeNodeResponse(
+        return new BomTreeResult.Node(
                 part.getId(),
                 part.getPartNumber(),
                 part.getName(),
@@ -741,6 +758,34 @@ public class PartQuery {
                 .where(predicate)
                 .orderBy(part.getString("partNumber").asc())
                 .fetch();
+    }
+
+    private PartLifecycleState parseLifecycleState(String rawLifecycleState) {
+        if (rawLifecycleState == null || rawLifecycleState.isBlank()) {
+            return null;
+        }
+        PartLifecycleState lifecycleState = PartLifecycleState.from(rawLifecycleState);
+        if (lifecycleState == null) {
+            throw new AppException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "lifecycle_state 값이 올바르지 않습니다: " + rawLifecycleState
+            );
+        }
+        return lifecycleState;
+    }
+
+    private BomDirection parseBomDirection(String rawDirection) {
+        if (rawDirection == null || rawDirection.isBlank()) {
+            return BomDirection.FORWARD;
+        }
+        try {
+            return BomDirection.valueOf(rawDirection.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "direction 값이 올바르지 않습니다: " + rawDirection
+            );
+        }
     }
 
     private JPAQueryFactory queryFactory() {
@@ -802,7 +847,7 @@ public class PartQuery {
         return predicate;
     }
 
-    private void flattenBomTree(BomTreeNodeResponse node, int level, List<BomFlatRow> rows) {
+    private void flattenBomTree(BomTreeResult.Node node, int level, List<BomFlatRow> rows) {
         rows.add(new BomFlatRow(
                 level,
                 node.partNumber(),
@@ -814,7 +859,7 @@ public class PartQuery {
                 node.category(),
                 node.lifecycleState()
         ));
-        for (BomTreeNodeResponse child : node.children()) {
+        for (BomTreeResult.Node child : node.children()) {
             flattenBomTree(child, level + 1, rows);
         }
     }
@@ -844,11 +889,13 @@ public class PartQuery {
         }
     }
 
-    private UUID toUuid(Object value) {
-        if (value instanceof UUID uuid) {
-            return uuid;
+    private RelatedDrawingResult loadDrawing(UUID drawingId) {
+        if (drawingId == null) {
+            return null;
         }
-        return UUID.fromString(String.valueOf(value));
+        return drawingRepository.findById(drawingId)
+                .map(this::toRelatedDrawing)
+                .orElse(null);
     }
 
     private Map<String, Object> parseExtendedProperties(String raw) {

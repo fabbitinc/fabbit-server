@@ -36,14 +36,20 @@ public class RefreshToken extends AbstractCreatedEntity {
 
     public static final String CODE_REFRESH_TOKEN_USER_REQUIRED = "REFRESH_TOKEN_USER_REQUIRED";
     public static final String CODE_REFRESH_TOKEN_JTI_REQUIRED = "REFRESH_TOKEN_JTI_REQUIRED";
+    public static final String CODE_REFRESH_TOKEN_JTI_TOO_LONG = "REFRESH_TOKEN_JTI_TOO_LONG";
     public static final String CODE_REFRESH_TOKEN_EXPIRES_AT_REQUIRED = "REFRESH_TOKEN_EXPIRES_AT_REQUIRED";
+    public static final String CODE_REFRESH_TOKEN_INVALID_USER = "REFRESH_TOKEN_INVALID_USER";
+    public static final String CODE_REFRESH_TOKEN_EXPIRED = "REFRESH_TOKEN_EXPIRED";
+
+    private static final int MAX_TOKEN_JTI_LENGTH = 36;
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
+    private User _userRelation;
 
     @Column(name = "token_jti", nullable = false, length = 36)
     private String tokenJti;
@@ -51,7 +57,7 @@ public class RefreshToken extends AbstractCreatedEntity {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
-    public RefreshToken(UUID userId, String tokenJti, Instant expiresAt) {
+    private RefreshToken(UUID userId, String tokenJti, Instant expiresAt) {
         super(UuidV7Generator.next());
         this.userId = requireUserId(userId);
         this.tokenJti = requireTokenJti(tokenJti);
@@ -62,13 +68,20 @@ public class RefreshToken extends AbstractCreatedEntity {
         return new RefreshToken(userId, tokenJti, expiresAt);
     }
 
-    public static RefreshToken create(User user, String tokenJti, Instant expiresAt) {
-        if (user == null) {
-            throw new DomainException(CODE_REFRESH_TOKEN_USER_REQUIRED, "사용자 ID는 필수입니다");
+    public RefreshToken rotate(String tokenJti, Instant expiresAt) {
+        return new RefreshToken(userId, tokenJti, expiresAt);
+    }
+
+    public void validateOwnedBy(UUID userId) {
+        if (!this.userId.equals(requireUserId(userId))) {
+            throw new DomainException(CODE_REFRESH_TOKEN_INVALID_USER, "토큰 사용자 정보가 일치하지 않습니다");
         }
-        RefreshToken refreshToken = new RefreshToken(user.getId(), tokenJti, expiresAt);
-        refreshToken.user = user;
-        return refreshToken;
+    }
+
+    public void validateUsableAt(Instant now) {
+        if (!expiresAt.isAfter(requireExpiresAt(now))) {
+            throw new DomainException(CODE_REFRESH_TOKEN_EXPIRED, "refresh 토큰이 만료되었습니다");
+        }
     }
 
     private UUID requireUserId(UUID value) {
@@ -82,7 +95,11 @@ public class RefreshToken extends AbstractCreatedEntity {
         if (value == null || value.isBlank()) {
             throw new DomainException(CODE_REFRESH_TOKEN_JTI_REQUIRED, "토큰 JTI는 필수입니다");
         }
-        return value;
+        String trimmed = value.trim();
+        if (trimmed.length() > MAX_TOKEN_JTI_LENGTH) {
+            throw new DomainException(CODE_REFRESH_TOKEN_JTI_TOO_LONG, "토큰 JTI는 36자 이하여야 합니다");
+        }
+        return trimmed;
     }
 
     private Instant requireExpiresAt(Instant value) {

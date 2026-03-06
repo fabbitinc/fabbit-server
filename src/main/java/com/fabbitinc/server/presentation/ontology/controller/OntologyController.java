@@ -1,8 +1,11 @@
 package com.fabbitinc.server.presentation.ontology.controller;
 
-import com.fabbitinc.server.application.ontology.dto.response.NodeSearchResponse;
-import com.fabbitinc.server.application.ontology.dto.response.OntologySchemaResponse;
+import com.fabbitinc.server.application.ontology.query.condition.NodeSearchCondition;
+import com.fabbitinc.server.application.ontology.query.result.NodeSearchResult;
+import com.fabbitinc.server.application.ontology.query.result.OntologySchemaResult;
 import com.fabbitinc.server.application.ontology.query.OntologyQuery;
+import com.fabbitinc.server.presentation.ontology.dto.response.NodeSearchResponse;
+import com.fabbitinc.server.presentation.ontology.dto.response.OntologySchemaResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
@@ -30,7 +33,7 @@ public class OntologyController {
     )
     @GetMapping("/schema")
     public OntologySchemaResponse getOntologySchema() {
-        return ontologyQuery.getOntologySchema();
+        return toOntologySchemaResponse(ontologyQuery.getSchema());
     }
 
     @Operation(
@@ -48,6 +51,58 @@ public class OntologyController {
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
             int limit
     ) {
-        return ontologyQuery.searchNodes(label, search, limit);
+        return toNodeSearchResponse(ontologyQuery.search(new NodeSearchCondition(label, search, limit)));
+    }
+
+    private OntologySchemaResponse toOntologySchemaResponse(OntologySchemaResult result) {
+        return new OntologySchemaResponse(
+                result.name(),
+                result.description(),
+                result.nodeLabels().stream()
+                        .map(node -> new OntologySchemaResponse.NodeLabelSchemaResponse(
+                                node.label(),
+                                node.description(),
+                                node.properties().stream()
+                                        .map(this::toPropertySchemaResponse)
+                                        .toList(),
+                                node.mergeKeys()
+                        ))
+                        .toList(),
+                result.relationshipTypes().stream()
+                        .map(relationship -> new OntologySchemaResponse.RelationshipTypeSchemaResponse(
+                                relationship.relType(),
+                                relationship.description(),
+                                relationship.fromLabel(),
+                                relationship.toLabel(),
+                                relationship.properties().stream()
+                                        .map(this::toPropertySchemaResponse)
+                                        .toList()
+                        ))
+                        .toList()
+        );
+    }
+
+    private OntologySchemaResponse.PropertySchemaResponse toPropertySchemaResponse(
+            OntologySchemaResult.PropertyResult result
+    ) {
+        return new OntologySchemaResponse.PropertySchemaResponse(
+                result.name(),
+                result.description(),
+                result.dataType(),
+                result.required(),
+                result.isMergeKey()
+        );
+    }
+
+    private NodeSearchResponse toNodeSearchResponse(NodeSearchResult result) {
+        return new NodeSearchResponse(
+                result.nodeLabel(),
+                result.items().stream()
+                        .map(item -> new NodeSearchResponse.NodeSearchItemResponse(
+                                item.value(),
+                                item.label()
+                        ))
+                        .toList()
+        );
     }
 }

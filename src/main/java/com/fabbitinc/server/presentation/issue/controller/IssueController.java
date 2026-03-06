@@ -12,12 +12,36 @@ import com.fabbitinc.server.application.issue.dto.request.SyncTeamAssigneesReque
 import com.fabbitinc.server.application.issue.dto.request.UpdateCommentRequest;
 import com.fabbitinc.server.application.issue.dto.request.UpdateIssueRequest;
 import com.fabbitinc.server.application.issue.dto.response.CommentResponse;
+import com.fabbitinc.server.application.issue.dto.response.IssueLookupItemResponse;
 import com.fabbitinc.server.application.issue.dto.response.IssueListResponse;
 import com.fabbitinc.server.application.issue.dto.response.IssueLookupResponse;
 import com.fabbitinc.server.application.issue.dto.response.IssueResponse;
+import com.fabbitinc.server.application.issue.dto.response.IssueSummaryResponse;
+import com.fabbitinc.server.application.issue.dto.response.IssueUserSummaryResponse;
+import com.fabbitinc.server.application.issue.dto.response.LabelBadgeResponse;
+import com.fabbitinc.server.application.issue.dto.response.LinkedChangeRequestBadgeResponse;
+import com.fabbitinc.server.application.issue.dto.response.PartBadgeResponse;
 import com.fabbitinc.server.application.issue.dto.response.SyncDiffResponse;
+import com.fabbitinc.server.application.issue.dto.response.TeamBadgeResponse;
+import com.fabbitinc.server.application.issue.dto.response.TimelineItemResponse;
+import com.fabbitinc.server.application.issue.dto.response.TimelineItemType;
 import com.fabbitinc.server.application.issue.dto.response.TimelineResponse;
+import com.fabbitinc.server.application.issue.query.condition.IssueDetailCondition;
+import com.fabbitinc.server.application.issue.query.condition.IssueListCondition;
+import com.fabbitinc.server.application.issue.query.condition.IssueLookupCondition;
+import com.fabbitinc.server.application.issue.query.condition.IssueTimelineCondition;
 import com.fabbitinc.server.application.issue.query.IssueQuery;
+import com.fabbitinc.server.application.issue.query.result.IssueDetailResult;
+import com.fabbitinc.server.application.issue.query.result.IssueFileItemResult;
+import com.fabbitinc.server.application.issue.query.result.IssueListResult;
+import com.fabbitinc.server.application.issue.query.result.IssueLookupResult;
+import com.fabbitinc.server.application.issue.query.result.IssueTimelineResult;
+import com.fabbitinc.server.application.issue.query.result.IssueUserSummaryResult;
+import com.fabbitinc.server.application.issue.query.result.LabelBadgeResult;
+import com.fabbitinc.server.application.issue.query.result.LinkedChangeRequestBadgeResult;
+import com.fabbitinc.server.application.issue.query.result.PartBadgeResult;
+import com.fabbitinc.server.application.issue.query.result.TeamBadgeResult;
+import com.fabbitinc.server.application.issue.query.result.TimelineItemTypeResult;
 import com.fabbitinc.server.application.issue.support.IssueTargetType;
 import com.fabbitinc.server.application.issue.usecase.AddIssueFilesUseCase;
 import com.fabbitinc.server.application.issue.usecase.CloseIssueUseCase;
@@ -33,8 +57,6 @@ import com.fabbitinc.server.application.issue.usecase.SyncPartsUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncTeamAssigneesUseCase;
 import com.fabbitinc.server.application.issue.usecase.UpdateCommentUseCase;
 import com.fabbitinc.server.application.issue.usecase.UpdateIssueUseCase;
-import com.fabbitinc.server.domain.issue.model.IssueState;
-import com.fabbitinc.server.domain.issue.model.IssueType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -56,7 +78,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Validated
@@ -89,13 +113,13 @@ public class IssueController {
     @GetMapping("/lookup")
     public IssueLookupResponse lookupIssues(
             @RequestParam(value = "search", required = false) String search,
-            @RequestParam(value = "type", required = false) IssueType type,
+            @RequestParam(value = "type", required = false) String type,
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
             int limit
     ) {
-        return issueQuery.lookupIssues(search, type, limit);
+        return toIssueLookupResponse(issueQuery.lookupIssues(new IssueLookupCondition(search, type, limit)));
     }
 
     @Operation(
@@ -105,7 +129,7 @@ public class IssueController {
     @GetMapping
     public IssueListResponse listIssues(
             @RequestParam(value = "search", required = false) String search,
-            @RequestParam(value = "state", required = false) IssueState state,
+            @RequestParam(value = "state", required = false) String state,
             @RequestParam(value = "offset", defaultValue = "0")
             @Min(value = 0, message = "offset은 0 이상이어야 합니다")
             int offset,
@@ -114,7 +138,7 @@ public class IssueController {
             @Max(value = 100, message = "limit은 100 이하여야 합니다")
             int limit
     ) {
-        return issueQuery.listIssues(search, state, offset, limit);
+        return toIssueListResponse(issueQuery.listIssues(new IssueListCondition(search, state, offset, limit)));
     }
 
     @Operation(
@@ -125,7 +149,7 @@ public class IssueController {
     public IssueResponse getIssue(
             @PathVariable int issueNumber
     ) {
-        return issueQuery.getIssue(issueNumber);
+        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueNumber)));
     }
 
     @Operation(
@@ -138,7 +162,7 @@ public class IssueController {
             @Valid @RequestBody CreateIssueRequest request
     ) {
         int issueNumber = createIssueUseCase.execute(request);
-        return issueQuery.getIssue(issueNumber);
+        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueNumber)));
     }
 
     @Operation(
@@ -151,7 +175,7 @@ public class IssueController {
             @Valid @RequestBody UpdateIssueRequest request
     ) {
         updateIssueUseCase.execute(issueNumber, request);
-        return issueQuery.getIssue(issueNumber);
+        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueNumber)));
     }
 
     @Operation(
@@ -199,7 +223,7 @@ public class IssueController {
             @PathVariable int issueNumber
     ) {
         closeIssueUseCase.execute(issueNumber);
-        return issueQuery.getIssue(issueNumber);
+        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueNumber)));
     }
 
     @Operation(
@@ -211,7 +235,7 @@ public class IssueController {
             @PathVariable int issueNumber
     ) {
         reopenIssueUseCase.execute(issueNumber);
-        return issueQuery.getIssue(issueNumber);
+        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueNumber)));
     }
 
     @Operation(
@@ -246,7 +270,7 @@ public class IssueController {
     public TimelineResponse getTimeline(
             @PathVariable int issueNumber
     ) {
-        return issueQuery.getIssueTimeline(issueNumber, IssueTargetType.ISSUE);
+        return toTimelineResponse(issueQuery.getTimeline(new IssueTimelineCondition(issueNumber, IssueTargetType.ISSUE)));
     }
 
     @Operation(
@@ -311,5 +335,152 @@ public class IssueController {
     ) {
         deleteIssueFileUseCase.execute(IssueTargetType.ISSUE, issueNumber, fileId);
         return ResponseEntity.noContent().build();
+    }
+
+    private IssueLookupResponse toIssueLookupResponse(IssueLookupResult result) {
+        return new IssueLookupResponse(
+                result.items().stream()
+                        .map(item -> new IssueLookupItemResponse(
+                                item.id(),
+                                item.number(),
+                                item.title(),
+                                item.state(),
+                                item.type()
+                        ))
+                        .toList()
+        );
+    }
+
+    private IssueListResponse toIssueListResponse(IssueListResult result) {
+        return new IssueListResponse(
+                result.openCount(),
+                result.closedCount(),
+                result.total(),
+                result.offset(),
+                result.limit(),
+                result.items().stream().map(this::toIssueSummaryResponse).toList()
+        );
+    }
+
+    private IssueSummaryResponse toIssueSummaryResponse(IssueListResult.Item result) {
+        return new IssueSummaryResponse(
+                result.id(),
+                result.number(),
+                result.type(),
+                result.title(),
+                result.state(),
+                result.closedAt(),
+                result.createdAt(),
+                result.updatedAt(),
+                toIssueUserSummaryResponse(result.createdBy()),
+                result.labels().stream().map(this::toLabelBadgeResponse).toList(),
+                result.assignees().stream().map(this::toIssueUserSummaryResponse).toList(),
+                result.assignedTeams().stream().map(this::toTeamBadgeResponse).toList(),
+                result.parts().stream().map(this::toPartBadgeResponse).toList(),
+                result.files().stream().map(this::toFileItemResponse).toList(),
+                result.commentsCount()
+        );
+    }
+
+    private IssueResponse toIssueResponse(IssueDetailResult result) {
+        return new IssueResponse(
+                result.id(),
+                result.number(),
+                result.type(),
+                result.title(),
+                result.body(),
+                result.state(),
+                result.closedAt(),
+                result.createdAt(),
+                result.updatedAt(),
+                result.isModified(),
+                toIssueUserSummaryResponse(result.createdBy()),
+                result.labels().stream().map(this::toLabelBadgeResponse).toList(),
+                result.assignees().stream().map(this::toIssueUserSummaryResponse).toList(),
+                result.assignedTeams().stream().map(this::toTeamBadgeResponse).toList(),
+                result.parts().stream().map(this::toPartBadgeResponse).toList(),
+                result.files().stream().map(this::toFileItemResponse).toList(),
+                result.commentsCount(),
+                result.linkedChanges().stream().map(this::toLinkedChangeRequestBadgeResponse).toList()
+        );
+    }
+
+    private TimelineResponse toTimelineResponse(IssueTimelineResult result) {
+        Map<String, IssueUserSummaryResponse> users = new LinkedHashMap<>();
+        result.users().forEach((userId, user) -> users.put(userId, toIssueUserSummaryResponse(user)));
+
+        return new TimelineResponse(
+                result.items().stream().map(this::toTimelineItemResponse).toList(),
+                users
+        );
+    }
+
+    private TimelineItemResponse toTimelineItemResponse(IssueTimelineResult.Item result) {
+        return new TimelineItemResponse(
+                toTimelineItemType(result.type()),
+                result.id(),
+                result.action(),
+                result.scope(),
+                result.actorId(),
+                result.detail(),
+                result.body(),
+                result.authorId(),
+                result.createdAt(),
+                result.updatedAt(),
+                result.isModified()
+        );
+    }
+
+    private TimelineItemType toTimelineItemType(TimelineItemTypeResult result) {
+        if (result == TimelineItemTypeResult.ACTIVITY) {
+            return TimelineItemType.ACTIVITY;
+        }
+        return TimelineItemType.COMMENT;
+    }
+
+    private IssueUserSummaryResponse toIssueUserSummaryResponse(IssueUserSummaryResult result) {
+        if (result == null) {
+            return null;
+        }
+        return new IssueUserSummaryResponse(
+                result.userId(),
+                result.fullName(),
+                result.email(),
+                result.phone(),
+                result.profileImageUrl()
+        );
+    }
+
+    private LabelBadgeResponse toLabelBadgeResponse(LabelBadgeResult result) {
+        return new LabelBadgeResponse(result.id(), result.name(), result.color());
+    }
+
+    private TeamBadgeResponse toTeamBadgeResponse(TeamBadgeResult result) {
+        return new TeamBadgeResponse(result.id(), result.name());
+    }
+
+    private PartBadgeResponse toPartBadgeResponse(PartBadgeResult result) {
+        return new PartBadgeResponse(result.id(), result.partNumber(), result.name());
+    }
+
+    private FileItemResponse toFileItemResponse(IssueFileItemResult result) {
+        return new FileItemResponse(
+                result.fileId(),
+                result.originalName(),
+                result.contentType(),
+                result.fileSize(),
+                result.fileUrl(),
+                result.createdAt()
+        );
+    }
+
+    private LinkedChangeRequestBadgeResponse toLinkedChangeRequestBadgeResponse(LinkedChangeRequestBadgeResult result) {
+        return new LinkedChangeRequestBadgeResponse(
+                result.id(),
+                result.number(),
+                result.title(),
+                result.state(),
+                result.crState()
+        );
     }
 }

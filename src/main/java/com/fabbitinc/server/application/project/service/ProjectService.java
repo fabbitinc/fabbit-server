@@ -30,8 +30,10 @@ public class ProjectService {
 
     public Project createProject(UUID ownerId, String name, String description) {
         try {
-            Project project = projectRepository.save(Project.create(name, description));
-            projectMemberRepository.save(ProjectMember.assign(project.getId(), ownerId, ProjectRole.ADMIN));
+            Project project = Project.create(name, description);
+            ProjectMember ownerMember = project.addMember(ownerId, ProjectRole.ADMIN);
+            projectRepository.save(project);
+            projectMemberRepository.save(ownerMember);
             return project;
         } catch (DomainException ex) {
             throw toAppException(ex);
@@ -102,7 +104,7 @@ public class ProjectService {
         try {
             List<ProjectPart> newLinks = normalizedPartIds.stream()
                     .filter(partId -> !existingPartIds.contains(partId))
-                    .map(partId -> ProjectPart.link(projectId, partId))
+                    .map(project::linkPart)
                     .toList();
             if (newLinks.isEmpty()) {
                 return 0;
@@ -123,7 +125,7 @@ public class ProjectService {
     }
 
     public int addMembers(UUID projectId, List<UUID> userIds, ProjectRole role) {
-        getOrThrow(projectId);
+        Project project = getOrThrow(projectId);
         if (role == null) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 역할입니다");
         }
@@ -137,7 +139,7 @@ public class ProjectService {
         try {
             List<ProjectMember> newMembers = normalizedUserIds.stream()
                     .filter(userId -> !existingUserIds.contains(userId))
-                    .map(userId -> ProjectMember.assign(projectId, userId, role))
+                    .map(userId -> project.addMember(userId, role))
                     .toList();
             if (newMembers.isEmpty()) {
                 return 0;

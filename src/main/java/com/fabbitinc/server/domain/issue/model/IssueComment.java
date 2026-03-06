@@ -3,7 +3,6 @@ package com.fabbitinc.server.domain.issue.model;
 import com.fabbitinc.server.domain.common.entity.AbstractAuditableEntity;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
-import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -45,18 +44,10 @@ public class IssueComment extends AbstractAuditableEntity {
     @Column(name = "created_by", nullable = false)
     private UUID createdBy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by", insertable = false, updatable = false)
-    private User createdByUser;
-
     @Column(name = "updated_by", nullable = false)
     private UUID updatedBy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "updated_by", insertable = false, updatable = false)
-    private User updatedByUser;
-
-    public IssueComment(UUID issueId, String body, UUID actorId) {
+    private IssueComment(UUID issueId, String body, UUID actorId) {
         super(UuidV7Generator.next());
         this.issueId = requireIssueId(issueId);
         this.body = requireBody(body);
@@ -68,16 +59,6 @@ public class IssueComment extends AbstractAuditableEntity {
         return new IssueComment(issueId, body, actorId);
     }
 
-    public static IssueComment write(UUID issueId, String body, User actor) {
-        if (actor == null) {
-            throw new DomainException(CODE_ISSUE_COMMENT_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
-        }
-        IssueComment comment = new IssueComment(issueId, body, actor.getId());
-        comment.createdByUser = actor;
-        comment.updatedByUser = actor;
-        return comment;
-    }
-
     public static IssueComment write(Issue issue, String body, UUID actorId) {
         if (issue == null) {
             throw new DomainException(CODE_ISSUE_COMMENT_ISSUE_REQUIRED, "이슈 ID는 필수입니다");
@@ -87,32 +68,11 @@ public class IssueComment extends AbstractAuditableEntity {
         return comment;
     }
 
-    public static IssueComment write(Issue issue, String body, User actor) {
-        if (issue == null) {
-            throw new DomainException(CODE_ISSUE_COMMENT_ISSUE_REQUIRED, "이슈 ID는 필수입니다");
-        }
-        IssueComment comment = write(issue.getId(), body, actor);
-        comment.issue = issue;
-        return comment;
-    }
-
     public void updateBody(String body, UUID actorId) {
         UUID requiredActorId = requireActorId(actorId);
         String requiredBody = requireBody(body);
         this.body = requiredBody;
         this.updatedBy = requiredActorId;
-        if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
-            this.updatedByUser = null;
-        }
-    }
-
-    public void updateBody(String body, User actor) {
-        if (actor == null) {
-            throw new DomainException(CODE_ISSUE_COMMENT_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
-        }
-        this.body = requireBody(body);
-        this.updatedBy = actor.getId();
-        this.updatedByUser = actor;
     }
 
     private UUID requireIssueId(UUID value) {

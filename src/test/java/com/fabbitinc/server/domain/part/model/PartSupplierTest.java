@@ -14,10 +14,8 @@ class PartSupplierTest {
         Part part = Part.create("P-001", "Bolt");
         Supplier supplier = Supplier.create("ACME", null, null, null, "{}");
 
-        PartSupplier link = PartSupplier.link(part, supplier, 1200.0, "{}");
+        PartSupplier link = PartSupplier.link(part.getId(), supplier.getId(), 1200.0, "{}");
 
-        assertEquals(part, link.getPart());
-        assertEquals(supplier, link.getSupplier());
         assertEquals(part.getId(), link.getPartId());
         assertEquals(supplier.getId(), link.getSupplierId());
     }
@@ -29,7 +27,7 @@ class PartSupplierTest {
 
         DomainException ex = assertThrows(
                 DomainException.class,
-                () -> PartSupplier.link(part, supplier, -1.0, "{}")
+                () -> PartSupplier.link(part.getId(), supplier.getId(), -1.0, "{}")
         );
 
         assertEquals(PartSupplier.CODE_PART_SUPPLIER_UNIT_COST_INVALID, ex.getDomainCode());
@@ -40,8 +38,26 @@ class PartSupplierTest {
         Part part = Part.create("P-001", "Bolt");
         Supplier supplier = Supplier.create("ACME", null, null, null, "{}");
 
-        PartSupplier link = PartSupplier.link(part, supplier, 1200.0, "  {\"key\":\"value\"}  ");
+        PartSupplier link = PartSupplier.link(part.getId(), supplier.getId(), 1200.0, "  {\"key\":\"value\"}  ");
 
         assertEquals("{\"key\":\"value\"}", link.getExtendedProperties());
+    }
+
+    @Test
+    void changeUnitCost_유효한값으로_단가를_변경한다() {
+        PartSupplier link = PartSupplier.link(java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), 1200.0, "{}");
+
+        link.changeUnitCost(1500.0);
+
+        assertEquals(1500.0, link.getUnitCost());
+    }
+
+    @Test
+    void changeExtendedProperties_blank면_기본_json으로_정규화한다() {
+        PartSupplier link = PartSupplier.link(java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), 1200.0, "{}");
+
+        link.changeExtendedProperties("   ");
+
+        assertEquals("{}", link.getExtendedProperties());
     }
 }

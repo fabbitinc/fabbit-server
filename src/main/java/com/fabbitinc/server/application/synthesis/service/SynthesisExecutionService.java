@@ -67,8 +67,6 @@ public class SynthesisExecutionService {
         }
 
         try {
-            job.markProcessing();
-
             MappingRevision revision = mappingRevisionRepository.findFirstByRecordIdOrderByVersionDesc(job.getMappingId())
                     .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "매핑 리비전을 찾을 수 없습니다"));
             File file = fileRepository.findByIdAndDeletedAtIsNull(job.getFileId())
@@ -84,11 +82,10 @@ public class SynthesisExecutionService {
             );
 
             List<Map<String, Object>> rows = parsed.rows();
-            job.setTotalRows(rows.size());
+            job.start(rows.size());
 
             if (rows.isEmpty()) {
-                job.replaceErrors("[]");
-                job.markCompleted();
+                job.complete(0, 0, 0, "[]");
                 return;
             }
 
@@ -109,12 +106,10 @@ public class SynthesisExecutionService {
                 }
             }
 
-            job.incrementUsageProgress(processedRows, nodesCreated, relationshipsCreated);
-            job.replaceErrors(serializeErrors(errors));
-            job.markCompleted();
+            job.complete(processedRows, nodesCreated, relationshipsCreated, serializeErrors(errors));
         } catch (Exception ex) {
             String message = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
-            job.markFailed(serializeErrors(List.of(message)));
+            job.fail(serializeErrors(List.of(message)));
         }
     }
 
@@ -128,13 +123,12 @@ public class SynthesisExecutionService {
         int nodesCreated = 0;
         int relationshipsCreated = 0;
 
-        String childPartNumber = resolveChildPartNumber(row, mapping.propertyMappings());
-        if (childPartNumber == null) {
+        PartRowValues childValues = resolveChildPartValues(row, mapping.propertyMappings());
+        if (childValues.partNumber() == null) {
             return new RowProcessResult(0, 0);
         }
 
-        String childName = resolvePartName(row, mapping.propertyMappings());
-        UpsertPartResult childResult = upsertPart(childPartNumber, childName, overwrite, jobId);
+        UpsertPartResult childResult = upsertPart(childValues, overwrite, jobId);
         if (childResult.created()) {
             nodesCreated++;
         }
@@ -142,12 +136,16 @@ public class SynthesisExecutionService {
         for (RelationMappingDto relation : mapping.relationMappings()) {
             if (isConsistsOfPartRelation(relation)) {
                 String parentPartNumber = resolveParentPartNumber(row, relation, rootContext);
-                if (parentPartNumber == null || parentPartNumber.equals(childPartNumber)) {
+                if (parentPartNumber == null || parentPartNumber.equals(childValues.partNumber())) {
                     continue;
                 }
 
                 String parentName = resolveMappedText(row, relation.nodeColumns().get("name"), PropertyDataType.STRING);
-                UpsertPartResult parentResult = upsertPart(parentPartNumber, parentName, overwrite, jobId);
+                UpsertPartResult parentResult = upsertPart(
+                        new PartRowValues(parentPartNumber, parentName, null, null, null, null),
+                        overwrite,
+                        jobId
+                );
                 if (parentResult.created()) {
                     nodesCreated++;
                 }
@@ -188,30 +186,38 @@ public class SynthesisExecutionService {
         return relation.relType() == RelationshipType.SUPPLIED_BY && "Supplier".equals(relation.targetLabel());
     }
 
-    private String resolveChildPartNumber(Map<String, Object> row, List<PropertyMappingDto> properties) {
-        for (PropertyMappingDto property : properties) {
-            if (!"part_number".equals(property.targetProperty())) {
-                continue;
-            }
-            String value = resolveMappedText(row, property.sourceColumn(), property.dataType());
-            if (value != null) {
-                return value;
-            }
-        }
-        return null;
-    }
+    private PartRowValues resolveChildPartValues(Map<String, Object> row, List<PropertyMappingDto> properties) {
+        String partNumber = null;
+        String name = null;
+        String category = null;
+        String material = null;
+        String unit = null;
+        String description = null;
 
-    private String resolvePartName(Map<String, Object> row, List<PropertyMappingDto> properties) {
         for (PropertyMappingDto property : properties) {
-            if (!"name".equals(property.targetProperty())) {
+            String targetProperty = property.targetProperty();
+            if (targetProperty == null || targetProperty.isBlank()) {
                 continue;
             }
+
             String value = resolveMappedText(row, property.sourceColumn(), property.dataType());
-            if (value != null) {
-                return value;
+            if (value == null) {
+                continue;
+            }
+
+            switch (targetProperty) {
+                case "part_number" -> partNumber = value;
+                case "name" -> name = value;
+                case "category" -> category = value;
+                case "material" -> material = value;
+                case "unit" -> unit = value;
+                case "description" -> description = value;
+                default -> {
+                }
             }
         }
-        return null;
+
+        return new PartRowValues(partNumber, name, category, material, unit, description);
     }
 
     private String resolveParentPartNumber(
@@ -282,14 +288,28 @@ public class SynthesisExecutionService {
         return toDouble(value);
     }
 
-    private UpsertPartResult upsertPart(String partNumber, String name, boolean overwrite, UUID jobId) {
-        Part existing = partRepository.findByPartNumber(partNumber).orElse(null);
+    private UpsertPartResult upsertPart(PartRowValues values, boolean overwrite, UUID jobId) {
+        Part existing = partRepository.findByPartNumber(values.partNumber()).orElse(null);
         if (existing != null) {
             boolean changed = false;
-            if (name != null
-                    && (overwrite || existing.getName() == null || existing.getName().isBlank())
-                    && !name.equals(existing.getName())) {
-                existing.changeName(name);
+            if (shouldApplyString(values.name(), existing.getName(), overwrite)) {
+                existing.changeName(values.name());
+                changed = true;
+            }
+            if (shouldApplyString(values.category(), existing.getCategory(), overwrite)) {
+                existing.changeCategory(values.category());
+                changed = true;
+            }
+            if (shouldApplyString(values.material(), existing.getMaterial(), overwrite)) {
+                existing.changeMaterial(values.material());
+                changed = true;
+            }
+            if (shouldApplyString(values.unit(), existing.getUnit(), overwrite)) {
+                existing.changeUnit(values.unit());
+                changed = true;
+            }
+            if (shouldApplyString(values.description(), existing.getDescription(), overwrite)) {
+                existing.changeDescription(values.description());
                 changed = true;
             }
             if (changed) {
@@ -299,10 +319,32 @@ public class SynthesisExecutionService {
             return new UpsertPartResult(existing, false);
         }
 
-        Part created = Part.create(partNumber, name);
+        Part created = Part.create(values.partNumber(), values.name());
+        if (values.category() != null) {
+            created.changeCategory(values.category());
+        }
+        if (values.material() != null) {
+            created.changeMaterial(values.material());
+        }
+        if (values.unit() != null) {
+            created.changeUnit(values.unit());
+        }
+        if (values.description() != null) {
+            created.changeDescription(values.description());
+        }
         partRepository.save(created);
         partRevisionRepository.save(PartRevision.capture(created, jobId));
         return new UpsertPartResult(created, true);
+    }
+
+    private boolean shouldApplyString(String incoming, String current, boolean overwrite) {
+        if (incoming == null) {
+            return false;
+        }
+        if (!overwrite && current != null && !current.isBlank()) {
+            return false;
+        }
+        return !incoming.equals(current);
     }
 
     private boolean upsertBomLink(Part parent, Part child, int quantity) {
@@ -311,7 +353,7 @@ public class SynthesisExecutionService {
             return false;
         }
 
-        bomLinkRepository.save(BomLink.connect(parent, child, quantity, "{}"));
+        bomLinkRepository.save(BomLink.connect(parent.getId(), child.getId(), quantity, "{}"));
         return true;
     }
 
@@ -332,7 +374,7 @@ public class SynthesisExecutionService {
             return false;
         }
 
-        partSupplierRepository.save(PartSupplier.link(part, supplier, unitCost, "{}"));
+        partSupplierRepository.save(PartSupplier.link(part.getId(), supplier.getId(), unitCost, "{}"));
         return true;
     }
 
@@ -454,6 +496,16 @@ public class SynthesisExecutionService {
     private record UpsertSupplierResult(
             Supplier supplier,
             boolean created
+    ) {
+    }
+
+    private record PartRowValues(
+            String partNumber,
+            String name,
+            String category,
+            String material,
+            String unit,
+            String description
     ) {
     }
 }

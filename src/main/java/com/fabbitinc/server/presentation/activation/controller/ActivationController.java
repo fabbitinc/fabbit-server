@@ -3,8 +3,12 @@ package com.fabbitinc.server.presentation.activation.controller;
 import com.fabbitinc.server.application.activation.dto.request.QueryRequest;
 import com.fabbitinc.server.application.activation.dto.response.HealthCheckResponse;
 import com.fabbitinc.server.application.activation.dto.response.QueryResponse;
+import com.fabbitinc.server.application.activation.dto.response.StarterQuestionResponse;
 import com.fabbitinc.server.application.activation.dto.response.StartersResponse;
 import com.fabbitinc.server.application.activation.query.ActivationQuery;
+import com.fabbitinc.server.application.activation.query.condition.ActivationStartersCondition;
+import com.fabbitinc.server.application.activation.query.result.ActivationStarterQuestionResult;
+import com.fabbitinc.server.application.activation.query.result.ActivationStartersResult;
 import com.fabbitinc.server.application.activation.usecase.HealthCheckUseCase;
 import com.fabbitinc.server.application.activation.usecase.QueryGraphUseCase;
 import io.swagger.v3.oas.annotations.Operation;
@@ -57,6 +61,21 @@ public class ActivationController {
     @GetMapping("/starters")
     public StartersResponse getStarters(
 ) {
-        return activationQuery.getStarters();
+        return toStartersResponse(activationQuery.lookup(new ActivationStartersCondition()));
+    }
+
+    private StartersResponse toStartersResponse(ActivationStartersResult result) {
+        return new StartersResponse(
+                result.starters().stream()
+                        .map(this::toStarterQuestionResponse)
+                        .toList()
+        );
+    }
+
+    private StarterQuestionResponse toStarterQuestionResponse(ActivationStarterQuestionResult result) {
+        return new StarterQuestionResponse(
+                result.question(),
+                result.description()
+        );
     }
 }

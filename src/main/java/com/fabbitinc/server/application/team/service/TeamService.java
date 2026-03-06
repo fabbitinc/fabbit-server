@@ -22,7 +22,7 @@ public class TeamService {
     private final TeamMemberRepository teamMemberRepository;
 
     public Team createTeam(UUID actorId, String name, String description) {
-        Team team = new Team(name, description, actorId);
+        Team team = Team.create(name, description, actorId);
         return teamRepository.save(team);
     }
 
@@ -52,7 +52,7 @@ public class TeamService {
 
         List<TeamMember> newMembers = normalizedUserIds.stream()
                 .filter(userId -> !existingUserIds.contains(userId))
-                .map(userId -> new TeamMember(team, userId))
+                .map(team::addMember)
                 .toList();
 
         if (newMembers.isEmpty()) {

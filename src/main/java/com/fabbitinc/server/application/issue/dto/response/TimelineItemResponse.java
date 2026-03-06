@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.issue.dto.response;
 
-import com.fabbitinc.server.application.activity.dto.response.ActivityAction;
-import com.fabbitinc.server.application.activity.dto.response.ActivityScope;
+import com.fabbitinc.server.application.activity.model.ActivityAction;
+import com.fabbitinc.server.application.activity.model.ActivityScope;
 import tools.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.media.Schema;
 

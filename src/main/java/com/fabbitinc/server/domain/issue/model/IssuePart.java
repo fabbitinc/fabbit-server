@@ -3,7 +3,6 @@ package com.fabbitinc.server.domain.issue.model;
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
-import com.fabbitinc.server.domain.part.model.Part;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -46,11 +45,7 @@ public class IssuePart extends AbstractCreatedEntity {
     @Column(name = "part_id", nullable = false)
     private UUID partId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "part_id", insertable = false, updatable = false)
-    private Part part;
-
-    public IssuePart(UUID issueId, UUID partId) {
+    private IssuePart(UUID issueId, UUID partId) {
         super(UuidV7Generator.next());
         this.issueId = requireIssueId(issueId);
         this.partId = requirePartId(partId);
@@ -60,16 +55,15 @@ public class IssuePart extends AbstractCreatedEntity {
         return new IssuePart(issueId, partId);
     }
 
-    public static IssuePart link(Issue issue, Part part) {
+    public static IssuePart link(Issue issue, UUID partId) {
         if (issue == null) {
             throw new DomainException(CODE_ISSUE_PART_ISSUE_REQUIRED, "이슈 ID는 필수입니다");
         }
-        if (part == null) {
+        if (partId == null) {
             throw new DomainException(CODE_ISSUE_PART_PART_REQUIRED, "부품 ID는 필수입니다");
         }
-        IssuePart issuePart = new IssuePart(issue.getId(), part.getId());
+        IssuePart issuePart = new IssuePart(issue.getId(), partId);
         issuePart.issue = issue;
-        issuePart.part = part;
         return issuePart;
     }
 

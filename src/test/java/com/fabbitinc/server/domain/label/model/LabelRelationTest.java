@@ -1,7 +1,6 @@
 package com.fabbitinc.server.domain.label.model;
 
 import com.fabbitinc.server.domain.common.exception.DomainException;
-import com.fabbitinc.server.domain.user.model.User;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
@@ -12,27 +11,24 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class LabelRelationTest {
 
     @Test
-    void label_엔티티_입력시_createdBy_updatedBy_FK와_연관을_동기화한다() {
-        User actor = new User("actor@example.com", "hashed", "Actor");
+    void label_생성시_createdBy와_updatedBy를_설정한다() {
+        UUID actorId = UUID.randomUUID();
+        Label label = Label.create("bug", null, "#ff0000", actorId);
 
-        Label label = Label.create("bug", null, "#ff0000", actor);
-
-        assertEquals(actor.getId(), label.getCreatedBy());
-        assertEquals(actor, label.getCreatedByUser());
-        assertEquals(actor.getId(), label.getUpdatedBy());
-        assertEquals(actor, label.getUpdatedByUser());
+        assertEquals(actorId, label.getCreatedBy());
+        assertEquals(actorId, label.getUpdatedBy());
     }
 
     @Test
-    void label_색상변경_엔티티입력시_updatedBy_FK와_연관을_동기화한다() {
-        UUID actorId = UUID.randomUUID();
-        Label label = Label.create("bug", null, "#ff0000", actorId);
-        User actor = new User("actor@example.com", "hashed", "Actor");
+    void label_색상변경시_updatedBy를_갱신한다() {
+        UUID createdActorId = UUID.randomUUID();
+        UUID updatedActorId = UUID.randomUUID();
+        Label label = Label.create("bug", null, "#ff0000", createdActorId);
 
-        label.changeColor("#00ff00", actor);
+        label.changeColor("#00ff00", updatedActorId);
 
-        assertEquals(actor.getId(), label.getUpdatedBy());
-        assertEquals(actor, label.getUpdatedByUser());
+        assertEquals("#00ff00", label.getColor());
+        assertEquals(updatedActorId, label.getUpdatedBy());
     }
 
     @Test

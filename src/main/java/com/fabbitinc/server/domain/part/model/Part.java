@@ -1,5 +1,6 @@
 package com.fabbitinc.server.domain.part.model;
 
+import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
@@ -32,7 +33,7 @@ import java.util.regex.Pattern;
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Part extends AbstractCreatedEntity {
+public class Part extends AbstractCreatedEntity implements AggregateRoot {
 
     public static final String CODE_PART_NUMBER_REQUIRED = "PART_NUMBER_REQUIRED";
     public static final String CODE_PART_NUMBER_TOO_LONG = "PART_NUMBER_TOO_LONG";
@@ -43,6 +44,7 @@ public class Part extends AbstractCreatedEntity {
     public static final String CODE_PART_DRAWING_REQUIRED = "PART_DRAWING_REQUIRED";
     public static final String CODE_PART_OWNER_REQUIRED = "PART_OWNER_REQUIRED";
     public static final String CODE_PART_OWNER_TEAM_REQUIRED = "PART_OWNER_TEAM_REQUIRED";
+    public static final String CODE_PART_LEAD_TIME_DAYS_INVALID = "PART_LEAD_TIME_DAYS_INVALID";
 
     private static final int MAX_PART_NUMBER_LENGTH = 100;
     private static final int MAX_NAME_LENGTH = 500;
@@ -54,23 +56,26 @@ public class Part extends AbstractCreatedEntity {
     @Column(name = "drawing_id")
     private UUID drawingId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "drawing_id", insertable = false, updatable = false)
-    private Drawing drawing;
+    private Drawing _drawingRelation;
 
     @Column(name = "owner_id")
     private UUID ownerId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", insertable = false, updatable = false)
-    private User owner;
+    private User _ownerRelation;
 
     @Column(name = "owner_team_id")
     private UUID ownerTeamId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_team_id", insertable = false, updatable = false)
-    private Team ownerTeam;
+    private Team _ownerTeamRelation;
 
     @Column(name = "part_number", nullable = false, length = 100)
     private String partNumber;
@@ -143,27 +148,50 @@ public class Part extends AbstractCreatedEntity {
         this.extendedProperties = normalizeExtendedProperties(extendedProperties);
     }
 
+    public void markPhantom() {
+        this.phantom = true;
+    }
+
+    public void markReal() {
+        this.phantom = false;
+    }
+
+    public void clearPhantomFlag() {
+        this.phantom = null;
+    }
+
+    public void changeLifecycleState(PartLifecycleState lifecycleState) {
+        this.lifecycleState = lifecycleState;
+    }
+
+    public void clearLifecycleState() {
+        this.lifecycleState = null;
+    }
+
+    public void changeLeadTimeDays(Integer leadTimeDays) {
+        if (leadTimeDays == null) {
+            this.leadTimeDays = null;
+            return;
+        }
+        if (leadTimeDays < 0) {
+            throw new DomainException(CODE_PART_LEAD_TIME_DAYS_INVALID, "리드타임은 0 이상이어야 합니다");
+        }
+        this.leadTimeDays = leadTimeDays;
+    }
+
     public void assignOwner(UUID ownerId) {
         if (ownerId == null) {
             throw new DomainException(CODE_PART_OWNER_REQUIRED, "담당자 ID는 필수입니다");
         }
         this.ownerId = ownerId;
-        if (this.owner != null && !ownerId.equals(this.owner.getId())) {
-            this.owner = null;
+        if (this._ownerRelation != null && !ownerId.equals(this._ownerRelation.getId())) {
+            this._ownerRelation = null;
         }
-    }
-
-    public void assignOwner(User owner) {
-        if (owner == null) {
-            throw new DomainException(CODE_PART_OWNER_REQUIRED, "담당자 ID는 필수입니다");
-        }
-        this.owner = owner;
-        this.ownerId = owner.getId();
     }
 
     public void unassignOwner() {
         this.ownerId = null;
-        this.owner = null;
+        this._ownerRelation = null;
     }
 
     public void assignOwnerTeam(UUID ownerTeamId) {
@@ -171,22 +199,14 @@ public class Part extends AbstractCreatedEntity {
             throw new DomainException(CODE_PART_OWNER_TEAM_REQUIRED, "담당 팀 ID는 필수입니다");
         }
         this.ownerTeamId = ownerTeamId;
-        if (this.ownerTeam != null && !ownerTeamId.equals(this.ownerTeam.getId())) {
-            this.ownerTeam = null;
+        if (this._ownerTeamRelation != null && !ownerTeamId.equals(this._ownerTeamRelation.getId())) {
+            this._ownerTeamRelation = null;
         }
-    }
-
-    public void assignOwnerTeam(Team ownerTeam) {
-        if (ownerTeam == null) {
-            throw new DomainException(CODE_PART_OWNER_TEAM_REQUIRED, "담당 팀 ID는 필수입니다");
-        }
-        this.ownerTeam = ownerTeam;
-        this.ownerTeamId = ownerTeam.getId();
     }
 
     public void unassignOwnerTeam() {
         this.ownerTeamId = null;
-        this.ownerTeam = null;
+        this._ownerTeamRelation = null;
     }
 
     public void assignDrawing(UUID drawingId) {
@@ -194,22 +214,14 @@ public class Part extends AbstractCreatedEntity {
             throw new DomainException(CODE_PART_DRAWING_REQUIRED, "도면 ID는 필수입니다");
         }
         this.drawingId = drawingId;
-        if (this.drawing != null && !drawingId.equals(this.drawing.getId())) {
-            this.drawing = null;
+        if (this._drawingRelation != null && !drawingId.equals(this._drawingRelation.getId())) {
+            this._drawingRelation = null;
         }
-    }
-
-    public void assignDrawing(Drawing drawing) {
-        if (drawing == null) {
-            throw new DomainException(CODE_PART_DRAWING_REQUIRED, "도면 ID는 필수입니다");
-        }
-        this.drawing = drawing;
-        this.drawingId = drawing.getId();
     }
 
     public void unassignDrawing() {
         this.drawingId = null;
-        this.drawing = null;
+        this._drawingRelation = null;
     }
 
     public void bumpRevision() {

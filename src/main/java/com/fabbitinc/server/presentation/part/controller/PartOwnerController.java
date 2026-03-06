@@ -5,7 +5,13 @@ import com.fabbitinc.server.application.part.dto.request.UpdatePartOwnerRequest;
 import com.fabbitinc.server.application.part.dto.response.PartDefaultOwnerItemResponse;
 import com.fabbitinc.server.application.part.dto.response.PartDefaultOwnerListResponse;
 import com.fabbitinc.server.application.part.dto.response.PartOwnerResponse;
+import com.fabbitinc.server.application.part.dto.response.PartOwnerUserSummaryResponse;
 import com.fabbitinc.server.application.part.query.PartOwnerQuery;
+import com.fabbitinc.server.application.part.query.condition.PartDefaultOwnerCondition;
+import com.fabbitinc.server.application.part.query.condition.PartOwnerCondition;
+import com.fabbitinc.server.application.part.query.result.PartDefaultOwnerListResult;
+import com.fabbitinc.server.application.part.query.result.PartOwnerResult;
+import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
 import com.fabbitinc.server.application.part.usecase.DeleteDefaultOwnerUseCase;
 import com.fabbitinc.server.application.part.usecase.UpdatePartOwnerUseCase;
 import com.fabbitinc.server.application.part.usecase.UpsertDefaultOwnerUseCase;
@@ -48,7 +54,7 @@ public class PartOwnerController {
     public PartOwnerResponse getPartOwner(
             @PathVariable UUID partId
     ) {
-        return partOwnerQuery.getPartOwner(partId);
+        return toPartOwnerResponse(partOwnerQuery.get(new PartOwnerCondition(partId)));
     }
 
     @Operation(
@@ -61,7 +67,7 @@ public class PartOwnerController {
             @Valid @RequestBody UpdatePartOwnerRequest request
     ) {
         UUID updatedPartId = updatePartOwnerUseCase.execute(partId, request);
-        return partOwnerQuery.getPartOwner(updatedPartId);
+        return toPartOwnerResponse(partOwnerQuery.get(new PartOwnerCondition(updatedPartId)));
     }
 
     @Operation(
@@ -71,7 +77,7 @@ public class PartOwnerController {
     @GetMapping("/owner/defaults")
     public PartDefaultOwnerListResponse listDefaultOwners(
 ) {
-        return partOwnerQuery.listDefaultOwners();
+        return toPartDefaultOwnerListResponse(partOwnerQuery.listDefaultOwners());
     }
 
     @Operation(
@@ -83,7 +89,7 @@ public class PartOwnerController {
             @Valid @RequestBody PartDefaultOwnerRequest request
     ) {
         UUID defaultOwnerId = upsertDefaultOwnerUseCase.execute(request);
-        return partOwnerQuery.getDefaultOwner(defaultOwnerId);
+        return toPartDefaultOwnerItemResponse(partOwnerQuery.get(new PartDefaultOwnerCondition(defaultOwnerId)));
     }
 
     @Operation(
@@ -96,5 +102,44 @@ public class PartOwnerController {
             @RequestParam(value = "category", required = false) String category
     ) {
         deleteDefaultOwnerUseCase.execute(category);
+    }
+
+    private PartOwnerResponse toPartOwnerResponse(PartOwnerResult result) {
+        return new PartOwnerResponse(
+                result.ownerId(),
+                toPartOwnerUserSummaryResponse(result.owner()),
+                result.ownerTeamId(),
+                result.ownerTeamName()
+        );
+    }
+
+    private PartDefaultOwnerListResponse toPartDefaultOwnerListResponse(PartDefaultOwnerListResult result) {
+        return new PartDefaultOwnerListResponse(
+                result.items().stream().map(this::toPartDefaultOwnerItemResponse).toList()
+        );
+    }
+
+    private PartDefaultOwnerItemResponse toPartDefaultOwnerItemResponse(PartDefaultOwnerListResult.Item result) {
+        return new PartDefaultOwnerItemResponse(
+                result.id(),
+                result.category(),
+                result.defaultOwnerId(),
+                toPartOwnerUserSummaryResponse(result.defaultOwner()),
+                result.defaultOwnerTeamId(),
+                result.defaultOwnerTeamName()
+        );
+    }
+
+    private PartOwnerUserSummaryResponse toPartOwnerUserSummaryResponse(PartUserSummaryResult result) {
+        if (result == null) {
+            return null;
+        }
+        return new PartOwnerUserSummaryResponse(
+                result.userId(),
+                result.fullName(),
+                result.email(),
+                result.phone(),
+                result.profileImageUrl()
+        );
     }
 }

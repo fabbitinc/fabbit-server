@@ -1,5 +1,6 @@
 package com.fabbitinc.server.domain.team.model;
 
+import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.fabbitinc.server.domain.common.entity.AbstractAuditableEntity;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
@@ -29,7 +30,7 @@ import java.util.UUID;
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Team extends AbstractAuditableEntity {
+public class Team extends AbstractAuditableEntity implements AggregateRoot {
 
     public static final String CODE_TEAM_CREATED_BY_REQUIRED = "TEAM_CREATED_BY_REQUIRED";
     public static final String CODE_TEAM_NAME_REQUIRED = "TEAM_NAME_REQUIRED";
@@ -46,14 +47,15 @@ public class Team extends AbstractAuditableEntity {
     @Column(name = "created_by", nullable = false)
     private UUID createdBy;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
-    private User creator;
+    private User _creatorRelation;
 
     @OneToMany(mappedBy = "team", fetch = FetchType.LAZY)
     private List<TeamMember> members = new ArrayList<>();
 
-    public Team(String name, String description, UUID createdBy) {
+    private Team(String name, String description, UUID createdBy) {
         super(UuidV7Generator.next());
         this.name = validateName(name);
         this.description = normalizeDescription(description);
@@ -64,21 +66,18 @@ public class Team extends AbstractAuditableEntity {
         return new Team(name, description, createdBy);
     }
 
-    public static Team create(String name, String description, User creator) {
-        if (creator == null) {
-            throw new DomainException(CODE_TEAM_CREATED_BY_REQUIRED, "생성자 ID는 필수입니다");
-        }
-        Team team = new Team(name, description, creator.getId());
-        team.creator = creator;
-        return team;
-    }
-
     public void changeName(String name) {
         this.name = validateName(name);
     }
 
     public void changeDescription(String description) {
         this.description = normalizeDescription(description);
+    }
+
+    public TeamMember addMember(UUID userId) {
+        TeamMember member = TeamMember.assign(this, userId);
+        members.add(member);
+        return member;
     }
 
     public List<TeamMember> getMembers() {

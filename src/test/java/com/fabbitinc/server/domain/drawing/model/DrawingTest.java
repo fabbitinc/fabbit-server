@@ -20,6 +20,7 @@ class DrawingTest {
     void drawing_변환상태_전이를_지원한다() {
         Drawing drawing = Drawing.create("D-001", "Assembly");
 
+        assertEquals(DrawingStatus.DRAFT, drawing.getStatus());
         drawing.markConversionPending();
         assertEquals(DrawingConversionStatus.PENDING, drawing.getConversionStatus());
 
@@ -36,9 +37,9 @@ class DrawingTest {
     void drawing_키필드는_blank면_null로_정규화한다() {
         Drawing drawing = Drawing.create("D-001", "Assembly");
 
-        drawing.setOriginalFileKey(" ");
-        drawing.setPdfKey(" ");
-        drawing.setThumbnailKey(" ");
+        drawing.changeOriginalFileKey(" ");
+        drawing.changePdfKey(" ");
+        drawing.changeThumbnailKey(" ");
 
         assertNull(drawing.getOriginalFileKey());
         assertNull(drawing.getPdfKey());

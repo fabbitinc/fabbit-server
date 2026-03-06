@@ -1,7 +1,13 @@
 package com.fabbitinc.server.presentation.dashboard.controller;
 
+import com.fabbitinc.server.application.dashboard.dto.response.BomStatsResponse;
 import com.fabbitinc.server.application.dashboard.dto.response.DashboardStatsResponse;
+import com.fabbitinc.server.application.dashboard.dto.response.LastSynthesisResponse;
+import com.fabbitinc.server.application.dashboard.dto.response.PartStatsResponse;
 import com.fabbitinc.server.application.dashboard.query.DashboardQuery;
+import com.fabbitinc.server.application.dashboard.query.condition.DashboardStatsCondition;
+import com.fabbitinc.server.application.dashboard.query.result.DashboardLastSynthesisResult;
+import com.fabbitinc.server.application.dashboard.query.result.DashboardStatsResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +29,30 @@ public class DashboardController {
     )
     @GetMapping("/stats")
     public DashboardStatsResponse getStats() {
-        return dashboardQuery.getStats();
+        return toDashboardStatsResponse(dashboardQuery.get(new DashboardStatsCondition()));
+    }
+
+    private DashboardStatsResponse toDashboardStatsResponse(DashboardStatsResult result) {
+        return new DashboardStatsResponse(
+                new PartStatsResponse(
+                        result.parts().total(),
+                        result.parts().addedThisWeek()
+                ),
+                new BomStatsResponse(result.bomLinks().total()),
+                toLastSynthesisResponse(result.lastSynthesis())
+        );
+    }
+
+    private LastSynthesisResponse toLastSynthesisResponse(DashboardLastSynthesisResult result) {
+        if (result == null) {
+            return null;
+        }
+        return new LastSynthesisResponse(
+                result.jobId(),
+                result.status(),
+                result.completedAt(),
+                result.nodesCreated(),
+                result.relationshipsCreated()
+        );
     }
 }

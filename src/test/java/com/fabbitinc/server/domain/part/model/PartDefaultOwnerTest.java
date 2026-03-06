@@ -1,60 +1,41 @@
 package com.fabbitinc.server.domain.part.model;
 
 import com.fabbitinc.server.domain.common.exception.DomainException;
-import com.fabbitinc.server.domain.team.model.Team;
-import com.fabbitinc.server.domain.user.model.User;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class PartDefaultOwnerTest {
 
     @Test
-    void create_엔티티_입력시_FK와_연관을_동기화한다() {
-        User owner = new User("owner@example.com", "hashed", "Owner");
-        Team team = new Team("기본팀", null, UUID.randomUUID());
+    void create_ID_입력시_기본담당자를_설정한다() {
+        UUID ownerId = UUID.randomUUID();
+        UUID teamId = UUID.randomUUID();
 
-        PartDefaultOwner row = PartDefaultOwner.create("FASTENER", owner, team);
+        PartDefaultOwner row = PartDefaultOwner.create("FASTENER", ownerId, teamId);
 
-        assertEquals(owner, row.getDefaultOwner());
-        assertEquals(owner.getId(), row.getDefaultOwnerId());
-        assertEquals(team, row.getDefaultOwnerTeam());
-        assertEquals(team.getId(), row.getDefaultOwnerTeamId());
+        assertEquals(ownerId, row.getDefaultOwnerId());
+        assertEquals(teamId, row.getDefaultOwnerTeamId());
     }
 
     @Test
-    void update_ID_입력시_불일치_연관을_초기화한다() {
-        User owner = new User("owner@example.com", "hashed", "Owner");
-        Team team = new Team("기본팀", null, UUID.randomUUID());
-        PartDefaultOwner row = PartDefaultOwner.create("FASTENER", owner, team);
+    void update_ID_입력시_기본담당자를_변경한다() {
+        PartDefaultOwner row = PartDefaultOwner.create("FASTENER", UUID.randomUUID(), UUID.randomUUID());
+        UUID newOwnerId = UUID.randomUUID();
+        UUID newTeamId = UUID.randomUUID();
 
-        row.update(UUID.randomUUID(), UUID.randomUUID());
+        row.update(newOwnerId, newTeamId);
 
-        assertNull(row.getDefaultOwner());
-        assertNull(row.getDefaultOwnerTeam());
-    }
-
-    @Test
-    void update_엔티티_입력시_FK와_연관을_동기화한다() {
-        PartDefaultOwner row = PartDefaultOwner.create("FASTENER", (UUID) null, null);
-        User owner = new User("owner@example.com", "hashed", "Owner");
-        Team team = new Team("기본팀", null, UUID.randomUUID());
-
-        row.update(owner, team);
-
-        assertEquals(owner, row.getDefaultOwner());
-        assertEquals(owner.getId(), row.getDefaultOwnerId());
-        assertEquals(team, row.getDefaultOwnerTeam());
-        assertEquals(team.getId(), row.getDefaultOwnerTeamId());
+        assertEquals(newOwnerId, row.getDefaultOwnerId());
+        assertEquals(newTeamId, row.getDefaultOwnerTeamId());
     }
 
     @Test
     void create_카테고리는_trim_정규화한다() {
-        PartDefaultOwner row = PartDefaultOwner.create("  FASTENER  ", (UUID) null, null);
+        PartDefaultOwner row = PartDefaultOwner.create("  FASTENER  ", UUID.randomUUID(), null);
 
         assertEquals("FASTENER", row.getCategory());
     }
@@ -66,5 +47,14 @@ class PartDefaultOwnerTest {
         );
 
         assertEquals(PartDefaultOwner.CODE_PART_DEFAULT_OWNER_CATEGORY_TOO_LONG, ex.getDomainCode());
+    }
+
+    @Test
+    void create_기본담당자와_기본담당팀이_둘다없으면_예외를_던진다() {
+        DomainException ex = assertThrows(DomainException.class, () ->
+                PartDefaultOwner.create("FASTENER", null, null)
+        );
+
+        assertEquals(PartDefaultOwner.CODE_PART_DEFAULT_OWNER_TARGET_REQUIRED, ex.getDomainCode());
     }
 }

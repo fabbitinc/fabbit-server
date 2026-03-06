@@ -3,7 +3,6 @@ package com.fabbitinc.server.domain.issue.model;
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
-import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -55,10 +54,6 @@ public class ChangeRequestReviewer extends AbstractCreatedEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
-
     @Column(name = "review_status", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private ReviewStatus reviewStatus;
@@ -66,7 +61,7 @@ public class ChangeRequestReviewer extends AbstractCreatedEntity {
     @Column(name = "reviewed_at")
     private Instant reviewedAt;
 
-    public ChangeRequestReviewer(UUID changeRequestId, UUID userId) {
+    private ChangeRequestReviewer(UUID changeRequestId, UUID userId) {
         super(UuidV7Generator.next());
         this.changeRequestId = requireChangeRequestId(changeRequestId);
         this.userId = requireUserId(userId);
@@ -77,16 +72,15 @@ public class ChangeRequestReviewer extends AbstractCreatedEntity {
         return new ChangeRequestReviewer(changeRequestId, userId);
     }
 
-    public static ChangeRequestReviewer assign(ChangeRequest changeRequest, User user) {
+    public static ChangeRequestReviewer assign(ChangeRequest changeRequest, UUID userId) {
         if (changeRequest == null) {
             throw new DomainException(CODE_CR_REVIEWER_CHANGE_REQUEST_REQUIRED, "변경요청 ID는 필수입니다");
         }
-        if (user == null) {
+        if (userId == null) {
             throw new DomainException(CODE_CR_REVIEWER_USER_REQUIRED, "사용자 ID는 필수입니다");
         }
-        ChangeRequestReviewer reviewer = new ChangeRequestReviewer(changeRequest.getId(), user.getId());
+        ChangeRequestReviewer reviewer = new ChangeRequestReviewer(changeRequest.getId(), userId);
         reviewer.changeRequest = changeRequest;
-        reviewer.user = user;
         return reviewer;
     }
 

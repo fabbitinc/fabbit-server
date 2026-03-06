@@ -1,13 +1,16 @@
 package com.fabbitinc.server.presentation.usage.controller;
 
-import com.fabbitinc.server.application.usage.dto.response.CreditUsageResponse;
-import com.fabbitinc.server.application.usage.dto.response.StorageTrendPeriod;
-import com.fabbitinc.server.application.usage.dto.response.StorageTrendResponse;
-import com.fabbitinc.server.application.usage.dto.response.StorageUsageResponse;
+import com.fabbitinc.server.application.usage.query.condition.StorageTrendCondition;
+import com.fabbitinc.server.application.usage.query.result.CreditUsageResult;
+import com.fabbitinc.server.application.usage.query.result.StorageTrendResult;
+import com.fabbitinc.server.application.usage.query.result.StorageUsageResult;
 import com.fabbitinc.server.application.usage.query.UsageQuery;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import com.fabbitinc.server.presentation.usage.dto.response.CreditUsageResponse;
+import com.fabbitinc.server.presentation.usage.dto.response.StorageTrendResponse;
+import com.fabbitinc.server.presentation.usage.dto.response.StorageUsageResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -27,7 +30,7 @@ public class UsageController {
     )
     @GetMapping("/storage")
     public StorageUsageResponse getStorageUsage() {
-        return usageQuery.getStorageUsage();
+        return toStorageUsageResponse(usageQuery.getStorageUsage());
     }
 
     @Operation(
@@ -36,9 +39,9 @@ public class UsageController {
     )
     @GetMapping("/storage/trend")
     public StorageTrendResponse getStorageTrend(
-            @RequestParam(value = "period", defaultValue = "30d") StorageTrendPeriod period
+            @RequestParam(value = "period", defaultValue = "30d") String period
     ) {
-        return usageQuery.getStorageTrend(period);
+        return toStorageTrendResponse(usageQuery.getStorageTrend(new StorageTrendCondition(period)));
     }
 
     @Operation(
@@ -47,6 +50,55 @@ public class UsageController {
     )
     @GetMapping("/credits")
     public CreditUsageResponse getCreditUsage() {
-        return usageQuery.getCreditUsage();
+        return toCreditUsageResponse(usageQuery.getCreditUsage());
+    }
+
+    private StorageUsageResponse toStorageUsageResponse(StorageUsageResult result) {
+        return new StorageUsageResponse(
+                result.bytesUsed(),
+                result.bytesLimit(),
+                result.bytesOverage(),
+                result.allowOverage(),
+                result.categories().stream()
+                        .map(item -> new StorageUsageResponse.StorageCategoryItemResponse(
+                                item.category(),
+                                item.bytesUsed(),
+                                item.fileCount()
+                        ))
+                        .toList()
+        );
+    }
+
+    private StorageTrendResponse toStorageTrendResponse(StorageTrendResult result) {
+        return new StorageTrendResponse(
+                result.items().stream()
+                        .map(item -> new StorageTrendResponse.StorageTrendItemResponse(
+                                item.date(),
+                                item.drawing(),
+                                item.attachment(),
+                                item.other()
+                        ))
+                        .toList()
+        );
+    }
+
+    private CreditUsageResponse toCreditUsageResponse(CreditUsageResult result) {
+        return new CreditUsageResponse(
+                result.currentPeriodStart(),
+                result.currentPeriodEnd(),
+                result.totalCreditsUsed(),
+                result.planCreditsUsed(),
+                result.planCreditsLimit(),
+                result.planCreditsRemaining(),
+                result.bonusCreditsUsed(),
+                result.bonusCreditsRemaining(),
+                result.categories().stream()
+                        .map(item -> new CreditUsageResponse.CreditCategoryItemResponse(
+                                item.category(),
+                                item.creditsUsed(),
+                                item.usageCount()
+                        ))
+                        .toList()
+        );
     }
 }

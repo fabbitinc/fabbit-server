@@ -4,11 +4,21 @@ import com.fabbitinc.server.application.mapping.dto.request.MappingConfirmReques
 import com.fabbitinc.server.application.mapping.dto.request.MappingPreviewRequest;
 import com.fabbitinc.server.application.mapping.dto.request.MappingUpdateRequest;
 import com.fabbitinc.server.application.mapping.dto.request.MappingValidateRequest;
+import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
+import com.fabbitinc.server.application.mapping.dto.common.PropertyMappingDto;
+import com.fabbitinc.server.application.mapping.dto.common.RelationMappingDto;
 import com.fabbitinc.server.application.mapping.dto.response.MappingListResponse;
 import com.fabbitinc.server.application.mapping.dto.response.MappingPreviewResponse;
 import com.fabbitinc.server.application.mapping.dto.response.MappingResponse;
 import com.fabbitinc.server.application.mapping.dto.response.MappingValidateResponse;
 import com.fabbitinc.server.application.mapping.query.MappingQuery;
+import com.fabbitinc.server.application.mapping.query.condition.MappingDetailCondition;
+import com.fabbitinc.server.application.mapping.query.condition.MappingListCondition;
+import com.fabbitinc.server.application.mapping.query.result.MappingBodyResult;
+import com.fabbitinc.server.application.mapping.query.result.MappingListResult;
+import com.fabbitinc.server.application.mapping.query.result.MappingResult;
+import com.fabbitinc.server.application.mapping.query.result.PropertyMappingResult;
+import com.fabbitinc.server.application.mapping.query.result.RelationMappingResult;
 import com.fabbitinc.server.application.mapping.usecase.ConfirmMappingUseCase;
 import com.fabbitinc.server.application.mapping.usecase.DeactivateMappingUseCase;
 import com.fabbitinc.server.application.mapping.usecase.PreviewMappingUseCase;
@@ -29,6 +39,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @Validated
@@ -80,7 +91,7 @@ public class MappingController {
     )
     @GetMapping
     public MappingListResponse list() {
-        return mappingQuery.listMappings();
+        return toMappingListResponse(mappingQuery.list(new MappingListCondition()));
     }
 
     @Operation(
@@ -89,7 +100,7 @@ public class MappingController {
     )
     @GetMapping("/{mappingId}")
     public MappingResponse get(@PathVariable UUID mappingId) {
-        return mappingQuery.getMapping(mappingId);
+        return toMappingResponse(mappingQuery.get(new MappingDetailCondition(mappingId)));
     }
 
     @Operation(
@@ -112,5 +123,67 @@ public class MappingController {
     public ResponseEntity<Void> delete(@PathVariable UUID mappingId) {
         deactivateMappingUseCase.execute(mappingId);
         return ResponseEntity.noContent().build();
+    }
+
+    private MappingListResponse toMappingListResponse(MappingListResult result) {
+        return new MappingListResponse(
+                result.items().stream()
+                        .map(this::toMappingResponse)
+                        .toList()
+        );
+    }
+
+    private MappingResponse toMappingResponse(MappingResult result) {
+        return new MappingResponse(
+                result.id(),
+                result.fileId(),
+                result.name(),
+                result.sheetName(),
+                result.originalHeaders(),
+                result.mappedHeaders(),
+                toMappingResultDto(result.mapping()),
+                result.scope(),
+                result.active(),
+                result.usageCount(),
+                result.version(),
+                result.createdAt()
+        );
+    }
+
+    private MappingResultDto toMappingResultDto(MappingBodyResult result) {
+        if (result == null) {
+            return new MappingResultDto(List.of(), List.of());
+        }
+        return new MappingResultDto(
+                result.propertyMappings().stream()
+                        .map(this::toPropertyMappingDto)
+                        .toList(),
+                result.relationMappings().stream()
+                        .map(this::toRelationMappingDto)
+                        .toList()
+        );
+    }
+
+    private PropertyMappingDto toPropertyMappingDto(PropertyMappingResult result) {
+        return new PropertyMappingDto(
+                result.sourceColumn(),
+                result.targetProperty(),
+                result.dataType(),
+                result.confidence(),
+                result.reason(),
+                result.isExtended()
+        );
+    }
+
+    private RelationMappingDto toRelationMappingDto(RelationMappingResult result) {
+        return new RelationMappingDto(
+                result.relType(),
+                result.targetLabel(),
+                result.nodeColumns(),
+                result.relColumns(),
+                result.relColumnTypes(),
+                result.confidence(),
+                result.reason()
+        );
     }
 }

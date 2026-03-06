@@ -8,6 +8,7 @@ import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -39,20 +40,35 @@ public class AiUsageLog extends AbstractCreatedEntity {
     public static final String CODE_AI_USAGE_FEATURE_REQUIRED = "AI_USAGE_FEATURE_REQUIRED";
     public static final String CODE_AI_USAGE_MODEL_REQUIRED = "AI_USAGE_MODEL_REQUIRED";
     public static final String CODE_AI_USAGE_CREDITS_REQUIRED = "AI_USAGE_CREDITS_REQUIRED";
+    public static final String CODE_AI_USAGE_INPUT_TOKENS_INVALID = "AI_USAGE_INPUT_TOKENS_INVALID";
+    public static final String CODE_AI_USAGE_OUTPUT_TOKENS_INVALID = "AI_USAGE_OUTPUT_TOKENS_INVALID";
+    public static final String CODE_AI_USAGE_CREDITS_INVALID = "AI_USAGE_CREDITS_INVALID";
 
     @Column(name = "org_id", nullable = false)
     private UUID orgId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id", insertable = false, updatable = false)
-    private Organization organization;
+    @JoinColumn(
+            name = "org_id",
+            insertable = false,
+            updatable = false,
+            foreignKey = @ForeignKey(name = "fk_ai_usage_logs_org_id")
+    )
+    private Organization _organizationRelation;
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
+    @JoinColumn(
+            name = "user_id",
+            insertable = false,
+            updatable = false,
+            foreignKey = @ForeignKey(name = "fk_ai_usage_logs_user_id")
+    )
+    private User _userRelation;
 
     @Column(name = "category", nullable = false, length = 30)
     private String category;
@@ -72,7 +88,7 @@ public class AiUsageLog extends AbstractCreatedEntity {
     @Column(name = "credits_used", nullable = false, precision = 10, scale = 4)
     private BigDecimal creditsUsed;
 
-    public AiUsageLog(
+    private AiUsageLog(
             UUID orgId,
             UUID userId,
             String category,
@@ -88,8 +104,8 @@ public class AiUsageLog extends AbstractCreatedEntity {
         this.category = requireCategory(category);
         this.feature = requireFeature(feature);
         this.model = requireModel(model);
-        this.inputTokens = inputTokens;
-        this.outputTokens = outputTokens;
+        this.inputTokens = requireNonNegative(inputTokens, CODE_AI_USAGE_INPUT_TOKENS_INVALID, "입력 토큰은 0 이상이어야 합니다");
+        this.outputTokens = requireNonNegative(outputTokens, CODE_AI_USAGE_OUTPUT_TOKENS_INVALID, "출력 토큰은 0 이상이어야 합니다");
         this.creditsUsed = requireCreditsUsed(creditsUsed);
     }
 
@@ -115,37 +131,6 @@ public class AiUsageLog extends AbstractCreatedEntity {
         );
     }
 
-    public static AiUsageLog create(
-            Organization organization,
-            User user,
-            String category,
-            String feature,
-            String model,
-            int inputTokens,
-            int outputTokens,
-            BigDecimal creditsUsed
-    ) {
-        if (organization == null) {
-            throw new DomainException(CODE_AI_USAGE_ORG_REQUIRED, "조직 ID는 필수입니다");
-        }
-        if (user == null) {
-            throw new DomainException(CODE_AI_USAGE_USER_REQUIRED, "사용자 ID는 필수입니다");
-        }
-        AiUsageLog log = new AiUsageLog(
-                organization.getId(),
-                user.getId(),
-                category,
-                feature,
-                model,
-                inputTokens,
-                outputTokens,
-                creditsUsed
-        );
-        log.organization = organization;
-        log.user = user;
-        return log;
-    }
-
     private UUID requireOrgId(UUID value) {
         if (value == null) {
             throw new DomainException(CODE_AI_USAGE_ORG_REQUIRED, "조직 ID는 필수입니다");
@@ -164,26 +149,36 @@ public class AiUsageLog extends AbstractCreatedEntity {
         if (value == null || value.isBlank()) {
             throw new DomainException(CODE_AI_USAGE_CATEGORY_REQUIRED, "카테고리는 필수입니다");
         }
-        return value;
+        return value.trim();
     }
 
     private String requireFeature(String value) {
         if (value == null || value.isBlank()) {
             throw new DomainException(CODE_AI_USAGE_FEATURE_REQUIRED, "기능명은 필수입니다");
         }
-        return value;
+        return value.trim();
     }
 
     private String requireModel(String value) {
         if (value == null || value.isBlank()) {
             throw new DomainException(CODE_AI_USAGE_MODEL_REQUIRED, "모델명은 필수입니다");
         }
-        return value;
+        return value.trim();
     }
 
     private BigDecimal requireCreditsUsed(BigDecimal value) {
         if (value == null) {
             throw new DomainException(CODE_AI_USAGE_CREDITS_REQUIRED, "사용 크레딧은 필수입니다");
+        }
+        if (value.signum() < 0) {
+            throw new DomainException(CODE_AI_USAGE_CREDITS_INVALID, "사용 크레딧은 0 이상이어야 합니다");
+        }
+        return value;
+    }
+
+    private int requireNonNegative(int value, String code, String message) {
+        if (value < 0) {
+            throw new DomainException(code, message);
         }
         return value;
     }

@@ -7,6 +7,7 @@ import com.fabbitinc.server.domain.file.model.File;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -56,9 +57,15 @@ public class MappingRevision extends AbstractCreatedEntity {
     @Column(name = "file_id", nullable = false)
     private UUID fileId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "file_id", insertable = false, updatable = false)
-    private File file;
+    @JoinColumn(
+            name = "file_id",
+            insertable = false,
+            updatable = false,
+            foreignKey = @ForeignKey(name = "fk_mapping_revisions_file_id")
+    )
+    private File _fileRelation;
 
     @Column(name = "version", nullable = false)
     private int version;
@@ -77,7 +84,7 @@ public class MappingRevision extends AbstractCreatedEntity {
     @Column(name = "usage_count", nullable = false)
     private int usageCount;
 
-    public MappingRevision(
+    private MappingRevision(
             UUID recordId,
             UUID fileId,
             int version,
@@ -95,9 +102,9 @@ public class MappingRevision extends AbstractCreatedEntity {
         this.usageCount = 0;
     }
 
-    public static MappingRevision create(
+    static MappingRevision create(
             MappingRecord record,
-            File file,
+            UUID fileId,
             int version,
             String sheetName,
             String originalHeaders,
@@ -106,20 +113,18 @@ public class MappingRevision extends AbstractCreatedEntity {
         if (record == null) {
             throw new DomainException(CODE_MAPPING_REVISION_RECORD_REQUIRED, "매핑 레코드 ID는 필수입니다");
         }
-        if (file == null) {
+        if (fileId == null) {
             throw new DomainException(CODE_MAPPING_REVISION_FILE_REQUIRED, "파일 ID는 필수입니다");
         }
         MappingRevision revision = new MappingRevision(
                 record.getId(),
-                file.getId(),
+                fileId,
                 version,
                 sheetName,
                 originalHeaders,
                 mapping
         );
         revision.record = record;
-        revision.file = file;
-        record.addRevision(revision);
         return revision;
     }
 

@@ -1,12 +1,15 @@
 package com.fabbitinc.server.presentation.notification.controller;
 
-import com.fabbitinc.server.application.notification.dto.response.NotificationListResponse;
-import com.fabbitinc.server.application.notification.dto.response.UnreadCountResponse;
+import com.fabbitinc.server.application.notification.query.condition.NotificationListCondition;
+import com.fabbitinc.server.application.notification.query.result.NotificationListResult;
+import com.fabbitinc.server.application.notification.query.result.UnreadCountResult;
 import com.fabbitinc.server.application.notification.query.NotificationQuery;
 import com.fabbitinc.server.application.notification.usecase.MarkAllNotificationsReadUseCase;
 import com.fabbitinc.server.application.notification.usecase.MarkNotificationReadUseCase;
 import com.fabbitinc.server.application.notification.usecase.NotificationStreamSession;
 import com.fabbitinc.server.application.notification.usecase.NotificationStreamUseCase;
+import com.fabbitinc.server.presentation.notification.dto.response.NotificationListResponse;
+import com.fabbitinc.server.presentation.notification.dto.response.UnreadCountResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
@@ -55,7 +58,9 @@ public class NotificationController {
             int limit,
             @RequestParam(value = "unread_only", defaultValue = "false") boolean unreadOnly
     ) {
-        return notificationQuery.listNotifications(cursor, limit, unreadOnly);
+        return toNotificationListResponse(notificationQuery.list(
+                new NotificationListCondition(cursor, limit, unreadOnly)
+        ));
     }
 
     @Operation(
@@ -64,7 +69,7 @@ public class NotificationController {
     )
     @GetMapping("/unread-count")
     public UnreadCountResponse getUnreadCount() {
-        return notificationQuery.countUnread();
+        return toUnreadCountResponse(notificationQuery.getUnreadCount());
     }
 
     @Operation(
@@ -124,5 +129,52 @@ public class NotificationController {
                 .header("X-Accel-Buffering", "no")
                 .contentType(MediaType.TEXT_EVENT_STREAM)
                 .body(body);
+    }
+
+    private NotificationListResponse toNotificationListResponse(NotificationListResult result) {
+        return new NotificationListResponse(
+                result.items().stream()
+                        .map(item -> new NotificationListResponse.NotificationItemResponse(
+                                item.id(),
+                                item.type(),
+                                item.actorId(),
+                                toMentionPayloadResponse(item.payload()),
+                                item.readAt(),
+                                item.createdAt()
+                        ))
+                        .toList(),
+                result.nextCursor(),
+                result.users().entrySet().stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                java.util.Map.Entry::getKey,
+                                entry -> {
+                                    NotificationListResult.NotificationUserSummaryResult user = entry.getValue();
+                                    return new NotificationListResponse.NotificationUserSummaryResponse(
+                                            user.userId(),
+                                            user.fullName(),
+                                            user.email(),
+                                            user.phone(),
+                                            user.profileImageUrl()
+                                    );
+                                }
+                        ))
+        );
+    }
+
+    private NotificationListResponse.MentionPayloadResponse toMentionPayloadResponse(
+            NotificationListResult.MentionPayloadResult result
+    ) {
+        return new NotificationListResponse.MentionPayloadResponse(
+                result.projectId(),
+                result.sourceIssueId(),
+                result.sourceNumber(),
+                result.sourceTitle(),
+                result.sourceIssueType(),
+                result.isComment()
+        );
+    }
+
+    private UnreadCountResponse toUnreadCountResponse(UnreadCountResult result) {
+        return new UnreadCountResponse(result.count());
     }
 }

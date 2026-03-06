@@ -3,7 +3,6 @@ package com.fabbitinc.server.domain.issue.model;
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
-import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -46,11 +45,7 @@ public class IssueAssignee extends AbstractCreatedEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
-
-    public IssueAssignee(UUID issueId, UUID userId) {
+    private IssueAssignee(UUID issueId, UUID userId) {
         super(UuidV7Generator.next());
         this.issueId = requireIssueId(issueId);
         this.userId = requireUserId(userId);
@@ -60,16 +55,15 @@ public class IssueAssignee extends AbstractCreatedEntity {
         return new IssueAssignee(issueId, userId);
     }
 
-    public static IssueAssignee assign(Issue issue, User user) {
+    public static IssueAssignee assign(Issue issue, UUID userId) {
         if (issue == null) {
             throw new DomainException(CODE_ISSUE_ASSIGNEE_ISSUE_REQUIRED, "이슈 ID는 필수입니다");
         }
-        if (user == null) {
+        if (userId == null) {
             throw new DomainException(CODE_ISSUE_ASSIGNEE_USER_REQUIRED, "사용자 ID는 필수입니다");
         }
-        IssueAssignee assignee = new IssueAssignee(issue.getId(), user.getId());
+        IssueAssignee assignee = new IssueAssignee(issue.getId(), userId);
         assignee.issue = issue;
-        assignee.user = user;
         return assignee;
     }
 

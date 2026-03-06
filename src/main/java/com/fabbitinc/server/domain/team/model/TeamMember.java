@@ -48,27 +48,19 @@ public class TeamMember extends AbstractCreatedEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
+    private User _userRelation;
 
-    public TeamMember(Team team, UUID userId) {
+    private TeamMember(Team team, UUID userId) {
         super(UuidV7Generator.next());
         this.team = requireTeam(team);
         this.userId = requireUserId(userId);
     }
 
-    public static TeamMember assign(Team team, UUID userId) {
+    static TeamMember assign(Team team, UUID userId) {
         return new TeamMember(team, userId);
-    }
-
-    public static TeamMember assign(Team team, User user) {
-        if (user == null) {
-            throw new DomainException(CODE_TEAM_MEMBER_USER_REQUIRED, "사용자 ID는 필수입니다");
-        }
-        TeamMember member = new TeamMember(team, user.getId());
-        member.user = user;
-        return member;
     }
 
     public UUID getTeamId() {

@@ -55,7 +55,7 @@ public class Supplier extends AbstractAuditableEntity {
     @Column(name = "extended_properties", nullable = false, columnDefinition = "jsonb")
     private String extendedProperties;
 
-    public Supplier(
+    private Supplier(
             UUID id,
             String companyName,
             String code,
@@ -71,7 +71,7 @@ public class Supplier extends AbstractAuditableEntity {
         this.extendedProperties = normalizeExtendedProperties(extendedProperties);
     }
 
-    public Supplier(
+    private Supplier(
             String companyName,
             String code,
             String country,
@@ -89,6 +89,26 @@ public class Supplier extends AbstractAuditableEntity {
             String extendedProperties
     ) {
         return new Supplier(companyName, code, country, contactInfo, extendedProperties);
+    }
+
+    public void changeCompanyName(String companyName) {
+        this.companyName = requireCompanyName(companyName);
+    }
+
+    public void changeCode(String code) {
+        this.code = normalizeCode(code);
+    }
+
+    public void changeCountry(String country) {
+        this.country = normalizeCountry(country);
+    }
+
+    public void changeContactInfo(String contactInfo) {
+        this.contactInfo = normalizeNullableText(contactInfo);
+    }
+
+    public void changeExtendedProperties(String extendedProperties) {
+        this.extendedProperties = normalizeExtendedProperties(extendedProperties);
     }
 
     private String requireCompanyName(String value) {

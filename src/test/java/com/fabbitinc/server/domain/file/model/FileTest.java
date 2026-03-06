@@ -44,6 +44,8 @@ class FileTest {
         File file = File.create("a.txt", "k", "text/plain", 1L);
         UUID ownerId = UUID.randomUUID();
 
+        file.markUploaded();
+
         file.assignOwner("  issue  ", ownerId);
 
         assertEquals("issue", file.getOwnerType());
@@ -66,5 +68,27 @@ class FileTest {
         file.assignOwner("issue", UUID.randomUUID());
 
         assertFalse(file.isAttachable());
+    }
+
+    @Test
+    void file_assignOwner_업로드완료전이면_예외를_던진다() {
+        File file = File.create("a.txt", "k", "text/plain", 1L);
+
+        DomainException ex = assertThrows(DomainException.class, () -> file.assignOwner("issue", UUID.randomUUID()));
+
+        assertEquals(File.CODE_FILE_NOT_ATTACHABLE, ex.getDomainCode());
+    }
+
+    @Test
+    void file_assignOwner_같은소유자로_재호출하면_noop이다() {
+        File file = File.create("a.txt", "k", "text/plain", 1L);
+        UUID ownerId = UUID.randomUUID();
+        file.markUploaded();
+        file.assignOwner("issue", ownerId);
+
+        file.assignOwner("issue", ownerId);
+
+        assertEquals("issue", file.getOwnerType());
+        assertEquals(ownerId, file.getOwnerId());
     }
 }

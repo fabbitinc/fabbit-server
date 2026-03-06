@@ -1,4 +1,4 @@
-package com.fabbitinc.server.application.activity.dto.response;
+package com.fabbitinc.server.application.activity.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;

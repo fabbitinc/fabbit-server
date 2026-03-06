@@ -8,6 +8,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.config.JwtProperties;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.auth.model.RefreshToken;
 import com.fabbitinc.server.domain.auth.repository.RefreshTokenRepository;
 import com.fabbitinc.server.domain.organization.model.Membership;
@@ -90,12 +91,17 @@ public class JwtTokenService {
             throw new AppException(ErrorCode.TOKEN_INVALID, "토큰이 재사용되었습니다. 다시 로그인해주세요");
         }
 
-        if (!storedToken.getUserId().equals(userId)) {
-            throw new AppException(ErrorCode.TOKEN_INVALID, "토큰 사용자 정보가 일치하지 않습니다");
+        try {
+            storedToken.validateOwnedBy(userId);
+        } catch (DomainException ex) {
+            throw new AppException(ErrorCode.TOKEN_INVALID, ex.getMessage());
         }
-        if (storedToken.getExpiresAt().isBefore(Instant.now())) {
+
+        try {
+            storedToken.validateUsableAt(Instant.now());
+        } catch (DomainException ex) {
             refreshTokenRepository.delete(storedToken);
-            throw new AppException(ErrorCode.TOKEN_EXPIRED, "refresh 토큰이 만료되었습니다");
+            throw new AppException(ErrorCode.TOKEN_EXPIRED, ex.getMessage());
         }
 
         refreshTokenRepository.delete(storedToken);

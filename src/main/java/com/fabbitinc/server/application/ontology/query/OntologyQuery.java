@@ -3,20 +3,13 @@ package com.fabbitinc.server.application.ontology.query;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
-import com.fabbitinc.server.application.ontology.dto.response.NodeLabelSchemaResponse;
-import com.fabbitinc.server.application.ontology.dto.response.NodeSearchItemResponse;
-import com.fabbitinc.server.application.ontology.dto.response.NodeSearchResponse;
-import com.fabbitinc.server.application.ontology.dto.response.OntologySchemaResponse;
-import com.fabbitinc.server.application.ontology.dto.response.PropertySchemaResponse;
-import com.fabbitinc.server.application.ontology.dto.response.RelationshipTypeSchemaResponse;
+import com.fabbitinc.server.application.ontology.query.condition.NodeSearchCondition;
+import com.fabbitinc.server.application.ontology.query.result.NodeSearchResult;
+import com.fabbitinc.server.application.ontology.query.result.OntologySchemaResult;
 import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
-import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
-import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
-import com.fabbitinc.server.domain.project.model.Project;
 import com.fabbitinc.server.domain.project.repository.ProjectRepository;
-import com.fabbitinc.server.domain.supplier.model.Supplier;
 import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -27,6 +20,7 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class OntologyQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
@@ -35,10 +29,9 @@ public class OntologyQuery {
     private final SupplierRepository supplierRepository;
     private final ProjectRepository projectRepository;
 
-    private OntologySchemaResponse cachedSchema;
+    private OntologySchemaResult cachedSchema;
 
-    @Transactional(readOnly = true)
-    public OntologySchemaResponse getOntologySchema() {
+    public OntologySchemaResult getSchema() {
         currentAuthProvider.getCurrentAuth();
         if (cachedSchema == null) {
             cachedSchema = buildSchema();
@@ -46,14 +39,13 @@ public class OntologyQuery {
         return cachedSchema;
     }
 
-    @Transactional(readOnly = true)
-    public NodeSearchResponse searchNodes(String label,
-            String search,
-            int limit
-    ) {
+    public NodeSearchResult search(NodeSearchCondition condition) {
         currentAuthProvider.getCurrentAuth();
+        String label = condition.label();
+        String search = condition.search();
+        int limit = condition.limit();
 
-        List<NodeSearchItemResponse> items = switch (label) {
+        List<NodeSearchResult.NodeSearchItemResult> items = switch (label) {
             case "Part" -> searchParts(search, limit);
             case "Drawing" -> searchDrawings(search, limit);
             case "Supplier" -> searchSuppliers(search, limit);
@@ -64,36 +56,36 @@ public class OntologyQuery {
             );
         };
 
-        return new NodeSearchResponse(label, items);
+        return new NodeSearchResult(label, items);
     }
 
-    private OntologySchemaResponse buildSchema() {
+    private OntologySchemaResult buildSchema() {
         ManufacturingOntology.OntologyDef ontology = ManufacturingOntology.ONTOLOGY;
 
-        List<NodeLabelSchemaResponse> nodeLabels = ontology.nodeLabels().stream()
-                .map(node -> new NodeLabelSchemaResponse(
+        List<OntologySchemaResult.NodeLabelResult> nodeLabels = ontology.nodeLabels().stream()
+                .map(node -> new OntologySchemaResult.NodeLabelResult(
                         node.label(),
                         node.description(),
                         node.properties().stream()
-                                .map(this::toPropertySchemaResponse)
+                                .map(this::toPropertyResult)
                                 .toList(),
                         node.mergeKeys()
                 ))
                 .toList();
 
-        List<RelationshipTypeSchemaResponse> relationshipTypes = ontology.relationshipTypes().stream()
-                .map(relationship -> new RelationshipTypeSchemaResponse(
+        List<OntologySchemaResult.RelationshipTypeResult> relationshipTypes = ontology.relationshipTypes().stream()
+                .map(relationship -> new OntologySchemaResult.RelationshipTypeResult(
                         relationship.relType(),
                         relationship.description(),
                         relationship.fromLabel(),
                         relationship.toLabel(),
                         relationship.properties().stream()
-                                .map(this::toPropertySchemaResponse)
+                                .map(this::toPropertyResult)
                                 .toList()
                 ))
                 .toList();
 
-        return new OntologySchemaResponse(
+        return new OntologySchemaResult(
                 ontology.name(),
                 ontology.description(),
                 nodeLabels,
@@ -101,8 +93,8 @@ public class OntologyQuery {
         );
     }
 
-    private PropertySchemaResponse toPropertySchemaResponse(ManufacturingOntology.PropertyDef property) {
-        return new PropertySchemaResponse(
+    private OntologySchemaResult.PropertyResult toPropertyResult(ManufacturingOntology.PropertyDef property) {
+        return new OntologySchemaResult.PropertyResult(
                 property.name(),
                 property.description(),
                 property.dataType(),
@@ -111,41 +103,41 @@ public class OntologyQuery {
         );
     }
 
-    private List<NodeSearchItemResponse> searchParts(String search, int limit) {
+    private List<NodeSearchResult.NodeSearchItemResult> searchParts(String search, int limit) {
         return partRepository.findByPartNumberContainingIgnoreCaseOrNameContainingIgnoreCaseOrderByPartNumberAsc(
                         search,
                         search,
                         PageRequest.of(0, limit)
                 ).stream()
-                .map(part -> new NodeSearchItemResponse(part.getPartNumber(), part.getName()))
+                .map(part -> new NodeSearchResult.NodeSearchItemResult(part.getPartNumber(), part.getName()))
                 .toList();
     }
 
-    private List<NodeSearchItemResponse> searchDrawings(String search, int limit) {
+    private List<NodeSearchResult.NodeSearchItemResult> searchDrawings(String search, int limit) {
         return drawingRepository.findByDrawingNumberContainingIgnoreCaseOrNameContainingIgnoreCaseOrderByDrawingNumberAsc(
                         search,
                         search,
                         PageRequest.of(0, limit)
                 ).stream()
-                .map(drawing -> new NodeSearchItemResponse(drawing.getDrawingNumber(), drawing.getName()))
+                .map(drawing -> new NodeSearchResult.NodeSearchItemResult(drawing.getDrawingNumber(), drawing.getName()))
                 .toList();
     }
 
-    private List<NodeSearchItemResponse> searchSuppliers(String search, int limit) {
+    private List<NodeSearchResult.NodeSearchItemResult> searchSuppliers(String search, int limit) {
         return supplierRepository.listSuppliersPaginated(search, 0, limit).stream()
-                .map(supplier -> new NodeSearchItemResponse(
+                .map(supplier -> new NodeSearchResult.NodeSearchItemResult(
                         supplier.getCompanyName(),
                         supplier.getCompanyName()
                 ))
                 .toList();
     }
 
-    private List<NodeSearchItemResponse> searchProjects(String search, int limit) {
+    private List<NodeSearchResult.NodeSearchItemResult> searchProjects(String search, int limit) {
         return projectRepository.findByNameContainingIgnoreCaseOrderByNameAsc(
                         search,
                         PageRequest.of(0, limit)
                 ).stream()
-                .map(project -> new NodeSearchItemResponse(project.getName(), project.getName()))
+                .map(project -> new NodeSearchResult.NodeSearchItemResult(project.getName(), project.getName()))
                 .toList();
     }
 }

@@ -1,6 +1,6 @@
 package com.fabbitinc.server.presentation.usage.converter;
 
-import com.fabbitinc.server.application.usage.dto.response.StorageTrendPeriod;
+import com.fabbitinc.server.application.usage.model.StorageTrendPeriod;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 

@@ -1,7 +1,11 @@
 package com.fabbitinc.server.presentation.supplier.controller;
 
 import com.fabbitinc.server.application.supplier.dto.response.SupplierListResponse;
+import com.fabbitinc.server.application.supplier.dto.response.SupplierSummaryResponse;
 import com.fabbitinc.server.application.supplier.query.SupplierQuery;
+import com.fabbitinc.server.application.supplier.query.condition.SupplierListCondition;
+import com.fabbitinc.server.application.supplier.query.result.SupplierListResult;
+import com.fabbitinc.server.application.supplier.query.result.SupplierSummaryResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
@@ -37,6 +41,26 @@ public class SupplierController {
             @Max(value = 100, message = "limit은 100 이하여야 합니다")
             int limit
     ) {
-        return supplierQuery.listSuppliers(search, offset, limit);
+        return toSupplierListResponse(supplierQuery.list(new SupplierListCondition(search, offset, limit)));
+    }
+
+    private SupplierListResponse toSupplierListResponse(SupplierListResult result) {
+        return new SupplierListResponse(
+                result.total(),
+                result.offset(),
+                result.limit(),
+                result.items().stream()
+                        .map(this::toSupplierSummaryResponse)
+                        .toList()
+        );
+    }
+
+    private SupplierSummaryResponse toSupplierSummaryResponse(SupplierSummaryResult result) {
+        return new SupplierSummaryResponse(
+                result.id(),
+                result.companyName(),
+                result.code(),
+                result.country()
+        );
     }
 }

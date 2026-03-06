@@ -1,7 +1,6 @@
 package com.fabbitinc.server.domain.team.model;
 
 import com.fabbitinc.server.domain.common.exception.DomainException;
-import com.fabbitinc.server.domain.user.model.User;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
@@ -15,21 +14,19 @@ class TeamRelationTest {
 
     @Test
     void team_기본_멤버_컬렉션은_비어있다() {
-        Team team = new Team("Core Team", null, UUID.randomUUID());
+        Team team = Team.create("Core Team", null, UUID.randomUUID());
 
         assertTrue(team.getMembers().isEmpty());
     }
 
     @Test
-    void team_엔티티_입력시_createdBy_FK와_연관을_동기화한다() {
-        User creator = new User("creator@example.com", "hashed", "Creator");
-
-        Team team = Team.create("  Core Team  ", "  설명  ", creator);
+    void team_생성시_name과_description을_정규화한다() {
+        UUID creatorId = UUID.randomUUID();
+        Team team = Team.create("  Core Team  ", "  설명  ", creatorId);
 
         assertEquals("Core Team", team.getName());
         assertEquals("설명", team.getDescription());
-        assertEquals(creator.getId(), team.getCreatedBy());
-        assertEquals(creator, team.getCreator());
+        assertEquals(creatorId, team.getCreatedBy());
     }
 
     @Test
@@ -51,23 +48,23 @@ class TeamRelationTest {
     }
 
     @Test
-    void teamMember_엔티티_입력시_FK와_연관을_동기화한다() {
-        Team team = new Team("Core Team", null, UUID.randomUUID());
-        User user = new User("team-member@example.com", "hashed", "Team Member");
+    void team_addMember_사용자_ID로_멤버를_추가한다() {
+        Team team = Team.create("Core Team", null, UUID.randomUUID());
+        UUID userId = UUID.randomUUID();
 
-        TeamMember member = TeamMember.assign(team, user);
+        TeamMember member = team.addMember(userId);
 
         assertEquals(team, member.getTeam());
-        assertEquals(user, member.getUser());
         assertEquals(team.getId(), member.getTeamId());
-        assertEquals(user.getId(), member.getUserId());
+        assertEquals(userId, member.getUserId());
+        assertEquals(1, team.getMembers().size());
     }
 
     @Test
-    void teamMember_user가_null이면_예외를_던진다() {
-        Team team = new Team("Core Team", null, UUID.randomUUID());
+    void team_addMember_userId가_null이면_예외를_던진다() {
+        Team team = Team.create("Core Team", null, UUID.randomUUID());
 
-        DomainException ex = assertThrows(DomainException.class, () -> TeamMember.assign(team, (User) null));
+        DomainException ex = assertThrows(DomainException.class, () -> team.addMember(null));
 
         assertEquals(TeamMember.CODE_TEAM_MEMBER_USER_REQUIRED, ex.getDomainCode());
     }

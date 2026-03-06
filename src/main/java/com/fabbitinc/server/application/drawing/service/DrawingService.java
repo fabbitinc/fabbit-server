@@ -51,7 +51,7 @@ public class DrawingService {
         }
 
         Drawing drawing = Drawing.create(null, file.getOriginalName());
-        drawing.setOriginalFileKey(file.getFileKey());
+        drawing.changeOriginalFileKey(file.getFileKey());
         drawing.markConversionPending();
         drawingRepository.save(drawing);
 

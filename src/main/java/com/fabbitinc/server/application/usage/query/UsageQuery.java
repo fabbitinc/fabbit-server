@@ -4,14 +4,12 @@ import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
-import com.fabbitinc.server.application.usage.dto.response.CreditCategoryItem;
-import com.fabbitinc.server.application.usage.dto.response.CreditUsageResponse;
-import com.fabbitinc.server.application.usage.dto.response.StorageCategory;
-import com.fabbitinc.server.application.usage.dto.response.StorageCategoryItem;
-import com.fabbitinc.server.application.usage.dto.response.StorageTrendItem;
-import com.fabbitinc.server.application.usage.dto.response.StorageTrendPeriod;
-import com.fabbitinc.server.application.usage.dto.response.StorageTrendResponse;
-import com.fabbitinc.server.application.usage.dto.response.StorageUsageResponse;
+import com.fabbitinc.server.application.usage.model.StorageCategory;
+import com.fabbitinc.server.application.usage.model.StorageTrendPeriod;
+import com.fabbitinc.server.application.usage.query.condition.StorageTrendCondition;
+import com.fabbitinc.server.application.usage.query.result.CreditUsageResult;
+import com.fabbitinc.server.application.usage.query.result.StorageTrendResult;
+import com.fabbitinc.server.application.usage.query.result.StorageUsageResult;
 import com.fabbitinc.server.domain.aiusage.repository.AiUsageCategorySummary;
 import com.fabbitinc.server.domain.aiusage.repository.AiUsageLogRepository;
 import com.fabbitinc.server.domain.file.model.File;
@@ -39,6 +37,7 @@ import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class UsageQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
@@ -47,8 +46,7 @@ public class UsageQuery {
     private final SubscriptionRepository subscriptionRepository;
     private final AiUsageLogRepository aiUsageLogRepository;
 
-    @Transactional(readOnly = true)
-    public StorageUsageResponse getStorageUsage() {
+    public StorageUsageResult getStorageUsage() {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         Organization organization = organizationRepository.findById(auth.orgId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "조직을 찾을 수 없습니다"));
@@ -66,17 +64,21 @@ public class UsageQuery {
             summary.fileCount += 1;
         }
 
-        List<StorageCategoryItem> categories = new ArrayList<>();
+        List<StorageUsageResult.StorageCategoryItemResult> categories = new ArrayList<>();
         for (StorageCategory category : List.of(StorageCategory.DRAWING, StorageCategory.ATTACHMENT, StorageCategory.OTHER)) {
             CategorySummary summary = summaries.get(category);
             if (summary == null || summary.fileCount == 0) {
                 continue;
             }
-            categories.add(new StorageCategoryItem(category, summary.bytesUsed, summary.fileCount));
+            categories.add(new StorageUsageResult.StorageCategoryItemResult(
+                    category,
+                    summary.bytesUsed,
+                    summary.fileCount
+            ));
         }
 
         long overage = Math.max(organization.getStorageBytesUsed() - organization.getStorageBytesLimit(), 0L);
-        return new StorageUsageResponse(
+        return new StorageUsageResult(
                 organization.getStorageBytesUsed(),
                 organization.getStorageBytesLimit(),
                 overage,
@@ -85,14 +87,14 @@ public class UsageQuery {
         );
     }
 
-    @Transactional(readOnly = true)
-    public StorageTrendResponse getStorageTrend(StorageTrendPeriod period) {
+    public StorageTrendResult getStorageTrend(StorageTrendCondition condition) {
         currentAuthProvider.getCurrentAuth();
+        StorageTrendPeriod period = StorageTrendPeriod.from(condition.period());
 
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         List<TrendPoint> points = buildPoints(period, today);
         if (points.isEmpty()) {
-            return new StorageTrendResponse(List.of());
+            return new StorageTrendResult(List.of());
         }
 
         LocalDate startDate = points.getFirst().snapshotDate();
@@ -115,21 +117,20 @@ public class UsageQuery {
             day = day.plusDays(1);
         }
 
-        List<StorageTrendItem> items = new ArrayList<>(points.size());
+        List<StorageTrendResult.StorageTrendItemResult> items = new ArrayList<>(points.size());
         for (TrendPoint point : points) {
             CategoryTotals totals = snapshots.getOrDefault(point.snapshotDate(), CategoryTotals.empty());
-            items.add(new StorageTrendItem(
+            items.add(new StorageTrendResult.StorageTrendItemResult(
                     point.label(),
                     Math.max(totals.drawing, 0L),
                     Math.max(totals.attachment, 0L),
                     Math.max(totals.other, 0L)
             ));
         }
-        return new StorageTrendResponse(items);
+        return new StorageTrendResult(items);
     }
 
-    @Transactional(readOnly = true)
-    public CreditUsageResponse getCreditUsage() {
+    public CreditUsageResult getCreditUsage() {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
 
         Organization organization = organizationRepository.findById(auth.orgId())
@@ -144,8 +145,8 @@ public class UsageQuery {
                 auth.orgId(),
                 subscription.getCurrentPeriodStart()
         );
-        List<CreditCategoryItem> categories = summaries.stream()
-                .map(summary -> new CreditCategoryItem(
+        List<CreditUsageResult.CreditCategoryItemResult> categories = summaries.stream()
+                .map(summary -> new CreditUsageResult.CreditCategoryItemResult(
                         summary.getCategory(),
                         ceil(summary.getCreditsUsed()),
                         summary.getUsageCount()
@@ -156,7 +157,7 @@ public class UsageQuery {
         int planUsed = Math.min(totalUsed, planLimit);
         int bonusUsed = totalUsed - planUsed;
 
-        return new CreditUsageResponse(
+        return new CreditUsageResult(
                 subscription.getCurrentPeriodStart(),
                 subscription.getCurrentPeriodEnd(),
                 totalUsed,

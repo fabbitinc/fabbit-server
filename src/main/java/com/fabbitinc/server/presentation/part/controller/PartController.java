@@ -5,17 +5,49 @@ import com.fabbitinc.server.application.drawing.dto.request.RegisterDrawingReque
 import com.fabbitinc.server.application.drawing.dto.response.RegisterDrawingResponse;
 import com.fabbitinc.server.application.part.dto.request.AttachFilesRequest;
 import com.fabbitinc.server.application.part.dto.request.RenameCategoryRequest;
+import com.fabbitinc.server.application.part.query.condition.BomTreeCondition;
+import com.fabbitinc.server.application.part.query.condition.BomTreeExportCondition;
+import com.fabbitinc.server.application.part.query.condition.FileItemsCondition;
+import com.fabbitinc.server.application.part.query.condition.PartBomCondition;
+import com.fabbitinc.server.application.part.query.condition.PartDetailCondition;
+import com.fabbitinc.server.application.part.query.condition.PartExportCondition;
+import com.fabbitinc.server.application.part.query.condition.PartFilesCondition;
+import com.fabbitinc.server.application.part.query.condition.PartListCondition;
+import com.fabbitinc.server.application.part.query.condition.PartLookupCondition;
+import com.fabbitinc.server.application.part.query.condition.PartProjectsCondition;
+import com.fabbitinc.server.application.part.query.condition.PartSuppliersCondition;
+import com.fabbitinc.server.application.part.query.result.BomTreeResult;
+import com.fabbitinc.server.application.part.query.result.CategoryLookupResult;
+import com.fabbitinc.server.application.part.query.result.CategoryStatsResult;
+import com.fabbitinc.server.application.part.query.result.PartBomResult;
+import com.fabbitinc.server.application.part.query.result.PartDetailResult;
+import com.fabbitinc.server.application.part.query.result.PartFilesResult;
+import com.fabbitinc.server.application.part.query.result.PartFilterOptionsResult;
+import com.fabbitinc.server.application.part.query.result.PartListResult;
+import com.fabbitinc.server.application.part.query.result.PartLookupResult;
+import com.fabbitinc.server.application.part.query.result.PartProjectsResult;
+import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
 import com.fabbitinc.server.application.part.dto.response.CategoryLookupResponse;
 import com.fabbitinc.server.application.part.dto.response.CategoryStatsResponse;
 import com.fabbitinc.server.application.part.dto.response.BomTreeResponse;
-import com.fabbitinc.server.application.part.dto.response.BomDirection;
 import com.fabbitinc.server.application.part.dto.response.PartBomResponse;
 import com.fabbitinc.server.application.part.dto.response.PartDetailResponse;
 import com.fabbitinc.server.application.part.dto.response.PartFilterOptionsResponse;
 import com.fabbitinc.server.application.part.dto.response.PartFilesResponse;
 import com.fabbitinc.server.application.part.dto.response.PartListResponse;
 import com.fabbitinc.server.application.part.dto.response.PartLookupResponse;
+import com.fabbitinc.server.application.part.dto.response.PartProjectSummaryResponse;
+import com.fabbitinc.server.application.part.dto.response.PartProjectsResponse;
+import com.fabbitinc.server.application.part.dto.response.PartSummaryResponse;
 import com.fabbitinc.server.application.part.dto.response.PartSuppliersResponse;
+import com.fabbitinc.server.application.part.dto.response.BomChildResponse;
+import com.fabbitinc.server.application.part.dto.response.BomParentResponse;
+import com.fabbitinc.server.application.part.dto.response.BomTreeNodeResponse;
+import com.fabbitinc.server.application.part.dto.response.CategoryStatsItemResponse;
+import com.fabbitinc.server.application.part.dto.response.PartLookupItemResponse;
+import com.fabbitinc.server.application.part.dto.response.PartOwnerUserSummaryResponse;
+import com.fabbitinc.server.application.part.dto.response.RelatedDrawingResponse;
+import com.fabbitinc.server.application.part.dto.response.RelatedSupplierResponse;
 import com.fabbitinc.server.application.part.dto.response.RenameCategoryResponse;
 import com.fabbitinc.server.application.part.query.PartQuery;
 import com.fabbitinc.server.application.part.usecase.AttachPartFilesUseCase;
@@ -23,8 +55,6 @@ import com.fabbitinc.server.application.part.usecase.DeletePartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.DetachPartFileUseCase;
 import com.fabbitinc.server.application.part.usecase.RegisterPartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.RenameCategoryUseCase;
-import com.fabbitinc.server.application.project.dto.response.PartProjectsResponse;
-import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -74,7 +104,7 @@ public class PartController {
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
             int limit
     ) {
-        return partQuery.lookupParts(search, limit);
+        return toPartLookupResponse(partQuery.lookup(new PartLookupCondition(search, limit)));
     }
 
     @Operation(
@@ -85,14 +115,15 @@ public class PartController {
     public ResponseEntity<byte[]> exportParts(
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "category", required = false) String category,
-            @RequestParam(value = "lifecycle_state", required = false) PartLifecycleState lifecycleState,
+            @RequestParam(value = "lifecycle_state", required = false) String lifecycleState,
             @RequestParam(value = "has_drawing", required = false) Boolean hasDrawing,
             @RequestParam(value = "has_children", required = false) Boolean hasChildren,
             @RequestParam(value = "mapping_id", required = false) UUID mappingId,
             @RequestParam(value = "part_ids", required = false) List<UUID> partIds,
             @RequestParam(value = "project_id", required = false) UUID projectId
     ) {
-        byte[] content = partQuery.exportPartsExcel(search,
+        byte[] content = partQuery.export(new PartExportCondition(
+                search,
                 category,
                 lifecycleState,
                 hasDrawing,
@@ -100,7 +131,7 @@ public class PartController {
                 partIds,
                 mappingId,
                 projectId
-        );
+        ));
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(
@@ -120,7 +151,7 @@ public class PartController {
     @GetMapping("/categories")
     public CategoryStatsResponse listCategories(
 ) {
-        return partQuery.listCategories();
+        return toCategoryStatsResponse(partQuery.listCategories());
     }
 
     @Operation(
@@ -130,7 +161,7 @@ public class PartController {
     @GetMapping("/categories/lookup")
     public CategoryLookupResponse lookupCategories(
 ) {
-        return partQuery.lookupCategories();
+        return toCategoryLookupResponse(partQuery.lookupCategories());
     }
 
     @Operation(
@@ -140,7 +171,7 @@ public class PartController {
     @GetMapping("/filter-options")
     public PartFilterOptionsResponse getFilterOptions(
 ) {
-        return partQuery.getFilterOptions();
+        return toPartFilterOptionsResponse(partQuery.getFilterOptions());
     }
 
     @Operation(
@@ -151,7 +182,7 @@ public class PartController {
     public PartListResponse listParts(
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "category", required = false) String category,
-            @RequestParam(value = "lifecycle_state", required = false) PartLifecycleState lifecycleState,
+            @RequestParam(value = "lifecycle_state", required = false) String lifecycleState,
             @RequestParam(value = "has_drawing", required = false) Boolean hasDrawing,
             @RequestParam(value = "has_children", required = false) Boolean hasChildren,
             @RequestParam(value = "project_id", required = false) UUID projectId,
@@ -163,7 +194,8 @@ public class PartController {
             @Max(value = 100, message = "limit은 100 이하여야 합니다")
             int limit
     ) {
-        return partQuery.listParts(search,
+        return toPartListResponse(partQuery.list(new PartListCondition(
+                search,
                 category,
                 lifecycleState,
                 hasDrawing,
@@ -171,7 +203,7 @@ public class PartController {
                 projectId,
                 offset,
                 limit
-        );
+        )));
     }
 
     @Operation(
@@ -182,7 +214,7 @@ public class PartController {
     public PartDetailResponse getPart(
             @PathVariable UUID partId
     ) {
-        return partQuery.getPartDetail(partId);
+        return toPartDetailResponse(partQuery.get(new PartDetailCondition(partId)));
     }
 
     @Operation(
@@ -193,7 +225,7 @@ public class PartController {
     public PartBomResponse getPartBom(
             @PathVariable UUID partId
     ) {
-        return partQuery.getPartBom(partId);
+        return toPartBomResponse(partQuery.get(new PartBomCondition(partId)));
     }
 
     @Operation(
@@ -203,9 +235,9 @@ public class PartController {
     @GetMapping("/{partId}/bom/tree")
     public BomTreeResponse getBomTree(
             @PathVariable UUID partId,
-            @RequestParam(value = "direction", defaultValue = "FORWARD") BomDirection direction
+            @RequestParam(value = "direction", defaultValue = "FORWARD") String direction
     ) {
-        return partQuery.getBomTree(partId, direction);
+        return toBomTreeResponse(partQuery.getBomTree(new BomTreeCondition(partId, direction)));
     }
 
     @Operation(
@@ -215,10 +247,10 @@ public class PartController {
     @GetMapping("/{partId}/bom/tree/export")
     public ResponseEntity<byte[]> exportBomTree(
             @PathVariable UUID partId,
-            @RequestParam(value = "direction", defaultValue = "FORWARD") BomDirection direction,
+            @RequestParam(value = "direction", defaultValue = "FORWARD") String direction,
             @RequestParam(value = "mapping_id", required = false) UUID mappingId
     ) {
-        byte[] content = partQuery.exportBomTreeExcel(partId, direction, mappingId);
+        byte[] content = partQuery.exportBomTree(new BomTreeExportCondition(partId, direction, mappingId));
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -235,7 +267,7 @@ public class PartController {
     public PartProjectsResponse getPartProjects(
             @PathVariable UUID partId
     ) {
-        return partQuery.getPartProjects(partId);
+        return toPartProjectsResponse(partQuery.get(new PartProjectsCondition(partId)));
     }
 
     @Operation(
@@ -246,7 +278,7 @@ public class PartController {
     public PartFilesResponse getPartFiles(
             @PathVariable UUID partId
     ) {
-        return partQuery.getPartFiles(partId);
+        return toPartFilesResponse(partQuery.get(new PartFilesCondition(partId)));
     }
 
     @Operation(
@@ -257,7 +289,7 @@ public class PartController {
     public PartSuppliersResponse getPartSuppliers(
             @PathVariable UUID partId
     ) {
-        return partQuery.getPartSuppliers(partId);
+        return toPartSuppliersResponse(partQuery.get(new PartSuppliersCondition(partId)));
     }
 
     @Operation(
@@ -270,7 +302,9 @@ public class PartController {
             @Valid @RequestBody AttachFilesRequest request
     ) {
         List<UUID> attachedFileIds = attachPartFilesUseCase.execute(partId, request.fileIds());
-        return partQuery.getFilesByIds(attachedFileIds);
+        return partQuery.getFiles(new FileItemsCondition(attachedFileIds)).stream()
+                .map(this::toFileItemResponse)
+                .toList();
     }
 
     @Operation(
@@ -321,6 +355,199 @@ public class PartController {
     ) {
         int updatedCount = renameCategoryUseCase.execute(category, request.newName());
         return new RenameCategoryResponse(updatedCount);
+    }
+
+    private PartLookupResponse toPartLookupResponse(PartLookupResult result) {
+        return new PartLookupResponse(
+                result.items().stream()
+                        .map(item -> new PartLookupItemResponse(item.id(), item.partNumber(), item.name()))
+                        .toList()
+        );
+    }
+
+    private CategoryStatsResponse toCategoryStatsResponse(CategoryStatsResult result) {
+        return new CategoryStatsResponse(
+                result.items().stream()
+                        .map(item -> new CategoryStatsItemResponse(item.category(), item.partCount()))
+                        .toList()
+        );
+    }
+
+    private CategoryLookupResponse toCategoryLookupResponse(CategoryLookupResult result) {
+        return new CategoryLookupResponse(result.items());
+    }
+
+    private PartFilterOptionsResponse toPartFilterOptionsResponse(PartFilterOptionsResult result) {
+        return new PartFilterOptionsResponse(result.categories(), result.lifecycleStates());
+    }
+
+    private PartListResponse toPartListResponse(PartListResult result) {
+        return new PartListResponse(
+                result.total(),
+                result.offset(),
+                result.limit(),
+                result.items().stream()
+                        .map(item -> new PartSummaryResponse(
+                                item.id(),
+                                item.partNumber(),
+                                item.name(),
+                                item.category(),
+                                item.revision(),
+                                item.lifecycleState(),
+                                item.drawingNumber(),
+                                item.childrenCount()
+                        ))
+                        .toList()
+        );
+    }
+
+    private PartDetailResponse toPartDetailResponse(PartDetailResult result) {
+        return new PartDetailResponse(
+                result.id(),
+                result.partNumber(),
+                result.name(),
+                result.revision(),
+                result.material(),
+                result.unit(),
+                result.description(),
+                result.category(),
+                result.lifecycleState(),
+                result.isPhantom(),
+                result.leadTimeDays(),
+                result.extendedProperties(),
+                result.ownerId(),
+                toPartOwnerUserSummaryResponse(result.owner()),
+                result.ownerTeamId(),
+                result.ownerTeamName(),
+                toRelatedDrawingResponse(result.drawing()),
+                result.childrenCount(),
+                result.parentsCount(),
+                result.suppliersCount(),
+                result.filesCount(),
+                result.projectsCount()
+        );
+    }
+
+    private PartBomResponse toPartBomResponse(PartBomResult result) {
+        return new PartBomResponse(
+                result.children().stream()
+                        .map(item -> new BomChildResponse(
+                                item.id(),
+                                item.partNumber(),
+                                item.name(),
+                                item.quantity(),
+                                item.extendedProperties()
+                        ))
+                        .toList(),
+                result.parents().stream()
+                        .map(item -> new BomParentResponse(
+                                item.id(),
+                                item.partNumber(),
+                                item.name(),
+                                item.quantity(),
+                                item.extendedProperties()
+                        ))
+                        .toList()
+        );
+    }
+
+    private BomTreeResponse toBomTreeResponse(BomTreeResult result) {
+        return new BomTreeResponse(
+                toBomTreeNodeResponse(result.root()),
+                result.direction(),
+                result.totalCount()
+        );
+    }
+
+    private BomTreeNodeResponse toBomTreeNodeResponse(BomTreeResult.Node node) {
+        return new BomTreeNodeResponse(
+                node.id(),
+                node.partNumber(),
+                node.name(),
+                node.revision(),
+                node.material(),
+                node.unit(),
+                node.category(),
+                node.lifecycleState(),
+                node.quantity(),
+                node.children().stream().map(this::toBomTreeNodeResponse).toList()
+        );
+    }
+
+    private PartProjectsResponse toPartProjectsResponse(PartProjectsResult result) {
+        return new PartProjectsResponse(
+                result.total(),
+                result.items().stream()
+                        .map(item -> new PartProjectSummaryResponse(item.id(), item.name(), item.description()))
+                        .toList()
+        );
+    }
+
+    private PartFilesResponse toPartFilesResponse(PartFilesResult result) {
+        return new PartFilesResponse(
+                result.total(),
+                result.items().stream().map(this::toFileItemResponse).toList()
+        );
+    }
+
+    private FileItemResponse toFileItemResponse(PartFilesResult.Item item) {
+        return new FileItemResponse(
+                item.fileId(),
+                item.originalName(),
+                item.contentType(),
+                item.fileSize(),
+                item.fileUrl(),
+                item.createdAt()
+        );
+    }
+
+    private PartSuppliersResponse toPartSuppliersResponse(PartSuppliersResult result) {
+        return new PartSuppliersResponse(
+                result.total(),
+                result.items().stream()
+                        .map(item -> new RelatedSupplierResponse(
+                                item.id(),
+                                item.companyName(),
+                                item.code(),
+                                item.country(),
+                                item.unitCost()
+                        ))
+                        .toList()
+        );
+    }
+
+    private PartOwnerUserSummaryResponse toPartOwnerUserSummaryResponse(
+            com.fabbitinc.server.application.part.query.result.PartUserSummaryResult result
+    ) {
+        if (result == null) {
+            return null;
+        }
+        return new PartOwnerUserSummaryResponse(
+                result.userId(),
+                result.fullName(),
+                result.email(),
+                result.phone(),
+                result.profileImageUrl()
+        );
+    }
+
+    private RelatedDrawingResponse toRelatedDrawingResponse(
+            com.fabbitinc.server.application.part.query.result.RelatedDrawingResult result
+    ) {
+        if (result == null) {
+            return null;
+        }
+        return new RelatedDrawingResponse(
+                result.id(),
+                result.drawingNumber(),
+                result.name(),
+                result.version(),
+                result.status(),
+                result.conversionStatus(),
+                result.thumbnailUrl(),
+                result.pdfUrl(),
+                result.originalFileUrl()
+        );
     }
 
 }

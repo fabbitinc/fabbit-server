@@ -37,6 +37,7 @@ public class File extends AbstractCreatedEntity {
     public static final String CODE_FILE_SIZE_INVALID = "FILE_SIZE_INVALID";
     public static final String CODE_FILE_OWNER_TYPE_REQUIRED = "FILE_OWNER_TYPE_REQUIRED";
     public static final String CODE_FILE_OWNER_ID_REQUIRED = "FILE_OWNER_ID_REQUIRED";
+    public static final String CODE_FILE_NOT_ATTACHABLE = "FILE_NOT_ATTACHABLE";
 
     @Column(name = "original_name", nullable = false, length = 500)
     private String originalName;
@@ -63,7 +64,7 @@ public class File extends AbstractCreatedEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
-    public File(
+    private File(
             UUID id,
             String originalName,
             String fileKey,
@@ -78,7 +79,7 @@ public class File extends AbstractCreatedEntity {
         this.status = FileStatus.PENDING;
     }
 
-    public File(
+    private File(
             String originalName,
             String fileKey,
             String contentType,
@@ -107,6 +108,12 @@ public class File extends AbstractCreatedEntity {
         String normalizedOwnerType = normalizeRequiredText(ownerType, CODE_FILE_OWNER_TYPE_REQUIRED, "소유자 타입은 필수입니다");
         if (ownerId == null) {
             throw new DomainException(CODE_FILE_OWNER_ID_REQUIRED, "소유자 ID는 필수입니다");
+        }
+        if (normalizedOwnerType.equals(this.ownerType) && ownerId.equals(this.ownerId)) {
+            return;
+        }
+        if (!isAttachable()) {
+            throw new DomainException(CODE_FILE_NOT_ATTACHABLE, "업로드 완료되고 아직 연결되지 않은 파일만 소유자를 지정할 수 있습니다");
         }
         this.ownerType = normalizedOwnerType;
         this.ownerId = ownerId;

@@ -51,7 +51,7 @@ public class SynthesisService {
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "매핑 리비전을 찾을 수 없습니다"));
 
         List<SynthesisBatchFailure> failed = new ArrayList<>();
-        List<AcceptedSynthesisJob> acceptedJobs = new ArrayList<>();
+        List<AcceptedUpload> acceptedUploads = new ArrayList<>();
 
         for (SynthesisUploadItem item : request.uploads()) {
             validateRootContext(record.getScope(), item.rootContext());
@@ -70,28 +70,29 @@ public class SynthesisService {
                 continue;
             }
 
-            SynthesisJob job = SynthesisJob.create(record.getId(), file.getId());
             Map<String, String> rootContext = item.rootContext() == null ? Map.of() : item.rootContext();
-            acceptedJobs.add(new AcceptedSynthesisJob(job, rootContext));
+            acceptedUploads.add(new AcceptedUpload(file.getId(), rootContext));
         }
 
         SynthesisBatch batch = SynthesisBatch.create(
                 request.projectId(),
                 record.getId(),
                 request.uploads().size(),
-                acceptedJobs.size(),
                 synthesisResponseMapper.serializeFailures(failed)
         );
+        List<AcceptedSynthesisJob> acceptedJobs = acceptedUploads.stream()
+                .map(acceptedUpload -> new AcceptedSynthesisJob(
+                        batch.addJob(acceptedUpload.fileId()),
+                        acceptedUpload.rootContext()
+                ))
+                .toList();
         synthesisBatchRepository.save(batch);
 
-        List<SynthesisJob> jobs = acceptedJobs.stream().map(AcceptedSynthesisJob::job).toList();
-        for (SynthesisJob job : jobs) {
-            job.assignBatch(batch);
-        }
+        List<SynthesisJob> jobs = batch.getJobs();
         if (!jobs.isEmpty()) {
             synthesisJobRepository.saveAll(jobs);
-            record.incrementUsage(jobs.size());
-            revision.incrementUsage(jobs.size());
+            record.incrementUsage(batch.getAcceptedCount());
+            revision.incrementUsage(batch.getAcceptedCount());
             dispatchAfterCommit(acceptedJobs, request.overwrite());
         }
 
@@ -156,6 +157,12 @@ public class SynthesisService {
 
     private record AcceptedSynthesisJob(
             SynthesisJob job,
+            Map<String, String> rootContext
+    ) {
+    }
+
+    private record AcceptedUpload(
+            UUID fileId,
             Map<String, String> rootContext
     ) {
     }

@@ -3,9 +3,16 @@ package com.fabbitinc.server.presentation.label.controller;
 import com.fabbitinc.server.application.label.dto.request.CreateLabelRequest;
 import com.fabbitinc.server.application.label.dto.request.UpdateLabelRequest;
 import com.fabbitinc.server.application.label.dto.response.LabelListResponse;
+import com.fabbitinc.server.application.label.dto.response.LabelLookupItemResponse;
 import com.fabbitinc.server.application.label.dto.response.LabelLookupResponse;
 import com.fabbitinc.server.application.label.dto.response.LabelResponse;
 import com.fabbitinc.server.application.label.query.LabelQuery;
+import com.fabbitinc.server.application.label.query.condition.LabelListCondition;
+import com.fabbitinc.server.application.label.query.condition.LabelLookupCondition;
+import com.fabbitinc.server.application.label.query.result.LabelListResult;
+import com.fabbitinc.server.application.label.query.result.LabelLookupItemResult;
+import com.fabbitinc.server.application.label.query.result.LabelLookupResult;
+import com.fabbitinc.server.application.label.query.result.LabelResult;
 import com.fabbitinc.server.application.label.usecase.CreateLabelUseCase;
 import com.fabbitinc.server.application.label.usecase.DeleteLabelUseCase;
 import com.fabbitinc.server.application.label.usecase.UpdateLabelUseCase;
@@ -55,7 +62,7 @@ public class LabelController {
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
             int limit
     ) {
-        return labelQuery.lookupLabels(search, limit);
+        return toLabelLookupResponse(labelQuery.lookup(new LabelLookupCondition(search, limit)));
     }
 
     @Operation(
@@ -64,7 +71,7 @@ public class LabelController {
     )
     @GetMapping
     public LabelListResponse listLabels() {
-        return labelQuery.listLabels();
+        return toLabelListResponse(labelQuery.list(new LabelListCondition()));
     }
 
     @Operation(
@@ -101,5 +108,41 @@ public class LabelController {
     ) {
         deleteLabelUseCase.execute(labelId);
         return ResponseEntity.noContent().build();
+    }
+
+    private LabelListResponse toLabelListResponse(LabelListResult result) {
+        return new LabelListResponse(
+                result.total(),
+                result.items().stream()
+                        .map(this::toLabelResponse)
+                        .toList()
+        );
+    }
+
+    private LabelResponse toLabelResponse(LabelResult result) {
+        return new LabelResponse(
+                result.id(),
+                result.name(),
+                result.description(),
+                result.color(),
+                result.createdAt(),
+                result.createdBy()
+        );
+    }
+
+    private LabelLookupResponse toLabelLookupResponse(LabelLookupResult result) {
+        return new LabelLookupResponse(
+                result.items().stream()
+                        .map(this::toLabelLookupItemResponse)
+                        .toList()
+        );
+    }
+
+    private LabelLookupItemResponse toLabelLookupItemResponse(LabelLookupItemResult result) {
+        return new LabelLookupItemResponse(
+                result.id(),
+                result.name(),
+                result.color()
+        );
     }
 }

@@ -5,11 +5,9 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
-import com.fabbitinc.server.application.notification.dto.response.MentionPayloadResponse;
-import com.fabbitinc.server.application.notification.dto.response.NotificationListResponse;
-import com.fabbitinc.server.application.notification.dto.response.NotificationResponse;
-import com.fabbitinc.server.application.notification.dto.response.NotificationUserSummaryResponse;
-import com.fabbitinc.server.application.notification.dto.response.UnreadCountResponse;
+import com.fabbitinc.server.application.notification.query.condition.NotificationListCondition;
+import com.fabbitinc.server.application.notification.query.result.NotificationListResult;
+import com.fabbitinc.server.application.notification.query.result.UnreadCountResult;
 import com.fabbitinc.server.domain.notification.model.Notification;
 import com.fabbitinc.server.domain.notification.model.NotificationSourceIssueType;
 import com.fabbitinc.server.domain.notification.repository.NotificationRepository;
@@ -30,6 +28,7 @@ import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class NotificationQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
@@ -41,12 +40,11 @@ public class NotificationQuery {
     private static final Pattern NUMBER_FIELD_PATTERN = Pattern.compile("\"%s\"\\s*:\\s*(-?\\d+)");
     private static final Pattern BOOLEAN_FIELD_PATTERN = Pattern.compile("\"%s\"\\s*:\\s*(true|false)");
 
-    @Transactional(readOnly = true)
-    public NotificationListResponse listNotifications(UUID cursor,
-            int limit,
-            boolean unreadOnly
-    ) {
+    public NotificationListResult list(NotificationListCondition condition) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
+        UUID cursor = condition.cursor();
+        int limit = condition.limit();
+        boolean unreadOnly = condition.unreadOnly();
         List<Notification> notifications = notificationRepository.listByUserCursor(
                 auth.userId(),
                 cursor,
@@ -54,8 +52,8 @@ public class NotificationQuery {
                 PageRequest.of(0, limit)
         );
 
-        List<NotificationResponse> items = notifications.stream()
-                .map(this::toNotificationResponse)
+        List<NotificationListResult.NotificationItemResult> items = notifications.stream()
+                .map(this::toNotificationItemResult)
                 .toList();
         UUID nextCursor = notifications.size() == limit
                 ? notifications.get(notifications.size() - 1).getId()
@@ -67,11 +65,11 @@ public class NotificationQuery {
         List<User> users = actorIds.isEmpty()
                 ? List.of()
                 : userRepository.findAllByIdInOrderByFullName(actorIds);
-        Map<String, NotificationUserSummaryResponse> userMap = new HashMap<>();
+        Map<String, NotificationListResult.NotificationUserSummaryResult> userMap = new HashMap<>();
         for (User user : users) {
             userMap.put(
                     user.getId().toString(),
-                    new NotificationUserSummaryResponse(
+                    new NotificationListResult.NotificationUserSummaryResult(
                             user.getId(),
                             user.getFullName(),
                             user.getEmail(),
@@ -81,18 +79,17 @@ public class NotificationQuery {
             );
         }
 
-        return new NotificationListResponse(items, nextCursor, userMap);
+        return new NotificationListResult(items, nextCursor, userMap);
     }
 
-    @Transactional(readOnly = true)
-    public UnreadCountResponse countUnread() {
+    public UnreadCountResult getUnreadCount() {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         long unreadCount = notificationRepository.countByUserIdAndReadAtIsNull(auth.userId());
-        return new UnreadCountResponse((int) unreadCount);
+        return new UnreadCountResult((int) unreadCount);
     }
 
-    private NotificationResponse toNotificationResponse(Notification notification) {
-        return new NotificationResponse(
+    private NotificationListResult.NotificationItemResult toNotificationItemResult(Notification notification) {
+        return new NotificationListResult.NotificationItemResult(
                 notification.getId(),
                 notification.getType(),
                 notification.getActorId(),
@@ -102,8 +99,8 @@ public class NotificationQuery {
         );
     }
 
-    private MentionPayloadResponse parseMentionPayload(String payload) {
-        return new MentionPayloadResponse(
+    private NotificationListResult.MentionPayloadResult parseMentionPayload(String payload) {
+        return new NotificationListResult.MentionPayloadResult(
                 extractString(payload, "project_id"),
                 extractString(payload, "source_issue_id"),
                 extractInteger(payload, "source_number"),

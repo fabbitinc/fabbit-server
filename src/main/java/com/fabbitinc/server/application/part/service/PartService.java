@@ -21,6 +21,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PartService {
 
+    private static final int MAX_CATEGORY_LENGTH = 100;
+
     private final PartRepository partRepository;
     private final PartDefaultOwnerRepository partDefaultOwnerRepository;
     private final FileRepository fileRepository;
@@ -120,6 +122,10 @@ public class PartService {
     }
 
     public PartDefaultOwner upsertDefaultOwner(String category, UUID ownerId, UUID ownerTeamId) {
+        if (ownerId == null && ownerTeamId == null) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "기본 담당자 또는 기본 담당 팀 중 하나는 필수입니다");
+        }
+
         PartDefaultOwner defaultOwner;
         if (category != null) {
             defaultOwner = partDefaultOwnerRepository.findByCategory(category)
@@ -148,25 +154,28 @@ public class PartService {
     }
 
     public int renameCategory(String oldName, String newName) {
-        if (oldName.equals(newName)) {
+        String normalizedOldName = normalizeRequiredCategory(oldName, "기존");
+        String normalizedNewName = normalizeRequiredCategory(newName, "변경");
+
+        if (normalizedOldName.equals(normalizedNewName)) {
             throw new AppException(ErrorCode.BAD_REQUEST, "변경 전후 카테고리 이름이 동일합니다");
         }
 
-        boolean hasOldCategory = partRepository.existsByCategory(oldName);
+        boolean hasOldCategory = partRepository.existsByCategory(normalizedOldName);
         if (!hasOldCategory) {
             throw new AppException(
                     ErrorCode.NOT_FOUND,
-                    "카테고리 '" + oldName + "'을(를) 찾을 수 없습니다"
+                    "카테고리 '" + normalizedOldName + "'을(를) 찾을 수 없습니다"
             );
         }
 
-        boolean isMerge = partRepository.existsByCategory(newName);
-        int updatedCount = partRepository.renameCategory(oldName, newName);
+        boolean isMerge = partRepository.existsByCategory(normalizedNewName);
+        int updatedCount = partRepository.renameCategory(normalizedOldName, normalizedNewName);
 
         if (isMerge) {
-            partDefaultOwnerRepository.deleteByCategory(oldName);
+            partDefaultOwnerRepository.deleteByCategory(normalizedOldName);
         } else {
-            partDefaultOwnerRepository.renameCategory(oldName, newName);
+            partDefaultOwnerRepository.renameCategory(normalizedOldName, normalizedNewName);
         }
         return updatedCount;
     }
@@ -177,5 +186,17 @@ public class PartService {
                         ErrorCode.NOT_FOUND,
                         "Part '" + partId + "'을(를) 찾을 수 없습니다"
                 ));
+    }
+
+    private String normalizeRequiredCategory(String raw, String label) {
+        if (raw == null || raw.isBlank()) {
+            throw new AppException(ErrorCode.BAD_REQUEST, label + " 카테고리는 비어 있을 수 없습니다");
+        }
+
+        String trimmed = raw.trim();
+        if (trimmed.length() > MAX_CATEGORY_LENGTH) {
+            throw new AppException(ErrorCode.BAD_REQUEST, label + " 카테고리는 100자 이하여야 합니다");
+        }
+        return trimmed;
     }
 }

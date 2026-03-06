@@ -1,9 +1,6 @@
 package com.fabbitinc.server.domain.part.model;
 
 import com.fabbitinc.server.domain.common.exception.DomainException;
-import com.fabbitinc.server.domain.drawing.model.Drawing;
-import com.fabbitinc.server.domain.team.model.Team;
-import com.fabbitinc.server.domain.user.model.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -177,36 +174,76 @@ class PartTest {
     }
 
     @Test
-    void assignOwner_엔티티를_설정하면_연관과_ID를_동기화한다() {
+    void assignOwner_null이면_예외를_던진다() {
         Part part = Part.create("P-001", "Bolt");
-        User owner = new User("owner@example.com", "hashed", "Owner");
 
-        part.assignOwner(owner);
+        DomainException ex = assertThrows(DomainException.class, () -> part.assignOwner(null));
 
-        assertEquals(owner, part.getOwner());
-        assertEquals(owner.getId(), part.getOwnerId());
+        assertEquals(Part.CODE_PART_OWNER_REQUIRED, ex.getDomainCode());
     }
 
     @Test
-    void assignOwnerTeam_엔티티를_설정하면_연관과_ID를_동기화한다() {
+    void assignOwnerTeam_유효한_ID를_설정한다() {
         Part part = Part.create("P-001", "Bolt");
-        Team ownerTeam = new Team("설계팀", null, UUID.randomUUID());
+        UUID ownerTeamId = UUID.randomUUID();
 
-        part.assignOwnerTeam(ownerTeam);
+        part.assignOwnerTeam(ownerTeamId);
 
-        assertEquals(ownerTeam, part.getOwnerTeam());
-        assertEquals(ownerTeam.getId(), part.getOwnerTeamId());
+        assertEquals(ownerTeamId, part.getOwnerTeamId());
     }
 
     @Test
-    void assignDrawing_엔티티를_설정하면_연관과_ID를_동기화한다() {
+    void assignDrawing_유효한_ID를_설정한다() {
         Part part = Part.create("P-001", "Bolt");
-        Drawing drawing = new Drawing("DWG-001", "볼트 도면");
+        UUID drawingId = UUID.randomUUID();
 
-        part.assignDrawing(drawing);
+        part.assignDrawing(drawingId);
 
-        assertEquals(drawing, part.getDrawing());
-        assertEquals(drawing.getId(), part.getDrawingId());
+        assertEquals(drawingId, part.getDrawingId());
+    }
+
+    @Test
+    void markPhantom_markReal_clearPhantomFlag로_팬텀상태를_변경한다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        part.markPhantom();
+        assertEquals(Boolean.TRUE, part.getPhantom());
+
+        part.markReal();
+        assertEquals(Boolean.FALSE, part.getPhantom());
+
+        part.clearPhantomFlag();
+        assertNull(part.getPhantom());
+    }
+
+    @Test
+    void changeLifecycleState와_clearLifecycleState로_수명주기상태를_변경한다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        part.changeLifecycleState(PartLifecycleState.PRODUCTION);
+        assertEquals(PartLifecycleState.PRODUCTION, part.getLifecycleState());
+
+        part.clearLifecycleState();
+        assertNull(part.getLifecycleState());
+    }
+
+    @Test
+    void changeLeadTimeDays_음수면_예외를_던진다() {
+        Part part = Part.create("P-001", "Bolt");
+
+        DomainException ex = assertThrows(DomainException.class, () -> part.changeLeadTimeDays(-1));
+
+        assertEquals(Part.CODE_PART_LEAD_TIME_DAYS_INVALID, ex.getDomainCode());
+    }
+
+    @Test
+    void changeLeadTimeDays_null이면_값을_비운다() {
+        Part part = Part.create("P-001", "Bolt");
+        part.changeLeadTimeDays(3);
+
+        part.changeLeadTimeDays(null);
+
+        assertNull(part.getLeadTimeDays());
     }
 
     @Test

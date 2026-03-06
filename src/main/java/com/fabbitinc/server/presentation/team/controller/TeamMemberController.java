@@ -3,10 +3,12 @@ package com.fabbitinc.server.presentation.team.controller;
 import com.fabbitinc.server.application.team.dto.request.AddTeamMembersRequest;
 import com.fabbitinc.server.application.team.dto.request.RemoveTeamMembersRequest;
 import com.fabbitinc.server.application.team.dto.response.ManageTeamMembersResponse;
-import com.fabbitinc.server.application.team.dto.response.TeamMemberListResponse;
+import com.fabbitinc.server.application.team.query.condition.TeamMemberListCondition;
+import com.fabbitinc.server.application.team.query.result.TeamMemberListResult;
 import com.fabbitinc.server.application.team.query.TeamQuery;
 import com.fabbitinc.server.application.team.usecase.AddTeamMembersUseCase;
 import com.fabbitinc.server.application.team.usecase.RemoveTeamMembersUseCase;
+import com.fabbitinc.server.presentation.team.dto.response.TeamMemberListResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -42,7 +44,7 @@ public class TeamMemberController {
     public TeamMemberListResponse listTeamMembers(
             @PathVariable UUID teamId
     ) {
-        return teamQuery.listMembers(teamId);
+        return toTeamMemberListResponse(teamQuery.listMembers(new TeamMemberListCondition(teamId)));
     }
 
     @Operation(
@@ -69,5 +71,19 @@ public class TeamMemberController {
     ) {
         removeTeamMembersUseCase.execute(teamId, request.userIds());
         return ResponseEntity.noContent().build();
+    }
+
+    private TeamMemberListResponse toTeamMemberListResponse(TeamMemberListResult result) {
+        return new TeamMemberListResponse(
+                result.items().stream()
+                        .map(item -> new TeamMemberListResponse.TeamMemberItemResponse(
+                                item.userId(),
+                                item.fullName(),
+                                item.email(),
+                                item.phone(),
+                                item.profileImageUrl()
+                        ))
+                        .toList()
+        );
     }
 }

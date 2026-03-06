@@ -2,11 +2,17 @@ package com.fabbitinc.server.presentation.synthesis.controller;
 
 import com.fabbitinc.server.application.synthesis.dto.request.SynthesisStartRequest;
 import com.fabbitinc.server.application.synthesis.dto.response.SynthesisBatchStartResponse;
-import com.fabbitinc.server.application.synthesis.dto.response.SynthesisBatchStatusResponse;
-import com.fabbitinc.server.application.synthesis.dto.response.SynthesisJobResponse;
-import com.fabbitinc.server.application.synthesis.dto.response.SynthesisListResponse;
+import com.fabbitinc.server.application.synthesis.query.condition.SynthesisBatchCondition;
+import com.fabbitinc.server.application.synthesis.query.condition.SynthesisJobCondition;
+import com.fabbitinc.server.application.synthesis.query.condition.SynthesisListCondition;
+import com.fabbitinc.server.application.synthesis.query.result.SynthesisBatchStatusResult;
+import com.fabbitinc.server.application.synthesis.query.result.SynthesisJobResult;
+import com.fabbitinc.server.application.synthesis.query.result.SynthesisListResult;
 import com.fabbitinc.server.application.synthesis.query.SynthesisQuery;
 import com.fabbitinc.server.application.synthesis.usecase.StartSynthesisUseCase;
+import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisBatchStatusResponse;
+import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisJobResponse;
+import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisListResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -48,7 +54,7 @@ public class SynthesisController {
     )
     @GetMapping("/batches/{batchId}")
     public SynthesisBatchStatusResponse getSynthesisBatch(@PathVariable UUID batchId) {
-        return synthesisQuery.getSynthesisBatch(batchId);
+        return toSynthesisBatchStatusResponse(synthesisQuery.getBatch(new SynthesisBatchCondition(batchId)));
     }
 
     @Operation(
@@ -57,7 +63,7 @@ public class SynthesisController {
     )
     @GetMapping("/{jobId}")
     public SynthesisJobResponse getSynthesisJob(@PathVariable UUID jobId) {
-        return synthesisQuery.getSynthesisJob(jobId);
+        return toSynthesisJobResponse(synthesisQuery.getJob(new SynthesisJobCondition(jobId)));
     }
 
     @Operation(
@@ -66,6 +72,66 @@ public class SynthesisController {
     )
     @GetMapping
     public SynthesisListResponse listSynthesisJobs() {
-        return synthesisQuery.listSynthesisJobs();
+        return toSynthesisListResponse(synthesisQuery.list(new SynthesisListCondition()));
+    }
+
+    private SynthesisBatchStatusResponse toSynthesisBatchStatusResponse(SynthesisBatchStatusResult result) {
+        return new SynthesisBatchStatusResponse(
+                result.batchId(),
+                result.requestedCount(),
+                result.acceptedCount(),
+                result.failedCount(),
+                result.pendingCount(),
+                result.processingCount(),
+                result.completedCount(),
+                result.failedJobCount(),
+                SynthesisBatchStatusResponse.Status.valueOf(result.status().name()),
+                result.failed().stream()
+                        .map(item -> new SynthesisBatchStatusResponse.SynthesisBatchFailureResponse(
+                                item.fileId(),
+                                item.reason()
+                        ))
+                        .toList(),
+                result.items().stream()
+                        .map(item -> new SynthesisBatchStatusResponse.SynthesisBatchItemStatusResponse(
+                                item.jobId(),
+                                item.fileId(),
+                                item.status(),
+                                item.totalRows(),
+                                item.processedRows(),
+                                item.nodesCreated(),
+                                item.relationshipsCreated(),
+                                item.errorCount(),
+                                item.startedAt(),
+                                item.completedAt()
+                        ))
+                        .toList(),
+                result.createdAt()
+        );
+    }
+
+    private SynthesisJobResponse toSynthesisJobResponse(SynthesisJobResult result) {
+        return new SynthesisJobResponse(
+                result.id(),
+                result.mappingId(),
+                result.fileId(),
+                result.status(),
+                result.totalRows(),
+                result.processedRows(),
+                result.nodesCreated(),
+                result.relationshipsCreated(),
+                result.errors(),
+                result.startedAt(),
+                result.completedAt(),
+                result.createdAt()
+        );
+    }
+
+    private SynthesisListResponse toSynthesisListResponse(SynthesisListResult result) {
+        return new SynthesisListResponse(
+                result.items().stream()
+                        .map(this::toSynthesisJobResponse)
+                        .toList()
+        );
     }
 }

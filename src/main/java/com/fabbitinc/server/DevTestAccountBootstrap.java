@@ -4,6 +4,7 @@ import com.fabbitinc.server.application.organization.service.OrganizationService
 import com.fabbitinc.server.application.organization.service.input.CreateOrganizationInput;
 import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.domain.organization.model.Membership;
+import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
 import com.fabbitinc.server.domain.organization.model.PlanType;
 import com.fabbitinc.server.domain.organization.repository.MembershipRepository;
@@ -137,7 +138,9 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
             return;
         }
 
-        membershipRepository.save(Membership.createOwner(userId, orgId));
+        Organization organization = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new IllegalStateException("조직을 찾을 수 없습니다: " + orgId));
+        membershipRepository.save(organization.addMember(userId, MembershipRole.OWNER, null));
         organizationRepository.reserveMemberSeat(orgId);
     }
 }

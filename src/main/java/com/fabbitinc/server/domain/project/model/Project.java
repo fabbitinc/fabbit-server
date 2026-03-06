@@ -1,5 +1,6 @@
 package com.fabbitinc.server.domain.project.model;
 
+import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.fabbitinc.server.domain.common.entity.AbstractSoftDeletableEntity;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
@@ -14,18 +15,20 @@ import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Entity
 @Table(name = "projects")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Project extends AbstractSoftDeletableEntity {
+public class Project extends AbstractSoftDeletableEntity implements AggregateRoot {
 
     public static final String CODE_PROJECT_NAME_REQUIRED = "PROJECT_NAME_REQUIRED";
     public static final String CODE_PROJECT_NAME_TOO_LONG = "PROJECT_NAME_TOO_LONG";
     public static final String CODE_PROJECT_ARCHIVED = "PROJECT_ARCHIVED";
     public static final String CODE_PROJECT_ALREADY_ARCHIVED = "PROJECT_ALREADY_ARCHIVED";
     public static final String CODE_PROJECT_NOT_ARCHIVED = "PROJECT_NOT_ARCHIVED";
+    public static final String CODE_PROJECT_MEMBER_MISMATCH = "PROJECT_MEMBER_MISMATCH";
 
     private static final int MAX_NAME_LENGTH = 200;
 
@@ -63,6 +66,29 @@ public class Project extends AbstractSoftDeletableEntity {
     public void changeDescription(String description) {
         ensureActive();
         this.description = normalizeDescription(description);
+    }
+
+    public ProjectMember addMember(UUID userId, ProjectRole role) {
+        ensureActive();
+        ProjectMember member = ProjectMember.assign(this, userId, role);
+        members.add(member);
+        return member;
+    }
+
+    public ProjectPart linkPart(UUID partId) {
+        ensureActive();
+        ProjectPart link = ProjectPart.link(this, partId);
+        parts.add(link);
+        return link;
+    }
+
+    public void changeMemberRole(ProjectMember member, ProjectRole role) {
+        ensureActive();
+        ProjectMember target = requireMember(member);
+        if (!getId().equals(target.getProjectId())) {
+            throw new DomainException(CODE_PROJECT_MEMBER_MISMATCH, "다른 프로젝트 멤버의 역할은 변경할 수 없습니다");
+        }
+        target.changeRole(role);
     }
 
     public void archive() {
@@ -111,5 +137,12 @@ public class Project extends AbstractSoftDeletableEntity {
         }
         String trimmed = rawDescription.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private ProjectMember requireMember(ProjectMember value) {
+        if (value == null) {
+            throw new DomainException(ProjectMember.CODE_PROJECT_MEMBER_PROJECT_REQUIRED, "프로젝트 멤버는 필수입니다");
+        }
+        return value;
     }
 }

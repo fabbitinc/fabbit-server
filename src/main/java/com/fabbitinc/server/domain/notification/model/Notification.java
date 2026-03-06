@@ -1,6 +1,7 @@
 package com.fabbitinc.server.domain.notification.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractAuditableEntity;
+import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.user.model.User;
@@ -9,6 +10,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -31,7 +33,7 @@ import java.util.UUID;
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Notification extends AbstractAuditableEntity {
+public class Notification extends AbstractAuditableEntity implements AggregateRoot {
 
     public static final String CODE_NOTIFICATION_USER_REQUIRED = "NOTIFICATION_USER_REQUIRED";
     public static final String CODE_NOTIFICATION_TYPE_REQUIRED = "NOTIFICATION_TYPE_REQUIRED";
@@ -41,9 +43,15 @@ public class Notification extends AbstractAuditableEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
+    @JoinColumn(
+            name = "user_id",
+            insertable = false,
+            updatable = false,
+            foreignKey = @ForeignKey(name = "fk_notifications_user_id")
+    )
+    private User _userRelation;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 20)
@@ -52,9 +60,15 @@ public class Notification extends AbstractAuditableEntity {
     @Column(name = "actor_id", nullable = false)
     private UUID actorId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actor_id", insertable = false, updatable = false)
-    private User actor;
+    @JoinColumn(
+            name = "actor_id",
+            insertable = false,
+            updatable = false,
+            foreignKey = @ForeignKey(name = "fk_notifications_actor_id")
+    )
+    private User _actorRelation;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "payload", nullable = false, columnDefinition = "jsonb")
@@ -63,7 +77,7 @@ public class Notification extends AbstractAuditableEntity {
     @Column(name = "read_at")
     private Instant readAt;
 
-    public Notification(UUID userId, NotificationType type, UUID actorId, String payload) {
+    private Notification(UUID userId, NotificationType type, UUID actorId, String payload) {
         super(UuidV7Generator.next());
         this.userId = requireUserId(userId);
         this.type = requireType(type);
@@ -75,20 +89,10 @@ public class Notification extends AbstractAuditableEntity {
         return new Notification(userId, type, actorId, payload);
     }
 
-    public static Notification create(User user, NotificationType type, User actor, String payload) {
-        if (user == null) {
-            throw new DomainException(CODE_NOTIFICATION_USER_REQUIRED, "알림 수신자 ID는 필수입니다");
-        }
-        if (actor == null) {
-            throw new DomainException(CODE_NOTIFICATION_ACTOR_REQUIRED, "행위자 ID는 필수입니다");
-        }
-        Notification notification = new Notification(user.getId(), type, actor.getId(), payload);
-        notification.user = user;
-        notification.actor = actor;
-        return notification;
-    }
-
     public void markRead(Instant readAt) {
+        if (this.readAt != null) {
+            return;
+        }
         this.readAt = requireReadAt(readAt);
     }
 

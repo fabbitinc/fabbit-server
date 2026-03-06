@@ -45,16 +45,18 @@ public class PartSupplier extends AbstractCreatedEntity {
     @Column(name = "part_id", nullable = false)
     private UUID partId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "part_id", insertable = false, updatable = false)
-    private Part part;
+    private Part _partRelation;
 
     @Column(name = "supplier_id", nullable = false)
     private UUID supplierId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id", insertable = false, updatable = false)
-    private Supplier supplier;
+    private Supplier _supplierRelation;
 
     @Column(name = "unit_cost")
     private Double unitCost;
@@ -75,17 +77,12 @@ public class PartSupplier extends AbstractCreatedEntity {
         return new PartSupplier(partId, supplierId, unitCost, extendedProperties);
     }
 
-    public static PartSupplier link(Part part, Supplier supplier, Double unitCost, String extendedProperties) {
-        if (part == null) {
-            throw new DomainException(CODE_PART_SUPPLIER_PART_REQUIRED, "부품 ID는 필수입니다");
-        }
-        if (supplier == null) {
-            throw new DomainException(CODE_PART_SUPPLIER_SUPPLIER_REQUIRED, "공급사 ID는 필수입니다");
-        }
-        PartSupplier link = new PartSupplier(part.getId(), supplier.getId(), unitCost, extendedProperties);
-        link.part = part;
-        link.supplier = supplier;
-        return link;
+    public void changeUnitCost(Double unitCost) {
+        this.unitCost = normalizeUnitCost(unitCost);
+    }
+
+    public void changeExtendedProperties(String extendedProperties) {
+        this.extendedProperties = normalizeExtendedProperties(extendedProperties);
     }
 
     private UUID requirePartId(UUID value) {

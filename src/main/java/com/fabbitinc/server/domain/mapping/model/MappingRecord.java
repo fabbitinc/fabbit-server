@@ -18,6 +18,7 @@ import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Entity
@@ -56,7 +57,7 @@ public class MappingRecord extends AbstractAuditableEntity {
     @OneToMany(mappedBy = "record", fetch = FetchType.LAZY)
     private List<MappingRevision> revisions = new ArrayList<>();
 
-    public MappingRecord(String name, MappingScope scope) {
+    private MappingRecord(String name, MappingScope scope) {
         super(UuidV7Generator.next());
         this.name = requireName(name);
         this.scope = requireScope(scope);
@@ -64,12 +65,20 @@ public class MappingRecord extends AbstractAuditableEntity {
         this.usageCount = 0;
     }
 
+    public static MappingRecord create(String name, MappingScope scope) {
+        return new MappingRecord(name, scope);
+    }
+
     public void rename(String name) {
         this.name = requireName(name);
     }
 
-    public void updateScope(MappingScope scope) {
+    public void changeScope(MappingScope scope) {
         this.scope = requireScope(scope);
+    }
+
+    public void activate() {
+        this.active = true;
     }
 
     public void deactivate() {
@@ -83,13 +92,22 @@ public class MappingRecord extends AbstractAuditableEntity {
         this.usageCount += amount;
     }
 
-    public void addRevision(MappingRevision revision) {
-        if (revision == null) {
-            return;
-        }
-        if (!revisions.contains(revision)) {
-            revisions.add(revision);
-        }
+    public MappingRevision createRevision(
+            UUID fileId,
+            String sheetName,
+            String originalHeaders,
+            String mapping
+    ) {
+        MappingRevision revision = MappingRevision.create(
+                this,
+                fileId,
+                nextVersion(),
+                sheetName,
+                originalHeaders,
+                mapping
+        );
+        revisions.add(revision);
+        return revision;
     }
 
     public List<MappingRevision> getRevisions() {
@@ -112,5 +130,12 @@ public class MappingRecord extends AbstractAuditableEntity {
             throw new DomainException(CODE_MAPPING_RECORD_SCOPE_REQUIRED, "매핑 범위는 필수입니다");
         }
         return value;
+    }
+
+    private int nextVersion() {
+        return revisions.stream()
+                .mapToInt(MappingRevision::getVersion)
+                .max()
+                .orElse(0) + 1;
     }
 }

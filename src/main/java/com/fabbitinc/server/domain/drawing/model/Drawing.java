@@ -60,25 +60,27 @@ public class Drawing extends AbstractCreatedEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
-    public Drawing(String drawingNumber, String name) {
+    private Drawing(String drawingNumber, String name) {
         super(UuidV7Generator.next());
         this.drawingNumber = normalizeNullable(drawingNumber);
         this.name = requireName(name);
+        this.status = DrawingStatus.DRAFT;
+        this.conversionStatus = null;
     }
 
     public static Drawing create(String drawingNumber, String name) {
         return new Drawing(drawingNumber, name);
     }
 
-    public void setOriginalFileKey(String originalFileKey) {
+    public void changeOriginalFileKey(String originalFileKey) {
         this.originalFileKey = normalizeNullable(originalFileKey);
     }
 
-    public void setPdfKey(String pdfKey) {
+    public void changePdfKey(String pdfKey) {
         this.pdfKey = normalizeNullable(pdfKey);
     }
 
-    public void setThumbnailKey(String thumbnailKey) {
+    public void changeThumbnailKey(String thumbnailKey) {
         this.thumbnailKey = normalizeNullable(thumbnailKey);
     }
 

@@ -1,10 +1,12 @@
 package com.fabbitinc.server.application.label.query;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
-import com.fabbitinc.server.application.label.dto.response.LabelListResponse;
-import com.fabbitinc.server.application.label.dto.response.LabelLookupItemResponse;
-import com.fabbitinc.server.application.label.dto.response.LabelLookupResponse;
-import com.fabbitinc.server.application.label.dto.response.LabelResponse;
+import com.fabbitinc.server.application.label.query.condition.LabelListCondition;
+import com.fabbitinc.server.application.label.query.condition.LabelLookupCondition;
+import com.fabbitinc.server.application.label.query.result.LabelListResult;
+import com.fabbitinc.server.application.label.query.result.LabelLookupItemResult;
+import com.fabbitinc.server.application.label.query.result.LabelLookupResult;
+import com.fabbitinc.server.application.label.query.result.LabelResult;
 import com.fabbitinc.server.domain.label.model.Label;
 import com.fabbitinc.server.domain.label.repository.LabelRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,42 +18,39 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class LabelQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final LabelRepository labelRepository;
 
-    @Transactional(readOnly = true)
-    public LabelListResponse listLabels() {
+    public LabelListResult list(LabelListCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        List<LabelResponse> items = labelRepository.findAllByOrderByNameAsc().stream()
-                .map(this::toLabelResponse)
+        List<LabelResult> items = labelRepository.findAllByOrderByNameAsc().stream()
+                .map(this::toLabelResult)
                 .toList();
-        return new LabelListResponse(items.size(), items);
+        return new LabelListResult(items.size(), items);
     }
 
-    @Transactional(readOnly = true)
-    public LabelLookupResponse lookupLabels(String search,
-            int limit
-    ) {
+    public LabelLookupResult lookup(LabelLookupCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        String normalizedSearch = normalizeSearch(search);
+        String normalizedSearch = normalizeSearch(condition.search());
         String searchKeyword = normalizedSearch == null ? "" : normalizedSearch;
-        List<LabelLookupItemResponse> items = labelRepository.lookupLabels(
+        List<LabelLookupItemResult> items = labelRepository.lookupLabels(
                         searchKeyword,
-                        PageRequest.of(0, limit)
+                        PageRequest.of(0, condition.limit())
                 ).stream()
-                .map(label -> new LabelLookupItemResponse(
+                .map(label -> new LabelLookupItemResult(
                         label.getId(),
                         label.getName(),
                         label.getColor()
                 ))
                 .toList();
-        return new LabelLookupResponse(items);
+        return new LabelLookupResult(items);
     }
 
-    private LabelResponse toLabelResponse(Label label) {
-        return new LabelResponse(
+    private LabelResult toLabelResult(Label label) {
+        return new LabelResult(
                 label.getId(),
                 label.getName(),
                 label.getDescription(),

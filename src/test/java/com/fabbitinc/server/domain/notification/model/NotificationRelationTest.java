@@ -1,7 +1,6 @@
 package com.fabbitinc.server.domain.notification.model;
 
 import com.fabbitinc.server.domain.common.exception.DomainException;
-import com.fabbitinc.server.domain.user.model.User;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -14,17 +13,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class NotificationRelationTest {
 
     @Test
-    void notification_엔티티_입력시_user_actor_FK와_연관을_동기화한다() {
-        User user = new User("receiver@example.com", "hashed", "Receiver");
-        User actor = new User("actor@example.com", "hashed", "Actor");
+    void notification_생성시_userId_actorId와_payload를_보관한다() {
+        UUID userId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
 
-        Notification notification = Notification.create(user, NotificationType.MENTION, actor, "{\"k\":\"v\"}");
+        Notification notification = Notification.create(userId, NotificationType.MENTION, actorId, "{\"k\":\"v\"}");
 
-        assertEquals(user, notification.getUser());
-        assertEquals(user.getId(), notification.getUserId());
-        assertEquals(actor, notification.getActor());
-        assertEquals(actor.getId(), notification.getActorId());
+        assertEquals(userId, notification.getUserId());
+        assertEquals(actorId, notification.getActorId());
         assertEquals(NotificationType.MENTION, notification.getType());
+        assertEquals("{\"k\":\"v\"}", notification.getPayload());
     }
 
     @Test
@@ -53,10 +51,8 @@ class NotificationRelationTest {
 
     @Test
     void notification_수신자가_null이면_예외를_던진다() {
-        User actor = new User("actor@example.com", "hashed", "Actor");
-
         DomainException ex = assertThrows(DomainException.class, () ->
-                Notification.create(null, NotificationType.MENTION, actor, "{}")
+                Notification.create(null, NotificationType.MENTION, UUID.randomUUID(), "{}")
         );
 
         assertEquals(Notification.CODE_NOTIFICATION_USER_REQUIRED, ex.getDomainCode());
@@ -64,10 +60,8 @@ class NotificationRelationTest {
 
     @Test
     void notification_행위자가_null이면_예외를_던진다() {
-        User user = new User("receiver@example.com", "hashed", "Receiver");
-
         DomainException ex = assertThrows(DomainException.class, () ->
-                Notification.create(user, NotificationType.MENTION, null, "{}")
+                Notification.create(UUID.randomUUID(), NotificationType.MENTION, null, "{}")
         );
 
         assertEquals(Notification.CODE_NOTIFICATION_ACTOR_REQUIRED, ex.getDomainCode());
@@ -101,5 +95,22 @@ class NotificationRelationTest {
         notification.markRead(readAt);
 
         assertEquals(readAt, notification.getReadAt());
+    }
+
+    @Test
+    void notification_markRead는_이미_읽은알림이면_noop이다() {
+        Notification notification = Notification.create(
+                UUID.randomUUID(),
+                NotificationType.MENTION,
+                UUID.randomUUID(),
+                "{}"
+        );
+        Instant firstReadAt = Instant.parse("2026-03-01T00:00:00Z");
+        Instant secondReadAt = Instant.parse("2026-03-02T00:00:00Z");
+
+        notification.markRead(firstReadAt);
+        notification.markRead(secondReadAt);
+
+        assertEquals(firstReadAt, notification.getReadAt());
     }
 }

@@ -3,33 +3,35 @@ package com.fabbitinc.server.application.issue.query;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import com.fabbitinc.server.application.activity.model.ActivityAction;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
-import com.fabbitinc.server.application.activity.dto.response.ActivityAction;
 import com.fabbitinc.server.application.issue.support.IssueTargetType;
-import com.fabbitinc.server.application.file.dto.response.FileItemResponse;
-import com.fabbitinc.server.application.issue.dto.response.ChangeRequestListResponse;
-import com.fabbitinc.server.application.issue.dto.response.ChangeRequestLookupItemResponse;
-import com.fabbitinc.server.application.issue.dto.response.ChangeRequestLookupResponse;
-import com.fabbitinc.server.application.issue.dto.response.ChangeRequestResponse;
-import com.fabbitinc.server.application.issue.dto.response.ChangeRequestSummaryResponse;
-import com.fabbitinc.server.application.issue.dto.response.IssueListResponse;
-import com.fabbitinc.server.application.issue.dto.response.IssueLookupItemResponse;
-import com.fabbitinc.server.application.issue.dto.response.IssueLookupResponse;
-import com.fabbitinc.server.application.issue.dto.response.IssueResponse;
-import com.fabbitinc.server.application.issue.dto.response.IssueSummaryResponse;
-import com.fabbitinc.server.application.issue.dto.response.IssueUserSummaryResponse;
-import com.fabbitinc.server.application.issue.dto.response.LabelBadgeResponse;
-import com.fabbitinc.server.application.issue.dto.response.LinkedChangeRequestBadgeResponse;
-import com.fabbitinc.server.application.issue.dto.response.LinkedIssueBadgeResponse;
-import com.fabbitinc.server.application.issue.dto.response.PartBadgeResponse;
-import com.fabbitinc.server.application.issue.dto.response.ReviewerSummaryResponse;
-import com.fabbitinc.server.application.issue.dto.response.TeamBadgeResponse;
-import com.fabbitinc.server.application.issue.dto.response.TimelineItemResponse;
-import com.fabbitinc.server.application.issue.dto.response.TimelineItemType;
-import com.fabbitinc.server.application.issue.dto.response.TimelineResponse;
+import com.fabbitinc.server.application.issue.query.condition.ChangeRequestDetailCondition;
+import com.fabbitinc.server.application.issue.query.condition.ChangeRequestListCondition;
+import com.fabbitinc.server.application.issue.query.condition.ChangeRequestLookupCondition;
+import com.fabbitinc.server.application.issue.query.condition.IssueDetailCondition;
+import com.fabbitinc.server.application.issue.query.condition.IssueListCondition;
+import com.fabbitinc.server.application.issue.query.condition.IssueLookupCondition;
+import com.fabbitinc.server.application.issue.query.condition.IssueTimelineCondition;
+import com.fabbitinc.server.application.issue.query.result.ChangeRequestDetailResult;
+import com.fabbitinc.server.application.issue.query.result.ChangeRequestListResult;
+import com.fabbitinc.server.application.issue.query.result.ChangeRequestLookupResult;
+import com.fabbitinc.server.application.issue.query.result.IssueDetailResult;
+import com.fabbitinc.server.application.issue.query.result.IssueFileItemResult;
+import com.fabbitinc.server.application.issue.query.result.IssueListResult;
+import com.fabbitinc.server.application.issue.query.result.IssueLookupResult;
+import com.fabbitinc.server.application.issue.query.result.IssueTimelineResult;
+import com.fabbitinc.server.application.issue.query.result.IssueUserSummaryResult;
+import com.fabbitinc.server.application.issue.query.result.LabelBadgeResult;
+import com.fabbitinc.server.application.issue.query.result.LinkedChangeRequestBadgeResult;
+import com.fabbitinc.server.application.issue.query.result.LinkedIssueBadgeResult;
+import com.fabbitinc.server.application.issue.query.result.PartBadgeResult;
+import com.fabbitinc.server.application.issue.query.result.ReviewerSummaryResult;
+import com.fabbitinc.server.application.issue.query.result.TeamBadgeResult;
+import com.fabbitinc.server.application.issue.query.result.TimelineItemTypeResult;
 import com.fabbitinc.server.domain.activity.model.Activity;
 import com.fabbitinc.server.domain.activity.model.ActivityTargetType;
 import com.fabbitinc.server.domain.activity.repository.ActivityRepository;
@@ -88,6 +90,7 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class IssueQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
@@ -111,20 +114,17 @@ public class IssueQuery {
     private final ObjectMapper objectMapper;
     private final EntityManager entityManager;
 
-    @Transactional(readOnly = true)
-    public IssueLookupResponse lookupIssues(String search,
-            IssueType type,
-            int limit
-    ) {
+    public IssueLookupResult lookupIssues(IssueLookupCondition condition) {
         currentAuthProvider.getCurrentAuth();
+        IssueType requestedType = parseIssueType(condition.type());
 
         List<Issue> source = issueRepository.findAll(Sort.by(Sort.Direction.DESC, "number"));
 
-        List<IssueLookupItemResponse> items = source.stream()
-                .filter(issue -> type == null || issue.getType() == type)
-                .filter(issue -> matchesLookupSearch(issue.getNumber(), issue.getTitle(), search))
-                .limit(limit)
-                .map(issue -> new IssueLookupItemResponse(
+        List<IssueLookupResult.Item> items = source.stream()
+                .filter(issue -> requestedType == null || issue.getType() == requestedType)
+                .filter(issue -> matchesLookupSearch(issue.getNumber(), issue.getTitle(), condition.search()))
+                .limit(condition.limit())
+                .map(issue -> new IssueLookupResult.Item(
                         issue.getId(),
                         issue.getNumber(),
                         issue.getTitle(),
@@ -133,20 +133,16 @@ public class IssueQuery {
                 ))
                 .toList();
 
-        return new IssueLookupResponse(items);
+        return new IssueLookupResult(items);
     }
 
-    @Transactional(readOnly = true)
-    public IssueListResponse listIssues(String search,
-            IssueState state,
-            int offset,
-            int limit
-    ) {
+    public IssueListResult listIssues(IssueListCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        String normalizedSearch = normalizeSearch(search);
+        String normalizedSearch = normalizeSearch(condition.search());
+        IssueState requestedState = parseIssueState(condition.state());
         PathBuilder<Issue> issuePath = new PathBuilder<>(Issue.class, "issue");
-        BooleanBuilder predicate = buildIssueListPredicate(issuePath, IssueType.ISSUE, state, normalizedSearch);
+        BooleanBuilder predicate = buildIssueListPredicate(issuePath, IssueType.ISSUE, requestedState, normalizedSearch);
 
         Long totalCount = queryFactory()
                 .select(issuePath.get("id", UUID.class).count())
@@ -159,46 +155,47 @@ public class IssueQuery {
                 .selectFrom(issuePath)
                 .where(predicate)
                 .orderBy(issuePath.getDateTime("createdAt", Instant.class).desc())
-                .offset(offset)
-                .limit(limit)
+                .offset(condition.offset())
+                .limit(condition.limit())
                 .fetch();
         Enrichment enrichment = enrich(paged);
 
-        List<IssueSummaryResponse> items = paged.stream()
+        List<IssueListResult.Item> items = paged.stream()
                 .map(issue -> toIssueSummary(issue, enrichment))
                 .toList();
 
-        return new IssueListResponse(
+        return new IssueListResult(
                 issueRepository.countByTypeAndState(IssueType.ISSUE, IssueState.OPEN),
                 issueRepository.countByTypeAndState(IssueType.ISSUE, IssueState.CLOSED),
                 total,
-                offset,
-                limit,
+                condition.offset(),
+                condition.limit(),
                 items
         );
     }
 
-    @Transactional(readOnly = true)
-    public IssueResponse getIssue(int issueNumber) {
+    public IssueDetailResult getIssue(IssueDetailCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
+        int issueNumber = condition.issueNumber();
         Issue issue = issueRepository.findByNumberAndType(issueNumber, IssueType.ISSUE)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "Issue #" + issueNumber + "을(를) 찾을 수 없습니다"));
 
         Enrichment enrichment = enrich(List.of(issue));
-        return toIssueResponse(issue, enrichment);
+        return toIssueDetail(issue, enrichment);
     }
 
-    @Transactional(readOnly = true)
-    public ChangeRequestLookupResponse lookupChangeRequests(String search,
-            int limit
-    ) {
+    public ChangeRequestLookupResult lookupChangeRequests(ChangeRequestLookupCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        List<ChangeRequestLookupItemResponse> items = changeRequestRepository.findAllByOrderByNumberDesc().stream()
-                .filter(changeRequest -> matchesLookupSearch(changeRequest.getNumber(), changeRequest.getTitle(), search))
-                .limit(limit)
-                .map(changeRequest -> new ChangeRequestLookupItemResponse(
+        List<ChangeRequestLookupResult.Item> items = changeRequestRepository.findAllByOrderByNumberDesc().stream()
+                .filter(changeRequest -> matchesLookupSearch(
+                        changeRequest.getNumber(),
+                        changeRequest.getTitle(),
+                        condition.search()
+                ))
+                .limit(condition.limit())
+                .map(changeRequest -> new ChangeRequestLookupResult.Item(
                         changeRequest.getId(),
                         changeRequest.getNumber(),
                         changeRequest.getTitle(),
@@ -207,21 +204,22 @@ public class IssueQuery {
                 ))
                 .toList();
 
-        return new ChangeRequestLookupResponse(items);
+        return new ChangeRequestLookupResult(items);
     }
 
-    @Transactional(readOnly = true)
-    public ChangeRequestListResponse listChangeRequests(String search,
-            IssueState state,
-            CrState crState,
-            int offset,
-            int limit
-    ) {
+    public ChangeRequestListResult listChangeRequests(ChangeRequestListCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        String normalizedSearch = normalizeSearch(search);
+        String normalizedSearch = normalizeSearch(condition.search());
+        IssueState requestedState = parseIssueState(condition.state());
+        CrState requestedCrState = parseCrState(condition.crState());
         PathBuilder<ChangeRequest> changeRequestPath = new PathBuilder<>(ChangeRequest.class, "changeRequest");
-        BooleanBuilder predicate = buildChangeRequestListPredicate(changeRequestPath, state, crState, normalizedSearch);
+        BooleanBuilder predicate = buildChangeRequestListPredicate(
+                changeRequestPath,
+                requestedState,
+                requestedCrState,
+                normalizedSearch
+        );
 
         Long totalCount = queryFactory()
                 .select(changeRequestPath.get("id", UUID.class).count())
@@ -234,30 +232,30 @@ public class IssueQuery {
                 .selectFrom(changeRequestPath)
                 .where(predicate)
                 .orderBy(changeRequestPath.getDateTime("createdAt", Instant.class).desc())
-                .offset(offset)
-                .limit(limit)
+                .offset(condition.offset())
+                .limit(condition.limit())
                 .fetch();
         List<Issue> asIssues = paged.stream().map(item -> (Issue) item).toList();
         Enrichment enrichment = enrich(asIssues);
 
-        List<ChangeRequestSummaryResponse> items = paged.stream()
+        List<ChangeRequestListResult.Item> items = paged.stream()
                 .map(changeRequest -> toChangeRequestSummary(changeRequest, enrichment))
                 .toList();
 
-        return new ChangeRequestListResponse(
+        return new ChangeRequestListResult(
                 issueRepository.countByTypeAndState(IssueType.CHANGE_REQUEST, IssueState.OPEN),
                 issueRepository.countByTypeAndState(IssueType.CHANGE_REQUEST, IssueState.CLOSED),
                 total,
-                offset,
-                limit,
+                condition.offset(),
+                condition.limit(),
                 items
         );
     }
 
-    @Transactional(readOnly = true)
-    public ChangeRequestResponse getChangeRequest(int issueNumber) {
+    public ChangeRequestDetailResult getChangeRequest(ChangeRequestDetailCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
+        int issueNumber = condition.issueNumber();
         ChangeRequest changeRequest = changeRequestRepository.findByNumber(issueNumber)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
@@ -265,17 +263,14 @@ public class IssueQuery {
                 ));
 
         Enrichment enrichment = enrich(List.of(changeRequest));
-        return toChangeRequestResponse(changeRequest, enrichment);
+        return toChangeRequestDetail(changeRequest, enrichment);
     }
 
-    @Transactional(readOnly = true)
-    public TimelineResponse getIssueTimeline(int issueNumber,
-            IssueTargetType targetType
-    ) {
+    public IssueTimelineResult getTimeline(IssueTimelineCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        IssueType type = toIssueType(targetType);
+        IssueType type = toIssueType(condition.targetType());
 
-        Issue issue = issueRepository.findByNumberAndType(issueNumber, type)
+        Issue issue = issueRepository.findByNumberAndType(condition.issueNumber(), type)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "이슈를 찾을 수 없습니다"));
 
         List<IssueComment> comments = issueCommentRepository.findByIssueIdOrderByCreatedAtAsc(issue.getId());
@@ -284,10 +279,10 @@ public class IssueQuery {
                 issue.getId()
         );
 
-        List<TimelineItemResponse> merged = new ArrayList<>();
+        List<IssueTimelineResult.Item> merged = new ArrayList<>();
         for (IssueComment comment : comments) {
-            merged.add(new TimelineItemResponse(
-                    TimelineItemType.COMMENT,
+            merged.add(new IssueTimelineResult.Item(
+                    TimelineItemTypeResult.COMMENT,
                     comment.getId(),
                     null,
                     null,
@@ -302,8 +297,8 @@ public class IssueQuery {
         }
         for (Activity activity : activities) {
             ActivityAction action = ActivityAction.from(activity.getAction());
-            merged.add(new TimelineItemResponse(
-                    TimelineItemType.ACTIVITY,
+            merged.add(new IssueTimelineResult.Item(
+                    TimelineItemTypeResult.ACTIVITY,
                     activity.getId(),
                     action,
                     action.scope(),
@@ -316,12 +311,12 @@ public class IssueQuery {
                     null
             ));
         }
-        merged.sort(java.util.Comparator.comparing(TimelineItemResponse::createdAt));
+        merged.sort(java.util.Comparator.comparing(IssueTimelineResult.Item::createdAt));
 
         Set<UUID> userIds = collectTimelineUserIds(comments, activities);
-        Map<String, IssueUserSummaryResponse> users = toUserSummaryMap(userIds);
+        Map<String, IssueUserSummaryResult> users = toUserSummaryMap(userIds);
 
-        return new TimelineResponse(merged, users);
+        return new IssueTimelineResult(merged, users);
     }
 
     private Enrichment enrich(List<Issue> issues) {
@@ -417,8 +412,8 @@ public class IssueQuery {
         );
     }
 
-    private IssueSummaryResponse toIssueSummary(Issue issue, Enrichment enrichment) {
-        return new IssueSummaryResponse(
+    private IssueListResult.Item toIssueSummary(Issue issue, Enrichment enrichment) {
+        return new IssueListResult.Item(
                 issue.getId(),
                 issue.getNumber(),
                 issue.getType(),
@@ -437,8 +432,8 @@ public class IssueQuery {
         );
     }
 
-    private ChangeRequestSummaryResponse toChangeRequestSummary(ChangeRequest changeRequest, Enrichment enrichment) {
-        return new ChangeRequestSummaryResponse(
+    private ChangeRequestListResult.Item toChangeRequestSummary(ChangeRequest changeRequest, Enrichment enrichment) {
+        return new ChangeRequestListResult.Item(
                 changeRequest.getId(),
                 changeRequest.getNumber(),
                 changeRequest.getType(),
@@ -462,8 +457,8 @@ public class IssueQuery {
         );
     }
 
-    private IssueResponse toIssueResponse(Issue issue, Enrichment enrichment) {
-        return new IssueResponse(
+    private IssueDetailResult toIssueDetail(Issue issue, Enrichment enrichment) {
+        return new IssueDetailResult(
                 issue.getId(),
                 issue.getNumber(),
                 issue.getType(),
@@ -485,8 +480,8 @@ public class IssueQuery {
         );
     }
 
-    private ChangeRequestResponse toChangeRequestResponse(ChangeRequest changeRequest, Enrichment enrichment) {
-        return new ChangeRequestResponse(
+    private ChangeRequestDetailResult toChangeRequestDetail(ChangeRequest changeRequest, Enrichment enrichment) {
+        return new ChangeRequestDetailResult(
                 changeRequest.getId(),
                 changeRequest.getNumber(),
                 changeRequest.getType(),
@@ -513,8 +508,8 @@ public class IssueQuery {
         );
     }
 
-    private List<LabelBadgeResponse> labelsOf(UUID issueId, Enrichment enrichment) {
-        List<LabelBadgeResponse> result = new ArrayList<>();
+    private List<LabelBadgeResult> labelsOf(UUID issueId, Enrichment enrichment) {
+        List<LabelBadgeResult> result = new ArrayList<>();
         for (IssueLabel link : enrichment.labelLinks()) {
             if (!issueId.equals(link.getIssueId())) {
                 continue;
@@ -523,13 +518,13 @@ public class IssueQuery {
             if (label == null) {
                 continue;
             }
-            result.add(new LabelBadgeResponse(label.getId(), label.getName(), label.getColor()));
+            result.add(new LabelBadgeResult(label.getId(), label.getName(), label.getColor()));
         }
         return result;
     }
 
-    private List<IssueUserSummaryResponse> assigneesOf(UUID issueId, Enrichment enrichment) {
-        List<IssueUserSummaryResponse> result = new ArrayList<>();
+    private List<IssueUserSummaryResult> assigneesOf(UUID issueId, Enrichment enrichment) {
+        List<IssueUserSummaryResult> result = new ArrayList<>();
         for (IssueAssignee link : enrichment.assigneeLinks()) {
             if (!issueId.equals(link.getIssueId())) {
                 continue;
@@ -539,43 +534,43 @@ public class IssueQuery {
         return result.stream().filter(java.util.Objects::nonNull).toList();
     }
 
-    private List<TeamBadgeResponse> assignedTeamsOf(UUID issueId, Enrichment enrichment) {
-        List<TeamBadgeResponse> result = new ArrayList<>();
+    private List<TeamBadgeResult> assignedTeamsOf(UUID issueId, Enrichment enrichment) {
+        List<TeamBadgeResult> result = new ArrayList<>();
         for (IssueTeamAssignee link : enrichment.teamAssigneeLinks()) {
             if (!issueId.equals(link.getIssueId())) {
                 continue;
             }
             Team team = enrichment.teamMap().get(link.getTeamId());
             if (team != null) {
-                result.add(new TeamBadgeResponse(team.getId(), team.getName()));
+                result.add(new TeamBadgeResult(team.getId(), team.getName()));
             }
         }
         return result;
     }
 
-    private List<PartBadgeResponse> partsOf(UUID issueId, Enrichment enrichment) {
-        List<PartBadgeResponse> result = new ArrayList<>();
+    private List<PartBadgeResult> partsOf(UUID issueId, Enrichment enrichment) {
+        List<PartBadgeResult> result = new ArrayList<>();
         for (IssuePart link : enrichment.partLinks()) {
             if (!issueId.equals(link.getIssueId())) {
                 continue;
             }
             Part part = enrichment.partMap().get(link.getPartId());
             if (part != null) {
-                result.add(new PartBadgeResponse(part.getId(), part.getPartNumber(), part.getName()));
+                result.add(new PartBadgeResult(part.getId(), part.getPartNumber(), part.getName()));
             }
         }
         return result;
     }
 
-    private List<FileItemResponse> filesOf(UUID issueId, Enrichment enrichment) {
+    private List<IssueFileItemResult> filesOf(UUID issueId, Enrichment enrichment) {
         return enrichment.files().stream()
                 .filter(file -> issueId.equals(file.getOwnerId()))
                 .map(this::toFileItem)
                 .toList();
     }
 
-    private List<ReviewerSummaryResponse> reviewersOf(UUID changeRequestId, Enrichment enrichment) {
-        List<ReviewerSummaryResponse> result = new ArrayList<>();
+    private List<ReviewerSummaryResult> reviewersOf(UUID changeRequestId, Enrichment enrichment) {
+        List<ReviewerSummaryResult> result = new ArrayList<>();
         for (ChangeRequestReviewer reviewer : enrichment.reviewerLinks()) {
             if (!changeRequestId.equals(reviewer.getChangeRequestId())) {
                 continue;
@@ -584,7 +579,7 @@ public class IssueQuery {
             if (user == null) {
                 continue;
             }
-            result.add(new ReviewerSummaryResponse(
+            result.add(new ReviewerSummaryResult(
                     user.getId(),
                     user.getFullName(),
                     user.getEmail(),
@@ -597,40 +592,40 @@ public class IssueQuery {
         return result;
     }
 
-    private List<TeamBadgeResponse> reviewerTeamsOf(UUID changeRequestId, Enrichment enrichment) {
-        List<TeamBadgeResponse> result = new ArrayList<>();
+    private List<TeamBadgeResult> reviewerTeamsOf(UUID changeRequestId, Enrichment enrichment) {
+        List<TeamBadgeResult> result = new ArrayList<>();
         for (ChangeRequestTeamReviewer reviewer : enrichment.teamReviewerLinks()) {
             if (!changeRequestId.equals(reviewer.getChangeRequestId())) {
                 continue;
             }
             Team team = enrichment.teamMap().get(reviewer.getTeamId());
             if (team != null) {
-                result.add(new TeamBadgeResponse(team.getId(), team.getName()));
+                result.add(new TeamBadgeResult(team.getId(), team.getName()));
             }
         }
         return result;
     }
 
-    private List<LinkedIssueBadgeResponse> linkedIssuesOf(UUID changeRequestId, Enrichment enrichment) {
-        List<LinkedIssueBadgeResponse> result = new ArrayList<>();
+    private List<LinkedIssueBadgeResult> linkedIssuesOf(UUID changeRequestId, Enrichment enrichment) {
+        List<LinkedIssueBadgeResult> result = new ArrayList<>();
         for (ChangeRequestIssue link : enrichment.linksByCrId().getOrDefault(changeRequestId, List.of())) {
             Issue issue = enrichment.linkedIssueMap().get(link.getIssueId());
             if (issue == null) {
                 continue;
             }
-            result.add(new LinkedIssueBadgeResponse(issue.getId(), issue.getNumber(), issue.getTitle(), issue.getState()));
+            result.add(new LinkedIssueBadgeResult(issue.getId(), issue.getNumber(), issue.getTitle(), issue.getState()));
         }
         return result;
     }
 
-    private List<LinkedChangeRequestBadgeResponse> linkedChangesOf(UUID issueId, Enrichment enrichment) {
-        List<LinkedChangeRequestBadgeResponse> result = new ArrayList<>();
+    private List<LinkedChangeRequestBadgeResult> linkedChangesOf(UUID issueId, Enrichment enrichment) {
+        List<LinkedChangeRequestBadgeResult> result = new ArrayList<>();
         for (ChangeRequestIssue link : enrichment.linksByIssueId().getOrDefault(issueId, List.of())) {
             ChangeRequest changeRequest = enrichment.linkedCrMap().get(link.getChangeRequestId());
             if (changeRequest == null) {
                 continue;
             }
-            result.add(new LinkedChangeRequestBadgeResponse(
+            result.add(new LinkedChangeRequestBadgeResult(
                     changeRequest.getId(),
                     changeRequest.getNumber(),
                     changeRequest.getTitle(),
@@ -692,23 +687,23 @@ public class IssueQuery {
         }
     }
 
-    private Map<String, IssueUserSummaryResponse> toUserSummaryMap(Set<UUID> userIds) {
+    private Map<String, IssueUserSummaryResult> toUserSummaryMap(Set<UUID> userIds) {
         if (userIds.isEmpty()) {
             return Map.of();
         }
 
-        Map<String, IssueUserSummaryResponse> map = new LinkedHashMap<>();
+        Map<String, IssueUserSummaryResult> map = new LinkedHashMap<>();
         for (User user : userRepository.findAllByIdInOrderByFullName(userIds)) {
             map.put(user.getId().toString(), toUserSummary(user));
         }
         return map;
     }
 
-    private IssueUserSummaryResponse toUserSummary(User user) {
+    private IssueUserSummaryResult toUserSummary(User user) {
         if (user == null) {
             return null;
         }
-        return new IssueUserSummaryResponse(
+        return new IssueUserSummaryResult(
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
@@ -717,8 +712,8 @@ public class IssueQuery {
         );
     }
 
-    private FileItemResponse toFileItem(File file) {
-        return new FileItemResponse(
+    private IssueFileItemResult toFileItem(File file) {
+        return new IssueFileItemResult(
                 file.getId(),
                 file.getOriginalName(),
                 file.getContentType(),
@@ -854,6 +849,33 @@ public class IssueQuery {
             return true;
         }
         return String.valueOf(number).contains(search);
+    }
+
+    private IssueType parseIssueType(String rawType) {
+        return parseEnum(rawType, IssueType.class, "type");
+    }
+
+    private IssueState parseIssueState(String rawState) {
+        return parseEnum(rawState, IssueState.class, "state");
+    }
+
+    private CrState parseCrState(String rawCrState) {
+        return parseEnum(rawCrState, CrState.class, "cr_state");
+    }
+
+    private <T extends Enum<T>> T parseEnum(String rawValue, Class<T> enumType, String fieldName) {
+        String normalized = normalizeSearch(rawValue);
+        if (normalized == null) {
+            return null;
+        }
+        try {
+            return Enum.valueOf(enumType, normalized.toUpperCase(java.util.Locale.ROOT).replace('-', '_'));
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(
+                    ErrorCode.VALIDATION_ERROR,
+                    fieldName + " 값이 올바르지 않습니다: " + rawValue
+            );
+        }
     }
 
     private JsonNode parseJson(String raw) {

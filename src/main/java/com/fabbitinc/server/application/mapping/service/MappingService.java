@@ -83,11 +83,9 @@ public class MappingService {
         SpreadsheetParserSupport.ParsedSheet parsed = loadHeadersAndRows(file, request.sheetName(), 0);
         MappingScope scope = determineScope(normalizedMapping);
 
-        MappingRecord record = new MappingRecord(request.name(), scope);
-        MappingRevision revision = MappingRevision.create(
-                record,
-                file,
-                1,
+        MappingRecord record = MappingRecord.create(request.name(), scope);
+        MappingRevision revision = record.createRevision(
+                file.getId(),
                 request.sheetName(),
                 mappingResponseMapper.writeHeaders(parsed.headers()),
                 mappingResponseMapper.writeMapping(normalizedMapping)
@@ -107,9 +105,6 @@ public class MappingService {
             throw new AppException(ErrorCode.PRECONDITION_FAILED, "비활성화된 매핑은 수정할 수 없습니다");
         }
 
-        MappingRevision latestRevision = mappingRevisionRepository.findFirstByRecordIdOrderByVersionDesc(mappingId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "매핑 리비전을 찾을 수 없습니다"));
-
         if (request.name() != null && !request.name().isBlank() && !request.name().equals(record.getName())) {
             ensureNameNotExists(request.name(), record.getId());
             record.rename(request.name());
@@ -118,12 +113,10 @@ public class MappingService {
         File file = getUploadedFileOrThrow(request.fileId());
         SpreadsheetParserSupport.ParsedSheet parsed = loadHeadersAndRows(file, request.sheetName(), 0);
 
-        record.updateScope(determineScope(normalizedMapping));
+        record.changeScope(determineScope(normalizedMapping));
 
-        MappingRevision revision = MappingRevision.create(
-                record,
-                file,
-                latestRevision.getVersion() + 1,
+        MappingRevision revision = record.createRevision(
+                file.getId(),
                 request.sheetName(),
                 mappingResponseMapper.writeHeaders(parsed.headers()),
                 mappingResponseMapper.writeMapping(normalizedMapping)

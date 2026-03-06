@@ -53,16 +53,18 @@ public class PartRevision extends AbstractCreatedEntity {
     @Column(name = "synthesis_job_id")
     private UUID synthesisJobId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "synthesis_job_id", insertable = false, updatable = false)
-    private SynthesisJob synthesisJob;
+    private SynthesisJob _synthesisJobRelation;
 
     @Column(name = "drawing_id")
     private UUID drawingId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "drawing_id", insertable = false, updatable = false)
-    private Drawing drawing;
+    private Drawing _drawingRelation;
 
     @Column(name = "part_number", nullable = false, length = 100)
     private String partNumber;
@@ -106,7 +108,7 @@ public class PartRevision extends AbstractCreatedEntity {
         this.part = requiredPart;
         this.synthesisJobId = synthesisJobId;
         this.drawingId = requiredPart.getDrawingId();
-        this.drawing = requiredPart.getDrawing();
+        this._drawingRelation = null;
         this.partNumber = requiredPart.getPartNumber();
         this.name = requiredPart.getName();
         this.revision = requiredPart.getRevision();
@@ -124,15 +126,6 @@ public class PartRevision extends AbstractCreatedEntity {
 
     public static PartRevision capture(Part part, UUID synthesisJobId) {
         return new PartRevision(part, synthesisJobId);
-    }
-
-    public static PartRevision capture(Part part, SynthesisJob synthesisJob) {
-        if (synthesisJob == null) {
-            throw new DomainException(CODE_PART_REVISION_SYNTHESIS_JOB_REQUIRED, "합성 작업 ID는 필수입니다");
-        }
-        PartRevision snapshot = new PartRevision(part, synthesisJob.getId());
-        snapshot.synthesisJob = synthesisJob;
-        return snapshot;
     }
 
     private Part requirePart(Part value) {

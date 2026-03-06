@@ -52,18 +52,20 @@ public class Label extends AbstractAuditableEntity {
     @Column(name = "created_by")
     private UUID createdBy;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
-    private User createdByUser;
+    private User _createdByRelation;
 
     @Column(name = "updated_by")
     private UUID updatedBy;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by", insertable = false, updatable = false)
-    private User updatedByUser;
+    private User _updatedByRelation;
 
-    public Label(String name, String description, String color, UUID actorId) {
+    private Label(String name, String description, String color, UUID actorId) {
         super(UuidV7Generator.next());
         this.name = requireName(name);
         this.description = normalizeDescription(description);
@@ -77,89 +79,28 @@ public class Label extends AbstractAuditableEntity {
         return new Label(name, description, color, actorId);
     }
 
-    public static Label create(String name, String description, String color, User actor) {
-        if (actor == null) {
-            throw new DomainException(CODE_LABEL_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
-        }
-        Label label = new Label(name, description, color, actor.getId());
-        label.createdByUser = actor;
-        label.updatedByUser = actor;
-        return label;
-    }
-
     public void changeName(String name, UUID actorId) {
-        String requiredName = requireName(name);
         UUID requiredActorId = requireActorId(actorId);
-        this.name = requiredName;
-        this.updatedBy = requiredActorId;
-        if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
-            this.updatedByUser = null;
-        }
-    }
-
-    public void changeName(String name, User actor) {
-        if (actor == null) {
-            throw new DomainException(CODE_LABEL_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
-        }
         this.name = requireName(name);
-        this.updatedBy = actor.getId();
-        this.updatedByUser = actor;
+        touch(requiredActorId);
     }
 
     public void changeDescription(String description, UUID actorId) {
-        String normalizedDescription = normalizeDescription(description);
         UUID requiredActorId = requireActorId(actorId);
-        this.description = normalizedDescription;
-        this.updatedBy = requiredActorId;
-        if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
-            this.updatedByUser = null;
-        }
-    }
-
-    public void changeDescription(String description, User actor) {
-        if (actor == null) {
-            throw new DomainException(CODE_LABEL_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
-        }
         this.description = normalizeDescription(description);
-        this.updatedBy = actor.getId();
-        this.updatedByUser = actor;
+        touch(requiredActorId);
     }
 
     public void removeDescription(UUID actorId) {
         UUID requiredActorId = requireActorId(actorId);
         this.description = null;
-        this.updatedBy = requiredActorId;
-        if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
-            this.updatedByUser = null;
-        }
-    }
-
-    public void removeDescription(User actor) {
-        if (actor == null) {
-            throw new DomainException(CODE_LABEL_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
-        }
-        this.description = null;
-        this.updatedBy = actor.getId();
-        this.updatedByUser = actor;
+        touch(requiredActorId);
     }
 
     public void changeColor(String color, UUID actorId) {
-        String requiredColor = requireColor(color);
         UUID requiredActorId = requireActorId(actorId);
-        this.color = requiredColor;
-        this.updatedBy = requiredActorId;
-        if (updatedByUser != null && !this.updatedBy.equals(updatedByUser.getId())) {
-            this.updatedByUser = null;
-        }
-    }
-
-    public void changeColor(String color, User actor) {
-        if (actor == null) {
-            throw new DomainException(CODE_LABEL_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
-        }
         this.color = requireColor(color);
-        this.updatedBy = actor.getId();
-        this.updatedByUser = actor;
+        touch(requiredActorId);
     }
 
     private UUID requireActorId(UUID value) {
@@ -203,5 +144,10 @@ public class Label extends AbstractAuditableEntity {
             throw new DomainException(CODE_LABEL_COLOR_INVALID, "라벨 색상은 #RRGGBB 형식이어야 합니다");
         }
         return trimmed;
+    }
+
+    private void touch(UUID actorId) {
+        this.updatedBy = actorId;
+        this._updatedByRelation = null;
     }
 }

@@ -7,7 +7,7 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.issue.support.MentionExtractor;
 import com.fabbitinc.server.application.issue.support.TipTapValidator;
-import com.fabbitinc.server.application.activity.dto.response.ActivityAction;
+import com.fabbitinc.server.application.activity.model.ActivityAction;
 import com.fabbitinc.server.domain.activity.model.Activity;
 import com.fabbitinc.server.domain.activity.model.ActivityTargetType;
 import com.fabbitinc.server.domain.activity.repository.ActivityRepository;
@@ -130,7 +130,7 @@ public class IssueService {
         tipTapValidator.validateDocument(body);
         int nextNumber = issueRepository.findMaxNumber() + 1;
 
-        Issue issue = new Issue(nextNumber, title, toBodyString(body), actorId);
+        Issue issue = Issue.create(nextNumber, title, toBodyString(body), actorId);
         issueRepository.save(issue);
 
         registerMentions(issue, actorId, body, null, false);
@@ -141,7 +141,7 @@ public class IssueService {
         tipTapValidator.validateDocument(body);
         int nextNumber = issueRepository.findMaxNumber() + 1;
 
-        ChangeRequest changeRequest = new ChangeRequest(nextNumber, title, toBodyString(body), actorId);
+        ChangeRequest changeRequest = ChangeRequest.create(nextNumber, title, toBodyString(body), actorId);
         changeRequestRepository.save(changeRequest);
 
         registerMentions(changeRequest, actorId, body, null, false);
@@ -260,7 +260,8 @@ public class IssueService {
             issueAssigneeRepository.deleteByIssueIdAndUserIdIn(issueId, toRemove);
         }
         if (!toAdd.isEmpty()) {
-            List<IssueAssignee> adds = toAdd.stream().map(userId -> new IssueAssignee(issueId, userId)).toList();
+            Issue issue = getIssueOrThrow(issueId);
+            List<IssueAssignee> adds = toAdd.stream().map(issue::assignUser).toList();
             issueAssigneeRepository.saveAll(adds);
         }
 
@@ -294,7 +295,8 @@ public class IssueService {
             issueTeamAssigneeRepository.deleteByIssueIdAndTeamIdIn(issueId, toRemove);
         }
         if (!toAdd.isEmpty()) {
-            List<IssueTeamAssignee> adds = toAdd.stream().map(teamId -> new IssueTeamAssignee(issueId, teamId)).toList();
+            Issue issue = getIssueOrThrow(issueId);
+            List<IssueTeamAssignee> adds = toAdd.stream().map(issue::assignTeam).toList();
             issueTeamAssigneeRepository.saveAll(adds);
 
             Set<UUID> overlapUsers = teamMemberRepository.findByTeam_IdIn(toAdd).stream()
@@ -332,9 +334,8 @@ public class IssueService {
             changeRequestReviewerRepository.deleteByChangeRequestIdAndUserIdIn(changeRequestId, toRemove);
         }
         if (!toAdd.isEmpty()) {
-            List<ChangeRequestReviewer> adds = toAdd.stream()
-                    .map(userId -> new ChangeRequestReviewer(changeRequestId, userId))
-                    .toList();
+            ChangeRequest changeRequest = getChangeRequestOrThrow(changeRequestId);
+            List<ChangeRequestReviewer> adds = toAdd.stream().map(changeRequest::assignReviewer).toList();
             changeRequestReviewerRepository.saveAll(adds);
         }
 
@@ -368,9 +369,8 @@ public class IssueService {
             changeRequestTeamReviewerRepository.deleteByChangeRequestIdAndTeamIdIn(changeRequestId, toRemove);
         }
         if (!toAdd.isEmpty()) {
-            List<ChangeRequestTeamReviewer> adds = toAdd.stream()
-                    .map(teamId -> new ChangeRequestTeamReviewer(changeRequestId, teamId))
-                    .toList();
+            ChangeRequest changeRequest = getChangeRequestOrThrow(changeRequestId);
+            List<ChangeRequestTeamReviewer> adds = toAdd.stream().map(changeRequest::assignTeamReviewer).toList();
             changeRequestTeamReviewerRepository.saveAll(adds);
 
             Set<UUID> overlapUsers = teamMemberRepository.findByTeam_IdIn(toAdd).stream()
@@ -402,7 +402,8 @@ public class IssueService {
             issueLabelRepository.deleteByIssueIdAndLabelIdIn(issueId, toRemove);
         }
         if (!toAdd.isEmpty()) {
-            List<IssueLabel> adds = toAdd.stream().map(labelId -> new IssueLabel(issueId, labelId)).toList();
+            Issue issue = getIssueOrThrow(issueId);
+            List<IssueLabel> adds = toAdd.stream().map(issue::linkLabel).toList();
             issueLabelRepository.saveAll(adds);
         }
 
@@ -436,7 +437,8 @@ public class IssueService {
             issuePartRepository.deleteByIssueIdAndPartIdIn(issueId, toRemove);
         }
         if (!toAdd.isEmpty()) {
-            List<IssuePart> adds = toAdd.stream().map(partId -> new IssuePart(issueId, partId)).toList();
+            Issue issue = getIssueOrThrow(issueId);
+            List<IssuePart> adds = toAdd.stream().map(issue::linkPart).toList();
             issuePartRepository.saveAll(adds);
         }
 
@@ -472,7 +474,8 @@ public class IssueService {
             changeRequestIssueRepository.deleteByChangeRequestIdAndIssueIdIn(changeRequestId, toRemove);
         }
         if (!toAdd.isEmpty()) {
-            List<ChangeRequestIssue> adds = toAdd.stream().map(issueId -> new ChangeRequestIssue(changeRequestId, issueId)).toList();
+            ChangeRequest changeRequest = getChangeRequestOrThrow(changeRequestId);
+            List<ChangeRequestIssue> adds = toAdd.stream().map(changeRequest::linkIssue).toList();
             changeRequestIssueRepository.saveAll(adds);
         }
 
@@ -527,7 +530,10 @@ public class IssueService {
             changeRequestIssueRepository.deleteByIssueIdAndChangeRequestIdIn(issueId, toRemove);
         }
         if (!toAdd.isEmpty()) {
-            List<ChangeRequestIssue> adds = toAdd.stream().map(changeId -> new ChangeRequestIssue(changeId, issueId)).toList();
+            Map<UUID, ChangeRequest> changeRequests = findChangeRequests(toAdd);
+            List<ChangeRequestIssue> adds = toAdd.stream()
+                    .map(changeId -> changeRequests.get(changeId).linkIssue(issueId))
+                    .toList();
             changeRequestIssueRepository.saveAll(adds);
         }
 
@@ -568,7 +574,7 @@ public class IssueService {
         tipTapValidator.validateDocument(body);
         Issue issue = getIssueOrThrow(issueId);
 
-        IssueComment comment = new IssueComment(issueId, toBodyString(body), actorId);
+        IssueComment comment = issue.writeComment(toBodyString(body), actorId);
         issueCommentRepository.save(comment);
 
         registerMentions(issue, actorId, body, null, true);
@@ -740,7 +746,7 @@ public class IssueService {
     }
 
     private void addActivity(UUID targetIssueId, UUID actorId, ActivityAction action, Object detail) {
-        Activity activity = new Activity(
+        Activity activity = Activity.create(
                 ActivityTargetType.ISSUE,
                 targetIssueId,
                 action.value(),
@@ -794,7 +800,7 @@ public class IssueService {
             payload.put("source_issue_type", sourceIssueType);
             payload.put("is_comment", isComment);
 
-            notificationRepository.save(new Notification(
+            notificationRepository.save(Notification.create(
                     userId,
                     NotificationType.MENTION,
                     actorId,

@@ -1,8 +1,8 @@
 package com.fabbitinc.server.application.project.query;
 
 import com.fabbitinc.server.application.activity.api.ActivityApi;
-import com.fabbitinc.server.application.activity.dto.response.ActivityAction;
-import com.fabbitinc.server.application.activity.dto.response.ActivityScope;
+import com.fabbitinc.server.application.activity.model.ActivityAction;
+import com.fabbitinc.server.application.activity.model.ActivityScope;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
@@ -218,13 +218,14 @@ public class ProjectQuery {
 
     public ProjectActivityListResult listActivities(ProjectActivitiesCondition condition) {
         currentAuthProvider.getCurrentAuth();
+        ActivityScope requestedScope = parseActivityScope(condition.scope());
 
         List<Activity> filtered = activityApi.listTargetActivities(
                         ActivityTargetType.PROJECT,
                         condition.projectId()
                 ).stream()
                 .filter(activity -> condition.cursor() == null || activity.getId().compareTo(condition.cursor()) < 0)
-                .filter(activity -> condition.scope() == null || condition.scope().equals(extractScope(activity.getAction())))
+                .filter(activity -> requestedScope == null || requestedScope.equals(extractScope(activity.getAction())))
                 .filter(activity -> condition.userId() == null || condition.userId().equals(activity.getActorId()))
                 .limit(condition.limit())
                 .toList();
@@ -316,6 +317,20 @@ public class ProjectQuery {
 
     private ActivityScope extractScope(String action) {
         return ActivityScope.fromAction(action);
+    }
+
+    private ActivityScope parseActivityScope(String rawScope) {
+        if (rawScope == null || rawScope.isBlank()) {
+            return null;
+        }
+        try {
+            return ActivityScope.from(rawScope);
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "scope 값이 올바르지 않습니다: " + rawScope
+            );
+        }
     }
 
     private String normalizeSearch(String search) {

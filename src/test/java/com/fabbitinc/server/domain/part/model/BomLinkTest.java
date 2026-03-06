@@ -15,10 +15,8 @@ class BomLinkTest {
         Part parent = Part.create("P-001", "Parent");
         Part child = Part.create("P-002", "Child");
 
-        BomLink link = BomLink.connect(parent, child, 2, "{}");
+        BomLink link = BomLink.connect(parent.getId(), child.getId(), 2, "{}");
 
-        assertEquals(parent, link.getParentPart());
-        assertEquals(child, link.getChildPart());
         assertEquals(parent.getId(), link.getParentPartId());
         assertEquals(child.getId(), link.getChildPartId());
     }
@@ -56,5 +54,23 @@ class BomLinkTest {
         BomLink link = BomLink.connect(parentId, childId, 1, "  {\"a\":1}  ");
 
         assertEquals("{\"a\":1}", link.getExtendedProperties());
+    }
+
+    @Test
+    void changeQuantity_수량을_변경한다() {
+        BomLink link = BomLink.connect(UUID.randomUUID(), UUID.randomUUID(), 1, "{}");
+
+        link.changeQuantity(3);
+
+        assertEquals(3, link.getQuantity());
+    }
+
+    @Test
+    void changeExtendedProperties_blank면_기본_json으로_정규화한다() {
+        BomLink link = BomLink.connect(UUID.randomUUID(), UUID.randomUUID(), 1, "{\"a\":1}");
+
+        link.changeExtendedProperties("   ");
+
+        assertEquals("{}", link.getExtendedProperties());
     }
 }

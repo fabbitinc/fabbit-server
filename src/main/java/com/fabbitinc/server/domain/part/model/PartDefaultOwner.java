@@ -24,6 +24,7 @@ import java.util.UUID;
 public class PartDefaultOwner extends AbstractAuditableEntity {
 
     public static final String CODE_PART_DEFAULT_OWNER_CATEGORY_TOO_LONG = "PART_DEFAULT_OWNER_CATEGORY_TOO_LONG";
+    public static final String CODE_PART_DEFAULT_OWNER_TARGET_REQUIRED = "PART_DEFAULT_OWNER_TARGET_REQUIRED";
 
     private static final int MAX_CATEGORY_LENGTH = 100;
 
@@ -33,20 +34,23 @@ public class PartDefaultOwner extends AbstractAuditableEntity {
     @Column(name = "default_owner_id")
     private UUID defaultOwnerId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "default_owner_id", insertable = false, updatable = false)
-    private User defaultOwner;
+    private User _defaultOwnerRelation;
 
     @Column(name = "default_owner_team_id")
     private UUID defaultOwnerTeamId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "default_owner_team_id", insertable = false, updatable = false)
-    private Team defaultOwnerTeam;
+    private Team _defaultOwnerTeamRelation;
 
     private PartDefaultOwner(String category, UUID defaultOwnerId, UUID defaultOwnerTeamId) {
         super(UuidV7Generator.next());
         this.category = normalizeCategory(category);
+        requireTarget(defaultOwnerId, defaultOwnerTeamId);
         this.defaultOwnerId = defaultOwnerId;
         this.defaultOwnerTeamId = defaultOwnerTeamId;
     }
@@ -55,50 +59,26 @@ public class PartDefaultOwner extends AbstractAuditableEntity {
         return new PartDefaultOwner(category, defaultOwnerId, defaultOwnerTeamId);
     }
 
-    public static PartDefaultOwner create(String category, User defaultOwner, Team defaultOwnerTeam) {
-        PartDefaultOwner row = new PartDefaultOwner(
-                category,
-                defaultOwner == null ? null : defaultOwner.getId(),
-                defaultOwnerTeam == null ? null : defaultOwnerTeam.getId()
-        );
-        row.defaultOwner = defaultOwner;
-        row.defaultOwnerTeam = defaultOwnerTeam;
-        return row;
-    }
-
     public void update(UUID defaultOwnerId, UUID defaultOwnerTeamId) {
+        requireTarget(defaultOwnerId, defaultOwnerTeamId);
         assignDefaultOwner(defaultOwnerId);
         assignDefaultOwnerTeam(defaultOwnerTeamId);
     }
 
-    public void update(User defaultOwner, Team defaultOwnerTeam) {
-        assignDefaultOwner(defaultOwner);
-        assignDefaultOwnerTeam(defaultOwnerTeam);
-    }
-
     public void assignDefaultOwner(UUID defaultOwnerId) {
         this.defaultOwnerId = defaultOwnerId;
-        if (this.defaultOwner != null && (defaultOwnerId == null || !defaultOwnerId.equals(this.defaultOwner.getId()))) {
-            this.defaultOwner = null;
+        if (this._defaultOwnerRelation != null
+                && (defaultOwnerId == null || !defaultOwnerId.equals(this._defaultOwnerRelation.getId()))) {
+            this._defaultOwnerRelation = null;
         }
-    }
-
-    public void assignDefaultOwner(User defaultOwner) {
-        this.defaultOwner = defaultOwner;
-        this.defaultOwnerId = defaultOwner == null ? null : defaultOwner.getId();
     }
 
     public void assignDefaultOwnerTeam(UUID defaultOwnerTeamId) {
         this.defaultOwnerTeamId = defaultOwnerTeamId;
-        if (this.defaultOwnerTeam != null
-                && (defaultOwnerTeamId == null || !defaultOwnerTeamId.equals(this.defaultOwnerTeam.getId()))) {
-            this.defaultOwnerTeam = null;
+        if (this._defaultOwnerTeamRelation != null
+                && (defaultOwnerTeamId == null || !defaultOwnerTeamId.equals(this._defaultOwnerTeamRelation.getId()))) {
+            this._defaultOwnerTeamRelation = null;
         }
-    }
-
-    public void assignDefaultOwnerTeam(Team defaultOwnerTeam) {
-        this.defaultOwnerTeam = defaultOwnerTeam;
-        this.defaultOwnerTeamId = defaultOwnerTeam == null ? null : defaultOwnerTeam.getId();
     }
 
     private String normalizeCategory(String rawCategory) {
@@ -113,5 +93,11 @@ public class PartDefaultOwner extends AbstractAuditableEntity {
             );
         }
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private void requireTarget(UUID defaultOwnerId, UUID defaultOwnerTeamId) {
+        if (defaultOwnerId == null && defaultOwnerTeamId == null) {
+            throw new DomainException(CODE_PART_DEFAULT_OWNER_TARGET_REQUIRED, "기본 담당자 또는 기본 담당 팀 중 하나는 필수입니다");
+        }
     }
 }

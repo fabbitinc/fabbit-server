@@ -27,6 +27,20 @@ description: Java Spring Query 레이어 규칙을 적용한다. 조회 전용 �
 - 조회 결과는 API 응답과 독립된 `Result` 모델로 유지하라.
 - 목록/상세/자동완성 용도를 혼합하지 마라.
 
+## 조회 구현 우선순위
+
+- 단순 PK/unique key 조회, 존재 여부 확인, 개수 조회처럼 엔티티 반환/판별만 필요한 경우 `Repository`를 사용하라.
+- 조건 조합, 검색, 정렬, 다중 조인, 집계, 프로젝션, 페이지네이션이 필요한 조회는 `QueryDSL`을 기본으로 사용하라.
+- `JPQL`은 QueryDSL보다 더 단순하고 읽기 쉬운 짧은 정적 조회에만 예외적으로 사용하라.
+- `Native Query`는 재귀 CTE, 윈도우 함수, DB 전용 함수처럼 QueryDSL/JPQL로 표현이 어렵거나 성능 근거가 있는 경우에만 사용하라.
+- 팀 기본 선택은 `QueryDSL`과 `Repository`다. 새 조회는 이 두 가지 안에서 먼저 해결하라.
+
+## 조회 조립 규칙
+
+- Query는 엔티티 relation getter를 따라가 응답을 조립하지 말고, 조인/프로젝션 또는 ID 기반 보조 조회로 필요한 데이터를 모아라.
+- 복잡 조회의 결과 조합 책임은 Query가 가진다. Repository에 API 응답 DTO 조합 책임을 넘기지 마라.
+- Excel/CSV 같은 조회성 export도 입력은 `Condition`으로 받고, 내부 조회 규칙은 일반 Query와 동일하게 유지하라.
+
 ## 도메인 의존 규칙
 
 - Query는 자기 도메인의 `Repository`를 기본 참조하라.
@@ -50,3 +64,5 @@ description: Java Spring Query 레이어 규칙을 적용한다. 조회 전용 �
 - Query 클래스에 read-only 트랜잭션이 선언됐는가?
 - 목록/상세/자동완성 반환 모델이 분리됐는가?
 - 타 도메인 접근이 `*Api/*Policy` 경계로만 이뤄지는가?
+- 단순 조회는 `Repository`, 복잡 조회는 `QueryDSL` 기준을 지켰는가?
+- 엔티티 relation getter 대신 조인/프로젝션 또는 ID 기반 보조 조회를 사용했는가?

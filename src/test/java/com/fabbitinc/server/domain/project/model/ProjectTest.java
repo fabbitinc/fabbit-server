@@ -76,4 +76,16 @@ class ProjectTest {
 
         assertNull(project.getDescription());
     }
+
+    @Test
+    void addMember_보관된_프로젝트는_수정할_수_없다() {
+        Project project = Project.create("프로젝트", "설명");
+        project.archive();
+
+        DomainException ex = assertThrows(DomainException.class, () ->
+                project.addMember(java.util.UUID.randomUUID(), ProjectRole.MEMBER)
+        );
+
+        assertEquals(Project.CODE_PROJECT_ARCHIVED, ex.getDomainCode());
+    }
 }

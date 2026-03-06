@@ -39,22 +39,23 @@ public class OrganizationService {
 
         String slug = resolveAvailableSlug(input.slug(), input.orgName());
 
-        Organization organization = organizationRepository.save(
-                Organization.create(
-                        slug,
-                        input.orgName(),
-                        userId,
-                        input.industry(),
-                        input.teamSize(),
-                        planType,
-                        planType.maxMembers(),
-                        planType.aiCredits(),
-                        planType.storageGb() * GB_TO_BYTES
-                )
+        Organization organization = Organization.create(
+                slug,
+                input.orgName(),
+                userId,
+                input.industry(),
+                input.teamSize(),
+                planType,
+                planType.maxMembers(),
+                planType.aiCredits(),
+                planType.storageGb() * GB_TO_BYTES
         );
+        Membership ownerMembership = organization.addMember(userId, MembershipRole.OWNER, null);
+        organization.reserveMemberSeat();
 
-        membershipRepository.save(Membership.createOwner(userId, organization.getId()));
-        organizationRepository.reserveMemberSeat(organization.getId());
+        organizationRepository.save(organization);
+
+        membershipRepository.save(ownerMembership);
         tenantProvisioningPort.provisionTenant(organization.getId());
 
         return organization;
@@ -106,7 +107,8 @@ public class OrganizationService {
             throw new AppException(ErrorCode.MEMBER_LIMIT_EXCEEDED, "멤버 수 한도를 초과했습니다. 플랜을 업그레이드해주세요.");
         }
 
-        return membershipRepository.save(Membership.create(userId, orgId, role, null));
+        Organization organization = getOrgOrThrow(orgId);
+        return membershipRepository.save(organization.addMember(userId, role, null));
     }
 
     public void removeMember(AuthContext auth, UUID userId) {
@@ -144,12 +146,14 @@ public class OrganizationService {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "이미 해당 역할입니다");
         }
 
-        if (target.getRole() == MembershipRole.OWNER && membershipRepository.countByOrgIdAndRole(auth.orgId(), MembershipRole.OWNER) <= 1) {
-            throw new AppException(ErrorCode.FORBIDDEN, "마지막 소유자의 역할은 변경할 수 없습니다");
+        long ownerCount = membershipRepository.countByOrgIdAndRole(auth.orgId(), MembershipRole.OWNER);
+        Organization organization = getOrgOrThrow(auth.orgId());
+        try {
+            organization.changeMemberRole(target, newRole, ownerCount);
+            return target;
+        } catch (com.fabbitinc.server.domain.common.exception.DomainException ex) {
+            throw new AppException(ErrorCode.FORBIDDEN, ex.getMessage());
         }
-
-        target.changeRole(newRole);
-        return target;
     }
 
     public void setProfileImage(AuthContext auth, File file) {

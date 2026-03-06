@@ -3,7 +3,6 @@ package com.fabbitinc.server.domain.issue.model;
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
-import com.fabbitinc.server.domain.label.model.Label;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -46,11 +45,7 @@ public class IssueLabel extends AbstractCreatedEntity {
     @Column(name = "label_id", nullable = false)
     private UUID labelId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "label_id", insertable = false, updatable = false)
-    private Label label;
-
-    public IssueLabel(UUID issueId, UUID labelId) {
+    private IssueLabel(UUID issueId, UUID labelId) {
         super(UuidV7Generator.next());
         this.issueId = requireIssueId(issueId);
         this.labelId = requireLabelId(labelId);
@@ -60,16 +55,15 @@ public class IssueLabel extends AbstractCreatedEntity {
         return new IssueLabel(issueId, labelId);
     }
 
-    public static IssueLabel link(Issue issue, Label label) {
+    public static IssueLabel link(Issue issue, UUID labelId) {
         if (issue == null) {
             throw new DomainException(CODE_ISSUE_LABEL_ISSUE_REQUIRED, "이슈 ID는 필수입니다");
         }
-        if (label == null) {
+        if (labelId == null) {
             throw new DomainException(CODE_ISSUE_LABEL_LABEL_REQUIRED, "라벨 ID는 필수입니다");
         }
-        IssueLabel issueLabel = new IssueLabel(issue.getId(), label.getId());
+        IssueLabel issueLabel = new IssueLabel(issue.getId(), labelId);
         issueLabel.issue = issue;
-        issueLabel.label = label;
         return issueLabel;
     }
 

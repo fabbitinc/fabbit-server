@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.usage.dto.response;
 
+import com.fabbitinc.server.application.usage.model.StorageCategory;
+
 public record StorageCategoryItem(
         StorageCategory category,
         long bytesUsed,

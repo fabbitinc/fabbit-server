@@ -2,13 +2,18 @@ package com.fabbitinc.server.presentation.team.controller;
 
 import com.fabbitinc.server.application.team.dto.request.CreateTeamRequest;
 import com.fabbitinc.server.application.team.dto.request.UpdateTeamRequest;
-import com.fabbitinc.server.application.team.dto.response.TeamDetailResponse;
-import com.fabbitinc.server.application.team.dto.response.TeamListResponse;
-import com.fabbitinc.server.application.team.dto.response.TeamLookupResponse;
+import com.fabbitinc.server.application.team.query.condition.TeamDetailCondition;
+import com.fabbitinc.server.application.team.query.condition.TeamLookupCondition;
+import com.fabbitinc.server.application.team.query.result.TeamDetailResult;
+import com.fabbitinc.server.application.team.query.result.TeamListResult;
+import com.fabbitinc.server.application.team.query.result.TeamLookupResult;
 import com.fabbitinc.server.application.team.query.TeamQuery;
 import com.fabbitinc.server.application.team.usecase.CreateTeamUseCase;
 import com.fabbitinc.server.application.team.usecase.DeleteTeamUseCase;
 import com.fabbitinc.server.application.team.usecase.UpdateTeamUseCase;
+import com.fabbitinc.server.presentation.team.dto.response.TeamDetailResponse;
+import com.fabbitinc.server.presentation.team.dto.response.TeamListResponse;
+import com.fabbitinc.server.presentation.team.dto.response.TeamLookupResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -53,7 +58,7 @@ public class TeamController {
             @Valid @RequestBody CreateTeamRequest request
     ) {
         UUID teamId = createTeamUseCase.execute(request.name(), request.description());
-        return teamQuery.getTeamDetail(teamId);
+        return toTeamDetailResponse(teamQuery.get(new TeamDetailCondition(teamId)));
     }
 
     @Operation(
@@ -68,7 +73,7 @@ public class TeamController {
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
             int limit
     ) {
-        return teamQuery.lookupTeams(search, limit);
+        return toTeamLookupResponse(teamQuery.lookup(new TeamLookupCondition(search, limit)));
     }
 
     @Operation(
@@ -77,7 +82,7 @@ public class TeamController {
     )
     @GetMapping
     public TeamListResponse listTeams() {
-        return teamQuery.listTeams();
+        return toTeamListResponse(teamQuery.list());
     }
 
     @Operation(
@@ -88,7 +93,7 @@ public class TeamController {
     public TeamDetailResponse getTeam(
             @PathVariable UUID teamId
     ) {
-        return teamQuery.getTeamDetail(teamId);
+        return toTeamDetailResponse(teamQuery.get(new TeamDetailCondition(teamId)));
     }
 
     @Operation(
@@ -104,7 +109,7 @@ public class TeamController {
                 request.name(),
                 request.description()
         );
-        return teamQuery.getTeamDetail(updatedTeamId);
+        return toTeamDetailResponse(teamQuery.get(new TeamDetailCondition(updatedTeamId)));
     }
 
     @Operation(
@@ -117,5 +122,43 @@ public class TeamController {
     ) {
         deleteTeamUseCase.execute(teamId);
         return ResponseEntity.noContent().build();
+    }
+
+    private TeamDetailResponse toTeamDetailResponse(TeamDetailResult result) {
+        return new TeamDetailResponse(
+                result.id(),
+                result.name(),
+                result.description(),
+                result.memberCount(),
+                result.createdBy(),
+                result.createdAt(),
+                result.updatedAt()
+        );
+    }
+
+    private TeamLookupResponse toTeamLookupResponse(TeamLookupResult result) {
+        return new TeamLookupResponse(
+                result.items().stream()
+                        .map(item -> new TeamLookupResponse.TeamLookupItemResponse(
+                                item.id(),
+                                item.name()
+                        ))
+                        .toList()
+        );
+    }
+
+    private TeamListResponse toTeamListResponse(TeamListResult result) {
+        return new TeamListResponse(
+                result.items().stream()
+                        .map(item -> new TeamListResponse.TeamSummaryItemResponse(
+                                item.id(),
+                                item.name(),
+                                item.description(),
+                                item.memberCount(),
+                                item.createdBy(),
+                                item.createdAt()
+                        ))
+                        .toList()
+        );
     }
 }

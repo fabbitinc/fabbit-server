@@ -1,10 +1,11 @@
 package com.fabbitinc.server.application.dashboard.query;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
-import com.fabbitinc.server.application.dashboard.dto.response.BomStatsResponse;
-import com.fabbitinc.server.application.dashboard.dto.response.DashboardStatsResponse;
-import com.fabbitinc.server.application.dashboard.dto.response.LastSynthesisResponse;
-import com.fabbitinc.server.application.dashboard.dto.response.PartStatsResponse;
+import com.fabbitinc.server.application.dashboard.query.condition.DashboardStatsCondition;
+import com.fabbitinc.server.application.dashboard.query.result.DashboardBomStatsResult;
+import com.fabbitinc.server.application.dashboard.query.result.DashboardLastSynthesisResult;
+import com.fabbitinc.server.application.dashboard.query.result.DashboardPartStatsResult;
+import com.fabbitinc.server.application.dashboard.query.result.DashboardStatsResult;
 import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.synthesis.model.SynthesisJob;
@@ -18,6 +19,7 @@ import java.time.temporal.ChronoUnit;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class DashboardQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
@@ -25,8 +27,7 @@ public class DashboardQuery {
     private final BomLinkRepository bomLinkRepository;
     private final SynthesisJobRepository synthesisJobRepository;
 
-    @Transactional(readOnly = true)
-    public DashboardStatsResponse getStats() {
+    public DashboardStatsResult get(DashboardStatsCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
         Instant since = Instant.now().minus(7, ChronoUnit.DAYS);
@@ -34,19 +35,19 @@ public class DashboardQuery {
         int addedThisWeek = safeToInt(partRepository.countByCreatedAtGreaterThanEqual(since));
         int totalBomLinks = safeToInt(bomLinkRepository.count());
 
-        LastSynthesisResponse lastSynthesis = synthesisJobRepository.findLatest()
+        DashboardLastSynthesisResult lastSynthesis = synthesisJobRepository.findLatest()
                 .map(this::toLastSynthesisResponse)
                 .orElse(null);
 
-        return new DashboardStatsResponse(
-                new PartStatsResponse(totalParts, addedThisWeek),
-                new BomStatsResponse(totalBomLinks),
+        return new DashboardStatsResult(
+                new DashboardPartStatsResult(totalParts, addedThisWeek),
+                new DashboardBomStatsResult(totalBomLinks),
                 lastSynthesis
         );
     }
 
-    private LastSynthesisResponse toLastSynthesisResponse(SynthesisJob job) {
-        return new LastSynthesisResponse(
+    private DashboardLastSynthesisResult toLastSynthesisResponse(SynthesisJob job) {
+        return new DashboardLastSynthesisResult(
                 job.getId(),
                 job.getStatus(),
                 job.getCompletedAt(),

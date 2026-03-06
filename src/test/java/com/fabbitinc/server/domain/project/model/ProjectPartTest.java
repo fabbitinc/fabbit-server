@@ -1,7 +1,6 @@
 package com.fabbitinc.server.domain.project.model;
 
 import com.fabbitinc.server.domain.common.exception.DomainException;
-import com.fabbitinc.server.domain.part.model.Part;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
@@ -12,16 +11,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class ProjectPartTest {
 
     @Test
-    void link_엔티티_입력시_연관과_ID를_동기화한다() {
+    void linkPart_부품_ID로_링크를_추가한다() {
         Project project = Project.create("프로젝트", "설명");
-        Part part = Part.create("P-001", "Bolt");
+        UUID partId = UUID.randomUUID();
 
-        ProjectPart link = ProjectPart.link(project, part);
+        ProjectPart link = project.linkPart(partId);
 
         assertEquals(project, link.getProject());
-        assertEquals(part, link.getPart());
         assertEquals(project.getId(), link.getProjectId());
-        assertEquals(part.getId(), link.getPartId());
+        assertEquals(partId, link.getPartId());
+        assertEquals(1, project.getParts().size());
     }
 
     @Test
@@ -30,31 +29,7 @@ class ProjectPartTest {
 
         DomainException ex = assertThrows(
                 DomainException.class,
-                () -> ProjectPart.link(project.getId(), (UUID) null)
-        );
-
-        assertEquals(ProjectPart.CODE_PROJECT_PART_PART_REQUIRED, ex.getDomainCode());
-    }
-
-    @Test
-    void link_프로젝트가_null이면_예외를_던진다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        DomainException ex = assertThrows(
-                DomainException.class,
-                () -> ProjectPart.link((Project) null, part)
-        );
-
-        assertEquals(ProjectPart.CODE_PROJECT_PART_PROJECT_REQUIRED, ex.getDomainCode());
-    }
-
-    @Test
-    void link_부품이_null이면_예외를_던진다() {
-        Project project = Project.create("프로젝트", "설명");
-
-        DomainException ex = assertThrows(
-                DomainException.class,
-                () -> ProjectPart.link(project, null)
+                () -> project.linkPart(null)
         );
 
         assertEquals(ProjectPart.CODE_PROJECT_PART_PART_REQUIRED, ex.getDomainCode());

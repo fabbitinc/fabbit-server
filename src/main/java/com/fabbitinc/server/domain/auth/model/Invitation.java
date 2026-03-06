@@ -52,9 +52,10 @@ public class Invitation extends AbstractCreatedEntity {
     @Column(name = "org_id", nullable = false)
     private UUID orgId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "org_id", insertable = false, updatable = false)
-    private Organization organization;
+    private Organization _organizationRelation;
 
     @Column(name = "email", nullable = false, length = 255)
     private String email;
@@ -73,9 +74,10 @@ public class Invitation extends AbstractCreatedEntity {
     @Column(name = "invited_by", nullable = false)
     private UUID invitedBy;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invited_by", insertable = false, updatable = false)
-    private User inviter;
+    private User _inviterRelation;
 
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
@@ -83,7 +85,7 @@ public class Invitation extends AbstractCreatedEntity {
     @Column(name = "accepted_at")
     private Instant acceptedAt;
 
-    public Invitation(
+    private Invitation(
             UUID orgId,
             String email,
             MembershipRole role,
@@ -112,43 +114,19 @@ public class Invitation extends AbstractCreatedEntity {
         return new Invitation(orgId, email, role, tokenHash, invitedBy, expiresAt);
     }
 
-    public static Invitation create(
-            Organization organization,
-            String email,
-            MembershipRole role,
-            String tokenHash,
-            User inviter,
-            Instant expiresAt
-    ) {
-        if (organization == null) {
-            throw new DomainException(CODE_INVITATION_ORG_REQUIRED, "조직 ID는 필수입니다");
-        }
-        if (inviter == null) {
-            throw new DomainException(CODE_INVITATION_INVITER_REQUIRED, "초대한 사용자 ID는 필수입니다");
-        }
-        Invitation invitation = new Invitation(
-                organization.getId(),
-                email,
-                role,
-                tokenHash,
-                inviter.getId(),
-                expiresAt
-        );
-        invitation.organization = organization;
-        invitation.inviter = inviter;
-        return invitation;
-    }
-
     public boolean isExpired(Instant now) {
         Instant requiredNow = requireNow(now);
         return requiredNow.isAfter(expiresAt);
     }
 
     public void accept(Instant now) {
+        Instant requiredNow = requireNow(now);
         if (this.status != InvitationStatus.PENDING) {
             throw new DomainException(CODE_INVITATION_INVALID_STATE, "대기 중인 초대만 수락할 수 있습니다");
         }
-        Instant requiredNow = requireNow(now);
+        if (requiredNow.isAfter(expiresAt)) {
+            throw new DomainException(CODE_INVITATION_INVALID_STATE, "만료된 초대는 수락할 수 없습니다");
+        }
         this.status = InvitationStatus.ACCEPTED;
         this.acceptedAt = requiredNow;
     }

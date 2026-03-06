@@ -27,8 +27,6 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ChangeRequest extends Issue {
 
-    private static final String DOMAIN_CODE_INVALID_STATE = "ISSUE_INVALID_STATE";
-
     @Enumerated(EnumType.STRING)
     @Column(name = "cr_state", nullable = false, length = 20)
     private CrState crState;
@@ -48,27 +46,30 @@ public class ChangeRequest extends Issue {
     @OneToMany(mappedBy = "changeRequest", fetch = FetchType.LAZY)
     private List<ChangeRequestTeamReviewer> teamReviewers = new ArrayList<>();
 
-    public ChangeRequest(int number, String title, String body, UUID actorId) {
+    private ChangeRequest(int number, String title, String body, UUID actorId) {
         super(number, title, body, actorId);
         this.crState = CrState.DRAFT;
+    }
+
+    public static ChangeRequest create(int number, String title, String body, UUID actorId) {
+        return new ChangeRequest(number, title, body, actorId);
     }
 
     public void submit(UUID actorId) {
         if (crState != CrState.DRAFT) {
             throw new DomainException(
-                    DOMAIN_CODE_INVALID_STATE,
+                    CODE_ISSUE_INVALID_STATE,
                     "DRAFT 상태에서만 제출할 수 있습니다 (현재: " + crState + ")"
             );
         }
-        UUID requiredActorId = requireActorId(actorId);
-        updateTitle(getTitle(), requiredActorId);
+        touch(requireActorId(actorId));
         this.crState = CrState.SUBMITTED;
     }
 
     public void merge(Instant now, UUID actorId) {
         if (crState != CrState.SUBMITTED) {
             throw new DomainException(
-                    DOMAIN_CODE_INVALID_STATE,
+                    CODE_ISSUE_INVALID_STATE,
                     "SUBMITTED 상태에서만 반영할 수 있습니다 (현재: " + crState + ")"
             );
         }
@@ -82,7 +83,7 @@ public class ChangeRequest extends Issue {
     public void closeCr(Instant now, UUID actorId) {
         if (crState != CrState.DRAFT && crState != CrState.SUBMITTED) {
             throw new DomainException(
-                    DOMAIN_CODE_INVALID_STATE,
+                    CODE_ISSUE_INVALID_STATE,
                     "DRAFT 또는 SUBMITTED 상태에서만 닫을 수 있습니다 (현재: " + crState + ")"
             );
         }
@@ -94,7 +95,7 @@ public class ChangeRequest extends Issue {
     public void reopenCr(UUID actorId) {
         if (crState != CrState.CLOSED) {
             throw new DomainException(
-                    DOMAIN_CODE_INVALID_STATE,
+                    CODE_ISSUE_INVALID_STATE,
                     "CLOSED 상태에서만 다시 열 수 있습니다 (현재: " + crState + ")"
             );
         }
@@ -113,6 +114,24 @@ public class ChangeRequest extends Issue {
 
     public List<ChangeRequestTeamReviewer> getTeamReviewers() {
         return List.copyOf(teamReviewers);
+    }
+
+    public ChangeRequestIssue linkIssue(UUID issueId) {
+        ChangeRequestIssue link = ChangeRequestIssue.link(this, issueId);
+        linkedIssues.add(link);
+        return link;
+    }
+
+    public ChangeRequestReviewer assignReviewer(UUID userId) {
+        ChangeRequestReviewer reviewer = ChangeRequestReviewer.assign(this, userId);
+        reviewers.add(reviewer);
+        return reviewer;
+    }
+
+    public ChangeRequestTeamReviewer assignTeamReviewer(UUID teamId) {
+        ChangeRequestTeamReviewer reviewer = ChangeRequestTeamReviewer.assign(this, teamId);
+        teamReviewers.add(reviewer);
+        return reviewer;
     }
 
     private UUID requireActorId(UUID actorId) {

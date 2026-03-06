@@ -49,9 +49,10 @@ public class ProjectPart extends AbstractCreatedEntity {
     @Column(name = "part_id", nullable = false)
     private UUID partId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "part_id", insertable = false, updatable = false)
-    private Part part;
+    private Part _partRelation;
 
     private ProjectPart(UUID projectId, UUID partId) {
         super(UuidV7Generator.next());
@@ -59,20 +60,15 @@ public class ProjectPart extends AbstractCreatedEntity {
         this.partId = requirePartId(partId);
     }
 
-    public static ProjectPart link(UUID projectId, UUID partId) {
-        return new ProjectPart(projectId, partId);
-    }
-
-    public static ProjectPart link(Project project, Part part) {
+    static ProjectPart link(Project project, UUID partId) {
         if (project == null) {
             throw new DomainException(CODE_PROJECT_PART_PROJECT_REQUIRED, "프로젝트 ID는 필수입니다");
         }
-        if (part == null) {
+        if (partId == null) {
             throw new DomainException(CODE_PROJECT_PART_PART_REQUIRED, "부품 ID는 필수입니다");
         }
-        ProjectPart projectPart = new ProjectPart(project.getId(), part.getId());
+        ProjectPart projectPart = new ProjectPart(project.getId(), partId);
         projectPart.project = project;
-        projectPart.part = part;
         return projectPart;
     }
 

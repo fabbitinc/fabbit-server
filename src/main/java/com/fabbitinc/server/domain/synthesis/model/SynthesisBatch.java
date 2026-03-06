@@ -1,6 +1,7 @@
 package com.fabbitinc.server.domain.synthesis.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
+import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.mapping.model.MappingRecord;
@@ -8,6 +9,7 @@ import com.fabbitinc.server.domain.project.model.Project;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -33,7 +35,7 @@ import java.util.UUID;
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class SynthesisBatch extends AbstractCreatedEntity {
+public class SynthesisBatch extends AbstractCreatedEntity implements AggregateRoot {
 
     public static final String CODE_SYNTHESIS_BATCH_MAPPING_REQUIRED = "SYNTHESIS_BATCH_MAPPING_REQUIRED";
     public static final String CODE_SYNTHESIS_BATCH_REQUESTED_COUNT_INVALID = "SYNTHESIS_BATCH_REQUESTED_COUNT_INVALID";
@@ -42,16 +44,28 @@ public class SynthesisBatch extends AbstractCreatedEntity {
     @Column(name = "project_id")
     private UUID projectId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id", insertable = false, updatable = false)
-    private Project project;
+    @JoinColumn(
+            name = "project_id",
+            insertable = false,
+            updatable = false,
+            foreignKey = @ForeignKey(name = "fk_synthesis_batches_project_id")
+    )
+    private Project _projectRelation;
 
     @Column(name = "mapping_id", nullable = false)
     private UUID mappingId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "mapping_id", insertable = false, updatable = false)
-    private MappingRecord mappingRecord;
+    @JoinColumn(
+            name = "mapping_id",
+            insertable = false,
+            updatable = false,
+            foreignKey = @ForeignKey(name = "fk_synthesis_batches_mapping_id")
+    )
+    private MappingRecord _mappingRecordRelation;
 
     @Column(name = "requested_count", nullable = false)
     private int requestedCount;
@@ -66,51 +80,40 @@ public class SynthesisBatch extends AbstractCreatedEntity {
     @OneToMany(mappedBy = "batch", fetch = FetchType.LAZY)
     private List<SynthesisJob> jobs = new ArrayList<>();
 
-    public SynthesisBatch(
+    private SynthesisBatch(
             UUID projectId,
             UUID mappingId,
             int requestedCount,
-            int acceptedCount,
             String failedUploads
     ) {
         super(UuidV7Generator.next());
         this.projectId = projectId;
         this.mappingId = requireMappingId(mappingId);
         this.requestedCount = requireRequestedCount(requestedCount);
-        this.acceptedCount = requireAcceptedCount(acceptedCount, this.requestedCount);
-        this.failedUploads = (failedUploads == null || failedUploads.isBlank()) ? "[]" : failedUploads.trim();
+        this.acceptedCount = 0;
+        this.failedUploads = normalizeFailedUploads(failedUploads);
     }
 
     public static SynthesisBatch create(
             UUID projectId,
             UUID mappingId,
             int requestedCount,
-            int acceptedCount,
             String failedUploads
     ) {
-        return new SynthesisBatch(projectId, mappingId, requestedCount, acceptedCount, failedUploads);
+        return new SynthesisBatch(projectId, mappingId, requestedCount, failedUploads);
     }
 
-    public static SynthesisBatch create(
-            Project project,
-            MappingRecord mappingRecord,
-            int requestedCount,
-            int acceptedCount,
-            String failedUploads
-    ) {
-        if (mappingRecord == null) {
-            throw new DomainException(CODE_SYNTHESIS_BATCH_MAPPING_REQUIRED, "매핑 ID는 필수입니다");
+    public SynthesisJob addJob(UUID fileId) {
+        if (acceptedCount + 1 > requestedCount) {
+            throw new DomainException(
+                    CODE_SYNTHESIS_BATCH_ACCEPTED_COUNT_INVALID,
+                    "수락 건수는 요청 건수를 초과할 수 없습니다"
+            );
         }
-        SynthesisBatch batch = new SynthesisBatch(
-                project == null ? null : project.getId(),
-                mappingRecord.getId(),
-                requestedCount,
-                acceptedCount,
-                failedUploads
-        );
-        batch.project = project;
-        batch.mappingRecord = mappingRecord;
-        return batch;
+        SynthesisJob job = SynthesisJob.create(this, fileId);
+        jobs.add(job);
+        acceptedCount = jobs.size();
+        return job;
     }
 
     public List<SynthesisJob> getJobs() {
@@ -139,5 +142,12 @@ public class SynthesisBatch extends AbstractCreatedEntity {
             );
         }
         return acceptedCount;
+    }
+
+    private String normalizeFailedUploads(String value) {
+        if (value == null || value.isBlank()) {
+            return "[]";
+        }
+        return value.trim();
     }
 }

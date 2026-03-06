@@ -22,7 +22,7 @@ public class UserService {
     private final PasswordService passwordService;
 
     public User createUser(String email, String password, String fullName) {
-        User user = new User(normalizeEmail(email), passwordService.hash(password), fullName);
+        User user = User.create(normalizeEmail(email), passwordService.hash(password), fullName);
         return userRepository.save(user);
     }
 
@@ -62,7 +62,7 @@ public class UserService {
 
     public void updateProfile(UUID userId, String fullName, String phone) {
         User user = getUserOrThrow(userId);
-        user.updateProfile(fullName, phone);
+        user.changeProfile(fullName, phone);
     }
 
     public void changePassword(UUID userId, String currentPassword, String newPassword) {
@@ -77,7 +77,7 @@ public class UserService {
 
     public void setProfileImage(UUID userId, File file) {
         User user = getUserOrThrow(userId);
-        user.setProfileImage(file.getFileKey());
+        user.changeProfileImage(file.getFileKey());
         file.assignOwner("user", userId);
     }
 

@@ -9,6 +9,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -32,6 +33,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Activity extends AbstractCreatedEntity {
 
+    public static final String CODE_ACTIVITY_TARGET_TYPE_REQUIRED = "ACTIVITY_TARGET_TYPE_REQUIRED";
     public static final String CODE_ACTIVITY_TARGET_REQUIRED = "ACTIVITY_TARGET_REQUIRED";
     public static final String CODE_ACTIVITY_ACTION_REQUIRED = "ACTIVITY_ACTION_REQUIRED";
     public static final String CODE_ACTIVITY_ACTOR_REQUIRED = "ACTIVITY_ACTOR_REQUIRED";
@@ -49,15 +51,21 @@ public class Activity extends AbstractCreatedEntity {
     @Column(name = "actor_id", nullable = false)
     private UUID actorId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actor_id", insertable = false, updatable = false)
-    private User actor;
+    @JoinColumn(
+            name = "actor_id",
+            insertable = false,
+            updatable = false,
+            foreignKey = @ForeignKey(name = "fk_activities_actor_id")
+    )
+    private User _actorRelation;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "detail", columnDefinition = "jsonb")
     private String detail;
 
-    public Activity(
+    private Activity(
             ActivityTargetType targetType,
             UUID targetId,
             String action,
@@ -65,11 +73,11 @@ public class Activity extends AbstractCreatedEntity {
             String detail
     ) {
         super(UuidV7Generator.next());
-        this.targetType = targetType;
+        this.targetType = requireTargetType(targetType);
         this.targetId = requireTargetId(targetId);
         this.action = requireAction(action);
         this.actorId = requireActorId(actorId);
-        this.detail = detail;
+        this.detail = normalizeDetail(detail);
     }
 
     public static Activity create(
@@ -82,19 +90,11 @@ public class Activity extends AbstractCreatedEntity {
         return new Activity(targetType, targetId, action, actorId, detail);
     }
 
-    public static Activity create(
-            ActivityTargetType targetType,
-            UUID targetId,
-            String action,
-            User actor,
-            String detail
-    ) {
-        if (actor == null) {
-            throw new DomainException(CODE_ACTIVITY_ACTOR_REQUIRED, "행위자 ID는 필수입니다");
+    private ActivityTargetType requireTargetType(ActivityTargetType value) {
+        if (value == null) {
+            throw new DomainException(CODE_ACTIVITY_TARGET_TYPE_REQUIRED, "대상 타입은 필수입니다");
         }
-        Activity activity = new Activity(targetType, targetId, action, actor.getId(), detail);
-        activity.actor = actor;
-        return activity;
+        return value;
     }
 
     private UUID requireTargetId(UUID value) {
@@ -108,7 +108,7 @@ public class Activity extends AbstractCreatedEntity {
         if (value == null || value.isBlank()) {
             throw new DomainException(CODE_ACTIVITY_ACTION_REQUIRED, "액션은 필수입니다");
         }
-        return value;
+        return value.trim();
     }
 
     private UUID requireActorId(UUID value) {
@@ -116,5 +116,13 @@ public class Activity extends AbstractCreatedEntity {
             throw new DomainException(CODE_ACTIVITY_ACTOR_REQUIRED, "행위자 ID는 필수입니다");
         }
         return value;
+    }
+
+    private String normalizeDetail(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

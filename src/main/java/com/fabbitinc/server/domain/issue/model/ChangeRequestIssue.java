@@ -48,11 +48,7 @@ public class ChangeRequestIssue extends AbstractCreatedEntity {
     @Column(name = "issue_id", nullable = false)
     private UUID issueId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "issue_id", insertable = false, updatable = false)
-    private Issue issue;
-
-    public ChangeRequestIssue(UUID changeRequestId, UUID issueId) {
+    private ChangeRequestIssue(UUID changeRequestId, UUID issueId) {
         super(UuidV7Generator.next());
         this.changeRequestId = requireChangeRequestId(changeRequestId);
         this.issueId = requireIssueId(issueId);
@@ -62,16 +58,15 @@ public class ChangeRequestIssue extends AbstractCreatedEntity {
         return new ChangeRequestIssue(changeRequestId, issueId);
     }
 
-    public static ChangeRequestIssue link(ChangeRequest changeRequest, Issue issue) {
+    public static ChangeRequestIssue link(ChangeRequest changeRequest, UUID issueId) {
         if (changeRequest == null) {
             throw new DomainException(CODE_CR_ISSUE_CHANGE_REQUEST_REQUIRED, "변경요청 ID는 필수입니다");
         }
-        if (issue == null) {
+        if (issueId == null) {
             throw new DomainException(CODE_CR_ISSUE_ISSUE_REQUIRED, "이슈 ID는 필수입니다");
         }
-        ChangeRequestIssue link = new ChangeRequestIssue(changeRequest.getId(), issue.getId());
+        ChangeRequestIssue link = new ChangeRequestIssue(changeRequest.getId(), issueId);
         link.changeRequest = changeRequest;
-        link.issue = issue;
         return link;
     }
 

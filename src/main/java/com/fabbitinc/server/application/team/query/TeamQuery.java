@@ -4,13 +4,13 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
-import com.fabbitinc.server.application.team.dto.response.TeamDetailResponse;
-import com.fabbitinc.server.application.team.dto.response.TeamListResponse;
-import com.fabbitinc.server.application.team.dto.response.TeamLookupItemResponse;
-import com.fabbitinc.server.application.team.dto.response.TeamLookupResponse;
-import com.fabbitinc.server.application.team.dto.response.TeamMemberListResponse;
-import com.fabbitinc.server.application.team.dto.response.TeamMemberSummaryResponse;
-import com.fabbitinc.server.application.team.dto.response.TeamSummaryResponse;
+import com.fabbitinc.server.application.team.query.condition.TeamDetailCondition;
+import com.fabbitinc.server.application.team.query.condition.TeamLookupCondition;
+import com.fabbitinc.server.application.team.query.condition.TeamMemberListCondition;
+import com.fabbitinc.server.application.team.query.result.TeamDetailResult;
+import com.fabbitinc.server.application.team.query.result.TeamListResult;
+import com.fabbitinc.server.application.team.query.result.TeamLookupResult;
+import com.fabbitinc.server.application.team.query.result.TeamMemberListResult;
 import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.team.model.TeamMember;
 import com.fabbitinc.server.domain.team.repository.TeamMemberRepository;
@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class TeamQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
@@ -37,68 +38,74 @@ public class TeamQuery {
     private final UserRepository userRepository;
     private final FileUrlResolver fileUrlResolver;
 
-    @Transactional(readOnly = true)
-    public TeamListResponse listTeams() {
+    public TeamListResult list() {
         currentAuthProvider.getCurrentAuth();
 
-        List<TeamSummaryResponse> items = teamRepository.findAllByOrderByNameAsc().stream()
-                .map(this::toTeamSummaryResponse)
+        List<TeamListResult.TeamSummaryResult> items = teamRepository.findAllByOrderByNameAsc().stream()
+                .map(this::toTeamSummaryResult)
                 .toList();
-        return new TeamListResponse(items);
+        return new TeamListResult(items);
     }
 
-    @Transactional(readOnly = true)
-    public TeamLookupResponse lookupTeams(String search, int limit) {
+    public TeamLookupResult lookup(TeamLookupCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
+        String search = condition.search();
+        int limit = condition.limit();
         List<Team> teams;
         if (search == null || search.isBlank()) {
             teams = teamRepository.findAllByOrderByNameAsc(PageRequest.of(0, limit));
         } else {
             teams = teamRepository.findByNameContainingIgnoreCaseOrderByNameAsc(search.trim(), PageRequest.of(0, limit));
         }
-        List<TeamLookupItemResponse> items = teams.stream()
-                .map(team -> new TeamLookupItemResponse(team.getId(), team.getName()))
+        List<TeamLookupResult.TeamLookupItemResult> items = teams.stream()
+                .map(team -> new TeamLookupResult.TeamLookupItemResult(team.getId(), team.getName()))
                 .toList();
-        return new TeamLookupResponse(items);
+        return new TeamLookupResult(items);
     }
 
-    @Transactional(readOnly = true)
-    public TeamDetailResponse getTeamDetail(UUID teamId) {
+    public TeamDetailResult get(TeamDetailCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
+        UUID teamId = condition.teamId();
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
                         "Team '" + teamId + "'을(를) 찾을 수 없습니다"
                 ));
 
-        return toTeamDetailResponse(team);
+        return toTeamDetailResult(team);
     }
 
-    @Transactional(readOnly = true)
-    public TeamMemberListResponse listMembers(UUID teamId) {
+    public TeamMemberListResult listMembers(TeamMemberListCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
+        UUID teamId = condition.teamId();
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "팀을 찾을 수 없습니다"));
 
         List<TeamMember> members = teamMemberRepository.findByTeam(team);
         if (members.isEmpty()) {
-            return new TeamMemberListResponse(List.of());
+            return new TeamMemberListResult(List.of());
         }
 
         List<UUID> userIds = members.stream().map(TeamMember::getUserId).toList();
         List<User> users = userRepository.findAllByIdInOrderByFullName(userIds);
         Map<UUID, User> userMap = users.stream().collect(Collectors.toMap(User::getId, user -> user));
 
-        List<TeamMemberSummaryResponse> items = members.stream()
+        List<TeamMemberListResult.TeamMemberSummaryResult> items = members.stream()
                 .map(member -> {
                     User user = userMap.get(member.getUserId());
                     if (user == null) {
-                        return new TeamMemberSummaryResponse(member.getUserId(), "", "", null, null);
+                        return new TeamMemberListResult.TeamMemberSummaryResult(
+                                member.getUserId(),
+                                "",
+                                "",
+                                null,
+                                null
+                        );
                     }
-                    return new TeamMemberSummaryResponse(
+                    return new TeamMemberListResult.TeamMemberSummaryResult(
                             member.getUserId(),
                             user.getFullName(),
                             user.getEmail(),
@@ -108,12 +115,12 @@ public class TeamQuery {
                 })
                 .toList();
 
-        return new TeamMemberListResponse(items);
+        return new TeamMemberListResult(items);
     }
 
-    private TeamSummaryResponse toTeamSummaryResponse(Team team) {
+    private TeamListResult.TeamSummaryResult toTeamSummaryResult(Team team) {
         int memberCount = (int) teamMemberRepository.countByTeam(team);
-        return new TeamSummaryResponse(
+        return new TeamListResult.TeamSummaryResult(
                 team.getId(),
                 team.getName(),
                 team.getDescription(),
@@ -123,9 +130,9 @@ public class TeamQuery {
         );
     }
 
-    private TeamDetailResponse toTeamDetailResponse(Team team) {
+    private TeamDetailResult toTeamDetailResult(Team team) {
         int memberCount = (int) teamMemberRepository.countByTeam(team);
-        return new TeamDetailResponse(
+        return new TeamDetailResult(
                 team.getId(),
                 team.getName(),
                 team.getDescription(),

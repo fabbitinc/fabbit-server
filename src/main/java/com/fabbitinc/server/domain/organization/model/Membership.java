@@ -45,9 +45,10 @@ public class Membership extends AbstractCreatedEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
+    private User _userRelation;
 
     @Column(name = "org_id", nullable = false)
     private UUID orgId;
@@ -71,32 +72,19 @@ public class Membership extends AbstractCreatedEntity {
         this.jobRole = normalizeJobRole(jobRole);
     }
 
-    public static Membership create(UUID userId, UUID orgId, MembershipRole role, String jobRole) {
-        return new Membership(userId, orgId, role, jobRole);
-    }
-
-    public static Membership create(User user, Organization organization, MembershipRole role, String jobRole) {
-        if (user == null) {
-            throw new DomainException(CODE_MEMBERSHIP_USER_REQUIRED, "사용자 ID는 필수입니다");
-        }
+    static Membership create(Organization organization, UUID userId, MembershipRole role, String jobRole) {
         if (organization == null) {
             throw new DomainException(CODE_MEMBERSHIP_ORG_REQUIRED, "조직 ID는 필수입니다");
         }
-        Membership membership = new Membership(user.getId(), organization.getId(), role, jobRole);
-        membership.user = user;
+        if (userId == null) {
+            throw new DomainException(CODE_MEMBERSHIP_USER_REQUIRED, "사용자 ID는 필수입니다");
+        }
+        Membership membership = new Membership(userId, organization.getId(), role, jobRole);
         membership.organization = organization;
         return membership;
     }
 
-    public static Membership createOwner(UUID userId, UUID orgId) {
-        return new Membership(userId, orgId, MembershipRole.OWNER, null);
-    }
-
-    public static Membership createOwner(User user, Organization organization) {
-        return create(user, organization, MembershipRole.OWNER, null);
-    }
-
-    public void changeRole(MembershipRole role) {
+    void changeRole(MembershipRole role) {
         this.role = requireRole(role);
     }
 

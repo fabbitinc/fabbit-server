@@ -52,9 +52,10 @@ public class ProjectMember extends AbstractCreatedEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
+    private User _userRelation;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 20)
@@ -67,25 +68,24 @@ public class ProjectMember extends AbstractCreatedEntity {
         this.role = requireRole(role);
     }
 
-    public static ProjectMember assign(UUID projectId, UUID userId, ProjectRole role) {
-        return new ProjectMember(projectId, userId, role);
-    }
-
-    public static ProjectMember assign(Project project, User user, ProjectRole role) {
+    static ProjectMember assign(Project project, UUID userId, ProjectRole role) {
         if (project == null) {
             throw new DomainException(CODE_PROJECT_MEMBER_PROJECT_REQUIRED, "프로젝트 ID는 필수입니다");
         }
-        if (user == null) {
+        if (userId == null) {
             throw new DomainException(CODE_PROJECT_MEMBER_USER_REQUIRED, "사용자 ID는 필수입니다");
         }
-        ProjectMember member = new ProjectMember(project.getId(), user.getId(), role);
+        ProjectMember member = new ProjectMember(project.getId(), userId, role);
         member.project = project;
-        member.user = user;
         return member;
     }
 
     public boolean isAdmin() {
         return role == ProjectRole.ADMIN;
+    }
+
+    void changeRole(ProjectRole role) {
+        this.role = requireRole(role);
     }
 
     private UUID requireProjectId(UUID value) {

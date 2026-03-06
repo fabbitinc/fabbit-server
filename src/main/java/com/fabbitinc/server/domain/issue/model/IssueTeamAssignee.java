@@ -3,7 +3,6 @@ package com.fabbitinc.server.domain.issue.model;
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
-import com.fabbitinc.server.domain.team.model.Team;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -46,11 +45,7 @@ public class IssueTeamAssignee extends AbstractCreatedEntity {
     @Column(name = "team_id", nullable = false)
     private UUID teamId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "team_id", insertable = false, updatable = false)
-    private Team team;
-
-    public IssueTeamAssignee(UUID issueId, UUID teamId) {
+    private IssueTeamAssignee(UUID issueId, UUID teamId) {
         super(UuidV7Generator.next());
         this.issueId = requireIssueId(issueId);
         this.teamId = requireTeamId(teamId);
@@ -60,16 +55,15 @@ public class IssueTeamAssignee extends AbstractCreatedEntity {
         return new IssueTeamAssignee(issueId, teamId);
     }
 
-    public static IssueTeamAssignee assign(Issue issue, Team team) {
+    public static IssueTeamAssignee assign(Issue issue, UUID teamId) {
         if (issue == null) {
             throw new DomainException(CODE_ISSUE_TEAM_ASSIGNEE_ISSUE_REQUIRED, "이슈 ID는 필수입니다");
         }
-        if (team == null) {
+        if (teamId == null) {
             throw new DomainException(CODE_ISSUE_TEAM_ASSIGNEE_TEAM_REQUIRED, "팀 ID는 필수입니다");
         }
-        IssueTeamAssignee assignee = new IssueTeamAssignee(issue.getId(), team.getId());
+        IssueTeamAssignee assignee = new IssueTeamAssignee(issue.getId(), teamId);
         assignee.issue = issue;
-        assignee.team = team;
         return assignee;
     }
 

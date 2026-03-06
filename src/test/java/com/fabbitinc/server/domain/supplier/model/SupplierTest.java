@@ -71,4 +71,19 @@ class SupplierTest {
 
         assertEquals(Supplier.CODE_SUPPLIER_COUNTRY_TOO_LONG, ex.getDomainCode());
     }
+
+    @Test
+    void supplier_change메서드는_선택필드를_정규화한다() {
+        Supplier supplier = Supplier.create("ACME", null, null, null, "{}");
+
+        supplier.changeCode("  A-1  ");
+        supplier.changeCountry("  KR  ");
+        supplier.changeContactInfo("  support@acme.com  ");
+        supplier.changeExtendedProperties("  {\"tier\":\"gold\"}  ");
+
+        assertEquals("A-1", supplier.getCode());
+        assertEquals("KR", supplier.getCountry());
+        assertEquals("support@acme.com", supplier.getContactInfo());
+        assertEquals("{\"tier\":\"gold\"}", supplier.getExtendedProperties());
+    }
 }

@@ -1,10 +1,6 @@
 package com.fabbitinc.server.domain.synthesis.model;
 
 import com.fabbitinc.server.domain.common.exception.DomainException;
-import com.fabbitinc.server.domain.file.model.File;
-import com.fabbitinc.server.domain.mapping.model.MappingRecord;
-import com.fabbitinc.server.domain.mapping.model.MappingScope;
-import com.fabbitinc.server.domain.project.model.Project;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
@@ -17,16 +13,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SynthesisRelationTest {
 
     @Test
-    void synthesisBatch_엔티티_입력시_FK와_연관을_동기화한다() {
-        Project project = Project.create("프로젝트", "설명");
-        MappingRecord mappingRecord = new MappingRecord("기본 매핑", MappingScope.PART_LIST);
+    void synthesisBatch_create_입력값을_보관한다() {
+        UUID projectId = UUID.randomUUID();
+        UUID mappingId = UUID.randomUUID();
 
-        SynthesisBatch batch = SynthesisBatch.create(project, mappingRecord, 10, 8, "  []  ");
+        SynthesisBatch batch = SynthesisBatch.create(projectId, mappingId, 10, "  []  ");
 
-        assertEquals(project, batch.getProject());
-        assertEquals(mappingRecord, batch.getMappingRecord());
-        assertEquals(project.getId(), batch.getProjectId());
-        assertEquals(mappingRecord.getId(), batch.getMappingId());
+        assertEquals(projectId, batch.getProjectId());
+        assertEquals(mappingId, batch.getMappingId());
+        assertEquals(10, batch.getRequestedCount());
+        assertEquals(0, batch.getAcceptedCount());
         assertEquals("[]", batch.getFailedUploads());
         assertTrue(batch.getJobs().isEmpty());
     }
@@ -37,7 +33,6 @@ class SynthesisRelationTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 -1,
-                0,
                 "[]"
         ));
 
@@ -45,95 +40,106 @@ class SynthesisRelationTest {
     }
 
     @Test
-    void synthesisBatch_수락건수가_요청건수보다_크면_예외를_던진다() {
-        DomainException ex = assertThrows(DomainException.class, () -> SynthesisBatch.create(
+    void synthesisBatch_addJob은_acceptedCount를_증가시키고_job을_연결한다() {
+        SynthesisBatch batch = SynthesisBatch.create(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                2,
+                "[]"
+        );
+        UUID fileId = UUID.randomUUID();
+
+        SynthesisJob job = batch.addJob(fileId);
+
+        assertEquals(batch.getId(), job.getBatchId());
+        assertEquals(batch.getMappingId(), job.getMappingId());
+        assertEquals(fileId, job.getFileId());
+        assertEquals(1, batch.getAcceptedCount());
+        assertEquals(1, batch.getJobs().size());
+        assertEquals(SynthesisJobStatus.PENDING, job.getStatus());
+    }
+
+    @Test
+    void synthesisBatch_addJob은_요청건수를_초과하면_예외를_던진다() {
+        SynthesisBatch batch = SynthesisBatch.create(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 1,
-                2,
                 "[]"
-        ));
+        );
+        batch.addJob(UUID.randomUUID());
+
+        DomainException ex = assertThrows(DomainException.class, () -> batch.addJob(UUID.randomUUID()));
 
         assertEquals(SynthesisBatch.CODE_SYNTHESIS_BATCH_ACCEPTED_COUNT_INVALID, ex.getDomainCode());
     }
 
     @Test
-    void synthesisJob_엔티티_입력시_FK와_연관을_동기화한다() {
-        MappingRecord mappingRecord = new MappingRecord("기본 매핑", MappingScope.PART_LIST);
-        File file = new File("sample.csv", "files/sample.csv", "text/csv", 128L);
-
-        SynthesisJob job = SynthesisJob.create(mappingRecord, file);
-
-        assertEquals(mappingRecord, job.getMappingRecord());
-        assertEquals(file, job.getFile());
-        assertEquals(mappingRecord.getId(), job.getMappingId());
-        assertEquals(file.getId(), job.getFileId());
-        assertEquals(SynthesisJobStatus.PENDING, job.getStatus());
-    }
-
-    @Test
-    void assignBatch_엔티티_입력시_batchId와_연관을_동기화한다() {
-        MappingRecord mappingRecord = new MappingRecord("기본 매핑", MappingScope.PART_LIST);
-        File file = new File("sample.csv", "files/sample.csv", "text/csv", 128L);
-        SynthesisJob job = SynthesisJob.create(mappingRecord, file);
+    void synthesisJob_정상_상태전이를_수행한다() {
         SynthesisBatch batch = SynthesisBatch.create(
                 UUID.randomUUID(),
-                mappingRecord.getId(),
-                1,
+                UUID.randomUUID(),
                 1,
                 "[]"
         );
+        SynthesisJob job = batch.addJob(UUID.randomUUID());
 
-        job.assignBatch(batch);
-
-        assertEquals(batch, job.getBatch());
-        assertEquals(batch.getId(), job.getBatchId());
-    }
-
-    @Test
-    void assignBatch_null이면_예외를_던진다() {
-        MappingRecord mappingRecord = new MappingRecord("기본 매핑", MappingScope.PART_LIST);
-        File file = new File("sample.csv", "files/sample.csv", "text/csv", 128L);
-        SynthesisJob job = SynthesisJob.create(mappingRecord, file);
-
-        DomainException ex = assertThrows(DomainException.class, () -> job.assignBatch((SynthesisBatch) null));
-
-        assertEquals(SynthesisJob.CODE_SYNTHESIS_JOB_BATCH_REQUIRED, ex.getDomainCode());
-    }
-
-    @Test
-    void synthesisJob_정상_상태전이를_수행한다() {
-        MappingRecord mappingRecord = new MappingRecord("기본 매핑", MappingScope.PART_LIST);
-        File file = new File("sample.csv", "files/sample.csv", "text/csv", 128L);
-        SynthesisJob job = SynthesisJob.create(mappingRecord, file);
-
-        job.markProcessing();
-        job.markCompleted();
+        job.start(3);
+        job.complete(3, 2, 1, "[\"warn\"]");
 
         assertEquals(SynthesisJobStatus.COMPLETED, job.getStatus());
+        assertEquals(3, job.getTotalRows());
+        assertEquals(3, job.getProcessedRows());
+        assertEquals(2, job.getNodesCreated());
+        assertEquals(1, job.getRelationshipsCreated());
+        assertEquals("[\"warn\"]", job.getErrors());
         assertNotNull(job.getStartedAt());
         assertNotNull(job.getCompletedAt());
     }
 
     @Test
-    void synthesisJob_markCompleted는_PROCESSING에서만_허용한다() {
-        MappingRecord mappingRecord = new MappingRecord("기본 매핑", MappingScope.PART_LIST);
-        File file = new File("sample.csv", "files/sample.csv", "text/csv", 128L);
-        SynthesisJob job = SynthesisJob.create(mappingRecord, file);
+    void synthesisJob_complete는_PROCESSING에서만_허용한다() {
+        SynthesisBatch batch = SynthesisBatch.create(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                1,
+                "[]"
+        );
+        SynthesisJob job = batch.addJob(UUID.randomUUID());
 
-        DomainException ex = assertThrows(DomainException.class, job::markCompleted);
+        DomainException ex = assertThrows(DomainException.class, () -> job.complete(0, 0, 0, "[]"));
 
         assertEquals(SynthesisJob.CODE_SYNTHESIS_JOB_INVALID_STATE, ex.getDomainCode());
         assertEquals(SynthesisJobStatus.PENDING, job.getStatus());
     }
 
     @Test
-    void synthesisJob_markFailed는_PROCESSING에서만_허용한다() {
-        MappingRecord mappingRecord = new MappingRecord("기본 매핑", MappingScope.PART_LIST);
-        File file = new File("sample.csv", "files/sample.csv", "text/csv", 128L);
-        SynthesisJob job = SynthesisJob.create(mappingRecord, file);
+    void synthesisJob_complete는_처리행수가_전체행수를_초과하면_예외를_던진다() {
+        SynthesisBatch batch = SynthesisBatch.create(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                1,
+                "[]"
+        );
+        SynthesisJob job = batch.addJob(UUID.randomUUID());
+        job.start(1);
 
-        DomainException ex = assertThrows(DomainException.class, () -> job.markFailed("[\"error\"]"));
+        DomainException ex = assertThrows(DomainException.class, () -> job.complete(2, 0, 0, "[]"));
+
+        assertEquals(SynthesisJob.CODE_SYNTHESIS_JOB_PROGRESS_INVALID, ex.getDomainCode());
+    }
+
+    @Test
+    void synthesisJob_fail은_PROCESSING에서만_허용한다() {
+        SynthesisBatch batch = SynthesisBatch.create(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                1,
+                "[]"
+        );
+        SynthesisJob job = batch.addJob(UUID.randomUUID());
+
+        DomainException ex = assertThrows(DomainException.class, () -> job.fail("[\"error\"]"));
 
         assertEquals(SynthesisJob.CODE_SYNTHESIS_JOB_INVALID_STATE, ex.getDomainCode());
         assertEquals(SynthesisJobStatus.PENDING, job.getStatus());

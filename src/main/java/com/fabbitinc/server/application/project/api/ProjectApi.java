@@ -4,6 +4,7 @@ import com.fabbitinc.server.application.project.dto.response.PartProjectSummaryR
 import com.fabbitinc.server.application.project.dto.response.PartProjectsResponse;
 import com.fabbitinc.server.application.project.query.ProjectQuery;
 import com.fabbitinc.server.application.project.query.condition.PartProjectsCondition;
+import com.fabbitinc.server.application.project.query.result.PartProjectsResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -15,8 +16,12 @@ public class ProjectApi {
 
     private final ProjectQuery projectQuery;
 
+    public PartProjectsResult listPartProjects(UUID partId) {
+        return projectQuery.listPartProjects(new PartProjectsCondition(partId));
+    }
+
     public PartProjectsResponse getPartProjects(UUID partId) {
-        var result = projectQuery.listPartProjects(new PartProjectsCondition(partId));
+        var result = listPartProjects(partId);
         return new PartProjectsResponse(
                 result.total(),
                 result.items().stream()
@@ -26,6 +31,6 @@ public class ProjectApi {
     }
 
     public long countPartProjects(UUID partId) {
-        return getPartProjects(partId).total();
+        return listPartProjects(partId).total();
     }
 }
