@@ -3,9 +3,6 @@ package com.fabbitinc.server.application.mapping.support;
 import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
 import com.fabbitinc.server.application.mapping.dto.common.PropertyMappingDto;
 import com.fabbitinc.server.application.mapping.dto.common.RelationMappingDto;
-import com.fabbitinc.server.application.mapping.dto.response.MappingImpactSummaryResponse;
-import com.fabbitinc.server.application.mapping.dto.response.ValidationIssueResponse;
-import com.fabbitinc.server.application.mapping.dto.response.ValidationSeverity;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
 import com.fabbitinc.server.application.ontology.support.RelationshipType;
@@ -26,8 +23,8 @@ public class MappingValidationSupport {
             MappingResultDto mapping
     ) {
         Set<String> headerSet = new LinkedHashSet<>(headers);
-        List<ValidationIssueResponse> errors = new ArrayList<>();
-        List<ValidationIssueResponse> warnings = new ArrayList<>();
+        List<ValidationIssue> errors = new ArrayList<>();
+        List<ValidationIssue> warnings = new ArrayList<>();
 
         Set<RelationshipType> validRelTypes = new LinkedHashSet<>();
         Map<String, Set<String>> mergeKeysByLabel = ManufacturingOntology.ONTOLOGY.nodeLabels().stream()
@@ -57,7 +54,7 @@ public class MappingValidationSupport {
         return new ValidationResult(
                 errors,
                 warnings,
-                new MappingImpactSummaryResponse(disabledCount)
+                new ValidationImpactSummary(disabledCount)
         );
     }
 
@@ -65,15 +62,15 @@ public class MappingValidationSupport {
             List<PropertyMappingDto> properties,
             Set<String> headerSet,
             List<Map<String, Object>> sampleRows,
-            List<ValidationIssueResponse> errors,
-            List<ValidationIssueResponse> warnings
+            List<ValidationIssue> errors,
+            List<ValidationIssue> warnings
     ) {
         for (int index = 0; index < properties.size(); index++) {
             PropertyMappingDto property = properties.get(index);
             if (property.sourceColumn() == null || !headerSet.contains(property.sourceColumn())) {
-                errors.add(new ValidationIssueResponse(
+                errors.add(new ValidationIssue(
                         "MISSING_SOURCE_COLUMN",
-                        ValidationSeverity.ERROR,
+                        "error",
                         "컬럼 '" + property.sourceColumn() + "'을(를) 파일에서 찾을 수 없습니다",
                         "property_mappings[" + index + "].source_column",
                         "missing_source_column"
@@ -82,9 +79,9 @@ public class MappingValidationSupport {
             }
 
             if (isNumericType(property.dataType()) && hasNonNumericSample(sampleRows, property.sourceColumn())) {
-                warnings.add(new ValidationIssueResponse(
+                warnings.add(new ValidationIssue(
                         "NUMERIC_PARSE_WARNING",
-                        ValidationSeverity.WARNING,
+                        "warning",
                         "컬럼 '" + property.sourceColumn() + "'에 숫자로 해석하기 어려운 값이 있습니다",
                         "property_mappings[" + index + "].data_type",
                         null
@@ -99,15 +96,15 @@ public class MappingValidationSupport {
             List<Map<String, Object>> sampleRows,
             Set<RelationshipType> validRelTypes,
             Map<String, Set<String>> mergeKeysByLabel,
-            List<ValidationIssueResponse> errors,
-            List<ValidationIssueResponse> warnings
+            List<ValidationIssue> errors,
+            List<ValidationIssue> warnings
     ) {
         for (int index = 0; index < relations.size(); index++) {
             RelationMappingDto relation = relations.get(index);
             if (!validRelTypes.contains(relation.relType())) {
-                errors.add(new ValidationIssueResponse(
+                errors.add(new ValidationIssue(
                         "INVALID_REL_TYPE",
-                        ValidationSeverity.ERROR,
+                        "error",
                         "허용되지 않은 관계 타입입니다: " + relation.relType(),
                         "relation_mappings[" + index + "].rel_type",
                         null
@@ -121,9 +118,9 @@ public class MappingValidationSupport {
                 for (String mergeKey : requiredKeys) {
                     String sourceColumn = relation.nodeColumns().get(mergeKey);
                     if (sourceColumn == null || sourceColumn.isBlank()) {
-                        errors.add(new ValidationIssueResponse(
+                        errors.add(new ValidationIssue(
                                 "MISSING_NODE_MERGE_KEY",
-                                ValidationSeverity.ERROR,
+                                "error",
                                 "관계 '" + relation.relType() + "'의 대상 노드 merge key '" + mergeKey + "' 매핑이 누락되었습니다",
                                 "relation_mappings[" + index + "].node_columns." + mergeKey,
                                 "missing_node_merge_key"
@@ -132,9 +129,9 @@ public class MappingValidationSupport {
                     }
 
                     if (!headerSet.contains(sourceColumn)) {
-                        errors.add(new ValidationIssueResponse(
+                        errors.add(new ValidationIssue(
                                 "MISSING_SOURCE_COLUMN",
-                                ValidationSeverity.ERROR,
+                                "error",
                                 "컬럼 '" + sourceColumn + "'을(를) 파일에서 찾을 수 없습니다",
                                 "relation_mappings[" + index + "].node_columns." + mergeKey,
                                 "missing_source_column"
@@ -149,9 +146,9 @@ public class MappingValidationSupport {
                 String path = "relation_mappings[" + index + "].rel_columns." + propertyName;
 
                 if (!headerSet.contains(sourceColumn)) {
-                    errors.add(new ValidationIssueResponse(
+                    errors.add(new ValidationIssue(
                             "MISSING_SOURCE_COLUMN",
-                            ValidationSeverity.ERROR,
+                            "error",
                             "관계 속성 컬럼 '" + sourceColumn + "'을(를) 파일에서 찾을 수 없습니다",
                             path,
                             "missing_source_column"
@@ -161,9 +158,9 @@ public class MappingValidationSupport {
 
                 PropertyDataType dataType = relation.relColumnTypes().getOrDefault(propertyName, PropertyDataType.STRING);
                 if (isNumericType(dataType) && hasNonNumericSample(sampleRows, sourceColumn)) {
-                    warnings.add(new ValidationIssueResponse(
+                    warnings.add(new ValidationIssue(
                             "NUMERIC_PARSE_WARNING",
-                            ValidationSeverity.WARNING,
+                            "warning",
                             "관계 속성 컬럼 '" + sourceColumn + "'에 숫자로 해석하기 어려운 값이 있습니다",
                             "relation_mappings[" + index + "].rel_column_types." + propertyName,
                             null
@@ -206,10 +203,24 @@ public class MappingValidationSupport {
         }
     }
 
+    public record ValidationIssue(
+            String code,
+            String severity,
+            String message,
+            String path,
+            String dismissedReason
+    ) {
+    }
+
+    public record ValidationImpactSummary(
+            int disabledColumnCount
+    ) {
+    }
+
     public record ValidationResult(
-            List<ValidationIssueResponse> errors,
-            List<ValidationIssueResponse> warnings,
-            MappingImpactSummaryResponse impactSummary
+            List<ValidationIssue> errors,
+            List<ValidationIssue> warnings,
+            ValidationImpactSummary impactSummary
     ) {
     }
 }

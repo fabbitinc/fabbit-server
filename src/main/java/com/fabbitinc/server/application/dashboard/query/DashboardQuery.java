@@ -9,7 +9,9 @@ import com.fabbitinc.server.application.dashboard.query.result.DashboardStatsRes
 import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.synthesis.model.SynthesisJob;
-import com.fabbitinc.server.domain.synthesis.repository.SynthesisJobRepository;
+import com.querydsl.core.types.dsl.PathBuilder;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +27,7 @@ public class DashboardQuery {
     private final CurrentAuthProvider currentAuthProvider;
     private final PartRepository partRepository;
     private final BomLinkRepository bomLinkRepository;
-    private final SynthesisJobRepository synthesisJobRepository;
+    private final EntityManager entityManager;
 
     public DashboardStatsResult get(DashboardStatsCondition condition) {
         currentAuthProvider.getCurrentAuth();
@@ -35,7 +37,7 @@ public class DashboardQuery {
         int addedThisWeek = safeToInt(partRepository.countByCreatedAtGreaterThanEqual(since));
         int totalBomLinks = safeToInt(bomLinkRepository.count());
 
-        DashboardLastSynthesisResult lastSynthesis = synthesisJobRepository.findLatest()
+        DashboardLastSynthesisResult lastSynthesis = findLatestSynthesisJob()
                 .map(this::toLastSynthesisResponse)
                 .orElse(null);
 
@@ -61,5 +63,19 @@ public class DashboardQuery {
             return Integer.MAX_VALUE;
         }
         return (int) value;
+    }
+
+    private java.util.Optional<SynthesisJob> findLatestSynthesisJob() {
+        PathBuilder<SynthesisJob> job = new PathBuilder<>(SynthesisJob.class, "synthesisJob");
+        SynthesisJob latest = queryFactory()
+                .selectFrom(job)
+                .orderBy(job.getDateTime("completedAt", Instant.class).desc().nullsLast())
+                .limit(1)
+                .fetchOne();
+        return java.util.Optional.ofNullable(latest);
+    }
+
+    private JPAQueryFactory queryFactory() {
+        return new JPAQueryFactory(entityManager);
     }
 }

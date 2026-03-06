@@ -9,6 +9,7 @@ import com.fabbitinc.server.application.auth.dto.request.RegisterRequest;
 import com.fabbitinc.server.application.auth.dto.response.AcceptInvitationResponse;
 import com.fabbitinc.server.application.auth.dto.response.CheckEmailResponse;
 import com.fabbitinc.server.application.auth.dto.response.CheckSlugResponse;
+import com.fabbitinc.server.application.auth.dto.response.LoginVariantResponse;
 import com.fabbitinc.server.application.auth.dto.response.LoginResponse;
 import com.fabbitinc.server.application.auth.dto.response.OrganizationResponse;
 import com.fabbitinc.server.application.auth.dto.response.PlanResponse;
@@ -214,7 +215,10 @@ public class AuthController {
             @ApiResponse(responseCode = "409", description = "중복 리소스")
     })
     @PostMapping("/register")
-    public RegisterResponse register(@Valid @RequestBody RegisterRequest request) {
+    public RegisterResponse register(
+            @Parameter(description = "회원가입 요청")
+            @Valid @RequestBody RegisterRequest request
+    ) {
         RegisterResult result = registerUseCase.execute(
                 new RegisterCommand(
                         request.verificationToken(),
@@ -244,8 +248,8 @@ public class AuthController {
             @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
     })
     @PostMapping("/login")
-    // TODO 응답 값 통일안됨
-    public Object login(
+    public LoginVariantResponse login(
+            @Parameter(description = "로그인 요청")
             @Valid @RequestBody LoginRequest request,
             @Parameter(description = "요청 Origin 헤더 (워크스페이스 로그인 식별)", example = "https://fabbit.lvh.me")
             @RequestHeader(value = "Origin", required = false) String origin
@@ -277,7 +281,10 @@ public class AuthController {
             @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
     })
     @PostMapping("/refresh")
-    public TokenResponse refresh(@Valid @RequestBody RefreshRequest request) {
+    public TokenResponse refresh(
+            @Parameter(description = "토큰 재발급 요청")
+            @Valid @RequestBody RefreshRequest request
+    ) {
         RefreshTokenResult result = refreshTokenUseCase.execute(
                 new RefreshTokenCommand(request.refreshToken())
         );
@@ -294,6 +301,7 @@ public class AuthController {
     })
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
+            @Parameter(description = "로그아웃 요청")
             @Valid @RequestBody RefreshRequest request
     ) {
         logoutUseCase.execute(new LogoutCommand(request.refreshToken()));
@@ -335,7 +343,10 @@ public class AuthController {
             @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
     })
     @PostMapping("/accept-invitation")
-    public AcceptInvitationResponse acceptInvitation(@Valid @RequestBody AcceptInvitationRequest request) {
+    public AcceptInvitationResponse acceptInvitation(
+            @Parameter(description = "초대 수락 요청")
+            @Valid @RequestBody AcceptInvitationRequest request
+    ) {
         AcceptInvitationResult result = acceptInvitationUseCase.execute(
                 new AcceptInvitationCommand(request.token(), request.password(), request.fullName())
         );

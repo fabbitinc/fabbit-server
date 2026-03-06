@@ -3,15 +3,13 @@ package com.fabbitinc.server.application.file.service;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
-import com.fabbitinc.server.application.file.dto.request.BatchCompleteRequest;
-import com.fabbitinc.server.application.file.dto.request.BatchCreateFileRequest;
-import com.fabbitinc.server.application.file.dto.request.CreateFileRequest;
-import com.fabbitinc.server.application.file.dto.response.BatchCompleteFailure;
-import com.fabbitinc.server.application.file.dto.response.BatchCompleteResponse;
-import com.fabbitinc.server.application.file.dto.response.BatchCreateFileResponse;
-import com.fabbitinc.server.application.file.dto.response.CreateFileResponse;
-import com.fabbitinc.server.application.file.dto.response.FileCompleteResponse;
 import com.fabbitinc.server.application.file.port.StoragePort;
+import com.fabbitinc.server.application.file.service.input.CreateFileInput;
+import com.fabbitinc.server.application.file.service.output.BatchCompleteFailureOutput;
+import com.fabbitinc.server.application.file.service.output.BatchCompleteFilesOutput;
+import com.fabbitinc.server.application.file.service.output.BatchCreateFilesOutput;
+import com.fabbitinc.server.application.file.service.output.CreateFileOutput;
+import com.fabbitinc.server.application.file.service.output.FileCompleteOutput;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
@@ -37,13 +35,13 @@ public class FileService {
     private final FileRepository fileRepository;
     private final StoragePort storagePort;
 
-    public CreateFileResponse createFile(AuthContext auth, CreateFileRequest request) {
-        log.info("auth: " + auth + " request: " + request + "");
+    public CreateFileOutput createFile(AuthContext auth, CreateFileInput input) {
+        log.info("auth: {} input: {}", auth, input);
         UUID fileId = UuidV7Generator.next();
-        String fileKey = "tenants/" + auth.orgId() + "/uploaded/" + fileId + "/" + request.originalName();
+        String fileKey = "tenants/" + auth.orgId() + "/uploaded/" + fileId + "/" + input.originalName();
 
         File file = fileRepository.save(
-                File.create(fileId, request.originalName(), fileKey, request.contentType(), request.fileSize())
+                File.create(fileId, input.originalName(), fileKey, input.contentType(), input.fileSize())
         );
 
         String uploadUrl = storagePort.generateUploadPresignedUrl(
@@ -51,17 +49,17 @@ public class FileService {
                 file.getContentType(),
                 file.getFileSize()
         );
-        return new CreateFileResponse(file.getId(), uploadUrl, file.getFileKey());
+        return new CreateFileOutput(file.getId(), uploadUrl, file.getFileKey());
     }
 
-    public BatchCreateFileResponse batchCreateFiles(AuthContext auth, BatchCreateFileRequest request) {
-        List<CreateFileResponse> items = new ArrayList<>(request.items().size());
-        for (CreateFileRequest item : request.items()) {
+    public BatchCreateFilesOutput batchCreateFiles(AuthContext auth, List<CreateFileInput> inputs) {
+        List<CreateFileOutput> items = new ArrayList<>(inputs.size());
+        for (CreateFileInput input : inputs) {
             UUID fileId = UuidV7Generator.next();
-            String fileKey = "tenants/" + auth.orgId() + "/raw_data/" + fileId + "/" + item.originalName();
+            String fileKey = "tenants/" + auth.orgId() + "/raw_data/" + fileId + "/" + input.originalName();
 
             File file = fileRepository.save(
-                    File.create(fileId, item.originalName(), fileKey, item.contentType(), item.fileSize())
+                    File.create(fileId, input.originalName(), fileKey, input.contentType(), input.fileSize())
             );
 
             String uploadUrl = storagePort.generateUploadPresignedUrl(
@@ -69,35 +67,35 @@ public class FileService {
                     file.getContentType(),
                     file.getFileSize()
             );
-            items.add(new CreateFileResponse(file.getId(), uploadUrl, file.getFileKey()));
+            items.add(new CreateFileOutput(file.getId(), uploadUrl, file.getFileKey()));
         }
-        return new BatchCreateFileResponse(items);
+        return new BatchCreateFilesOutput(items);
     }
 
-    public BatchCompleteResponse batchCompleteFiles(BatchCompleteRequest request) {
-        List<File> files = fileRepository.findByIdIn(request.fileIds());
+    public BatchCompleteFilesOutput completeFiles(List<UUID> fileIds) {
+        List<File> files = fileRepository.findByIdIn(fileIds);
         Map<UUID, File> fileMap = new HashMap<>();
         for (File file : files) {
             fileMap.put(file.getId(), file);
         }
 
-        List<FileCompleteResponse> completed = new ArrayList<>();
-        List<BatchCompleteFailure> failed = new ArrayList<>();
+        List<FileCompleteOutput> completed = new ArrayList<>();
+        List<BatchCompleteFailureOutput> failed = new ArrayList<>();
 
-        for (UUID fileId : request.fileIds()) {
+        for (UUID fileId : fileIds) {
             File file = fileMap.get(fileId);
             if (file == null) {
-                failed.add(new BatchCompleteFailure(fileId, "파일을 찾을 수 없습니다"));
+                failed.add(new BatchCompleteFailureOutput(fileId, "파일을 찾을 수 없습니다"));
                 continue;
             }
 
             if (file.getStatus() == FileStatus.UPLOADED) {
-                failed.add(new BatchCompleteFailure(fileId, "이미 완료된 업로드입니다"));
+                failed.add(new BatchCompleteFailureOutput(fileId, "이미 완료된 업로드입니다"));
                 continue;
             }
 
             if (storagePort.headObject(file.getFileKey()) == null) {
-                failed.add(new BatchCompleteFailure(fileId, "S3에 파일이 존재하지 않습니다"));
+                failed.add(new BatchCompleteFailureOutput(fileId, "S3에 파일이 존재하지 않습니다"));
                 continue;
             }
 
@@ -105,10 +103,10 @@ public class FileService {
             completed.add(toCompleteResponse(file));
         }
 
-        return new BatchCompleteResponse(completed, failed);
+        return new BatchCompleteFilesOutput(completed, failed);
     }
 
-    public FileCompleteResponse completeFile(UUID fileId) {
+    public FileCompleteOutput completeFile(UUID fileId) {
         File file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "파일을 찾을 수 없습니다"));
 
@@ -169,8 +167,8 @@ public class FileService {
         file.softDelete();
     }
 
-    private FileCompleteResponse toCompleteResponse(File file) {
-        return new FileCompleteResponse(
+    private FileCompleteOutput toCompleteResponse(File file) {
+        return new FileCompleteOutput(
                 file.getId(),
                 file.getStatus(),
                 file.getOriginalName(),

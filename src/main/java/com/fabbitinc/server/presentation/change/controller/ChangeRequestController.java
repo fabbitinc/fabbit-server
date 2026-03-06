@@ -68,7 +68,14 @@ import com.fabbitinc.server.application.issue.usecase.SyncTeamAssigneesUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncTeamReviewersUseCase;
 import com.fabbitinc.server.application.issue.usecase.UpdateChangeRequestUseCase;
 import com.fabbitinc.server.application.issue.usecase.UpdateCommentUseCase;
+import com.fabbitinc.server.application.issue.usecase.result.AttachedFileResult;
+import com.fabbitinc.server.application.issue.usecase.result.CommentResult;
+import com.fabbitinc.server.application.issue.usecase.result.SubmitReviewResult;
+import com.fabbitinc.server.application.issue.usecase.result.SyncDiffResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -99,6 +106,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/changes")
 @Tag(name = "changes", description = "변경요청 조회/생성/상태전이 API")
+@ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "요청 성공"),
+        @ApiResponse(responseCode = "201", description = "생성 성공"),
+        @ApiResponse(responseCode = "204", description = "삭제 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @ApiResponse(responseCode = "401", description = "인증 필요"),
+        @ApiResponse(responseCode = "403", description = "권한 없음"),
+        @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+})
 public class ChangeRequestController {
 
     private final IssueQuery issueQuery;
@@ -128,6 +144,7 @@ public class ChangeRequestController {
     )
     @GetMapping
     public ChangeRequestListResponse listChangeRequests(
+            @Parameter(description = "변경요청 제목 검색어", example = "품번")
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "state", required = false) String state,
             @RequestParam(value = "cr_state", required = false) String crState,
@@ -165,6 +182,7 @@ public class ChangeRequestController {
     )
     @GetMapping("/{issueNumber}")
     public ChangeRequestResponse getChangeRequest(
+            @Parameter(description = "조회할 변경요청 번호", example = "201")
             @PathVariable int issueNumber
     ) {
         return toChangeRequestResponse(issueQuery.getChangeRequest(new ChangeRequestDetailCondition(issueNumber)));
@@ -177,10 +195,24 @@ public class ChangeRequestController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ChangeRequestResponse createChangeRequest(
+            @Parameter(description = "변경요청 생성 요청")
             @Valid @RequestBody CreateChangeRequestRequest request
     ) {
-        int issueNumber = createChangeRequestUseCase.execute(request);
-        return toChangeRequestResponse(issueQuery.getChangeRequest(new ChangeRequestDetailCondition(issueNumber)));
+        CreateChangeRequestUseCase.CreateChangeRequestResult result = createChangeRequestUseCase.execute(
+                new CreateChangeRequestUseCase.CreateChangeRequestCommand(
+                        request.title(),
+                        request.body(),
+                        request.issueNumber(),
+                        request.partIds(),
+                        request.assigneeUserIds(),
+                        request.teamAssigneeIds(),
+                        request.labelIds(),
+                        request.fileIds(),
+                        request.reviewerUserIds(),
+                        request.teamReviewerIds()
+                )
+        );
+        return toChangeRequestResponse(issueQuery.getChangeRequest(new ChangeRequestDetailCondition(result.issueNumber())));
     }
 
     @Operation(
@@ -189,10 +221,14 @@ public class ChangeRequestController {
     )
     @PatchMapping("/{issueNumber}")
     public ChangeRequestResponse updateChangeRequest(
+            @Parameter(description = "수정할 변경요청 번호", example = "201")
             @PathVariable int issueNumber,
+            @Parameter(description = "변경요청 수정 요청")
             @Valid @RequestBody UpdateIssueRequest request
     ) {
-        updateChangeRequestUseCase.execute(issueNumber, request);
+        updateChangeRequestUseCase.execute(
+                new UpdateChangeRequestUseCase.UpdateChangeRequestCommand(issueNumber, request.title(), request.body())
+        );
         return toChangeRequestResponse(issueQuery.getChangeRequest(new ChangeRequestDetailCondition(issueNumber)));
     }
 
@@ -204,7 +240,7 @@ public class ChangeRequestController {
     public ChangeRequestResponse submit(
             @PathVariable int issueNumber
     ) {
-        submitChangeRequestUseCase.execute(issueNumber);
+        submitChangeRequestUseCase.execute(new SubmitChangeRequestUseCase.SubmitChangeRequestCommand(issueNumber));
         return toChangeRequestResponse(issueQuery.getChangeRequest(new ChangeRequestDetailCondition(issueNumber)));
     }
 
@@ -216,7 +252,7 @@ public class ChangeRequestController {
     public ChangeRequestResponse merge(
             @PathVariable int issueNumber
     ) {
-        mergeChangeRequestUseCase.execute(issueNumber);
+        mergeChangeRequestUseCase.execute(new MergeChangeRequestUseCase.MergeChangeRequestCommand(issueNumber));
         return toChangeRequestResponse(issueQuery.getChangeRequest(new ChangeRequestDetailCondition(issueNumber)));
     }
 
@@ -228,7 +264,7 @@ public class ChangeRequestController {
     public ChangeRequestResponse close(
             @PathVariable int issueNumber
     ) {
-        closeChangeRequestUseCase.execute(issueNumber);
+        closeChangeRequestUseCase.execute(new CloseChangeRequestUseCase.CloseChangeRequestCommand(issueNumber));
         return toChangeRequestResponse(issueQuery.getChangeRequest(new ChangeRequestDetailCondition(issueNumber)));
     }
 
@@ -240,7 +276,7 @@ public class ChangeRequestController {
     public ChangeRequestResponse reopen(
             @PathVariable int issueNumber
     ) {
-        reopenChangeRequestUseCase.execute(issueNumber);
+        reopenChangeRequestUseCase.execute(new ReopenChangeRequestUseCase.ReopenChangeRequestCommand(issueNumber));
         return toChangeRequestResponse(issueQuery.getChangeRequest(new ChangeRequestDetailCondition(issueNumber)));
     }
 
@@ -253,7 +289,9 @@ public class ChangeRequestController {
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncIssuesRequest request
     ) {
-        return syncIssuesUseCase.execute(issueNumber, request);
+        return toSyncDiffResponse(
+                syncIssuesUseCase.execute(new SyncIssuesUseCase.SyncIssuesCommand(issueNumber, request.issueIds()))
+        );
     }
 
     @Operation(
@@ -265,7 +303,15 @@ public class ChangeRequestController {
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncAssigneesRequest request
     ) {
-        return syncAssigneesUseCase.execute(IssueTargetType.CHANGE_REQUEST, issueNumber, request);
+        return toSyncDiffResponse(
+                syncAssigneesUseCase.execute(
+                        new SyncAssigneesUseCase.SyncAssigneesCommand(
+                                IssueTargetType.CHANGE_REQUEST,
+                                issueNumber,
+                                request.userIds()
+                        )
+                )
+        );
     }
 
     @Operation(
@@ -277,7 +323,15 @@ public class ChangeRequestController {
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncTeamAssigneesRequest request
     ) {
-        return syncTeamAssigneesUseCase.execute(IssueTargetType.CHANGE_REQUEST, issueNumber, request);
+        return toSyncDiffResponse(
+                syncTeamAssigneesUseCase.execute(
+                        new SyncTeamAssigneesUseCase.SyncTeamAssigneesCommand(
+                                IssueTargetType.CHANGE_REQUEST,
+                                issueNumber,
+                                request.teamIds()
+                        )
+                )
+        );
     }
 
     @Operation(
@@ -289,7 +343,9 @@ public class ChangeRequestController {
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncReviewersRequest request
     ) {
-        return syncReviewersUseCase.execute(issueNumber, request);
+        return toSyncDiffResponse(
+                syncReviewersUseCase.execute(new SyncReviewersUseCase.SyncReviewersCommand(issueNumber, request.userIds()))
+        );
     }
 
     @Operation(
@@ -301,7 +357,11 @@ public class ChangeRequestController {
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncTeamReviewersRequest request
     ) {
-        return syncTeamReviewersUseCase.execute(issueNumber, request);
+        return toSyncDiffResponse(
+                syncTeamReviewersUseCase.execute(
+                        new SyncTeamReviewersUseCase.SyncTeamReviewersCommand(issueNumber, request.teamIds())
+                )
+        );
     }
 
     @Operation(
@@ -313,7 +373,9 @@ public class ChangeRequestController {
             @PathVariable int issueNumber,
             @Valid @RequestBody SubmitReviewRequest request
     ) {
-        return submitReviewUseCase.execute(issueNumber, request);
+        return toSubmitReviewResponse(
+                submitReviewUseCase.execute(new SubmitReviewUseCase.SubmitReviewCommand(issueNumber, request.status()))
+        );
     }
 
     @Operation(
@@ -325,7 +387,15 @@ public class ChangeRequestController {
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncLabelsRequest request
     ) {
-        return syncLabelsUseCase.execute(IssueTargetType.CHANGE_REQUEST, issueNumber, request);
+        return toSyncDiffResponse(
+                syncLabelsUseCase.execute(
+                        new SyncLabelsUseCase.SyncLabelsCommand(
+                                IssueTargetType.CHANGE_REQUEST,
+                                issueNumber,
+                                request.labelIds()
+                        )
+                )
+        );
     }
 
     @Operation(
@@ -337,7 +407,15 @@ public class ChangeRequestController {
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncPartsRequest request
     ) {
-        return syncPartsUseCase.execute(IssueTargetType.CHANGE_REQUEST, issueNumber, request);
+        return toSyncDiffResponse(
+                syncPartsUseCase.execute(
+                        new SyncPartsUseCase.SyncPartsCommand(
+                                IssueTargetType.CHANGE_REQUEST,
+                                issueNumber,
+                                request.partIds()
+                        )
+                )
+        );
     }
 
     @Operation(
@@ -363,7 +441,15 @@ public class ChangeRequestController {
             @PathVariable int issueNumber,
             @Valid @RequestBody CreateCommentRequest request
     ) {
-        return createCommentUseCase.execute(IssueTargetType.CHANGE_REQUEST, issueNumber, request);
+        return toCommentResponse(
+                createCommentUseCase.execute(
+                        new CreateCommentUseCase.CreateCommentCommand(
+                                IssueTargetType.CHANGE_REQUEST,
+                                issueNumber,
+                                request.body()
+                        )
+                )
+        );
     }
 
     @Operation(
@@ -376,7 +462,16 @@ public class ChangeRequestController {
             @PathVariable UUID commentId,
             @Valid @RequestBody UpdateCommentRequest request
     ) {
-        return updateCommentUseCase.execute(IssueTargetType.CHANGE_REQUEST, issueNumber, commentId, request);
+        return toCommentResponse(
+                updateCommentUseCase.execute(
+                        new UpdateCommentUseCase.UpdateCommentCommand(
+                                IssueTargetType.CHANGE_REQUEST,
+                                issueNumber,
+                                commentId,
+                                request.body()
+                        )
+                )
+        );
     }
 
     @Operation(
@@ -388,7 +483,9 @@ public class ChangeRequestController {
             @PathVariable int issueNumber,
             @PathVariable UUID commentId
     ) {
-        deleteCommentUseCase.execute(IssueTargetType.CHANGE_REQUEST, issueNumber, commentId);
+        deleteCommentUseCase.execute(
+                new DeleteCommentUseCase.DeleteCommentCommand(IssueTargetType.CHANGE_REQUEST, issueNumber, commentId)
+        );
         return ResponseEntity.noContent().build();
     }
 
@@ -401,7 +498,16 @@ public class ChangeRequestController {
             @PathVariable int issueNumber,
             @Valid @RequestBody AttachFilesRequest request
     ) {
-        return addIssueFilesUseCase.execute(IssueTargetType.CHANGE_REQUEST, issueNumber, request);
+        return addIssueFilesUseCase.execute(
+                        new AddIssueFilesUseCase.AddIssueFilesCommand(
+                                IssueTargetType.CHANGE_REQUEST,
+                                issueNumber,
+                                request.fileIds()
+                        )
+                )
+                .stream()
+                .map(this::toFileItemResponse)
+                .toList();
     }
 
     @Operation(
@@ -413,8 +519,30 @@ public class ChangeRequestController {
             @PathVariable int issueNumber,
             @PathVariable UUID fileId
     ) {
-        deleteIssueFileUseCase.execute(IssueTargetType.CHANGE_REQUEST, issueNumber, fileId);
+        deleteIssueFileUseCase.execute(
+                new DeleteIssueFileUseCase.DeleteIssueFileCommand(IssueTargetType.CHANGE_REQUEST, issueNumber, fileId)
+        );
         return ResponseEntity.noContent().build();
+    }
+
+    private SyncDiffResponse toSyncDiffResponse(SyncDiffResult result) {
+        return new SyncDiffResponse(result.addedCount(), result.removedCount());
+    }
+
+    private SubmitReviewResponse toSubmitReviewResponse(SubmitReviewResult result) {
+        return new SubmitReviewResponse(result.reviewStatus(), result.reviewedAt());
+    }
+
+    private CommentResponse toCommentResponse(CommentResult result) {
+        return new CommentResponse(
+                result.id(),
+                result.issueId(),
+                result.body(),
+                result.createdAt(),
+                result.updatedAt(),
+                result.isModified(),
+                result.createdBy()
+        );
     }
 
     private ChangeRequestListResponse toChangeRequestListResponse(ChangeRequestListResult result) {
@@ -566,6 +694,17 @@ public class ChangeRequestController {
     }
 
     private FileItemResponse toFileItemResponse(IssueFileItemResult result) {
+        return new FileItemResponse(
+                result.fileId(),
+                result.originalName(),
+                result.contentType(),
+                result.fileSize(),
+                result.fileUrl(),
+                result.createdAt()
+        );
+    }
+
+    private FileItemResponse toFileItemResponse(AttachedFileResult result) {
         return new FileItemResponse(
                 result.fileId(),
                 result.originalName(),

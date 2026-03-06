@@ -11,10 +11,18 @@ import com.fabbitinc.server.application.team.query.TeamQuery;
 import com.fabbitinc.server.application.team.usecase.CreateTeamUseCase;
 import com.fabbitinc.server.application.team.usecase.DeleteTeamUseCase;
 import com.fabbitinc.server.application.team.usecase.UpdateTeamUseCase;
+import com.fabbitinc.server.application.team.usecase.command.CreateTeamCommand;
+import com.fabbitinc.server.application.team.usecase.command.DeleteTeamCommand;
+import com.fabbitinc.server.application.team.usecase.command.UpdateTeamCommand;
+import com.fabbitinc.server.application.team.usecase.result.CreateTeamResult;
+import com.fabbitinc.server.application.team.usecase.result.UpdateTeamResult;
 import com.fabbitinc.server.presentation.team.dto.response.TeamDetailResponse;
 import com.fabbitinc.server.presentation.team.dto.response.TeamListResponse;
 import com.fabbitinc.server.presentation.team.dto.response.TeamLookupResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -41,6 +49,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/teams")
 @Tag(name = "teams", description = "팀 관리 API")
+@ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "요청 성공"),
+        @ApiResponse(responseCode = "201", description = "생성 성공"),
+        @ApiResponse(responseCode = "204", description = "삭제 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @ApiResponse(responseCode = "401", description = "인증 필요"),
+        @ApiResponse(responseCode = "403", description = "권한 없음"),
+        @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+})
 public class TeamController {
 
     private final TeamQuery teamQuery;
@@ -55,10 +72,13 @@ public class TeamController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TeamDetailResponse createTeam(
+            @Parameter(description = "팀 생성 요청")
             @Valid @RequestBody CreateTeamRequest request
     ) {
-        UUID teamId = createTeamUseCase.execute(request.name(), request.description());
-        return toTeamDetailResponse(teamQuery.get(new TeamDetailCondition(teamId)));
+        CreateTeamResult result = createTeamUseCase.execute(
+                new CreateTeamCommand(request.name(), request.description())
+        );
+        return toTeamDetailResponse(teamQuery.get(new TeamDetailCondition(result.teamId())));
     }
 
     @Operation(
@@ -67,7 +87,9 @@ public class TeamController {
     )
     @GetMapping("/lookup")
     public TeamLookupResponse lookupTeams(
+            @Parameter(description = "팀 이름 검색어", example = "플랫폼")
             @RequestParam(value = "search", required = false) String search,
+            @Parameter(description = "조회 건수", example = "10")
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
@@ -91,6 +113,7 @@ public class TeamController {
     )
     @GetMapping("/{teamId}")
     public TeamDetailResponse getTeam(
+            @Parameter(description = "조회할 팀 ID")
             @PathVariable UUID teamId
     ) {
         return toTeamDetailResponse(teamQuery.get(new TeamDetailCondition(teamId)));
@@ -102,14 +125,15 @@ public class TeamController {
     )
     @PatchMapping("/{teamId}")
     public TeamDetailResponse updateTeam(
+            @Parameter(description = "수정할 팀 ID")
             @PathVariable UUID teamId,
+            @Parameter(description = "팀 수정 요청")
             @Valid @RequestBody UpdateTeamRequest request
     ) {
-        UUID updatedTeamId = updateTeamUseCase.execute(teamId,
-                request.name(),
-                request.description()
+        UpdateTeamResult result = updateTeamUseCase.execute(
+                new UpdateTeamCommand(teamId, request.name(), request.description())
         );
-        return toTeamDetailResponse(teamQuery.get(new TeamDetailCondition(updatedTeamId)));
+        return toTeamDetailResponse(teamQuery.get(new TeamDetailCondition(result.teamId())));
     }
 
     @Operation(
@@ -118,9 +142,10 @@ public class TeamController {
     )
     @DeleteMapping("/{teamId}")
     public ResponseEntity<Void> deleteTeam(
+            @Parameter(description = "삭제할 팀 ID")
             @PathVariable UUID teamId
     ) {
-        deleteTeamUseCase.execute(teamId);
+        deleteTeamUseCase.execute(new DeleteTeamCommand(teamId));
         return ResponseEntity.noContent().build();
     }
 

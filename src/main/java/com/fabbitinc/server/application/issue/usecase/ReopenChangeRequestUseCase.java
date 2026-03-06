@@ -9,16 +9,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@Transactional
 @RequiredArgsConstructor
 public class ReopenChangeRequestUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final IssueService issueService;
 
-    @Transactional
-    public void execute(int issueNumber) {
+    public void execute(ReopenChangeRequestCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        ChangeRequest changeRequest = issueService.getChangeRequestByNumberOrThrow(issueNumber);
+        ChangeRequest changeRequest = issueService.getChangeRequestByNumberOrThrow(command.issueNumber());
         issueService.reopenChangeRequest(auth.userId(), changeRequest);
+    }
+
+    public record ReopenChangeRequestCommand(int issueNumber) {
     }
 }

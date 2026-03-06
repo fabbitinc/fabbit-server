@@ -90,7 +90,7 @@ public class TeamQuery {
         }
 
         List<UUID> userIds = members.stream().map(TeamMember::getUserId).toList();
-        List<User> users = userRepository.findAllByIdInOrderByFullName(userIds);
+        List<User> users = userRepository.findByIdInOrderByFullNameAsc(userIds);
         Map<UUID, User> userMap = users.stream().collect(Collectors.toMap(User::getId, user -> user));
 
         List<TeamMemberListResult.TeamMemberSummaryResult> items = members.stream()

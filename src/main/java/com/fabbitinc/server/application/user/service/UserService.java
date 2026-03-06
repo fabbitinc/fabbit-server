@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.user.service;
 
-import com.fabbitinc.server.application.auth.service.PasswordService;
+import com.fabbitinc.server.application.auth.policy.PasswordPolicy;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.domain.file.model.File;
@@ -19,10 +19,10 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final PasswordService passwordService;
+    private final PasswordPolicy passwordPolicy;
 
     public User createUser(String email, String password, String fullName) {
-        User user = User.create(normalizeEmail(email), passwordService.hash(password), fullName);
+        User user = User.create(normalizeEmail(email), passwordPolicy.hash(password), fullName);
         return userRepository.save(user);
     }
 
@@ -45,7 +45,7 @@ public class UserService {
     }
 
     public List<User> getUsersByIdsOrdered(List<UUID> userIds) {
-        return userRepository.findAllByIdInOrderByFullName(userIds);
+        return userRepository.findByIdInOrderByFullNameAsc(userIds);
     }
 
     public User getUserOrNull(UUID userId) {
@@ -68,11 +68,11 @@ public class UserService {
     public void changePassword(UUID userId, String currentPassword, String newPassword) {
         User user = getUserOrThrow(userId);
 
-        if (!passwordService.matches(currentPassword, user.getHashedPassword())) {
+        if (!passwordPolicy.matches(currentPassword, user.getHashedPassword())) {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS, "현재 비밀번호가 올바르지 않습니다");
         }
 
-        user.changePassword(passwordService.hash(newPassword));
+        user.changePassword(passwordPolicy.hash(newPassword));
     }
 
     public void setProfileImage(UUID userId, File file) {

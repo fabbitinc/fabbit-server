@@ -126,22 +126,36 @@ public class PartQuery {
     public CategoryStatsResult listCategories() {
         currentAuthProvider.getCurrentAuth();
 
-        List<CategoryStatsResult.Item> items = partRepository.findCategoryStats().stream()
-                .map(row -> new CategoryStatsResult.Item((String) row[0], ((Number) row[1]).longValue()))
+        PathBuilder<Part> part = new PathBuilder<>(Part.class, "part");
+        var categoryExpr = part.getString("category");
+        var partIdExpr = part.get("id", UUID.class);
+        var countExpr = partIdExpr.count();
+
+        List<CategoryStatsResult.Item> items = queryFactory()
+                .select(categoryExpr, countExpr)
+                .from(part)
+                .where(categoryExpr.isNotNull())
+                .groupBy(categoryExpr)
+                .orderBy(categoryExpr.asc())
+                .fetch().stream()
+                .map(row -> new CategoryStatsResult.Item(
+                        row.get(categoryExpr),
+                        row.get(countExpr) == null ? 0L : row.get(countExpr)
+                ))
                 .toList();
         return new CategoryStatsResult(items);
     }
 
     public CategoryLookupResult lookupCategories() {
         currentAuthProvider.getCurrentAuth();
-        return new CategoryLookupResult(partRepository.findDistinctCategories());
+        return new CategoryLookupResult(findDistinctCategories());
     }
 
     public PartFilterOptionsResult getFilterOptions() {
         currentAuthProvider.getCurrentAuth();
         return new PartFilterOptionsResult(
-                partRepository.findDistinctCategories(),
-                partRepository.findDistinctLifecycleStates()
+                findDistinctCategories(),
+                findDistinctLifecycleStates()
         );
     }
 
@@ -790,6 +804,30 @@ public class PartQuery {
 
     private JPAQueryFactory queryFactory() {
         return new JPAQueryFactory(entityManager);
+    }
+
+    private List<String> findDistinctCategories() {
+        PathBuilder<Part> part = new PathBuilder<>(Part.class, "part");
+        var categoryExpr = part.getString("category");
+        return queryFactory()
+                .select(categoryExpr)
+                .distinct()
+                .from(part)
+                .where(categoryExpr.isNotNull())
+                .orderBy(categoryExpr.asc())
+                .fetch();
+    }
+
+    private List<PartLifecycleState> findDistinctLifecycleStates() {
+        PathBuilder<Part> part = new PathBuilder<>(Part.class, "part");
+        var lifecycleStateExpr = part.getEnum("lifecycleState", PartLifecycleState.class);
+        return queryFactory()
+                .select(lifecycleStateExpr)
+                .distinct()
+                .from(part)
+                .where(lifecycleStateExpr.isNotNull())
+                .orderBy(lifecycleStateExpr.asc())
+                .fetch();
     }
 
     private BooleanBuilder buildPartPredicate(

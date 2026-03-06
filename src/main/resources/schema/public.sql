@@ -146,6 +146,7 @@ CREATE TABLE public.refresh_tokens (
     user_id uuid NOT NULL,
     token_jti character varying(36) NOT NULL,
     expires_at timestamp with time zone NOT NULL,
+    revoked_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -462,4 +463,3 @@ ALTER TABLE ONLY public.subscriptions
 --
 
 \unrestrict tyN75uQj6UarHW8e9LSBUoqW4itmOSuIRX8pfUOMDfmifY1TmkOBc3zhha7dIwz
-

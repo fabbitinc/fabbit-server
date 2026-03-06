@@ -124,7 +124,19 @@ public class OntologyQuery {
     }
 
     private List<NodeSearchResult.NodeSearchItemResult> searchSuppliers(String search, int limit) {
-        return supplierRepository.listSuppliersPaginated(search, 0, limit).stream()
+        if (search == null || search.isBlank()) {
+            return supplierRepository.findAllByOrderByCompanyNameAsc(PageRequest.of(0, limit)).stream()
+                    .map(supplier -> new NodeSearchResult.NodeSearchItemResult(
+                            supplier.getCompanyName(),
+                            supplier.getCompanyName()
+                    ))
+                    .toList();
+        }
+        return supplierRepository.findByCompanyNameContainingIgnoreCaseOrCodeContainingIgnoreCaseOrderByCompanyNameAsc(
+                        search.trim(),
+                        search.trim(),
+                        PageRequest.of(0, limit)
+                ).stream()
                 .map(supplier -> new NodeSearchResult.NodeSearchItemResult(
                         supplier.getCompanyName(),
                         supplier.getCompanyName()
@@ -133,8 +145,13 @@ public class OntologyQuery {
     }
 
     private List<NodeSearchResult.NodeSearchItemResult> searchProjects(String search, int limit) {
-        return projectRepository.findByNameContainingIgnoreCaseOrderByNameAsc(
-                        search,
+        if (search == null || search.isBlank()) {
+            return projectRepository.findByDeletedFalseOrderByNameAsc(PageRequest.of(0, limit)).stream()
+                    .map(project -> new NodeSearchResult.NodeSearchItemResult(project.getName(), project.getName()))
+                    .toList();
+        }
+        return projectRepository.findByDeletedFalseAndNameContainingIgnoreCaseOrderByNameAsc(
+                        search.trim(),
                         PageRequest.of(0, limit)
                 ).stream()
                 .map(project -> new NodeSearchResult.NodeSearchItemResult(project.getName(), project.getName()))

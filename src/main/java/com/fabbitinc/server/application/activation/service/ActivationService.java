@@ -1,12 +1,9 @@
 package com.fabbitinc.server.application.activation.service;
 
-import com.fabbitinc.server.application.activation.dto.response.HealthCheckIssueResponse;
-import com.fabbitinc.server.application.activation.dto.response.HealthCheckResponse;
-import com.fabbitinc.server.application.activation.dto.response.QueryResponse;
-import com.fabbitinc.server.application.activation.dto.response.QueryResultResponse;
-import com.fabbitinc.server.application.activation.dto.response.ActivationResultType;
-import com.fabbitinc.server.application.activation.dto.response.HealthIssueCategory;
-import com.fabbitinc.server.application.activation.dto.response.HealthIssueSeverity;
+import com.fabbitinc.server.application.activation.service.output.GraphQueryOutput;
+import com.fabbitinc.server.application.activation.service.output.GraphQueryResultOutput;
+import com.fabbitinc.server.application.activation.service.output.HealthCheckIssueOutput;
+import com.fabbitinc.server.application.activation.service.output.HealthCheckOutput;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.domain.part.model.Part;
@@ -45,7 +42,7 @@ public class ActivationService {
     private final ProjectPartRepository projectPartRepository;
     private final EntityManager entityManager;
 
-    public HealthCheckResponse healthCheck() {
+    public HealthCheckOutput healthCheck() {
         int partCount = safeToInt(partRepository.count());
         int drawingCount = safeToInt(drawingRepository.count());
         int supplierCount = safeToInt(supplierRepository.count());
@@ -71,15 +68,15 @@ public class ActivationService {
         int totalNodes = nodeCounts.values().stream().mapToInt(Integer::intValue).sum();
         int totalRelationships = relationshipCounts.values().stream().mapToInt(Integer::intValue).sum();
 
-        List<HealthCheckIssueResponse> issues = new ArrayList<>();
+        List<HealthCheckIssueOutput> issues = new ArrayList<>();
         if (totalNodes == 0) {
-            issues.add(new HealthCheckIssueResponse(
-                    HealthIssueCategory.EMPTY_GRAPH,
-                    HealthIssueSeverity.WARNING,
+            issues.add(new HealthCheckIssueOutput(
+                    "empty_graph",
+                    "warning",
                     "지식 그래프에 데이터가 없습니다. 먼저 데이터를 합성해주세요.",
                     0
             ));
-            return new HealthCheckResponse(
+            return new HealthCheckOutput(
                     totalNodes,
                     totalRelationships,
                     nodeCounts,
@@ -88,13 +85,13 @@ public class ActivationService {
             );
         }
 
-        Set<UUID> connectedParts = new HashSet<>(bomLinkRepository.findDistinctChildPartIds());
-        connectedParts.addAll(projectPartRepository.findDistinctPartIds());
+        Set<UUID> connectedParts = new HashSet<>(findDistinctChildPartIds());
+        connectedParts.addAll(findDistinctProjectPartIds());
         int orphanParts = Math.max(0, partCount - connectedParts.size());
         if (orphanParts > 0) {
-            issues.add(new HealthCheckIssueResponse(
-                    HealthIssueCategory.ORPHAN_PARTS,
-                    HealthIssueSeverity.WARNING,
+            issues.add(new HealthCheckIssueOutput(
+                    "orphan_parts",
+                    "warning",
                     "어떤 프로젝트나 조립체에도 소속되지 않은 부품 " + orphanParts + "개",
                     orphanParts
             ));
@@ -102,36 +99,36 @@ public class ActivationService {
 
         int noDrawingParts = safeToInt(partRepository.countByDrawingIdIsNull());
         if (noDrawingParts > 0) {
-            issues.add(new HealthCheckIssueResponse(
-                    HealthIssueCategory.MISSING_DRAWING,
-                    HealthIssueSeverity.INFO,
+            issues.add(new HealthCheckIssueOutput(
+                    "missing_drawing",
+                    "info",
                     "도면이 연결되지 않은 부품 " + noDrawingParts + "개",
                     noDrawingParts
             ));
         }
 
-        int withSupplierPartCount = safeToInt(partSupplierRepository.countDistinctPartIds());
+        int withSupplierPartCount = safeToInt(countDistinctSuppliedPartIds());
         int noSupplierParts = Math.max(0, partCount - withSupplierPartCount);
         if (noSupplierParts > 0) {
-            issues.add(new HealthCheckIssueResponse(
-                    HealthIssueCategory.MISSING_SUPPLIER,
-                    HealthIssueSeverity.INFO,
+            issues.add(new HealthCheckIssueOutput(
+                    "missing_supplier",
+                    "info",
                     "공급사가 연결되지 않은 부품 " + noSupplierParts + "개",
                     noSupplierParts
             ));
         }
 
-        int incompleteBom = safeToInt(bomLinkRepository.countChildLinksWithUnnamedPart());
+        int incompleteBom = safeToInt(countChildLinksWithUnnamedPart());
         if (incompleteBom > 0) {
-            issues.add(new HealthCheckIssueResponse(
-                    HealthIssueCategory.INCOMPLETE_BOM,
-                    HealthIssueSeverity.WARNING,
+            issues.add(new HealthCheckIssueOutput(
+                    "incomplete_bom",
+                    "warning",
                     "BOM에 존재하지만 품명 정보가 없는 부품 " + incompleteBom + "개",
                     incompleteBom
             ));
         }
 
-        return new HealthCheckResponse(
+        return new HealthCheckOutput(
                 totalNodes,
                 totalRelationships,
                 nodeCounts,
@@ -140,7 +137,7 @@ public class ActivationService {
         );
     }
 
-    public QueryResponse queryGraph(String question) {
+    public GraphQueryOutput queryGraph(String question) {
         if (question == null || question.isBlank()) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "question은 비어 있을 수 없습니다");
         }
@@ -159,10 +156,10 @@ public class ActivationService {
         return queryPartsByKeyword(question.trim());
     }
 
-    private QueryResponse queryPartsWithoutDrawing() {
-        List<QueryResultResponse> results = partRepository.findTop20ByDrawingIdIsNullOrderByPartNumberAsc().stream()
-                .map(part -> new QueryResultResponse(
-                        ActivationResultType.PART,
+    private GraphQueryOutput queryPartsWithoutDrawing() {
+        List<GraphQueryResultOutput> results = partRepository.findTop20ByDrawingIdIsNullOrderByPartNumberAsc().stream()
+                .map(part -> new GraphQueryResultOutput(
+                        "part",
                         part.getPartNumber(),
                         part.getName(),
                         "도면 미연결 부품",
@@ -170,10 +167,10 @@ public class ActivationService {
                 ))
                 .toList();
         String answer = "도면이 연결되지 않은 부품 " + results.size() + "건을 조회했습니다.";
-        return new QueryResponse(results, answer);
+        return new GraphQueryOutput(results, answer);
     }
 
-    private QueryResponse querySupplierPartCounts() {
+    private GraphQueryOutput querySupplierPartCounts() {
         Query query = entityManager.createNativeQuery(
                 """
                         select s.company_name, count(ps.part_id) as part_count
@@ -187,9 +184,9 @@ public class ActivationService {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = query.getResultList();
 
-        List<QueryResultResponse> results = rows.stream()
-                .map(row -> new QueryResultResponse(
-                        ActivationResultType.SUPPLIER,
+        List<GraphQueryResultOutput> results = rows.stream()
+                .map(row -> new GraphQueryResultOutput(
+                        "supplier",
                         (String) row[0],
                         (String) row[0],
                         "연결 부품 수",
@@ -197,10 +194,10 @@ public class ActivationService {
                 ))
                 .toList();
         String answer = "공급사별 연결 부품 수 상위 " + results.size() + "건을 조회했습니다.";
-        return new QueryResponse(results, answer);
+        return new GraphQueryOutput(results, answer);
     }
 
-    private QueryResponse queryProjectPartCounts() {
+    private GraphQueryOutput queryProjectPartCounts() {
         Query query = entityManager.createNativeQuery(
                 """
                         select p.name, count(pp.part_id) as part_count
@@ -215,9 +212,9 @@ public class ActivationService {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = query.getResultList();
 
-        List<QueryResultResponse> results = rows.stream()
-                .map(row -> new QueryResultResponse(
-                        ActivationResultType.PROJECT,
+        List<GraphQueryResultOutput> results = rows.stream()
+                .map(row -> new GraphQueryResultOutput(
+                        "project",
                         (String) row[0],
                         (String) row[0],
                         "연결 부품 수",
@@ -225,18 +222,18 @@ public class ActivationService {
                 ))
                 .toList();
         String answer = "프로젝트별 부품 수 " + results.size() + "건을 조회했습니다.";
-        return new QueryResponse(results, answer);
+        return new GraphQueryOutput(results, answer);
     }
 
-    private QueryResponse queryPartsByKeyword(String keyword) {
+    private GraphQueryOutput queryPartsByKeyword(String keyword) {
         List<Part> parts = partRepository.findByPartNumberContainingIgnoreCaseOrNameContainingIgnoreCaseOrderByPartNumberAsc(
                 keyword,
                 keyword,
                 PageRequest.of(0, 20)
         );
-        List<QueryResultResponse> results = parts.stream()
-                .map(part -> new QueryResultResponse(
-                        ActivationResultType.PART,
+        List<GraphQueryResultOutput> results = parts.stream()
+                .map(part -> new GraphQueryResultOutput(
+                        "part",
                         part.getPartNumber(),
                         part.getName(),
                         part.getCategory(),
@@ -247,7 +244,7 @@ public class ActivationService {
         String answer = results.isEmpty()
                 ? "질문과 일치하는 결과를 찾지 못했습니다."
                 : "질문과 연관된 부품 " + results.size() + "건을 조회했습니다.";
-        return new QueryResponse(results, answer);
+        return new GraphQueryOutput(results, answer);
     }
 
     private int safeToInt(long value) {
@@ -258,5 +255,40 @@ public class ActivationService {
             return Integer.MIN_VALUE;
         }
         return (int) value;
+    }
+
+    private List<UUID> findDistinctChildPartIds() {
+        return entityManager.createQuery(
+                        "select distinct b.childPartId from BomLink b",
+                        UUID.class
+                )
+                .getResultList();
+    }
+
+    private List<UUID> findDistinctProjectPartIds() {
+        return entityManager.createQuery(
+                        "select distinct pp.partId from ProjectPart pp",
+                        UUID.class
+                )
+                .getResultList();
+    }
+
+    private long countChildLinksWithUnnamedPart() {
+        Number count = (Number) entityManager.createNativeQuery(
+                """
+                        select count(bl.id)
+                        from bom_links bl
+                        join parts p on p.id = bl.child_part_id
+                        where p.name is null
+                        """
+        ).getSingleResult();
+        return count.longValue();
+    }
+
+    private long countDistinctSuppliedPartIds() {
+        Number count = (Number) entityManager.createQuery(
+                "select count(distinct ps.partId) from PartSupplier ps"
+        ).getSingleResult();
+        return count.longValue();
     }
 }

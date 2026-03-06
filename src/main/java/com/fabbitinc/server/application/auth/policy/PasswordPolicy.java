@@ -1,12 +1,12 @@
-package com.fabbitinc.server.application.auth.service;
+package com.fabbitinc.server.application.auth.policy;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-@Service
+@Component
 @RequiredArgsConstructor
-public class PasswordService {
+public class PasswordPolicy {
 
     private final BCryptPasswordEncoder passwordEncoder;
 

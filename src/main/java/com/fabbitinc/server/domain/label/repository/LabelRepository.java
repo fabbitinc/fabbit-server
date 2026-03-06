@@ -3,7 +3,6 @@ package com.fabbitinc.server.domain.label.repository;
 import com.fabbitinc.server.domain.label.model.Label;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,11 +14,7 @@ public interface LabelRepository extends JpaRepository<Label, UUID> {
 
     List<Label> findAllByOrderByNameAsc();
 
-    @Query("""
-            select l
-            from Label l
-            where (?1 = '' or lower(l.name) like lower(concat('%', ?1, '%')))
-            order by l.name
-            """)
-    List<Label> lookupLabels(String search, Pageable pageable);
+    List<Label> findAllByOrderByNameAsc(Pageable pageable);
+
+    List<Label> findByNameContainingIgnoreCaseOrderByNameAsc(String name, Pageable pageable);
 }

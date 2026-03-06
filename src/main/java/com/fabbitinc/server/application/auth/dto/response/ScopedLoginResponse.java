@@ -7,5 +7,5 @@ public record ScopedLoginResponse(
         UserResponse user,
         @Schema(description = "조직 생성용 scoped access token", example = "eyJhbGciOiJIUzI1NiJ9...")
         String scopedToken
-) {
+) implements LoginVariantResponse {
 }

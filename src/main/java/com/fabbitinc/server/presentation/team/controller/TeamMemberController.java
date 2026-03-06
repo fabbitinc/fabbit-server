@@ -8,8 +8,14 @@ import com.fabbitinc.server.application.team.query.result.TeamMemberListResult;
 import com.fabbitinc.server.application.team.query.TeamQuery;
 import com.fabbitinc.server.application.team.usecase.AddTeamMembersUseCase;
 import com.fabbitinc.server.application.team.usecase.RemoveTeamMembersUseCase;
+import com.fabbitinc.server.application.team.usecase.command.AddTeamMembersCommand;
+import com.fabbitinc.server.application.team.usecase.command.RemoveTeamMembersCommand;
+import com.fabbitinc.server.application.team.usecase.result.AddTeamMembersResult;
 import com.fabbitinc.server.presentation.team.dto.response.TeamMemberListResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +36,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/teams/{teamId}/members")
 @Tag(name = "team-members", description = "팀 멤버 관리 API")
+@ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "요청 성공"),
+        @ApiResponse(responseCode = "201", description = "추가 성공"),
+        @ApiResponse(responseCode = "204", description = "제거 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @ApiResponse(responseCode = "401", description = "인증 필요"),
+        @ApiResponse(responseCode = "403", description = "권한 없음"),
+        @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+})
 public class TeamMemberController {
 
     private final TeamQuery teamQuery;
@@ -42,6 +57,7 @@ public class TeamMemberController {
     )
     @GetMapping
     public TeamMemberListResponse listTeamMembers(
+            @Parameter(description = "멤버를 조회할 팀 ID")
             @PathVariable UUID teamId
     ) {
         return toTeamMemberListResponse(teamQuery.listMembers(new TeamMemberListCondition(teamId)));
@@ -54,10 +70,15 @@ public class TeamMemberController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ManageTeamMembersResponse addTeamMembers(
+            @Parameter(description = "멤버를 추가할 팀 ID")
             @PathVariable UUID teamId,
+            @Parameter(description = "팀 멤버 추가 요청")
             @Valid @RequestBody AddTeamMembersRequest request
     ) {
-        return addTeamMembersUseCase.execute(teamId, request.userIds());
+        AddTeamMembersResult result = addTeamMembersUseCase.execute(
+                new AddTeamMembersCommand(teamId, request.userIds())
+        );
+        return new ManageTeamMembersResponse(result.count());
     }
 
     @Operation(
@@ -66,10 +87,12 @@ public class TeamMemberController {
     )
     @DeleteMapping
     public ResponseEntity<Void> removeTeamMembers(
+            @Parameter(description = "멤버를 제거할 팀 ID")
             @PathVariable UUID teamId,
+            @Parameter(description = "팀 멤버 제거 요청")
             @Valid @RequestBody RemoveTeamMembersRequest request
     ) {
-        removeTeamMembersUseCase.execute(teamId, request.userIds());
+        removeTeamMembersUseCase.execute(new RemoveTeamMembersCommand(teamId, request.userIds()));
         return ResponseEntity.noContent().build();
     }
 

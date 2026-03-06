@@ -11,27 +11,24 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 @Component
+@Transactional
 @RequiredArgsConstructor
 public class DeleteIssueFileUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final IssueService issueService;
 
-    @Transactional
-    public void execute(IssueTargetType targetType,
+    public void execute(DeleteIssueFileCommand command) {
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
+        UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.targetType(), command.issueNumber());
+
+        issueService.detachFile(auth.userId(), issueId, command.fileId());
+    }
+
+    public record DeleteIssueFileCommand(
+            IssueTargetType targetType,
             int issueNumber,
             UUID fileId
     ) {
-        AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = resolveIssueId(targetType, issueNumber);
-
-        issueService.detachFile(auth.userId(), issueId, fileId);
-    }
-
-    private UUID resolveIssueId(IssueTargetType targetType, int issueNumber) {
-        if (targetType == IssueTargetType.CHANGE_REQUEST) {
-            return issueService.getChangeRequestByNumberOrThrow(issueNumber).getId();
-        }
-        return issueService.getIssueByNumberOrThrow(issueNumber).getId();
     }
 }

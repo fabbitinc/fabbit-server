@@ -15,7 +15,15 @@ import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
 import com.fabbitinc.server.application.part.usecase.DeleteDefaultOwnerUseCase;
 import com.fabbitinc.server.application.part.usecase.UpdatePartOwnerUseCase;
 import com.fabbitinc.server.application.part.usecase.UpsertDefaultOwnerUseCase;
+import com.fabbitinc.server.application.part.usecase.command.DeleteDefaultOwnerCommand;
+import com.fabbitinc.server.application.part.usecase.command.UpdatePartOwnerCommand;
+import com.fabbitinc.server.application.part.usecase.command.UpsertDefaultOwnerCommand;
+import com.fabbitinc.server.application.part.usecase.result.UpdatePartOwnerResult;
+import com.fabbitinc.server.application.part.usecase.result.UpsertDefaultOwnerResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +47,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/parts")
 @Tag(name = "part-owner", description = "부품 담당자/기본 담당자 관리 API")
+@ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "요청 성공"),
+        @ApiResponse(responseCode = "204", description = "삭제 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @ApiResponse(responseCode = "401", description = "인증 필요"),
+        @ApiResponse(responseCode = "403", description = "권한 없음"),
+        @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+})
 public class PartOwnerController {
 
     private final PartOwnerQuery partOwnerQuery;
@@ -52,6 +68,7 @@ public class PartOwnerController {
     )
     @GetMapping("/{partId}/owner")
     public PartOwnerResponse getPartOwner(
+            @Parameter(description = "담당자를 조회할 부품 ID")
             @PathVariable UUID partId
     ) {
         return toPartOwnerResponse(partOwnerQuery.get(new PartOwnerCondition(partId)));
@@ -63,11 +80,21 @@ public class PartOwnerController {
     )
     @PatchMapping("/{partId}/owner")
     public PartOwnerResponse updatePartOwner(
+            @Parameter(description = "담당자를 수정할 부품 ID")
             @PathVariable UUID partId,
+            @Parameter(description = "부품 담당자 수정 요청")
             @Valid @RequestBody UpdatePartOwnerRequest request
     ) {
-        UUID updatedPartId = updatePartOwnerUseCase.execute(partId, request);
-        return toPartOwnerResponse(partOwnerQuery.get(new PartOwnerCondition(updatedPartId)));
+        UpdatePartOwnerResult result = updatePartOwnerUseCase.execute(
+                new UpdatePartOwnerCommand(
+                        partId,
+                        request.getOwnerId(),
+                        request.isOwnerIdSet(),
+                        request.getOwnerTeamId(),
+                        request.isOwnerTeamIdSet()
+                )
+        );
+        return toPartOwnerResponse(partOwnerQuery.get(new PartOwnerCondition(result.partId())));
     }
 
     @Operation(
@@ -86,10 +113,17 @@ public class PartOwnerController {
     )
     @PutMapping("/owner/defaults")
     public PartDefaultOwnerItemResponse upsertDefaultOwner(
+            @Parameter(description = "기본 담당자 upsert 요청")
             @Valid @RequestBody PartDefaultOwnerRequest request
     ) {
-        UUID defaultOwnerId = upsertDefaultOwnerUseCase.execute(request);
-        return toPartDefaultOwnerItemResponse(partOwnerQuery.get(new PartDefaultOwnerCondition(defaultOwnerId)));
+        UpsertDefaultOwnerResult result = upsertDefaultOwnerUseCase.execute(
+                new UpsertDefaultOwnerCommand(
+                        request.category(),
+                        request.defaultOwnerId(),
+                        request.defaultOwnerTeamId()
+                )
+        );
+        return toPartDefaultOwnerItemResponse(partOwnerQuery.get(new PartDefaultOwnerCondition(result.defaultOwnerId())));
     }
 
     @Operation(
@@ -99,9 +133,10 @@ public class PartOwnerController {
     @DeleteMapping("/owner/defaults")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteDefaultOwner(
+            @Parameter(description = "삭제할 기본 담당자 카테고리", example = "MECHANICAL")
             @RequestParam(value = "category", required = false) String category
     ) {
-        deleteDefaultOwnerUseCase.execute(category);
+        deleteDefaultOwnerUseCase.execute(new DeleteDefaultOwnerCommand(category));
     }
 
     private PartOwnerResponse toPartOwnerResponse(PartOwnerResult result) {

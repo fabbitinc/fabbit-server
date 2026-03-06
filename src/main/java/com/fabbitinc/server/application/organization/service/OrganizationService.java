@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
+import java.util.Comparator;
 import java.util.Locale;
 import java.util.List;
 import java.util.UUID;
@@ -62,7 +63,9 @@ public class OrganizationService {
     }
 
     public Membership switchOrganization(UUID userId, String slug) {
-        return membershipRepository.findByUserIdAndOrganizationSlug(userId, slug)
+        Organization organization = organizationRepository.findBySlug(slug)
+                .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN, "해당 워크스페이스에 소속되어 있지 않습니다"));
+        return membershipRepository.findByUserIdAndOrgId(userId, organization.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN, "해당 워크스페이스에 소속되어 있지 않습니다"));
     }
 
@@ -86,7 +89,11 @@ public class OrganizationService {
     }
 
     public List<Membership> getMembershipsOrdered(UUID orgId) {
-        return membershipRepository.findOrderedByOrgId(orgId);
+        return membershipRepository.findByOrgId(orgId).stream()
+                .sorted(Comparator
+                        .comparing((Membership membership) -> roleOrder(membership.getRole()))
+                        .thenComparing(Membership::getUserId))
+                .toList();
     }
 
     public void checkNotMember(UUID orgId, UUID userId) {
@@ -201,6 +208,16 @@ public class OrganizationService {
         if (validationError != null) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, validationError);
         }
+    }
+
+    private int roleOrder(MembershipRole role) {
+        if (role == MembershipRole.OWNER) {
+            return 0;
+        }
+        if (role == MembershipRole.ADMIN) {
+            return 1;
+        }
+        return 2;
     }
 
     private String slugify(String input) {

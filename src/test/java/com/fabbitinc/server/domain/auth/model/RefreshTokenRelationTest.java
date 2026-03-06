@@ -7,6 +7,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class RefreshTokenRelationTest {
@@ -21,6 +23,7 @@ class RefreshTokenRelationTest {
         assertEquals(userId, token.getUserId());
         assertEquals("jti-123", token.getTokenJti());
         assertEquals(expiresAt, token.getExpiresAt());
+        assertNull(token.getRevokedAt());
     }
 
     @Test
@@ -56,12 +59,15 @@ class RefreshTokenRelationTest {
                 "jti-123",
                 Instant.parse("2026-03-10T00:00:00Z")
         );
+        Instant rotatedAt = Instant.parse("2026-03-05T00:00:00Z");
 
-        RefreshToken rotated = token.rotate("jti-456", Instant.parse("2026-03-20T00:00:00Z"));
+        RefreshToken rotated = token.rotate("jti-456", Instant.parse("2026-03-20T00:00:00Z"), rotatedAt);
 
         assertEquals(token.getUserId(), rotated.getUserId());
         assertEquals("jti-456", rotated.getTokenJti());
         assertEquals(Instant.parse("2026-03-20T00:00:00Z"), rotated.getExpiresAt());
+        assertEquals(rotatedAt, token.getRevokedAt());
+        assertNull(rotated.getRevokedAt());
     }
 
     @Test
@@ -90,5 +96,34 @@ class RefreshTokenRelationTest {
         ));
 
         assertEquals(RefreshToken.CODE_REFRESH_TOKEN_EXPIRED, ex.getDomainCode());
+    }
+
+    @Test
+    void refreshToken_revoke는_폐기시각을_설정한다() {
+        RefreshToken token = RefreshToken.create(
+                UUID.randomUUID(),
+                "jti-123",
+                Instant.parse("2026-03-10T00:00:00Z")
+        );
+
+        token.revoke(Instant.parse("2026-03-05T00:00:00Z"));
+
+        assertNotNull(token.getRevokedAt());
+    }
+
+    @Test
+    void refreshToken_validateUsableAt은_폐기토큰이면_예외를_던진다() {
+        RefreshToken token = RefreshToken.create(
+                UUID.randomUUID(),
+                "jti-123",
+                Instant.parse("2026-03-10T00:00:00Z")
+        );
+        token.revoke(Instant.parse("2026-03-05T00:00:00Z"));
+
+        DomainException ex = assertThrows(DomainException.class, () -> token.validateUsableAt(
+                Instant.parse("2026-03-06T00:00:00Z")
+        ));
+
+        assertEquals(RefreshToken.CODE_REFRESH_TOKEN_REVOKED, ex.getDomainCode());
     }
 }

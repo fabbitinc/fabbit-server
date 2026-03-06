@@ -57,7 +57,13 @@ import com.fabbitinc.server.application.issue.usecase.SyncPartsUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncTeamAssigneesUseCase;
 import com.fabbitinc.server.application.issue.usecase.UpdateCommentUseCase;
 import com.fabbitinc.server.application.issue.usecase.UpdateIssueUseCase;
+import com.fabbitinc.server.application.issue.usecase.result.AttachedFileResult;
+import com.fabbitinc.server.application.issue.usecase.result.CommentResult;
+import com.fabbitinc.server.application.issue.usecase.result.SyncDiffResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -88,6 +94,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/issues")
 @Tag(name = "issues", description = "이슈 조회/생성/수정/연결 API")
+@ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "요청 성공"),
+        @ApiResponse(responseCode = "201", description = "생성 성공"),
+        @ApiResponse(responseCode = "204", description = "삭제 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @ApiResponse(responseCode = "401", description = "인증 필요"),
+        @ApiResponse(responseCode = "403", description = "권한 없음"),
+        @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+})
 public class IssueController {
 
     private final IssueQuery issueQuery;
@@ -112,8 +127,11 @@ public class IssueController {
     )
     @GetMapping("/lookup")
     public IssueLookupResponse lookupIssues(
+            @Parameter(description = "이슈 제목 검색어", example = "BOM")
             @RequestParam(value = "search", required = false) String search,
+            @Parameter(description = "조회할 이슈 타입", example = "ISSUE")
             @RequestParam(value = "type", required = false) String type,
+            @Parameter(description = "조회 건수", example = "10")
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
@@ -147,6 +165,7 @@ public class IssueController {
     )
     @GetMapping("/{issueNumber}")
     public IssueResponse getIssue(
+            @Parameter(description = "조회할 이슈 번호", example = "101")
             @PathVariable int issueNumber
     ) {
         return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueNumber)));
@@ -159,10 +178,21 @@ public class IssueController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public IssueResponse createIssue(
+            @Parameter(description = "이슈 생성 요청")
             @Valid @RequestBody CreateIssueRequest request
     ) {
-        int issueNumber = createIssueUseCase.execute(request);
-        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueNumber)));
+        CreateIssueUseCase.CreateIssueResult result = createIssueUseCase.execute(
+                new CreateIssueUseCase.CreateIssueCommand(
+                        request.title(),
+                        request.body(),
+                        request.partIds(),
+                        request.assigneeUserIds(),
+                        request.teamAssigneeIds(),
+                        request.labelIds(),
+                        request.fileIds()
+                )
+        );
+        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(result.issueNumber())));
     }
 
     @Operation(
@@ -171,10 +201,12 @@ public class IssueController {
     )
     @PatchMapping("/{issueNumber}")
     public IssueResponse updateIssue(
+            @Parameter(description = "수정할 이슈 번호", example = "101")
             @PathVariable int issueNumber,
+            @Parameter(description = "이슈 수정 요청")
             @Valid @RequestBody UpdateIssueRequest request
     ) {
-        updateIssueUseCase.execute(issueNumber, request);
+        updateIssueUseCase.execute(new UpdateIssueUseCase.UpdateIssueCommand(issueNumber, request.title(), request.body()));
         return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueNumber)));
     }
 
@@ -187,7 +219,15 @@ public class IssueController {
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncAssigneesRequest request
     ) {
-        return syncAssigneesUseCase.execute(IssueTargetType.ISSUE, issueNumber, request);
+        return toSyncDiffResponse(
+                syncAssigneesUseCase.execute(
+                        new SyncAssigneesUseCase.SyncAssigneesCommand(
+                                IssueTargetType.ISSUE,
+                                issueNumber,
+                                request.userIds()
+                        )
+                )
+        );
     }
 
     @Operation(
@@ -199,7 +239,15 @@ public class IssueController {
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncTeamAssigneesRequest request
     ) {
-        return syncTeamAssigneesUseCase.execute(IssueTargetType.ISSUE, issueNumber, request);
+        return toSyncDiffResponse(
+                syncTeamAssigneesUseCase.execute(
+                        new SyncTeamAssigneesUseCase.SyncTeamAssigneesCommand(
+                                IssueTargetType.ISSUE,
+                                issueNumber,
+                                request.teamIds()
+                        )
+                )
+        );
     }
 
     @Operation(
@@ -211,7 +259,11 @@ public class IssueController {
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncChangesRequest request
     ) {
-        return syncChangesUseCase.execute(issueNumber, request);
+        return toSyncDiffResponse(
+                syncChangesUseCase.execute(
+                        new SyncChangesUseCase.SyncChangesCommand(issueNumber, request.crIds())
+                )
+        );
     }
 
     @Operation(
@@ -222,7 +274,7 @@ public class IssueController {
     public IssueResponse closeIssue(
             @PathVariable int issueNumber
     ) {
-        closeIssueUseCase.execute(issueNumber);
+        closeIssueUseCase.execute(new CloseIssueUseCase.CloseIssueCommand(issueNumber));
         return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueNumber)));
     }
 
@@ -234,7 +286,7 @@ public class IssueController {
     public IssueResponse reopenIssue(
             @PathVariable int issueNumber
     ) {
-        reopenIssueUseCase.execute(issueNumber);
+        reopenIssueUseCase.execute(new ReopenIssueUseCase.ReopenIssueCommand(issueNumber));
         return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueNumber)));
     }
 
@@ -247,7 +299,15 @@ public class IssueController {
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncLabelsRequest request
     ) {
-        return syncLabelsUseCase.execute(IssueTargetType.ISSUE, issueNumber, request);
+        return toSyncDiffResponse(
+                syncLabelsUseCase.execute(
+                        new SyncLabelsUseCase.SyncLabelsCommand(
+                                IssueTargetType.ISSUE,
+                                issueNumber,
+                                request.labelIds()
+                        )
+                )
+        );
     }
 
     @Operation(
@@ -259,7 +319,15 @@ public class IssueController {
             @PathVariable int issueNumber,
             @Valid @RequestBody SyncPartsRequest request
     ) {
-        return syncPartsUseCase.execute(IssueTargetType.ISSUE, issueNumber, request);
+        return toSyncDiffResponse(
+                syncPartsUseCase.execute(
+                        new SyncPartsUseCase.SyncPartsCommand(
+                                IssueTargetType.ISSUE,
+                                issueNumber,
+                                request.partIds()
+                        )
+                )
+        );
     }
 
     @Operation(
@@ -283,7 +351,15 @@ public class IssueController {
             @PathVariable int issueNumber,
             @Valid @RequestBody CreateCommentRequest request
     ) {
-        return createCommentUseCase.execute(IssueTargetType.ISSUE, issueNumber, request);
+        return toCommentResponse(
+                createCommentUseCase.execute(
+                        new CreateCommentUseCase.CreateCommentCommand(
+                                IssueTargetType.ISSUE,
+                                issueNumber,
+                                request.body()
+                        )
+                )
+        );
     }
 
     @Operation(
@@ -296,7 +372,16 @@ public class IssueController {
             @PathVariable UUID commentId,
             @Valid @RequestBody UpdateCommentRequest request
     ) {
-        return updateCommentUseCase.execute(IssueTargetType.ISSUE, issueNumber, commentId, request);
+        return toCommentResponse(
+                updateCommentUseCase.execute(
+                        new UpdateCommentUseCase.UpdateCommentCommand(
+                                IssueTargetType.ISSUE,
+                                issueNumber,
+                                commentId,
+                                request.body()
+                        )
+                )
+        );
     }
 
     @Operation(
@@ -308,7 +393,9 @@ public class IssueController {
             @PathVariable int issueNumber,
             @PathVariable UUID commentId
     ) {
-        deleteCommentUseCase.execute(IssueTargetType.ISSUE, issueNumber, commentId);
+        deleteCommentUseCase.execute(
+                new DeleteCommentUseCase.DeleteCommentCommand(IssueTargetType.ISSUE, issueNumber, commentId)
+        );
         return ResponseEntity.noContent().build();
     }
 
@@ -321,7 +408,16 @@ public class IssueController {
             @PathVariable int issueNumber,
             @Valid @RequestBody AttachFilesRequest request
     ) {
-        return addIssueFilesUseCase.execute(IssueTargetType.ISSUE, issueNumber, request);
+        return addIssueFilesUseCase.execute(
+                        new AddIssueFilesUseCase.AddIssueFilesCommand(
+                                IssueTargetType.ISSUE,
+                                issueNumber,
+                                request.fileIds()
+                        )
+                )
+                .stream()
+                .map(this::toFileItemResponse)
+                .toList();
     }
 
     @Operation(
@@ -333,8 +429,26 @@ public class IssueController {
             @PathVariable int issueNumber,
             @PathVariable UUID fileId
     ) {
-        deleteIssueFileUseCase.execute(IssueTargetType.ISSUE, issueNumber, fileId);
+        deleteIssueFileUseCase.execute(
+                new DeleteIssueFileUseCase.DeleteIssueFileCommand(IssueTargetType.ISSUE, issueNumber, fileId)
+        );
         return ResponseEntity.noContent().build();
+    }
+
+    private SyncDiffResponse toSyncDiffResponse(SyncDiffResult result) {
+        return new SyncDiffResponse(result.addedCount(), result.removedCount());
+    }
+
+    private CommentResponse toCommentResponse(CommentResult result) {
+        return new CommentResponse(
+                result.id(),
+                result.issueId(),
+                result.body(),
+                result.createdAt(),
+                result.updatedAt(),
+                result.isModified(),
+                result.createdBy()
+        );
     }
 
     private IssueLookupResponse toIssueLookupResponse(IssueLookupResult result) {
@@ -464,6 +578,17 @@ public class IssueController {
     }
 
     private FileItemResponse toFileItemResponse(IssueFileItemResult result) {
+        return new FileItemResponse(
+                result.fileId(),
+                result.originalName(),
+                result.contentType(),
+                result.fileSize(),
+                result.fileUrl(),
+                result.createdAt()
+        );
+    }
+
+    private FileItemResponse toFileItemResponse(AttachedFileResult result) {
         return new FileItemResponse(
                 result.fileId(),
                 result.originalName(),

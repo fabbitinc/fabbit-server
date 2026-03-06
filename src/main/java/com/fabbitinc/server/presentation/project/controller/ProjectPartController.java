@@ -19,6 +19,7 @@ import com.fabbitinc.server.application.project.usecase.command.LinkProjectParts
 import com.fabbitinc.server.application.project.usecase.command.UnlinkProjectPartsCommand;
 import com.fabbitinc.server.application.project.usecase.result.LinkProjectPartsResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -60,9 +61,13 @@ public class ProjectPartController {
     })
     @GetMapping("/lookup")
     public ProjectPartLookupResponse lookupParts(
+            @Parameter(description = "부품 후보를 조회할 프로젝트 ID")
             @PathVariable UUID projectId,
+            @Parameter(description = "부품명/번호 검색어", example = "BRKT-001")
             @RequestParam(value = "search", required = false) String search,
+            @Parameter(description = "이미 연결된 부품 제외 여부", example = "false")
             @RequestParam(value = "exclude_linked", defaultValue = "false") boolean excludeLinked,
+            @Parameter(description = "조회 건수", example = "10")
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
@@ -84,7 +89,9 @@ public class ProjectPartController {
     })
     @PostMapping
     public LinkPartsResponse linkParts(
+            @Parameter(description = "부품을 연결할 프로젝트 ID")
             @PathVariable UUID projectId,
+            @Parameter(description = "프로젝트 부품 연결 요청")
             @Valid @RequestBody LinkPartsRequest request
     ) {
         LinkProjectPartsResult result = linkProjectPartsUseCase.execute(
@@ -103,7 +110,9 @@ public class ProjectPartController {
     })
     @DeleteMapping
     public ResponseEntity<Void> unlinkParts(
+            @Parameter(description = "부품 연결을 해제할 프로젝트 ID")
             @PathVariable UUID projectId,
+            @Parameter(description = "프로젝트 부품 연결 해제 요청")
             @Valid @RequestBody LinkPartsRequest request
     ) {
         unlinkProjectPartsUseCase.execute(new UnlinkProjectPartsCommand(projectId, request.partIds()));
@@ -120,11 +129,15 @@ public class ProjectPartController {
     })
     @GetMapping
     public ProjectPartsResponse getProjectParts(
+            @Parameter(description = "부품 목록을 조회할 프로젝트 ID")
             @PathVariable UUID projectId,
+            @Parameter(description = "부품명/번호 검색어", example = "BRKT-001")
             @RequestParam(value = "search", required = false) String search,
+            @Parameter(description = "페이지 시작 오프셋", example = "0")
             @RequestParam(value = "offset", defaultValue = "0")
             @Min(value = 0, message = "offset은 0 이상이어야 합니다")
             int offset,
+            @Parameter(description = "조회 건수", example = "20")
             @RequestParam(value = "limit", defaultValue = "20")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 100, message = "limit은 100 이하여야 합니다")

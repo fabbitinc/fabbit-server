@@ -31,6 +31,7 @@ import com.fabbitinc.server.application.project.usecase.command.UpdateProjectCom
 import com.fabbitinc.server.application.project.usecase.result.CreateProjectResult;
 import com.fabbitinc.server.application.project.usecase.result.UpdateProjectResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -81,6 +82,7 @@ public class ProjectController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ProjectDetailResponse createProject(
+            @Parameter(description = "프로젝트 생성 요청")
             @Valid @RequestBody CreateProjectRequest request
     ) {
         CreateProjectResult createResult = createProjectUseCase.execute(
@@ -100,10 +102,13 @@ public class ProjectController {
     })
     @GetMapping
     public ProjectListResponse listProjects(
+            @Parameter(description = "프로젝트 이름 검색어", example = "신규 BOM")
             @RequestParam(value = "search", required = false) String search,
+            @Parameter(description = "페이지 시작 오프셋", example = "0")
             @RequestParam(value = "offset", defaultValue = "0")
             @Min(value = 0, message = "offset은 0 이상이어야 합니다")
             int offset,
+            @Parameter(description = "조회 건수", example = "20")
             @RequestParam(value = "limit", defaultValue = "20")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 100, message = "limit은 100 이하여야 합니다")
@@ -123,7 +128,9 @@ public class ProjectController {
     })
     @PatchMapping("/{projectId}")
     public ProjectDetailResponse updateProject(
+            @Parameter(description = "수정할 프로젝트 ID")
             @PathVariable UUID projectId,
+            @Parameter(description = "프로젝트 수정 요청")
             @Valid @RequestBody UpdateProjectRequest request
     ) {
         UpdateProjectResult updateResult = updateProjectUseCase.execute(
@@ -143,6 +150,7 @@ public class ProjectController {
     })
     @GetMapping("/{projectId}")
     public ProjectDetailResponse getProject(
+            @Parameter(description = "조회할 프로젝트 ID")
             @PathVariable UUID projectId
     ) {
         return toProjectDetailResponse(projectQuery.get(new ProjectDetailCondition(projectId)));
@@ -158,6 +166,7 @@ public class ProjectController {
     })
     @PostMapping("/{projectId}/archive")
     public ResponseEntity<Void> archiveProject(
+            @Parameter(description = "보관할 프로젝트 ID")
             @PathVariable UUID projectId
     ) {
         archiveProjectUseCase.execute(new ArchiveProjectCommand(projectId));
@@ -174,6 +183,7 @@ public class ProjectController {
     })
     @PostMapping("/{projectId}/unarchive")
     public ResponseEntity<Void> unarchiveProject(
+            @Parameter(description = "보관 해제할 프로젝트 ID")
             @PathVariable UUID projectId
     ) {
         unarchiveProjectUseCase.execute(new UnarchiveProjectCommand(projectId));
@@ -190,6 +200,7 @@ public class ProjectController {
     })
     @DeleteMapping("/{projectId}")
     public ResponseEntity<Void> deleteProject(
+            @Parameter(description = "삭제할 프로젝트 ID")
             @PathVariable UUID projectId
     ) {
         deleteProjectUseCase.execute(new DeleteProjectCommand(projectId));
@@ -206,13 +217,18 @@ public class ProjectController {
     })
     @GetMapping("/{projectId}/activities")
     public ActivityListResponse getProjectActivities(
+            @Parameter(description = "활동 피드를 조회할 프로젝트 ID")
             @PathVariable UUID projectId,
+            @Parameter(description = "다음 페이지 기준 cursor activity ID", example = "550e8400-e29b-41d4-a716-446655440000")
             @RequestParam(value = "cursor", required = false) UUID cursor,
+            @Parameter(description = "조회 건수", example = "20")
             @RequestParam(value = "limit", defaultValue = "20")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 100, message = "limit은 100 이하여야 합니다")
             int limit,
+            @Parameter(description = "활동 범위 필터", example = "ALL")
             @RequestParam(value = "scope", required = false) String scope,
+            @Parameter(description = "특정 사용자 활동만 필터링할 사용자 ID")
             @RequestParam(value = "user_id", required = false) UUID userId
     ) {
         ProjectActivityListResult result = projectQuery.listActivities(

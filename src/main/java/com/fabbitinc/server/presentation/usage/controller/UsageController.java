@@ -6,6 +6,9 @@ import com.fabbitinc.server.application.usage.query.result.StorageTrendResult;
 import com.fabbitinc.server.application.usage.query.result.StorageUsageResult;
 import com.fabbitinc.server.application.usage.query.UsageQuery;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import com.fabbitinc.server.presentation.usage.dto.response.CreditUsageResponse;
@@ -28,6 +31,13 @@ public class UsageController {
             summary = "GET /api/v1/usage/storage",
             description = "스토리지 총 사용량/한도/초과분과 카테고리별 내역을 조회합니다"
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping("/storage")
     public StorageUsageResponse getStorageUsage() {
         return toStorageUsageResponse(usageQuery.getStorageUsage());
@@ -37,8 +47,16 @@ public class UsageController {
             summary = "GET /api/v1/usage/storage/trend",
             description = "스토리지 사용량 추이를 period(7d|30d|1y) 기준으로 조회합니다"
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping("/storage/trend")
     public StorageTrendResponse getStorageTrend(
+            @Parameter(description = "조회 기간 (7d, 30d, 1y)", example = "30d")
             @RequestParam(value = "period", defaultValue = "30d") String period
     ) {
         return toStorageTrendResponse(usageQuery.getStorageTrend(new StorageTrendCondition(period)));
@@ -48,6 +66,13 @@ public class UsageController {
             summary = "GET /api/v1/usage/credits",
             description = "AI 크레딧 잔여/사용량과 카테고리별 사용량을 조회합니다"
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping("/credits")
     public CreditUsageResponse getCreditUsage() {
         return toCreditUsageResponse(usageQuery.getCreditUsage());

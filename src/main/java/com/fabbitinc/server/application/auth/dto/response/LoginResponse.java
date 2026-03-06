@@ -7,5 +7,5 @@ public record LoginResponse(
         UserResponse user,
         @Schema(description = "로그인 토큰")
         TokenResponse tokens
-) {
+) implements LoginVariantResponse {
 }

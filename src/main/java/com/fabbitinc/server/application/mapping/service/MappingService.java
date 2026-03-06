@@ -4,12 +4,13 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.file.port.StoragePort;
 import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
-import com.fabbitinc.server.application.mapping.dto.request.MappingConfirmRequest;
-import com.fabbitinc.server.application.mapping.dto.request.MappingUpdateRequest;
-import com.fabbitinc.server.application.mapping.dto.response.MappingResponse;
-import com.fabbitinc.server.application.mapping.support.MappingResponseMapper;
+import com.fabbitinc.server.application.mapping.service.input.CreateMappingInput;
+import com.fabbitinc.server.application.mapping.service.input.UpdateMappingInput;
+import com.fabbitinc.server.application.mapping.service.output.SavedMappingOutput;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
 import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.mapping.model.MappingScope;
@@ -37,7 +38,7 @@ public class MappingService {
     private final FileRepository fileRepository;
     private final StoragePort storagePort;
     private final SpreadsheetParserSupport spreadsheetParserSupport;
-    private final MappingResponseMapper mappingResponseMapper;
+    private final ObjectMapper objectMapper;
 
     public File getUploadedFileOrThrow(UUID fileId) {
         File file = fileRepository.findById(fileId)
@@ -76,28 +77,28 @@ public class MappingService {
         return spreadsheetParserSupport.parse(content, file.getOriginalName(), requestedSheetName, maxRows);
     }
 
-    public MappingResponse createMapping(MappingConfirmRequest request, MappingResultDto normalizedMapping) {
-        ensureNameNotExists(request.name(), null);
+    public SavedMappingOutput createMapping(CreateMappingInput input) {
+        ensureNameNotExists(input.name(), null);
 
-        File file = getUploadedFileOrThrow(request.fileId());
-        SpreadsheetParserSupport.ParsedSheet parsed = loadHeadersAndRows(file, request.sheetName(), 0);
-        MappingScope scope = determineScope(normalizedMapping);
+        File file = getUploadedFileOrThrow(input.fileId());
+        SpreadsheetParserSupport.ParsedSheet parsed = loadHeadersAndRows(file, input.sheetName(), 0);
+        MappingScope scope = determineScope(input.mapping());
 
-        MappingRecord record = MappingRecord.create(request.name(), scope);
+        MappingRecord record = MappingRecord.create(input.name(), scope);
         MappingRevision revision = record.createRevision(
                 file.getId(),
-                request.sheetName(),
-                mappingResponseMapper.writeHeaders(parsed.headers()),
-                mappingResponseMapper.writeMapping(normalizedMapping)
+                input.sheetName(),
+                writeHeaders(parsed.headers()),
+                writeMapping(input.mapping())
         );
 
         mappingRecordRepository.save(record);
         mappingRevisionRepository.save(revision);
 
-        return mappingResponseMapper.toResponse(record, revision);
+        return new SavedMappingOutput(record, revision);
     }
 
-    public MappingResponse updateMapping(UUID mappingId, MappingUpdateRequest request, MappingResultDto normalizedMapping) {
+    public SavedMappingOutput updateMapping(UUID mappingId, UpdateMappingInput input) {
         MappingRecord record = mappingRecordRepository.findById(mappingId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "매핑을 찾을 수 없습니다"));
 
@@ -105,25 +106,25 @@ public class MappingService {
             throw new AppException(ErrorCode.PRECONDITION_FAILED, "비활성화된 매핑은 수정할 수 없습니다");
         }
 
-        if (request.name() != null && !request.name().isBlank() && !request.name().equals(record.getName())) {
-            ensureNameNotExists(request.name(), record.getId());
-            record.rename(request.name());
+        if (input.name() != null && !input.name().isBlank() && !input.name().equals(record.getName())) {
+            ensureNameNotExists(input.name(), record.getId());
+            record.rename(input.name());
         }
 
-        File file = getUploadedFileOrThrow(request.fileId());
-        SpreadsheetParserSupport.ParsedSheet parsed = loadHeadersAndRows(file, request.sheetName(), 0);
+        File file = getUploadedFileOrThrow(input.fileId());
+        SpreadsheetParserSupport.ParsedSheet parsed = loadHeadersAndRows(file, input.sheetName(), 0);
 
-        record.changeScope(determineScope(normalizedMapping));
+        record.changeScope(determineScope(input.mapping()));
 
         MappingRevision revision = record.createRevision(
                 file.getId(),
-                request.sheetName(),
-                mappingResponseMapper.writeHeaders(parsed.headers()),
-                mappingResponseMapper.writeMapping(normalizedMapping)
+                input.sheetName(),
+                writeHeaders(parsed.headers()),
+                writeMapping(input.mapping())
         );
         mappingRevisionRepository.save(revision);
 
-        return mappingResponseMapper.toResponse(record, revision);
+        return new SavedMappingOutput(record, revision);
     }
 
     public void deactivateMapping(UUID mappingId) {
@@ -166,5 +167,21 @@ public class MappingService {
             }
         }
         return MappingScope.FULL_BOM;
+    }
+
+    private String writeMapping(MappingResultDto mapping) {
+        try {
+            return objectMapper.writeValueAsString(mapping);
+        } catch (JacksonException ex) {
+            return "{}";
+        }
+    }
+
+    private String writeHeaders(List<String> headers) {
+        try {
+            return objectMapper.writeValueAsString(headers);
+        } catch (JacksonException ex) {
+            return "[]";
+        }
     }
 }

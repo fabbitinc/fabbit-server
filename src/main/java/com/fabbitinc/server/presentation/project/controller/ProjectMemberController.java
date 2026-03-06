@@ -20,6 +20,7 @@ import com.fabbitinc.server.application.project.usecase.command.AddProjectMember
 import com.fabbitinc.server.application.project.usecase.command.RemoveProjectMembersCommand;
 import com.fabbitinc.server.application.project.usecase.result.AddProjectMembersResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -63,8 +64,11 @@ public class ProjectMemberController {
     })
     @GetMapping("/lookup")
     public MemberLookupResponse lookupMembers(
+            @Parameter(description = "멤버 후보를 조회할 프로젝트 ID")
             @PathVariable UUID projectId,
+            @Parameter(description = "멤버 이름/이메일 검색어", example = "홍길동")
             @RequestParam(value = "search", required = false) String search,
+            @Parameter(description = "조회 건수", example = "10")
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
@@ -86,6 +90,7 @@ public class ProjectMemberController {
     })
     @GetMapping
     public ProjectMemberListResponse listProjectMembers(
+            @Parameter(description = "멤버 목록을 조회할 프로젝트 ID")
             @PathVariable UUID projectId
     ) {
         ProjectMemberListResult result = projectQuery.listMembers(new ProjectMembersCondition(projectId));
@@ -103,7 +108,9 @@ public class ProjectMemberController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ManageMembersResponse addProjectMembers(
+            @Parameter(description = "멤버를 추가할 프로젝트 ID")
             @PathVariable UUID projectId,
+            @Parameter(description = "프로젝트 멤버 추가 요청")
             @Valid @RequestBody AddMembersRequest request
     ) {
         AddProjectMembersResult result = addProjectMembersUseCase.execute(
@@ -122,7 +129,9 @@ public class ProjectMemberController {
     })
     @DeleteMapping
     public ResponseEntity<Void> removeProjectMembers(
+            @Parameter(description = "멤버를 제거할 프로젝트 ID")
             @PathVariable UUID projectId,
+            @Parameter(description = "프로젝트 멤버 제거 요청")
             @Valid @RequestBody ManageMembersRequest request
     ) {
         removeProjectMembersUseCase.execute(new RemoveProjectMembersCommand(projectId, request.userIds()));

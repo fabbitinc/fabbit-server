@@ -5,12 +5,16 @@ import com.fabbitinc.server.application.supplier.query.condition.SupplierListCon
 import com.fabbitinc.server.application.supplier.query.result.SupplierListResult;
 import com.fabbitinc.server.application.supplier.query.result.SupplierSummaryResult;
 import com.fabbitinc.server.domain.supplier.model.Supplier;
-import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.dsl.PathBuilder;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -18,25 +22,43 @@ import java.util.List;
 public class SupplierQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
-    private final SupplierRepository supplierRepository;
+    private final EntityManager entityManager;
 
     public SupplierListResult list(SupplierListCondition condition) {
         currentAuthProvider.getCurrentAuth();
         String normalizedSearch = normalizeSearch(condition.search());
+        PathBuilder<Supplier> supplier = new PathBuilder<>(Supplier.class, "supplier");
+        var supplierIdExpr = supplier.get("id", UUID.class);
+        var companyNameExpr = supplier.getString("companyName");
+        var codeExpr = supplier.getString("code");
 
-        List<Supplier> suppliers = supplierRepository.listSuppliersPaginated(
-                normalizedSearch,
-                condition.offset(),
-                condition.limit()
-        );
-        long total = supplierRepository.countSuppliers(normalizedSearch);
+        BooleanBuilder predicate = new BooleanBuilder();
+        if (normalizedSearch != null) {
+            predicate.and(companyNameExpr.containsIgnoreCase(normalizedSearch)
+                    .or(codeExpr.containsIgnoreCase(normalizedSearch)));
+        }
+
+        Long totalCount = queryFactory()
+                .select(supplierIdExpr.count())
+                .from(supplier)
+                .where(predicate)
+                .fetchOne();
+        long total = totalCount == null ? 0L : totalCount;
+
+        List<Supplier> suppliers = queryFactory()
+                .selectFrom(supplier)
+                .where(predicate)
+                .orderBy(companyNameExpr.asc())
+                .offset(condition.offset())
+                .limit(condition.limit())
+                .fetch();
 
         List<SupplierSummaryResult> items = suppliers.stream()
-                .map(supplier -> new SupplierSummaryResult(
-                        supplier.getId(),
-                        supplier.getCompanyName(),
-                        supplier.getCode(),
-                        supplier.getCountry()
+                .map(item -> new SupplierSummaryResult(
+                        item.getId(),
+                        item.getCompanyName(),
+                        item.getCode(),
+                        item.getCountry()
                 ))
                 .toList();
 
@@ -49,5 +71,9 @@ public class SupplierQuery {
         }
         String trimmed = search.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private JPAQueryFactory queryFactory() {
+        return new JPAQueryFactory(entityManager);
     }
 }

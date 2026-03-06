@@ -2,7 +2,6 @@ package com.fabbitinc.server.domain.project.repository;
 
 import com.fabbitinc.server.domain.project.model.ProjectPart;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 
 import java.util.Collection;
 import java.util.List;
@@ -21,7 +20,4 @@ public interface ProjectPartRepository extends JpaRepository<ProjectPart, UUID> 
     long countByProjectId(UUID projectId);
 
     long countByPartId(UUID partId);
-
-    @Query("select distinct pp.partId from ProjectPart pp")
-    List<UUID> findDistinctPartIds();
 }

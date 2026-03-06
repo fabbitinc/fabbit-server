@@ -128,7 +128,9 @@ public class IssueService {
 
     public Issue createIssue(UUID actorId, String title, JsonNode body) {
         tipTapValidator.validateDocument(body);
-        int nextNumber = issueRepository.findMaxNumber() + 1;
+        int nextNumber = issueRepository.findTopByOrderByNumberDesc()
+                .map(Issue::getNumber)
+                .orElse(0) + 1;
 
         Issue issue = Issue.create(nextNumber, title, toBodyString(body), actorId);
         issueRepository.save(issue);
@@ -139,7 +141,9 @@ public class IssueService {
 
     public ChangeRequest createChangeRequest(UUID actorId, String title, JsonNode body) {
         tipTapValidator.validateDocument(body);
-        int nextNumber = issueRepository.findMaxNumber() + 1;
+        int nextNumber = issueRepository.findTopByOrderByNumberDesc()
+                .map(Issue::getNumber)
+                .orElse(0) + 1;
 
         ChangeRequest changeRequest = ChangeRequest.create(nextNumber, title, toBodyString(body), actorId);
         changeRequestRepository.save(changeRequest);
@@ -840,7 +844,7 @@ public class IssueService {
             return Map.of();
         }
         Map<UUID, User> map = new HashMap<>();
-        for (User user : userRepository.findAllByIdInOrderByFullName(userIds)) {
+        for (User user : userRepository.findByIdInOrderByFullNameAsc(userIds)) {
             map.put(user.getId(), user);
         }
         return map;

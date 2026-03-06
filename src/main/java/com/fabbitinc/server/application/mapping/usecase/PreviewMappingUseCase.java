@@ -6,14 +6,14 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
-import com.fabbitinc.server.application.mapping.dto.request.MappingPreviewRequest;
-import com.fabbitinc.server.application.mapping.dto.response.MappingPreviewResponse;
-import com.fabbitinc.server.application.mapping.dto.response.SheetPreviewResponse;
-import com.fabbitinc.server.application.mapping.dto.response.SkippedSheetResponse;
 import com.fabbitinc.server.application.mapping.service.MappingService;
 import com.fabbitinc.server.application.mapping.support.MappingLlmGenerationSupport;
 import com.fabbitinc.server.application.mapping.support.MappingNormalizationSupport;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
+import com.fabbitinc.server.application.mapping.usecase.command.PreviewMappingCommand;
+import com.fabbitinc.server.application.mapping.usecase.result.PreviewMappingResult;
+import com.fabbitinc.server.application.mapping.usecase.result.PreviewSheetResult;
+import com.fabbitinc.server.application.mapping.usecase.result.SkippedSheetResult;
 import com.fabbitinc.server.domain.file.model.File;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -25,6 +25,7 @@ import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PreviewMappingUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
@@ -33,15 +34,14 @@ public class PreviewMappingUseCase {
     private final MappingNormalizationSupport mappingNormalizationSupport;
     private final ObjectMapper objectMapper;
 
-    @Transactional
-    public MappingPreviewResponse execute(MappingPreviewRequest request) {
+    public PreviewMappingResult execute(PreviewMappingCommand command) {
         currentAuthProvider.getCurrentAuth();
 
-        File file = mappingService.getUploadedFileOrThrow(request.fileId());
-        List<String> targetSheets = mappingService.loadPreviewTargets(file, request.sheetName());
+        File file = mappingService.getUploadedFileOrThrow(command.fileId());
+        List<String> targetSheets = mappingService.loadPreviewTargets(file, command.sheetName());
 
-        List<SheetPreviewResponse> sheetResponses = new ArrayList<>();
-        List<SkippedSheetResponse> skipped = new ArrayList<>();
+        List<PreviewSheetResult> sheetResponses = new ArrayList<>();
+        List<SkippedSheetResult> skipped = new ArrayList<>();
 
         List<String> firstHeaders = List.of();
         List<JsonNode> firstRows = List.of();
@@ -53,14 +53,14 @@ public class PreviewMappingUseCase {
                 parsed = mappingService.loadHeadersAndRows(file, sheet, 5);
             } catch (RuntimeException ex) {
                 if (sheet != null) {
-                    skipped.add(new SkippedSheetResponse(sheet, "파싱 실패: " + ex.getMessage()));
+                    skipped.add(new SkippedSheetResult(sheet, "파싱 실패: " + ex.getMessage()));
                 }
                 continue;
             }
 
             if (parsed.headers().isEmpty()) {
                 if (sheet != null) {
-                    skipped.add(new SkippedSheetResponse(sheet, "헤더를 추출할 수 없습니다"));
+                    skipped.add(new SkippedSheetResult(sheet, "헤더를 추출할 수 없습니다"));
                 }
                 continue;
             }
@@ -69,14 +69,14 @@ public class PreviewMappingUseCase {
             MappingResultDto normalized = mappingNormalizationSupport.normalize(generated);
             if (normalized.propertyMappings().isEmpty()) {
                 if (sheet != null) {
-                    skipped.add(new SkippedSheetResponse(sheet, "온톨로지에 매핑 가능한 컬럼이 없습니다"));
+                    skipped.add(new SkippedSheetResult(sheet, "온톨로지에 매핑 가능한 컬럼이 없습니다"));
                 }
                 continue;
             }
 
             List<JsonNode> sampleRows = toJsonRows(parsed.rows());
             if (sheet != null) {
-                sheetResponses.add(new SheetPreviewResponse(
+                sheetResponses.add(new PreviewSheetResult(
                         sheet,
                         parsed.headers(),
                         sampleRows,
@@ -95,7 +95,7 @@ public class PreviewMappingUseCase {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "파일에서 매핑 가능한 데이터를 찾을 수 없습니다");
         }
 
-        return new MappingPreviewResponse(
+        return new PreviewMappingResult(
                 firstHeaders,
                 firstRows,
                 firstMapping,

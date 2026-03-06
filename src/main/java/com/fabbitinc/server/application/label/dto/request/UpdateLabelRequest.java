@@ -1,9 +1,11 @@
 package com.fabbitinc.server.application.label.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+@Schema(description = "요청 DTO")
 public class UpdateLabelRequest {
 
     @Size(min = 1, max = 50, message = "name은 1~50자여야 합니다")

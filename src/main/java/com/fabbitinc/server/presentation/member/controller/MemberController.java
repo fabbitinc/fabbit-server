@@ -103,7 +103,9 @@ public class MemberController {
     })
     @PatchMapping("/{userId}/role")
     public ResponseEntity<Void> changeMemberRole(
+            @Parameter(description = "역할을 변경할 사용자 ID")
             @PathVariable UUID userId,
+            @Parameter(description = "멤버 역할 변경 요청")
             @Valid @RequestBody ChangeRoleRequest request
     ) {
         changeMemberRoleUseCase.execute(new ChangeMemberRoleCommand(userId, request.role()));
@@ -122,6 +124,7 @@ public class MemberController {
     })
     @DeleteMapping("/{userId}")
     public ResponseEntity<Void> removeMember(
+            @Parameter(description = "조직에서 제거할 사용자 ID")
             @PathVariable UUID userId
     ) {
         removeMemberUseCase.execute(new RemoveMemberCommand(userId));

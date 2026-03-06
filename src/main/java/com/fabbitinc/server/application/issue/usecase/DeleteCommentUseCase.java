@@ -11,27 +11,24 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 @Component
+@Transactional
 @RequiredArgsConstructor
 public class DeleteCommentUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final IssueService issueService;
 
-    @Transactional
-    public void execute(IssueTargetType targetType,
+    public void execute(DeleteCommentCommand command) {
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
+        UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.targetType(), command.issueNumber());
+
+        issueService.deleteComment(auth.userId(), issueId, command.commentId());
+    }
+
+    public record DeleteCommentCommand(
+            IssueTargetType targetType,
             int issueNumber,
             UUID commentId
     ) {
-        AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = resolveIssueId(targetType, issueNumber);
-
-        issueService.deleteComment(auth.userId(), issueId, commentId);
-    }
-
-    private UUID resolveIssueId(IssueTargetType targetType, int issueNumber) {
-        if (targetType == IssueTargetType.CHANGE_REQUEST) {
-            return issueService.getChangeRequestByNumberOrThrow(issueNumber).getId();
-        }
-        return issueService.getIssueByNumberOrThrow(issueNumber).getId();
     }
 }

@@ -1,19 +1,28 @@
 package com.fabbitinc.server.presentation.synthesis.controller;
 
 import com.fabbitinc.server.application.synthesis.dto.request.SynthesisStartRequest;
+import com.fabbitinc.server.application.synthesis.dto.response.SynthesisBatchFailure;
 import com.fabbitinc.server.application.synthesis.dto.response.SynthesisBatchStartResponse;
+import com.fabbitinc.server.application.synthesis.query.SynthesisQuery;
 import com.fabbitinc.server.application.synthesis.query.condition.SynthesisBatchCondition;
 import com.fabbitinc.server.application.synthesis.query.condition.SynthesisJobCondition;
 import com.fabbitinc.server.application.synthesis.query.condition.SynthesisListCondition;
 import com.fabbitinc.server.application.synthesis.query.result.SynthesisBatchStatusResult;
 import com.fabbitinc.server.application.synthesis.query.result.SynthesisJobResult;
 import com.fabbitinc.server.application.synthesis.query.result.SynthesisListResult;
-import com.fabbitinc.server.application.synthesis.query.SynthesisQuery;
 import com.fabbitinc.server.application.synthesis.usecase.StartSynthesisUseCase;
+import com.fabbitinc.server.application.synthesis.usecase.command.StartSynthesisCommand;
+import com.fabbitinc.server.application.synthesis.usecase.command.StartSynthesisUploadCommand;
+import com.fabbitinc.server.application.synthesis.usecase.result.StartSynthesisFailureResult;
+import com.fabbitinc.server.application.synthesis.usecase.result.StartedSynthesisBatchResult;
+import com.fabbitinc.server.application.synthesis.usecase.result.StartedSynthesisJobResult;
 import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisBatchStatusResponse;
 import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisJobResponse;
 import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisListResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,19 +50,45 @@ public class SynthesisController {
             summary = "POST /api/v1/synthesis",
             description = "매핑 기반 합성 배치를 시작하고 batch/job 정보를 반환합니다"
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "합성 시작 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @PostMapping
     public SynthesisBatchStartResponse startSynthesis(
+            @Parameter(description = "합성 시작 요청")
             @Valid @RequestBody SynthesisStartRequest request
     ) {
-        return startSynthesisUseCase.execute(request);
+        return toSynthesisBatchStartResponse(startSynthesisUseCase.execute(
+                new StartSynthesisCommand(
+                        request.mappingId(),
+                        request.projectId(),
+                        request.overwrite(),
+                        request.uploads().stream()
+                                .map(item -> new StartSynthesisUploadCommand(item.fileId(), item.rootContext()))
+                                .toList()
+                )
+        ));
     }
 
     @Operation(
             summary = "GET /api/v1/synthesis/batches/{batchId}",
             description = "합성 배치 진행 상태를 조회합니다"
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping("/batches/{batchId}")
-    public SynthesisBatchStatusResponse getSynthesisBatch(@PathVariable UUID batchId) {
+    public SynthesisBatchStatusResponse getSynthesisBatch(
+            @Parameter(description = "조회할 합성 배치 ID") @PathVariable UUID batchId
+    ) {
         return toSynthesisBatchStatusResponse(synthesisQuery.getBatch(new SynthesisBatchCondition(batchId)));
     }
 
@@ -61,8 +96,17 @@ public class SynthesisController {
             summary = "GET /api/v1/synthesis/{jobId}",
             description = "개별 합성 작업 상태를 조회합니다"
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping("/{jobId}")
-    public SynthesisJobResponse getSynthesisJob(@PathVariable UUID jobId) {
+    public SynthesisJobResponse getSynthesisJob(
+            @Parameter(description = "조회할 합성 작업 ID") @PathVariable UUID jobId
+    ) {
         return toSynthesisJobResponse(synthesisQuery.getJob(new SynthesisJobCondition(jobId)));
     }
 
@@ -70,6 +114,13 @@ public class SynthesisController {
             summary = "GET /api/v1/synthesis",
             description = "전체 합성 작업 이력을 최신순으로 조회합니다"
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
     @GetMapping
     public SynthesisListResponse listSynthesisJobs() {
         return toSynthesisListResponse(synthesisQuery.list(new SynthesisListCondition()));
@@ -108,6 +159,43 @@ public class SynthesisController {
                         .toList(),
                 result.createdAt()
         );
+    }
+
+    private SynthesisBatchStartResponse toSynthesisBatchStartResponse(StartedSynthesisBatchResult result) {
+        return new SynthesisBatchStartResponse(
+                result.batchId(),
+                result.requestedCount(),
+                result.acceptedCount(),
+                result.items().stream()
+                        .map(this::toStartedSynthesisJobResponse)
+                        .toList(),
+                result.failed().stream()
+                        .map(this::toSynthesisBatchFailure)
+                        .toList()
+        );
+    }
+
+    private com.fabbitinc.server.application.synthesis.dto.response.SynthesisJobResponse toStartedSynthesisJobResponse(
+            StartedSynthesisJobResult result
+    ) {
+        return new com.fabbitinc.server.application.synthesis.dto.response.SynthesisJobResponse(
+                result.id(),
+                result.mappingId(),
+                result.fileId(),
+                result.status(),
+                result.totalRows(),
+                result.processedRows(),
+                result.nodesCreated(),
+                result.relationshipsCreated(),
+                result.errors(),
+                result.startedAt(),
+                result.completedAt(),
+                result.createdAt()
+        );
+    }
+
+    private SynthesisBatchFailure toSynthesisBatchFailure(StartSynthesisFailureResult result) {
+        return new SynthesisBatchFailure(result.fileId(), result.reason());
     }
 
     private SynthesisJobResponse toSynthesisJobResponse(SynthesisJobResult result) {

@@ -26,6 +26,7 @@ import com.fabbitinc.server.application.user.usecase.UpdateProfileUseCase;
 import com.fabbitinc.server.application.auth.dto.response.OrganizationResponse;
 import com.fabbitinc.server.application.auth.dto.response.UserResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -84,6 +85,7 @@ public class UserController {
     })
     @PatchMapping("/me")
     public UpdateProfileResponse updateProfile(
+            @Parameter(description = "내 프로필 수정 요청")
             @Valid @RequestBody UpdateProfileRequest request
     ) {
         UpdateProfileResult result = updateProfileUseCase.execute(
@@ -112,6 +114,7 @@ public class UserController {
     })
     @PutMapping("/me/password")
     public ResponseEntity<Void> changePassword(
+            @Parameter(description = "비밀번호 변경 요청")
             @Valid @RequestBody ChangePasswordRequest request
     ) {
         changePasswordUseCase.execute(
@@ -133,6 +136,7 @@ public class UserController {
     })
     @PutMapping("/me/profile-image")
     public ProfileImageResponse setProfileImage(
+            @Parameter(description = "프로필 이미지 설정 요청")
             @Valid @RequestBody SetProfileImageRequest request
     ) {
         SetUserProfileImageResult result = setProfileImageUseCase.execute(

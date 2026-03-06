@@ -3,15 +3,19 @@ package com.fabbitinc.server.application.issue.usecase;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.file.service.FileService;
-import com.fabbitinc.server.application.issue.dto.request.CreateChangeRequestRequest;
 import com.fabbitinc.server.application.issue.service.IssueService;
 import com.fabbitinc.server.domain.issue.model.ChangeRequest;
 import com.fabbitinc.server.domain.issue.model.Issue;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
+
+import java.util.List;
+import java.util.UUID;
 
 @Component
+@Transactional
 @RequiredArgsConstructor
 public class CreateChangeRequestUseCase {
 
@@ -19,43 +23,68 @@ public class CreateChangeRequestUseCase {
     private final FileService fileService;
     private final IssueService issueService;
 
-    @Transactional
-    public int execute(CreateChangeRequestRequest request) {
+    public CreateChangeRequestResult execute(CreateChangeRequestCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
 
-        ChangeRequest changeRequest = issueService.createChangeRequest(auth.userId(), request.title(), request.body());
+        ChangeRequest changeRequest = issueService.createChangeRequest(auth.userId(), command.title(), command.body());
 
-        if (request.issueNumber() != null) {
-            Issue issue = issueService.getIssueByNumberOrThrow(request.issueNumber());
+        if (command.issueNumber() != null) {
+            Issue issue = issueService.getIssueByNumberOrThrow(command.issueNumber());
             issueService.syncIssues(auth.userId(), changeRequest.getId(), java.util.List.of(issue.getId()), false);
         }
-        if (!request.partIds().isEmpty()) {
-            issueService.syncParts(auth.userId(), changeRequest.getId(), request.partIds(), false);
+        if (!command.partIds().isEmpty()) {
+            issueService.syncParts(auth.userId(), changeRequest.getId(), command.partIds(), false);
         }
-        if (!request.assigneeUserIds().isEmpty()) {
-            issueService.syncAssignees(auth.userId(), changeRequest.getId(), request.assigneeUserIds(), false);
+        if (!command.assigneeUserIds().isEmpty()) {
+            issueService.syncAssignees(auth.userId(), changeRequest.getId(), command.assigneeUserIds(), false);
         }
-        if (!request.teamAssigneeIds().isEmpty()) {
-            issueService.syncTeamAssignees(changeRequest.getId(), request.teamAssigneeIds());
+        if (!command.teamAssigneeIds().isEmpty()) {
+            issueService.syncTeamAssignees(changeRequest.getId(), command.teamAssigneeIds());
         }
-        if (!request.labelIds().isEmpty()) {
-            issueService.syncLabels(auth.userId(), changeRequest.getId(), request.labelIds(), false);
+        if (!command.labelIds().isEmpty()) {
+            issueService.syncLabels(auth.userId(), changeRequest.getId(), command.labelIds(), false);
         }
-        if (!request.fileIds().isEmpty()) {
+        if (!command.fileIds().isEmpty()) {
             issueService.attachFiles(
                     auth.userId(),
                     changeRequest.getId(),
-                    fileService.validateAttachable(request.fileIds()),
+                    fileService.validateAttachable(command.fileIds()),
                     false
             );
         }
-        if (!request.reviewerUserIds().isEmpty()) {
-            issueService.syncReviewers(auth.userId(), changeRequest.getId(), request.reviewerUserIds(), false);
+        if (!command.reviewerUserIds().isEmpty()) {
+            issueService.syncReviewers(auth.userId(), changeRequest.getId(), command.reviewerUserIds(), false);
         }
-        if (!request.teamReviewerIds().isEmpty()) {
-            issueService.syncTeamReviewers(changeRequest.getId(), request.teamReviewerIds());
+        if (!command.teamReviewerIds().isEmpty()) {
+            issueService.syncTeamReviewers(changeRequest.getId(), command.teamReviewerIds());
         }
 
-        return changeRequest.getNumber();
+        return new CreateChangeRequestResult(changeRequest.getNumber());
+    }
+
+    public record CreateChangeRequestCommand(
+            String title,
+            JsonNode body,
+            Integer issueNumber,
+            List<UUID> partIds,
+            List<UUID> assigneeUserIds,
+            List<UUID> teamAssigneeIds,
+            List<UUID> labelIds,
+            List<UUID> fileIds,
+            List<UUID> reviewerUserIds,
+            List<UUID> teamReviewerIds
+    ) {
+        public CreateChangeRequestCommand {
+            partIds = partIds == null ? List.of() : List.copyOf(partIds);
+            assigneeUserIds = assigneeUserIds == null ? List.of() : List.copyOf(assigneeUserIds);
+            teamAssigneeIds = teamAssigneeIds == null ? List.of() : List.copyOf(teamAssigneeIds);
+            labelIds = labelIds == null ? List.of() : List.copyOf(labelIds);
+            fileIds = fileIds == null ? List.of() : List.copyOf(fileIds);
+            reviewerUserIds = reviewerUserIds == null ? List.of() : List.copyOf(reviewerUserIds);
+            teamReviewerIds = teamReviewerIds == null ? List.of() : List.copyOf(teamReviewerIds);
+        }
+    }
+
+    public record CreateChangeRequestResult(int issueNumber) {
     }
 }

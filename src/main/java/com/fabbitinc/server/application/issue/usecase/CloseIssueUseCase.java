@@ -9,16 +9,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@Transactional
 @RequiredArgsConstructor
 public class CloseIssueUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final IssueService issueService;
 
-    @Transactional
-    public void execute(int issueNumber) {
+    public void execute(CloseIssueCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        Issue issue = issueService.getIssueByNumberOrThrow(issueNumber);
+        Issue issue = issueService.getIssueByNumberOrThrow(command.issueNumber());
         issueService.closeIssue(auth.userId(), issue);
+    }
+
+    public record CloseIssueCommand(int issueNumber) {
     }
 }

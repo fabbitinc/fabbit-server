@@ -16,7 +16,15 @@ import com.fabbitinc.server.application.label.query.result.LabelResult;
 import com.fabbitinc.server.application.label.usecase.CreateLabelUseCase;
 import com.fabbitinc.server.application.label.usecase.DeleteLabelUseCase;
 import com.fabbitinc.server.application.label.usecase.UpdateLabelUseCase;
+import com.fabbitinc.server.application.label.usecase.command.CreateLabelCommand;
+import com.fabbitinc.server.application.label.usecase.command.DeleteLabelCommand;
+import com.fabbitinc.server.application.label.usecase.command.UpdateLabelCommand;
+import com.fabbitinc.server.application.label.usecase.result.CreateLabelResult;
+import com.fabbitinc.server.application.label.usecase.result.UpdateLabelResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -43,6 +51,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/labels")
 @Tag(name = "labels", description = "라벨 조회/생성/수정/삭제 API")
+@ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "요청 성공"),
+        @ApiResponse(responseCode = "201", description = "생성 성공"),
+        @ApiResponse(responseCode = "204", description = "삭제 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @ApiResponse(responseCode = "401", description = "인증 필요"),
+        @ApiResponse(responseCode = "403", description = "권한 없음"),
+        @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+})
 public class LabelController {
 
     private final LabelQuery labelQuery;
@@ -56,7 +73,9 @@ public class LabelController {
     )
     @GetMapping("/lookup")
     public LabelLookupResponse lookupLabels(
+            @Parameter(description = "라벨 이름 검색어", example = "긴급")
             @RequestParam(value = "search", required = false) String search,
+            @Parameter(description = "조회 건수", example = "10")
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
@@ -81,9 +100,13 @@ public class LabelController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public LabelResponse createLabel(
+            @Parameter(description = "라벨 생성 요청")
             @Valid @RequestBody CreateLabelRequest request
     ) {
-        return createLabelUseCase.execute(request);
+        CreateLabelResult result = createLabelUseCase.execute(
+                new CreateLabelCommand(request.name(), request.description(), request.color())
+        );
+        return toLabelResponse(result);
     }
 
     @Operation(
@@ -92,10 +115,21 @@ public class LabelController {
     )
     @PatchMapping("/{labelId}")
     public LabelResponse updateLabel(
+            @Parameter(description = "수정할 라벨 ID")
             @PathVariable UUID labelId,
+            @Parameter(description = "라벨 수정 요청")
             @Valid @RequestBody UpdateLabelRequest request
     ) {
-        return updateLabelUseCase.execute(labelId, request);
+        UpdateLabelResult result = updateLabelUseCase.execute(
+                new UpdateLabelCommand(
+                        labelId,
+                        request.getName(),
+                        request.getDescription(),
+                        request.getColor(),
+                        request.isDescriptionSet()
+                )
+        );
+        return toLabelResponse(result);
     }
 
     @Operation(
@@ -104,9 +138,10 @@ public class LabelController {
     )
     @DeleteMapping("/{labelId}")
     public ResponseEntity<Void> deleteLabel(
+            @Parameter(description = "삭제할 라벨 ID")
             @PathVariable UUID labelId
     ) {
-        deleteLabelUseCase.execute(labelId);
+        deleteLabelUseCase.execute(new DeleteLabelCommand(labelId));
         return ResponseEntity.noContent().build();
     }
 
@@ -120,6 +155,28 @@ public class LabelController {
     }
 
     private LabelResponse toLabelResponse(LabelResult result) {
+        return new LabelResponse(
+                result.id(),
+                result.name(),
+                result.description(),
+                result.color(),
+                result.createdAt(),
+                result.createdBy()
+        );
+    }
+
+    private LabelResponse toLabelResponse(CreateLabelResult result) {
+        return new LabelResponse(
+                result.id(),
+                result.name(),
+                result.description(),
+                result.color(),
+                result.createdAt(),
+                result.createdBy()
+        );
+    }
+
+    private LabelResponse toLabelResponse(UpdateLabelResult result) {
         return new LabelResponse(
                 result.id(),
                 result.name(),

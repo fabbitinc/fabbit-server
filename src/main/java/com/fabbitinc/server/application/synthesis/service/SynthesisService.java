@@ -2,12 +2,11 @@ package com.fabbitinc.server.application.synthesis.service;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
-import com.fabbitinc.server.application.synthesis.dto.request.SynthesisStartRequest;
-import com.fabbitinc.server.application.synthesis.dto.request.SynthesisUploadItem;
-import com.fabbitinc.server.application.synthesis.dto.response.SynthesisBatchFailure;
-import com.fabbitinc.server.application.synthesis.dto.response.SynthesisBatchStartResponse;
-import com.fabbitinc.server.application.synthesis.dto.response.SynthesisJobResponse;
-import com.fabbitinc.server.application.synthesis.support.SynthesisResponseMapper;
+import com.fabbitinc.server.application.synthesis.service.input.StartSynthesisInput;
+import com.fabbitinc.server.application.synthesis.service.input.SynthesisUploadInput;
+import com.fabbitinc.server.application.synthesis.service.output.SynthesisBatchFailureOutput;
+import com.fabbitinc.server.application.synthesis.service.output.SynthesisBatchStartOutput;
+import com.fabbitinc.server.application.synthesis.service.output.SynthesisJobOutput;
 import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
@@ -21,6 +20,8 @@ import com.fabbitinc.server.domain.synthesis.model.SynthesisBatch;
 import com.fabbitinc.server.domain.synthesis.model.SynthesisJob;
 import com.fabbitinc.server.domain.synthesis.repository.SynthesisBatchRepository;
 import com.fabbitinc.server.domain.synthesis.repository.SynthesisJobRepository;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -40,33 +41,33 @@ public class SynthesisService {
     private final FileRepository fileRepository;
     private final SynthesisBatchRepository synthesisBatchRepository;
     private final SynthesisJobRepository synthesisJobRepository;
-    private final SynthesisResponseMapper synthesisResponseMapper;
     private final SynthesisAsyncExecutionService synthesisAsyncExecutionService;
+    private final ObjectMapper objectMapper;
 
-    public SynthesisBatchStartResponse startSynthesis(SynthesisStartRequest request) {
-        MappingRecord record = mappingRecordRepository.findByIdAndActiveTrue(request.mappingId())
+    public SynthesisBatchStartOutput startSynthesis(StartSynthesisInput input) {
+        MappingRecord record = mappingRecordRepository.findByIdAndActiveTrue(input.mappingId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "매핑을 찾을 수 없습니다"));
 
         MappingRevision revision = mappingRevisionRepository.findFirstByRecordIdOrderByVersionDesc(record.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "매핑 리비전을 찾을 수 없습니다"));
 
-        List<SynthesisBatchFailure> failed = new ArrayList<>();
+        List<SynthesisBatchFailureOutput> failed = new ArrayList<>();
         List<AcceptedUpload> acceptedUploads = new ArrayList<>();
 
-        for (SynthesisUploadItem item : request.uploads()) {
+        for (SynthesisUploadInput item : input.uploads()) {
             validateRootContext(record.getScope(), item.rootContext());
 
             File file = fileRepository.findByIdAndDeletedAtIsNull(item.fileId()).orElse(null);
             if (file == null) {
-                failed.add(new SynthesisBatchFailure(item.fileId(), "파일을 찾을 수 없습니다"));
+                failed.add(new SynthesisBatchFailureOutput(item.fileId(), "파일을 찾을 수 없습니다"));
                 continue;
             }
             if (file.getStatus() != FileStatus.UPLOADED) {
-                failed.add(new SynthesisBatchFailure(item.fileId(), "업로드가 완료되지 않은 파일입니다"));
+                failed.add(new SynthesisBatchFailureOutput(item.fileId(), "업로드가 완료되지 않은 파일입니다"));
                 continue;
             }
-            if (request.projectId() != null && !isProjectOwnedFile(file, request.projectId())) {
-                failed.add(new SynthesisBatchFailure(item.fileId(), "해당 프로젝트에 속하지 않은 파일입니다"));
+            if (input.projectId() != null && !isProjectOwnedFile(file, input.projectId())) {
+                failed.add(new SynthesisBatchFailureOutput(item.fileId(), "해당 프로젝트에 속하지 않은 파일입니다"));
                 continue;
             }
 
@@ -75,10 +76,10 @@ public class SynthesisService {
         }
 
         SynthesisBatch batch = SynthesisBatch.create(
-                request.projectId(),
+                input.projectId(),
                 record.getId(),
-                request.uploads().size(),
-                synthesisResponseMapper.serializeFailures(failed)
+                input.uploads().size(),
+                serializeFailures(failed)
         );
         List<AcceptedSynthesisJob> acceptedJobs = acceptedUploads.stream()
                 .map(acceptedUpload -> new AcceptedSynthesisJob(
@@ -93,14 +94,14 @@ public class SynthesisService {
             synthesisJobRepository.saveAll(jobs);
             record.incrementUsage(batch.getAcceptedCount());
             revision.incrementUsage(batch.getAcceptedCount());
-            dispatchAfterCommit(acceptedJobs, request.overwrite());
+            dispatchAfterCommit(acceptedJobs, input.overwrite());
         }
 
-        List<SynthesisJobResponse> items = jobs.stream()
-                .map(synthesisResponseMapper::toJobResponse)
+        List<SynthesisJobOutput> items = jobs.stream()
+                .map(this::toJobOutput)
                 .toList();
 
-        return new SynthesisBatchStartResponse(
+        return new SynthesisBatchStartOutput(
                 batch.getId(),
                 batch.getRequestedCount(),
                 batch.getAcceptedCount(),
@@ -153,6 +154,63 @@ public class SynthesisService {
 
     private boolean isProjectOwnedFile(File file, UUID projectId) {
         return "project".equals(file.getOwnerType()) && projectId.equals(file.getOwnerId());
+    }
+
+    private SynthesisJobOutput toJobOutput(SynthesisJob job) {
+        return new SynthesisJobOutput(
+                job.getId(),
+                job.getMappingId(),
+                job.getFileId(),
+                job.getStatus(),
+                job.getTotalRows(),
+                job.getProcessedRows(),
+                job.getNodesCreated(),
+                job.getRelationshipsCreated(),
+                parseErrors(job.getErrors()),
+                job.getStartedAt(),
+                job.getCompletedAt(),
+                job.getCreatedAt()
+        );
+    }
+
+    private List<String> parseErrors(String raw) {
+        if (raw == null || raw.isBlank() || "[]".equals(raw.trim())) {
+            return List.of();
+        }
+        try {
+            List<String> parsed = objectMapper.readValue(
+                    raw,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)
+            );
+            if (parsed == null) {
+                return List.of();
+            }
+            return parsed.stream()
+                    .filter(value -> value != null && !value.isBlank())
+                    .toList();
+        } catch (JacksonException ignored) {
+        }
+
+        List<String> errors = new ArrayList<>();
+        String[] lines = raw.split("\\R");
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (!trimmed.isEmpty()) {
+                errors.add(trimmed);
+            }
+        }
+        return errors;
+    }
+
+    private String serializeFailures(List<SynthesisBatchFailureOutput> failures) {
+        if (failures.isEmpty()) {
+            return "[]";
+        }
+        try {
+            return objectMapper.writeValueAsString(failures);
+        } catch (JacksonException ex) {
+            return "[]";
+        }
     }
 
     private record AcceptedSynthesisJob(

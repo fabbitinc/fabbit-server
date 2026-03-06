@@ -5,7 +5,6 @@ import com.fabbitinc.server.domain.issue.model.IssueState;
 import com.fabbitinc.server.domain.issue.model.IssueType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,13 +16,9 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
 
     Optional<Issue> findByNumberAndType(int number, IssueType type);
 
-    @Query("""
-            select coalesce(max(i.number), 0)
-            from Issue i
-            """)
-    int findMaxNumber();
-
     long countByTypeAndState(IssueType type, IssueState state);
+
+    Optional<Issue> findTopByOrderByNumberDesc();
 
     List<Issue> findByTypeOrderByNumberDesc(IssueType type, Pageable pageable);
 

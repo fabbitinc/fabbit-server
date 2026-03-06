@@ -69,6 +69,7 @@ import com.fabbitinc.server.domain.team.repository.TeamRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.PathBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
@@ -693,7 +694,7 @@ public class IssueQuery {
         }
 
         Map<String, IssueUserSummaryResult> map = new LinkedHashMap<>();
-        for (User user : userRepository.findAllByIdInOrderByFullName(userIds)) {
+        for (User user : userRepository.findByIdInOrderByFullNameAsc(userIds)) {
             map.put(user.getId().toString(), toUserSummary(user));
         }
         return map;
@@ -746,7 +747,7 @@ public class IssueQuery {
             return Map.of();
         }
         Map<UUID, User> map = new HashMap<>();
-        userRepository.findAllByIdInOrderByFullName(userIds).forEach(user -> map.put(user.getId(), user));
+        userRepository.findByIdInOrderByFullNameAsc(userIds).forEach(user -> map.put(user.getId(), user));
         return map;
     }
 
@@ -760,9 +761,22 @@ public class IssueQuery {
     }
 
     private Map<UUID, Long> countComments(List<UUID> issueIds) {
+        if (issueIds.isEmpty()) {
+            return Map.of();
+        }
+
+        PathBuilder<IssueComment> comment = new PathBuilder<>(IssueComment.class, "issueComment");
+        var issueIdExpr = comment.get("issueId", UUID.class);
+        var countExpr = comment.get("id", UUID.class).count();
+
         Map<UUID, Long> counts = new HashMap<>();
-        for (Object[] row : issueCommentRepository.countByIssueIds(issueIds)) {
-            counts.put((UUID) row[0], ((Number) row[1]).longValue());
+        for (Tuple row : queryFactory()
+                .select(issueIdExpr, countExpr)
+                .from(comment)
+                .where(issueIdExpr.in(issueIds))
+                .groupBy(issueIdExpr)
+                .fetch()) {
+            counts.put(row.get(issueIdExpr), row.get(countExpr) == null ? 0L : row.get(countExpr));
         }
         return counts;
     }

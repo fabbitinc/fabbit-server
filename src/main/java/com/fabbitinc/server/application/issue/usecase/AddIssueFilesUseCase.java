@@ -3,11 +3,10 @@ package com.fabbitinc.server.application.issue.usecase;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
-import com.fabbitinc.server.application.file.dto.response.FileItemResponse;
 import com.fabbitinc.server.application.file.service.FileService;
-import com.fabbitinc.server.application.issue.dto.request.AttachFilesRequest;
 import com.fabbitinc.server.application.issue.service.IssueService;
 import com.fabbitinc.server.application.issue.support.IssueTargetType;
+import com.fabbitinc.server.application.issue.usecase.result.AttachedFileResult;
 import com.fabbitinc.server.domain.file.model.File;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -17,6 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Component
+@Transactional
 @RequiredArgsConstructor
 public class AddIssueFilesUseCase {
 
@@ -25,18 +25,14 @@ public class AddIssueFilesUseCase {
     private final FileService fileService;
     private final FileUrlResolver fileUrlResolver;
 
-    @Transactional
-    public List<FileItemResponse> execute(IssueTargetType targetType,
-            int issueNumber,
-            AttachFilesRequest request
-    ) {
+    public List<AttachedFileResult> execute(AddIssueFilesCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = resolveIssueId(targetType, issueNumber);
+        UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.targetType(), command.issueNumber());
 
-        List<File> attachableFiles = fileService.validateAttachable(request.fileIds());
+        List<File> attachableFiles = fileService.validateAttachable(command.fileIds());
         List<File> attachedFiles = issueService.attachFiles(auth.userId(), issueId, attachableFiles);
         return attachedFiles.stream()
-                .map(file -> new FileItemResponse(
+                .map(file -> new AttachedFileResult(
                         file.getId(),
                         file.getOriginalName(),
                         file.getContentType(),
@@ -47,10 +43,13 @@ public class AddIssueFilesUseCase {
                 .toList();
     }
 
-    private UUID resolveIssueId(IssueTargetType targetType, int issueNumber) {
-        if (targetType == IssueTargetType.CHANGE_REQUEST) {
-            return issueService.getChangeRequestByNumberOrThrow(issueNumber).getId();
+    public record AddIssueFilesCommand(
+            IssueTargetType targetType,
+            int issueNumber,
+            List<UUID> fileIds
+    ) {
+        public AddIssueFilesCommand {
+            fileIds = fileIds == null ? List.of() : List.copyOf(fileIds);
         }
-        return issueService.getIssueByNumberOrThrow(issueNumber).getId();
     }
 }

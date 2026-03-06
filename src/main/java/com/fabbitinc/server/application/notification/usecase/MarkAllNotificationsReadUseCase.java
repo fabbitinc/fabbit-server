@@ -9,12 +9,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
+@Transactional
 public class MarkAllNotificationsReadUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final NotificationService notificationService;
 
-    @Transactional
     public void execute() {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         notificationService.markAllAsRead(auth.userId());

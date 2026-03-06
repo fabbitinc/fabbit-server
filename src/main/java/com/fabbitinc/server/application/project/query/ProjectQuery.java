@@ -43,6 +43,10 @@ import com.fabbitinc.server.domain.project.repository.ProjectMemberRepository;
 import com.fabbitinc.server.domain.project.repository.ProjectPartRepository;
 import com.fabbitinc.server.domain.project.repository.ProjectRepository;
 import com.fabbitinc.server.domain.user.model.User;
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.dsl.PathBuilder;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,17 +71,35 @@ public class ProjectQuery {
     private final UserApi userApi;
     private final ActivityApi activityApi;
     private final FileUrlResolver fileUrlResolver;
+    private final EntityManager entityManager;
 
     public ProjectListResult list(ProjectListCondition condition) {
         currentAuthProvider.getCurrentAuth();
         String normalizedSearch = normalizeSearch(condition.search());
+        PathBuilder<Project> project = new PathBuilder<>(Project.class, "project");
+        var projectIdExpr = project.get("id", UUID.class);
+        var projectNameExpr = project.getString("name");
 
-        List<Project> projects = projectRepository.listProjectsPaginated(
-                normalizedSearch,
-                condition.offset(),
-                condition.limit()
-        );
-        long total = projectRepository.countProjects(normalizedSearch);
+        BooleanBuilder predicate = new BooleanBuilder();
+        predicate.and(project.getBoolean("deleted").isFalse());
+        if (normalizedSearch != null) {
+            predicate.and(projectNameExpr.containsIgnoreCase(normalizedSearch));
+        }
+
+        Long totalCount = queryFactory()
+                .select(projectIdExpr.count())
+                .from(project)
+                .where(predicate)
+                .fetchOne();
+        long total = totalCount == null ? 0L : totalCount;
+
+        List<Project> projects = queryFactory()
+                .selectFrom(project)
+                .where(predicate)
+                .orderBy(projectNameExpr.asc())
+                .offset(condition.offset())
+                .limit(condition.limit())
+                .fetch();
 
         List<ProjectSummaryResult> items = projects.stream()
                 .map(this::toProjectSummaryResult)
@@ -349,5 +371,9 @@ public class ProjectQuery {
                 user.getPhone(),
                 fileUrlResolver.resolve(user.getProfileImageFileKey())
         );
+    }
+
+    private JPAQueryFactory queryFactory() {
+        return new JPAQueryFactory(entityManager);
     }
 }

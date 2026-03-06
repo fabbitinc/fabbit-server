@@ -55,7 +55,18 @@ import com.fabbitinc.server.application.part.usecase.DeletePartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.DetachPartFileUseCase;
 import com.fabbitinc.server.application.part.usecase.RegisterPartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.RenameCategoryUseCase;
+import com.fabbitinc.server.application.part.usecase.command.AttachPartFilesCommand;
+import com.fabbitinc.server.application.part.usecase.command.DeletePartDrawingCommand;
+import com.fabbitinc.server.application.part.usecase.command.DetachPartFileCommand;
+import com.fabbitinc.server.application.part.usecase.command.RegisterPartDrawingCommand;
+import com.fabbitinc.server.application.part.usecase.command.RenameCategoryCommand;
+import com.fabbitinc.server.application.part.usecase.result.AttachPartFilesResult;
+import com.fabbitinc.server.application.part.usecase.result.RegisterPartDrawingResult;
+import com.fabbitinc.server.application.part.usecase.result.RenameCategoryResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -83,6 +94,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/parts")
 @Tag(name = "parts", description = "부품 조회/카테고리 API")
+@ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "요청 성공"),
+        @ApiResponse(responseCode = "201", description = "생성 성공"),
+        @ApiResponse(responseCode = "204", description = "삭제 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @ApiResponse(responseCode = "401", description = "인증 필요"),
+        @ApiResponse(responseCode = "403", description = "권한 없음"),
+        @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+})
 public class PartController {
 
     private final PartQuery partQuery;
@@ -98,7 +118,9 @@ public class PartController {
     )
     @GetMapping("/lookup")
     public PartLookupResponse lookupParts(
+            @Parameter(description = "품번/품명 검색어", example = "M3")
             @RequestParam(value = "search", required = false) String search,
+            @Parameter(description = "조회 건수", example = "10")
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
@@ -212,6 +234,7 @@ public class PartController {
     )
     @GetMapping("/{partId}")
     public PartDetailResponse getPart(
+            @Parameter(description = "조회할 부품 ID")
             @PathVariable UUID partId
     ) {
         return toPartDetailResponse(partQuery.get(new PartDetailCondition(partId)));
@@ -223,6 +246,7 @@ public class PartController {
     )
     @GetMapping("/{partId}/bom")
     public PartBomResponse getPartBom(
+            @Parameter(description = "BOM을 조회할 부품 ID")
             @PathVariable UUID partId
     ) {
         return toPartBomResponse(partQuery.get(new PartBomCondition(partId)));
@@ -234,7 +258,9 @@ public class PartController {
     )
     @GetMapping("/{partId}/bom/tree")
     public BomTreeResponse getBomTree(
+            @Parameter(description = "BOM 트리를 조회할 부품 ID")
             @PathVariable UUID partId,
+            @Parameter(description = "정전개/역전개 방향", example = "FORWARD")
             @RequestParam(value = "direction", defaultValue = "FORWARD") String direction
     ) {
         return toBomTreeResponse(partQuery.getBomTree(new BomTreeCondition(partId, direction)));
@@ -301,7 +327,10 @@ public class PartController {
             @PathVariable UUID partId,
             @Valid @RequestBody AttachFilesRequest request
     ) {
-        List<UUID> attachedFileIds = attachPartFilesUseCase.execute(partId, request.fileIds());
+        AttachPartFilesResult result = attachPartFilesUseCase.execute(
+                new AttachPartFilesCommand(partId, request.fileIds())
+        );
+        List<UUID> attachedFileIds = result.fileIds();
         return partQuery.getFiles(new FileItemsCondition(attachedFileIds)).stream()
                 .map(this::toFileItemResponse)
                 .toList();
@@ -316,7 +345,7 @@ public class PartController {
             @PathVariable UUID partId,
             @PathVariable UUID fileId
     ) {
-        detachPartFileUseCase.execute(partId, fileId);
+        detachPartFileUseCase.execute(new DetachPartFileCommand(partId, fileId));
         return ResponseEntity.noContent().build();
     }
 
@@ -328,7 +357,7 @@ public class PartController {
     public ResponseEntity<Void> deleteDrawingFromPart(
             @PathVariable UUID partId
     ) {
-        deletePartDrawingUseCase.execute(partId);
+        deletePartDrawingUseCase.execute(new DeletePartDrawingCommand(partId));
         return ResponseEntity.noContent().build();
     }
 
@@ -341,7 +370,15 @@ public class PartController {
             @PathVariable UUID partId,
             @Valid @RequestBody RegisterDrawingRequest request
     ) {
-        return registerPartDrawingUseCase.execute(partId, request.fileId());
+        RegisterPartDrawingResult result = registerPartDrawingUseCase.execute(
+                new RegisterPartDrawingCommand(partId, request.fileId())
+        );
+        return new RegisterDrawingResponse(
+                result.drawingId(),
+                result.drawingNumber(),
+                result.name(),
+                result.conversionStatus()
+        );
     }
 
     @Operation(
@@ -353,8 +390,10 @@ public class PartController {
             @PathVariable String category,
             @Valid @RequestBody RenameCategoryRequest request
     ) {
-        int updatedCount = renameCategoryUseCase.execute(category, request.newName());
-        return new RenameCategoryResponse(updatedCount);
+        RenameCategoryResult result = renameCategoryUseCase.execute(
+                new RenameCategoryCommand(category, request.newName())
+        );
+        return new RenameCategoryResponse(result.updatedCount());
     }
 
     private PartLookupResponse toPartLookupResponse(PartLookupResult result) {

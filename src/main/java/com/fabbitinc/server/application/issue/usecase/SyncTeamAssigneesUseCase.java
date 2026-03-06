@@ -1,39 +1,39 @@
 package com.fabbitinc.server.application.issue.usecase;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
-import com.fabbitinc.server.application.issue.dto.request.SyncTeamAssigneesRequest;
-import com.fabbitinc.server.application.issue.dto.response.SyncDiffResponse;
 import com.fabbitinc.server.application.issue.service.IssueService;
 import com.fabbitinc.server.application.issue.support.IssueTargetType;
+import com.fabbitinc.server.application.issue.usecase.result.SyncDiffResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Component
+@Transactional
 @RequiredArgsConstructor
 public class SyncTeamAssigneesUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final IssueService issueService;
 
-    @Transactional
-    public SyncDiffResponse execute(IssueTargetType targetType,
-            int issueNumber,
-            SyncTeamAssigneesRequest request
-    ) {
+    public SyncDiffResult execute(SyncTeamAssigneesCommand command) {
         currentAuthProvider.getCurrentAuth();
-        UUID issueId = resolveIssueId(targetType, issueNumber);
+        UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.targetType(), command.issueNumber());
 
-        IssueService.DiffResult diff = issueService.syncTeamAssignees(issueId, request.teamIds());
-        return new SyncDiffResponse(diff.added().size(), diff.removed().size());
+        IssueService.DiffResult diff = issueService.syncTeamAssignees(issueId, command.teamIds());
+        return IssueUseCaseSupport.toSyncDiffResult(diff);
     }
 
-    private UUID resolveIssueId(IssueTargetType targetType, int issueNumber) {
-        if (targetType == IssueTargetType.CHANGE_REQUEST) {
-            return issueService.getChangeRequestByNumberOrThrow(issueNumber).getId();
+    public record SyncTeamAssigneesCommand(
+            IssueTargetType targetType,
+            int issueNumber,
+            List<UUID> teamIds
+    ) {
+        public SyncTeamAssigneesCommand {
+            teamIds = teamIds == null ? List.of() : List.copyOf(teamIds);
         }
-        return issueService.getIssueByNumberOrThrow(issueNumber).getId();
     }
 }

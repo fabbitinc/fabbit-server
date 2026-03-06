@@ -1,5 +1,6 @@
 package com.fabbitinc.server.presentation.notification.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.fabbitinc.server.domain.notification.model.NotificationSourceIssueType;
 import com.fabbitinc.server.domain.notification.model.NotificationType;
 
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+@Schema(description = "응답 DTO")
 public record NotificationListResponse(
         List<NotificationItemResponse> items,
         UUID nextCursor,

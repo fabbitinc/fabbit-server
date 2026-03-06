@@ -2,7 +2,6 @@ package com.fabbitinc.server.domain.user.repository;
 
 import com.fabbitinc.server.domain.user.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 
 import java.util.Collection;
 import java.util.List;
@@ -14,11 +13,5 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmail(String email);
 
-    @Query("""
-            select u
-            from User u
-            where u.id in :userIds
-            order by u.fullName
-            """)
-    List<User> findAllByIdInOrderByFullName(Collection<UUID> userIds);
+    List<User> findByIdInOrderByFullNameAsc(Collection<UUID> userIds);
 }

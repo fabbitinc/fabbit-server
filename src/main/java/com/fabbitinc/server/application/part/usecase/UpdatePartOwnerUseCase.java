@@ -1,13 +1,12 @@
 package com.fabbitinc.server.application.part.usecase;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
-import com.fabbitinc.server.application.part.dto.request.UpdatePartOwnerRequest;
 import com.fabbitinc.server.application.part.service.PartService;
+import com.fabbitinc.server.application.part.usecase.command.UpdatePartOwnerCommand;
+import com.fabbitinc.server.application.part.usecase.result.UpdatePartOwnerResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -17,14 +16,16 @@ public class UpdatePartOwnerUseCase {
     private final CurrentAuthProvider currentAuthProvider;
     private final PartService partService;
 
-    public UUID execute(UUID partId, UpdatePartOwnerRequest request) {
+    public UpdatePartOwnerResult execute(UpdatePartOwnerCommand command) {
         currentAuthProvider.getCurrentAuth();
-        return partService.updateOwner(
-                partId,
-                request.getOwnerId(),
-                request.isOwnerIdSet(),
-                request.getOwnerTeamId(),
-                request.isOwnerTeamIdSet()
-        ).getId();
+        return new UpdatePartOwnerResult(
+                partService.updateOwner(
+                        command.partId(),
+                        command.ownerId(),
+                        command.ownerIdSet(),
+                        command.ownerTeamId(),
+                        command.ownerTeamIdSet()
+                ).getId()
+        );
     }
 }

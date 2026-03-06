@@ -6,11 +6,15 @@ import com.fabbitinc.server.application.notification.query.result.UnreadCountRes
 import com.fabbitinc.server.application.notification.query.NotificationQuery;
 import com.fabbitinc.server.application.notification.usecase.MarkAllNotificationsReadUseCase;
 import com.fabbitinc.server.application.notification.usecase.MarkNotificationReadUseCase;
-import com.fabbitinc.server.application.notification.usecase.NotificationStreamSession;
 import com.fabbitinc.server.application.notification.usecase.NotificationStreamUseCase;
+import com.fabbitinc.server.application.notification.usecase.command.MarkNotificationReadCommand;
+import com.fabbitinc.server.application.notification.usecase.result.NotificationStreamResult;
 import com.fabbitinc.server.presentation.notification.dto.response.NotificationListResponse;
 import com.fabbitinc.server.presentation.notification.dto.response.UnreadCountResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -38,6 +42,14 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/notifications")
 @Tag(name = "notifications", description = "알림 조회/읽음 처리/SSE API")
+@ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "요청 성공"),
+        @ApiResponse(responseCode = "204", description = "읽음 처리 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @ApiResponse(responseCode = "401", description = "인증 필요"),
+        @ApiResponse(responseCode = "403", description = "권한 없음"),
+        @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+})
 public class NotificationController {
 
     private final NotificationQuery notificationQuery;
@@ -51,11 +63,14 @@ public class NotificationController {
     )
     @GetMapping
     public NotificationListResponse listNotifications(
+            @Parameter(description = "다음 페이지 조회용 커서")
             @RequestParam(value = "cursor", required = false) UUID cursor,
+            @Parameter(description = "조회 건수", example = "20")
             @RequestParam(value = "limit", defaultValue = "20")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다")
             @Max(value = 50, message = "limit은 50 이하여야 합니다")
             int limit,
+            @Parameter(description = "미읽음 알림만 조회할지 여부", example = "false")
             @RequestParam(value = "unread_only", defaultValue = "false") boolean unreadOnly
     ) {
         return toNotificationListResponse(notificationQuery.list(
@@ -78,9 +93,10 @@ public class NotificationController {
     )
     @PutMapping("/{notificationId}/read")
     public ResponseEntity<Void> readNotification(
+            @Parameter(description = "읽음 처리할 알림 ID")
             @PathVariable UUID notificationId
     ) {
-        markNotificationReadUseCase.execute(notificationId);
+        markNotificationReadUseCase.execute(new MarkNotificationReadCommand(notificationId));
         return ResponseEntity.noContent().build();
     }
 
@@ -101,7 +117,7 @@ public class NotificationController {
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<StreamingResponseBody> stream(
 ) {
-        NotificationStreamSession session = notificationStreamUseCase.connect();
+        NotificationStreamResult result = notificationStreamUseCase.execute();
 
         StreamingResponseBody body = outputStream -> {
             try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
@@ -109,7 +125,7 @@ public class NotificationController {
                 writer.flush();
 
                 while (!Thread.currentThread().isInterrupted()) {
-                    String data = session.queue().poll(30, TimeUnit.SECONDS);
+                    String data = result.queue().poll(30, TimeUnit.SECONDS);
                     if (data == null) {
                         writer.write(": keepalive\n\n");
                     } else {
@@ -120,7 +136,7 @@ public class NotificationController {
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
             } finally {
-                notificationStreamUseCase.disconnect(session);
+                notificationStreamUseCase.disconnect(result);
             }
         };
 

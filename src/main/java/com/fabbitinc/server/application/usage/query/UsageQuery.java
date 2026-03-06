@@ -10,8 +10,7 @@ import com.fabbitinc.server.application.usage.query.condition.StorageTrendCondit
 import com.fabbitinc.server.application.usage.query.result.CreditUsageResult;
 import com.fabbitinc.server.application.usage.query.result.StorageTrendResult;
 import com.fabbitinc.server.application.usage.query.result.StorageUsageResult;
-import com.fabbitinc.server.domain.aiusage.repository.AiUsageCategorySummary;
-import com.fabbitinc.server.domain.aiusage.repository.AiUsageLogRepository;
+import com.fabbitinc.server.domain.aiusage.model.AiUsageLog;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
@@ -20,6 +19,7 @@ import com.fabbitinc.server.domain.organization.repository.OrganizationRepositor
 import com.fabbitinc.server.domain.subscription.model.Subscription;
 import com.fabbitinc.server.domain.subscription.model.SubscriptionStatus;
 import com.fabbitinc.server.domain.subscription.repository.SubscriptionRepository;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +44,7 @@ public class UsageQuery {
     private final OrganizationRepository organizationRepository;
     private final FileRepository fileRepository;
     private final SubscriptionRepository subscriptionRepository;
-    private final AiUsageLogRepository aiUsageLogRepository;
+    private final EntityManager entityManager;
 
     public StorageUsageResult getStorageUsage() {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
@@ -138,18 +138,17 @@ public class UsageQuery {
         Subscription subscription = subscriptionRepository.findByOrgIdAndStatus(auth.orgId(), SubscriptionStatus.ACTIVE)
                 .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND, "활성 구독 정보를 찾을 수 없습니다"));
 
-        BigDecimal totalUsedRaw = aiUsageLogRepository.sumCreditsByOrgIdFrom(auth.orgId(), subscription.getCurrentPeriodStart());
+        BigDecimal totalUsedRaw = sumCreditsUsed(auth.orgId(), subscription.getCurrentPeriodStart());
         int totalUsed = ceil(totalUsedRaw);
 
-        List<AiUsageCategorySummary> summaries = aiUsageLogRepository.aggregateCreditsByCategoryFrom(
+        List<CreditUsageResult.CreditCategoryItemResult> categories = aggregateCreditsByCategory(
                 auth.orgId(),
                 subscription.getCurrentPeriodStart()
-        );
-        List<CreditUsageResult.CreditCategoryItemResult> categories = summaries.stream()
+        ).stream()
                 .map(summary -> new CreditUsageResult.CreditCategoryItemResult(
-                        summary.getCategory(),
-                        ceil(summary.getCreditsUsed()),
-                        summary.getUsageCount()
+                        summary.category(),
+                        ceil(summary.creditsUsed()),
+                        summary.usageCount()
                 ))
                 .toList();
 
@@ -175,6 +174,46 @@ public class UsageQuery {
             return 0;
         }
         return value.setScale(0, RoundingMode.CEILING).intValue();
+    }
+
+    private BigDecimal sumCreditsUsed(java.util.UUID orgId, Instant periodStart) {
+        BigDecimal total = entityManager.createQuery(
+                        """
+                                select coalesce(sum(l.creditsUsed), 0)
+                                from AiUsageLog l
+                                where l.orgId = :orgId
+                                  and l.createdAt >= :periodStart
+                                """,
+                        BigDecimal.class
+                )
+                .setParameter("orgId", orgId)
+                .setParameter("periodStart", periodStart)
+                .getSingleResult();
+        return total == null ? BigDecimal.ZERO : total;
+    }
+
+    private List<CreditCategorySummary> aggregateCreditsByCategory(java.util.UUID orgId, Instant periodStart) {
+        List<Object[]> rows = entityManager.createQuery(
+                        """
+                                select l.category, coalesce(sum(l.creditsUsed), 0), count(l.id)
+                                from AiUsageLog l
+                                where l.orgId = :orgId
+                                  and l.createdAt >= :periodStart
+                                group by l.category
+                                """,
+                        Object[].class
+                )
+                .setParameter("orgId", orgId)
+                .setParameter("periodStart", periodStart)
+                .getResultList();
+
+        return rows.stream()
+                .map(row -> new CreditCategorySummary(
+                        (String) row[0],
+                        row[1] == null ? BigDecimal.ZERO : (BigDecimal) row[1],
+                        row[2] == null ? 0L : ((Number) row[2]).longValue()
+                ))
+                .toList();
     }
 
     private List<TrendPoint> buildPoints(StorageTrendPeriod period, LocalDate today) {
@@ -284,5 +323,8 @@ public class UsageQuery {
             copy.other = other;
             return copy;
         }
+    }
+
+    private record CreditCategorySummary(String category, BigDecimal creditsUsed, long usageCount) {
     }
 }

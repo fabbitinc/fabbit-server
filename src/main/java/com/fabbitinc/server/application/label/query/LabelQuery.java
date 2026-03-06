@@ -35,11 +35,13 @@ public class LabelQuery {
     public LabelLookupResult lookup(LabelLookupCondition condition) {
         currentAuthProvider.getCurrentAuth();
         String normalizedSearch = normalizeSearch(condition.search());
-        String searchKeyword = normalizedSearch == null ? "" : normalizedSearch;
-        List<LabelLookupItemResult> items = labelRepository.lookupLabels(
-                        searchKeyword,
+        List<Label> labels = normalizedSearch == null
+                ? labelRepository.findAllByOrderByNameAsc(PageRequest.of(0, condition.limit()))
+                : labelRepository.findByNameContainingIgnoreCaseOrderByNameAsc(
+                        normalizedSearch,
                         PageRequest.of(0, condition.limit())
-                ).stream()
+                );
+        List<LabelLookupItemResult> items = labels.stream()
                 .map(label -> new LabelLookupItemResult(
                         label.getId(),
                         label.getName(),

@@ -38,7 +38,10 @@ public class RefreshToken extends AbstractCreatedEntity {
     public static final String CODE_REFRESH_TOKEN_JTI_REQUIRED = "REFRESH_TOKEN_JTI_REQUIRED";
     public static final String CODE_REFRESH_TOKEN_JTI_TOO_LONG = "REFRESH_TOKEN_JTI_TOO_LONG";
     public static final String CODE_REFRESH_TOKEN_EXPIRES_AT_REQUIRED = "REFRESH_TOKEN_EXPIRES_AT_REQUIRED";
+    public static final String CODE_REFRESH_TOKEN_CHECKED_AT_REQUIRED = "REFRESH_TOKEN_CHECKED_AT_REQUIRED";
+    public static final String CODE_REFRESH_TOKEN_REVOKED_AT_REQUIRED = "REFRESH_TOKEN_REVOKED_AT_REQUIRED";
     public static final String CODE_REFRESH_TOKEN_INVALID_USER = "REFRESH_TOKEN_INVALID_USER";
+    public static final String CODE_REFRESH_TOKEN_REVOKED = "REFRESH_TOKEN_REVOKED";
     public static final String CODE_REFRESH_TOKEN_EXPIRED = "REFRESH_TOKEN_EXPIRED";
 
     private static final int MAX_TOKEN_JTI_LENGTH = 36;
@@ -57,19 +60,31 @@ public class RefreshToken extends AbstractCreatedEntity {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
+    @Column(name = "revoked_at")
+    private Instant revokedAt;
+
     private RefreshToken(UUID userId, String tokenJti, Instant expiresAt) {
         super(UuidV7Generator.next());
         this.userId = requireUserId(userId);
         this.tokenJti = requireTokenJti(tokenJti);
         this.expiresAt = requireExpiresAt(expiresAt);
+        this.revokedAt = null;
     }
 
     public static RefreshToken create(UUID userId, String tokenJti, Instant expiresAt) {
         return new RefreshToken(userId, tokenJti, expiresAt);
     }
 
-    public RefreshToken rotate(String tokenJti, Instant expiresAt) {
+    public RefreshToken rotate(String tokenJti, Instant expiresAt, Instant rotatedAt) {
+        revoke(rotatedAt);
         return new RefreshToken(userId, tokenJti, expiresAt);
+    }
+
+    public void revoke(Instant revokedAt) {
+        if (this.revokedAt != null) {
+            return;
+        }
+        this.revokedAt = requireRevokedAt(revokedAt);
     }
 
     public void validateOwnedBy(UUID userId) {
@@ -79,7 +94,11 @@ public class RefreshToken extends AbstractCreatedEntity {
     }
 
     public void validateUsableAt(Instant now) {
-        if (!expiresAt.isAfter(requireExpiresAt(now))) {
+        Instant checkedAt = requireCheckedAt(now);
+        if (revokedAt != null) {
+            throw new DomainException(CODE_REFRESH_TOKEN_REVOKED, "refresh 토큰이 폐기되었습니다");
+        }
+        if (!expiresAt.isAfter(checkedAt)) {
             throw new DomainException(CODE_REFRESH_TOKEN_EXPIRED, "refresh 토큰이 만료되었습니다");
         }
     }
@@ -105,6 +124,20 @@ public class RefreshToken extends AbstractCreatedEntity {
     private Instant requireExpiresAt(Instant value) {
         if (value == null) {
             throw new DomainException(CODE_REFRESH_TOKEN_EXPIRES_AT_REQUIRED, "만료 시각은 필수입니다");
+        }
+        return value;
+    }
+
+    private Instant requireCheckedAt(Instant value) {
+        if (value == null) {
+            throw new DomainException(CODE_REFRESH_TOKEN_CHECKED_AT_REQUIRED, "검증 시각은 필수입니다");
+        }
+        return value;
+    }
+
+    private Instant requireRevokedAt(Instant value) {
+        if (value == null) {
+            throw new DomainException(CODE_REFRESH_TOKEN_REVOKED_AT_REQUIRED, "폐기 시각은 필수입니다");
         }
         return value;
     }

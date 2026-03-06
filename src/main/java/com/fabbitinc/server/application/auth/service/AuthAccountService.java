@@ -1,5 +1,6 @@
 package com.fabbitinc.server.application.auth.service;
 
+import com.fabbitinc.server.application.auth.policy.PasswordPolicy;
 import com.fabbitinc.server.application.auth.service.input.LoginInput;
 import com.fabbitinc.server.application.auth.service.input.RegisterUserInput;
 import com.fabbitinc.server.application.common.exception.AppException;
@@ -21,7 +22,7 @@ public class AuthAccountService {
 
     private final EmailVerificationRepository emailVerificationRepository;
     private final UserRepository userRepository;
-    private final PasswordService passwordService;
+    private final PasswordPolicy passwordPolicy;
 
     public User registerUser(RegisterUserInput input) {
         EmailVerification verification = validateAndConsumeVerification(
@@ -36,7 +37,7 @@ public class AuthAccountService {
 
         User user = User.create(
                 email,
-                passwordService.hash(input.password()),
+                passwordPolicy.hash(input.password()),
                 input.fullName()
         );
         return userRepository.save(user);
@@ -47,7 +48,7 @@ public class AuthAccountService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS, "이메일 또는 비밀번호가 올바르지 않습니다"));
 
-        if (!passwordService.matches(input.password(), user.getHashedPassword())) {
+        if (!passwordPolicy.matches(input.password(), user.getHashedPassword())) {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS, "이메일 또는 비밀번호가 올바르지 않습니다");
         }
 

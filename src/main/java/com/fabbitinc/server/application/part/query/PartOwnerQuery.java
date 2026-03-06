@@ -22,6 +22,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +55,11 @@ public class PartOwnerQuery {
     public PartDefaultOwnerListResult listDefaultOwners() {
         currentAuthProvider.getCurrentAuth();
 
-        List<PartDefaultOwner> rows = partDefaultOwnerRepository.findAllOrderByCategoryNullsFirst();
+        List<PartDefaultOwner> rows = partDefaultOwnerRepository.findAll().stream()
+                .sorted(Comparator
+                        .comparing(PartDefaultOwner::getCategory, Comparator.nullsFirst(String::compareTo))
+                        .thenComparing(PartDefaultOwner::getId))
+                .toList();
         Map<UUID, User> usersById = loadUsersById(rows.stream()
                 .map(PartDefaultOwner::getDefaultOwnerId)
                 .filter(java.util.Objects::nonNull)

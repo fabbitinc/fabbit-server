@@ -9,16 +9,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@Transactional
 @RequiredArgsConstructor
 public class MergeChangeRequestUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final IssueService issueService;
 
-    @Transactional
-    public void execute(int issueNumber) {
+    public void execute(MergeChangeRequestCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        ChangeRequest changeRequest = issueService.getChangeRequestByNumberOrThrow(issueNumber);
+        ChangeRequest changeRequest = issueService.getChangeRequestByNumberOrThrow(command.issueNumber());
         issueService.mergeChangeRequest(auth.userId(), changeRequest);
+    }
+
+    public record MergeChangeRequestCommand(int issueNumber) {
     }
 }

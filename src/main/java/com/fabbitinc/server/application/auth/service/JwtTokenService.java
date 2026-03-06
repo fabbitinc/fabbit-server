@@ -40,30 +40,10 @@ public class JwtTokenService {
         Instant now = Instant.now();
         Instant accessExp = now.plus(jwtProperties.accessTokenExpireMinutes(), ChronoUnit.MINUTES);
         Instant refreshExp = now.plus(jwtProperties.refreshTokenExpireDays(), ChronoUnit.DAYS);
-        String refreshJti = UUID.randomUUID().toString();
+        RefreshToken refreshToken = RefreshToken.create(userId, UUID.randomUUID().toString(), refreshExp);
 
-        Algorithm algorithm = algorithm();
-        String accessToken = JWT.create()
-                .withIssuer(jwtProperties.issuer())
-                .withSubject(userId.toString())
-                .withClaim("email", email)
-                .withClaim("orgId", orgId.toString())
-                .withClaim("role", role)
-                .withClaim("type", "ACCESS")
-                .withExpiresAt(Date.from(accessExp))
-                .sign(algorithm);
-
-        String refreshToken = JWT.create()
-                .withIssuer(jwtProperties.issuer())
-                .withSubject(userId.toString())
-                .withClaim("email", email)
-                .withClaim("type", "REFRESH")
-                .withClaim("jti", refreshJti)
-                .withExpiresAt(Date.from(refreshExp))
-                .sign(algorithm);
-
-        refreshTokenRepository.save(RefreshToken.create(userId, refreshJti, refreshExp));
-        return new IssuedTokens(accessToken, refreshToken, "bearer");
+        refreshTokenRepository.save(refreshToken);
+        return buildIssuedTokens(userId, email, orgId, role, accessExp, refreshToken);
     }
 
     public String issueScopedToken(UUID userId, String email, String scope) {
@@ -84,6 +64,7 @@ public class JwtTokenService {
         String jti = requiredClaim(decoded, "jti");
         UUID userId = parseUuid(decoded.getSubject(), "유효하지 않은 사용자 토큰입니다");
         String email = requiredClaim(decoded, "email");
+        Instant now = Instant.now();
 
         RefreshToken storedToken = refreshTokenRepository.findByTokenJti(jti).orElse(null);
         if (storedToken == null) {
@@ -98,29 +79,42 @@ public class JwtTokenService {
         }
 
         try {
-            storedToken.validateUsableAt(Instant.now());
+            storedToken.validateUsableAt(now);
         } catch (DomainException ex) {
-            refreshTokenRepository.delete(storedToken);
-            throw new AppException(ErrorCode.TOKEN_EXPIRED, ex.getMessage());
+            if (RefreshToken.CODE_REFRESH_TOKEN_REVOKED.equals(ex.getDomainCode())) {
+                revokeAllUserTokensWithCommit(userId);
+                throw new AppException(ErrorCode.TOKEN_INVALID, ex.getMessage());
+            }
+            if (RefreshToken.CODE_REFRESH_TOKEN_EXPIRED.equals(ex.getDomainCode())) {
+                throw new AppException(ErrorCode.TOKEN_EXPIRED, ex.getMessage());
+            }
+            throw new AppException(ErrorCode.TOKEN_INVALID, ex.getMessage());
         }
 
-        refreshTokenRepository.delete(storedToken);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다"));
 
         Membership membership = membershipRepository.findFirstByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN, "소속된 조직이 없습니다"));
 
-        return issueTokenBundle(
+        Instant accessExp = now.plus(jwtProperties.accessTokenExpireMinutes(), ChronoUnit.MINUTES);
+        Instant refreshExp = now.plus(jwtProperties.refreshTokenExpireDays(), ChronoUnit.DAYS);
+        RefreshToken rotatedToken = storedToken.rotate(UUID.randomUUID().toString(), refreshExp, now);
+        refreshTokenRepository.save(storedToken);
+        refreshTokenRepository.save(rotatedToken);
+
+        return buildIssuedTokens(
                 userId,
                 email.isBlank() ? user.getEmail() : email,
                 membership.getOrgId(),
-                membership.getRole().name()
+                membership.getRole().name(),
+                accessExp,
+                rotatedToken
         );
     }
 
     public void revokeAllUserTokens(UUID userId) {
-        refreshTokenRepository.deleteByUserId(userId);
+        revokeAllUserTokensAt(userId, Instant.now());
     }
 
     private Algorithm algorithm() {
@@ -165,7 +159,47 @@ public class JwtTokenService {
     private void revokeAllUserTokensWithCommit(UUID userId) {
         TransactionTemplate template = new TransactionTemplate(transactionManager);
         template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        template.executeWithoutResult(status -> refreshTokenRepository.deleteByUserId(userId));
+        template.executeWithoutResult(status -> revokeAllUserTokensAt(userId, Instant.now()));
+    }
+
+    private void revokeAllUserTokensAt(UUID userId, Instant revokedAt) {
+        var activeTokens = refreshTokenRepository.findByUserIdAndRevokedAtIsNull(userId);
+        if (activeTokens.isEmpty()) {
+            return;
+        }
+        activeTokens.forEach(token -> token.revoke(revokedAt));
+        refreshTokenRepository.saveAll(activeTokens);
+    }
+
+    private IssuedTokens buildIssuedTokens(
+            UUID userId,
+            String email,
+            UUID orgId,
+            String role,
+            Instant accessExp,
+            RefreshToken refreshToken
+    ) {
+        Algorithm algorithm = algorithm();
+        String accessToken = JWT.create()
+                .withIssuer(jwtProperties.issuer())
+                .withSubject(userId.toString())
+                .withClaim("email", email)
+                .withClaim("orgId", orgId.toString())
+                .withClaim("role", role)
+                .withClaim("type", "ACCESS")
+                .withExpiresAt(Date.from(accessExp))
+                .sign(algorithm);
+
+        String refreshTokenValue = JWT.create()
+                .withIssuer(jwtProperties.issuer())
+                .withSubject(userId.toString())
+                .withClaim("email", email)
+                .withClaim("type", "REFRESH")
+                .withClaim("jti", refreshToken.getTokenJti())
+                .withExpiresAt(Date.from(refreshToken.getExpiresAt()))
+                .sign(algorithm);
+
+        return new IssuedTokens(accessToken, refreshTokenValue, "bearer");
     }
 
     public record IssuedTokens(

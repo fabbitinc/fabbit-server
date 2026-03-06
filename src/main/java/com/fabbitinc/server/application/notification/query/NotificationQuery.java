@@ -13,11 +13,15 @@ import com.fabbitinc.server.domain.notification.model.NotificationSourceIssueTyp
 import com.fabbitinc.server.domain.notification.repository.NotificationRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.dsl.PathBuilder;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +39,7 @@ public class NotificationQuery {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final FileUrlResolver fileUrlResolver;
+    private final EntityManager entityManager;
 
     private static final Pattern STRING_FIELD_PATTERN = Pattern.compile("\"%s\"\\s*:\\s*\"(.*?)\"");
     private static final Pattern NUMBER_FIELD_PATTERN = Pattern.compile("\"%s\"\\s*:\\s*(-?\\d+)");
@@ -45,12 +50,24 @@ public class NotificationQuery {
         UUID cursor = condition.cursor();
         int limit = condition.limit();
         boolean unreadOnly = condition.unreadOnly();
-        List<Notification> notifications = notificationRepository.listByUserCursor(
-                auth.userId(),
-                cursor,
-                unreadOnly,
-                PageRequest.of(0, limit)
-        );
+        PathBuilder<Notification> notification = new PathBuilder<>(Notification.class, "notification");
+        var notificationIdExpr = notification.getComparable("id", UUID.class);
+
+        BooleanBuilder predicate = new BooleanBuilder();
+        predicate.and(notification.get("userId", UUID.class).eq(auth.userId()));
+        if (cursor != null) {
+            predicate.and(notificationIdExpr.lt(cursor));
+        }
+        if (unreadOnly) {
+            predicate.and(notification.getDateTime("readAt", Instant.class).isNull());
+        }
+
+        List<Notification> notifications = queryFactory()
+                .selectFrom(notification)
+                .where(predicate)
+                .orderBy(notificationIdExpr.desc())
+                .limit(limit)
+                .fetch();
 
         List<NotificationListResult.NotificationItemResult> items = notifications.stream()
                 .map(this::toNotificationItemResult)
@@ -64,7 +81,7 @@ public class NotificationQuery {
                 .collect(java.util.stream.Collectors.toSet());
         List<User> users = actorIds.isEmpty()
                 ? List.of()
-                : userRepository.findAllByIdInOrderByFullName(actorIds);
+                : userRepository.findByIdInOrderByFullNameAsc(actorIds);
         Map<String, NotificationListResult.NotificationUserSummaryResult> userMap = new HashMap<>();
         for (User user : users) {
             userMap.put(
@@ -159,5 +176,9 @@ public class NotificationQuery {
 
     private Pattern compile(Pattern template, String field) {
         return Pattern.compile(String.format(template.pattern(), Pattern.quote(field)));
+    }
+
+    private JPAQueryFactory queryFactory() {
+        return new JPAQueryFactory(entityManager);
     }
 }

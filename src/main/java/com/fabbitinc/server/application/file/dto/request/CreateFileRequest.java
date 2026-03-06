@@ -1,9 +1,11 @@
 package com.fabbitinc.server.application.file.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
+@Schema(description = "요청 DTO")
 public record CreateFileRequest(
         @NotBlank(message = "original_name은 필수입니다")
         @Size(max = 500, message = "original_name 길이는 최대 500자입니다")

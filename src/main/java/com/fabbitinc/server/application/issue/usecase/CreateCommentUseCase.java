@@ -2,22 +2,17 @@ package com.fabbitinc.server.application.issue.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
-import com.fabbitinc.server.application.issue.dto.request.CreateCommentRequest;
-import com.fabbitinc.server.application.issue.dto.response.CommentResponse;
 import com.fabbitinc.server.application.issue.service.IssueService;
 import com.fabbitinc.server.application.issue.support.IssueTargetType;
-import com.fabbitinc.server.domain.issue.model.IssueComment;
+import com.fabbitinc.server.application.issue.usecase.result.CommentResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-import java.time.Instant;
-import java.util.UUID;
-
 @Component
+@Transactional
 @RequiredArgsConstructor
 public class CreateCommentUseCase {
 
@@ -25,52 +20,20 @@ public class CreateCommentUseCase {
     private final IssueService issueService;
     private final ObjectMapper objectMapper;
 
-    @Transactional
-    public CommentResponse execute(IssueTargetType targetType,
-            int issueNumber,
-            CreateCommentRequest request
-    ) {
+    public CommentResult execute(CreateCommentCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = resolveIssueId(targetType, issueNumber);
+        java.util.UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.targetType(), command.issueNumber());
 
-        IssueComment comment = issueService.createComment(auth.userId(), issueId, request.body());
-        return toResponse(comment);
-    }
-
-    private UUID resolveIssueId(IssueTargetType targetType, int issueNumber) {
-        if (targetType == IssueTargetType.CHANGE_REQUEST) {
-            return issueService.getChangeRequestByNumberOrThrow(issueNumber).getId();
-        }
-        return issueService.getIssueByNumberOrThrow(issueNumber).getId();
-    }
-
-    private CommentResponse toResponse(IssueComment comment) {
-        return new CommentResponse(
-                comment.getId(),
-                comment.getIssueId(),
-                parseJson(comment.getBody()),
-                comment.getCreatedAt(),
-                comment.getUpdatedAt(),
-                isModified(comment.getCreatedAt(), comment.getUpdatedAt()),
-                comment.getCreatedBy()
+        return IssueUseCaseSupport.toCommentResult(
+                issueService.createComment(auth.userId(), issueId, command.body()),
+                objectMapper
         );
     }
 
-    private JsonNode parseJson(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return null;
-        }
-        try {
-            return objectMapper.readTree(raw);
-        } catch (JacksonException ex) {
-            return null;
-        }
-    }
-
-    private boolean isModified(Instant createdAt, Instant updatedAt) {
-        if (createdAt == null || updatedAt == null) {
-            return false;
-        }
-        return updatedAt.isAfter(createdAt);
+    public record CreateCommentCommand(
+            IssueTargetType targetType,
+            int issueNumber,
+            JsonNode body
+    ) {
     }
 }
