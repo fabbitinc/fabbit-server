@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,12 +32,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Validated
 @RestController
 @RequiredArgsConstructor
@@ -115,12 +118,12 @@ public class NotificationController {
             description = "SSE 스트림으로 새 알림 이벤트를 실시간 수신합니다"
     )
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public ResponseEntity<StreamingResponseBody> stream(
-) {
+    public ResponseEntity<StreamingResponseBody> stream() {
         NotificationStreamResult result = notificationStreamUseCase.execute();
 
         StreamingResponseBody body = outputStream -> {
-            try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
+            Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
+            try {
                 writer.write("event: connected\ndata: {}\n\n");
                 writer.flush();
 
@@ -135,6 +138,8 @@ public class NotificationController {
                 }
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
+            } catch (IOException | RuntimeException ex) {
+                log.debug("event=notification_stream_closed user_id={} reason=write_failed", result.userId(), ex);
             } finally {
                 notificationStreamUseCase.disconnect(result);
             }

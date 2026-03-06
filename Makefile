@@ -124,33 +124,6 @@ migrate-all:
 
 # ── 테스트 ──
 
-test:
-	uv run pytest tests/ -x
-
-# 통합 테스트 — fixture 매핑 (LLM 없이, 빠름)
-test-e2e:
-	uv run pytest tests/integration/test_crud_flow.py -v
-
-# 통합 테스트 — 실제 LLM 호출 포함 (매핑 미리보기, AI 질의)
-test-e2e-llm:
-	uv run pytest tests/integration/test_crud_flow.py -v -s --use-llm
-
-# test2 단위 테스트
-test2-unit:
-	uv run pytest test2/unit -c test2/pytest.ini -q
-
-# test2 e2e (기본: LLM API 케이스 skip)
-test2-e2e:
-	uv run pytest test2/e2e -c test2/pytest.ini -v
-
-# test2 e2e external (실외부 호출)
-test2-e2e-external:
-	uv run pytest test2/e2e/external -c test2/pytest.ini -v --use-llm -m "e2e and external and costly"
-
-# test2 LLM 평가(비용/시간 큼)
-test2-llm-eval:
-	uv run pytest test2/llm_eval -c test2/pytest.ini -v -s --use-llm --llm-runs=3 -m "llm_eval and costly"
-
 # Playwright 전체 API 검증 실행 (OpenAPI contracts + 통합/보안/멱등/실패/스트레스)
 playwright-test-all-api:
 	cd playwright && npm ci

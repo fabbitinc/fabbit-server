@@ -41,8 +41,13 @@ public class SecurityWebConfig {
             "/api/v1/auth/site",
             "/api/v1/auth/plans",
             "/api/v1/auth/check-slug",
-            "/docs",
+            "/swagger-ui.html",
+            "/swagger-ui/**",
             "/openapi.json",
+            "/openapi.json/**",
+            "/v3/api-docs",
+            "/v3/api-docs/**",
+            "/v3/api-docs.yaml",
             "/redoc"
     };
 
