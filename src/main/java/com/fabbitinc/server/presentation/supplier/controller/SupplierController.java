@@ -46,13 +46,10 @@ public class SupplierController {
             @RequestParam(value = "search", required = false) String search,
             @Parameter(description = "페이지 오프셋", example = "0")
             @RequestParam(value = "offset", defaultValue = "0")
-            @Min(value = 0, message = "offset은 0 이상이어야 합니다")
-            int offset,
+            @Min(value = 0, message = "offset은 0 이상이어야 합니다") int offset,
             @Parameter(description = "조회 건수", example = "20")
             @RequestParam(value = "limit", defaultValue = "20")
-            @Min(value = 1, message = "limit은 1 이상이어야 합니다")
-            @Max(value = 100, message = "limit은 100 이하여야 합니다")
-            int limit
+            @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 100, message = "limit은 100 이하여야 합니다") int limit
     ) {
         return toSupplierListResponse(supplierQuery.list(new SupplierListCondition(search, offset, limit)));
     }

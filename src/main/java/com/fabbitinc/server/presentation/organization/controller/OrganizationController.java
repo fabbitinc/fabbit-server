@@ -9,6 +9,10 @@ import com.fabbitinc.server.application.organization.dto.request.CreateOrganizat
 import com.fabbitinc.server.application.organization.dto.request.SetProfileImageRequest;
 import com.fabbitinc.server.application.organization.dto.request.SwitchOrgRequest;
 import com.fabbitinc.server.application.organization.dto.response.ProfileImageResponse;
+import com.fabbitinc.server.application.organization.usecase.CreateOrganizationUseCase;
+import com.fabbitinc.server.application.organization.usecase.DeleteOrganizationProfileImageUseCase;
+import com.fabbitinc.server.application.organization.usecase.SetOrganizationProfileImageUseCase;
+import com.fabbitinc.server.application.organization.usecase.SwitchOrganizationUseCase;
 import com.fabbitinc.server.application.organization.usecase.command.CreateOrganizationCommand;
 import com.fabbitinc.server.application.organization.usecase.command.DeleteOrganizationProfileImageCommand;
 import com.fabbitinc.server.application.organization.usecase.command.SetOrganizationProfileImageCommand;
@@ -16,10 +20,6 @@ import com.fabbitinc.server.application.organization.usecase.command.SwitchOrgan
 import com.fabbitinc.server.application.organization.usecase.result.CreateOrganizationResult;
 import com.fabbitinc.server.application.organization.usecase.result.SetOrganizationProfileImageResult;
 import com.fabbitinc.server.application.organization.usecase.result.SwitchOrganizationResult;
-import com.fabbitinc.server.application.organization.usecase.CreateOrganizationUseCase;
-import com.fabbitinc.server.application.organization.usecase.DeleteOrganizationProfileImageUseCase;
-import com.fabbitinc.server.application.organization.usecase.SetOrganizationProfileImageUseCase;
-import com.fabbitinc.server.application.organization.usecase.SwitchOrganizationUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

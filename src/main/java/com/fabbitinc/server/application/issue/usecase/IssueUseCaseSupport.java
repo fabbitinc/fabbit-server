@@ -5,12 +5,11 @@ import com.fabbitinc.server.application.issue.support.IssueTargetType;
 import com.fabbitinc.server.application.issue.usecase.result.CommentResult;
 import com.fabbitinc.server.application.issue.usecase.result.SyncDiffResult;
 import com.fabbitinc.server.domain.issue.model.IssueComment;
+import java.time.Instant;
+import java.util.UUID;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-
-import java.time.Instant;
-import java.util.UUID;
 
 final class IssueUseCaseSupport {
 

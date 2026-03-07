@@ -12,25 +12,24 @@ import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.mapping.model.MappingRecord;
-import com.fabbitinc.server.domain.mapping.model.MappingScope;
 import com.fabbitinc.server.domain.mapping.model.MappingRevision;
+import com.fabbitinc.server.domain.mapping.model.MappingScope;
 import com.fabbitinc.server.domain.mapping.repository.MappingRecordRepository;
 import com.fabbitinc.server.domain.mapping.repository.MappingRevisionRepository;
 import com.fabbitinc.server.domain.synthesis.model.SynthesisBatch;
 import com.fabbitinc.server.domain.synthesis.model.SynthesisJob;
 import com.fabbitinc.server.domain.synthesis.repository.SynthesisBatchRepository;
 import com.fabbitinc.server.domain.synthesis.repository.SynthesisJobRepository;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor

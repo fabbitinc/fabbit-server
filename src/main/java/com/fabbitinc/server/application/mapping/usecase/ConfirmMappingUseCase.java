@@ -3,20 +3,19 @@ package com.fabbitinc.server.application.mapping.usecase;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
-import com.fabbitinc.server.application.mapping.service.output.SavedMappingOutput;
 import com.fabbitinc.server.application.mapping.service.MappingService;
+import com.fabbitinc.server.application.mapping.service.input.CreateMappingInput;
+import com.fabbitinc.server.application.mapping.service.output.SavedMappingOutput;
 import com.fabbitinc.server.application.mapping.support.MappingNormalizationSupport;
 import com.fabbitinc.server.application.mapping.support.MappingValidationSupport;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
-import com.fabbitinc.server.application.mapping.service.input.CreateMappingInput;
 import com.fabbitinc.server.application.mapping.usecase.command.ConfirmMappingCommand;
 import com.fabbitinc.server.application.mapping.usecase.result.SavedMappingResult;
 import com.fabbitinc.server.application.mapping.usecase.support.SavedMappingResultMapper;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor

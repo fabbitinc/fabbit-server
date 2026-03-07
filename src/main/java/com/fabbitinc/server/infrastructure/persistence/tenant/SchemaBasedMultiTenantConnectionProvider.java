@@ -1,13 +1,12 @@
 package com.fabbitinc.server.infrastructure.persistence.tenant;
 
 import com.fabbitinc.server.application.tenant.support.TenantSchemaPolicy;
-import org.hibernate.engine.jdbc.connections.spi.MultiTenantConnectionProvider;
-import org.springframework.stereotype.Component;
-
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import javax.sql.DataSource;
+import org.hibernate.engine.jdbc.connections.spi.MultiTenantConnectionProvider;
+import org.springframework.stereotype.Component;
 
 @Component
 public class SchemaBasedMultiTenantConnectionProvider implements MultiTenantConnectionProvider<String> {

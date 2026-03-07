@@ -1,7 +1,6 @@
 package com.fabbitinc.server.presentation.usage.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.List;
 
 @Schema(description = "스토리지 사용량 추이 응답")

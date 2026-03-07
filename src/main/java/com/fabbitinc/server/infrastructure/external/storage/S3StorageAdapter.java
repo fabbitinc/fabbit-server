@@ -2,27 +2,26 @@ package com.fabbitinc.server.infrastructure.external.storage;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.config.AppProperties;
 import com.fabbitinc.server.application.file.port.StorageDeleteResult;
 import com.fabbitinc.server.application.file.port.StorageObjectListPage;
-import com.fabbitinc.server.application.config.AppProperties;
 import com.fabbitinc.server.application.file.port.StorageObjectMeta;
 import com.fabbitinc.server.application.file.port.StoragePort;
 import jakarta.annotation.PreDestroy;
+import java.net.URI;
+import java.time.Duration;
+import java.util.List;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
-import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.core.sync.RequestBody;
-
-import java.net.URI;
-import java.time.Duration;
-import java.util.List;
 
 @Component
 public class S3StorageAdapter implements StoragePort {

@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.auth.support;
 
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
-
 import java.util.UUID;
 
 public record AuthPrincipal(

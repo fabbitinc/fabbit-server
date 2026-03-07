@@ -10,7 +10,6 @@ import com.fabbitinc.server.application.usage.query.condition.StorageTrendCondit
 import com.fabbitinc.server.application.usage.query.result.CreditUsageResult;
 import com.fabbitinc.server.application.usage.query.result.StorageTrendResult;
 import com.fabbitinc.server.application.usage.query.result.StorageUsageResult;
-import com.fabbitinc.server.domain.aiusage.model.AiUsageLog;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
@@ -20,10 +19,6 @@ import com.fabbitinc.server.domain.subscription.model.Subscription;
 import com.fabbitinc.server.domain.subscription.model.SubscriptionStatus;
 import com.fabbitinc.server.domain.subscription.repository.SubscriptionRepository;
 import jakarta.persistence.EntityManager;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -34,6 +29,9 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor

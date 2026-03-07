@@ -2,11 +2,10 @@ package com.fabbitinc.server.domain.organization.repository;
 
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MembershipRepository extends JpaRepository<Membership, UUID> {
     Optional<Membership> findFirstByUserId(UUID userId);

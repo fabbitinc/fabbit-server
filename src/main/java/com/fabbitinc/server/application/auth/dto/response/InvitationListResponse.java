@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.auth.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.List;
 
 public record InvitationListResponse(

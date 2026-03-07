@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.organization.usecase.result;
 
 import com.fabbitinc.server.domain.organization.model.PlanType;
-
 import java.util.UUID;
 
 public record CreateOrganizationResult(

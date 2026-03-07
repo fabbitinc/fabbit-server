@@ -38,6 +38,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,10 +55,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Validated
 @RestController
@@ -106,13 +105,10 @@ public class ProjectController {
             @RequestParam(value = "search", required = false) String search,
             @Parameter(description = "페이지 시작 오프셋", example = "0")
             @RequestParam(value = "offset", defaultValue = "0")
-            @Min(value = 0, message = "offset은 0 이상이어야 합니다")
-            int offset,
+            @Min(value = 0, message = "offset은 0 이상이어야 합니다") int offset,
             @Parameter(description = "조회 건수", example = "20")
             @RequestParam(value = "limit", defaultValue = "20")
-            @Min(value = 1, message = "limit은 1 이상이어야 합니다")
-            @Max(value = 100, message = "limit은 100 이하여야 합니다")
-            int limit
+            @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 100, message = "limit은 100 이하여야 합니다") int limit
     ) {
         ProjectListResult result = projectQuery.list(new ProjectListCondition(search, offset, limit));
         return toProjectListResponse(result);
@@ -223,9 +219,7 @@ public class ProjectController {
             @RequestParam(value = "cursor", required = false) UUID cursor,
             @Parameter(description = "조회 건수", example = "20")
             @RequestParam(value = "limit", defaultValue = "20")
-            @Min(value = 1, message = "limit은 1 이상이어야 합니다")
-            @Max(value = 100, message = "limit은 100 이하여야 합니다")
-            int limit,
+            @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 100, message = "limit은 100 이하여야 합니다") int limit,
             @Parameter(description = "활동 범위 필터", example = "ALL")
             @RequestParam(value = "scope", required = false) String scope,
             @Parameter(description = "특정 사용자 활동만 필터링할 사용자 ID")

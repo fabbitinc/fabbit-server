@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.project.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.UUID;
 
 @Schema(description = "프로젝트 부품 후보 요약 정보")

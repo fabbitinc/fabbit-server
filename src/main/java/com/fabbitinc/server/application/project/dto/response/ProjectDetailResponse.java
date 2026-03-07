@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.project.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.time.Instant;
 import java.util.UUID;
 

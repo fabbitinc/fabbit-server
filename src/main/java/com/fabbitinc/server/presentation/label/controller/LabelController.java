@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -43,8 +44,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.UUID;
 
 @Validated
 @RestController
@@ -77,9 +76,7 @@ public class LabelController {
             @RequestParam(value = "search", required = false) String search,
             @Parameter(description = "조회 건수", example = "10")
             @RequestParam(value = "limit", defaultValue = "10")
-            @Min(value = 1, message = "limit은 1 이상이어야 합니다")
-            @Max(value = 50, message = "limit은 50 이하여야 합니다")
-            int limit
+            @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 50, message = "limit은 50 이하여야 합니다") int limit
     ) {
         return toLabelLookupResponse(labelQuery.lookup(new LabelLookupCondition(search, limit)));
     }

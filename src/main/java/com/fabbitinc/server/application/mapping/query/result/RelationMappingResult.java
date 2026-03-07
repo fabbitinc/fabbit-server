@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.mapping.query.result;
 
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.ontology.support.RelationshipType;
-
 import java.util.Map;
 
 public record RelationMappingResult(

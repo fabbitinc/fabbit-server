@@ -1,27 +1,5 @@
 package com.fabbitinc.server.application.drawing.service;
 
-import com.fabbitinc.server.application.drawing.config.DrawingConverterProperties;
-import com.fabbitinc.server.application.file.port.StoragePort;
-import com.fabbitinc.server.application.organization.api.OrganizationApi;
-import com.fabbitinc.server.domain.drawing.model.Drawing;
-import com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus;
-import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
-import com.fabbitinc.server.domain.file.model.File;
-import com.fabbitinc.server.domain.file.repository.FileRepository;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.mockito.ArgumentCaptor;
-
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -32,6 +10,27 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import com.fabbitinc.server.application.drawing.config.DrawingConverterProperties;
+import com.fabbitinc.server.application.file.port.StoragePort;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
+import com.fabbitinc.server.domain.drawing.model.Drawing;
+import com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus;
+import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
+import com.fabbitinc.server.domain.file.model.File;
+import com.fabbitinc.server.domain.file.repository.FileRepository;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import javax.imageio.ImageIO;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 
 class DrawingConversionServiceTest {
 

@@ -4,12 +4,11 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.issue.service.IssueService;
 import com.fabbitinc.server.application.issue.support.IssueTargetType;
 import com.fabbitinc.server.application.issue.usecase.result.SyncDiffResult;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.UUID;
 
 @Component
 @Transactional

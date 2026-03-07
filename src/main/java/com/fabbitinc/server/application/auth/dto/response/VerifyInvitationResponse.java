@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.auth.dto.response;
 
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.time.Instant;
 
 public record VerifyInvitationResponse(

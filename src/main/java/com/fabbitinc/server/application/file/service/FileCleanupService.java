@@ -1,24 +1,22 @@
 package com.fabbitinc.server.application.file.service;
 
 import com.fabbitinc.server.application.file.port.StorageDeleteResult;
-import com.fabbitinc.server.domain.file.model.File;
-import com.fabbitinc.server.domain.file.model.FileStatus;
-import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.application.file.port.StorageObjectListPage;
 import com.fabbitinc.server.application.file.port.StoragePort;
 import com.fabbitinc.server.application.file.service.input.CleanupOrphanObjectsInput;
 import com.fabbitinc.server.application.file.service.output.CleanupOrphanObjectsOutput;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Service;
-
+import com.fabbitinc.server.domain.file.model.File;
+import com.fabbitinc.server.domain.file.model.FileStatus;
+import com.fabbitinc.server.domain.file.repository.FileRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service

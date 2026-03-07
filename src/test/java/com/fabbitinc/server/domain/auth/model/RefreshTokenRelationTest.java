@@ -1,15 +1,14 @@
 package com.fabbitinc.server.domain.auth.model;
 
-import com.fabbitinc.server.domain.common.exception.DomainException;
-import org.junit.jupiter.api.Test;
-
-import java.time.Instant;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import com.fabbitinc.server.domain.common.exception.DomainException;
+import java.time.Instant;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
 
 class RefreshTokenRelationTest {
 

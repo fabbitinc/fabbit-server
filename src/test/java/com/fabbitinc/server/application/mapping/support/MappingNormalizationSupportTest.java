@@ -1,13 +1,12 @@
 package com.fabbitinc.server.application.mapping.support;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
 import com.fabbitinc.server.application.mapping.dto.common.PropertyMappingDto;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
 
 class MappingNormalizationSupportTest {
 

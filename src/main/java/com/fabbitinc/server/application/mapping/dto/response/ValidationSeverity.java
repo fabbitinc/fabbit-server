@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.mapping.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-
 import java.util.Locale;
 
 public enum ValidationSeverity {

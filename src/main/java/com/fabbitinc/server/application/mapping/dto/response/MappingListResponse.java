@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.mapping.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.List;
 
 @Schema(description = "매핑 목록 응답")

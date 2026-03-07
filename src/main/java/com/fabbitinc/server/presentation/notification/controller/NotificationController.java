@@ -1,9 +1,9 @@
 package com.fabbitinc.server.presentation.notification.controller;
 
+import com.fabbitinc.server.application.notification.query.NotificationQuery;
 import com.fabbitinc.server.application.notification.query.condition.NotificationListCondition;
 import com.fabbitinc.server.application.notification.query.result.NotificationListResult;
 import com.fabbitinc.server.application.notification.query.result.UnreadCountResult;
-import com.fabbitinc.server.application.notification.query.NotificationQuery;
 import com.fabbitinc.server.application.notification.usecase.MarkAllNotificationsReadUseCase;
 import com.fabbitinc.server.application.notification.usecase.MarkNotificationReadUseCase;
 import com.fabbitinc.server.application.notification.usecase.NotificationStreamUseCase;
@@ -18,6 +18,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -31,13 +37,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.nio.charset.StandardCharsets;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Validated
@@ -70,9 +69,7 @@ public class NotificationController {
             @RequestParam(value = "cursor", required = false) UUID cursor,
             @Parameter(description = "조회 건수", example = "20")
             @RequestParam(value = "limit", defaultValue = "20")
-            @Min(value = 1, message = "limit은 1 이상이어야 합니다")
-            @Max(value = 50, message = "limit은 50 이하여야 합니다")
-            int limit,
+            @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 50, message = "limit은 50 이하여야 합니다") int limit,
             @Parameter(description = "미읽음 알림만 조회할지 여부", example = "false")
             @RequestParam(value = "unread_only", defaultValue = "false") boolean unreadOnly
     ) {

@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.mapping.dto.response;
 
 import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.List;
 
 @Schema(description = "매핑 검증 응답")

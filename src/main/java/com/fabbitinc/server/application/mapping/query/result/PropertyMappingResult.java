@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.mapping.query.result;
 
-import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.mapping.support.ExtendedPropertySupport;
+import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 
 public record PropertyMappingResult(
         String sourceColumn,

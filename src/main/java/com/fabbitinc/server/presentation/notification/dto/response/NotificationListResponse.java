@@ -1,9 +1,8 @@
 package com.fabbitinc.server.presentation.notification.dto.response;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import com.fabbitinc.server.domain.notification.model.NotificationSourceIssueType;
 import com.fabbitinc.server.domain.notification.model.NotificationType;
-
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;

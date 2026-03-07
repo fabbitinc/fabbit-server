@@ -2,11 +2,10 @@ package com.fabbitinc.server.domain.team.repository;
 
 import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.team.model.TeamMember;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TeamMemberRepository extends JpaRepository<TeamMember, UUID> {
 

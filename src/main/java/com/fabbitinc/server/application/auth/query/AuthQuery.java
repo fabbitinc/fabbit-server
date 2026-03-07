@@ -7,23 +7,22 @@ import com.fabbitinc.server.application.auth.query.result.CheckEmailResult;
 import com.fabbitinc.server.application.auth.query.result.CheckSlugResult;
 import com.fabbitinc.server.application.auth.query.result.PlanResult;
 import com.fabbitinc.server.application.auth.query.result.SiteResult;
-import com.fabbitinc.server.application.common.support.FileUrlResolver;
-import com.fabbitinc.server.application.config.AppProperties;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.common.support.FileUrlResolver;
+import com.fabbitinc.server.application.config.AppProperties;
 import com.fabbitinc.server.domain.organization.model.Organization;
 import com.fabbitinc.server.domain.organization.model.PlanType;
 import com.fabbitinc.server.domain.organization.model.WorkspaceSlugPolicy;
 import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor

@@ -9,12 +9,11 @@ import com.fabbitinc.server.application.label.query.result.LabelLookupResult;
 import com.fabbitinc.server.application.label.query.result.LabelResult;
 import com.fabbitinc.server.domain.label.model.Label;
 import com.fabbitinc.server.domain.label.repository.LabelRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor

@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.mapping.query.result;
 
 import com.fabbitinc.server.domain.mapping.model.MappingScope;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

@@ -1,12 +1,12 @@
 package com.fabbitinc.server.presentation.mapping.controller;
 
+import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
+import com.fabbitinc.server.application.mapping.dto.common.PropertyMappingDto;
+import com.fabbitinc.server.application.mapping.dto.common.RelationMappingDto;
 import com.fabbitinc.server.application.mapping.dto.request.MappingConfirmRequest;
 import com.fabbitinc.server.application.mapping.dto.request.MappingPreviewRequest;
 import com.fabbitinc.server.application.mapping.dto.request.MappingUpdateRequest;
 import com.fabbitinc.server.application.mapping.dto.request.MappingValidateRequest;
-import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
-import com.fabbitinc.server.application.mapping.dto.common.PropertyMappingDto;
-import com.fabbitinc.server.application.mapping.dto.common.RelationMappingDto;
 import com.fabbitinc.server.application.mapping.dto.response.MappingImpactSummaryResponse;
 import com.fabbitinc.server.application.mapping.dto.response.MappingListResponse;
 import com.fabbitinc.server.application.mapping.dto.response.MappingPreviewResponse;
@@ -47,6 +47,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -58,9 +60,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
-import java.util.UUID;
 
 @Validated
 @RestController

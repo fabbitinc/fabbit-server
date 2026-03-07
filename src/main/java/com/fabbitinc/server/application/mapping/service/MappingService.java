@@ -9,25 +9,24 @@ import com.fabbitinc.server.application.mapping.service.input.UpdateMappingInput
 import com.fabbitinc.server.application.mapping.service.output.SavedMappingOutput;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
 import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
-import com.fabbitinc.server.domain.mapping.model.MappingScope;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.mapping.model.MappingRecord;
 import com.fabbitinc.server.domain.mapping.model.MappingRevision;
+import com.fabbitinc.server.domain.mapping.model.MappingScope;
 import com.fabbitinc.server.domain.mapping.repository.MappingRecordRepository;
 import com.fabbitinc.server.domain.mapping.repository.MappingRevisionRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
-import java.util.LinkedHashSet;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor

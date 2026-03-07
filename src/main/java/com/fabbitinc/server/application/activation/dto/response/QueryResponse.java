@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.activation.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.List;
 
 @Schema(description = "그래프 질의 응답")

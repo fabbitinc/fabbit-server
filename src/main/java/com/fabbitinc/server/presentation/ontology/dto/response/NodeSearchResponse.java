@@ -1,7 +1,6 @@
 package com.fabbitinc.server.presentation.ontology.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.List;
 
 @Schema(description = "온톨로지 노드 자동완성 응답")

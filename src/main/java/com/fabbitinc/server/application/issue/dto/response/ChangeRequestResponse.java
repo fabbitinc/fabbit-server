@@ -5,11 +5,10 @@ import com.fabbitinc.server.domain.issue.model.CrState;
 import com.fabbitinc.server.domain.issue.model.IssueState;
 import com.fabbitinc.server.domain.issue.model.IssueType;
 import io.swagger.v3.oas.annotations.media.Schema;
-import tools.jackson.databind.JsonNode;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import tools.jackson.databind.JsonNode;
 
 @Schema(description = "변경요청 상세 응답")
 public record ChangeRequestResponse(

@@ -1,9 +1,7 @@
 package com.fabbitinc.server.application.dashboard.dto.response;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-
 import com.fabbitinc.server.domain.synthesis.model.SynthesisJobStatus;
-
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.UUID;
 

@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.issue.dto.response;
 
 import com.fabbitinc.server.domain.issue.model.ReviewStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.time.Instant;
 
 @Schema(description = "리뷰 제출 응답")

@@ -1,9 +1,8 @@
 package com.fabbitinc.server.application.auth.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
-import java.util.UUID;
 import java.time.Instant;
+import java.util.UUID;
 
 public record UserResponse(
         @Schema(description = "사용자 ID")

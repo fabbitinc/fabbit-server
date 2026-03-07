@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.aiusage.service.input;
 
 import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;
-
 import java.util.UUID;
 
 public record RecordAiUsageInput(

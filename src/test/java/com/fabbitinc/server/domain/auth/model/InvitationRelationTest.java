@@ -1,17 +1,15 @@
 package com.fabbitinc.server.domain.auth.model;
 
-import com.fabbitinc.server.domain.common.exception.DomainException;
-import com.fabbitinc.server.domain.organization.model.MembershipRole;
-import com.fabbitinc.server.domain.organization.model.PlanType;
-import org.junit.jupiter.api.Test;
-
-import java.time.Instant;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.fabbitinc.server.domain.common.exception.DomainException;
+import com.fabbitinc.server.domain.organization.model.MembershipRole;
+import java.time.Instant;
+import org.junit.jupiter.api.Test;
 
 class InvitationRelationTest {
 

@@ -1,10 +1,33 @@
 package com.fabbitinc.server.presentation.part.controller;
 
-import com.fabbitinc.server.application.file.dto.response.FileItemResponse;
 import com.fabbitinc.server.application.drawing.dto.request.RegisterDrawingRequest;
 import com.fabbitinc.server.application.drawing.dto.response.RegisterDrawingResponse;
+import com.fabbitinc.server.application.file.dto.response.FileItemResponse;
 import com.fabbitinc.server.application.part.dto.request.AttachFilesRequest;
 import com.fabbitinc.server.application.part.dto.request.RenameCategoryRequest;
+import com.fabbitinc.server.application.part.dto.response.BomChildResponse;
+import com.fabbitinc.server.application.part.dto.response.BomParentResponse;
+import com.fabbitinc.server.application.part.dto.response.BomTreeNodeResponse;
+import com.fabbitinc.server.application.part.dto.response.BomTreeResponse;
+import com.fabbitinc.server.application.part.dto.response.CategoryLookupResponse;
+import com.fabbitinc.server.application.part.dto.response.CategoryStatsItemResponse;
+import com.fabbitinc.server.application.part.dto.response.CategoryStatsResponse;
+import com.fabbitinc.server.application.part.dto.response.PartBomResponse;
+import com.fabbitinc.server.application.part.dto.response.PartDetailResponse;
+import com.fabbitinc.server.application.part.dto.response.PartFilesResponse;
+import com.fabbitinc.server.application.part.dto.response.PartFilterOptionsResponse;
+import com.fabbitinc.server.application.part.dto.response.PartListResponse;
+import com.fabbitinc.server.application.part.dto.response.PartLookupItemResponse;
+import com.fabbitinc.server.application.part.dto.response.PartLookupResponse;
+import com.fabbitinc.server.application.part.dto.response.PartOwnerUserSummaryResponse;
+import com.fabbitinc.server.application.part.dto.response.PartProjectSummaryResponse;
+import com.fabbitinc.server.application.part.dto.response.PartProjectsResponse;
+import com.fabbitinc.server.application.part.dto.response.PartSummaryResponse;
+import com.fabbitinc.server.application.part.dto.response.PartSuppliersResponse;
+import com.fabbitinc.server.application.part.dto.response.RelatedDrawingResponse;
+import com.fabbitinc.server.application.part.dto.response.RelatedSupplierResponse;
+import com.fabbitinc.server.application.part.dto.response.RenameCategoryResponse;
+import com.fabbitinc.server.application.part.query.PartQuery;
 import com.fabbitinc.server.application.part.query.condition.BomTreeCondition;
 import com.fabbitinc.server.application.part.query.condition.BomTreeExportCondition;
 import com.fabbitinc.server.application.part.query.condition.FileItemsCondition;
@@ -27,29 +50,6 @@ import com.fabbitinc.server.application.part.query.result.PartListResult;
 import com.fabbitinc.server.application.part.query.result.PartLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartProjectsResult;
 import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
-import com.fabbitinc.server.application.part.dto.response.CategoryLookupResponse;
-import com.fabbitinc.server.application.part.dto.response.CategoryStatsResponse;
-import com.fabbitinc.server.application.part.dto.response.BomTreeResponse;
-import com.fabbitinc.server.application.part.dto.response.PartBomResponse;
-import com.fabbitinc.server.application.part.dto.response.PartDetailResponse;
-import com.fabbitinc.server.application.part.dto.response.PartFilterOptionsResponse;
-import com.fabbitinc.server.application.part.dto.response.PartFilesResponse;
-import com.fabbitinc.server.application.part.dto.response.PartListResponse;
-import com.fabbitinc.server.application.part.dto.response.PartLookupResponse;
-import com.fabbitinc.server.application.part.dto.response.PartProjectSummaryResponse;
-import com.fabbitinc.server.application.part.dto.response.PartProjectsResponse;
-import com.fabbitinc.server.application.part.dto.response.PartSummaryResponse;
-import com.fabbitinc.server.application.part.dto.response.PartSuppliersResponse;
-import com.fabbitinc.server.application.part.dto.response.BomChildResponse;
-import com.fabbitinc.server.application.part.dto.response.BomParentResponse;
-import com.fabbitinc.server.application.part.dto.response.BomTreeNodeResponse;
-import com.fabbitinc.server.application.part.dto.response.CategoryStatsItemResponse;
-import com.fabbitinc.server.application.part.dto.response.PartLookupItemResponse;
-import com.fabbitinc.server.application.part.dto.response.PartOwnerUserSummaryResponse;
-import com.fabbitinc.server.application.part.dto.response.RelatedDrawingResponse;
-import com.fabbitinc.server.application.part.dto.response.RelatedSupplierResponse;
-import com.fabbitinc.server.application.part.dto.response.RenameCategoryResponse;
-import com.fabbitinc.server.application.part.query.PartQuery;
 import com.fabbitinc.server.application.part.usecase.AttachPartFilesUseCase;
 import com.fabbitinc.server.application.part.usecase.DeletePartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.DetachPartFileUseCase;
@@ -71,6 +71,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -85,9 +87,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
-import java.util.UUID;
 
 @Validated
 @RestController
@@ -122,9 +121,7 @@ public class PartController {
             @RequestParam(value = "search", required = false) String search,
             @Parameter(description = "조회 건수", example = "10")
             @RequestParam(value = "limit", defaultValue = "10")
-            @Min(value = 1, message = "limit은 1 이상이어야 합니다")
-            @Max(value = 50, message = "limit은 50 이하여야 합니다")
-            int limit
+            @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 50, message = "limit은 50 이하여야 합니다") int limit
     ) {
         return toPartLookupResponse(partQuery.lookup(new PartLookupCondition(search, limit)));
     }
@@ -209,12 +206,9 @@ public class PartController {
             @RequestParam(value = "has_children", required = false) Boolean hasChildren,
             @RequestParam(value = "project_id", required = false) UUID projectId,
             @RequestParam(value = "offset", defaultValue = "0")
-            @Min(value = 0, message = "offset은 0 이상이어야 합니다")
-            int offset,
+            @Min(value = 0, message = "offset은 0 이상이어야 합니다") int offset,
             @RequestParam(value = "limit", defaultValue = "20")
-            @Min(value = 1, message = "limit은 1 이상이어야 합니다")
-            @Max(value = 100, message = "limit은 100 이하여야 합니다")
-            int limit
+            @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 100, message = "limit은 100 이하여야 합니다") int limit
     ) {
         return toPartListResponse(partQuery.list(new PartListCondition(
                 search,

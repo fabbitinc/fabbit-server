@@ -2,11 +2,10 @@ package com.fabbitinc.server.infrastructure.security;
 
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
 
 @Component
 public class SecurityApiErrorResponseWriter {

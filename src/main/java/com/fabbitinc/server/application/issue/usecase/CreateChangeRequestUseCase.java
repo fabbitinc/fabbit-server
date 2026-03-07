@@ -6,13 +6,12 @@ import com.fabbitinc.server.application.file.service.FileService;
 import com.fabbitinc.server.application.issue.service.IssueService;
 import com.fabbitinc.server.domain.issue.model.ChangeRequest;
 import com.fabbitinc.server.domain.issue.model.Issue;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
-
-import java.util.List;
-import java.util.UUID;
 
 @Component
 @Transactional

@@ -6,7 +6,6 @@ import jakarta.validation.constraints.NotNull;
 
 public record ChangeRoleRequest(
         @Schema(description = "변경할 멤버 역할", example = "ADMIN")
-        @NotNull(message = "role은 필수입니다")
-        MembershipRole role
+        @NotNull(message = "role은 필수입니다") MembershipRole role
 ) {
 }

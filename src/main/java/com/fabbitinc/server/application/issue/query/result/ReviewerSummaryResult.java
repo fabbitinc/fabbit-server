@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.issue.query.result;
 
 import com.fabbitinc.server.domain.issue.model.ReviewStatus;
-
 import java.time.Instant;
 import java.util.UUID;
 

@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.mapping.dto.common;
 
-import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.mapping.support.ExtendedPropertySupport;
+import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "Part 속성 매핑")

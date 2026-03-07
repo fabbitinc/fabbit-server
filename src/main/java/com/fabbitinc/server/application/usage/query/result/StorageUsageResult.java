@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.usage.query.result;
 
 import com.fabbitinc.server.application.usage.model.StorageCategory;
-
 import java.util.List;
 
 public record StorageUsageResult(

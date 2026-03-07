@@ -1,12 +1,11 @@
 package com.fabbitinc.server.domain.project.repository;
 
 import com.fabbitinc.server.domain.project.model.ProjectMember;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, UUID> {
 

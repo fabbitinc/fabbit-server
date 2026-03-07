@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.part.query.result;
 
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
-
 import java.util.Map;
 import java.util.UUID;
 

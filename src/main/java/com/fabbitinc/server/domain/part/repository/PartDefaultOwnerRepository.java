@@ -1,12 +1,11 @@
 package com.fabbitinc.server.domain.part.repository;
 
 import com.fabbitinc.server.domain.part.model.PartDefaultOwner;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-
-import java.util.Optional;
-import java.util.UUID;
 
 public interface PartDefaultOwnerRepository extends JpaRepository<PartDefaultOwner, UUID> {
 

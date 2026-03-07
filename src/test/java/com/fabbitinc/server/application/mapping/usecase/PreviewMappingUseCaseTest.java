@@ -1,5 +1,11 @@
 package com.fabbitinc.server.application.mapping.usecase;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.fabbitinc.server.application.aiusage.service.AiUsageService;
 import com.fabbitinc.server.application.aiusage.service.input.RecordAiUsageInput;
 import com.fabbitinc.server.application.auth.support.AuthContext;
@@ -11,25 +17,18 @@ import com.fabbitinc.server.application.mapping.support.MappingLlmGenerationSupp
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
 import com.fabbitinc.server.application.mapping.usecase.command.PreviewMappingCommand;
 import com.fabbitinc.server.application.mapping.usecase.result.PreviewMappingResult;
-import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import tools.jackson.databind.ObjectMapper;
-
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 class PreviewMappingUseCaseTest {
 

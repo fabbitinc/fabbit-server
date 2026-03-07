@@ -1,13 +1,12 @@
 package com.fabbitinc.server.application.notification.support;
 
-import org.springframework.stereotype.Component;
-
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
+import org.springframework.stereotype.Component;
 
 @Component
 public class SseManager {

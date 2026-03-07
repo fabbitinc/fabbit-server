@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.mapping.dto.common;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;

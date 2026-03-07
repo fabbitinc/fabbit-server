@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.activation.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-
 import java.util.Locale;
 
 public enum HealthIssueSeverity {

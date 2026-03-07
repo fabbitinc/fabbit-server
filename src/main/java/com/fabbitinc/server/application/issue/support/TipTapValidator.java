@@ -1,12 +1,11 @@
 package com.fabbitinc.server.application.issue.support;
 
-import tools.jackson.databind.JsonNode;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
-import org.springframework.stereotype.Component;
-
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
 
 @Component
 public class TipTapValidator {

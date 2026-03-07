@@ -1,9 +1,8 @@
 package com.fabbitinc.server.application.issue.usecase.result;
 
-import tools.jackson.databind.JsonNode;
-
 import java.time.Instant;
 import java.util.UUID;
+import tools.jackson.databind.JsonNode;
 
 public record CommentResult(
         UUID id,

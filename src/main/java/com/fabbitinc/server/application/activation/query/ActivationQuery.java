@@ -1,14 +1,13 @@
 package com.fabbitinc.server.application.activation.query;
 
-import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.activation.query.condition.ActivationStartersCondition;
 import com.fabbitinc.server.application.activation.query.result.ActivationStarterQuestionResult;
 import com.fabbitinc.server.application.activation.query.result.ActivationStartersResult;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor

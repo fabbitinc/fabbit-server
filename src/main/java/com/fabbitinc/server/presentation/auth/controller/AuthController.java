@@ -1,16 +1,16 @@
 package com.fabbitinc.server.presentation.auth.controller;
 
-import com.fabbitinc.server.application.auth.dto.request.SendVerificationRequest;
-import com.fabbitinc.server.application.auth.dto.request.VerifyEmailRequest;
 import com.fabbitinc.server.application.auth.dto.request.AcceptInvitationRequest;
 import com.fabbitinc.server.application.auth.dto.request.LoginRequest;
 import com.fabbitinc.server.application.auth.dto.request.RefreshRequest;
 import com.fabbitinc.server.application.auth.dto.request.RegisterRequest;
+import com.fabbitinc.server.application.auth.dto.request.SendVerificationRequest;
+import com.fabbitinc.server.application.auth.dto.request.VerifyEmailRequest;
 import com.fabbitinc.server.application.auth.dto.response.AcceptInvitationResponse;
 import com.fabbitinc.server.application.auth.dto.response.CheckEmailResponse;
 import com.fabbitinc.server.application.auth.dto.response.CheckSlugResponse;
-import com.fabbitinc.server.application.auth.dto.response.LoginVariantResponse;
 import com.fabbitinc.server.application.auth.dto.response.LoginResponse;
+import com.fabbitinc.server.application.auth.dto.response.LoginVariantResponse;
 import com.fabbitinc.server.application.auth.dto.response.OrganizationResponse;
 import com.fabbitinc.server.application.auth.dto.response.PlanResponse;
 import com.fabbitinc.server.application.auth.dto.response.RegisterResponse;
@@ -32,6 +32,13 @@ import com.fabbitinc.server.application.auth.query.result.CheckSlugResult;
 import com.fabbitinc.server.application.auth.query.result.PlanResult;
 import com.fabbitinc.server.application.auth.query.result.SiteResult;
 import com.fabbitinc.server.application.auth.query.result.VerifyInvitationResult;
+import com.fabbitinc.server.application.auth.usecase.AcceptInvitationUseCase;
+import com.fabbitinc.server.application.auth.usecase.LoginUseCase;
+import com.fabbitinc.server.application.auth.usecase.LogoutUseCase;
+import com.fabbitinc.server.application.auth.usecase.RefreshTokenUseCase;
+import com.fabbitinc.server.application.auth.usecase.RegisterUseCase;
+import com.fabbitinc.server.application.auth.usecase.SendVerificationUseCase;
+import com.fabbitinc.server.application.auth.usecase.VerifyEmailUseCase;
 import com.fabbitinc.server.application.auth.usecase.command.AcceptInvitationCommand;
 import com.fabbitinc.server.application.auth.usecase.command.LoginCommand;
 import com.fabbitinc.server.application.auth.usecase.command.LogoutCommand;
@@ -48,13 +55,6 @@ import com.fabbitinc.server.application.auth.usecase.result.RefreshTokenResult;
 import com.fabbitinc.server.application.auth.usecase.result.RegisterResult;
 import com.fabbitinc.server.application.auth.usecase.result.SendVerificationResult;
 import com.fabbitinc.server.application.auth.usecase.result.VerifyEmailResult;
-import com.fabbitinc.server.application.auth.usecase.AcceptInvitationUseCase;
-import com.fabbitinc.server.application.auth.usecase.SendVerificationUseCase;
-import com.fabbitinc.server.application.auth.usecase.VerifyEmailUseCase;
-import com.fabbitinc.server.application.auth.usecase.LoginUseCase;
-import com.fabbitinc.server.application.auth.usecase.LogoutUseCase;
-import com.fabbitinc.server.application.auth.usecase.RegisterUseCase;
-import com.fabbitinc.server.application.auth.usecase.RefreshTokenUseCase;
 import com.fabbitinc.server.application.config.AppProperties;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -64,6 +64,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -74,8 +75,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @Validated
 @RestController
@@ -122,8 +121,7 @@ public class AuthController {
     public CheckSlugResponse checkSlug(
             @Parameter(description = "검사할 워크스페이스 slug", example = "fabbit")
             @RequestParam("slug")
-            @Size(min = 3, max = 50, message = "길이는 3~50자여야 합니다")
-            String slug
+            @Size(min = 3, max = 50, message = "길이는 3~50자여야 합니다") String slug
     ) {
         CheckSlugResult result = authQuery.getSlugAvailability(new CheckSlugCondition(slug));
         return new CheckSlugResponse(result.available(), result.message(), result.suggestion());
@@ -141,8 +139,7 @@ public class AuthController {
     public CheckEmailResponse checkEmail(
             @Parameter(description = "검사할 이메일", example = "user@example.com")
             @RequestParam("email")
-            @Email(message = "유효한 이메일 형식이 아닙니다")
-            String email
+            @Email(message = "유효한 이메일 형식이 아닙니다") String email
     ) {
         CheckEmailResult result = authQuery.getEmailAvailability(new CheckEmailCondition(email));
         return new CheckEmailResponse(result.available(), result.message());

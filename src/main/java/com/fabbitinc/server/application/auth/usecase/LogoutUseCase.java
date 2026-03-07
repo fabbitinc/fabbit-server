@@ -1,8 +1,8 @@
 package com.fabbitinc.server.application.auth.usecase;
 
+import com.fabbitinc.server.application.auth.service.JwtTokenService;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
-import com.fabbitinc.server.application.auth.service.JwtTokenService;
 import com.fabbitinc.server.application.auth.usecase.command.LogoutCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

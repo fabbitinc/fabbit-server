@@ -1,11 +1,10 @@
 package com.fabbitinc.server.application.issue.support;
 
-import tools.jackson.databind.JsonNode;
-import org.springframework.stereotype.Component;
-
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
 
 @Component
 public class MentionExtractor {

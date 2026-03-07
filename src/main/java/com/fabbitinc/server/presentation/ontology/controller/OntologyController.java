@@ -1,9 +1,9 @@
 package com.fabbitinc.server.presentation.ontology.controller;
 
+import com.fabbitinc.server.application.ontology.query.OntologyQuery;
 import com.fabbitinc.server.application.ontology.query.condition.NodeSearchCondition;
 import com.fabbitinc.server.application.ontology.query.result.NodeSearchResult;
 import com.fabbitinc.server.application.ontology.query.result.OntologySchemaResult;
-import com.fabbitinc.server.application.ontology.query.OntologyQuery;
 import com.fabbitinc.server.presentation.ontology.dto.response.NodeSearchResponse;
 import com.fabbitinc.server.presentation.ontology.dto.response.OntologySchemaResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -63,13 +63,10 @@ public class OntologyController {
             @RequestParam("label") String label,
             @Parameter(description = "자동완성 검색어", example = "PCB")
             @RequestParam("search")
-            @Size(min = 1, message = "search는 1자 이상이어야 합니다")
-            String search,
+            @Size(min = 1, message = "search는 1자 이상이어야 합니다") String search,
             @Parameter(description = "조회 건수", example = "10")
             @RequestParam(value = "limit", defaultValue = "10")
-            @Min(value = 1, message = "limit은 1 이상이어야 합니다")
-            @Max(value = 50, message = "limit은 50 이하여야 합니다")
-            int limit
+            @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 50, message = "limit은 50 이하여야 합니다") int limit
     ) {
         return toNodeSearchResponse(ontologyQuery.search(new NodeSearchCondition(label, search, limit)));
     }

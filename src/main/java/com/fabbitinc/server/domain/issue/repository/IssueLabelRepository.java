@@ -1,11 +1,10 @@
 package com.fabbitinc.server.domain.issue.repository;
 
 import com.fabbitinc.server.domain.issue.model.IssueLabel;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface IssueLabelRepository extends JpaRepository<IssueLabel, UUID> {
 

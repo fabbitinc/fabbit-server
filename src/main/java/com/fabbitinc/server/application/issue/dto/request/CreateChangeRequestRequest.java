@@ -1,18 +1,15 @@
 package com.fabbitinc.server.application.issue.dto.request;
 
-import tools.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-
 import java.util.List;
 import java.util.UUID;
+import tools.jackson.databind.JsonNode;
 
 @Schema(description = "변경요청 생성 요청")
 public record CreateChangeRequestRequest(
-        @NotBlank
-        @Size(max = 500)
-        @Schema(description = "변경요청 제목")
+        @NotBlank @Size(max = 500) @Schema(description = "변경요청 제목")
         String title,
         @Schema(description = "변경요청 본문(TipTap JSON)")
         JsonNode body,
@@ -27,8 +24,7 @@ public record CreateChangeRequestRequest(
         @Schema(description = "라벨 ID 목록")
         List<UUID> labelIds,
         @Schema(description = "첨부 파일 ID 목록(최대 20)")
-        @Size(max = 20)
-        List<UUID> fileIds,
+        @Size(max = 20) List<UUID> fileIds,
         @Schema(description = "검토자 ID 목록")
         List<UUID> reviewerUserIds,
         @Schema(description = "팀 검토자 ID 목록")

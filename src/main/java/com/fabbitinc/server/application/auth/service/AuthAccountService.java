@@ -10,11 +10,10 @@ import com.fabbitinc.server.domain.auth.model.EmailVerificationStatus;
 import com.fabbitinc.server.domain.auth.repository.EmailVerificationRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.Locale;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor

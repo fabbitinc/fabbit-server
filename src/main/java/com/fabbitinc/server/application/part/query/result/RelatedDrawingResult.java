@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.part.query.result;
 
 import com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus;
 import com.fabbitinc.server.domain.drawing.model.DrawingStatus;
-
 import java.util.UUID;
 
 public record RelatedDrawingResult(

@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.project.dto.response;
 
 import com.fabbitinc.server.domain.project.model.ProjectRole;
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.UUID;
 
 @Schema(description = "프로젝트 멤버 요약 정보")

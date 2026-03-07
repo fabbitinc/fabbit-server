@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 
 public record RefreshRequest(
         @Schema(description = "리프레시 토큰", example = "eyJhbGciOiJIUzI1NiJ9...")
-        @NotBlank(message = "refresh_token은 필수입니다")
-        String refreshToken
+        @NotBlank(message = "refresh_token은 필수입니다") String refreshToken
 ) {
 }

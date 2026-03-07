@@ -4,11 +4,10 @@ import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.notification.support.SseManager;
 import com.fabbitinc.server.application.notification.usecase.result.NotificationStreamResult;
+import java.util.concurrent.BlockingQueue;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.concurrent.BlockingQueue;
 
 @Component
 @RequiredArgsConstructor

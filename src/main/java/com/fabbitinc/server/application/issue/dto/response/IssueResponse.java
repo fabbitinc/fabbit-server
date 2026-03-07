@@ -4,11 +4,10 @@ import com.fabbitinc.server.application.file.dto.response.FileItemResponse;
 import com.fabbitinc.server.domain.issue.model.IssueState;
 import com.fabbitinc.server.domain.issue.model.IssueType;
 import io.swagger.v3.oas.annotations.media.Schema;
-import tools.jackson.databind.JsonNode;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import tools.jackson.databind.JsonNode;
 
 @Schema(description = "이슈 상세 응답")
 public record IssueResponse(

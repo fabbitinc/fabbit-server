@@ -1,18 +1,16 @@
 package com.fabbitinc.server.application.label.dto.request;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import com.fasterxml.jackson.annotation.JsonSetter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 @Schema(description = "요청 DTO")
 public class UpdateLabelRequest {
 
-    @Size(min = 1, max = 50, message = "name은 1~50자여야 합니다")
-    private String name;
+    @Size(min = 1, max = 50, message = "name은 1~50자여야 합니다") private String name;
 
-    @Size(max = 200, message = "description은 최대 200자여야 합니다")
-    private String description;
+    @Size(max = 200, message = "description은 최대 200자여야 합니다") private String description;
 
     @Pattern(
             regexp = "^#[0-9a-fA-F]{6}$",

@@ -31,11 +31,11 @@ import com.fabbitinc.server.application.issue.dto.response.TeamBadgeResponse;
 import com.fabbitinc.server.application.issue.dto.response.TimelineItemResponse;
 import com.fabbitinc.server.application.issue.dto.response.TimelineItemType;
 import com.fabbitinc.server.application.issue.dto.response.TimelineResponse;
+import com.fabbitinc.server.application.issue.query.IssueQuery;
 import com.fabbitinc.server.application.issue.query.condition.ChangeRequestDetailCondition;
 import com.fabbitinc.server.application.issue.query.condition.ChangeRequestListCondition;
 import com.fabbitinc.server.application.issue.query.condition.ChangeRequestLookupCondition;
 import com.fabbitinc.server.application.issue.query.condition.IssueTimelineCondition;
-import com.fabbitinc.server.application.issue.query.IssueQuery;
 import com.fabbitinc.server.application.issue.query.result.ChangeRequestDetailResult;
 import com.fabbitinc.server.application.issue.query.result.ChangeRequestListResult;
 import com.fabbitinc.server.application.issue.query.result.ChangeRequestLookupResult;
@@ -80,6 +80,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -95,11 +99,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 @Validated
 @RestController
@@ -149,12 +148,9 @@ public class ChangeRequestController {
             @RequestParam(value = "state", required = false) String state,
             @RequestParam(value = "cr_state", required = false) String crState,
             @RequestParam(value = "offset", defaultValue = "0")
-            @Min(value = 0, message = "offset은 0 이상이어야 합니다")
-            int offset,
+            @Min(value = 0, message = "offset은 0 이상이어야 합니다") int offset,
             @RequestParam(value = "limit", defaultValue = "20")
-            @Min(value = 1, message = "limit은 1 이상이어야 합니다")
-            @Max(value = 100, message = "limit은 100 이하여야 합니다")
-            int limit
+            @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 100, message = "limit은 100 이하여야 합니다") int limit
     ) {
         return toChangeRequestListResponse(
                 issueQuery.listChangeRequests(new ChangeRequestListCondition(search, state, crState, offset, limit))
@@ -169,9 +165,7 @@ public class ChangeRequestController {
     public ChangeRequestLookupResponse lookupChangeRequests(
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "limit", defaultValue = "10")
-            @Min(value = 1, message = "limit은 1 이상이어야 합니다")
-            @Max(value = 50, message = "limit은 50 이하여야 합니다")
-            int limit
+            @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 50, message = "limit은 50 이하여야 합니다") int limit
     ) {
         return toChangeRequestLookupResponse(issueQuery.lookupChangeRequests(new ChangeRequestLookupCondition(search, limit)));
     }

@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.synthesis.usecase.result;
 
 import com.fabbitinc.server.domain.synthesis.model.SynthesisJobStatus;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

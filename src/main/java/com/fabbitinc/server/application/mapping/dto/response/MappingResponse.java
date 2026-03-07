@@ -3,7 +3,6 @@ package com.fabbitinc.server.application.mapping.dto.response;
 import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
 import com.fabbitinc.server.domain.mapping.model.MappingScope;
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

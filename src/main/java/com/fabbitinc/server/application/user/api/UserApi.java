@@ -2,11 +2,10 @@ package com.fabbitinc.server.application.user.api;
 
 import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.domain.user.model.User;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor

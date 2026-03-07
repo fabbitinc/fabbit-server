@@ -2,8 +2,8 @@ package com.fabbitinc.server.presentation.activation.controller;
 
 import com.fabbitinc.server.application.activation.dto.request.QueryRequest;
 import com.fabbitinc.server.application.activation.dto.response.ActivationResultType;
-import com.fabbitinc.server.application.activation.dto.response.HealthCheckResponse;
 import com.fabbitinc.server.application.activation.dto.response.HealthCheckIssueResponse;
+import com.fabbitinc.server.application.activation.dto.response.HealthCheckResponse;
 import com.fabbitinc.server.application.activation.dto.response.HealthIssueCategory;
 import com.fabbitinc.server.application.activation.dto.response.HealthIssueSeverity;
 import com.fabbitinc.server.application.activation.dto.response.QueryResponse;

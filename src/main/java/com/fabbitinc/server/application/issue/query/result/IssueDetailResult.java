@@ -2,11 +2,10 @@ package com.fabbitinc.server.application.issue.query.result;
 
 import com.fabbitinc.server.domain.issue.model.IssueState;
 import com.fabbitinc.server.domain.issue.model.IssueType;
-import tools.jackson.databind.JsonNode;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import tools.jackson.databind.JsonNode;
 
 public record IssueDetailResult(
         UUID id,

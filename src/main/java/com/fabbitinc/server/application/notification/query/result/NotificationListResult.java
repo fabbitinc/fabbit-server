@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.notification.query.result;
 
 import com.fabbitinc.server.domain.notification.model.NotificationSourceIssueType;
 import com.fabbitinc.server.domain.notification.model.NotificationType;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;

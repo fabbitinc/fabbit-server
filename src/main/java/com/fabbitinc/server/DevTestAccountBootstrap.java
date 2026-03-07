@@ -3,7 +3,6 @@ package com.fabbitinc.server;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
 import com.fabbitinc.server.application.organization.service.input.CreateOrganizationInput;
 import com.fabbitinc.server.application.user.service.UserService;
-import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
 import com.fabbitinc.server.domain.organization.model.PlanType;
@@ -14,16 +13,15 @@ import com.fabbitinc.server.domain.subscription.model.SubscriptionStatus;
 import com.fabbitinc.server.domain.subscription.repository.SubscriptionRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.EntityManager;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
-
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.util.UUID;
 
 @Slf4j
 @Component

@@ -8,12 +8,11 @@ import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.application.user.usecase.command.SetUserProfileImageCommand;
 import com.fabbitinc.server.application.user.usecase.result.SetUserProfileImageResult;
 import com.fabbitinc.server.domain.file.model.File;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor

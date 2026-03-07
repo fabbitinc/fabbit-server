@@ -1,5 +1,8 @@
 package com.fabbitinc.server.architecture;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+
 import com.fabbitinc.server.domain.common.entity.AbstractIdEntity;
 import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.tngtech.archunit.core.domain.JavaClass;
@@ -17,9 +20,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
-
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 @AnalyzeClasses(
         packages = "com.fabbitinc.server",

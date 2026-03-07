@@ -13,12 +13,11 @@ import com.fabbitinc.server.domain.synthesis.model.SynthesisBatch;
 import com.fabbitinc.server.domain.synthesis.model.SynthesisJob;
 import com.fabbitinc.server.domain.synthesis.repository.SynthesisBatchRepository;
 import com.fabbitinc.server.domain.synthesis.repository.SynthesisJobRepository;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor

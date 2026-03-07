@@ -5,10 +5,9 @@ import com.fabbitinc.server.application.project.dto.response.PartProjectsRespons
 import com.fabbitinc.server.application.project.query.ProjectQuery;
 import com.fabbitinc.server.application.project.query.condition.PartProjectsCondition;
 import com.fabbitinc.server.application.project.query.result.PartProjectsResult;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor

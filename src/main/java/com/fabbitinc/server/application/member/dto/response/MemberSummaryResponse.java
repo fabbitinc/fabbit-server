@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.member.dto.response;
 
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.UUID;
 
 @Schema(description = "조직 멤버 요약 정보")

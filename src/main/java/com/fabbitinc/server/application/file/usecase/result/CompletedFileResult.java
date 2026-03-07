@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.file.usecase.result;
 
 import com.fabbitinc.server.domain.file.model.FileStatus;
-
 import java.time.Instant;
 import java.util.UUID;
 

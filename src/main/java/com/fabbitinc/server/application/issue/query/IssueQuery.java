@@ -1,14 +1,10 @@
 package com.fabbitinc.server.application.issue.query;
 
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 import com.fabbitinc.server.application.activity.model.ActivityAction;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
-import com.fabbitinc.server.application.issue.support.IssueTargetType;
 import com.fabbitinc.server.application.issue.query.condition.ChangeRequestDetailCondition;
 import com.fabbitinc.server.application.issue.query.condition.ChangeRequestListCondition;
 import com.fabbitinc.server.application.issue.query.condition.ChangeRequestLookupCondition;
@@ -32,6 +28,7 @@ import com.fabbitinc.server.application.issue.query.result.PartBadgeResult;
 import com.fabbitinc.server.application.issue.query.result.ReviewerSummaryResult;
 import com.fabbitinc.server.application.issue.query.result.TeamBadgeResult;
 import com.fabbitinc.server.application.issue.query.result.TimelineItemTypeResult;
+import com.fabbitinc.server.application.issue.support.IssueTargetType;
 import com.fabbitinc.server.domain.activity.model.Activity;
 import com.fabbitinc.server.domain.activity.model.ActivityTargetType;
 import com.fabbitinc.server.domain.activity.repository.ActivityRepository;
@@ -73,14 +70,8 @@ import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.PathBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -88,6 +79,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor

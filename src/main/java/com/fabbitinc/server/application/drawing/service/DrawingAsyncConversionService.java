@@ -1,12 +1,11 @@
 package com.fabbitinc.server.application.drawing.service;
 
 import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
-import java.util.UUID;
 
 @Slf4j
 @Service

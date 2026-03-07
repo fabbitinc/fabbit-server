@@ -5,17 +5,17 @@ import com.fabbitinc.server.application.member.dto.response.MemberListResponse;
 import com.fabbitinc.server.application.member.dto.response.MemberLookupItemResponse;
 import com.fabbitinc.server.application.member.dto.response.MemberLookupResponse;
 import com.fabbitinc.server.application.member.dto.response.MemberSummaryResponse;
+import com.fabbitinc.server.application.member.query.MemberQuery;
 import com.fabbitinc.server.application.member.query.condition.MemberListCondition;
 import com.fabbitinc.server.application.member.query.condition.MemberLookupCondition;
 import com.fabbitinc.server.application.member.query.result.MemberListResult;
 import com.fabbitinc.server.application.member.query.result.MemberLookupItemResult;
 import com.fabbitinc.server.application.member.query.result.MemberLookupResult;
 import com.fabbitinc.server.application.member.query.result.MemberSummaryResult;
-import com.fabbitinc.server.application.member.query.MemberQuery;
-import com.fabbitinc.server.application.member.usecase.command.ChangeMemberRoleCommand;
-import com.fabbitinc.server.application.member.usecase.command.RemoveMemberCommand;
 import com.fabbitinc.server.application.member.usecase.ChangeMemberRoleUseCase;
 import com.fabbitinc.server.application.member.usecase.RemoveMemberUseCase;
+import com.fabbitinc.server.application.member.usecase.command.ChangeMemberRoleCommand;
+import com.fabbitinc.server.application.member.usecase.command.RemoveMemberCommand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -24,6 +24,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -35,8 +36,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.UUID;
 
 @Validated
 @RestController

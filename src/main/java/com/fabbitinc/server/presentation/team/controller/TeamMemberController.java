@@ -3,9 +3,9 @@ package com.fabbitinc.server.presentation.team.controller;
 import com.fabbitinc.server.application.team.dto.request.AddTeamMembersRequest;
 import com.fabbitinc.server.application.team.dto.request.RemoveTeamMembersRequest;
 import com.fabbitinc.server.application.team.dto.response.ManageTeamMembersResponse;
+import com.fabbitinc.server.application.team.query.TeamQuery;
 import com.fabbitinc.server.application.team.query.condition.TeamMemberListCondition;
 import com.fabbitinc.server.application.team.query.result.TeamMemberListResult;
-import com.fabbitinc.server.application.team.query.TeamQuery;
 import com.fabbitinc.server.application.team.usecase.AddTeamMembersUseCase;
 import com.fabbitinc.server.application.team.usecase.RemoveTeamMembersUseCase;
 import com.fabbitinc.server.application.team.usecase.command.AddTeamMembersCommand;
@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,8 +30,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor

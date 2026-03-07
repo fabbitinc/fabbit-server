@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.part.query.result;
 
 import com.fabbitinc.server.application.part.model.BomDirection;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
-
 import java.util.List;
 import java.util.UUID;
 

@@ -1,14 +1,11 @@
 package com.fabbitinc.server.application.issue.service;
 
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
-import com.fabbitinc.server.application.organization.api.OrganizationApi;
+import com.fabbitinc.server.application.activity.model.ActivityAction;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.issue.support.MentionExtractor;
 import com.fabbitinc.server.application.issue.support.TipTapValidator;
-import com.fabbitinc.server.application.activity.model.ActivityAction;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.activity.model.Activity;
 import com.fabbitinc.server.domain.activity.model.ActivityTargetType;
 import com.fabbitinc.server.domain.activity.repository.ActivityRepository;
@@ -49,18 +46,12 @@ import com.fabbitinc.server.domain.notification.model.NotificationType;
 import com.fabbitinc.server.domain.notification.repository.NotificationRepository;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
-import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.team.model.TeamMember;
 import com.fabbitinc.server.domain.team.repository.TeamMemberRepository;
 import com.fabbitinc.server.domain.team.repository.TeamRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -69,6 +60,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor

@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.synthesis.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.UUID;
 
 @Schema(description = "합성 시작 실패 항목")

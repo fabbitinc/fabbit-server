@@ -2,12 +2,11 @@ package com.fabbitinc.server.domain.auth.repository;
 
 import com.fabbitinc.server.domain.auth.model.Invitation;
 import com.fabbitinc.server.domain.auth.model.InvitationStatus;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 
 public interface InvitationRepository extends JpaRepository<Invitation, UUID> {
 

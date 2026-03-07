@@ -1,13 +1,13 @@
 package com.fabbitinc.server.domain.user.model;
 
-import com.fabbitinc.server.domain.common.exception.DomainException;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.fabbitinc.server.domain.common.exception.DomainException;
+import org.junit.jupiter.api.Test;
 
 class UserTest {
 

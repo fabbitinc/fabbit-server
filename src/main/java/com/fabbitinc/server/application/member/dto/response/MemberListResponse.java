@@ -1,7 +1,6 @@
 package com.fabbitinc.server.application.member.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.List;
 
 @Schema(description = "조직 멤버 목록 응답")

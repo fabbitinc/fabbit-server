@@ -1,13 +1,11 @@
 package com.fabbitinc.server.domain.notification.repository;
 
 import com.fabbitinc.server.domain.notification.model.Notification;
+import java.time.Instant;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
 
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 

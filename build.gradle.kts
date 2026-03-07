@@ -87,12 +87,12 @@ tasks.register<Test>("archTest") {
 spotless {
     java {
         target("src/*/java/**/*.java")
-        googleJavaFormat()
+        // googleJavaFormat()
         importOrder()
         removeUnusedImports()
         formatAnnotations()
-        trimTrailingWhitespace()
-        endWithNewline()
+        // trimTrailingWhitespace()
+        // endWithNewline()
     }
 }
 
