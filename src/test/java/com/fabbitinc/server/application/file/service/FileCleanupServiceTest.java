@@ -46,26 +46,25 @@ class FileCleanupServiceTest {
     void cleanupStalePendingFiles_오래된_pending_파일을_스토리지와_DB에서_정리한다() {
         File first = File.create(UUID.randomUUID(), "a.txt", "tenants/org/uploaded/a.txt", "text/plain", 10);
         File second = File.create(UUID.randomUUID(), "b.txt", "tenants/org/uploaded/b.txt", "text/plain", 20);
+        List<String> fileKeys = List.of(first.getFileKey(), second.getFileKey());
 
         when(fileRepository.findByStatusAndCreatedAtBeforeAndDeletedAtIsNullOrderByCreatedAtAscIdAsc(
                 eq(FileStatus.PENDING),
                 any(Instant.class),
                 any(Pageable.class)
         )).thenReturn(List.of(first, second), List.of());
-        doNothing().when(storagePort).deleteObject(any(String.class));
+        when(storagePort.deleteObjects(fileKeys))
+                .thenReturn(new StorageDeleteResult(fileKeys, List.of()));
 
         int deletedCount = fileCleanupService.cleanupStalePendingFiles(Duration.ofHours(24), 100);
 
         assertEquals(2, deletedCount);
-        verify(storagePort).deleteObject(first.getFileKey());
-        verify(storagePort).deleteObject(second.getFileKey());
-        verify(fileRepository).delete(first);
-        verify(fileRepository).delete(second);
-        verify(fileRepository, times(1)).flush();
+        verify(storagePort).deleteObjects(fileKeys);
+        verify(fileRepository).deleteAll(List.of(first, second));
     }
 
     @Test
-    void cleanupExpiredDeletedFiles_스토리지_삭제가_실패해도_DB_정리는_진행한다() {
+    void cleanupExpiredDeletedFiles_bulk_delete가_실패해도_DB_정리는_진행한다() {
         File deleted = File.create(UUID.randomUUID(), "deleted.txt", "tenants/org/uploaded/deleted.txt", "text/plain", 30);
         deleted.markUploaded();
         deleted.softDelete();
@@ -74,14 +73,14 @@ class FileCleanupServiceTest {
                 any(Instant.class),
                 any(Pageable.class)
         )).thenReturn(List.of(deleted), List.of());
-        doThrow(new RuntimeException("storage error")).when(storagePort).deleteObject(deleted.getFileKey());
+        when(storagePort.deleteObjects(List.of(deleted.getFileKey())))
+                .thenThrow(new RuntimeException("storage error"));
 
         int deletedCount = fileCleanupService.cleanupExpiredDeletedFiles(Duration.ofDays(7), 100);
 
         assertEquals(1, deletedCount);
-        verify(storagePort).deleteObject(deleted.getFileKey());
-        verify(fileRepository).delete(deleted);
-        verify(fileRepository, times(1)).flush();
+        verify(storagePort).deleteObjects(List.of(deleted.getFileKey()));
+        verify(fileRepository).deleteAll(List.of(deleted));
     }
 
     @Test

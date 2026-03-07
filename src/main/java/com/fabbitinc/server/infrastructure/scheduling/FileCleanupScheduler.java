@@ -2,6 +2,10 @@ package com.fabbitinc.server.infrastructure.scheduling;
 
 import com.fabbitinc.server.application.file.service.FileCleanupService;
 import com.fabbitinc.server.application.file.service.input.CleanupOrphanObjectsInput;
+import com.fabbitinc.server.application.file.usecase.CleanupExpiredDeletedFilesUseCase;
+import com.fabbitinc.server.application.file.usecase.CleanupStalePendingFilesUseCase;
+import com.fabbitinc.server.application.file.usecase.command.CleanupExpiredDeletedFilesCommand;
+import com.fabbitinc.server.application.file.usecase.command.CleanupStalePendingFilesCommand;
 import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
 import com.fabbitinc.server.application.tenant.support.TenantSchemaPolicy;
 import com.fabbitinc.server.domain.organization.model.Organization;
@@ -27,6 +31,8 @@ public class FileCleanupScheduler {
 
     private final OrganizationRepository organizationRepository;
     private final FileCleanupService fileCleanupService;
+    private final CleanupStalePendingFilesUseCase cleanupStalePendingFilesUseCase;
+    private final CleanupExpiredDeletedFilesUseCase cleanupExpiredDeletedFilesUseCase;
     private final ScheduledJobLockSupport scheduledJobLockSupport;
 
     /**
@@ -41,10 +47,10 @@ public class FileCleanupScheduler {
         runAcrossTenants(
                 "file_cleanup_stale_pending",
                 "stale_pending",
-                org -> fileCleanupService.cleanupStalePendingFiles(
+                org -> cleanupStalePendingFilesUseCase.execute(new CleanupStalePendingFilesCommand(
                         STALE_MAX_AGE,
                         BATCH_SIZE
-                )
+                )).deletedCount()
         );
     }
 
@@ -60,10 +66,10 @@ public class FileCleanupScheduler {
         runAcrossTenants(
                 "file_cleanup_expired_deleted",
                 "expired_deleted",
-                org -> fileCleanupService.cleanupExpiredDeletedFiles(
+                org -> cleanupExpiredDeletedFilesUseCase.execute(new CleanupExpiredDeletedFilesCommand(
                         DELETED_RETENTION,
                         BATCH_SIZE
-                )
+                )).deletedCount()
         );
     }
 

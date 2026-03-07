@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -96,6 +97,14 @@ class ConventionArchitectureRulesTest {
                             "..dto.response..",
                             "..presentation.."
                     )
+                    .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule serviceClassesMustNotDeclareTransactionalUnlessRequiresNew =
+            classes()
+                    .that().haveSimpleNameEndingWith("Service")
+                    .and().resideInAPackage("..service..")
+                    .should(notHaveTransactionalUnlessRequiresNew())
                     .allowEmptyShould(true);
 
     @ArchTest
@@ -200,6 +209,45 @@ class ConventionArchitectureRulesTest {
 
                     String message = String.format(
                             "%s#%s 는 메서드 레벨 @Transactional을 선언하고 있습니다",
+                            clazz.getName(),
+                            method.getName()
+                    );
+                    events.add(SimpleConditionEvent.violated(method, message));
+                }
+            }
+        };
+    }
+
+    private static ArchCondition<JavaClass> notHaveTransactionalUnlessRequiresNew() {
+        return new ArchCondition<>("service 에서는 @Transactional을 금지하고 REQUIRES_NEW만 예외로 허용한다") {
+            @Override
+            public void check(JavaClass clazz, ConditionEvents events) {
+                if (clazz.isAnnotatedWith(Transactional.class)) {
+                    Transactional annotation = clazz.getAnnotationOfType(Transactional.class);
+                    if (!hasRequiresNewPropagation(annotation)) {
+                        String message = String.format(
+                                "%s 는 service 레이어에서 클래스 레벨 @Transactional을 사용할 수 없습니다. REQUIRES_NEW만 허용됩니다",
+                                clazz.getName()
+                        );
+                        events.add(SimpleConditionEvent.violated(clazz, message));
+                    }
+                }
+
+                for (JavaMethod method : clazz.getMethods()) {
+                    if (!method.getOwner().equals(clazz)) {
+                        continue;
+                    }
+                    if (!method.isAnnotatedWith(Transactional.class)) {
+                        continue;
+                    }
+
+                    Transactional annotation = method.getAnnotationOfType(Transactional.class);
+                    if (hasRequiresNewPropagation(annotation)) {
+                        continue;
+                    }
+
+                    String message = String.format(
+                            "%s#%s 는 service 레이어에서 메서드 레벨 @Transactional을 사용할 수 없습니다. REQUIRES_NEW만 허용됩니다",
                             clazz.getName(),
                             method.getName()
                     );
@@ -331,5 +379,9 @@ class ConventionArchitectureRulesTest {
                 || method.isAnnotatedWith(PatchMapping.class)
                 || method.isAnnotatedWith(DeleteMapping.class)
                 || method.isAnnotatedWith(RequestMapping.class);
+    }
+
+    private static boolean hasRequiresNewPropagation(Transactional annotation) {
+        return annotation != null && annotation.propagation() == Propagation.REQUIRES_NEW;
     }
 }

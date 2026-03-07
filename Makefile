@@ -1,4 +1,4 @@
-.PHONY: dev-start dev-db-reset openapi test test-e2e test-e2e-llm test2-unit test2-e2e test2-e2e-external test2-llm-eval karate-generate-openapi karate-test karate-test-auth karate-test-flow-project playwright-test-all-api playwright-test-excluded-api karate-test-all-api-dry karate-test-docker karate-test-auth-docker migrate-public migrate-tenant migrate-all revision-public revision-tenant lint
+.PHONY: dev-start dev-db-reset openapi test test-e2e test-e2e-llm test2-unit test2-e2e test2-e2e-external test2-llm-eval karate-generate-openapi karate-test karate-test-auth karate-test-flow-project playwright-test-all-api playwright-test-excluded-api karate-test-all-api-dry karate-test-docker karate-test-auth-docker migrate-public migrate-tenant migrate-all revision-public revision-tenant lint format
 
 # 개발환경 디비 종료
 dev-db-stop:
@@ -143,7 +143,10 @@ playwright-test-excluded-api:
 
 # ── 린트 ──
 
-# 아키텍처 규칙 검증 (DB 불필요)
+# Java 포맷/임포트 및 아키텍처 규칙 검증 (DB 불필요)
 lint:
-	uv run ruff check .
-	uv run pytest linter/ --confcutdir=linter -o "python_files=check_*.py" -o "python_functions=check_*" --tb=line --no-header -q
+#	./gradlew spotlessCheck archTest
+	./gradlew archTest
+
+format:
+	./gradlew spotlessApply

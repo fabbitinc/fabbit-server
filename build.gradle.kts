@@ -2,6 +2,7 @@ plugins {
     java
     id("org.springframework.boot") version "4.0.3"
     id("io.spring.dependency-management") version "1.1.7"
+    id("com.diffplug.spotless") version "8.2.1"
 }
 
 group = "com.fabbitinc"
@@ -70,6 +71,29 @@ sourceSets {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.register<Test>("archTest") {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Runs ArchUnit architecture tests only."
+    useJUnitPlatform()
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    filter {
+        includeTestsMatching("com.fabbitinc.server.architecture.*")
+    }
+}
+
+spotless {
+    java {
+        target("src/*/java/**/*.java")
+        googleJavaFormat()
+        importOrder()
+        removeUnusedImports()
+        formatAnnotations()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }
 
 tasks.register<JavaExec>("schemaExport") {

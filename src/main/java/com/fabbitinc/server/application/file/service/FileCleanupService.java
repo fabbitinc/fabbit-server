@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -31,7 +30,6 @@ public class FileCleanupService {
     private final FileRepository fileRepository;
     private final StoragePort storagePort;
 
-    @Transactional
     public int cleanupStalePendingFiles(Duration maxAge, int batchSize) {
         Instant cutoff = Instant.now().minus(maxAge);
         int deletedCount = 0;
@@ -46,16 +44,12 @@ public class FileCleanupService {
                 return deletedCount;
             }
 
-            for (File file : files) {
-                deleteStorageObjectQuietly(file);
-                fileRepository.delete(file);
-                deletedCount++;
-            }
-            fileRepository.flush();
+            deleteStorageObjectsQuietly(extractDeletableKeys(files));
+            fileRepository.deleteAll(files);
+            deletedCount += files.size();
         }
     }
 
-    @Transactional
     public int cleanupExpiredDeletedFiles(Duration retention, int batchSize) {
         Instant cutoff = Instant.now().minus(retention);
         int deletedCount = 0;
@@ -69,12 +63,9 @@ public class FileCleanupService {
                 return deletedCount;
             }
 
-            for (File file : files) {
-                deleteStorageObjectQuietly(file);
-                fileRepository.delete(file);
-                deletedCount++;
-            }
-            fileRepository.flush();
+            deleteStorageObjectsQuietly(extractDeletableKeys(files));
+            fileRepository.deleteAll(files);
+            deletedCount += files.size();
         }
     }
 
@@ -157,33 +148,18 @@ public class FileCleanupService {
         return deleteStorageObjectsQuietly(orphanKeys);
     }
 
-    private void deleteStorageObjectQuietly(File file) {
-        if (file.getFileKey() == null || file.getFileKey().isBlank()) {
-            return;
-        }
-
-        deleteStorageObjectQuietly(file.getFileKey());
-    }
-
-    private boolean deleteStorageObjectQuietly(String fileKey) {
-        if (fileKey == null || fileKey.isBlank()) {
-            return false;
-        }
-
-        try {
-            storagePort.deleteObject(fileKey);
-            return true;
-        } catch (RuntimeException ex) {
-            log.warn(
-                    "event=file_cleanup_storage_delete_failed file_key={} reason={}",
-                    fileKey,
-                    ex.getMessage()
-            );
-            return false;
-        }
+    private List<String> extractDeletableKeys(List<File> files) {
+        return files.stream()
+                .map(File::getFileKey)
+                .filter(fileKey -> fileKey != null && !fileKey.isBlank())
+                .distinct()
+                .toList();
     }
 
     private int deleteStorageObjectsQuietly(List<String> fileKeys) {
+        if (fileKeys.isEmpty()) {
+            return 0;
+        }
         try {
             StorageDeleteResult result = storagePort.deleteObjects(fileKeys);
             if (!result.failedKeys().isEmpty()) {
