@@ -12,7 +12,7 @@
 ## 요약
 
 - `part` 쓰기 로직은 Spring의 `PartService` + `*UseCase`로 거의 그대로 이행되었고, 핵심 시나리오 기준으로는 완성도가 높다.
-- `file` 도메인은 presigned URL 발급, 업로드 완료, attachable 검증 같은 핵심 업로드 흐름은 이행되었고, `stale PENDING` 및 `expired soft-delete` 정리 배치도 추가되었다. 다만 orphan S3 정리와 실제 프로필 썸네일 변환은 아직 남아 있다.
+- `file` 도메인은 presigned URL 발급, 업로드 완료, attachable 검증 같은 핵심 업로드 흐름은 이행되었고, `stale PENDING`, `expired soft-delete`, `orphan S3` 정리 배치도 추가되었다. 다만 실제 프로필 썸네일 변환은 아직 남아 있다.
 - `drawing` 도메인은 등록 직후 비동기 변환이 실행되고, CAD는 QCAD CLI, PDF/이미지 후처리는 PDFBox 기반으로 `COMPLETED/FAILED` 전이와 PDF/썸네일 파일 생성까지 연결됐다. 다만 운영 배포 시 QCAD 바이너리를 이미지에 포함해야 한다.
 - `supplier`는 구 서비스 계층 자체에 쓰기 로직이 없었고, 읽기 전용 조회는 Spring `SupplierQuery` + `SupplierController`로 이행된 상태다.
 
@@ -40,7 +40,7 @@
 | `file.soft_delete_file` | `FileService.softDelete` | 완료 | 단건 soft delete 기능은 그대로 있다. |
 | `file.soft_delete_files` | 대응 없음 | 누락 | 여러 파일을 한 번에 soft delete 하는 공개 서비스/유스케이스가 없다. 구 코드에서도 사용 흔적은 약하지만 기능 자체는 빠져 있다. |
 | `file.cleanup_stale_files` | `FileCleanupScheduler.cleanupStalePendingFiles` + `FileCleanupService.cleanupStalePendingFiles` | 완료 | 스케줄러가 모든 테넌트를 순회하며 오래된 `PENDING` 파일을 스토리지 삭제 후 DB에서 물리 삭제한다. PostgreSQL advisory lock 기반 중복 실행 방지도 포함됐다. |
-| `file.cleanup_orphan_files` | 대응 없음 | 누락 | S3에는 있고 DB에는 없는 orphan object 정리 기능이 Spring에 없다. `StoragePort`에도 삭제/목록 API가 없다. |
+| `file.cleanup_orphan_files` | `FileCleanupScheduler.cleanupOrphanStorageObjects` + `FileCleanupService.cleanupOrphanObjects` + `StoragePort.listObjects` | 완료 | 스케줄러가 모든 테넌트를 순회하며 `tenants/{orgId}/` prefix의 스토리지 객체를 페이지 단위로 조회하고, 현재 테넌트 DB의 `file_key`와 비교해 어떤 파일 레코드에도 없는 orphan 객체만 삭제한다. |
 | `file.cleanup_deleted_files` | `FileCleanupScheduler.cleanupExpiredDeletedFiles` + `FileCleanupService.cleanupExpiredDeletedFiles` | 완료 | soft-deleted 후 보존기간이 지난 파일을 스토리지 삭제 후 DB에서 물리 삭제하는 배치가 추가됐다. |
 | `file._cleanup_stale_batch` | `FileCleanupService.cleanupStalePendingFiles` | 완료 | 배치 크기 단위 반복 삭제가 서비스 내부 루프로 이전됐다. |
 | `file._cleanup_deleted_batch` | `FileCleanupService.cleanupExpiredDeletedFiles` | 완료 | 배치 크기 단위 반복 삭제가 서비스 내부 루프로 이전됐다. |
@@ -54,15 +54,11 @@
 
 ## 핵심 갭
 
-1. orphan S3 정리 부재
-   - stale upload 정리와 soft-deleted 만료 정리는 Spring 스케줄러로 보완됐지만, S3에는 있고 DB에는 없는 orphan object 정리는 아직 없다.
-   - 멀티테넌트 prefix 전수 순회가 필요해서 운영 비용과 오탐 리스크를 함께 검토해야 한다.
-
-2. 썸네일 변환의 실제 스토리지 처리 부재
+1. 썸네일 변환의 실제 스토리지 처리 부재
    - 프로필 이미지 경로는 Spring에서도 `validateAttachable -> convertToThumbnail -> setProfileImage` 순서를 유지한다.
    - 그러나 `convertToThumbnail`가 실제 이미지 변환 없이 메타데이터만 `.webp`로 바꾸므로, 현재 구현만으로는 저장소 객체와 DB 메타데이터가 어긋날 수 있다.
 
-3. 다중 환경 배포용 QCAD 바이너리 포함 작업 필요
+2. 다중 환경 배포용 QCAD 바이너리 포함 작업 필요
    - 도면 변환 코드는 `QCAD_PATH/dwg2pdf`를 전제로 구현됐다.
    - 로컬 개발은 맥북 QCAD 설치 경로를 지정하면 되지만, 배포 이미지는 Linux용 QCAD 바이너리를 포함하고 `QCAD_PATH`를 맞춰야 한다.
 
@@ -70,5 +66,4 @@
 
 - 배포 환경에 QCAD 바이너리가 없으면 `dwg/dxf -> pdf` 변환은 `FAILED`로 떨어진다. 운영 이미지는 QCAD 포함이 전제다.
 - 프로필 이미지 변경 시 DB의 `file_key/content_type`는 `.webp` 기준으로 바뀌지만 실제 오브젝트는 원본 포맷일 수 있다.
-- orphan S3 정리가 없어 DB에는 없지만 버킷에는 남아 있는 객체는 계속 누적될 수 있다.
 - `file.soft_delete_files`는 현재 직접 사용 흔적은 약하지만, 구 서비스 기능 기준으로는 배치 삭제 API가 사라진 상태다.

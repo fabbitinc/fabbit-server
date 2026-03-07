@@ -18,7 +18,7 @@
 | 도메인 | 문서 | 판단 |
 | --- | --- | --- |
 | 계정/조직 | `account-organization-migration.md` | 기본 인증/초대/프로필/멤버십은 강하지만 초기 구독 생성, 스토리지 quota, 일부 인증 방어가 비어 있습니다. |
-| 제품 데이터 | `product-data-migration.md` | Part/파일 첨부, 도면 변환, stale/deleted 파일 정리 배치는 강하지만 orphan 정리, 실제 프로필 썸네일 변환, QCAD 배포 포함 작업이 남아 있습니다. |
+| 제품 데이터 | `product-data-migration.md` | Part/파일 첨부, 도면 변환, stale/deleted/orphan 파일 정리 배치는 강하지만 실제 프로필 썸네일 변환, QCAD 배포 포함 작업이 남아 있습니다. |
 | 협업 | `collaboration-migration.md` | 팀/이슈/라벨/읽음 처리는 강하지만 프로젝트 activity 쓰기와 알림 SSE push가 비어 있습니다. |
 | AI/그래프 | `ai-graph-migration.md` | 매핑은 강하지만 activation 자연어 질의와 synthesis 실행 범위가 축소되었습니다. |
 
@@ -34,9 +34,7 @@
    - 스트림 연결은 되지만 실시간 이벤트가 발행되지 않습니다.
 5. 조직 스토리지 quota 누락
    - 업로드/삭제가 quota를 반영하지 않을 가능성이 높습니다.
-6. orphan S3 정리 부재
-   - stale/deleted 파일 정리 배치는 추가됐지만, DB에 없는 버킷 객체 정리는 아직 없습니다.
-7. 프로필 이미지 실제 썸네일 변환 부재
+6. 프로필 이미지 실제 썸네일 변환 부재
    - 현재는 `.webp` 메타데이터 변경만 있고 실제 저장소 변환이 없습니다.
 
 ## 범위 밖 또는 별도 확인 필요

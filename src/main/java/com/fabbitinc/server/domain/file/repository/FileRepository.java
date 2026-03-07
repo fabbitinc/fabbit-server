@@ -29,6 +29,8 @@ public interface FileRepository extends JpaRepository<File, UUID> {
 
     Optional<File> findByFileKeyAndDeletedAtIsNull(String fileKey);
 
+    List<File> findByFileKeyIn(Collection<String> fileKeys);
+
     Optional<File> findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(UUID id, String ownerType, UUID ownerId);
 
     long countByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(String ownerType, UUID ownerId, FileStatus status);

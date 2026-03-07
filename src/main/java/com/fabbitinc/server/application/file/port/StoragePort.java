@@ -6,6 +6,8 @@ public interface StoragePort {
 
     StorageObjectMeta headObject(String fileKey);
 
+    StorageObjectListPage listObjects(String prefix, String continuationToken, int maxKeys);
+
     byte[] getObject(String fileKey);
 
     void putObject(String fileKey, byte[] content, String contentType);

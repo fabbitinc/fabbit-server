@@ -2,6 +2,7 @@ package com.fabbitinc.server.infrastructure.external.storage;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.file.port.StorageObjectListPage;
 import com.fabbitinc.server.application.config.AppProperties;
 import com.fabbitinc.server.application.file.port.StorageObjectMeta;
 import com.fabbitinc.server.application.file.port.StoragePort;
@@ -16,10 +17,13 @@ import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 import software.amazon.awssdk.core.ResponseBytes;
@@ -109,6 +113,27 @@ public class S3StorageAdapter implements StoragePort {
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "스토리지 객체 조회 중 오류가 발생했습니다");
         } catch (RuntimeException ex) {
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "스토리지 객체 조회 중 오류가 발생했습니다");
+        }
+    }
+
+    @Override
+    public StorageObjectListPage listObjects(String prefix, String continuationToken, int maxKeys) {
+        try {
+            ListObjectsV2Request.Builder requestBuilder = ListObjectsV2Request.builder()
+                    .bucket(appProperties.storageBucket())
+                    .prefix(prefix)
+                    .maxKeys(maxKeys);
+            if (continuationToken != null && !continuationToken.isBlank()) {
+                requestBuilder.continuationToken(continuationToken);
+            }
+
+            ListObjectsV2Response response = s3Client.listObjectsV2(requestBuilder.build());
+            return new StorageObjectListPage(
+                    response.contents().stream().map(S3Object::key).toList(),
+                    response.nextContinuationToken()
+            );
+        } catch (RuntimeException ex) {
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "스토리지 객체 목록 조회 중 오류가 발생했습니다");
         }
     }
 

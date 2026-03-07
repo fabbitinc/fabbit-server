@@ -63,6 +63,25 @@ public class FileCleanupScheduler {
         );
     }
 
+    /**
+     * 매일 새벽 4시에 실행된다.
+     * <p>
+     * 모든 조직 테넌트를 순회하면서 현재 조직 prefix 아래의 스토리지 객체를 페이지 단위로 조회하고,
+     * 현재 테넌트 DB의 {@code file_key}와 비교해 어떤 파일 레코드에도 연결되지 않은 orphan 객체만 삭제한다.
+     * 같은 시각에 여러 인스턴스가 떠 있어도 advisory lock을 획득한 한 인스턴스만 수행한다.
+     */
+    @Scheduled(cron = "0 0 4 * * *")
+    public void cleanupOrphanStorageObjects() {
+        runAcrossTenants(
+                "file_cleanup_orphan_objects",
+                "orphan_objects",
+                org -> fileCleanupService.cleanupOrphanObjects(
+                        org.getId(),
+                        BATCH_SIZE
+                )
+        );
+    }
+
     private void runAcrossTenants(String lockName, String jobType, TenantCleanupJob cleanupJob) {
         scheduledJobLockSupport.executeWithLock(lockName, () -> {
             TenantContextHolder.clear();
