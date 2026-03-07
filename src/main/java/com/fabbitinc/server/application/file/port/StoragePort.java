@@ -8,5 +8,7 @@ public interface StoragePort {
 
     byte[] getObject(String fileKey);
 
+    void putObject(String fileKey, byte[] content, String contentType);
+
     void deleteObject(String fileKey);
 }

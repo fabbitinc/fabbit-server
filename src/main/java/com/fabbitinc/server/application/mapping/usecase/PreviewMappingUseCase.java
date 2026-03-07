@@ -43,6 +43,7 @@ public class PreviewMappingUseCase {
 
     public PreviewMappingResult execute(PreviewMappingCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
+        organizationApi.checkCreditQuota(auth.orgId(), AiUsageCategory.BOM_ANALYSIS);
 
         File file = mappingService.getUploadedFileOrThrow(command.fileId());
         List<String> targetSheets = mappingService.loadPreviewTargets(file, command.sheetName());
@@ -72,22 +73,17 @@ public class PreviewMappingUseCase {
                 continue;
             }
 
-            if (mappingLlmGenerationSupport.isLlmEnabled()) {
-                organizationApi.checkCreditQuota(auth.orgId(), AiUsageCategory.BOM_ANALYSIS);
-            }
             MappingLlmGenerationSupport.GenerationOutput generation = mappingLlmGenerationSupport.generate(parsed.headers(), parsed.rows());
-            if (generation.usedLlm()) {
-                organizationApi.consumeCredits(auth.orgId(), AiUsageCategory.BOM_ANALYSIS);
-                aiUsageService.record(new RecordAiUsageInput(
-                        auth.orgId(),
-                        auth.userId(),
-                        AiUsageCategory.BOM_ANALYSIS,
-                        "mapping:preview",
-                        generation.model(),
-                        generation.inputTokens(),
-                        generation.outputTokens()
-                ));
-            }
+            organizationApi.consumeCredits(auth.orgId(), AiUsageCategory.BOM_ANALYSIS);
+            aiUsageService.record(new RecordAiUsageInput(
+                    auth.orgId(),
+                    auth.userId(),
+                    AiUsageCategory.BOM_ANALYSIS,
+                    "mapping:preview",
+                    generation.model(),
+                    generation.inputTokens(),
+                    generation.outputTokens()
+            ));
 
             MappingResultDto normalized = mappingNormalizationSupport.normalize(generation.mapping());
             if (normalized.propertyMappings().isEmpty()) {

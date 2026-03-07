@@ -23,6 +23,7 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.core.sync.RequestBody;
 
 import java.net.URI;
 import java.time.Duration;
@@ -133,6 +134,21 @@ public class S3StorageAdapter implements StoragePort {
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "스토리지 객체 조회 중 오류가 발생했습니다");
         } catch (RuntimeException ex) {
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "스토리지 객체 조회 중 오류가 발생했습니다");
+        }
+    }
+
+    @Override
+    public void putObject(String fileKey, byte[] content, String contentType) {
+        try {
+            PutObjectRequest request = PutObjectRequest.builder()
+                    .bucket(appProperties.storageBucket())
+                    .key(fileKey)
+                    .contentType(contentType)
+                    .contentLength((long) content.length)
+                    .build();
+            s3Client.putObject(request, RequestBody.fromBytes(content));
+        } catch (RuntimeException ex) {
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "스토리지 객체 업로드 중 오류가 발생했습니다");
         }
     }
 

@@ -2,6 +2,7 @@ package com.fabbitinc.server.application.drawing.service;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.file.model.File;
@@ -9,6 +10,8 @@ import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Set;
 import java.util.UUID;
@@ -24,12 +27,14 @@ public class DrawingService {
             ".png",
             ".jpg",
             ".jpeg",
+            ".bmp",
             ".tif",
             ".tiff"
     );
 
     private final DrawingRepository drawingRepository;
     private final FileRepository fileRepository;
+    private final DrawingAsyncConversionService drawingAsyncConversionService;
 
     public Drawing createDrawing(UUID fileId) {
         File file = fileRepository.findByIdAndDeletedAtIsNull(fileId)
@@ -56,6 +61,7 @@ public class DrawingService {
         drawingRepository.save(drawing);
 
         file.assignOwner("drawing", drawing.getId());
+        dispatchAfterCommit(drawing.getId());
         return drawing;
     }
 
@@ -86,5 +92,22 @@ public class DrawingService {
             return "";
         }
         return fileName.substring(idx);
+    }
+
+    private void dispatchAfterCommit(UUID drawingId) {
+        String schemaName = TenantContextHolder.getCurrentSchema();
+        Runnable dispatch = () -> drawingAsyncConversionService.convertDrawingAsync(drawingId, schemaName);
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    dispatch.run();
+                }
+            });
+            return;
+        }
+
+        dispatch.run();
     }
 }

@@ -12,8 +12,8 @@
 ## 요약
 
 - `part` 쓰기 로직은 Spring의 `PartService` + `*UseCase`로 거의 그대로 이행되었고, 핵심 시나리오 기준으로는 완성도가 높다.
-- `file` 도메인은 presigned URL 발급, 업로드 완료, attachable 검증 같은 핵심 업로드 흐름은 이행되었고, `stale PENDING` 및 `expired soft-delete` 정리 배치도 추가되었다. 다만 orphan S3 정리와 실제 썸네일 변환은 아직 남아 있다.
-- `drawing` 도메인은 등록/삭제 API는 존재하지만, FastAPI에서 수행하던 비동기 변환 파이프라인이 없어 `conversion_status=PENDING` 이후 완료/실패로 진행되는 흐름이 끊겨 있다.
+- `file` 도메인은 presigned URL 발급, 업로드 완료, attachable 검증 같은 핵심 업로드 흐름은 이행되었고, `stale PENDING` 및 `expired soft-delete` 정리 배치도 추가되었다. 다만 orphan S3 정리와 실제 프로필 썸네일 변환은 아직 남아 있다.
+- `drawing` 도메인은 등록 직후 비동기 변환이 실행되고, CAD는 QCAD CLI, PDF/이미지 후처리는 PDFBox 기반으로 `COMPLETED/FAILED` 전이와 PDF/썸네일 파일 생성까지 연결됐다. 다만 운영 배포 시 QCAD 바이너리를 이미지에 포함해야 한다.
 - `supplier`는 구 서비스 계층 자체에 쓰기 로직이 없었고, 읽기 전용 조회는 Spring `SupplierQuery` + `SupplierController`로 이행된 상태다.
 
 ## 함수 매핑
@@ -29,7 +29,7 @@
 | `part.rename_category` | `RenameCategoryUseCase.execute` + `PartService.renameCategory` | 완료 | 카테고리 존재 검증, 동일명 차단, merge 시 기본 담당자 삭제, rename 시 기본 담당자 카테고리 이동 로직이 유지된다. |
 | `part.upsert_default_owner` | `UpsertDefaultOwnerUseCase.execute` + `PartService.upsertDefaultOwner` | 완료 | 카테고리별 upsert가 유지되고, Spring 쪽은 최소 한 명/한 팀 필요 검증을 더 명시적으로 추가했다. |
 | `part.delete_default_owner` | `DeleteDefaultOwnerUseCase.execute` + `PartService.deleteDefaultOwner` | 완료 | 삭제 건수 0일 때 `NOT_FOUND` 처리까지 동일하다. |
-| `drawing.create_drawing` | `RegisterPartDrawingUseCase.execute` + `DrawingService.createDrawing` | 부분 | 업로드 완료 파일 검증, 확장자 검증, `PENDING` Drawing 생성, Part 연결까지는 있다. 하지만 FastAPI의 `add_background_task(guarded(run_conversion))` 및 `drawing/pipeline.py` 대응 구현이 없어 변환 완료/실패 반영이 끊겨 있다. |
+| `drawing.create_drawing` | `RegisterPartDrawingUseCase.execute` + `DrawingService.createDrawing` + `DrawingAsyncConversionService` + `DrawingConversionService` | 완료 | 업로드 완료 파일 검증, 확장자 검증, `PENDING` Drawing 생성, Part 연결 후 트랜잭션 커밋 뒤 비동기 변환을 실행한다. CAD는 QCAD `dwg2pdf`, PDF/이미지 후처리는 PDFBox로 처리하고 성공 시 PDF/썸네일 파일 레코드 생성 및 `COMPLETED`, 실패 시 `FAILED`를 반영한다. |
 | `drawing.delete_drawing` | `DeletePartDrawingUseCase.execute` + `DrawingService.deleteDrawing` | 완료 | Part에서 도면을 분리한 뒤 Drawing을 soft delete 한다. FastAPI는 FileHandler 이벤트로 파일 정리를 위임했고, Spring은 `original/pdf/thumbnail` 키 기준으로 직접 soft delete 한다. |
 | `drawing.to_register_response` | `RegisterPartDrawingUseCase` 결과 + `PartController` 응답 매핑 | 완료 | 등록 응답에 `drawingId`, `drawingNumber`, `name`, `conversionStatus`를 반환하는 흐름이 유지된다. |
 | `drawing._validate_drawing_file` | `DrawingService.createDrawing` 내부 확장자 검증 | 완료 | 허용 확장자 검증이 서비스 내부로 이동했다. |
@@ -54,21 +54,21 @@
 
 ## 핵심 갭
 
-1. 도면 변환 파이프라인 부재
-   - FastAPI는 `drawing_service.create_drawing` 뒤에 `run_conversion` 백그라운드 작업을 등록했고, 성공 시 PDF/썸네일 파일 레코드 생성 및 `conversion_status=COMPLETED`, 실패 시 `FAILED` 반영까지 수행했다.
-   - Spring은 `DrawingService.createDrawing`가 `PENDING` 상태 생성까지만 담당한다. 검색상 `markConversionCompleted`, `markConversionFailed`를 호출하는 코드가 없다.
-
-2. orphan S3 정리 부재
+1. orphan S3 정리 부재
    - stale upload 정리와 soft-deleted 만료 정리는 Spring 스케줄러로 보완됐지만, S3에는 있고 DB에는 없는 orphan object 정리는 아직 없다.
    - 멀티테넌트 prefix 전수 순회가 필요해서 운영 비용과 오탐 리스크를 함께 검토해야 한다.
 
-3. 썸네일 변환의 실제 스토리지 처리 부재
+2. 썸네일 변환의 실제 스토리지 처리 부재
    - 프로필 이미지 경로는 Spring에서도 `validateAttachable -> convertToThumbnail -> setProfileImage` 순서를 유지한다.
    - 그러나 `convertToThumbnail`가 실제 이미지 변환 없이 메타데이터만 `.webp`로 바꾸므로, 현재 구현만으로는 저장소 객체와 DB 메타데이터가 어긋날 수 있다.
 
+3. 다중 환경 배포용 QCAD 바이너리 포함 작업 필요
+   - 도면 변환 코드는 `QCAD_PATH/dwg2pdf`를 전제로 구현됐다.
+   - 로컬 개발은 맥북 QCAD 설치 경로를 지정하면 되지만, 배포 이미지는 Linux용 QCAD 바이너리를 포함하고 `QCAD_PATH`를 맞춰야 한다.
+
 ## 리스크
 
-- `POST /api/v1/parts/{partId}/drawing` 이후 도면이 계속 `PENDING` 상태로 남을 가능성이 높다. 조회 API가 있더라도 실사용 흐름은 완결되지 않는다.
+- 배포 환경에 QCAD 바이너리가 없으면 `dwg/dxf -> pdf` 변환은 `FAILED`로 떨어진다. 운영 이미지는 QCAD 포함이 전제다.
 - 프로필 이미지 변경 시 DB의 `file_key/content_type`는 `.webp` 기준으로 바뀌지만 실제 오브젝트는 원본 포맷일 수 있다.
 - orphan S3 정리가 없어 DB에는 없지만 버킷에는 남아 있는 객체는 계속 누적될 수 있다.
 - `file.soft_delete_files`는 현재 직접 사용 흔적은 약하지만, 구 서비스 기능 기준으로는 배치 삭제 API가 사라진 상태다.

@@ -3,5 +3,5 @@
 ## 컬럼 헤더
 <headers_json>
 
-## 샘플 데이터 (최대 5행)
+## 샘플 데이터 (처음 5행)
 <sample_rows_json>

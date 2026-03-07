@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.mapping.support;
 
+import com.fabbitinc.server.application.common.exception.AppException;
+import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.config.AppProperties;
 import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
 import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
@@ -36,32 +38,12 @@ public class MappingLlmGenerationSupport {
 
     private final AppProperties appProperties;
     private final ObjectMapper objectMapper;
-    private final MappingGenerationSupport mappingGenerationSupport;
     private final ResourceLoader resourceLoader;
     private final StTemplateRenderer templateRenderer = StTemplateRenderer.builder().build();
 
-    public boolean isLlmEnabled() {
-        return !appProperties.llmApiKey().isBlank();
-    }
-
     public GenerationOutput generate(List<String> headers, List<Map<String, Object>> sampleRows) {
-        if (!isLlmEnabled()) {
-            return GenerationOutput.heuristic(mappingGenerationSupport.generate(headers, sampleRows));
-        }
-
-        try {
-            GenerationOutput generated = generateByLlm(headers, sampleRows);
-            if (generated.mapping().propertyMappings().isEmpty() && generated.mapping().relationMappings().isEmpty()) {
-                log.warn("event=mapping_preview_llm_empty model={} fallback=heuristic", appProperties.llmModel());
-                return generated.withMapping(mappingGenerationSupport.generate(headers, sampleRows));
-            }
-            return generated;
-        } catch (LinkageError | Exception ex) {
-            log.warn("event=mapping_preview_llm_failed model={} fallback=heuristic reason={}",
-                    appProperties.llmModel(),
-                    ex.getMessage());
-            return GenerationOutput.heuristic(mappingGenerationSupport.generate(headers, sampleRows));
-        }
+        requireLlmConfigured();
+        return generateByLlm(headers, sampleRows);
     }
 
     private GenerationOutput generateByLlm(List<String> headers, List<Map<String, Object>> sampleRows)
@@ -122,11 +104,17 @@ public class MappingLlmGenerationSupport {
         );
         return new GenerationOutput(
                 objectMapper.treeToValue(generatedJson, MappingResultDto.class),
-                true,
                 model,
                 inputTokens,
                 outputTokens
         );
+    }
+
+    private void requireLlmConfigured() {
+        if (!appProperties.llmApiKey().isBlank()) {
+            return;
+        }
+        throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "LLM API 키가 설정되지 않았습니다");
     }
 
     private ChatClient createChatClient(OpenAiChatOptions options) {
@@ -189,35 +177,7 @@ public class MappingLlmGenerationSupport {
     }
 
     private String toOntologyPromptText() {
-        StringBuilder builder = new StringBuilder();
-
-        builder.append("Node Labels:\n");
-        for (ManufacturingOntology.NodeLabelDef node : ManufacturingOntology.ONTOLOGY.nodeLabels()) {
-            builder.append("- ").append(node.label())
-                    .append(" (merge_keys=").append(node.mergeKeys()).append(")\n");
-            for (ManufacturingOntology.PropertyDef property : node.properties()) {
-                builder.append("  - ").append(property.name())
-                        .append(" : ").append(property.dataType().value())
-                        .append(property.required() ? " [required]" : "")
-                        .append(property.isMergeKey() ? " [merge_key]" : "")
-                        .append('\n');
-            }
-        }
-
-        builder.append("Relationship Types:\n");
-        for (ManufacturingOntology.RelationshipTypeDef relation : ManufacturingOntology.ONTOLOGY.relationshipTypes()) {
-            builder.append("- ").append(relation.relType().value())
-                    .append(" : ").append(relation.fromLabel())
-                    .append(" -> ").append(relation.toLabel())
-                    .append('\n');
-            for (ManufacturingOntology.PropertyDef property : relation.properties()) {
-                builder.append("  - ").append(property.name())
-                        .append(" : ").append(property.dataType().value())
-                        .append('\n');
-            }
-        }
-
-        return builder.toString();
+        return ManufacturingOntology.ONTOLOGY.toMappingPromptText();
     }
 
     private String stripCodeFence(String raw) {
@@ -245,17 +205,9 @@ public class MappingLlmGenerationSupport {
 
     public record GenerationOutput(
             MappingResultDto mapping,
-            boolean usedLlm,
             String model,
             int inputTokens,
             int outputTokens
     ) {
-        public static GenerationOutput heuristic(MappingResultDto mapping) {
-            return new GenerationOutput(mapping, false, null, 0, 0);
-        }
-
-        public GenerationOutput withMapping(MappingResultDto mapping) {
-            return new GenerationOutput(mapping, usedLlm, model, inputTokens, outputTokens);
-        }
     }
 }
