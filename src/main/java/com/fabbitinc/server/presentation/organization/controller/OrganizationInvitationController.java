@@ -103,7 +103,7 @@ public class OrganizationInvitationController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/organizations/invitations/{invitation_id}",
+            summary = "DELETE /api/v1/organizations/invitations/{invitationId}",
             description = "관리자(ADMIN 이상)가 PENDING 상태 초대를 취소합니다"
     )
     @ApiResponses(value = {

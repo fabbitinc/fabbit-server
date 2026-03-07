@@ -104,6 +104,9 @@ import org.springframework.web.bind.annotation.RestController;
 })
 public class PartController {
 
+    private static final String EXCEL_MEDIA_TYPE =
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
     private final PartQuery partQuery;
     private final RenameCategoryUseCase renameCategoryUseCase;
     private final AttachPartFilesUseCase attachPartFilesUseCase;
@@ -130,7 +133,7 @@ public class PartController {
             summary = "GET /api/v1/parts/export",
             description = "필터링된 Part 목록을 Excel(.xlsx) 파일로 내보냅니다"
     )
-    @GetMapping("/export")
+    @GetMapping(value = "/export", produces = EXCEL_MEDIA_TYPE)
     public ResponseEntity<byte[]> exportParts(
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "category", required = false) String category,
@@ -153,9 +156,7 @@ public class PartController {
         ));
 
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        ));
+        headers.setContentType(MediaType.parseMediaType(EXCEL_MEDIA_TYPE));
         headers.set(
                 HttpHeaders.CONTENT_DISPOSITION,
                 "attachment; filename*=UTF-8''%EB%B6%80%ED%92%88%EB%AA%A9%EB%A1%9D.xlsx"
@@ -264,7 +265,7 @@ public class PartController {
             summary = "GET /api/v1/parts/{partId}/bom/tree/export",
             description = "Part BOM 트리를 Excel(.xlsx) 파일로 내보냅니다"
     )
-    @GetMapping("/{partId}/bom/tree/export")
+    @GetMapping(value = "/{partId}/bom/tree/export", produces = EXCEL_MEDIA_TYPE)
     public ResponseEntity<byte[]> exportBomTree(
             @PathVariable UUID partId,
             @RequestParam(value = "direction", defaultValue = "FORWARD") String direction,
@@ -272,9 +273,7 @@ public class PartController {
     ) {
         byte[] content = partQuery.exportBomTree(new BomTreeExportCondition(partId, direction, mappingId));
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        ));
+        headers.setContentType(MediaType.parseMediaType(EXCEL_MEDIA_TYPE));
         headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=BOM.xlsx");
         return ResponseEntity.ok().headers(headers).body(content);
     }

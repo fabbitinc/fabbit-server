@@ -90,7 +90,7 @@ public class MemberController {
     }
 
     @Operation(
-            summary = "PATCH /api/v1/members/{user_id}/role",
+            summary = "PATCH /api/v1/members/{userId}/role",
             description = "소유자(OWNER) 권한으로 멤버 역할을 변경합니다"
     )
     @ApiResponses(value = {
@@ -112,7 +112,7 @@ public class MemberController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/members/{user_id}",
+            summary = "DELETE /api/v1/members/{userId}",
             description = "관리자(ADMIN 이상) 권한으로 조직 멤버를 제거합니다"
     )
     @ApiResponses(value = {

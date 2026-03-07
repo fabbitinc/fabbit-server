@@ -9,8 +9,15 @@ import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import io.swagger.v3.core.converter.ModelConverters;
 import io.swagger.v3.core.jackson.ModelResolver;
 import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.PathItem;
+import io.swagger.v3.oas.models.media.Content;
+import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.media.StringSchema;
+import io.swagger.v3.oas.models.responses.ApiResponse;
+import io.swagger.v3.oas.models.responses.ApiResponses;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +74,72 @@ class OpenApiModelResolverConfigTest {
                 .containsKey("issue_id")
                 .containsKey("is_modified")
                 .doesNotContainKey("issueId");
+    }
+
+    @Test
+    void openApiCustomizerNormalizesWildcardJsonResponsesToApplicationJson() {
+        JacksonProperties jacksonProperties = new JacksonProperties();
+        jacksonProperties.setPropertyNamingStrategy("SNAKE_CASE");
+        SpringDocConfigProperties springDocConfigProperties = new SpringDocConfigProperties();
+
+        OpenAPI openApi = new OpenAPI().path(
+                "/api/v1/test",
+                new PathItem().get(new Operation().responses(new ApiResponses()
+                        .addApiResponse("200", new ApiResponse().content(new Content().addMediaType(
+                                "*/*",
+                                new MediaType().schema(new Schema<>().$ref("#/components/schemas/TestResponse"))
+                        )))))
+        );
+
+        config.openApiPropertyNamingCustomizer(jacksonProperties, springDocConfigProperties).customise(openApi);
+
+        Content content = openApi.getPaths().get("/api/v1/test").getGet().getResponses().get("200").getContent();
+        assertThat(content).containsOnlyKeys(org.springframework.http.MediaType.APPLICATION_JSON_VALUE);
+        assertThat(content.get(org.springframework.http.MediaType.APPLICATION_JSON_VALUE).getSchema().get$ref())
+                .isEqualTo("#/components/schemas/TestResponse");
+    }
+
+    @Test
+    void openApiCustomizerKeepsWildcardBinaryResponsesUntouched() {
+        JacksonProperties jacksonProperties = new JacksonProperties();
+        jacksonProperties.setPropertyNamingStrategy("SNAKE_CASE");
+        SpringDocConfigProperties springDocConfigProperties = new SpringDocConfigProperties();
+
+        OpenAPI openApi = new OpenAPI().path(
+                "/api/v1/export",
+                new PathItem().get(new Operation().responses(new ApiResponses()
+                        .addApiResponse("200", new ApiResponse().content(new Content().addMediaType(
+                                "*/*",
+                                new MediaType().schema(new StringSchema().format("byte"))
+                        )))))
+        );
+
+        config.openApiPropertyNamingCustomizer(jacksonProperties, springDocConfigProperties).customise(openApi);
+
+        Content content = openApi.getPaths().get("/api/v1/export").getGet().getResponses().get("200").getContent();
+        assertThat(content).containsOnlyKeys("*/*");
+        assertThat(content.get("*/*").getSchema().getFormat()).isEqualTo("byte");
+    }
+
+    @Test
+    void openApiCustomizerDoesNotRewriteNoContentResponses() {
+        JacksonProperties jacksonProperties = new JacksonProperties();
+        jacksonProperties.setPropertyNamingStrategy("SNAKE_CASE");
+        SpringDocConfigProperties springDocConfigProperties = new SpringDocConfigProperties();
+
+        OpenAPI openApi = new OpenAPI().path(
+                "/api/v1/delete",
+                new PathItem().delete(new Operation().responses(new ApiResponses()
+                        .addApiResponse("204", new ApiResponse().content(new Content().addMediaType(
+                                "*/*",
+                                new MediaType().schema(new Schema<>().$ref("#/components/schemas/VoidLikeResponse"))
+                        )))))
+        );
+
+        config.openApiPropertyNamingCustomizer(jacksonProperties, springDocConfigProperties).customise(openApi);
+
+        Content content = openApi.getPaths().get("/api/v1/delete").getDelete().getResponses().get("204").getContent();
+        assertThat(content).containsOnlyKeys("*/*");
     }
 
     private static final class SampleResponse {

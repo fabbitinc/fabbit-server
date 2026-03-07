@@ -8,14 +8,17 @@ const RELAXED_UNDOCUMENTED_KEYS = new Set<string>([
   "POST /api/v1/auth/login",
   "POST /api/v1/auth/logout",
   "PUT /api/v1/users/me/password",
-  "POST /api/v1/files/upload/{file_id}/complete",
+  "POST /api/v1/files/upload/{fileId}/complete",
 ]);
 
 export function isRelaxedOperation(operation: OperationMatrixItem): boolean {
   return RELAXED_UNDOCUMENTED_KEYS.has(operation.key);
 }
 
-export function isDocumentedStatus(operation: OperationMatrixItem, status: number): boolean {
+export function isDocumentedStatus(
+  operation: OperationMatrixItem,
+  status: number,
+): boolean {
   const code = String(status);
   if (operation.responseCodes.includes(code)) {
     return true;

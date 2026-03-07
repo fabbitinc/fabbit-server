@@ -25,6 +25,10 @@ repositories {
     mavenCentral()
 }
 
+springBoot {
+    mainClass.set("com.fabbitinc.server.Server2Application")
+}
+
 dependencies {
     implementation(platform("org.springframework.ai:spring-ai-bom:1.0.3"))
     implementation("org.springframework.boot:spring-boot-starter")

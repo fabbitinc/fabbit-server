@@ -5,10 +5,12 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import io.swagger.v3.core.jackson.ModelResolver;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.responses.ApiResponse;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,7 +47,10 @@ public class OpenApiModelResolverConfig {
             JacksonProperties jacksonProperties,
             SpringDocConfigProperties springDocConfigProperties) {
         ObjectMapper objectMapper = createOpenApiObjectMapper(jacksonProperties, springDocConfigProperties);
-        return openApi -> normalizeSwaggerAccessorPrefixBug(openApi, objectMapper);
+        return openApi -> {
+            normalizeSwaggerAccessorPrefixBug(openApi, objectMapper);
+            normalizeWildcardJsonResponseContentType(openApi);
+        };
     }
 
     private ObjectMapper createOpenApiObjectMapper(
@@ -233,5 +238,62 @@ public class OpenApiModelResolverConfig {
         return value.startsWith(prefix)
                 && value.length() > prefix.length()
                 && Character.isLowerCase(value.charAt(prefix.length()));
+    }
+
+    private void normalizeWildcardJsonResponseContentType(OpenAPI openApi) {
+        if (openApi == null || openApi.getPaths() == null) {
+            return;
+        }
+
+        openApi.getPaths().values().forEach(this::normalizeWildcardJsonResponseContentType);
+    }
+
+    private void normalizeWildcardJsonResponseContentType(PathItem pathItem) {
+        if (pathItem == null) {
+            return;
+        }
+
+        pathItem.readOperations().forEach(this::normalizeWildcardJsonResponseContentType);
+    }
+
+    private void normalizeWildcardJsonResponseContentType(Operation operation) {
+        if (operation == null || operation.getResponses() == null) {
+            return;
+        }
+
+        operation.getResponses().forEach(this::normalizeWildcardJsonResponseContentType);
+    }
+
+    private void normalizeWildcardJsonResponseContentType(String responseCode, ApiResponse response) {
+        if (isNoContentResponse(responseCode) || response == null) {
+            return;
+        }
+
+        Content content = response.getContent();
+        if (content == null || content.size() != 1 || !content.containsKey("*/*")) {
+            return;
+        }
+
+        MediaType wildcardMediaType = content.get("*/*");
+        if (wildcardMediaType == null || !hasJsonCompatibleSchema(wildcardMediaType.getSchema())) {
+            return;
+        }
+
+        Content normalizedContent = new Content();
+        normalizedContent.addMediaType(org.springframework.http.MediaType.APPLICATION_JSON_VALUE, wildcardMediaType);
+        response.setContent(normalizedContent);
+    }
+
+    private boolean isNoContentResponse(String responseCode) {
+        return "204".equals(responseCode) || "205".equals(responseCode) || "304".equals(responseCode);
+    }
+
+    private boolean hasJsonCompatibleSchema(Schema<?> schema) {
+        return schema != null && !isBinarySchema(schema);
+    }
+
+    private boolean isBinarySchema(Schema<?> schema) {
+        return "string".equals(schema.getType())
+                && ("binary".equals(schema.getFormat()) || "byte".equals(schema.getFormat()));
     }
 }
