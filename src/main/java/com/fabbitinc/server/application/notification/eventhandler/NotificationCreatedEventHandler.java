@@ -27,7 +27,15 @@ public class NotificationCreatedEventHandler {
         );
         pushNotificationStreamUseCase.execute(new PushNotificationStreamCommand(
                 event.aggregateId(),
-                event.userId()
+                event.userId(),
+                event.actorId(),
+                event.actorFullName(),
+                event.actorProfileImageFileKey(),
+                event.sourceIssueId(),
+                event.sourceNumber(),
+                event.sourceTitle(),
+                event.sourceIssueType(),
+                event.comment()
         ));
     }
 }

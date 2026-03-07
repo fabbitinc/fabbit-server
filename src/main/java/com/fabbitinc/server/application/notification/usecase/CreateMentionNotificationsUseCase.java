@@ -5,8 +5,10 @@ import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.notification.event.NotificationCreatedEvent;
 import com.fabbitinc.server.application.notification.service.NotificationService;
 import com.fabbitinc.server.application.notification.usecase.command.CreateMentionNotificationsCommand;
+import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.notification.model.Notification;
 import com.fabbitinc.server.domain.notification.model.NotificationType;
+import com.fabbitinc.server.domain.user.model.User;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -23,9 +25,11 @@ public class CreateMentionNotificationsUseCase {
 
     private final NotificationService notificationService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final UserApi userApi;
     private final ObjectMapper objectMapper;
 
     public void execute(CreateMentionNotificationsCommand command) {
+        User actor = userApi.getUserOrNull(command.actorId());
         for (java.util.UUID userId : command.mentionedUserIds()) {
             Notification notification = notificationService.create(
                     userId,
@@ -34,7 +38,18 @@ public class CreateMentionNotificationsUseCase {
                     toMentionPayload(command)
             );
             applicationEventPublisher.publishEvent(
-                    NotificationCreatedEvent.create(notification.getId(), notification.getUserId())
+                    NotificationCreatedEvent.create(
+                            notification.getId(),
+                            notification.getUserId(),
+                            command.actorId(),
+                            actor == null ? null : actor.getFullName(),
+                            actor == null ? null : actor.getProfileImageFileKey(),
+                            command.sourceIssueId(),
+                            command.sourceNumber(),
+                            command.sourceTitle(),
+                            command.sourceIssueType(),
+                            command.comment()
+                    )
             );
         }
     }

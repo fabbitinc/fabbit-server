@@ -29,6 +29,14 @@ public class PushNotificationStreamUseCase {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("notificationId", command.notificationId().toString());
         payload.put("userId", command.userId().toString());
+        payload.put("actorId", command.actorId().toString());
+        payload.put("actorFullName", command.actorFullName());
+        payload.put("actorProfileImageFileKey", command.actorProfileImageFileKey());
+        payload.put("sourceIssueId", command.sourceIssueId().toString());
+        payload.put("sourceNumber", command.sourceNumber());
+        payload.put("sourceTitle", command.sourceTitle());
+        payload.put("sourceIssueType", command.sourceIssueType());
+        payload.put("isComment", command.comment());
         try {
             return "event: notification.created\ndata: "
                     + objectMapper.writeValueAsString(payload)

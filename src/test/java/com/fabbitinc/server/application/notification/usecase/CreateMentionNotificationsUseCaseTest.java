@@ -9,8 +9,10 @@ import static org.mockito.Mockito.when;
 import com.fabbitinc.server.application.notification.event.NotificationCreatedEvent;
 import com.fabbitinc.server.application.notification.service.NotificationService;
 import com.fabbitinc.server.application.notification.usecase.command.CreateMentionNotificationsCommand;
+import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.notification.model.Notification;
 import com.fabbitinc.server.domain.notification.model.NotificationType;
+import com.fabbitinc.server.domain.user.model.User;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -29,6 +31,8 @@ class CreateMentionNotificationsUseCaseTest {
     private NotificationService notificationService;
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
+    @Mock
+    private UserApi userApi;
 
     @InjectMocks
     private CreateMentionNotificationsUseCase createMentionNotificationsUseCase;
@@ -40,6 +44,7 @@ class CreateMentionNotificationsUseCaseTest {
         createMentionNotificationsUseCase = new CreateMentionNotificationsUseCase(
                 notificationService,
                 applicationEventPublisher,
+                userApi,
                 objectMapper
         );
 
@@ -47,7 +52,9 @@ class CreateMentionNotificationsUseCaseTest {
         UUID issueId = UUID.randomUUID();
         UUID userId1 = UUID.randomUUID();
         UUID userId2 = UUID.randomUUID();
+        User actor = User.create("actor@example.com", "hashed", "멘션 작성자");
 
+        when(userApi.getUserOrNull(actorId)).thenReturn(actor);
         when(notificationService.create(
                 org.mockito.ArgumentMatchers.eq(userId1),
                 org.mockito.ArgumentMatchers.eq(NotificationType.MENTION),
@@ -92,5 +99,12 @@ class CreateMentionNotificationsUseCaseTest {
         ArgumentCaptor<NotificationCreatedEvent> eventCaptor = ArgumentCaptor.forClass(NotificationCreatedEvent.class);
         verify(applicationEventPublisher, times(2)).publishEvent(eventCaptor.capture());
         assertEquals(2, eventCaptor.getAllValues().size());
+        NotificationCreatedEvent event = eventCaptor.getAllValues().get(0);
+        assertEquals(actorId, event.actorId());
+        assertEquals("멘션 작성자", event.actorFullName());
+        assertEquals(issueId, event.sourceIssueId());
+        assertEquals(101, event.sourceNumber());
+        assertEquals("제목", event.sourceTitle());
+        assertEquals("issue", event.sourceIssueType());
     }
 }

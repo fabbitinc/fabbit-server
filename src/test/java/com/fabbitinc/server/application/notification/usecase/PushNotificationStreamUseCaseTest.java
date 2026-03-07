@@ -22,9 +22,22 @@ class PushNotificationStreamUseCaseTest {
 
         UUID notificationId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        UUID sourceIssueId = UUID.randomUUID();
         BlockingQueue<String> queue = sseManager.connect(userId);
 
-        useCase.execute(new PushNotificationStreamCommand(notificationId, userId));
+        useCase.execute(new PushNotificationStreamCommand(
+                notificationId,
+                userId,
+                actorId,
+                "작성자",
+                "profiles/actor.webp",
+                sourceIssueId,
+                101,
+                "제목",
+                "issue",
+                true
+        ));
 
         String event = queue.poll();
         assertTrue(event.startsWith("event: notification.created\ndata: "));
@@ -34,5 +47,13 @@ class PushNotificationStreamUseCaseTest {
         JsonNode node = objectMapper.readTree(json);
         assertEquals(notificationId.toString(), node.get("notificationId").asText());
         assertEquals(userId.toString(), node.get("userId").asText());
+        assertEquals(actorId.toString(), node.get("actorId").asText());
+        assertEquals("작성자", node.get("actorFullName").asText());
+        assertEquals("profiles/actor.webp", node.get("actorProfileImageFileKey").asText());
+        assertEquals(sourceIssueId.toString(), node.get("sourceIssueId").asText());
+        assertEquals(101, node.get("sourceNumber").asInt());
+        assertEquals("제목", node.get("sourceTitle").asText());
+        assertEquals("issue", node.get("sourceIssueType").asText());
+        assertTrue(node.get("isComment").asBoolean());
     }
 }
