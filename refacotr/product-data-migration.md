@@ -40,7 +40,7 @@
 | `file.soft_delete_file` | `FileService.softDelete` | 완료 | 단건 soft delete 기능은 그대로 있다. |
 | `file.soft_delete_files` | 대응 없음 | 누락 | 여러 파일을 한 번에 soft delete 하는 공개 서비스/유스케이스가 없다. 구 코드에서도 사용 흔적은 약하지만 기능 자체는 빠져 있다. |
 | `file.cleanup_stale_files` | `FileCleanupScheduler.cleanupStalePendingFiles` + `FileCleanupService.cleanupStalePendingFiles` | 완료 | 스케줄러가 모든 테넌트를 순회하며 오래된 `PENDING` 파일을 스토리지 삭제 후 DB에서 물리 삭제한다. PostgreSQL advisory lock 기반 중복 실행 방지도 포함됐다. |
-| `file.cleanup_orphan_files` | `FileCleanupScheduler.cleanupOrphanStorageObjects` + `FileCleanupService.cleanupOrphanObjects` + `StoragePort.listObjects` | 완료 | 스케줄러가 모든 테넌트를 순회하며 `tenants/{orgId}/` prefix의 스토리지 객체를 페이지 단위로 조회하고, 현재 테넌트 DB의 `file_key`와 비교해 어떤 파일 레코드에도 없는 orphan 객체만 삭제한다. |
+| `file.cleanup_orphan_files` | `FileCleanupScheduler.cleanupOrphanStorageObjects` + `FileCleanupService.cleanupOrphanObjects` + `StoragePort.listObjects/deleteObjects` | 완료 | 스케줄러가 모든 테넌트를 순회하며 `tenants/{orgId}/` prefix의 스토리지 객체를 페이지 단위로 조회하고, 현재 테넌트 DB의 `file_key`와 비교해 어떤 파일 레코드에도 없는 orphan 객체만 삭제한다. 한 번의 실행은 페이지 수/삭제 수 상한과 페이지 간 대기 시간을 둬 list/delete 호출이 과도하게 몰리지 않도록 제한한다. |
 | `file.cleanup_deleted_files` | `FileCleanupScheduler.cleanupExpiredDeletedFiles` + `FileCleanupService.cleanupExpiredDeletedFiles` | 완료 | soft-deleted 후 보존기간이 지난 파일을 스토리지 삭제 후 DB에서 물리 삭제하는 배치가 추가됐다. |
 | `file._cleanup_stale_batch` | `FileCleanupService.cleanupStalePendingFiles` | 완료 | 배치 크기 단위 반복 삭제가 서비스 내부 루프로 이전됐다. |
 | `file._cleanup_deleted_batch` | `FileCleanupService.cleanupExpiredDeletedFiles` | 완료 | 배치 크기 단위 반복 삭제가 서비스 내부 루프로 이전됐다. |

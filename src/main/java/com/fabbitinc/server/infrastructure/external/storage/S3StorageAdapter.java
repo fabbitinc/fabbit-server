@@ -2,6 +2,7 @@ package com.fabbitinc.server.infrastructure.external.storage;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.file.port.StorageDeleteResult;
 import com.fabbitinc.server.application.file.port.StorageObjectListPage;
 import com.fabbitinc.server.application.config.AppProperties;
 import com.fabbitinc.server.application.file.port.StorageObjectMeta;
@@ -13,17 +14,7 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
-import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
-import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.model.S3Exception;
-import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.S3Object;
+import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 import software.amazon.awssdk.core.ResponseBytes;
@@ -31,6 +22,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 
 import java.net.URI;
 import java.time.Duration;
+import java.util.List;
 
 @Component
 public class S3StorageAdapter implements StoragePort {
@@ -174,6 +166,31 @@ public class S3StorageAdapter implements StoragePort {
             s3Client.putObject(request, RequestBody.fromBytes(content));
         } catch (RuntimeException ex) {
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "스토리지 객체 업로드 중 오류가 발생했습니다");
+        }
+    }
+
+    @Override
+    public StorageDeleteResult deleteObjects(List<String> fileKeys) {
+        if (fileKeys == null || fileKeys.isEmpty()) {
+            return new StorageDeleteResult(List.of(), List.of());
+        }
+
+        try {
+            DeleteObjectsRequest request = DeleteObjectsRequest.builder()
+                    .bucket(appProperties.storageBucket())
+                    .delete(Delete.builder()
+                            .objects(fileKeys.stream()
+                                    .map(fileKey -> ObjectIdentifier.builder().key(fileKey).build())
+                                    .toList())
+                            .build())
+                    .build();
+            DeleteObjectsResponse response = s3Client.deleteObjects(request);
+            return new StorageDeleteResult(
+                    response.deleted().stream().map(DeletedObject::key).toList(),
+                    response.errors().stream().map(S3Error::key).toList()
+            );
+        } catch (RuntimeException ex) {
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "스토리지 객체 일괄 삭제 중 오류가 발생했습니다");
         }
     }
 

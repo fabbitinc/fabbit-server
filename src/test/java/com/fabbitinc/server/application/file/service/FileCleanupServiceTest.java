@@ -1,7 +1,10 @@
 package com.fabbitinc.server.application.file.service;
 
+import com.fabbitinc.server.application.file.port.StorageDeleteResult;
 import com.fabbitinc.server.application.file.port.StorageObjectListPage;
 import com.fabbitinc.server.application.file.port.StoragePort;
+import com.fabbitinc.server.application.file.service.input.CleanupOrphanObjectsInput;
+import com.fabbitinc.server.application.file.service.output.CleanupOrphanObjectsOutput;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
@@ -99,15 +102,26 @@ class FileCleanupServiceTest {
                 .thenReturn(List.of(existing));
         when(fileRepository.findByFileKeyIn(List.of(orphanKeyOnNextPage)))
                 .thenReturn(List.of());
-        doNothing().when(storagePort).deleteObject(any(String.class));
+        when(storagePort.deleteObjects(List.of(orphanKey)))
+                .thenReturn(new StorageDeleteResult(List.of(orphanKey), List.of()));
+        when(storagePort.deleteObjects(List.of(orphanKeyOnNextPage)))
+                .thenReturn(new StorageDeleteResult(List.of(orphanKeyOnNextPage), List.of()));
 
-        int deletedCount = fileCleanupService.cleanupOrphanObjects(orgId, 100);
+        CleanupOrphanObjectsOutput output = fileCleanupService.cleanupOrphanObjects(new CleanupOrphanObjectsInput(
+                orgId,
+                100,
+                20,
+                500,
+                Duration.ZERO
+        ));
 
-        assertEquals(2, deletedCount);
+        assertEquals(2, output.deletedCount());
+        assertEquals(2, output.scannedPageCount());
+        assertEquals(3, output.scannedObjectCount());
         verify(storagePort).listObjects(eq(prefix), isNull(), eq(100));
         verify(storagePort).listObjects(prefix, "next-page", 100);
-        verify(storagePort).deleteObject(orphanKey);
-        verify(storagePort).deleteObject(orphanKeyOnNextPage);
+        verify(storagePort).deleteObjects(List.of(orphanKey));
+        verify(storagePort).deleteObjects(List.of(orphanKeyOnNextPage));
     }
 
     @Test
@@ -121,13 +135,76 @@ class FileCleanupServiceTest {
                 .thenReturn(new StorageObjectListPage(List.of(failedOrphanKey, deletedOrphanKey), null));
         when(fileRepository.findByFileKeyIn(List.of(failedOrphanKey, deletedOrphanKey)))
                 .thenReturn(List.of());
-        doThrow(new RuntimeException("storage error")).when(storagePort).deleteObject(failedOrphanKey);
-        doNothing().when(storagePort).deleteObject(deletedOrphanKey);
+        when(storagePort.deleteObjects(List.of(failedOrphanKey, deletedOrphanKey)))
+                .thenReturn(new StorageDeleteResult(List.of(deletedOrphanKey), List.of(failedOrphanKey)));
 
-        int deletedCount = fileCleanupService.cleanupOrphanObjects(orgId, 100);
+        CleanupOrphanObjectsOutput output = fileCleanupService.cleanupOrphanObjects(new CleanupOrphanObjectsInput(
+                orgId,
+                100,
+                20,
+                500,
+                Duration.ZERO
+        ));
 
-        assertEquals(1, deletedCount);
-        verify(storagePort).deleteObject(failedOrphanKey);
-        verify(storagePort).deleteObject(deletedOrphanKey);
+        assertEquals(1, output.deletedCount());
+        verify(storagePort).deleteObjects(List.of(failedOrphanKey, deletedOrphanKey));
+    }
+
+    @Test
+    void cleanupOrphanObjects_런당_페이지수를_제한한다() {
+        UUID orgId = UUID.randomUUID();
+        String prefix = "tenants/" + orgId + "/";
+        String orphanKey = prefix + "uploaded/orphan.txt";
+
+        when(storagePort.listObjects(prefix, null, 100))
+                .thenReturn(new StorageObjectListPage(List.of(orphanKey), "next-page"));
+        when(fileRepository.findByFileKeyIn(List.of(orphanKey)))
+                .thenReturn(List.of());
+        when(storagePort.deleteObjects(List.of(orphanKey)))
+                .thenReturn(new StorageDeleteResult(List.of(orphanKey), List.of()));
+
+        CleanupOrphanObjectsOutput output = fileCleanupService.cleanupOrphanObjects(new CleanupOrphanObjectsInput(
+                orgId,
+                100,
+                1,
+                500,
+                Duration.ZERO
+        ));
+
+        assertEquals(1, output.deletedCount());
+        assertEquals(1, output.scannedPageCount());
+        assertEquals(1, output.scannedObjectCount());
+        assertEquals(true, output.stoppedByPageLimit());
+        verify(storagePort, times(1)).listObjects(eq(prefix), isNull(), eq(100));
+    }
+
+    @Test
+    void cleanupOrphanObjects_런당_삭제수를_제한한다() {
+        UUID orgId = UUID.randomUUID();
+        String prefix = "tenants/" + orgId + "/";
+        String orphanKey1 = prefix + "uploaded/orphan-1.txt";
+        String orphanKey2 = prefix + "uploaded/orphan-2.txt";
+        String orphanKey3 = prefix + "uploaded/orphan-3.txt";
+
+        when(storagePort.listObjects(prefix, null, 100))
+                .thenReturn(new StorageObjectListPage(List.of(orphanKey1, orphanKey2, orphanKey3), null));
+        when(fileRepository.findByFileKeyIn(List.of(orphanKey1, orphanKey2, orphanKey3)))
+                .thenReturn(List.of());
+        when(storagePort.deleteObjects(List.of(orphanKey1, orphanKey2)))
+                .thenReturn(new StorageDeleteResult(List.of(orphanKey1, orphanKey2), List.of()));
+
+        CleanupOrphanObjectsOutput output = fileCleanupService.cleanupOrphanObjects(new CleanupOrphanObjectsInput(
+                orgId,
+                100,
+                20,
+                2,
+                Duration.ZERO
+        ));
+
+        assertEquals(2, output.deletedCount());
+        assertEquals(1, output.scannedPageCount());
+        assertEquals(3, output.scannedObjectCount());
+        assertEquals(true, output.stoppedByDeleteLimit());
+        verify(storagePort).deleteObjects(List.of(orphanKey1, orphanKey2));
     }
 }
