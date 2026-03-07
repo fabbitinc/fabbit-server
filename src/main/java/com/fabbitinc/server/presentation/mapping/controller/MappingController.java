@@ -339,6 +339,7 @@ public class MappingController {
         return new PropertyMappingDto(
                 result.sourceColumn(),
                 result.targetProperty(),
+                result.suggestedExtendedProperty(),
                 result.dataType(),
                 result.confidence(),
                 result.reason(),

@@ -8,7 +8,6 @@ import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
 import com.fabbitinc.server.application.mapping.dto.common.PropertyMappingDto;
 import com.fabbitinc.server.application.mapping.service.MappingService;
 import com.fabbitinc.server.application.mapping.support.MappingLlmGenerationSupport;
-import com.fabbitinc.server.application.mapping.support.MappingNormalizationSupport;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
 import com.fabbitinc.server.application.mapping.usecase.command.PreviewMappingCommand;
 import com.fabbitinc.server.application.mapping.usecase.result.PreviewMappingResult;
@@ -39,7 +38,6 @@ class PreviewMappingUseCaseTest {
         CurrentAuthProvider currentAuthProvider = mock(CurrentAuthProvider.class);
         MappingService mappingService = mock(MappingService.class);
         MappingLlmGenerationSupport mappingLlmGenerationSupport = mock(MappingLlmGenerationSupport.class);
-        MappingNormalizationSupport mappingNormalizationSupport = mock(MappingNormalizationSupport.class);
         OrganizationApi organizationApi = mock(OrganizationApi.class);
         AiUsageService aiUsageService = mock(AiUsageService.class);
 
@@ -47,7 +45,6 @@ class PreviewMappingUseCaseTest {
                 currentAuthProvider,
                 mappingService,
                 mappingLlmGenerationSupport,
-                mappingNormalizationSupport,
                 organizationApi,
                 aiUsageService,
                 new ObjectMapper()
@@ -65,7 +62,7 @@ class PreviewMappingUseCaseTest {
         List<String> headers = List.of("품번");
         List<Map<String, Object>> rows = List.of(Map.of("품번", "A-001"));
         MappingResultDto generatedMapping = new MappingResultDto(
-                List.of(new PropertyMappingDto("품번", "part_number", PropertyDataType.STRING, 95, "llm result", false)),
+                List.of(new PropertyMappingDto("품번", "part_number", "_ext_number", PropertyDataType.STRING, 95, "llm result", false)),
                 List.of()
         );
 
@@ -75,13 +72,13 @@ class PreviewMappingUseCaseTest {
                 .thenReturn(new SpreadsheetParserSupport.ParsedSheet(headers, rows));
         when(mappingLlmGenerationSupport.generate(headers, rows))
                 .thenReturn(new MappingLlmGenerationSupport.GenerationOutput(generatedMapping, "openai/gpt-5-mini", 123, 45));
-        when(mappingNormalizationSupport.normalize(generatedMapping)).thenReturn(generatedMapping);
 
         PreviewMappingResult result = useCase.execute(new PreviewMappingCommand(fileId, null));
 
         assertEquals(headers, result.headers());
         assertEquals(1, result.sheets().size());
         assertEquals(generatedMapping, result.mapping());
+        assertEquals("_ext_number", result.mapping().propertyMappings().get(0).suggestedExtendedProperty());
 
         InOrder inOrder = inOrder(organizationApi, mappingLlmGenerationSupport, aiUsageService);
         inOrder.verify(organizationApi).checkCreditQuota(orgId, AiUsageCategory.BOM_ANALYSIS);

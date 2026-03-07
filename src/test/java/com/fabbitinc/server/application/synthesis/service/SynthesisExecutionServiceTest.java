@@ -183,12 +183,12 @@ class SynthesisExecutionServiceTest {
     private MappingResultDto mappingWithPartFields() {
         return new MappingResultDto(
                 List.of(
-                        new PropertyMappingDto("part_no", "part_number", PropertyDataType.STRING, 100, "", false),
-                        new PropertyMappingDto("part_name", "name", PropertyDataType.STRING, 100, "", false),
-                        new PropertyMappingDto("part_category", "category", PropertyDataType.STRING, 100, "", false),
-                        new PropertyMappingDto("part_material", "material", PropertyDataType.STRING, 100, "", false),
-                        new PropertyMappingDto("part_unit", "unit", PropertyDataType.STRING, 100, "", false),
-                        new PropertyMappingDto("part_description", "description", PropertyDataType.STRING, 100, "", false)
+                        new PropertyMappingDto("part_no", "part_number", null, PropertyDataType.STRING, 100, "", false),
+                        new PropertyMappingDto("part_name", "name", null, PropertyDataType.STRING, 100, "", false),
+                        new PropertyMappingDto("part_category", "category", null, PropertyDataType.STRING, 100, "", false),
+                        new PropertyMappingDto("part_material", "material", null, PropertyDataType.STRING, 100, "", false),
+                        new PropertyMappingDto("part_unit", "unit", null, PropertyDataType.STRING, 100, "", false),
+                        new PropertyMappingDto("part_description", "description", null, PropertyDataType.STRING, 100, "", false)
                 ),
                 List.of()
         );

@@ -11,7 +11,6 @@ import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
 import com.fabbitinc.server.application.mapping.service.MappingService;
 import com.fabbitinc.server.application.mapping.support.MappingLlmGenerationSupport;
-import com.fabbitinc.server.application.mapping.support.MappingNormalizationSupport;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
 import com.fabbitinc.server.application.mapping.usecase.command.PreviewMappingCommand;
 import com.fabbitinc.server.application.mapping.usecase.result.PreviewMappingResult;
@@ -36,7 +35,6 @@ public class PreviewMappingUseCase {
     private final CurrentAuthProvider currentAuthProvider;
     private final MappingService mappingService;
     private final MappingLlmGenerationSupport mappingLlmGenerationSupport;
-    private final MappingNormalizationSupport mappingNormalizationSupport;
     private final OrganizationApi organizationApi;
     private final AiUsageService aiUsageService;
     private final ObjectMapper objectMapper;
@@ -85,7 +83,7 @@ public class PreviewMappingUseCase {
                     generation.outputTokens()
             ));
 
-            MappingResultDto normalized = mappingNormalizationSupport.normalize(generation.mapping());
+            MappingResultDto normalized = generation.mapping();
             if (normalized.propertyMappings().isEmpty()) {
                 if (sheet != null) {
                     skipped.add(new SkippedSheetResult(sheet, "온톨로지에 매핑 가능한 컬럼이 없습니다"));

@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -61,16 +60,13 @@ public class MappingNormalizationSupport {
         List<PropertyMappingDto> verified = new ArrayList<>();
 
         for (PropertyMappingDto property : properties) {
-            if (property.targetProperty() == null || property.targetProperty().isBlank()) {
-                continue;
-            }
-
-            String target = property.targetProperty();
+            String target = property.targetProperty() == null ? "" : property.targetProperty();
             if (target.startsWith("_ext_")) {
-                String normalized = normalizeExtendedName(target);
+                String normalized = ExtendedPropertySupport.normalizeExtendedProperty(target);
                 verified.add(new PropertyMappingDto(
                         property.sourceColumn(),
                         normalized,
+                        property.suggestedExtendedProperty(),
                         property.dataType(),
                         property.confidence(),
                         property.reason(),
@@ -83,6 +79,7 @@ public class MappingNormalizationSupport {
                 verified.add(new PropertyMappingDto(
                         property.sourceColumn(),
                         target,
+                        property.suggestedExtendedProperty(),
                         property.dataType(),
                         property.confidence(),
                         property.reason(),
@@ -93,7 +90,8 @@ public class MappingNormalizationSupport {
 
             verified.add(new PropertyMappingDto(
                     property.sourceColumn(),
-                    normalizeExtendedName("_ext_" + target),
+                    ExtendedPropertySupport.normalizeExtendedProperty("_ext_" + target),
+                    property.suggestedExtendedProperty(),
                     property.dataType(),
                     property.confidence(),
                     property.reason(),
@@ -186,24 +184,5 @@ public class MappingNormalizationSupport {
                 relation.confidence(),
                 relation.reason()
         );
-    }
-
-    private String normalizeExtendedName(String raw) {
-        String normalized = raw == null ? "" : raw.trim();
-        while (normalized.startsWith("_ext__ext_")) {
-            normalized = normalized.substring("_ext_".length());
-        }
-
-        String core = normalized.startsWith("_ext_") ? normalized.substring("_ext_".length()) : normalized;
-        core = core.trim().replaceAll("[^a-zA-Z0-9_]+", "_")
-                .replaceAll("_+", "_")
-                .replaceAll("^_", "")
-                .replaceAll("_$", "")
-                .toLowerCase(Locale.ROOT);
-
-        if (core.isBlank()) {
-            return "_ext_unknown";
-        }
-        return "_ext_" + core;
     }
 }

@@ -148,6 +148,7 @@ public class MappingGenerationSupport {
             propertyMappings.add(new PropertyMappingDto(
                     header,
                     extKey,
+                    extKey,
                     PropertyDataType.STRING,
                     60,
                     "extended property",
@@ -178,6 +179,7 @@ public class MappingGenerationSupport {
         propertyMappings.add(new PropertyMappingDto(
                 selected,
                 targetProperty,
+                null,
                 dataType,
                 confidence,
                 reason,
