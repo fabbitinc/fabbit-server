@@ -4,7 +4,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import io.swagger.v3.core.jackson.ModelResolver;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.PathItem;
+import io.swagger.v3.oas.models.media.Content;
+import io.swagger.v3.oas.models.media.MediaType;
+import io.swagger.v3.oas.models.media.Schema;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.springdoc.core.customizers.GlobalOpenApiCustomizer;
 import org.springdoc.core.properties.SpringDocConfigProperties;
 import org.springdoc.core.providers.ObjectMapperProvider;
 import org.springframework.beans.BeanUtils;
@@ -23,9 +36,24 @@ public class OpenApiModelResolverConfig {
     public ModelResolver modelResolver(
             JacksonProperties jacksonProperties,
             SpringDocConfigProperties springDocConfigProperties) {
+        ObjectMapper objectMapper = createOpenApiObjectMapper(jacksonProperties, springDocConfigProperties);
+        return new ModelResolver(objectMapper).openapi31(springDocConfigProperties.isOpenapi31());
+    }
+
+    @Bean
+    public GlobalOpenApiCustomizer openApiPropertyNamingCustomizer(
+            JacksonProperties jacksonProperties,
+            SpringDocConfigProperties springDocConfigProperties) {
+        ObjectMapper objectMapper = createOpenApiObjectMapper(jacksonProperties, springDocConfigProperties);
+        return openApi -> normalizeSwaggerAccessorPrefixBug(openApi, objectMapper);
+    }
+
+    private ObjectMapper createOpenApiObjectMapper(
+            JacksonProperties jacksonProperties,
+            SpringDocConfigProperties springDocConfigProperties) {
         ObjectMapper objectMapper = new ObjectMapperProvider(springDocConfigProperties).jsonMapper().copy();
         applyPropertyNamingStrategy(objectMapper, jacksonProperties.getPropertyNamingStrategy());
-        return new ModelResolver(objectMapper).openapi31(springDocConfigProperties.isOpenapi31());
+        return objectMapper;
     }
 
     private void applyPropertyNamingStrategy(ObjectMapper objectMapper, String propertyNamingStrategy) {
@@ -53,5 +81,157 @@ public class OpenApiModelResolverConfig {
         catch (IllegalAccessException ex) {
             throw new IllegalStateException(ex);
         }
+    }
+
+    private void normalizeSwaggerAccessorPrefixBug(OpenAPI openApi, ObjectMapper objectMapper) {
+        if (openApi == null || objectMapper.getPropertyNamingStrategy() == null) {
+            return;
+        }
+
+        // swagger-core가 issueId/issueIds처럼 "is"로 시작하는 일반 이름을 getter 예외로 오인해
+        // 원래의 camelCase member 이름으로 되돌리므로, 최종 OpenAPI 스키마에서 다시 정규화한다.
+        Set<Schema<?>> visitedSchemas = Collections.newSetFromMap(new IdentityHashMap<>());
+        if (openApi.getComponents() != null && openApi.getComponents().getSchemas() != null) {
+            openApi.getComponents().getSchemas().values()
+                    .forEach(schema -> normalizeSwaggerAccessorPrefixBug(schema, objectMapper, visitedSchemas));
+        }
+        if (openApi.getPaths() == null) {
+            return;
+        }
+        openApi.getPaths().values()
+                .forEach(pathItem -> normalizeSwaggerAccessorPrefixBug(pathItem, objectMapper, visitedSchemas));
+    }
+
+    private void normalizeSwaggerAccessorPrefixBug(
+            PathItem pathItem,
+            ObjectMapper objectMapper,
+            Set<Schema<?>> visitedSchemas) {
+        if (pathItem == null) {
+            return;
+        }
+
+        pathItem.readOperations().forEach(operation -> {
+            if (operation.getParameters() != null) {
+                operation.getParameters().forEach(parameter -> {
+                    normalizeSwaggerAccessorPrefixBug(parameter.getSchema(), objectMapper, visitedSchemas);
+                    normalizeSwaggerAccessorPrefixBug(parameter.getContent(), objectMapper, visitedSchemas);
+                });
+            }
+            if (operation.getRequestBody() != null) {
+                normalizeSwaggerAccessorPrefixBug(operation.getRequestBody().getContent(), objectMapper, visitedSchemas);
+            }
+            if (operation.getResponses() != null) {
+                operation.getResponses().values()
+                        .forEach(response -> normalizeSwaggerAccessorPrefixBug(response.getContent(), objectMapper, visitedSchemas));
+            }
+        });
+    }
+
+    private void normalizeSwaggerAccessorPrefixBug(
+            Content content,
+            ObjectMapper objectMapper,
+            Set<Schema<?>> visitedSchemas) {
+        if (content == null) {
+            return;
+        }
+
+        for (MediaType mediaType : content.values()) {
+            normalizeSwaggerAccessorPrefixBug(mediaType.getSchema(), objectMapper, visitedSchemas);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void normalizeSwaggerAccessorPrefixBug(
+            Schema<?> schema,
+            ObjectMapper objectMapper,
+            Set<Schema<?>> visitedSchemas) {
+        if (schema == null || !visitedSchemas.add(schema)) {
+            return;
+        }
+
+        Map<String, Schema> properties = schema.getProperties();
+        if (properties != null && !properties.isEmpty()) {
+            Map<String, String> renamedProperties = new LinkedHashMap<>();
+            Map<String, Schema> normalizedProperties = new LinkedHashMap<>();
+            for (Map.Entry<String, Schema> entry : properties.entrySet()) {
+                String normalizedPropertyName = normalizeSwaggerAccessorPrefixBug(entry.getKey(), objectMapper);
+                normalizedProperties.putIfAbsent(normalizedPropertyName, entry.getValue());
+                if (!entry.getKey().equals(normalizedPropertyName)) {
+                    renamedProperties.put(entry.getKey(), normalizedPropertyName);
+                }
+            }
+            if (!renamedProperties.isEmpty()) {
+                schema.setProperties(normalizedProperties);
+                normalizeRequiredPropertyNames(schema, renamedProperties);
+            }
+            normalizedProperties.values()
+                    .forEach(propertySchema -> normalizeSwaggerAccessorPrefixBug(propertySchema, objectMapper, visitedSchemas));
+        }
+
+        normalizeSwaggerAccessorPrefixBug(schema.getItems(), objectMapper, visitedSchemas);
+        if (schema.getAdditionalProperties() instanceof Schema<?> additionalPropertiesSchema) {
+            normalizeSwaggerAccessorPrefixBug(additionalPropertiesSchema, objectMapper, visitedSchemas);
+        }
+        if (schema.getAllOf() != null) {
+            schema.getAllOf().forEach(item -> normalizeSwaggerAccessorPrefixBug(item, objectMapper, visitedSchemas));
+        }
+        if (schema.getAnyOf() != null) {
+            schema.getAnyOf().forEach(item -> normalizeSwaggerAccessorPrefixBug(item, objectMapper, visitedSchemas));
+        }
+        if (schema.getOneOf() != null) {
+            schema.getOneOf().forEach(item -> normalizeSwaggerAccessorPrefixBug(item, objectMapper, visitedSchemas));
+        }
+        normalizeSwaggerAccessorPrefixBug(schema.getNot(), objectMapper, visitedSchemas);
+    }
+
+    private void normalizeRequiredPropertyNames(Schema<?> schema, Map<String, String> renamedProperties) {
+        List<String> required = schema.getRequired();
+        if (required == null || required.isEmpty()) {
+            return;
+        }
+
+        List<String> normalizedRequired = new ArrayList<>(required.size());
+        for (String propertyName : required) {
+            String normalizedPropertyName = renamedProperties.getOrDefault(propertyName, propertyName);
+            if (!normalizedRequired.contains(normalizedPropertyName)) {
+                normalizedRequired.add(normalizedPropertyName);
+            }
+        }
+        schema.setRequired(normalizedRequired);
+    }
+
+    private String normalizeSwaggerAccessorPrefixBug(String propertyName, ObjectMapper objectMapper) {
+        if (!isSwaggerAccessorPrefixBugTarget(propertyName)) {
+            return propertyName;
+        }
+
+        PropertyNamingStrategy propertyNamingStrategy = objectMapper.getPropertyNamingStrategy();
+        if (propertyNamingStrategy instanceof PropertyNamingStrategies.NamingBase namingBase) {
+            return namingBase.translate(propertyName);
+        }
+
+        String normalizedPropertyName =
+                propertyNamingStrategy.nameForField(objectMapper.getSerializationConfig(), null, propertyName);
+        return StringUtils.hasText(normalizedPropertyName) ? normalizedPropertyName : propertyName;
+    }
+
+    private boolean isSwaggerAccessorPrefixBugTarget(String value) {
+        return hasUppercaseCharacter(value)
+                && (startsWithLowercaseBeanPrefix(value, "is") || startsWithLowercaseBeanPrefix(value, "get"));
+    }
+
+    private boolean hasUppercaseCharacter(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            if (Character.isUpperCase(value.charAt(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean startsWithLowercaseBeanPrefix(String value, String prefix) {
+        return value.startsWith(prefix)
+                && value.length() > prefix.length()
+                && Character.isLowerCase(value.charAt(prefix.length()));
     }
 }
