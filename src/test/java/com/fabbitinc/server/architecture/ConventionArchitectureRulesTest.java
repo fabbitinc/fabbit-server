@@ -108,6 +108,15 @@ class ConventionArchitectureRulesTest {
                     .allowEmptyShould(true);
 
     @ArchTest
+    static final ArchRule nonNotificationServicesMustNotDependOnNotificationRepository =
+            noClasses()
+                    .that().haveSimpleNameEndingWith("Service")
+                    .and().resideInAPackage("..service..")
+                    .and().resideOutsideOfPackage("..application.notification..")
+                    .should().dependOnClassesThat().resideInAnyPackage("..domain.notification.repository..")
+                    .allowEmptyShould(true);
+
+    @ArchTest
     static final ArchRule controllerClassesMustBeAnnotatedWithTag =
             classes()
                     .that().haveSimpleNameEndingWith("Controller")

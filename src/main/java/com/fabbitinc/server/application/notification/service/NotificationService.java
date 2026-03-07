@@ -2,6 +2,8 @@ package com.fabbitinc.server.application.notification.service;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.domain.notification.model.Notification;
+import com.fabbitinc.server.domain.notification.model.NotificationType;
 import com.fabbitinc.server.domain.notification.repository.NotificationRepository;
 import java.time.Instant;
 import java.util.UUID;
@@ -13,6 +15,10 @@ import org.springframework.stereotype.Service;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+
+    public Notification create(UUID userId, NotificationType type, UUID actorId, String payload) {
+        return notificationRepository.save(Notification.create(userId, type, actorId, payload));
+    }
 
     public void markAsRead(UUID userId, UUID notificationId) {
         int updated = notificationRepository.markAsRead(userId, notificationId, Instant.now());

@@ -22,6 +22,11 @@
 | 협업 | `collaboration-migration.md` | 팀/이슈/라벨/읽음 처리는 강하지만 프로젝트 activity 쓰기와 알림 SSE push가 비어 있습니다. |
 | AI/그래프 | `ai-graph-migration.md` | 매핑은 강하지만 activation 자연어 질의와 synthesis의 일반 그래프 폴백/루트 컨텍스트 검증이 아직 축소되어 있습니다. |
 
+## 전환 메모
+
+- [v1-removal-plan.md](/Users/seongha.moon/code/projects/fabbit/server2/refacotr/v1-removal-plan.md)
+  - Mapping/Synthesis의 V1 제거, V2 승격, 최종 canonical 이름 정리 기준입니다.
+
 ## 우선순위 높은 갭
 
 1. Activation 자연어 질의 축소

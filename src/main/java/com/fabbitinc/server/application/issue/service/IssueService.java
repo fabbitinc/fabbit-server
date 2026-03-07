@@ -3,6 +3,7 @@ package com.fabbitinc.server.application.issue.service;
 import com.fabbitinc.server.application.activity.model.ActivityAction;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.issue.event.IssueUsersMentionedEvent;
 import com.fabbitinc.server.application.issue.support.MentionExtractor;
 import com.fabbitinc.server.application.issue.support.TipTapValidator;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
@@ -40,10 +41,6 @@ import com.fabbitinc.server.domain.issue.repository.IssueRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueTeamAssigneeRepository;
 import com.fabbitinc.server.domain.label.model.Label;
 import com.fabbitinc.server.domain.label.repository.LabelRepository;
-import com.fabbitinc.server.domain.notification.model.Notification;
-import com.fabbitinc.server.domain.notification.model.NotificationSourceIssueType;
-import com.fabbitinc.server.domain.notification.model.NotificationType;
-import com.fabbitinc.server.domain.notification.repository.NotificationRepository;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.team.model.TeamMember;
@@ -62,6 +59,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -104,7 +102,7 @@ public class IssueService {
     private final PartRepository partRepository;
     private final FileRepository fileRepository;
     private final ActivityRepository activityRepository;
-    private final NotificationRepository notificationRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final OrganizationApi organizationApi;
     private final TipTapValidator tipTapValidator;
     private final MentionExtractor mentionExtractor;
@@ -806,9 +804,9 @@ public class IssueService {
         addedIssueMentions.removeAll(oldMentions.issueIds());
         addedIssueMentions.remove(issue.getId());
 
-        NotificationSourceIssueType sourceIssueType = issue.getType() == IssueType.CHANGE_REQUEST
-                ? NotificationSourceIssueType.CHANGE_REQUEST
-                : NotificationSourceIssueType.ISSUE;
+        String sourceIssueType = issue.getType() == IssueType.CHANGE_REQUEST
+                ? "change_request"
+                : "issue";
         for (UUID targetIssueId : addedIssueMentions) {
             Map<String, Object> ref = new LinkedHashMap<>();
             ref.put("id", issue.getId().toString());
@@ -828,19 +826,15 @@ public class IssueService {
         addedUserMentions.removeAll(oldMentions.userIds());
         addedUserMentions.remove(actorId);
 
-        for (UUID userId : addedUserMentions) {
-            Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("source_issue_id", issue.getId().toString());
-            payload.put("source_number", issue.getNumber());
-            payload.put("source_title", issue.getTitle());
-            payload.put("source_issue_type", sourceIssueType);
-            payload.put("is_comment", isComment);
-
-            notificationRepository.save(Notification.create(
-                    userId,
-                    NotificationType.MENTION,
+        if (!addedUserMentions.isEmpty()) {
+            applicationEventPublisher.publishEvent(IssueUsersMentionedEvent.create(
+                    issue.getId(),
                     actorId,
-                    toJsonString(payload)
+                    addedUserMentions,
+                    issue.getNumber(),
+                    issue.getTitle(),
+                    sourceIssueType,
+                    isComment
             ));
         }
     }

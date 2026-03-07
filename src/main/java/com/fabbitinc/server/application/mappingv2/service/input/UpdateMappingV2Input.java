@@ -1,0 +1,14 @@
+package com.fabbitinc.server.application.mappingv2.service.input;
+
+import com.fabbitinc.server.application.mappingv2.dto.common.MappingV2ResultDto;
+import java.util.List;
+import java.util.UUID;
+
+public record UpdateMappingV2Input(
+        String name,
+        UUID fileId,
+        String sheetName,
+        List<String> originalHeaders,
+        MappingV2ResultDto mapping
+) {
+}
