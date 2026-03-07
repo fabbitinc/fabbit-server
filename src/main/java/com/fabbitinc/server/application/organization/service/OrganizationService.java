@@ -5,6 +5,7 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.organization.port.TenantProvisioningPort;
 import com.fabbitinc.server.application.organization.service.input.CreateOrganizationInput;
+import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.file.model.File;
@@ -33,6 +34,7 @@ public class OrganizationService {
     private final OrganizationRepository organizationRepository;
     private final MembershipRepository membershipRepository;
     private final TenantProvisioningPort tenantProvisioningPort;
+    private final SubscriptionApi subscriptionApi;
 
     public Organization createOrganization(UUID userId, CreateOrganizationInput input) {
         PlanType planType = input.planType();
@@ -60,6 +62,7 @@ public class OrganizationService {
 
         membershipRepository.save(ownerMembership);
         tenantProvisioningPort.provisionTenant(organization.getId());
+        subscriptionApi.createInitialSubscription(organization.getId(), planType);
 
         return organization;
     }

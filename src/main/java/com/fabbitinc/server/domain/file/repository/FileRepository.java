@@ -2,9 +2,11 @@ package com.fabbitinc.server.domain.file.repository;
 
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,4 +34,15 @@ public interface FileRepository extends JpaRepository<File, UUID> {
     long countByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(String ownerType, UUID ownerId, FileStatus status);
 
     List<File> findByStatusAndOwnerTypeIsNotNull(FileStatus status);
+
+    List<File> findByStatusAndCreatedAtBeforeAndDeletedAtIsNullOrderByCreatedAtAscIdAsc(
+            FileStatus status,
+            Instant createdAt,
+            Pageable pageable
+    );
+
+    List<File> findByDeletedAtBeforeOrderByDeletedAtAscIdAsc(
+            Instant deletedAt,
+            Pageable pageable
+    );
 }

@@ -7,4 +7,6 @@ public interface StoragePort {
     StorageObjectMeta headObject(String fileKey);
 
     byte[] getObject(String fileKey);
+
+    void deleteObject(String fileKey);
 }

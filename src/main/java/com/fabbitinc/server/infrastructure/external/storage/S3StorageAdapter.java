@@ -19,6 +19,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 import software.amazon.awssdk.core.ResponseBytes;
@@ -132,6 +133,28 @@ public class S3StorageAdapter implements StoragePort {
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "스토리지 객체 조회 중 오류가 발생했습니다");
         } catch (RuntimeException ex) {
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "스토리지 객체 조회 중 오류가 발생했습니다");
+        }
+    }
+
+    @Override
+    public void deleteObject(String fileKey) {
+        try {
+            DeleteObjectRequest request = DeleteObjectRequest.builder()
+                    .bucket(appProperties.storageBucket())
+                    .key(fileKey)
+                    .build();
+            s3Client.deleteObject(request);
+        } catch (S3Exception ex) {
+            String errorCode = ex.awsErrorDetails() == null ? null : ex.awsErrorDetails().errorCode();
+            if (ex.statusCode() == 404
+                    || "404".equals(errorCode)
+                    || "NotFound".equals(errorCode)
+                    || "NoSuchKey".equals(errorCode)) {
+                return;
+            }
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "스토리지 객체 삭제 중 오류가 발생했습니다");
+        } catch (RuntimeException ex) {
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "스토리지 객체 삭제 중 오류가 발생했습니다");
         }
     }
 

@@ -3,6 +3,8 @@ package com.fabbitinc.server.application.organization.service;
 import com.fabbitinc.server.application.config.JpaAuditingConfig;
 import com.fabbitinc.server.application.organization.port.TenantProvisioningPort;
 import com.fabbitinc.server.application.organization.service.input.CreateOrganizationInput;
+import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
+import com.fabbitinc.server.application.subscription.service.SubscriptionService;
 import com.fabbitinc.server.Server2Application;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
@@ -10,6 +12,9 @@ import com.fabbitinc.server.domain.organization.model.Organization;
 import com.fabbitinc.server.domain.organization.model.PlanType;
 import com.fabbitinc.server.domain.organization.repository.MembershipRepository;
 import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
+import com.fabbitinc.server.domain.subscription.model.Subscription;
+import com.fabbitinc.server.domain.subscription.model.SubscriptionStatus;
+import com.fabbitinc.server.domain.subscription.repository.SubscriptionRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -40,6 +45,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Import({
         JpaAuditingConfig.class,
         OrganizationService.class,
+        SubscriptionApi.class,
+        SubscriptionService.class,
         OrganizationServicePersistenceTest.TestConfig.class
 })
 class OrganizationServicePersistenceTest {
@@ -52,6 +59,8 @@ class OrganizationServicePersistenceTest {
     private OrganizationRepository organizationRepository;
     @Autowired
     private MembershipRepository membershipRepository;
+    @Autowired
+    private SubscriptionRepository subscriptionRepository;
     @Autowired
     private TenantProvisioningRecorder tenantProvisioningRecorder;
 
@@ -76,6 +85,15 @@ class OrganizationServicePersistenceTest {
                 .orElseThrow();
         assertEquals(MembershipRole.OWNER, membership.getRole());
         assertEquals(organization.getId(), tenantProvisioningRecorder.provisionedOrgId());
+
+        Subscription subscription = subscriptionRepository
+                .findByOrgIdAndStatus(organization.getId(), SubscriptionStatus.ACTIVE)
+                .orElseThrow();
+        assertEquals(PlanType.STARTER.name(), subscription.getPlanType());
+        assertEquals(PlanType.STARTER.maxMembers(), subscription.getMaxMembers());
+        assertEquals(PlanType.STARTER.aiCredits(), subscription.getAiCreditsGranted());
+        assertEquals((long) PlanType.STARTER.storageGb() * 1_000_000_000L, subscription.getStorageBytesLimit());
+        assertTrue(subscription.getCurrentPeriodEnd().isAfter(subscription.getCurrentPeriodStart()));
     }
 
     @TestConfiguration
