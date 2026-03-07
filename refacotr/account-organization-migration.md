@@ -24,10 +24,10 @@
 
 ## 요약
 
-- 함수 단위 매핑 기준 총 `44`개 중 `완료 38`, `부분 3`, `누락 3`입니다.
-- 단순 기능 수치로 보면 완성도는 약 `86%`입니다.
-- 현재 남은 큰 누락은 조직 스토리지 quota 관리 3종입니다.
-- 부분 이행 항목도 실제 운영 리스크가 있습니다.
+- 함수 단위 매핑 기준 총 `44`개 중 `완료 41`, `부분 3`, `누락 0`입니다.
+- 단순 기능 수치로 보면 완성도는 약 `93%`입니다.
+- 조직 스토리지 quota 3종은 `OrganizationService/OrganizationApi`와 파일 attach/delete 경로에 다시 연결됐습니다.
+- 현재 남은 주요 차이는 부분 이행 항목 3개입니다.
   - 회원가입 시 Turnstile 재검증 누락
   - 비활성 사용자 로그인 차단 누락
   - 슬러그 자동 생성/예약어 정책 차이
@@ -68,9 +68,9 @@
 | `add_member` | `AcceptInvitationUseCase`, `OrganizationApi.addMember`, `OrganizationService.addMember` | 완료 | 중복 멤버 방지와 좌석 예약을 포함한 멤버 추가가 유지됩니다. |
 | `check_credit_quota` | `OrganizationService.checkCreditQuota` | 완료 | AI credit 잔량 검증이 유지됩니다. |
 | `consume_credits` | `OrganizationService.consumeCredits` | 완료 | `findByIdForUpdate` 후 credit 차감으로 이전 원자적 차감 의도가 유지됩니다. |
-| `check_storage_quota` | 대응 구현 미발견 | 누락 | Spring application/service/usecase 어디에서도 storage quota 사전 검증 진입점을 찾지 못했습니다. |
-| `consume_storage` | 대응 구현 미발견 | 누락 | `Organization` 엔티티에는 `useStorage` 성격 메서드가 있으나 application/service에서 호출되지 않습니다. |
-| `release_storage` | 대응 구현 미발견 | 누락 | 파일 삭제 후 storage 반환에 해당하는 application/service 호출 경로를 찾지 못했습니다. |
+| `check_storage_quota` | `OrganizationService.checkStorageQuota`, `OrganizationApi.checkStorageQuota` | 완료 | 조직 스토리지 한도 읽기 전용 검증이 다시 추가됐습니다. 현재 attach 경로는 원자적 `consume_storage`로 실사용량을 반영하고, 별도 사전 검증 진입점도 애플리케이션 계층에 복구됐습니다. |
+| `consume_storage` | `OrganizationService.consumeStorage`, `OrganizationApi.consumeStorage/consumeStorageForCurrentTenant`, `UserService/OrganizationService/PartService/IssueService/DrawingService/DrawingConversionService` | 완료 | 파일 owner를 할당하는 모든 주요 경로와 도면 변환 생성 파일 경로에서 조직 스토리지 사용량을 원자적으로 차감합니다. |
+| `release_storage` | `OrganizationService.releaseStorage`, `OrganizationApi.releaseStorage/releaseStorageForCurrentTenant`, `FileService/PartService/IssueService/DrawingService` | 완료 | 프로필 이미지 삭제, part/issue 파일 분리, drawing 삭제에서 soft delete와 함께 조직 스토리지 사용량을 반환합니다. |
 | `set_profile_image` | `SetOrganizationProfileImageUseCase`, `OrganizationService.setProfileImage` | 완료 | attachable 파일 검증, 썸네일 변환, 조직 프로필 이미지 연결이 유지됩니다. |
 | `delete_profile_image` | `DeleteOrganizationProfileImageUseCase`, `OrganizationService.deleteProfileImage` | 완료 | 조직 프로필 이미지 제거와 연결 파일 soft delete가 유지됩니다. |
 
@@ -103,24 +103,18 @@
 
 ## 핵심 갭
 
-1. 조직 스토리지 quota 관리가 애플리케이션 계층에서 사라졌습니다.
-   - 구 프로젝트는 `check_storage_quota`, `consume_storage`, `release_storage`를 통해 파일 업로드/삭제와 연결했습니다.
-   - Spring은 `Organization` 엔티티에 storage 관련 상태와 메서드가 남아 있지만 호출 경로가 없습니다.
-   - 결과적으로 파일 업로드가 quota를 우회하거나, 삭제 후 사용량이 회복되지 않을 가능성이 있습니다.
-
-2. 회원가입 Turnstile 재검증이 빠졌습니다.
+1. 회원가입 Turnstile 재검증이 빠졌습니다.
    - 구 `auth/register.py`는 인증코드 발송 시점과 회원가입 시점 모두 Turnstile을 확인했습니다.
    - Spring은 발송 시점만 검증합니다.
 
-3. 비활성 사용자 로그인 차단 규칙이 빠졌습니다.
+2. 비활성 사용자 로그인 차단 규칙이 빠졌습니다.
    - `User.active` 필드는 남아 있지만 `AuthAccountService.authenticate`는 이를 검사하지 않습니다.
 
-4. slug 정책이 미세하게 달라졌습니다.
+3. slug 정책이 미세하게 달라졌습니다.
    - 자동 slug 생성 시 한글/비ASCII 처리 방식이 바뀌었습니다.
    - 예약어 목록 일부가 누락돼 이전에 막히던 slug가 허용될 수 있습니다.
 
 ## 리스크
 
-- 파일 업로드량이 누적돼도 조직 storage 사용량/제한이 갱신되지 않으면 과금·제한 정책이 무력화됩니다.
 - 비활성 사용자 로그인 허용은 운영/보안 이슈로 이어질 수 있습니다.
 - slug 정책 차이는 이미 운영 중인 URL 정책과 충돌하거나, 이전에 금지한 시스템 reserved slug를 허용하는 문제를 만들 수 있습니다.

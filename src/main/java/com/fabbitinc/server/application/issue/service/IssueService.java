@@ -3,6 +3,7 @@ package com.fabbitinc.server.application.issue.service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.issue.support.MentionExtractor;
@@ -107,6 +108,7 @@ public class IssueService {
     private final FileRepository fileRepository;
     private final ActivityRepository activityRepository;
     private final NotificationRepository notificationRepository;
+    private final OrganizationApi organizationApi;
     private final TipTapValidator tipTapValidator;
     private final MentionExtractor mentionExtractor;
     private final ObjectMapper objectMapper;
@@ -660,6 +662,10 @@ public class IssueService {
         for (File file : files) {
             file.assignOwner(OWNER_TYPE_ISSUE, issueId);
         }
+        long totalBytes = files.stream().mapToLong(File::getFileSize).sum();
+        if (totalBytes > 0L) {
+            organizationApi.consumeStorageForCurrentTenant(totalBytes);
+        }
 
         if (emitActivity) {
             List<Map<String, Object>> addedRefs = files.stream().map(this::toFileRef).toList();
@@ -675,7 +681,11 @@ public class IssueService {
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "해당 이슈에 연결된 파일을 찾을 수 없습니다"));
 
         String fileName = file.getOriginalName();
+        long fileSize = file.getFileSize();
         file.softDelete();
+        if (fileSize > 0L) {
+            organizationApi.releaseStorageForCurrentTenant(fileSize);
+        }
 
         Map<String, Object> removed = new LinkedHashMap<>();
         removed.put("id", fileId.toString());

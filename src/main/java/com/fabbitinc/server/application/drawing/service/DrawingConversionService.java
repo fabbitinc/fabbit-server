@@ -2,11 +2,12 @@ package com.fabbitinc.server.application.drawing.service;
 
 import com.fabbitinc.server.application.drawing.config.DrawingConverterProperties;
 import com.fabbitinc.server.application.file.port.StoragePort;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
+import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
-import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -48,6 +49,7 @@ public class DrawingConversionService {
     private final DrawingRepository drawingRepository;
     private final FileRepository fileRepository;
     private final StoragePort storagePort;
+    private final OrganizationApi organizationApi;
     private final DrawingConverterProperties drawingConverterProperties;
     private final Semaphore semaphore;
 
@@ -55,11 +57,13 @@ public class DrawingConversionService {
             DrawingRepository drawingRepository,
             FileRepository fileRepository,
             StoragePort storagePort,
+            OrganizationApi organizationApi,
             DrawingConverterProperties drawingConverterProperties
     ) {
         this.drawingRepository = drawingRepository;
         this.fileRepository = fileRepository;
         this.storagePort = storagePort;
+        this.organizationApi = organizationApi;
         this.drawingConverterProperties = drawingConverterProperties;
         this.semaphore = new Semaphore(Math.max(1, drawingConverterProperties.maxConcurrent()));
     }
@@ -207,14 +211,26 @@ public class DrawingConversionService {
     private File upsertGeneratedFile(UUID drawingId, String fileKey, String originalName, String contentType, long fileSize) {
         File generatedFile = fileRepository.findByFileKeyAndDeletedAtIsNull(fileKey)
                 .orElseGet(() -> File.create(UuidV7Generator.next(), originalName, fileKey, contentType, fileSize));
+        boolean consumedStorage = false;
 
         if (generatedFile.getStatus() != com.fabbitinc.server.domain.file.model.FileStatus.UPLOADED) {
             generatedFile.markUploaded();
         }
         if (generatedFile.getOwnerId() == null) {
             generatedFile.assignOwner("drawing", drawingId);
+            if (generatedFile.getFileSize() > 0L) {
+                organizationApi.consumeStorageForCurrentTenant(generatedFile.getFileSize());
+                consumedStorage = true;
+            }
         }
-        return fileRepository.save(generatedFile);
+        try {
+            return fileRepository.save(generatedFile);
+        } catch (RuntimeException ex) {
+            if (consumedStorage) {
+                organizationApi.releaseStorageForCurrentTenant(generatedFile.getFileSize());
+            }
+            throw ex;
+        }
     }
 
     private Path createWorkDirectory(UUID drawingId) throws IOException {

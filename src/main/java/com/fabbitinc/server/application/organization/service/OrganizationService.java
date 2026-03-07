@@ -30,6 +30,7 @@ import java.util.UUID;
 public class OrganizationService {
 
     private static final long GB_TO_BYTES = 1_000_000_000L;
+    private static final String STORAGE_QUOTA_EXCEEDED_MESSAGE = "스토리지 한도를 초과했습니다. 플랜을 업그레이드해주세요.";
 
     private final OrganizationRepository organizationRepository;
     private final MembershipRepository membershipRepository;
@@ -140,6 +141,39 @@ public class OrganizationService {
         }
     }
 
+    public void checkStorageQuota(UUID orgId, long additionalBytes) {
+        long bytes = requireNonNegativeStorageBytes(additionalBytes);
+        if (bytes == 0L) {
+            return;
+        }
+
+        Organization organization = getOrgOrThrow(orgId);
+        if (!organization.isAllowStorageOverage()
+                && organization.getStorageBytesUsed() + bytes > organization.getStorageBytesLimit()) {
+            throw new AppException(ErrorCode.QUOTA_EXCEEDED, STORAGE_QUOTA_EXCEEDED_MESSAGE);
+        }
+    }
+
+    public void consumeStorage(UUID orgId, long deltaBytes) {
+        long bytes = requireNonNegativeStorageBytes(deltaBytes);
+        if (bytes == 0L) {
+            return;
+        }
+
+        if (organizationRepository.consumeStorageBytes(orgId, bytes) < 1) {
+            throw new AppException(ErrorCode.QUOTA_EXCEEDED, STORAGE_QUOTA_EXCEEDED_MESSAGE);
+        }
+    }
+
+    public void releaseStorage(UUID orgId, long deltaBytes) {
+        long bytes = requireNonNegativeStorageBytes(deltaBytes);
+        if (bytes == 0L) {
+            return;
+        }
+
+        organizationRepository.releaseStorageBytes(orgId, bytes);
+    }
+
     public void removeMember(AuthContext auth, UUID userId) {
         if (auth.userId().equals(userId)) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "자신을 제거할 수 없습니다");
@@ -189,6 +223,9 @@ public class OrganizationService {
         Organization organization = getOrgOrThrow(auth.orgId());
         organization.changeProfileImage(file.getFileKey());
         file.assignOwner("organization", organization.getId());
+        if (file.getFileSize() > 0L) {
+            consumeStorage(auth.orgId(), file.getFileSize());
+        }
     }
 
     public void deleteProfileImage(AuthContext auth) {
@@ -260,5 +297,12 @@ public class OrganizationService {
         }
 
         return slug;
+    }
+
+    private long requireNonNegativeStorageBytes(long bytes) {
+        if (bytes < 0L) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "스토리지 사용량은 0 이상이어야 합니다");
+        }
+        return bytes;
     }
 }

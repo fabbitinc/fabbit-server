@@ -2,6 +2,7 @@ package com.fabbitinc.server.application.part.service;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
@@ -9,13 +10,12 @@ import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartDefaultOwner;
 import com.fabbitinc.server.domain.part.repository.PartDefaultOwnerRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
@@ -26,6 +26,7 @@ public class PartService {
     private final PartRepository partRepository;
     private final PartDefaultOwnerRepository partDefaultOwnerRepository;
     private final FileRepository fileRepository;
+    private final OrganizationApi organizationApi;
 
     public Part updateOwner(
             UUID partId,
@@ -88,6 +89,10 @@ public class PartService {
         }
 
         files.forEach(file -> file.assignOwner("part", partId));
+        long totalBytes = files.stream().mapToLong(File::getFileSize).sum();
+        if (totalBytes > 0L) {
+            organizationApi.consumeStorageForCurrentTenant(totalBytes);
+        }
         return files;
     }
 
@@ -99,7 +104,11 @@ public class PartService {
                         ErrorCode.NOT_FOUND,
                         "Part '" + partId + "'에 연결된 파일 '" + fileId + "'을(를) 찾을 수 없습니다"
                 ));
+        long fileSize = file.getFileSize();
         file.softDelete();
+        if (fileSize > 0L) {
+            organizationApi.releaseStorageForCurrentTenant(fileSize);
+        }
     }
 
     public void assignDrawing(UUID partId, UUID drawingId) {

@@ -2,6 +2,7 @@ package com.fabbitinc.server.application.drawing.service;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
@@ -35,6 +36,7 @@ public class DrawingService {
     private final DrawingRepository drawingRepository;
     private final FileRepository fileRepository;
     private final DrawingAsyncConversionService drawingAsyncConversionService;
+    private final OrganizationApi organizationApi;
 
     public Drawing createDrawing(UUID fileId) {
         File file = fileRepository.findByIdAndDeletedAtIsNull(fileId)
@@ -61,6 +63,9 @@ public class DrawingService {
         drawingRepository.save(drawing);
 
         file.assignOwner("drawing", drawing.getId());
+        if (file.getFileSize() > 0L) {
+            organizationApi.consumeStorageForCurrentTenant(file.getFileSize());
+        }
         dispatchAfterCommit(drawing.getId());
         return drawing;
     }
@@ -80,7 +85,13 @@ public class DrawingService {
             return;
         }
         fileRepository.findByFileKeyAndDeletedAtIsNull(fileKey)
-                .ifPresent(File::softDelete);
+                .ifPresent(file -> {
+                    long fileSize = file.getFileSize();
+                    file.softDelete();
+                    if (fileSize > 0L) {
+                        organizationApi.releaseStorageForCurrentTenant(fileSize);
+                    }
+                });
     }
 
     private String extractExtension(String fileName) {

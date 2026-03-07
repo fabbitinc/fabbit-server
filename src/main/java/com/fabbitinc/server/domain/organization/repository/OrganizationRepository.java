@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -23,6 +24,7 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
     Optional<Organization> findByIdForUpdate(UUID orgId);
 
     @Modifying
+    @Transactional
     @Query("""
             update Organization o
             set o.usedMembers = o.usedMembers + 1
@@ -32,6 +34,7 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
     int reserveMemberSeat(UUID orgId);
 
     @Modifying
+    @Transactional
     @Query("""
             update Organization o
             set o.usedMembers = case
@@ -41,4 +44,26 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
             where o.id = :orgId
             """)
     int releaseMemberSeat(UUID orgId);
+
+    @Modifying
+    @Transactional
+    @Query("""
+            update Organization o
+            set o.storageBytesUsed = o.storageBytesUsed + :deltaBytes
+            where o.id = :orgId
+              and (o.allowStorageOverage = true or o.storageBytesUsed + :deltaBytes <= o.storageBytesLimit)
+            """)
+    int consumeStorageBytes(UUID orgId, long deltaBytes);
+
+    @Modifying
+    @Transactional
+    @Query("""
+            update Organization o
+            set o.storageBytesUsed = case
+                when o.storageBytesUsed > :deltaBytes then o.storageBytesUsed - :deltaBytes
+                else 0
+            end
+            where o.id = :orgId
+            """)
+    int releaseStorageBytes(UUID orgId, long deltaBytes);
 }

@@ -17,6 +17,25 @@ public final class TenantSchemaPolicy {
         return "tenant_" + orgId.toString().replace("-", "").toLowerCase(Locale.ROOT);
     }
 
+    public static UUID orgIdForSchemaName(String schemaName) {
+        String normalized = normalizeSchemaName(schemaName);
+        if (PUBLIC_SCHEMA.equals(normalized)) {
+            throw new IllegalArgumentException("public 스키마에서는 조직 ID를 해석할 수 없습니다");
+        }
+
+        String hex = normalized.substring("tenant_".length());
+        String uuidText = hex.substring(0, 8)
+                + "-"
+                + hex.substring(8, 12)
+                + "-"
+                + hex.substring(12, 16)
+                + "-"
+                + hex.substring(16, 20)
+                + "-"
+                + hex.substring(20);
+        return UUID.fromString(uuidText);
+    }
+
     public static String normalizeSchemaName(String schemaName) {
         if (schemaName == null || schemaName.isBlank()) {
             return PUBLIC_SCHEMA;

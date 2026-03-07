@@ -3,18 +3,16 @@ package com.fabbitinc.server.application.user.service;
 import com.fabbitinc.server.application.auth.policy.PasswordPolicy;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +20,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordPolicy passwordPolicy;
+    private final OrganizationApi organizationApi;
 
     public User createUser(String email, String password, String fullName) {
         User user = User.create(normalizeEmail(email), passwordPolicy.hash(password), fullName);
@@ -81,6 +80,9 @@ public class UserService {
         User user = getUserOrThrow(userId);
         user.changeProfileImage(file.getFileKey());
         file.assignOwner("user", userId);
+        if (file.getFileSize() > 0L) {
+            organizationApi.consumeStorageForCurrentTenant(file.getFileSize());
+        }
     }
 
     public void deleteProfileImage(UUID userId) {

@@ -2,6 +2,7 @@ package com.fabbitinc.server.application.drawing.service;
 
 import com.fabbitinc.server.application.drawing.config.DrawingConverterProperties;
 import com.fabbitinc.server.application.file.port.StoragePort;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
@@ -23,6 +24,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
@@ -41,6 +43,7 @@ class DrawingConversionServiceTest {
         DrawingRepository drawingRepository = mock(DrawingRepository.class);
         FileRepository fileRepository = mock(FileRepository.class);
         StoragePort storagePort = mock(StoragePort.class);
+        OrganizationApi organizationApi = mock(OrganizationApi.class);
 
         String originalKey = "tenants/org/uploaded/drawing/sample.pdf";
 
@@ -66,6 +69,7 @@ class DrawingConversionServiceTest {
                 drawingRepository,
                 fileRepository,
                 storagePort,
+                organizationApi,
                 new DrawingConverterProperties("/opt/qcad", 1, tempDir.toString())
         );
 
@@ -75,6 +79,7 @@ class DrawingConversionServiceTest {
         assertEquals(originalKey, drawing.getPdfKey());
         assertEquals("tenants/org/uploaded/drawing/sample.png", drawing.getThumbnailKey());
         verify(storagePort, never()).putObject(eq(originalKey), any(byte[].class), eq("application/pdf"));
+        verify(organizationApi, times(1)).consumeStorageForCurrentTenant(anyLong());
 
         ArgumentCaptor<File> fileCaptor = ArgumentCaptor.forClass(File.class);
         verify(fileRepository).save(fileCaptor.capture());
@@ -88,6 +93,7 @@ class DrawingConversionServiceTest {
         DrawingRepository drawingRepository = mock(DrawingRepository.class);
         FileRepository fileRepository = mock(FileRepository.class);
         StoragePort storagePort = mock(StoragePort.class);
+        OrganizationApi organizationApi = mock(OrganizationApi.class);
 
         String originalKey = "tenants/org/uploaded/drawing/sample.png";
         String pdfKey = "tenants/org/uploaded/drawing/sample.pdf";
@@ -117,6 +123,7 @@ class DrawingConversionServiceTest {
                 drawingRepository,
                 fileRepository,
                 storagePort,
+                organizationApi,
                 new DrawingConverterProperties("/opt/qcad", 1, tempDir.toString())
         );
 
@@ -127,6 +134,7 @@ class DrawingConversionServiceTest {
         assertEquals(thumbnailKey, drawing.getThumbnailKey());
         verify(storagePort).putObject(eq(pdfKey), any(byte[].class), eq("application/pdf"));
         verify(storagePort).putObject(eq(thumbnailKey), any(byte[].class), eq("image/png"));
+        verify(organizationApi, times(2)).consumeStorageForCurrentTenant(anyLong());
 
         ArgumentCaptor<File> fileCaptor = ArgumentCaptor.forClass(File.class);
         verify(fileRepository, times(2)).save(fileCaptor.capture());
@@ -143,6 +151,7 @@ class DrawingConversionServiceTest {
         DrawingRepository drawingRepository = mock(DrawingRepository.class);
         FileRepository fileRepository = mock(FileRepository.class);
         StoragePort storagePort = mock(StoragePort.class);
+        OrganizationApi organizationApi = mock(OrganizationApi.class);
 
         String originalKey = "tenants/org/uploaded/drawing/sample.dwg";
 
@@ -164,6 +173,7 @@ class DrawingConversionServiceTest {
                 drawingRepository,
                 fileRepository,
                 storagePort,
+                organizationApi,
                 new DrawingConverterProperties("/path/that/does/not/exist", 1, tempDir.toString())
         );
 
@@ -171,6 +181,7 @@ class DrawingConversionServiceTest {
 
         assertEquals(DrawingConversionStatus.FAILED, drawing.getConversionStatus());
         verify(drawingRepository).save(drawing);
+        verify(organizationApi, never()).consumeStorageForCurrentTenant(anyLong());
     }
 
     private byte[] samplePdf() throws Exception {

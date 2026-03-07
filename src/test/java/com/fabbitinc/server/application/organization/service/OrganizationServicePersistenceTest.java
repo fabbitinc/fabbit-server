@@ -6,6 +6,8 @@ import com.fabbitinc.server.application.organization.service.input.CreateOrganiz
 import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.application.subscription.service.SubscriptionService;
 import com.fabbitinc.server.Server2Application;
+import com.fabbitinc.server.application.common.exception.AppException;
+import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
@@ -31,6 +33,7 @@ import org.springframework.test.context.TestPropertySource;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(classes = OrganizationServicePersistenceTest.TestApplication.class)
@@ -94,6 +97,47 @@ class OrganizationServicePersistenceTest {
         assertEquals(PlanType.STARTER.aiCredits(), subscription.getAiCreditsGranted());
         assertEquals((long) PlanType.STARTER.storageGb() * 1_000_000_000L, subscription.getStorageBytesLimit());
         assertTrue(subscription.getCurrentPeriodEnd().isAfter(subscription.getCurrentPeriodStart()));
+    }
+
+    @Test
+    void consumeStorage와_releaseStorage가_조직_사용량을_갱신한다() {
+        User user = userRepository.save(User.create("owner-storage@example.com", "hashed-password", "Owner"));
+        Organization organization = organizationRepository.save(Organization.create(
+                "acme-storage",
+                "Acme Storage",
+                user.getId(),
+                null,
+                null,
+                PlanType.STARTER,
+                5,
+                100,
+                1_024L
+        ));
+
+        organizationService.consumeStorage(organization.getId(), 512L);
+        organizationService.releaseStorage(organization.getId(), 128L);
+
+        Organization reloaded = organizationRepository.findById(organization.getId()).orElseThrow();
+        assertEquals(384L, reloaded.getStorageBytesUsed());
+    }
+
+    @Test
+    void consumeStorage는_한도초과시_quotaExceeded를_발생시킨다() {
+        User user = userRepository.save(User.create("owner-limit@example.com", "hashed-password", "Owner"));
+        Organization organization = organizationRepository.save(Organization.create(
+                "acme-limit",
+                "Acme Limit",
+                user.getId(),
+                null,
+                null,
+                PlanType.STARTER,
+                5,
+                100,
+                100L
+        ));
+
+        AppException exception = assertThrows(AppException.class, () -> organizationService.consumeStorage(organization.getId(), 101L));
+        assertEquals(ErrorCode.QUOTA_EXCEEDED, exception.getErrorCode());
     }
 
     @TestConfiguration

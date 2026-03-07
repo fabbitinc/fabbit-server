@@ -10,6 +10,7 @@ import com.fabbitinc.server.application.file.service.output.BatchCompleteFilesOu
 import com.fabbitinc.server.application.file.service.output.BatchCreateFilesOutput;
 import com.fabbitinc.server.application.file.service.output.CreateFileOutput;
 import com.fabbitinc.server.application.file.service.output.FileCompleteOutput;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
@@ -34,6 +35,7 @@ public class FileService {
 
     private final FileRepository fileRepository;
     private final StoragePort storagePort;
+    private final OrganizationApi organizationApi;
 
     public CreateFileOutput createFile(AuthContext auth, CreateFileInput input) {
         log.info("auth: {} input: {}", auth, input);
@@ -164,7 +166,12 @@ public class FileService {
     public void softDelete(UUID fileId) {
         File file = fileRepository.findByIdAndDeletedAtIsNull(fileId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "파일을 찾을 수 없습니다"));
+        boolean releaseStorage = file.getOwnerId() != null && file.getStatus() == FileStatus.UPLOADED;
+        long fileSize = file.getFileSize();
         file.softDelete();
+        if (releaseStorage && fileSize > 0L) {
+            organizationApi.releaseStorageForCurrentTenant(fileSize);
+        }
     }
 
     private FileCompleteOutput toCompleteResponse(File file) {
