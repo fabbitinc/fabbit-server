@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ProjectPartRepository extends JpaRepository<ProjectPart, UUID> {
@@ -12,6 +13,8 @@ public interface ProjectPartRepository extends JpaRepository<ProjectPart, UUID> 
     List<ProjectPart> findByProjectId(UUID projectId);
 
     List<ProjectPart> findByPartId(UUID partId);
+
+    Optional<ProjectPart> findByProjectIdAndPartId(UUID projectId, UUID partId);
 
     List<ProjectPart> findByProjectIdAndPartIdIn(UUID projectId, Collection<UUID> partIds);
 

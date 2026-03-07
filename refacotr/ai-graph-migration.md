@@ -20,7 +20,7 @@
 - 구 FastAPI 범위에는 `usecase.py` 파일이 없습니다. 현재 Spring Boot 쪽은 유스케이스/쿼리/서비스로 분해되어 있습니다.
 - 매핑 생성, 정규화, 저장, 조회 API는 전반적으로 잘 이전되었습니다.
 - 활성화(Activation) 도메인은 `health_check`, `starters`는 대응되지만, 자연어 그래프 질의는 LLM 기반 계획 실행에서 단순 키워드 조회로 축소되어 핵심 기능이 부분 이전 상태입니다.
-- 합성(Synthesis)은 배치 시작/상태 조회는 이전되었지만, 실제 적재 엔진이 구 Python 파이프라인보다 좁습니다. 현재 구현은 `Part`, `Supplier`, `CONSISTS_OF`, `SUPPLIED_BY` 중심이며 `Drawing`, `DEFINED_BY`, `HAS_ITEM`, 기타 그래프 노드/관계 폴백이 빠져 있습니다.
+- 합성(Synthesis)은 배치 시작/상태 조회는 이전되었고, 현재 적재 엔진도 `Part`, `Drawing`, `Supplier`, `CONSISTS_OF`, `DEFINED_BY`, `SUPPLIED_BY`, `HAS_ITEM` 및 BOM/공급사 관계 확장 속성 저장까지 처리합니다. 다만 구 Python 파이프라인의 일반화된 그래프 노드/관계 폴백과 root context 세부 검증은 아직 남아 있습니다.
 
 ## 함수 매핑
 
@@ -42,7 +42,7 @@
 | `mapping.validate_against_rows` | `application/mapping/support/MappingValidationSupport.validateAgainstRows` + `ValidateMappingUseCase` | 완료 | 누락 컬럼, merge key, 숫자 파싱 경고, disabled column count 계산이 유지됩니다. |
 | `mapping.parse_sheet_preview` | `application/mapping/service/MappingService.loadHeadersAndRows` + `PreviewMappingUseCase` | 완료 | 시트별 헤더/샘플 행 파싱과 preview 응답 조립이 이전되었습니다. |
 | `synthesis.start_synthesis` | `application/synthesis/service/SynthesisService.startSynthesis` + `StartSynthesisUseCase` | 부분 | 매핑/리비전 조회, 업로드 상태 검증, project 소속 검증, batch/job 생성, after-commit 비동기 실행은 이전되었습니다. 다만 구 버전은 rootless relation에 필요한 라벨 키를 모두 검증했지만 현재는 `ROOT_BOM 여부`만 검사해 `root_context` 세부 키 누락을 잡지 못합니다. |
-| `synthesis.run_synthesis` | `application/synthesis/service/SynthesisExecutionService.runJob` + `SynthesisAsyncExecutionService` | 부분 | 구 파이프라인은 `Part`, `Drawing`, `Supplier`, `DEFINED_BY`, `SUPPLIED_BY`, `CONSISTS_OF`, 기타 그래프 노드/관계 폴백까지 처리했습니다. 현재는 `Part`, `Supplier`, `CONSISTS_OF`, `SUPPLIED_BY`만 실제 적재하며 `Drawing` 업서트, `DEFINED_BY`, `HAS_ITEM`, 기타 그래프 노드/관계 생성이 없습니다. BOM/공급사 확장 속성도 저장하지 않고 `"{}"`로 고정합니다. |
+| `synthesis.run_synthesis` | `application/synthesis/service/SynthesisExecutionService.runJob` + `SynthesisAsyncExecutionService` | 부분 | 현재는 `Part`, `Drawing`, `Supplier`, `Project`, `CONSISTS_OF`, `DEFINED_BY`, `SUPPLIED_BY`, `HAS_ITEM`를 실제 적재하고, BOM/공급사 관계 확장 속성도 보존합니다. 다만 구 파이프라인이 제공하던 비표준 ontology node/relationship의 graph fallback과 rootless relation 세부 검증은 아직 없습니다. |
 
 ## 핵심 갭
 
@@ -58,16 +58,12 @@
    - 구 버전은 rootless relation에서 필요한 라벨 집합을 계산해 `root_context` 필수 키 누락을 막았습니다.
    - 현재는 `ROOT_BOM이면 비어 있지 않은지만` 검사하므로 `Supplier`, `Drawing` 등 필요한 키가 빠져도 실행이 진행되고, 이후 관계가 조용히 누락될 수 있습니다.
 
-4. Synthesis 실행 범위 축소
-   - 구 파이프라인은 `Drawing`/`Supplier` 노드 업서트, `DEFINED_BY`/`SUPPLIED_BY`/`CONSISTS_OF` dual-write, `HAS_ITEM` 포함 기타 관계의 graph fallback을 지원했습니다.
-   - 현재 런타임은 `Drawing`, `Project`, 기타 ontology node/relationship를 실제로 만들지 않습니다. `MappingGenerationSupport`는 `DEFINED_BY`, `HAS_ITEM`까지 생성할 수 있는데 실행기가 이를 소비하지 못합니다.
-
-5. 관계 확장 속성 보존 누락
-   - 구 파이프라인은 BOM과 공급사 관계에 `quantity` 외 추가 관계 속성을 `extended_properties`로 넘겼습니다.
-   - 현재는 `BomLink.connect(..., "{}")`, `PartSupplier.link(..., "{}")`로 저장되어 `sequence`, `reference_designator`, `find_number` 같은 관계 속성이 유실됩니다.
+4. Synthesis 일반 그래프 폴백 부재
+   - 구 파이프라인은 `Project` 외 기타 ontology node와 비표준 관계를 Graph Cypher로라도 저장했습니다.
+   - 현재 런타임은 `Drawing`/`Project`까지는 적재하지만, 나머지 ontology node/relationship에 대한 일반화된 graph fallback은 없습니다.
 
 ## 리스크
 
-- 매핑 미리보기는 `DEFINED_BY`, `HAS_ITEM`, rootless supplier/drawing 관계를 정상 제안할 수 있지만, 실제 합성 결과에는 반영되지 않아 사용자 입장에서 “미리보기는 성공했는데 그래프에는 안 들어간다”는 불일치가 발생할 수 있습니다.
+- 매핑 미리보기는 일반 ontology node/relationship까지 제안할 수 있지만, 현재 합성 런타임은 `Drawing`/`Supplier`/`Project` 외 나머지 node/relationship을 모두 적재하지는 못하므로 일부 매핑은 여전히 실행 결과와 불일치할 수 있습니다.
 - Activation 도메인은 API 표면은 유지됐지만, 사용자 체감 핵심 기능인 자연어 탐색 정확도가 구 버전보다 크게 낮아질 가능성이 높습니다.
 - 현재 상태만 보면 AI/그래프 도메인은 CRUD/저장 파이프라인은 상당수 이전되었지만, “그래프 기반 탐색”과 “온톨로지 전체를 사용하는 합성”은 아직 완전 이전으로 보기 어렵습니다.

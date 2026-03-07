@@ -20,14 +20,14 @@
 | 계정/조직 | `account-organization-migration.md` | 기본 인증/초대/프로필/멤버십은 강하지만 초기 구독 생성, 스토리지 quota, 일부 인증 방어가 비어 있습니다. |
 | 제품 데이터 | `product-data-migration.md` | Part/파일 첨부, 도면 변환, stale/deleted/orphan 파일 정리 배치는 강하지만 실제 프로필 썸네일 변환, QCAD 배포 포함 작업이 남아 있습니다. |
 | 협업 | `collaboration-migration.md` | 팀/이슈/라벨/읽음 처리는 강하지만 프로젝트 activity 쓰기와 알림 SSE push가 비어 있습니다. |
-| AI/그래프 | `ai-graph-migration.md` | 매핑은 강하지만 activation 자연어 질의와 synthesis 실행 범위가 축소되었습니다. |
+| AI/그래프 | `ai-graph-migration.md` | 매핑은 강하지만 activation 자연어 질의와 synthesis의 일반 그래프 폴백/루트 컨텍스트 검증이 아직 축소되어 있습니다. |
 
 ## 우선순위 높은 갭
 
 1. Activation 자연어 질의 축소
    - 레거시의 LLM 기반 `sql/graph/hybrid` 질의가 현재는 제한된 휴리스틱 조회로 축소됐습니다.
-2. Synthesis 실행 범위 축소
-   - `Drawing`, `DEFINED_BY`, `HAS_ITEM`, 관계 확장 속성 저장이 비어 있습니다.
+2. Synthesis 일반 그래프 폴백 및 root context 검증 미완
+   - `Drawing`, `DEFINED_BY`, `HAS_ITEM`, 관계 확장 속성 저장은 복구됐지만, 기타 ontology node/relationship fallback과 root context 세부 키 검증은 아직 없습니다.
 3. 프로젝트 activity 쓰기 부재
    - 조회 API는 있지만 기록 생산자가 없습니다.
 4. 알림 SSE push 부재

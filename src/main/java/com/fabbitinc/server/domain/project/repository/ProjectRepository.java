@@ -13,6 +13,8 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
 
     Optional<Project> findByIdAndDeletedFalse(UUID id);
 
+    Optional<Project> findByNameAndDeletedFalse(String name);
+
     long countByDeletedFalse();
 
     List<Project> findByDeletedFalseOrderByNameAsc(Pageable pageable);

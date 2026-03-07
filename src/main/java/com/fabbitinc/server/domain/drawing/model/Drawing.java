@@ -72,6 +72,22 @@ public class Drawing extends AbstractCreatedEntity {
         return new Drawing(drawingNumber, name);
     }
 
+    public void changeDrawingNumber(String drawingNumber) {
+        this.drawingNumber = normalizeNullable(drawingNumber);
+    }
+
+    public void changeName(String name) {
+        this.name = requireName(name);
+    }
+
+    public void changeVersion(String version) {
+        this.version = normalizeNullable(version);
+    }
+
+    public void changeStatus(DrawingStatus status) {
+        this.status = status;
+    }
+
     public void changeOriginalFileKey(String originalFileKey) {
         this.originalFileKey = normalizeNullable(originalFileKey);
     }
