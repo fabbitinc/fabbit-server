@@ -47,6 +47,7 @@ dependencies {
     implementation("org.apache.pdfbox:pdfbox:3.0.4")
     implementation("com.twelvemonkeys.imageio:imageio-core:3.12.0")
     implementation("com.twelvemonkeys.imageio:imageio-tiff:3.12.0")
+    runtimeOnly("com.github.usefulness:webp-imageio:0.10.1")
     implementation("org.springframework.ai:spring-ai-openai")
     implementation("org.springframework.ai:spring-ai-client-chat")
     implementation("io.github.openfeign.querydsl:querydsl-core:7.1")
@@ -88,11 +89,11 @@ spotless {
     java {
         target("src/*/java/**/*.java")
         // googleJavaFormat()
+        // trimTrailingWhitespace()
+        // endWithNewline()
         importOrder()
         removeUnusedImports()
         formatAnnotations()
-        // trimTrailingWhitespace()
-        // endWithNewline()
     }
 }
 

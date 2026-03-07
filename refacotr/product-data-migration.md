@@ -45,7 +45,7 @@
 | `file._cleanup_stale_batch` | `FileCleanupService.cleanupStalePendingFiles` | 완료 | 배치 크기 단위 반복 삭제가 서비스 내부 루프로 이전됐다. |
 | `file._cleanup_deleted_batch` | `FileCleanupService.cleanupExpiredDeletedFiles` | 완료 | 배치 크기 단위 반복 삭제가 서비스 내부 루프로 이전됐다. |
 | `file._delete_s3_files` | `StoragePort.deleteObject` + `S3StorageAdapter.deleteObject` | 완료 | 스토리지 삭제 API가 추가되어 stale/deleted 정리에서 실제 객체 삭제가 가능해졌다. |
-| `file.convert_to_thumbnail` | `FileService.convertToThumbnail` | 부분 | FastAPI는 S3 다운로드, 이미지 변환, `.webp` 업로드, 원본 삭제, `file_size/content_type/file_key` 갱신까지 수행했다. Spring은 현재 `File.changeToThumbnailWebp()`로 메타데이터만 바꾸며 실제 스토리지 변환은 없다. |
+| `file.convert_to_thumbnail` | `FileService.convertToThumbnail` | 완료 | S3 원본 다운로드, center crop + 256x256 WebP 썸네일 생성, `.webp` 업로드, 원본 키 삭제, `file_size/content_type/file_key` 갱신까지 레거시 흐름이 복구됐다. |
 | `file.get_uploaded_or_raise` | `DrawingService.createDrawing` 내부 검증으로 흡수 | 완료 | 독립 헬퍼는 사라졌지만, 업로드 완료 여부 검증은 도면 등록 경로 안에 포함됐다. |
 | `file.get_files_by_owner` | `FileService.getFilesByOwner` | 완료 | 사용자/조직 프로필 이미지 삭제 유스케이스에서 실제 사용 중이다. |
 | `file.validate_attachable` | `FileService.validateAttachable` | 완료 | 존재 여부, `UPLOADED`, 미연결(owner 없음) 검증이 그대로 유지된다. |
@@ -54,16 +54,11 @@
 
 ## 핵심 갭
 
-1. 썸네일 변환의 실제 스토리지 처리 부재
-   - 프로필 이미지 경로는 Spring에서도 `validateAttachable -> convertToThumbnail -> setProfileImage` 순서를 유지한다.
-   - 그러나 `convertToThumbnail`가 실제 이미지 변환 없이 메타데이터만 `.webp`로 바꾸므로, 현재 구현만으로는 저장소 객체와 DB 메타데이터가 어긋날 수 있다.
-
-2. 다중 환경 배포용 QCAD 바이너리 포함 작업 필요
+1. 다중 환경 배포용 QCAD 바이너리 포함 작업 필요
    - 도면 변환 코드는 `QCAD_PATH/dwg2pdf`를 전제로 구현됐다.
    - 로컬 개발은 맥북 QCAD 설치 경로를 지정하면 되지만, 배포 이미지는 Linux용 QCAD 바이너리를 포함하고 `QCAD_PATH`를 맞춰야 한다.
 
 ## 리스크
 
 - 배포 환경에 QCAD 바이너리가 없으면 `dwg/dxf -> pdf` 변환은 `FAILED`로 떨어진다. 운영 이미지는 QCAD 포함이 전제다.
-- 프로필 이미지 변경 시 DB의 `file_key/content_type`는 `.webp` 기준으로 바뀌지만 실제 오브젝트는 원본 포맷일 수 있다.
 - `file.soft_delete_files`는 현재 직접 사용 흔적은 약하지만, 구 서비스 기능 기준으로는 배치 삭제 API가 사라진 상태다.

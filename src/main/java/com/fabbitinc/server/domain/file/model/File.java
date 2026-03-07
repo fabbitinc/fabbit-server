@@ -118,18 +118,10 @@ public class File extends AbstractCreatedEntity {
         this.ownerId = ownerId;
     }
 
-    public void changeToThumbnailWebp() {
-        if (fileKey == null || fileKey.isBlank()) {
-            return;
-        }
-
-        int extStart = fileKey.lastIndexOf('.');
-        if (extStart > -1) {
-            this.fileKey = fileKey.substring(0, extStart) + ".webp";
-        } else {
-            this.fileKey = fileKey + ".webp";
-        }
-        this.contentType = "image/webp";
+    public void changeStoredObject(String fileKey, String contentType, long fileSize) {
+        this.fileKey = requireFileKey(fileKey);
+        this.contentType = requireContentType(contentType);
+        this.fileSize = requireFileSize(fileSize);
     }
 
     public void markUploaded() {

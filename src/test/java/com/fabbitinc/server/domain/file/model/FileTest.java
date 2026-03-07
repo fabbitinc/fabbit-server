@@ -90,4 +90,15 @@ class FileTest {
         assertEquals("issue", file.getOwnerType());
         assertEquals(ownerId, file.getOwnerId());
     }
+
+    @Test
+    void file_changeStoredObject_파일메타데이터를_교체한다() {
+        File file = File.create("a.txt", "k", "text/plain", 1L);
+
+        file.changeStoredObject("thumb.webp", "image/webp", 128L);
+
+        assertEquals("thumb.webp", file.getFileKey());
+        assertEquals("image/webp", file.getContentType());
+        assertEquals(128L, file.getFileSize());
+    }
 }
