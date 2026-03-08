@@ -49,7 +49,8 @@ public class DrawingController {
     ) {
         return new DrawingProcessingResponse(
                 result.status(),
-                result.failureReason(),
+                result.failureCode(),
+                result.failureMessage(),
                 result.pdfReady(),
                 result.webpReady(),
                 result.glbReady()

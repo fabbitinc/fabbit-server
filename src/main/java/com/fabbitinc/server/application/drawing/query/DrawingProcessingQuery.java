@@ -4,6 +4,7 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.drawing.query.condition.DrawingProcessingCondition;
+import com.fabbitinc.server.application.drawing.query.result.DrawingProcessingFailureCode;
 import com.fabbitinc.server.application.drawing.query.result.DrawingProcessingResult;
 import com.fabbitinc.server.application.drawing.query.result.DrawingProcessingStatus;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
@@ -44,7 +45,8 @@ public class DrawingProcessingQuery {
 
         return new DrawingProcessingResult(
                 resolveStatus(drawing, latestJob),
-                resolveFailureReason(drawing, latestJob),
+                resolveFailureCode(drawing, latestJob),
+                resolveFailureMessage(drawing, latestJob),
                 hasText(resolvePdfKey(drawing, projection)),
                 hasText(resolveWebpKey(drawing, projection)),
                 hasText(resolveGlbKey(drawing, projection))
@@ -76,11 +78,67 @@ public class DrawingProcessingQuery {
         };
     }
 
-    private String resolveFailureReason(Drawing drawing, DrawingProcessingJob latestJob) {
+    private DrawingProcessingFailureCode resolveFailureCode(Drawing drawing, DrawingProcessingJob latestJob) {
+        FailureDescriptor failure = resolveFailureDescriptor(drawing, latestJob);
+        if (failure == null) {
+            return null;
+        }
+        return failure.code();
+    }
+
+    private String resolveFailureMessage(Drawing drawing, DrawingProcessingJob latestJob) {
+        FailureDescriptor failure = resolveFailureDescriptor(drawing, latestJob);
+        if (failure == null) {
+            return null;
+        }
+        return failure.message();
+    }
+
+    private FailureDescriptor resolveFailureDescriptor(Drawing drawing, DrawingProcessingJob latestJob) {
         if (drawing.getConversionStatus() != DrawingConversionStatus.FAILED || latestJob == null) {
             return null;
         }
-        return latestJob.getFailureReason();
+        String rawReason = latestJob.getFailureReason();
+        if (!hasText(rawReason)) {
+            return new FailureDescriptor(
+                    DrawingProcessingFailureCode.UNKNOWN,
+                    "도면 처리 중 오류가 발생했습니다."
+            );
+        }
+
+        if (rawReason.contains("시간이 초과")) {
+            return new FailureDescriptor(
+                    DrawingProcessingFailureCode.TIMEOUT,
+                    "도면 변환 시간이 초과되었습니다."
+            );
+        }
+        if (rawReason.contains("지원하지 않는 도면 파일 형식")) {
+            return new FailureDescriptor(
+                    DrawingProcessingFailureCode.UNSUPPORTED_FORMAT,
+                    "지원하지 않는 도면 형식입니다."
+            );
+        }
+        if (rawReason.contains("실행 파일을 찾을 수 없습니다")
+                || rawReason.contains("settings.ini 리소스를 찾을 수 없습니다")
+                || rawReason.contains("변환기를 사용할 수 없습니다")) {
+            return new FailureDescriptor(
+                    DrawingProcessingFailureCode.CONVERTER_UNAVAILABLE,
+                    "도면 변환기를 사용할 수 없습니다. 관리자에게 문의해 주세요."
+            );
+        }
+        if (rawReason.contains("결과 파일이 생성되지 않았습니다")
+                || rawReason.contains("실행에 실패했습니다")
+                || rawReason.contains("실행이 중단되었습니다")
+                || rawReason.contains("dwg2pdf 실패")) {
+            return new FailureDescriptor(
+                    DrawingProcessingFailureCode.CONVERSION_FAILED,
+                    "도면 변환에 실패했습니다."
+            );
+        }
+        return new FailureDescriptor(
+                DrawingProcessingFailureCode.UNKNOWN,
+                "도면 처리 중 오류가 발생했습니다."
+        );
     }
 
     private String resolvePdfKey(Drawing drawing, DrawingServingProjection projection) {
@@ -106,5 +164,11 @@ public class DrawingProcessingQuery {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private record FailureDescriptor(
+            DrawingProcessingFailureCode code,
+            String message
+    ) {
     }
 }
