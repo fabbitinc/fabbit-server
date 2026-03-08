@@ -5,15 +5,17 @@ import com.fabbitinc.server.application.drawing.port.Cad3dToGlbPort;
 import com.fabbitinc.server.application.drawing.service.DrawingPipeline;
 import com.fabbitinc.server.application.drawing.service.DrawingPipelineArtifact;
 import com.fabbitinc.server.application.drawing.service.DrawingPipelineCommand;
+import com.fabbitinc.server.application.drawing.service.DrawingPipelineDeadlineContext;
 import com.fabbitinc.server.application.drawing.service.DrawingPipelineResult;
 import com.fabbitinc.server.application.drawing.service.GeneratedBinary;
 import com.fabbitinc.server.domain.drawing.model.DrawingArtifactType;
 import com.fabbitinc.server.domain.drawing.model.DrawingDimension;
 import com.fabbitinc.server.domain.drawing.model.DrawingSourceType;
 import com.fabbitinc.server.infrastructure.drawing.adapter.ImageIoWebpTranscoder;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-
 public class Cad3dDrawingPipeline implements DrawingPipeline {
 
     private final Cad3dToGlbPort cad3dToGlbPort;
@@ -44,12 +46,18 @@ public class Cad3dDrawingPipeline implements DrawingPipeline {
     public DrawingPipelineResult process(DrawingPipelineCommand command) throws Exception {
         List<DrawingPipelineArtifact> artifacts = new ArrayList<>();
         String originalName = command.sourceFile().getOriginalName();
+        Path previewSourcePath = command.inputPath();
 
         if (hasExtension(originalName, ".glb")) {
             artifacts.add(DrawingPipelineArtifact.reuseSource(DrawingArtifactType.DERIVED_GLB));
         } else {
             String glbName = replaceSuffix(originalName, ".glb");
-            GeneratedBinary glb = cad3dToGlbPort.convertToGlb(command.inputPath(), glbName);
+            GeneratedBinary glb = DrawingPipelineDeadlineContext.call(
+                    "cad_3d_to_glb",
+                    () -> cad3dToGlbPort.convertToGlb(command.inputPath(), glbName)
+            );
+            previewSourcePath = command.workDir().resolve(glb.fileName());
+            Files.write(previewSourcePath, glb.bytes());
             artifacts.add(DrawingPipelineArtifact.generated(
                     DrawingArtifactType.DERIVED_GLB,
                     glb.fileName(),
@@ -59,10 +67,16 @@ public class Cad3dDrawingPipeline implements DrawingPipeline {
         }
 
         String previewPngName = replaceSuffix(originalName, ".png");
-        GeneratedBinary previewPng = cad3dPreviewRenderPort.renderPreview(command.inputPath(), previewPngName);
-        GeneratedBinary previewWebp = imageIoWebpTranscoder.transcode(
-                previewPng.bytes(),
-                buildPreviewName(originalName)
+        GeneratedBinary previewPng = DrawingPipelineDeadlineContext.call(
+                "cad_3d_glb_to_png",
+                () -> cad3dPreviewRenderPort.renderPreview(previewSourcePath, previewPngName)
+        );
+        GeneratedBinary previewWebp = DrawingPipelineDeadlineContext.call(
+                "cad_3d_png_to_webp",
+                () -> imageIoWebpTranscoder.transcode(
+                        previewPng.bytes(),
+                        buildPreviewName(originalName)
+                )
         );
         artifacts.add(DrawingPipelineArtifact.generated(
                 DrawingArtifactType.DERIVED_WEBP,
@@ -70,7 +84,6 @@ public class Cad3dDrawingPipeline implements DrawingPipeline {
                 previewWebp.contentType(),
                 previewWebp.bytes()
         ));
-
         return new DrawingPipelineResult(artifacts);
     }
 

@@ -1,9 +1,0 @@
-FROM ubuntu:22.04
-
-RUN apt-get update && apt-get install -y wget xvfb \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN wget -q https://github.com/fougue/mayo/releases/download/v0.9.0/MayoConv-0.9.0-x86_64.AppImage \
-    -O /opt/mayoconv && chmod +x /opt/mayoconv
-
-WORKDIR /data

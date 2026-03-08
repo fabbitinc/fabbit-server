@@ -44,15 +44,21 @@ public class QcadCliCad2dToPdfAdapter implements Cad2dToPdfPort {
                 .redirectErrorStream(true)
                 .start();
 
-        boolean finished = process.waitFor(300, TimeUnit.SECONDS);
-        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        log.info("qcad output: {}", output);
-        if (!finished) {
+        try {
+            boolean finished = process.waitFor(300, TimeUnit.SECONDS);
+            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            log.info("qcad output: {}", output);
+            if (!finished) {
+                process.destroyForcibly();
+                throw new IllegalStateException("QCAD dwg2pdf 실행 시간이 초과되었습니다");
+            }
+            if (process.exitValue() != 0) {
+                throw new IllegalStateException("QCAD dwg2pdf 실패: " + output);
+            }
+        } catch (InterruptedException ex) {
             process.destroyForcibly();
-            throw new IllegalStateException("QCAD dwg2pdf 실행 시간이 초과되었습니다");
-        }
-        if (process.exitValue() != 0) {
-            throw new IllegalStateException("QCAD dwg2pdf 실패: " + output);
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("QCAD dwg2pdf 실행이 중단되었습니다", ex);
         }
         if (!Files.exists(outputPath)) {
             throw new IllegalStateException("QCAD dwg2pdf 결과 PDF가 생성되지 않았습니다");

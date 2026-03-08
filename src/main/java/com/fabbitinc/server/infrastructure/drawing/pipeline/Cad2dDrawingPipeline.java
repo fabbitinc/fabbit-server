@@ -5,6 +5,7 @@ import com.fabbitinc.server.application.drawing.port.PdfPreviewRenderPort;
 import com.fabbitinc.server.application.drawing.service.DrawingPipeline;
 import com.fabbitinc.server.application.drawing.service.DrawingPipelineArtifact;
 import com.fabbitinc.server.application.drawing.service.DrawingPipelineCommand;
+import com.fabbitinc.server.application.drawing.service.DrawingPipelineDeadlineContext;
 import com.fabbitinc.server.application.drawing.service.DrawingPipelineResult;
 import com.fabbitinc.server.application.drawing.service.GeneratedBinary;
 import com.fabbitinc.server.domain.drawing.model.DrawingArtifactType;
@@ -37,12 +38,18 @@ public class Cad2dDrawingPipeline implements DrawingPipeline {
     @Override
     public DrawingPipelineResult process(DrawingPipelineCommand command) throws Exception {
         String pdfName = replaceSuffix(command.sourceFile().getOriginalName(), ".pdf");
-        GeneratedBinary pdf = cad2dToPdfPort.convert(command.inputPath(), pdfName);
+        GeneratedBinary pdf = DrawingPipelineDeadlineContext.call(
+                "cad_2d_to_pdf",
+                () -> cad2dToPdfPort.convert(command.inputPath(), pdfName)
+        );
         Path pdfPath = command.workDir().resolve(pdf.fileName());
         Files.write(pdfPath, pdf.bytes());
 
         String previewName = buildPreviewName(command.sourceFile().getOriginalName());
-        GeneratedBinary preview = pdfPreviewRenderPort.render(pdfPath, previewName);
+        GeneratedBinary preview = DrawingPipelineDeadlineContext.call(
+                "cad_2d_pdf_preview_render",
+                () -> pdfPreviewRenderPort.render(pdfPath, previewName)
+        );
 
         return new DrawingPipelineResult(List.of(
                 DrawingPipelineArtifact.generated(

@@ -18,6 +18,7 @@ import com.fabbitinc.server.infrastructure.drawing.pipeline.Cad3dDrawingPipeline
 import com.fabbitinc.server.infrastructure.drawing.pipeline.Pdf2dDrawingPipeline;
 import com.fabbitinc.server.infrastructure.drawing.pipeline.Raster2dDrawingPipeline;
 import java.io.IOException;
+import java.time.Duration;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -248,13 +249,18 @@ public class DrawingConversionService {
             Files.createDirectories(inputPath.getParent());
             Files.write(inputPath, storagePort.getObject(sourceFile.getFileKey()));
 
-            DrawingPipelineResult result = pipeline.process(new DrawingPipelineCommand(
-                    drawing.getId(),
-                    sourceFile,
-                    inputPath,
-                    workDir
-            ));
-            return drawingArtifactService.publish(drawing.getId(), sourceFile, result.artifacts());
+            DrawingPipelineDeadlineContext.bind(Duration.ofSeconds(drawingConverterProperties.pipelineTimeoutSeconds()));
+            try {
+                DrawingPipelineResult result = pipeline.process(new DrawingPipelineCommand(
+                        drawing.getId(),
+                        sourceFile,
+                        inputPath,
+                        workDir
+                ));
+                return drawingArtifactService.publish(drawing.getId(), sourceFile, result.artifacts());
+            } finally {
+                DrawingPipelineDeadlineContext.clear();
+            }
         } finally {
             cleanupWorkDirectory(workDir);
         }

@@ -8,6 +8,7 @@ public record DrawingConverterProperties(
         @DefaultValue("/opt/qcad") String qcadPath,
         @DefaultValue("2") int maxConcurrent,
         @DefaultValue("/tmp/drawing-converter") String tempDir,
-        String threeDConverterBinPath
+        String threeDConverterBinPath,
+        @DefaultValue("420") long pipelineTimeoutSeconds
 ) {
 }

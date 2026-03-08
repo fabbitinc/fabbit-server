@@ -4,6 +4,7 @@ import com.fabbitinc.server.application.drawing.port.PdfPreviewRenderPort;
 import com.fabbitinc.server.application.drawing.service.DrawingPipeline;
 import com.fabbitinc.server.application.drawing.service.DrawingPipelineArtifact;
 import com.fabbitinc.server.application.drawing.service.DrawingPipelineCommand;
+import com.fabbitinc.server.application.drawing.service.DrawingPipelineDeadlineContext;
 import com.fabbitinc.server.application.drawing.service.DrawingPipelineResult;
 import com.fabbitinc.server.application.drawing.service.GeneratedBinary;
 import com.fabbitinc.server.domain.drawing.model.DrawingArtifactType;
@@ -32,7 +33,10 @@ public class Pdf2dDrawingPipeline implements DrawingPipeline {
     @Override
     public DrawingPipelineResult process(DrawingPipelineCommand command) throws Exception {
         String previewName = buildPreviewName(command.sourceFile().getOriginalName());
-        GeneratedBinary preview = pdfPreviewRenderPort.render(command.inputPath(), previewName);
+        GeneratedBinary preview = DrawingPipelineDeadlineContext.call(
+                "pdf_preview_render",
+                () -> pdfPreviewRenderPort.render(command.inputPath(), previewName)
+        );
 
         return new DrawingPipelineResult(List.of(
                 DrawingPipelineArtifact.reuseSource(DrawingArtifactType.DERIVED_PDF),

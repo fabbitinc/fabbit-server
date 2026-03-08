@@ -24,7 +24,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     qtbase5-dev libqt5svg5-dev libxcb-cursor0 \
     libocct-data-exchange-dev libocct-draw-dev occt-misc libtbb2-dev libxi-dev \
-    libassimp-dev \
+    libassimp-dev xvfb \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /data

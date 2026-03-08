@@ -11,13 +11,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Slf4j
-@Aspect
-@Component
-@ConditionalOnProperty(
-        prefix = "app.dev-layer-call-log",
-        name = "enabled",
-        havingValue = "true"
-)
+ @Aspect
+ @Component
+ @ConditionalOnProperty(
+         prefix = "app.dev-layer-call-log",
+         name = "enabled",
+         havingValue = "true"
+ )
 public class DevelopmentLayerCallLoggingAspect {
 
     @Pointcut("execution(public * com.fabbitinc.server.presentation..*Controller.*(..))")

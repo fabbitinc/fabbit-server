@@ -9,9 +9,11 @@ import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DrawingProcessingJobService {
@@ -62,12 +64,20 @@ public class DrawingProcessingJobService {
         Drawing drawing = drawingRepository.findById(job.getDrawingId()).orElse(null);
         if (drawing == null || drawing.getDeletedAt() != null) {
             job.fail("drawing_deleted");
+            log.warn("event=drawing_job_complete_failed drawing_id={} job_id={} reason=drawing_deleted", job.getDrawingId(), jobId);
             return false;
         }
 
         drawing.completeProcessing(jobId, artifacts);
         job.complete();
         drawingServingProjectionService.upsert(drawing);
+        log.info(
+                "event=drawing_job_completed drawing_id={} job_id={} job_status={} conversion_status_after={}",
+                drawing.getId(),
+                jobId,
+                job.getStatus(),
+                drawing.getConversionStatus()
+        );
         return true;
     }
 
@@ -82,6 +92,14 @@ public class DrawingProcessingJobService {
         if (drawing != null && drawing.getDeletedAt() == null) {
             drawing.failProcessing(jobId);
             drawingServingProjectionService.upsert(drawing);
+            log.warn(
+                    "event=drawing_job_failed drawing_id={} job_id={} reason={} conversion_status_after={} current_job_id_after={}",
+                    drawing.getId(),
+                    jobId,
+                    reason,
+                    drawing.getConversionStatus(),
+                    drawing.getCurrentJobId()
+            );
         }
         job.fail(reason);
     }

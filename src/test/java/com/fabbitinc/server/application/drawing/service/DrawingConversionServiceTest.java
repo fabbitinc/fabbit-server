@@ -69,7 +69,7 @@ class DrawingConversionServiceTest {
                 fileRepository,
                 storagePort,
                 organizationApi,
-                new DrawingConverterProperties("/opt/qcad", 1, tempDir.toString(), null)
+                new DrawingConverterProperties("/opt/qcad", 1, tempDir.toString(), null, 420L)
         );
 
         service.convertDrawing(drawingId);
@@ -123,7 +123,7 @@ class DrawingConversionServiceTest {
                 fileRepository,
                 storagePort,
                 organizationApi,
-                new DrawingConverterProperties("/opt/qcad", 1, tempDir.toString(), null)
+                new DrawingConverterProperties("/opt/qcad", 1, tempDir.toString(), null, 420L)
         );
 
         service.convertDrawing(drawingId);
@@ -173,7 +173,7 @@ class DrawingConversionServiceTest {
                 fileRepository,
                 storagePort,
                 organizationApi,
-                new DrawingConverterProperties("/path/that/does/not/exist", 1, tempDir.toString(), null)
+                new DrawingConverterProperties("/path/that/does/not/exist", 1, tempDir.toString(), null, 420L)
         );
 
         service.convertDrawing(drawingId);
