@@ -5,6 +5,7 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.part.model.BomDirection;
+import com.fabbitinc.server.application.part.model.DrawingViewerType;
 import com.fabbitinc.server.application.part.query.condition.BomTreeCondition;
 import com.fabbitinc.server.application.part.query.condition.BomTreeExportCondition;
 import com.fabbitinc.server.application.part.query.condition.FileItemsCondition;
@@ -33,6 +34,7 @@ import com.fabbitinc.server.application.project.api.ProjectApi;
 import com.fabbitinc.server.application.team.api.TeamApi;
 import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
+import com.fabbitinc.server.domain.drawing.model.DrawingDimension;
 import com.fabbitinc.server.domain.drawing.model.DrawingServingProjection;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.drawing.repository.DrawingServingProjectionRepository;
@@ -582,9 +584,12 @@ public class PartQuery {
         if (drawing.getDeletedAt() != null) {
             return null;
         }
-        String thumbnailKey = projection == null ? drawing.getThumbnailKey() : projection.getWebpKey();
+        String previewKey = projection == null ? drawing.getThumbnailKey() : projection.getWebpKey();
         String pdfKey = projection == null ? drawing.getPdfKey() : projection.getPdfKey();
+        String glbKey = projection == null ? drawing.getGlbKey() : projection.getGlbKey();
         String originalFileKey = projection == null ? drawing.getOriginalFileKey() : projection.getOriginalKey();
+        DrawingViewerType viewerType = resolveDrawingViewerType(drawing, pdfKey, glbKey);
+        String viewerKey = viewerType == DrawingViewerType.GLB ? glbKey : pdfKey;
         return new RelatedDrawingResult(
                 drawing.getId(),
                 drawing.getDrawingNumber(),
@@ -592,10 +597,23 @@ public class PartQuery {
                 drawing.getVersion(),
                 drawing.getStatus(),
                 drawing.getConversionStatus(),
-                fileUrlResolver.resolve(thumbnailKey),
-                fileUrlResolver.resolve(pdfKey),
+                viewerType,
+                fileUrlResolver.resolve(viewerKey),
+                fileUrlResolver.resolve(previewKey),
                 fileUrlResolver.resolve(originalFileKey)
         );
+    }
+
+    private DrawingViewerType resolveDrawingViewerType(Drawing drawing, String pdfKey, String glbKey) {
+        if (glbKey != null) {
+            return DrawingViewerType.GLB;
+        }
+        if (pdfKey != null) {
+            return DrawingViewerType.PDF;
+        }
+        return drawing.getDimension() == DrawingDimension.THREE_D
+                ? DrawingViewerType.GLB
+                : DrawingViewerType.PDF;
     }
 
     private PartSuppliersResult.Item toRelatedSupplier(Supplier supplier, PartSupplier link) {

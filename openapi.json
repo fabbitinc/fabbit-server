@@ -14518,16 +14518,13 @@
                     "long": {
                         "type": "boolean"
                     },
-                    "value_node": {
-                        "type": "boolean"
-                    },
                     "container": {
                         "type": "boolean"
                     },
-                    "missing_node": {
+                    "integral_number": {
                         "type": "boolean"
                     },
-                    "object": {
+                    "floating_point_number": {
                         "type": "boolean"
                     },
                     "node_type": {
@@ -14545,6 +14542,15 @@
                         ]
                     },
                     "string": {
+                        "type": "boolean"
+                    },
+                    "value_node": {
+                        "type": "boolean"
+                    },
+                    "missing_node": {
+                        "type": "boolean"
+                    },
+                    "object": {
                         "type": "boolean"
                     },
                     "short": {
@@ -14570,12 +14576,6 @@
                         "type": "boolean"
                     },
                     "number": {
-                        "type": "boolean"
-                    },
-                    "integral_number": {
-                        "type": "boolean"
-                    },
-                    "floating_point_number": {
                         "type": "boolean"
                     },
                     "array": {
@@ -17965,23 +17965,28 @@
             },
             "RelatedDrawingResponse": {
                 "type": "object",
-                "description": "\uc751\ub2f5 DTO",
+                "description": "\uad00\ub828 \ub3c4\uba74 \uc751\ub2f5",
                 "properties": {
                     "id": {
                         "type": "string",
-                        "format": "uuid"
+                        "format": "uuid",
+                        "description": "\ub3c4\uba74 ID"
                     },
                     "drawing_number": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "\ub3c4\uba74 \ubc88\ud638"
                     },
                     "name": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "\ub3c4\uba74\uba85"
                     },
                     "version": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "\ubc84\uc804"
                     },
                     "status": {
                         "type": "string",
+                        "description": "\ub3c4\uba74 \uc0c1\ud0dc",
                         "enum": [
                             "DRAFT",
                             "IN_REVIEW",
@@ -17992,20 +17997,33 @@
                     },
                     "conversion_status": {
                         "type": "string",
+                        "description": "\ub3c4\uba74 \ubcc0\ud658 \uc0c1\ud0dc",
                         "enum": [
                             "PENDING",
                             "COMPLETED",
                             "FAILED"
                         ]
                     },
-                    "thumbnail_url": {
-                        "type": "string"
+                    "viewer_type": {
+                        "type": "string",
+                        "description": "\ubdf0\uc5b4 \ud0c0\uc785",
+                        "enum": [
+                            "PDF",
+                            "GLB"
+                        ],
+                        "example": "PDF"
                     },
-                    "pdf_url": {
-                        "type": "string"
+                    "viewer_url": {
+                        "type": "string",
+                        "description": "\ubdf0\uc5b4 \ubcf8\ubb38 URL"
+                    },
+                    "preview_url": {
+                        "type": "string",
+                        "description": "\ubbf8\ub9ac\ubcf4\uae30 \uc774\ubbf8\uc9c0 URL"
                     },
                     "original_file_url": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "\uc6d0\ubcf8 \ud30c\uc77c URL"
                     }
                 }
             },

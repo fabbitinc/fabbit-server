@@ -576,8 +576,9 @@ public class PartController {
                 result.version(),
                 result.status(),
                 result.conversionStatus(),
-                result.thumbnailUrl(),
-                result.pdfUrl(),
+                result.viewerType(),
+                result.viewerUrl(),
+                result.previewUrl(),
                 result.originalFileUrl()
         );
     }

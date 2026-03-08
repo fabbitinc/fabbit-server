@@ -66,10 +66,11 @@ public class Cad3dDrawingPipeline implements DrawingPipeline {
             ));
         }
 
+        Path previewInputPath = previewSourcePath;
         String previewPngName = replaceSuffix(originalName, ".png");
         GeneratedBinary previewPng = DrawingPipelineDeadlineContext.call(
                 "cad_3d_glb_to_png",
-                () -> cad3dPreviewRenderPort.renderPreview(previewSourcePath, previewPngName)
+                () -> cad3dPreviewRenderPort.renderPreview(previewInputPath, previewPngName)
         );
         GeneratedBinary previewWebp = DrawingPipelineDeadlineContext.call(
                 "cad_3d_png_to_webp",
