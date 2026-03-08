@@ -16,6 +16,10 @@
             "description": "\ub9e4\ud551 \uc0dd\uc131/\uac80\uc99d/\uc870\ud68c API"
         },
         {
+            "name": "drawings",
+            "description": "\ub3c4\uba74 \ucc98\ub9ac \uc0c1\ud0dc \uc870\ud68c API"
+        },
+        {
             "name": "auth",
             "description": "\uc778\uc99d/\ud68c\uc6d0\uac00\uc785/\ucd08\ub300 \uc218\ub77d API"
         },
@@ -12484,6 +12488,80 @@
                 }
             }
         },
+        "/api/v1/drawings/{drawingId}/processing": {
+            "get": {
+                "tags": [
+                    "drawings"
+                ],
+                "summary": "GET /api/v1/drawings/{drawingId}/processing",
+                "description": "\ub3c4\uba74 \ube44\ub3d9\uae30 \ucc98\ub9ac \uc0c1\ud0dc\uc640 \uc0b0\ucd9c\ubb3c \uc900\ube44 \uc5ec\ubd80\ub97c \uc870\ud68c\ud569\ub2c8\ub2e4",
+                "operationId": "getProcessing",
+                "parameters": [
+                    {
+                        "name": "drawingId",
+                        "in": "path",
+                        "description": "\uc870\ud68c\ud560 \ub3c4\uba74 ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "\uc694\uccad \uc131\uacf5",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DrawingProcessingResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "\uc798\ubabb\ub41c \uc694\uccad",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DrawingProcessingResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "\uc778\uc99d \ud544\uc694",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DrawingProcessingResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "\uad8c\ud55c \uc5c6\uc74c",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DrawingProcessingResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "\ub9ac\uc18c\uc2a4\ub97c \ucc3e\uc744 \uc218 \uc5c6\uc74c",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DrawingProcessingResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/dashboard/stats": {
             "get": {
                 "tags": [
@@ -14431,21 +14509,6 @@
             "JsonNode": {
                 "type": "object",
                 "properties": {
-                    "array": {
-                        "type": "boolean"
-                    },
-                    "empty": {
-                        "type": "boolean"
-                    },
-                    "null": {
-                        "type": "boolean"
-                    },
-                    "float": {
-                        "type": "boolean"
-                    },
-                    "number": {
-                        "type": "boolean"
-                    },
                     "pojo": {
                         "type": "boolean"
                     },
@@ -14455,10 +14518,16 @@
                     "long": {
                         "type": "boolean"
                     },
-                    "integral_number": {
+                    "value_node": {
                         "type": "boolean"
                     },
-                    "floating_point_number": {
+                    "container": {
+                        "type": "boolean"
+                    },
+                    "missing_node": {
+                        "type": "boolean"
+                    },
+                    "object": {
                         "type": "boolean"
                     },
                     "node_type": {
@@ -14476,18 +14545,6 @@
                         ]
                     },
                     "string": {
-                        "type": "boolean"
-                    },
-                    "value_node": {
-                        "type": "boolean"
-                    },
-                    "container": {
-                        "type": "boolean"
-                    },
-                    "missing_node": {
-                        "type": "boolean"
-                    },
-                    "object": {
                         "type": "boolean"
                     },
                     "short": {
@@ -14510,6 +14567,27 @@
                         "type": "boolean"
                     },
                     "binary": {
+                        "type": "boolean"
+                    },
+                    "number": {
+                        "type": "boolean"
+                    },
+                    "integral_number": {
+                        "type": "boolean"
+                    },
+                    "floating_point_number": {
+                        "type": "boolean"
+                    },
+                    "array": {
+                        "type": "boolean"
+                    },
+                    "empty": {
+                        "type": "boolean"
+                    },
+                    "null": {
+                        "type": "boolean"
+                    },
+                    "float": {
                         "type": "boolean"
                     },
                     "embedded_value": {
@@ -18904,6 +18982,43 @@
                         "items": {
                             "$ref": "#/components/schemas/IssueLookupItemResponse"
                         }
+                    }
+                }
+            },
+            "DrawingProcessingResponse": {
+                "type": "object",
+                "description": "\ub3c4\uba74 \ucc98\ub9ac \uc0c1\ud0dc \uc751\ub2f5 DTO",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "description": "\ub3c4\uba74 \ucc98\ub9ac \uc0c1\ud0dc",
+                        "enum": [
+                            "PENDING",
+                            "PROCESSING",
+                            "COMPLETED",
+                            "FAILED"
+                        ],
+                        "example": "PENDING"
+                    },
+                    "failure_reason": {
+                        "type": "string",
+                        "description": "\uc2e4\ud328 \uc0ac\uc720",
+                        "example": "\uc9c0\uc6d0\ud558\uc9c0 \uc54a\ub294 \ub3c4\uba74 \ud30c\uc77c \ud615\uc2dd\uc785\ub2c8\ub2e4"
+                    },
+                    "pdf_ready": {
+                        "type": "boolean",
+                        "description": "PDF \uc0b0\ucd9c\ubb3c \uc900\ube44 \uc5ec\ubd80",
+                        "example": true
+                    },
+                    "webp_ready": {
+                        "type": "boolean",
+                        "description": "WEBP \uc0b0\ucd9c\ubb3c \uc900\ube44 \uc5ec\ubd80",
+                        "example": true
+                    },
+                    "glb_ready": {
+                        "type": "boolean",
+                        "description": "GLB \uc0b0\ucd9c\ubb3c \uc900\ube44 \uc5ec\ubd80",
+                        "example": false
                     }
                 }
             },
