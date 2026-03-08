@@ -10,6 +10,7 @@ import com.fabbitinc.server.application.file.service.output.BatchCompleteFilesOu
 import com.fabbitinc.server.application.file.service.output.BatchCreateFilesOutput;
 import com.fabbitinc.server.application.file.service.output.CreateFileOutput;
 import com.fabbitinc.server.application.file.service.output.FileCompleteOutput;
+import com.fabbitinc.server.application.image.service.ImageVariantService;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.file.model.File;
@@ -35,7 +36,6 @@ import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class FileService {
 
     private static final int PROFILE_THUMBNAIL_SIZE = 256;
@@ -44,6 +44,18 @@ public class FileService {
     private final FileRepository fileRepository;
     private final StoragePort storagePort;
     private final OrganizationApi organizationApi;
+    private final ImageVariantService imageVariantService;
+
+    public FileService(
+            FileRepository fileRepository,
+            StoragePort storagePort,
+            OrganizationApi organizationApi
+    ) {
+        this.fileRepository = fileRepository;
+        this.storagePort = storagePort;
+        this.organizationApi = organizationApi;
+        this.imageVariantService = new ImageVariantService(storagePort);
+    }
 
     public CreateFileOutput createFile(AuthContext auth, CreateFileInput input) {
         log.info("auth: {} input: {}", auth, input);
@@ -164,17 +176,7 @@ public class FileService {
     }
 
     public void convertToThumbnail(File file) {
-        String originalKey = file.getFileKey();
-        byte[] originalBytes = storagePort.getObject(originalKey);
-        byte[] thumbnailBytes = createThumbnailWebp(originalBytes);
-        String thumbnailKey = replaceSuffix(originalKey, ".webp");
-
-        storagePort.putObject(thumbnailKey, thumbnailBytes, WEBP_CONTENT_TYPE);
-        if (!originalKey.equals(thumbnailKey)) {
-            storagePort.deleteObject(originalKey);
-        }
-
-        file.changeStoredObject(thumbnailKey, WEBP_CONTENT_TYPE, thumbnailBytes.length);
+        imageVariantService.convertToThumbnail(file);
     }
 
     public List<File> getFilesByOwner(String ownerType, UUID ownerId) {

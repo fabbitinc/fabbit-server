@@ -1,4 +1,6 @@
-.PHONY: dev-start dev-db-reset openapi test test-e2e test-e2e-llm test2-unit test2-e2e test2-e2e-external test2-llm-eval karate-generate-openapi karate-test karate-test-auth karate-test-flow-project playwright-test-all-api playwright-test-excluded-api karate-test-all-api-dry karate-test-docker karate-test-auth-docker migrate-public migrate-tenant migrate-all revision-public revision-tenant lint format
+.PHONY: dev-start dev-db-reset openapi test test-e2e test-e2e-llm test2-unit test2-e2e test2-e2e-external test2-llm-eval karate-generate-openapi karate-test karate-test-auth karate-test-flow-project playwright-test-all-api playwright-test-excluded-api karate-test-all-api-dry karate-test-docker karate-test-auth-docker migrate-public migrate-tenant migrate-all revision-public revision-tenant lint format build-3dconverter
+
+THREED_CONVERTER_IMAGE ?= fabbit-3dconverter:latest
 
 # 개발환경 디비 종료
 dev-db-stop:
@@ -150,3 +152,11 @@ lint:
 
 format:
 	./gradlew spotlessApply
+
+# 3D 변환기 이미지 빌드 (linux/amd64)
+build-3dconverter:
+	docker build \
+		--platform linux/amd64 \
+		-f docker/Dockerfile.3dconverter \
+		-t $(THREED_CONVERTER_IMAGE) \
+		.

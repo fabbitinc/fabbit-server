@@ -33,7 +33,9 @@ import com.fabbitinc.server.application.project.api.ProjectApi;
 import com.fabbitinc.server.application.team.api.TeamApi;
 import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
+import com.fabbitinc.server.domain.drawing.model.DrawingServingProjection;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
+import com.fabbitinc.server.domain.drawing.repository.DrawingServingProjectionRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
@@ -91,6 +93,7 @@ public class PartQuery {
     private final PartSupplierRepository partSupplierRepository;
     private final SupplierRepository supplierRepository;
     private final DrawingRepository drawingRepository;
+    private final DrawingServingProjectionRepository drawingServingProjectionRepository;
     private final ProjectApi projectApi;
     private final UserApi userApi;
     private final TeamApi teamApi;
@@ -572,13 +575,16 @@ public class PartQuery {
         );
     }
 
-    private RelatedDrawingResult toRelatedDrawing(Drawing drawing) {
+    private RelatedDrawingResult toRelatedDrawing(Drawing drawing, DrawingServingProjection projection) {
         if (drawing == null) {
             return null;
         }
         if (drawing.getDeletedAt() != null) {
             return null;
         }
+        String thumbnailKey = projection == null ? drawing.getThumbnailKey() : projection.getWebpKey();
+        String pdfKey = projection == null ? drawing.getPdfKey() : projection.getPdfKey();
+        String originalFileKey = projection == null ? drawing.getOriginalFileKey() : projection.getOriginalKey();
         return new RelatedDrawingResult(
                 drawing.getId(),
                 drawing.getDrawingNumber(),
@@ -586,9 +592,9 @@ public class PartQuery {
                 drawing.getVersion(),
                 drawing.getStatus(),
                 drawing.getConversionStatus(),
-                fileUrlResolver.resolve(drawing.getThumbnailKey()),
-                fileUrlResolver.resolve(drawing.getPdfKey()),
-                fileUrlResolver.resolve(drawing.getOriginalFileKey())
+                fileUrlResolver.resolve(thumbnailKey),
+                fileUrlResolver.resolve(pdfKey),
+                fileUrlResolver.resolve(originalFileKey)
         );
     }
 
@@ -930,8 +936,9 @@ public class PartQuery {
         if (drawingId == null) {
             return null;
         }
+        DrawingServingProjection projection = drawingServingProjectionRepository.findById(drawingId).orElse(null);
         return drawingRepository.findById(drawingId)
-                .map(this::toRelatedDrawing)
+                .map(drawing -> toRelatedDrawing(drawing, projection))
                 .orElse(null);
     }
 

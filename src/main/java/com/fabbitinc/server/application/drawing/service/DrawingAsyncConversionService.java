@@ -18,7 +18,7 @@ public class DrawingAsyncConversionService {
     public void convertDrawingAsync(UUID drawingId, String schemaName) {
         TenantContextHolder.setCurrentSchema(schemaName);
         try {
-            drawingConversionService.convertDrawing(drawingId);
+            drawingConversionService.requestAndConvertDrawing(drawingId);
         } catch (Exception ex) {
             log.error("event=drawing_conversion_async_failed drawing_id={} schema={}", drawingId, schemaName, ex);
         } finally {

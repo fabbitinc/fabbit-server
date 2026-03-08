@@ -5,37 +5,38 @@ import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
-import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
+import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Component
-@RequiredArgsConstructor
 public class DrawingService {
-
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
-            ".dwg",
-            ".dxf",
-            ".pdf",
-            ".png",
-            ".jpg",
-            ".jpeg",
-            ".bmp",
-            ".tif",
-            ".tiff"
-    );
 
     private final DrawingRepository drawingRepository;
     private final FileRepository fileRepository;
     private final DrawingAsyncConversionService drawingAsyncConversionService;
     private final OrganizationApi organizationApi;
+    private final DrawingSourceClassifier drawingSourceClassifier;
+
+    public DrawingService(
+            DrawingRepository drawingRepository,
+            FileRepository fileRepository,
+            DrawingAsyncConversionService drawingAsyncConversionService,
+            OrganizationApi organizationApi
+    ) {
+        this.drawingRepository = drawingRepository;
+        this.fileRepository = fileRepository;
+        this.drawingAsyncConversionService = drawingAsyncConversionService;
+        this.organizationApi = organizationApi;
+        this.drawingSourceClassifier = new DrawingSourceClassifier();
+    }
 
     public Drawing createDrawing(UUID fileId) {
         File file = fileRepository.findByIdAndDeletedAtIsNull(fileId)
@@ -48,16 +49,22 @@ public class DrawingService {
             );
         }
 
-        String extension = extractExtension(file.getOriginalName());
-        if (!ALLOWED_EXTENSIONS.contains(extension.toLowerCase())) {
-            throw new AppException(
-                    ErrorCode.VALIDATION_ERROR,
-                    "도면으로 등록할 수 없는 파일 형식입니다: " + extension
-            );
+        DrawingSourceDescriptor sourceDescriptor;
+        try {
+            sourceDescriptor = drawingSourceClassifier.classify(file.getOriginalName());
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, ex.getMessage());
         }
 
         Drawing drawing = Drawing.create(null, file.getOriginalName());
-        drawing.changeOriginalFileKey(file.getFileKey());
+        drawing.registerSourceFile(
+                file.getId(),
+                sourceDescriptor.sourceType(),
+                sourceDescriptor.dimension(),
+                file.getFileKey(),
+                file.getContentType(),
+                file.getFileSize()
+        );
         drawing.markConversionPending();
         drawingRepository.save(drawing);
 
@@ -73,9 +80,12 @@ public class DrawingService {
         Drawing drawing = drawingRepository.findById(drawingId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "도면을 찾을 수 없습니다"));
 
-        softDeleteFileByKey(drawing.getOriginalFileKey());
-        softDeleteFileByKey(drawing.getPdfKey());
-        softDeleteFileByKey(drawing.getThumbnailKey());
+        Set<String> keys = new LinkedHashSet<>();
+        keys.add(drawing.getOriginalFileKey());
+        keys.add(drawing.getPdfKey());
+        keys.add(drawing.getThumbnailKey());
+        drawing.getArtifacts().forEach(artifact -> keys.add(artifact.getStorageKey()));
+        keys.forEach(this::softDeleteFileByKey);
         drawing.softDelete();
     }
 
@@ -91,17 +101,6 @@ public class DrawingService {
                         organizationApi.releaseStorageForCurrentTenant(fileSize);
                     }
                 });
-    }
-
-    private String extractExtension(String fileName) {
-        if (fileName == null || fileName.isBlank()) {
-            return "";
-        }
-        int idx = fileName.lastIndexOf('.');
-        if (idx < 0 || idx >= fileName.length() - 1) {
-            return "";
-        }
-        return fileName.substring(idx);
     }
 
     private void dispatchAfterCommit(UUID drawingId) {

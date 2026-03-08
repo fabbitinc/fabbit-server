@@ -1,16 +1,23 @@
 package com.fabbitinc.server.domain.drawing.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
+import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,7 +31,7 @@ import lombok.NoArgsConstructor;
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Drawing extends AbstractCreatedEntity {
+public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
 
     public static final String CODE_DRAWING_NAME_REQUIRED = "DRAWING_NAME_REQUIRED";
     public static final String CODE_DRAWING_PDF_KEY_REQUIRED = "DRAWING_PDF_KEY_REQUIRED";
@@ -47,14 +54,22 @@ public class Drawing extends AbstractCreatedEntity {
     @Column(name = "conversion_status", length = 30)
     private DrawingConversionStatus conversionStatus;
 
-    @Column(name = "thumbnail_key", length = 1000)
-    private String thumbnailKey;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_type", length = 30)
+    private DrawingSourceType sourceType;
 
-    @Column(name = "pdf_key", length = 1000)
-    private String pdfKey;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "dimension", length = 30)
+    private DrawingDimension dimension;
 
-    @Column(name = "original_file_key", length = 1000)
-    private String originalFileKey;
+    @Column(name = "source_file_id")
+    private UUID sourceFileId;
+
+    @Column(name = "current_job_id")
+    private UUID currentJobId;
+
+    @OneToMany(mappedBy = "drawing", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DrawingArtifact> artifacts = new ArrayList<>();
 
     @Column(name = "deleted_at")
     private Instant deletedAt;
@@ -87,36 +102,214 @@ public class Drawing extends AbstractCreatedEntity {
         this.status = status;
     }
 
+    public void registerSourceFile(
+            UUID sourceFileId,
+            DrawingSourceType sourceType,
+            DrawingDimension dimension,
+            String storageKey,
+            String contentType,
+            long fileSize
+    ) {
+        this.sourceFileId = sourceFileId;
+        this.sourceType = sourceType;
+        this.dimension = dimension;
+        upsertArtifact(
+                DrawingArtifactType.SOURCE_ORIGINAL,
+                sourceFileId,
+                detectFormat(storageKey),
+                storageKey,
+                normalizeNullable(contentType),
+                Math.max(fileSize, 0L)
+        );
+    }
+
     public void changeOriginalFileKey(String originalFileKey) {
-        this.originalFileKey = normalizeNullable(originalFileKey);
+        String normalized = normalizeNullable(originalFileKey);
+        if (normalized == null) {
+            this.sourceFileId = null;
+            removeArtifact(DrawingArtifactType.SOURCE_ORIGINAL);
+            return;
+        }
+        upsertArtifact(
+                DrawingArtifactType.SOURCE_ORIGINAL,
+                this.sourceFileId,
+                detectFormat(normalized),
+                normalized,
+                defaultContentType(detectFormat(normalized)),
+                0L
+        );
     }
 
     public void changePdfKey(String pdfKey) {
-        this.pdfKey = normalizeNullable(pdfKey);
+        String normalized = normalizeNullable(pdfKey);
+        if (normalized == null) {
+            removeArtifact(DrawingArtifactType.PRIMARY_DOCUMENT);
+            return;
+        }
+        upsertArtifact(
+                DrawingArtifactType.DERIVED_PDF,
+                null,
+                detectFormat(normalized),
+                normalized,
+                "application/pdf",
+                0L
+        );
     }
 
     public void changeThumbnailKey(String thumbnailKey) {
-        this.thumbnailKey = normalizeNullable(thumbnailKey);
+        String normalized = normalizeNullable(thumbnailKey);
+        if (normalized == null) {
+            removeArtifact(DrawingArtifactType.PRIMARY_PREVIEW);
+            return;
+        }
+        upsertArtifact(
+                DrawingArtifactType.DERIVED_WEBP,
+                null,
+                detectFormat(normalized),
+                normalized,
+                defaultContentType(detectFormat(normalized)),
+                0L
+        );
     }
 
     public void markConversionPending() {
         this.conversionStatus = DrawingConversionStatus.PENDING;
     }
 
+    public void beginProcessing(UUID jobId) {
+        this.currentJobId = jobId;
+        this.conversionStatus = DrawingConversionStatus.PENDING;
+    }
+
     public void markConversionCompleted(String pdfKey, String thumbnailKey) {
         String requiredPdfKey = requirePdfKey(pdfKey);
         String requiredThumbnailKey = requireThumbnailKey(thumbnailKey);
-        this.pdfKey = requiredPdfKey;
-        this.thumbnailKey = requiredThumbnailKey;
+        upsertArtifact(
+                DrawingArtifactType.DERIVED_PDF,
+                null,
+                detectFormat(requiredPdfKey),
+                requiredPdfKey,
+                "application/pdf",
+                0L
+        );
+        upsertArtifact(
+                DrawingArtifactType.DERIVED_WEBP,
+                null,
+                detectFormat(requiredThumbnailKey),
+                requiredThumbnailKey,
+                defaultContentType(detectFormat(requiredThumbnailKey)),
+                0L
+        );
+        this.currentJobId = null;
+        this.conversionStatus = DrawingConversionStatus.COMPLETED;
+    }
+
+    public void completeProcessing(UUID jobId, List<DrawingArtifactPublication> publications) {
+        if (jobId != null && currentJobId != null && !currentJobId.equals(jobId)) {
+            throw new DomainException("DRAWING_JOB_MISMATCH", "다른 작업 ID로 도면 처리를 완료할 수 없습니다");
+        }
+        for (DrawingArtifactPublication publication : publications) {
+            upsertArtifact(
+                    publication.artifactType(),
+                    publication.fileId(),
+                    publication.format(),
+                    publication.storageKey(),
+                    publication.contentType(),
+                    publication.fileSize()
+            );
+        }
+        this.currentJobId = null;
         this.conversionStatus = DrawingConversionStatus.COMPLETED;
     }
 
     public void markConversionFailed() {
+        this.currentJobId = null;
         this.conversionStatus = DrawingConversionStatus.FAILED;
+    }
+
+    public void failProcessing(UUID jobId) {
+        if (jobId != null && currentJobId != null && !currentJobId.equals(jobId)) {
+            throw new DomainException("DRAWING_JOB_MISMATCH", "다른 작업 ID로 도면 처리를 실패시킬 수 없습니다");
+        }
+        markConversionFailed();
     }
 
     public void softDelete() {
         this.deletedAt = Instant.now();
+    }
+
+    public String getOriginalFileKey() {
+        return findArtifactKey(DrawingArtifactType.SOURCE_ORIGINAL);
+    }
+
+    public String getPdfKey() {
+        return findArtifactKey(DrawingArtifactType.DERIVED_PDF);
+    }
+
+    public String getThumbnailKey() {
+        return findArtifactKey(DrawingArtifactType.DERIVED_WEBP);
+    }
+
+    public String getWebpKey() {
+        return findArtifactKey(DrawingArtifactType.DERIVED_WEBP);
+    }
+
+    public String getGlbKey() {
+        return findArtifactKey(DrawingArtifactType.DERIVED_GLB);
+    }
+
+    public List<DrawingArtifact> getArtifacts() {
+        return List.copyOf(artifacts);
+    }
+
+    private void upsertArtifact(
+            DrawingArtifactType artifactType,
+            UUID fileId,
+            String format,
+            String storageKey,
+            String contentType,
+            long fileSize
+    ) {
+        String requiredStorageKey = requireStorageKey(storageKey, artifactType);
+        DrawingArtifact existing = findArtifact(artifactType);
+        if (existing == null) {
+            artifacts.add(DrawingArtifact.create(
+                    this,
+                    fileId,
+                    artifactType,
+                    normalizeNullable(format),
+                    requiredStorageKey,
+                    normalizeNullable(contentType),
+                    Math.max(fileSize, 0L)
+            ));
+            return;
+        }
+        existing.changeStoredObject(
+                fileId,
+                normalizeNullable(format),
+                requiredStorageKey,
+                normalizeNullable(contentType),
+                Math.max(fileSize, 0L)
+        );
+    }
+
+    private void removeArtifact(DrawingArtifactType artifactType) {
+        DrawingArtifact existing = findArtifact(artifactType);
+        if (existing != null) {
+            artifacts.remove(existing);
+        }
+    }
+
+    private DrawingArtifact findArtifact(DrawingArtifactType artifactType) {
+        return artifacts.stream()
+                .filter(artifact -> artifact.getArtifactType() == artifactType)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String findArtifactKey(DrawingArtifactType artifactType) {
+        DrawingArtifact artifact = findArtifact(artifactType);
+        return artifact == null ? null : artifact.getStorageKey();
     }
 
     private String requireName(String value) {
@@ -141,6 +334,46 @@ public class Drawing extends AbstractCreatedEntity {
             throw new DomainException(CODE_DRAWING_THUMBNAIL_KEY_REQUIRED, "썸네일 키는 필수입니다");
         }
         return normalized;
+    }
+
+    private String requireStorageKey(String value, DrawingArtifactType artifactType) {
+        String normalized = normalizeNullable(value);
+        if (normalized != null) {
+            return normalized;
+        }
+        if (artifactType == DrawingArtifactType.DERIVED_PDF) {
+            throw new DomainException(CODE_DRAWING_PDF_KEY_REQUIRED, "PDF 키는 필수입니다");
+        }
+        if (artifactType == DrawingArtifactType.DERIVED_WEBP) {
+            throw new DomainException(CODE_DRAWING_THUMBNAIL_KEY_REQUIRED, "썸네일 키는 필수입니다");
+        }
+        throw new DomainException("DRAWING_ARTIFACT_KEY_REQUIRED", "산출물 키는 필수입니다");
+    }
+
+    private String detectFormat(String storageKey) {
+        String normalized = normalizeNullable(storageKey);
+        if (normalized == null) {
+            return null;
+        }
+        int idx = normalized.lastIndexOf('.');
+        if (idx < 0 || idx >= normalized.length() - 1) {
+            return null;
+        }
+        return normalized.substring(idx + 1).trim().toLowerCase();
+    }
+
+    private String defaultContentType(String format) {
+        if (format == null) {
+            return "application/octet-stream";
+        }
+        return switch (format) {
+            case "pdf" -> "application/pdf";
+            case "png" -> "image/png";
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "webp" -> "image/webp";
+            case "glb" -> "model/gltf-binary";
+            default -> "application/octet-stream";
+        };
     }
 
     private String normalizeNullable(String value) {

@@ -7,6 +7,11 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 public record DrawingConverterProperties(
         @DefaultValue("/opt/qcad") String qcadPath,
         @DefaultValue("2") int maxConcurrent,
-        @DefaultValue("/tmp/drawing-converter") String tempDir
+        @DefaultValue("/tmp/drawing-converter") String tempDir,
+        @DefaultValue("fabbit-3dconverter:latest") String threeDConverterImage,
+        @DefaultValue("linux/amd64") String threeDConverterPlatform
 ) {
+    public DrawingConverterProperties(String qcadPath, int maxConcurrent, String tempDir) {
+        this(qcadPath, maxConcurrent, tempDir, "fabbit-3dconverter:latest", "linux/amd64");
+    }
 }

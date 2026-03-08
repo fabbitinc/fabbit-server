@@ -1,0 +1,21 @@
+FROM ubuntu:22.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG MAYO_VERSION=0.9.0
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    wget \
+    xvfb \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN wget -q "https://github.com/fougue/mayo/releases/download/v${MAYO_VERSION}/MayoConv-${MAYO_VERSION}-x86_64.AppImage" \
+    -O /opt/mayo/MayoConv.AppImage \
+ && chmod +x /opt/mayo/MayoConv.AppImage
+
+COPY docker/3dconverter-entrypoint.sh /usr/local/bin/3dconverter-entrypoint
+RUN chmod +x /usr/local/bin/3dconverter-entrypoint
+
+WORKDIR /data
+
+ENTRYPOINT ["/usr/local/bin/3dconverter-entrypoint"]
