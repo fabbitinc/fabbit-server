@@ -9,8 +9,8 @@ public class DrawingSourceClassifier {
 
     private static final Set<String> CAD_2D_EXTENSIONS = Set.of(".dwg", ".dxf");
     private static final Set<String> PDF_EXTENSIONS = Set.of(".pdf");
-    private static final Set<String> RASTER_EXTENSIONS = Set.of(".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff");
-    private static final Set<String> CAD_3D_EXTENSIONS = Set.of(".step", ".stp", ".iges", ".igs", ".stl", ".obj", ".glb", ".gltf");
+    private static final Set<String> RASTER_EXTENSIONS = Set.of(".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp");
+    private static final Set<String> CAD_3D_EXTENSIONS = Set.of(".step", ".stp", ".iges", ".igs", ".stl", ".obj", ".3mf",".fbx", ".glb", ".gltf");
 
     public DrawingSourceDescriptor classify(String fileName) {
         String extension = extractExtension(fileName);

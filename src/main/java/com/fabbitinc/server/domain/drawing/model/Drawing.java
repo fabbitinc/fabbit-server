@@ -143,7 +143,7 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
     public void changePdfKey(String pdfKey) {
         String normalized = normalizeNullable(pdfKey);
         if (normalized == null) {
-            removeArtifact(DrawingArtifactType.PRIMARY_DOCUMENT);
+            removeArtifact(DrawingArtifactType.DERIVED_PDF);
             return;
         }
         upsertArtifact(
@@ -159,7 +159,7 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
     public void changeThumbnailKey(String thumbnailKey) {
         String normalized = normalizeNullable(thumbnailKey);
         if (normalized == null) {
-            removeArtifact(DrawingArtifactType.PRIMARY_PREVIEW);
+            removeArtifact(DrawingArtifactType.DERIVED_WEBP);
             return;
         }
         upsertArtifact(

@@ -7,6 +7,7 @@ import com.fabbitinc.server.application.drawing.service.GeneratedBinary;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
@@ -14,10 +15,9 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RequiredArgsConstructor
-public class DockerCad3dConverterAdapter implements Cad3dToGlbPort, Cad3dPreviewRenderPort {
+public class Mayo3dConverterAdapter implements Cad3dToGlbPort, Cad3dPreviewRenderPort {
 
     private static final long TIMEOUT_SECONDS = 300;
-    private static final String CONTAINER_WORK_DIR = "/data";
 
     private final DrawingConverterProperties drawingConverterProperties;
 
@@ -38,18 +38,7 @@ public class DockerCad3dConverterAdapter implements Cad3dToGlbPort, Cad3dPreview
         }
 
         Path outputPath = workDir.resolve(outputFileName);
-        List<String> command = List.of(
-                "docker",
-                "run",
-                "--rm",
-                "--platform",
-                drawingConverterProperties.threeDConverterPlatform(),
-                "-v",
-                workDir.toAbsolutePath() + ":" + CONTAINER_WORK_DIR,
-                drawingConverterProperties.threeDConverterImage(),
-                containerPath(inputPath.getFileName().toString()),
-                containerPath(outputFileName)
-        );
+        List<String> command = buildCommand(inputPath, outputPath, workDir);
 
         Process process = new ProcessBuilder(command)
                 .redirectErrorStream(true)
@@ -61,10 +50,10 @@ public class DockerCad3dConverterAdapter implements Cad3dToGlbPort, Cad3dPreview
 
         if (!finished) {
             process.destroyForcibly();
-            throw new IllegalStateException("3D 변환 Docker 실행 시간이 초과되었습니다");
+            throw new IllegalStateException("3D 변환 실행 시간이 초과되었습니다");
         }
         if (process.exitValue() != 0) {
-            throw new IllegalStateException("3D 변환 Docker 실행에 실패했습니다: " + output);
+            throw new IllegalStateException("3D 변환 실행에 실패했습니다: " + output);
         }
         if (!Files.exists(outputPath)) {
             throw new IllegalStateException("3D 변환 결과 파일이 생성되지 않았습니다: " + outputFileName);
@@ -73,7 +62,44 @@ public class DockerCad3dConverterAdapter implements Cad3dToGlbPort, Cad3dPreview
         return new GeneratedBinary(outputFileName, contentType, Files.readAllBytes(outputPath));
     }
 
-    private String containerPath(String fileName) {
-        return CONTAINER_WORK_DIR + "/" + fileName;
+    private List<String> buildCommand(Path inputPath, Path outputPath, Path workDir) {
+        String binPath = normalizeNullable(drawingConverterProperties.threeDConverterBinPath());
+        if (binPath != null) {
+            return List.of(
+                    binPath,
+                    inputPath.toAbsolutePath().toString(),
+                    "-e",
+                    outputPath.toAbsolutePath().toString()
+            );
+        }
+        return buildLocalCommand(inputPath, outputPath, workDir);
+    }
+
+    private String normalizeNullable(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    /**
+     * @deprecated 로컬 개발 환경 전용 Docker fallback이다. 3D 변환 바이너리 경로가 준비되면 삭제한다.
+     */
+    @Deprecated(forRemoval = false)
+    private List<String> buildLocalCommand(Path inputPath, Path outputPath, Path workDir) {
+        final String containerWorkDir = "/data";
+
+        List<String> command = new ArrayList<>();
+        command.add("docker");
+        command.add("run");
+        command.add("--rm");
+        command.add("-v");
+        command.add(workDir.toAbsolutePath() + ":" + containerWorkDir);
+        command.add("fabbit-3dconverter:latest");
+        command.add(containerWorkDir + "/" + inputPath.getFileName().toString());
+        command.add("-e");
+        command.add(containerWorkDir + "/" + outputPath.getFileName().toString());
+        return command;
     }
 }

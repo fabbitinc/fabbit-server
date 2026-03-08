@@ -8,8 +8,8 @@ import com.fabbitinc.server.domain.drawing.model.DrawingArtifactPublication;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
-import com.fabbitinc.server.infrastructure.drawing.adapter.DockerCad3dConverterAdapter;
 import com.fabbitinc.server.infrastructure.drawing.adapter.ImageIoWebpTranscoder;
+import com.fabbitinc.server.infrastructure.drawing.adapter.Mayo3dConverterAdapter;
 import com.fabbitinc.server.infrastructure.drawing.adapter.PdfBoxPdfPreviewRenderAdapter;
 import com.fabbitinc.server.infrastructure.drawing.adapter.PdfBoxRasterImageToPdfAdapter;
 import com.fabbitinc.server.infrastructure.drawing.adapter.QcadCliCad2dToPdfAdapter;
@@ -102,7 +102,7 @@ public class DrawingConversionService {
         this.drawingServingProjectionService = drawingServingProjectionService;
         this.drawingSourceClassifier = new DrawingSourceClassifier();
         var previewRenderPort = new PdfBoxPdfPreviewRenderAdapter();
-        var cad3dConverterAdapter = new DockerCad3dConverterAdapter(drawingConverterProperties);
+        var cad3dConverterAdapter = new Mayo3dConverterAdapter(drawingConverterProperties);
         this.drawingPipelineResolver = new DrawingPipelineResolver(List.of(
                 new Pdf2dDrawingPipeline(previewRenderPort),
                 new Raster2dDrawingPipeline(new PdfBoxRasterImageToPdfAdapter(), previewRenderPort),
