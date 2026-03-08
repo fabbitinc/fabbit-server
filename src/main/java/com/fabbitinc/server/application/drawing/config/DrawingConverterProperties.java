@@ -10,6 +10,7 @@ public record DrawingConverterProperties(
         @DefaultValue("/tmp/drawing-converter") String tempDir,
         String threeDConverterBinPath,
         @DefaultValue("300") long commandTimeoutSeconds,
-        @DefaultValue("420") long pipelineTimeoutSeconds
+        @DefaultValue("420") long pipelineTimeoutSeconds,
+        @DefaultValue("24") long tempDirCleanupMaxAgeHours
 ) {
 }
