@@ -21,7 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class Mayo3dConverterAdapter implements Cad3dToGlbPort, Cad3dPreviewRenderPort {
 
-    private static final long TIMEOUT_SECONDS = 300;
     private static final String PREVIEW_SETTINGS_RESOURCE_PATH = "drawing/mayo/settings.ini";
 
     private final DrawingConverterProperties drawingConverterProperties;
@@ -77,7 +76,7 @@ public class Mayo3dConverterAdapter implements Cad3dToGlbPort, Cad3dPreviewRende
         boolean finished;
         String output;
         try {
-            finished = process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            finished = process.waitFor(drawingConverterProperties.commandTimeoutSeconds(), TimeUnit.SECONDS);
             outputReader.join(TimeUnit.SECONDS.toMillis(5));
             output = outputBuffer.toString(StandardCharsets.UTF_8);
         } catch (InterruptedException ex) {

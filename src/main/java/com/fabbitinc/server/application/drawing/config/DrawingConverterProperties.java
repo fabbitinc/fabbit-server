@@ -9,6 +9,7 @@ public record DrawingConverterProperties(
         @DefaultValue("2") int maxConcurrent,
         @DefaultValue("/tmp/drawing-converter") String tempDir,
         String threeDConverterBinPath,
+        @DefaultValue("300") long commandTimeoutSeconds,
         @DefaultValue("420") long pipelineTimeoutSeconds
 ) {
 }

@@ -45,7 +45,7 @@ public class QcadCliCad2dToPdfAdapter implements Cad2dToPdfPort {
                 .start();
 
         try {
-            boolean finished = process.waitFor(300, TimeUnit.SECONDS);
+            boolean finished = process.waitFor(drawingConverterProperties.commandTimeoutSeconds(), TimeUnit.SECONDS);
             String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             log.info("qcad output: {}", output);
             if (!finished) {
