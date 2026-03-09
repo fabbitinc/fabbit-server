@@ -7,10 +7,13 @@ import com.fabbitinc.server.application.auth.usecase.command.LoginCommand;
 import com.fabbitinc.server.application.auth.usecase.result.AuthTokenResult;
 import com.fabbitinc.server.application.auth.usecase.result.AuthUserResult;
 import com.fabbitinc.server.application.auth.usecase.result.LoginResult;
+import com.fabbitinc.server.application.common.exception.AppException;
+import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.user.model.User;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +32,7 @@ public class LoginUseCase {
         User user = authAccountService.authenticate(new LoginInput(command.email(), command.password()));
         AuthUserResult userResult = toUserResult(user);
         if (command.slug() == null || command.slug().isBlank()) {
+            ensureCanCreateOrganization(user.getId());
             String scopedToken = jwtTokenService.issueScopedToken(user.getId(), user.getEmail(), "create_org");
             return LoginResult.scoped(userResult, scopedToken);
         }
@@ -41,6 +45,12 @@ public class LoginUseCase {
                 membership.getRole().name()
         );
         return LoginResult.organization(userResult, toTokenResult(tokens));
+    }
+
+    private void ensureCanCreateOrganization(UUID userId) {
+        if (organizationApi.hasOwnedOrganization(userId)) {
+            throw new AppException(ErrorCode.FORBIDDEN, "이미 생성한 워크스페이스가 있습니다. 해당 워크스페이스에서 로그인해주세요");
+        }
     }
 
     private AuthUserResult toUserResult(User user) {

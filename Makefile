@@ -19,8 +19,8 @@ dev-db-start:
 dev-db-reset:
 	docker compose -f docker/docker-compose.dev.yml down -v
 	@echo "DB 볼륨 삭제 완료."
-	@rm -f migrations/public/[0-9]*.sql
-	@rm -f migrations/tenant/[0-9]*.sql
+	@rm -f src/main/resources/migrations/public/[0-9]*.sql
+	@rm -f src/main/resources/migrations/tenant/[0-9]*.sql
 	@echo "마이그레이션 파일 삭제 완료."
 
 dev-db-restart:
@@ -43,7 +43,8 @@ LB_URL      = jdbc:postgresql://localhost:5432/fabbit
 LB_USER     = fabbit
 LB_PASS     = fabbit
 LB_DEV_PORT = 5433
-LB = liquibase --username=$(LB_USER) --password=$(LB_PASS) --search-path=migrations
+LB_SEARCH_PATH = src/main/resources/migrations
+LB = liquibase --username=$(LB_USER) --password=$(LB_PASS) --search-path=$(LB_SEARCH_PATH)
 
 # public diff 자동 생성 (기존 마이그레이션 vs Hibernate DDL)
 revision-public:
@@ -53,7 +54,7 @@ revision-public:
 	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE current_state"
 	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE desired_state"
 	@# current: 기존 마이그레이션 적용
-	liquibase --username=postgres --password=dev --search-path=migrations \
+	liquibase --username=postgres --password=dev --search-path=$(LB_SEARCH_PATH) \
 		--url="jdbc:postgresql://localhost:$(LB_DEV_PORT)/current_state" \
 		--changelog-file=public-changelog.xml \
 		update 2>/dev/null || true
@@ -64,7 +65,7 @@ revision-public:
 		--url="jdbc:postgresql://localhost:$(LB_DEV_PORT)/current_state" \
 		--referenceUrl="jdbc:postgresql://localhost:$(LB_DEV_PORT)/desired_state" \
 		--referenceUsername=postgres --referencePassword=dev \
-		--changelog-file=migrations/public/$$(date +%Y%m%d%H%M%S)_diff.sql \
+		--changelog-file=src/main/resources/migrations/public/$$(date +%Y%m%d%H%M%S)_diff.sql \
 		diffChangeLog || (docker rm -f lb-dev-db > /dev/null 2>&1; exit 1)
 	@docker rm -f lb-dev-db > /dev/null
 	@echo "public revision 생성 완료"
@@ -77,7 +78,7 @@ revision-tenant:
 	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE current_state"
 	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE desired_state"
 	@# current: 기존 마이그레이션 적용
-	liquibase --username=postgres --password=dev --search-path=migrations \
+	liquibase --username=postgres --password=dev --search-path=$(LB_SEARCH_PATH) \
 		--url="jdbc:postgresql://localhost:$(LB_DEV_PORT)/current_state" \
 		--changelog-file=tenant-changelog.xml \
 		update 2>/dev/null || true
@@ -88,7 +89,7 @@ revision-tenant:
 		--url="jdbc:postgresql://localhost:$(LB_DEV_PORT)/current_state" \
 		--referenceUrl="jdbc:postgresql://localhost:$(LB_DEV_PORT)/desired_state" \
 		--referenceUsername=postgres --referencePassword=dev \
-		--changelog-file=migrations/tenant/$$(date +%Y%m%d%H%M%S)_diff.sql \
+		--changelog-file=src/main/resources/migrations/tenant/$$(date +%Y%m%d%H%M%S)_diff.sql \
 		diffChangeLog || (docker rm -f lb-dev-db > /dev/null 2>&1; exit 1)
 	@docker rm -f lb-dev-db > /dev/null
 	@echo "tenant revision 생성 완료"

@@ -37,6 +37,10 @@ public class OrganizationService {
     private final SubscriptionApi subscriptionApi;
 
     public Organization createOrganization(UUID userId, CreateOrganizationInput input) {
+        if (hasOwnedOrganization(userId)) {
+            throw new AppException(ErrorCode.ALREADY_EXISTS, "이미 생성한 워크스페이스가 있어 새 조직을 생성할 수 없습니다");
+        }
+
         PlanType planType = input.planType();
         if (planType == null) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 플랜입니다");
@@ -87,6 +91,10 @@ public class OrganizationService {
     public Membership getFirstMembershipOrThrow(UUID userId) {
         return membershipRepository.findFirstByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN, "소속된 조직이 없습니다"));
+    }
+
+    public boolean hasOwnedOrganization(UUID userId) {
+        return organizationRepository.existsByOwnerId(userId);
     }
 
     public List<Membership> getMembershipsByUserId(UUID userId) {

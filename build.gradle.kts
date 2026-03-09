@@ -7,7 +7,7 @@ plugins {
 
 group = "com.fabbitinc"
 version = "0.0.1-SNAPSHOT"
-description = "server2"
+description = "server"
 
 java {
     toolchain {
@@ -26,7 +26,7 @@ repositories {
 }
 
 springBoot {
-    mainClass.set("com.fabbitinc.server.Server2Application")
+    mainClass.set("com.fabbitinc.server.ServerApplication")
 }
 
 dependencies {

@@ -8,7 +8,7 @@ public record AppProperties(
         @DefaultValue("lvh.me") String baseDomain,
         @DefaultValue("10") int emailVerificationExpireMinutes,
         @DefaultValue("5") int emailVerificationMaxAttempts,
-        @DefaultValue("60") int emailVerificationCooldownSeconds,
+        @DefaultValue("10") int emailVerificationCooldownSeconds,
         @DefaultValue("7") int invitationExpireDays,
         @DefaultValue("http://localhost:5173") String invitationBaseUrl,
         @DefaultValue("localhost") String smtpHost,

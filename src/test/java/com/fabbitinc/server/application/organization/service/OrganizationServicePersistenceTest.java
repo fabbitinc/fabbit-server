@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fabbitinc.server.Server2Application;
+import com.fabbitinc.server.ServerApplication;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.config.JpaAuditingConfig;
@@ -99,6 +99,36 @@ class OrganizationServicePersistenceTest {
     }
 
     @Test
+    void createOrganization_이미_생성한_워크스페이스가_있는_사용자는_새_조직을_생성할_수_없다() {
+        User user = userRepository.save(User.create("owner-existing@example.com", "hashed-password", "Owner"));
+
+        organizationService.createOrganization(
+                user.getId(),
+                new CreateOrganizationInput(
+                        "Acme",
+                        "acme-existing",
+                        "manufacturing",
+                        "11-50",
+                        PlanType.STARTER
+                )
+        );
+
+        AppException exception = assertThrows(AppException.class, () -> organizationService.createOrganization(
+                user.getId(),
+                new CreateOrganizationInput(
+                        "Beta",
+                        "beta-existing",
+                        "manufacturing",
+                        "11-50",
+                        PlanType.BUSINESS
+                )
+        ));
+
+        assertEquals(ErrorCode.ALREADY_EXISTS, exception.getErrorCode());
+        assertEquals("이미 생성한 워크스페이스가 있어 새 조직을 생성할 수 없습니다", exception.getMessage());
+    }
+
+    @Test
     void consumeStorage와_releaseStorage가_조직_사용량을_갱신한다() {
         User user = userRepository.save(User.create("owner-storage@example.com", "hashed-password", "Owner"));
         Organization organization = organizationRepository.save(Organization.create(
@@ -150,7 +180,7 @@ class OrganizationServicePersistenceTest {
 
     @SpringBootConfiguration
     @EnableAutoConfiguration
-    @AutoConfigurationPackage(basePackageClasses = Server2Application.class)
+    @AutoConfigurationPackage(basePackageClasses = ServerApplication.class)
     static class TestApplication {
     }
 

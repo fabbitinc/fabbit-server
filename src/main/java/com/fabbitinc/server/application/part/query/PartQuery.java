@@ -4,6 +4,7 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
+import com.fabbitinc.server.application.mapping.api.MappingApi;
 import com.fabbitinc.server.application.part.model.BomDirection;
 import com.fabbitinc.server.application.part.model.DrawingViewerType;
 import com.fabbitinc.server.application.part.query.condition.BomTreeCondition;
@@ -89,6 +90,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PartQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
+    private final MappingApi mappingApi;
     private final PartRepository partRepository;
     private final FileRepository fileRepository;
     private final BomLinkRepository bomLinkRepository;
@@ -271,10 +273,14 @@ public class PartQuery {
                 "lead_time_days"
         ));
         columns.addAll(extKeys);
+        Map<String, String> headerAliases = mappingApi.getPartExportHeaderAliases(condition.mappingId());
+        List<String> headers = columns.stream()
+                .map(column -> headerAliases.getOrDefault(column, column))
+                .toList();
 
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("부품목록");
-            writeHeader(sheet, columns);
+            writeHeader(sheet, headers);
 
             int rowIndex = 1;
             for (Part part : parts) {
@@ -297,7 +303,7 @@ public class PartQuery {
                     writeCell(row, colIndex++, extended.get(key));
                 }
             }
-            autoFitColumns(sheet, columns.size());
+            autoFitColumns(sheet, headers.size());
             workbook.write(out);
             return out.toByteArray();
         } catch (IOException ex) {

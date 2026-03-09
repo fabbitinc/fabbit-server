@@ -1,10 +1,10 @@
 package com.fabbitinc.server.presentation.organization.controller;
 
-import com.fabbitinc.server.application.auth.dto.response.CreateOrganizationResponse;
-import com.fabbitinc.server.application.auth.dto.response.LoginResponse;
-import com.fabbitinc.server.application.auth.dto.response.OrganizationResponse;
-import com.fabbitinc.server.application.auth.dto.response.TokenResponse;
-import com.fabbitinc.server.application.auth.dto.response.UserResponse;
+import com.fabbitinc.server.presentation.auth.dto.response.CreateOrganizationResponse;
+import com.fabbitinc.server.presentation.auth.dto.response.LoginResponse;
+import com.fabbitinc.server.presentation.auth.dto.response.OrganizationResponse;
+import com.fabbitinc.server.presentation.auth.dto.response.TokenResponse;
+import com.fabbitinc.server.presentation.auth.dto.response.UserResponse;
 import com.fabbitinc.server.application.organization.dto.request.CreateOrganizationRequest;
 import com.fabbitinc.server.application.organization.dto.request.SetProfileImageRequest;
 import com.fabbitinc.server.application.organization.dto.request.SwitchOrgRequest;

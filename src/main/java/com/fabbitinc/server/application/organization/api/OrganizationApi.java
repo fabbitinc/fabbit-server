@@ -74,6 +74,10 @@ public class OrganizationApi {
         return organizationService.getOrgOrThrow(orgId);
     }
 
+    public boolean hasOwnedOrganization(UUID userId) {
+        return organizationService.hasOwnedOrganization(userId);
+    }
+
     public List<Membership> getMembershipsByUserId(UUID userId) {
         return organizationService.getMembershipsByUserId(userId);
     }

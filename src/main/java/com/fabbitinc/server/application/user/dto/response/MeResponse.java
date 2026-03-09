@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.user.dto.response;
 
-import com.fabbitinc.server.application.auth.dto.response.UserResponse;
+import com.fabbitinc.server.presentation.auth.dto.response.UserResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 

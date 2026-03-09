@@ -93,7 +93,7 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
             database.setLiquibaseSchemaName(schemaName);
 
             try (var liquibase = new Liquibase(
-                    "tenant-changelog.xml",
+                    "migrations/tenant-changelog.xml",
                     new ClassLoaderResourceAccessor(),
                     database
             )) {

@@ -1,7 +1,7 @@
 package com.fabbitinc.server.presentation.user.controller;
 
-import com.fabbitinc.server.application.auth.dto.response.OrganizationResponse;
-import com.fabbitinc.server.application.auth.dto.response.UserResponse;
+import com.fabbitinc.server.presentation.auth.dto.response.OrganizationResponse;
+import com.fabbitinc.server.presentation.auth.dto.response.UserResponse;
 import com.fabbitinc.server.application.user.dto.request.ChangePasswordRequest;
 import com.fabbitinc.server.application.user.dto.request.SetProfileImageRequest;
 import com.fabbitinc.server.application.user.dto.request.UpdateProfileRequest;

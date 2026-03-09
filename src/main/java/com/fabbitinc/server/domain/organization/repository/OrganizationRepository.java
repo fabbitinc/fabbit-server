@@ -17,6 +17,8 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
 
     boolean existsBySlug(String slug);
 
+    boolean existsByOwnerId(UUID ownerId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "3000"))
     @Query("select o from Organization o where o.id = :orgId")

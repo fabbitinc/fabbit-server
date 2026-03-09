@@ -1,8 +1,8 @@
 package com.fabbitinc.server.presentation.organization.controller;
 
-import com.fabbitinc.server.application.auth.dto.request.CreateInvitationRequest;
-import com.fabbitinc.server.application.auth.dto.response.InvitationListResponse;
-import com.fabbitinc.server.application.auth.dto.response.InvitationResponse;
+import com.fabbitinc.server.presentation.auth.dto.request.CreateInvitationRequest;
+import com.fabbitinc.server.presentation.auth.dto.response.InvitationListResponse;
+import com.fabbitinc.server.presentation.auth.dto.response.InvitationResponse;
 import com.fabbitinc.server.application.organization.query.OrganizationInvitationQuery;
 import com.fabbitinc.server.application.organization.query.result.OrganizationInvitationListResult;
 import com.fabbitinc.server.application.organization.usecase.CancelInvitationUseCase;
