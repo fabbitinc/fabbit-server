@@ -17,7 +17,7 @@ public record PartListResult(
             String category,
             String revision,
             PartLifecycleState lifecycleState,
-            String drawingNumber,
+            UUID drawingId,
             long childrenCount
     ) {
     }

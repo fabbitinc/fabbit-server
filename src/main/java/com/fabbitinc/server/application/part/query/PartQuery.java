@@ -200,9 +200,6 @@ public class PartQuery {
                 .fetchOne();
         long total = totalCount == null ? 0L : totalCount;
 
-        var drawingNumberExpr = JPAExpressions.select(drawing.getString("drawingNumber"))
-                .from(drawing)
-                .where(drawing.get("id", UUID.class).eq(drawingIdExpr));
         var childrenCountExpr = JPAExpressions.select(bomLink.get("id", UUID.class).count())
                 .from(bomLink)
                 .where(bomLink.get("parentPartId", UUID.class).eq(partIdExpr));
@@ -215,7 +212,7 @@ public class PartQuery {
                         partCategoryExpr,
                         partRevisionExpr,
                         partLifecycleStateExpr,
-                        drawingNumberExpr,
+                        drawingIdExpr,
                         childrenCountExpr
                 )
                 .from(part)
@@ -233,7 +230,7 @@ public class PartQuery {
                         row.get(partCategoryExpr),
                         row.get(partRevisionExpr) == null ? "1" : row.get(partRevisionExpr),
                         PartLifecycleState.from(row.get(partLifecycleStateExpr)),
-                        row.get(drawingNumberExpr),
+                        row.get(drawingIdExpr),
                         row.get(childrenCountExpr) == null ? 0L : row.get(childrenCountExpr)
                 ))
                 .toList();

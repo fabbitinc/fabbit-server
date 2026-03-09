@@ -426,7 +426,7 @@ public class PartController {
                                 item.category(),
                                 item.revision(),
                                 item.lifecycleState(),
-                                item.drawingNumber(),
+                                item.drawingId(),
                                 item.childrenCount()
                         ))
                         .toList()
