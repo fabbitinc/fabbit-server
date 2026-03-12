@@ -4,6 +4,7 @@ import com.fabbitinc.server.application.drawing.dto.request.RegisterDrawingReque
 import com.fabbitinc.server.application.drawing.dto.response.RegisterDrawingResponse;
 import com.fabbitinc.server.application.file.dto.response.FileItemResponse;
 import com.fabbitinc.server.application.part.dto.request.AttachFilesRequest;
+import com.fabbitinc.server.application.part.dto.request.CreatePartRequest;
 import com.fabbitinc.server.application.part.dto.request.RenameCategoryRequest;
 import com.fabbitinc.server.application.part.dto.response.BomChildResponse;
 import com.fabbitinc.server.application.part.dto.response.BomParentResponse;
@@ -51,16 +52,19 @@ import com.fabbitinc.server.application.part.query.result.PartLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartProjectsResult;
 import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
 import com.fabbitinc.server.application.part.usecase.AttachPartFilesUseCase;
+import com.fabbitinc.server.application.part.usecase.CreatePartUseCase;
 import com.fabbitinc.server.application.part.usecase.DeletePartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.DetachPartFileUseCase;
 import com.fabbitinc.server.application.part.usecase.RegisterPartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.RenameCategoryUseCase;
 import com.fabbitinc.server.application.part.usecase.command.AttachPartFilesCommand;
+import com.fabbitinc.server.application.part.usecase.command.CreatePartCommand;
 import com.fabbitinc.server.application.part.usecase.command.DeletePartDrawingCommand;
 import com.fabbitinc.server.application.part.usecase.command.DetachPartFileCommand;
 import com.fabbitinc.server.application.part.usecase.command.RegisterPartDrawingCommand;
 import com.fabbitinc.server.application.part.usecase.command.RenameCategoryCommand;
 import com.fabbitinc.server.application.part.usecase.result.AttachPartFilesResult;
+import com.fabbitinc.server.application.part.usecase.result.CreatePartResult;
 import com.fabbitinc.server.application.part.usecase.result.RegisterPartDrawingResult;
 import com.fabbitinc.server.application.part.usecase.result.RenameCategoryResult;
 import io.swagger.v3.oas.annotations.Operation;
@@ -74,6 +78,7 @@ import jakarta.validation.constraints.Min;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -86,13 +91,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/parts")
-@Tag(name = "parts", description = "부품 조회/카테고리 API")
+@Tag(name = "parts", description = "부품 관리/조회 API")
 @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "요청 성공"),
         @ApiResponse(responseCode = "201", description = "생성 성공"),
@@ -108,11 +114,46 @@ public class PartController {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     private final PartQuery partQuery;
+    private final CreatePartUseCase createPartUseCase;
     private final RenameCategoryUseCase renameCategoryUseCase;
     private final AttachPartFilesUseCase attachPartFilesUseCase;
     private final DetachPartFileUseCase detachPartFileUseCase;
     private final RegisterPartDrawingUseCase registerPartDrawingUseCase;
     private final DeletePartDrawingUseCase deletePartDrawingUseCase;
+
+    @Operation(
+            summary = "POST /api/v1/parts",
+            description = "부품을 생성하고 생성 직후 상세 정보를 반환합니다"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "생성 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음"),
+            @ApiResponse(responseCode = "409", description = "리소스 충돌"),
+            @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
+    })
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public PartDetailResponse createPart(
+            @Parameter(description = "부품 생성 요청")
+            @Valid @RequestBody CreatePartRequest request
+    ) {
+        CreatePartResult result = createPartUseCase.execute(new CreatePartCommand(
+                request.partNumber(),
+                request.name(),
+                request.material(),
+                request.unit(),
+                request.description(),
+                request.category(),
+                request.isPhantom(),
+                request.lifecycleState(),
+                request.leadTimeDays(),
+                request.extendedProperties()
+        ));
+        return toPartDetailResponse(partQuery.get(new PartDetailCondition(result.partId())));
+    }
 
     @Operation(
             summary = "GET /api/v1/parts/lookup",

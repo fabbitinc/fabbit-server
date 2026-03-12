@@ -3,19 +3,26 @@ package com.fabbitinc.server.application.part.service;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
+import com.fabbitinc.server.application.part.service.input.CreatePartInput;
+import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartDefaultOwner;
+import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.repository.PartDefaultOwnerRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor
@@ -27,6 +34,22 @@ public class PartService {
     private final PartDefaultOwnerRepository partDefaultOwnerRepository;
     private final FileRepository fileRepository;
     private final OrganizationApi organizationApi;
+    private final ObjectMapper objectMapper;
+
+    public Part createPart(CreatePartInput input) {
+        try {
+            Part part = Part.create(input.partNumber(), input.name());
+            if (partRepository.findByPartNumber(part.getPartNumber()).isPresent()) {
+                throw new AppException(ErrorCode.CONFLICT, "이미 존재하는 품번입니다: " + part.getPartNumber());
+            }
+
+            applyCreateInput(part, input);
+            applyDefaultOwner(part);
+            return partRepository.save(part);
+        } catch (DomainException ex) {
+            throw toAppException(ex);
+        }
+    }
 
     public Part updateOwner(
             UUID partId,
@@ -197,6 +220,87 @@ public class PartService {
                 ));
     }
 
+    private void applyCreateInput(Part part, CreatePartInput input) {
+        if (input.category() != null) {
+            part.changeCategory(input.category());
+        }
+        if (input.material() != null) {
+            part.changeMaterial(input.material());
+        }
+        if (input.unit() != null) {
+            part.changeUnit(input.unit());
+        }
+        if (input.description() != null) {
+            part.changeDescription(input.description());
+        }
+        if (input.phantom() != null) {
+            applyPhantom(part, input.phantom());
+        }
+
+        PartLifecycleState lifecycleState = parseLifecycleState(input.lifecycleState());
+        if (lifecycleState != null) {
+            part.changeLifecycleState(lifecycleState);
+        }
+        if (input.leadTimeDays() != null) {
+            part.changeLeadTimeDays(input.leadTimeDays());
+        }
+        if (!input.extendedProperties().isEmpty()) {
+            part.changeExtendedProperties(serializeProperties(input.extendedProperties()));
+        }
+    }
+
+    private void applyPhantom(Part part, Boolean phantom) {
+        if (Boolean.TRUE.equals(phantom)) {
+            part.markPhantom();
+            return;
+        }
+        part.markReal();
+    }
+
+    private PartLifecycleState parseLifecycleState(String rawLifecycleState) {
+        if (rawLifecycleState == null || rawLifecycleState.isBlank()) {
+            return null;
+        }
+
+        PartLifecycleState lifecycleState = PartLifecycleState.from(rawLifecycleState);
+        if (lifecycleState == null) {
+            throw new AppException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "유효하지 않은 lifecycle_state입니다: " + rawLifecycleState
+            );
+        }
+        return lifecycleState;
+    }
+
+    private void applyDefaultOwner(Part part) {
+        resolveDefaultOwner(part.getCategory()).ifPresent(defaultOwner -> {
+            if (defaultOwner.getDefaultOwnerId() != null) {
+                part.assignOwner(defaultOwner.getDefaultOwnerId());
+            }
+            if (defaultOwner.getDefaultOwnerTeamId() != null) {
+                part.assignOwnerTeam(defaultOwner.getDefaultOwnerTeamId());
+            }
+        });
+    }
+
+    private Optional<PartDefaultOwner> resolveDefaultOwner(String category) {
+        if (category != null) {
+            Optional<PartDefaultOwner> categoryDefaultOwner = partDefaultOwnerRepository.findByCategory(category);
+            if (categoryDefaultOwner.isPresent()) {
+                return categoryDefaultOwner;
+            }
+        }
+        return partDefaultOwnerRepository.findByCategoryIsNull();
+    }
+
+    private String serializeProperties(Map<String, Object> properties) {
+        try {
+            return objectMapper.writeValueAsString(properties);
+        } catch (JacksonException ex) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "extended_properties를 직렬화할 수 없습니다");
+        }
+    }
+
     private String normalizeRequiredCategory(String raw, String label) {
         if (raw == null || raw.isBlank()) {
             throw new AppException(ErrorCode.BAD_REQUEST, label + " 카테고리는 비어 있을 수 없습니다");
@@ -207,5 +311,23 @@ public class PartService {
             throw new AppException(ErrorCode.BAD_REQUEST, label + " 카테고리는 100자 이하여야 합니다");
         }
         return trimmed;
+    }
+
+    private AppException toAppException(DomainException ex) {
+        return switch (ex.getDomainCode()) {
+            case Part.CODE_PART_NUMBER_REQUIRED,
+                    Part.CODE_PART_NUMBER_TOO_LONG,
+                    Part.CODE_PART_NAME_TOO_LONG,
+                    Part.CODE_PART_CATEGORY_TOO_LONG,
+                    Part.CODE_PART_MATERIAL_TOO_LONG,
+                    Part.CODE_PART_UNIT_TOO_LONG,
+                    Part.CODE_PART_DRAWING_REQUIRED,
+                    Part.CODE_PART_OWNER_REQUIRED,
+                    Part.CODE_PART_OWNER_TEAM_REQUIRED,
+                    Part.CODE_PART_LEAD_TIME_DAYS_INVALID ->
+                    new AppException(ErrorCode.VALIDATION_ERROR, ex.getMessage());
+            default ->
+                    new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
+        };
     }
 }
