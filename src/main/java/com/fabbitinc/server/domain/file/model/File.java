@@ -107,6 +107,16 @@ public class File extends AbstractCreatedEntity {
     }
 
     public static File create(
+            UUID id,
+            String originalName,
+            String fileKey,
+            String contentType,
+            long fileSize
+    ) {
+        return new File(id, originalName, fileKey, contentType, fileSize, null);
+    }
+
+    public static File create(
             String originalName,
             String fileKey,
             String contentType,
@@ -114,6 +124,15 @@ public class File extends AbstractCreatedEntity {
             String contentHash
     ) {
         return new File(originalName, fileKey, contentType, fileSize, contentHash);
+    }
+
+    public static File create(
+            String originalName,
+            String fileKey,
+            String contentType,
+            long fileSize
+    ) {
+        return new File(originalName, fileKey, contentType, fileSize, null);
     }
 
     public boolean isDeleted() {
