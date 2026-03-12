@@ -94,7 +94,8 @@ public class DrawingProcessingQuery {
     }
 
     private List<String> resolveAllowedRenderSourceExtensions(Drawing drawing) {
-        if (drawing.getExpectedRenderSourceGroup() == null) {
+        if (drawing.getConversionStatus() != DrawingConversionStatus.ACTION_REQUIRED
+                || drawing.getExpectedRenderSourceGroup() == null) {
             return List.of();
         }
         return drawing.getExpectedRenderSourceGroup().getAllowedFormats();

@@ -5,6 +5,7 @@ import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
+import com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus;
 import com.fabbitinc.server.domain.drawing.model.DrawingRenderSourceGroup;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
@@ -86,6 +87,19 @@ public class DrawingService {
             throw new AppException(
                     ErrorCode.PRECONDITION_FAILED,
                     "추가 render source 업로드가 필요하지 않은 도면입니다"
+            );
+        }
+        if (drawing.getConversionStatus() != DrawingConversionStatus.ACTION_REQUIRED
+                && drawing.getConversionStatus() != DrawingConversionStatus.FAILED) {
+            throw new AppException(
+                    ErrorCode.PRECONDITION_FAILED,
+                    "render source는 조치 필요 또는 실패 상태에서만 등록할 수 있습니다"
+            );
+        }
+        if (drawing.getCurrentJobId() != null) {
+            throw new AppException(
+                    ErrorCode.PRECONDITION_FAILED,
+                    "도면 변환 중에는 render source를 등록할 수 없습니다"
             );
         }
 

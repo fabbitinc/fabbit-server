@@ -604,7 +604,8 @@ public class PartQuery {
                 fileUrlResolver.resolve(viewerKey),
                 fileUrlResolver.resolve(previewKey),
                 fileUrlResolver.resolve(originalFileKey),
-                drawing.getExpectedRenderSourceGroup() == null
+                drawing.getConversionStatus() != com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus.ACTION_REQUIRED
+                                || drawing.getExpectedRenderSourceGroup() == null
                         ? List.of()
                         : drawing.getExpectedRenderSourceGroup().getAllowedFormats()
         );
