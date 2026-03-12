@@ -18,6 +18,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import javax.sql.DataSource;
+import liquibase.Contexts;
+import liquibase.LabelExpression;
 import liquibase.Liquibase;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
@@ -93,11 +95,11 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
             database.setLiquibaseSchemaName(schemaName);
 
             try (var liquibase = new Liquibase(
-                    "migrations/tenant-changelog.xml",
+                    "migrations/changelog-master.xml",
                     new ClassLoaderResourceAccessor(),
                     database
             )) {
-                liquibase.update();
+                liquibase.update(new Contexts("tenant"), new LabelExpression());
             }
         }
     }
