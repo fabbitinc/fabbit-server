@@ -579,7 +579,8 @@ public class PartController {
                 result.viewerType(),
                 result.viewerUrl(),
                 result.previewUrl(),
-                result.originalFileUrl()
+                result.originalFileUrl(),
+                result.allowedRenderSourceExtensions()
         );
     }
 

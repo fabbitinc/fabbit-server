@@ -1,19 +1,26 @@
 package com.fabbitinc.server.presentation.drawing.controller;
 
+import com.fabbitinc.server.application.drawing.dto.request.RegisterDrawingRenderSourceRequest;
 import com.fabbitinc.server.application.drawing.dto.response.DrawingProcessingResponse;
+import com.fabbitinc.server.application.drawing.dto.response.RegisterDrawingRenderSourceResponse;
 import com.fabbitinc.server.application.drawing.query.DrawingProcessingQuery;
 import com.fabbitinc.server.application.drawing.query.condition.DrawingProcessingCondition;
+import com.fabbitinc.server.application.drawing.usecase.RegisterDrawingRenderSourceUseCase;
+import com.fabbitinc.server.application.drawing.usecase.command.RegisterDrawingRenderSourceCommand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @Validated
@@ -31,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class DrawingController {
 
     private final DrawingProcessingQuery drawingProcessingQuery;
+    private final RegisterDrawingRenderSourceUseCase registerDrawingRenderSourceUseCase;
 
     @Operation(
             summary = "GET /api/v1/drawings/{drawingId}/processing",
@@ -44,6 +52,25 @@ public class DrawingController {
         return toDrawingProcessingResponse(drawingProcessingQuery.get(new DrawingProcessingCondition(drawingId)));
     }
 
+    @Operation(
+            summary = "POST /api/v1/drawings/{drawingId}/render-source",
+            description = "도면 변환용 render source 파일을 등록하고 비동기 변환을 요청합니다"
+    )
+    @PostMapping("/{drawingId}/render-source")
+    public RegisterDrawingRenderSourceResponse registerRenderSource(
+            @Parameter(description = "render source를 등록할 도면 ID")
+            @PathVariable UUID drawingId,
+            @Valid @RequestBody RegisterDrawingRenderSourceRequest request
+    ) {
+        var result = registerDrawingRenderSourceUseCase.execute(
+                new RegisterDrawingRenderSourceCommand(drawingId, request.fileId())
+        );
+        return new RegisterDrawingRenderSourceResponse(
+                result.drawingId(),
+                result.conversionStatus()
+        );
+    }
+
     private DrawingProcessingResponse toDrawingProcessingResponse(
             com.fabbitinc.server.application.drawing.query.result.DrawingProcessingResult result
     ) {
@@ -53,7 +80,9 @@ public class DrawingController {
                 result.failureMessage(),
                 result.pdfReady(),
                 result.webpReady(),
-                result.glbReady()
+                result.glbReady(),
+                result.actionRequiredReason(),
+                result.allowedRenderSourceExtensions()
         );
     }
 }

@@ -7,6 +7,7 @@ import com.fabbitinc.server.application.drawing.query.condition.DrawingProcessin
 import com.fabbitinc.server.application.drawing.query.result.DrawingProcessingFailureCode;
 import com.fabbitinc.server.application.drawing.query.result.DrawingProcessingResult;
 import com.fabbitinc.server.application.drawing.query.result.DrawingProcessingStatus;
+import com.fabbitinc.server.domain.drawing.model.DrawingActionRequiredReason;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus;
 import com.fabbitinc.server.domain.drawing.model.DrawingJobStatus;
@@ -15,6 +16,7 @@ import com.fabbitinc.server.domain.drawing.model.DrawingServingProjection;
 import com.fabbitinc.server.domain.drawing.repository.DrawingProcessingJobRepository;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.drawing.repository.DrawingServingProjectionRepository;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -42,18 +44,24 @@ public class DrawingProcessingQuery {
                 .findFirstByDrawingIdOrderByCreatedAtDesc(drawingId)
                 .orElse(null);
         DrawingServingProjection projection = drawingServingProjectionRepository.findById(drawingId).orElse(null);
+        DrawingProcessingStatus status = resolveStatus(drawing, latestJob);
 
         return new DrawingProcessingResult(
-                resolveStatus(drawing, latestJob),
+                status,
                 resolveFailureCode(drawing, latestJob),
                 resolveFailureMessage(drawing, latestJob),
                 hasText(resolvePdfKey(drawing, projection)),
                 hasText(resolveWebpKey(drawing, projection)),
-                hasText(resolveGlbKey(drawing, projection))
+                hasText(resolveGlbKey(drawing, projection)),
+                resolveActionRequiredReason(status),
+                resolveAllowedRenderSourceExtensions(drawing)
         );
     }
 
     private DrawingProcessingStatus resolveStatus(Drawing drawing, DrawingProcessingJob latestJob) {
+        if (drawing.isRenderSourceRequired() || drawing.getConversionStatus() == DrawingConversionStatus.ACTION_REQUIRED) {
+            return DrawingProcessingStatus.ACTION_REQUIRED;
+        }
         if (drawing.getConversionStatus() == DrawingConversionStatus.COMPLETED) {
             return DrawingProcessingStatus.COMPLETED;
         }
@@ -76,6 +84,20 @@ public class DrawingProcessingQuery {
             case COMPLETED -> DrawingProcessingStatus.COMPLETED;
             case FAILED -> DrawingProcessingStatus.FAILED;
         };
+    }
+
+    private DrawingActionRequiredReason resolveActionRequiredReason(DrawingProcessingStatus status) {
+        if (status != DrawingProcessingStatus.ACTION_REQUIRED) {
+            return null;
+        }
+        return DrawingActionRequiredReason.RENDER_SOURCE_REQUIRED;
+    }
+
+    private List<String> resolveAllowedRenderSourceExtensions(Drawing drawing) {
+        if (drawing.getExpectedRenderSourceGroup() == null) {
+            return List.of();
+        }
+        return drawing.getExpectedRenderSourceGroup().getAllowedFormats();
     }
 
     private DrawingProcessingFailureCode resolveFailureCode(Drawing drawing, DrawingProcessingJob latestJob) {

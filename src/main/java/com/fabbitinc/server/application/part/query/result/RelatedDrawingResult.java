@@ -3,6 +3,7 @@ package com.fabbitinc.server.application.part.query.result;
 import com.fabbitinc.server.application.part.model.DrawingViewerType;
 import com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus;
 import com.fabbitinc.server.domain.drawing.model.DrawingStatus;
+import java.util.List;
 import java.util.UUID;
 
 public record RelatedDrawingResult(
@@ -15,6 +16,7 @@ public record RelatedDrawingResult(
         DrawingViewerType viewerType,
         String viewerUrl,
         String previewUrl,
-        String originalFileUrl
+        String originalFileUrl,
+        List<String> allowedRenderSourceExtensions
 ) {
 }

@@ -104,14 +104,11 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
 
     public void registerSourceFile(
             UUID sourceFileId,
-            DrawingSourceType sourceType,
             DrawingDimension dimension,
             String storageKey,
             String contentType,
             long fileSize
     ) {
-        this.sourceFileId = sourceFileId;
-        this.sourceType = sourceType;
         this.dimension = dimension;
         upsertArtifact(
                 DrawingArtifactType.SOURCE_ORIGINAL,
@@ -123,21 +120,49 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
         );
     }
 
+    public void registerRenderSourceFile(
+            UUID sourceFileId,
+            DrawingSourceType sourceType,
+            DrawingDimension dimension,
+            String storageKey,
+            String contentType,
+            long fileSize
+    ) {
+        this.sourceFileId = sourceFileId;
+        this.sourceType = sourceType;
+        this.dimension = dimension;
+        upsertArtifact(
+                DrawingArtifactType.SOURCE_RENDER,
+                sourceFileId,
+                detectFormat(storageKey),
+                storageKey,
+                normalizeNullable(contentType),
+                Math.max(fileSize, 0L)
+        );
+    }
+
     public void changeOriginalFileKey(String originalFileKey) {
         String normalized = normalizeNullable(originalFileKey);
         if (normalized == null) {
-            this.sourceFileId = null;
             removeArtifact(DrawingArtifactType.SOURCE_ORIGINAL);
             return;
         }
         upsertArtifact(
                 DrawingArtifactType.SOURCE_ORIGINAL,
-                this.sourceFileId,
+                null,
                 detectFormat(normalized),
                 normalized,
                 defaultContentType(detectFormat(normalized)),
                 0L
         );
+    }
+
+    public void markRenderSourceRequired() {
+        this.sourceFileId = null;
+        this.sourceType = null;
+        this.currentJobId = null;
+        this.conversionStatus = DrawingConversionStatus.ACTION_REQUIRED;
+        removeArtifact(DrawingArtifactType.SOURCE_RENDER);
     }
 
     public void changePdfKey(String pdfKey) {
@@ -246,6 +271,14 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
         return findArtifactKey(DrawingArtifactType.DERIVED_PDF);
     }
 
+    public String getRenderSourceFileKey() {
+        String renderSourceKey = findArtifactKey(DrawingArtifactType.SOURCE_RENDER);
+        if (renderSourceKey != null) {
+            return renderSourceKey;
+        }
+        return sourceFileId == null ? null : getOriginalFileKey();
+    }
+
     public String getThumbnailKey() {
         return findArtifactKey(DrawingArtifactType.DERIVED_WEBP);
     }
@@ -256,6 +289,20 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
 
     public String getGlbKey() {
         return findArtifactKey(DrawingArtifactType.DERIVED_GLB);
+    }
+
+    public String getOriginalFormat() {
+        return findArtifactFormat(DrawingArtifactType.SOURCE_ORIGINAL);
+    }
+
+    public DrawingRenderSourceGroup getExpectedRenderSourceGroup() {
+        return DrawingExtension.fromFormat(getOriginalFormat())
+                .map(DrawingExtension::getRequiredRenderSourceGroup)
+                .orElse(null);
+    }
+
+    public boolean isRenderSourceRequired() {
+        return sourceFileId == null && getExpectedRenderSourceGroup() != null;
     }
 
     public List<DrawingArtifact> getArtifacts() {
@@ -310,6 +357,11 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
     private String findArtifactKey(DrawingArtifactType artifactType) {
         DrawingArtifact artifact = findArtifact(artifactType);
         return artifact == null ? null : artifact.getStorageKey();
+    }
+
+    private String findArtifactFormat(DrawingArtifactType artifactType) {
+        DrawingArtifact artifact = findArtifact(artifactType);
+        return artifact == null ? null : artifact.getFormat();
     }
 
     private String requireName(String value) {

@@ -126,7 +126,7 @@ public class DrawingArtifactService {
             case DERIVED_PDF -> replaceSuffix(sourceFileKey, ".pdf");
             case DERIVED_WEBP -> buildPreviewKey(sourceFileKey, artifact.originalName());
             case DERIVED_GLB -> replaceSuffix(sourceFileKey, suffixOrDefault(artifact.originalName(), ".glb"));
-            case SOURCE_ORIGINAL -> sourceFileKey;
+            case SOURCE_ORIGINAL, SOURCE_RENDER -> sourceFileKey;
         };
     }
 

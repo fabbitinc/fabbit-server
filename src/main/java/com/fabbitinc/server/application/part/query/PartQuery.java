@@ -603,7 +603,10 @@ public class PartQuery {
                 viewerType,
                 fileUrlResolver.resolve(viewerKey),
                 fileUrlResolver.resolve(previewKey),
-                fileUrlResolver.resolve(originalFileKey)
+                fileUrlResolver.resolve(originalFileKey),
+                drawing.getExpectedRenderSourceGroup() == null
+                        ? List.of()
+                        : drawing.getExpectedRenderSourceGroup().getAllowedFormats()
         );
     }
 

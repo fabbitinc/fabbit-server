@@ -4,6 +4,7 @@ import com.fabbitinc.server.application.part.model.DrawingViewerType;
 import com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus;
 import com.fabbitinc.server.domain.drawing.model.DrawingStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 import java.util.UUID;
 
 @Schema(description = "관련 도면 응답")
@@ -27,6 +28,8 @@ public record RelatedDrawingResponse(
         @Schema(description = "미리보기 이미지 URL")
         String previewUrl,
         @Schema(description = "원본 파일 URL")
-        String originalFileUrl
+        String originalFileUrl,
+        @Schema(description = "추가 업로드 가능한 render source 확장자 목록", example = "[\"pdf\", \"dxf\"]")
+        List<String> allowedRenderSourceExtensions
 ) {
 }

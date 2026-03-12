@@ -8,11 +8,11 @@ import com.fabbitinc.server.domain.drawing.model.DrawingArtifactPublication;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
+import com.fabbitinc.server.infrastructure.drawing.adapter.EzdxfCad2dToPdfAdapter;
 import com.fabbitinc.server.infrastructure.drawing.adapter.ImageIoWebpTranscoder;
 import com.fabbitinc.server.infrastructure.drawing.adapter.Mayo3dConverterAdapter;
 import com.fabbitinc.server.infrastructure.drawing.adapter.PdfBoxPdfPreviewRenderAdapter;
 import com.fabbitinc.server.infrastructure.drawing.adapter.PdfBoxRasterImageToPdfAdapter;
-import com.fabbitinc.server.infrastructure.drawing.adapter.QcadCliCad2dToPdfAdapter;
 import com.fabbitinc.server.infrastructure.drawing.pipeline.Cad2dDrawingPipeline;
 import com.fabbitinc.server.infrastructure.drawing.pipeline.Cad3dDrawingPipeline;
 import com.fabbitinc.server.infrastructure.drawing.pipeline.Pdf2dDrawingPipeline;
@@ -50,21 +50,22 @@ public class DrawingConversionService {
             DrawingRepository drawingRepository,
             FileRepository fileRepository,
             StoragePort storagePort,
-            OrganizationApi organizationApi,
             DrawingConverterProperties drawingConverterProperties,
             DrawingArtifactService drawingArtifactService,
             DrawingProcessingJobService drawingProcessingJobService,
-            DrawingServingProjectionService drawingServingProjectionService
+            DrawingServingProjectionService drawingServingProjectionService,
+            DrawingSourceClassifier drawingSourceClassifier,
+            DrawingPipelineResolver drawingPipelineResolver
     ) {
-        this(
-                drawingRepository,
-                fileRepository,
-                storagePort,
-                drawingConverterProperties,
-                drawingArtifactService,
-                drawingProcessingJobService,
-                drawingServingProjectionService
-        );
+        this.drawingRepository = drawingRepository;
+        this.fileRepository = fileRepository;
+        this.storagePort = storagePort;
+        this.drawingConverterProperties = drawingConverterProperties;
+        this.drawingArtifactService = drawingArtifactService;
+        this.drawingProcessingJobService = drawingProcessingJobService;
+        this.drawingServingProjectionService = drawingServingProjectionService;
+        this.drawingSourceClassifier = drawingSourceClassifier;
+        this.drawingPipelineResolver = drawingPipelineResolver;
     }
 
     public DrawingConversionService(
@@ -81,33 +82,21 @@ public class DrawingConversionService {
                 drawingConverterProperties,
                 new DrawingArtifactService(fileRepository, storagePort, organizationApi),
                 null,
-                null
+                null,
+                new DrawingSourceClassifier(),
+                createDefaultPipelineResolver(drawingConverterProperties)
         );
     }
 
-    private DrawingConversionService(
-            DrawingRepository drawingRepository,
-            FileRepository fileRepository,
-            StoragePort storagePort,
-            DrawingConverterProperties drawingConverterProperties,
-            DrawingArtifactService drawingArtifactService,
-            DrawingProcessingJobService drawingProcessingJobService,
-            DrawingServingProjectionService drawingServingProjectionService
+    private static DrawingPipelineResolver createDefaultPipelineResolver(
+            DrawingConverterProperties drawingConverterProperties
     ) {
-        this.drawingRepository = drawingRepository;
-        this.fileRepository = fileRepository;
-        this.storagePort = storagePort;
-        this.drawingConverterProperties = drawingConverterProperties;
-        this.drawingArtifactService = drawingArtifactService;
-        this.drawingProcessingJobService = drawingProcessingJobService;
-        this.drawingServingProjectionService = drawingServingProjectionService;
-        this.drawingSourceClassifier = new DrawingSourceClassifier();
         var previewRenderPort = new PdfBoxPdfPreviewRenderAdapter();
         var cad3dConverterAdapter = new Mayo3dConverterAdapter(drawingConverterProperties);
-        this.drawingPipelineResolver = new DrawingPipelineResolver(List.of(
+        return new DrawingPipelineResolver(List.of(
                 new Pdf2dDrawingPipeline(previewRenderPort),
                 new Raster2dDrawingPipeline(new PdfBoxRasterImageToPdfAdapter(), previewRenderPort),
-                new Cad2dDrawingPipeline(new QcadCliCad2dToPdfAdapter(drawingConverterProperties), previewRenderPort),
+                new Cad2dDrawingPipeline(new EzdxfCad2dToPdfAdapter(drawingConverterProperties), previewRenderPort),
                 new Cad3dDrawingPipeline(
                         cad3dConverterAdapter,
                         cad3dConverterAdapter,
@@ -267,6 +256,9 @@ public class DrawingConversionService {
     }
 
     private File resolveSourceFile(Drawing drawing) {
+        if (drawing.isRenderSourceRequired()) {
+            return null;
+        }
         if (drawing.getSourceFileId() != null) {
             File sourceFile = fileRepository.findByIdAndDeletedAtIsNull(drawing.getSourceFileId()).orElse(null);
             if (sourceFile != null) {
@@ -281,9 +273,6 @@ public class DrawingConversionService {
     }
 
     private DrawingSourceDescriptor resolveSourceDescriptor(Drawing drawing, File sourceFile) {
-        if (drawing.getSourceType() != null && drawing.getDimension() != null) {
-            return new DrawingSourceDescriptor(drawing.getSourceType(), drawing.getDimension());
-        }
         return drawingSourceClassifier.classify(sourceFile.getOriginalName());
     }
 
