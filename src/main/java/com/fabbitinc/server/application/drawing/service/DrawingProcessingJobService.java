@@ -2,6 +2,7 @@ package com.fabbitinc.server.application.drawing.service;
 
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.model.DrawingArtifactPublication;
+import com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus;
 import com.fabbitinc.server.domain.drawing.model.DrawingJobStatus;
 import com.fabbitinc.server.domain.drawing.model.DrawingProcessingJob;
 import com.fabbitinc.server.domain.drawing.repository.DrawingProcessingJobRepository;
@@ -26,6 +27,11 @@ public class DrawingProcessingJobService {
     public UUID request(UUID drawingId, String pipelineKey, String profileKey) {
         Drawing drawing = drawingRepository.findById(drawingId).orElse(null);
         if (drawing == null || drawing.getDeletedAt() != null) {
+            return null;
+        }
+        if (drawing.getConversionStatus() == DrawingConversionStatus.ACTION_REQUIRED
+                || drawing.isRenderSourceRequired()) {
+            log.info("event=drawing_job_request_skipped drawing_id={} reason=render_source_required", drawingId);
             return null;
         }
 

@@ -23,7 +23,12 @@ public class CreateFileUseCase {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         CreateFileOutput output = fileService.createFile(
                 auth,
-                new CreateFileInput(command.originalName(), command.contentType(), command.fileSize())
+                new CreateFileInput(
+                        command.originalName(),
+                        command.contentType(),
+                        command.fileSize(),
+                        command.contentHash()
+                )
         );
         return new CreatedFileResult(output.fileId(), output.uploadUrl(), output.fileKey());
     }

@@ -202,6 +202,12 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
     }
 
     public void beginProcessing(UUID jobId) {
+        if (isRenderSourceRequired()) {
+            throw new DomainException(
+                    "DRAWING_RENDER_SOURCE_REQUIRED",
+                    "render source 업로드가 필요한 도면은 변환을 시작할 수 없습니다"
+            );
+        }
         this.currentJobId = jobId;
         this.conversionStatus = DrawingConversionStatus.PENDING;
     }

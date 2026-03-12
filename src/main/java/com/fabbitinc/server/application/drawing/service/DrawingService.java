@@ -71,7 +71,7 @@ public class DrawingService {
         drawingRepository.save(drawing);
         attachFileToDrawing(file, drawing.getId());
 
-        if (!sourceDescriptor.extension().requiresRenderSource()) {
+        if (drawing.getConversionStatus() == DrawingConversionStatus.PENDING) {
             dispatchAfterCommit(drawing.getId());
         }
         return drawing;

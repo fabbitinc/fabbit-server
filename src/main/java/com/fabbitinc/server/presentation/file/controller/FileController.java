@@ -65,7 +65,12 @@ public class FileController {
             @Valid @RequestBody CreateFileRequest request
     ) {
         return toCreateFileResponse(createFileUseCase.execute(
-                new CreateFileCommand(request.originalName(), request.contentType(), request.fileSize())
+                new CreateFileCommand(
+                        request.originalName(),
+                        request.contentType(),
+                        request.fileSize(),
+                        request.contentHash()
+                )
         ));
     }
 
@@ -84,7 +89,8 @@ public class FileController {
                                 .map(item -> new CreateFileCommand(
                                         item.originalName(),
                                         item.contentType(),
-                                        item.fileSize()
+                                        item.fileSize(),
+                                        item.contentHash()
                                 ))
                                 .toList()
                 )

@@ -8,55 +8,60 @@ import lombok.Getter;
 @Getter
 public enum DrawingExtension {
     // 도면
-    DWG("dwg", DrawingSourceType.CAD_2D, DrawingDimension.TWO_D, false, DrawingRenderSourceGroup.PDF_PIPELINE),
-    DXF("dxf", DrawingSourceType.CAD_2D, DrawingDimension.TWO_D, true, null),
-    PDF("pdf", DrawingSourceType.PDF_DOCUMENT, DrawingDimension.TWO_D, true, null),
+    DWG("dwg", DrawingSourceType.CAD_2D, DrawingDimension.TWO_D, false),
+    DXF("dxf", DrawingSourceType.CAD_2D, DrawingDimension.TWO_D, true),
+    PDF("pdf", DrawingSourceType.PDF_DOCUMENT, DrawingDimension.TWO_D, true),
     // 이미지
-    PNG("png", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true, null),
-    JPG("jpg", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true, null),
-    JPEG("jpeg", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true, null),
-    BMP("bmp", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true, null),
-    TIF("tif", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true, null),
-    TIFF("tiff", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true, null),
-    WEBP("webp", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true, null),
+    PNG("png", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true),
+    JPG("jpg", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true),
+    JPEG("jpeg", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true),
+    BMP("bmp", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true),
+    TIF("tif", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true),
+    TIFF("tiff", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true),
+    WEBP("webp", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true),
     // 3D
-    SLDPRT("sldprt", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, false, DrawingRenderSourceGroup.GLB_PIPELINE),
-    SLDASM("sldasm", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, false, DrawingRenderSourceGroup.GLB_PIPELINE),
-    STEP("step", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true, null),
-    STP("stp", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true, null),
-    IGES("iges", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true, null),
-    IGS("igs", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true, null),
-    BREP("brep", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true, null),
-    BRP("brp", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true, null),
-    STL("stl", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true, null),
-    OBJ("obj", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true, null),
-    THREE_MF("3mf", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true, null),
-    FBX("fbx", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true, null),
-    GLB("glb", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true, null),
-    GLTF("gltf", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true, null);
+    SLDPRT("sldprt", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, false),
+    SLDASM("sldasm", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, false),
+    STEP("step", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
+    STP("stp", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
+    IGES("iges", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
+    IGS("igs", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
+    BREP("brep", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
+    BRP("brp", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
+    STL("stl", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
+    OBJ("obj", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
+    THREE_MF("3mf", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
+    FBX("fbx", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
+    GLB("glb", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
+    GLTF("gltf", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true);
 
     private final String format;
     private final DrawingSourceType sourceType;
     private final DrawingDimension dimension;
     private final boolean canStartPipelineDirectly;
-    private final DrawingRenderSourceGroup requiredRenderSourceGroup;
 
     DrawingExtension(
             String format,
             DrawingSourceType sourceType,
             DrawingDimension dimension,
-            boolean canStartPipelineDirectly,
-            DrawingRenderSourceGroup requiredRenderSourceGroup
+            boolean canStartPipelineDirectly
     ) {
         this.format = format;
         this.sourceType = sourceType;
         this.dimension = dimension;
         this.canStartPipelineDirectly = canStartPipelineDirectly;
-        this.requiredRenderSourceGroup = requiredRenderSourceGroup;
     }
 
     public boolean requiresRenderSource() {
-        return requiredRenderSourceGroup != null;
+        return getRequiredRenderSourceGroup() != null;
+    }
+
+    public DrawingRenderSourceGroup getRequiredRenderSourceGroup() {
+        return switch (this) {
+            case DWG -> DrawingRenderSourceGroup.PDF_PIPELINE;
+            case SLDPRT, SLDASM -> DrawingRenderSourceGroup.GLB_PIPELINE;
+            default -> null;
+        };
     }
 
     public static Optional<DrawingExtension> fromFileName(String fileName) {

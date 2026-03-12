@@ -25,7 +25,12 @@ public class BatchCreateFilesUseCase {
         BatchCreateFilesOutput output = fileService.batchCreateFiles(
                 auth,
                 command.items().stream()
-                        .map(item -> new CreateFileInput(item.originalName(), item.contentType(), item.fileSize()))
+                        .map(item -> new CreateFileInput(
+                                item.originalName(),
+                                item.contentType(),
+                                item.fileSize(),
+                                item.contentHash()
+                        ))
                         .toList()
         );
         return new BatchCreatedFilesResult(
