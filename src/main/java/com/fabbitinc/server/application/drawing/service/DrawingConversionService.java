@@ -2,21 +2,11 @@ package com.fabbitinc.server.application.drawing.service;
 
 import com.fabbitinc.server.application.drawing.config.DrawingConverterProperties;
 import com.fabbitinc.server.application.file.port.StoragePort;
-import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.model.DrawingArtifactPublication;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
-import com.fabbitinc.server.infrastructure.drawing.adapter.EzdxfCad2dToPdfAdapter;
-import com.fabbitinc.server.infrastructure.drawing.adapter.ImageIoWebpTranscoder;
-import com.fabbitinc.server.infrastructure.drawing.adapter.Mayo3dConverterAdapter;
-import com.fabbitinc.server.infrastructure.drawing.adapter.PdfBoxPdfPreviewRenderAdapter;
-import com.fabbitinc.server.infrastructure.drawing.adapter.PdfBoxRasterImageToPdfAdapter;
-import com.fabbitinc.server.infrastructure.drawing.pipeline.Cad2dDrawingPipeline;
-import com.fabbitinc.server.infrastructure.drawing.pipeline.Cad3dDrawingPipeline;
-import com.fabbitinc.server.infrastructure.drawing.pipeline.Pdf2dDrawingPipeline;
-import com.fabbitinc.server.infrastructure.drawing.pipeline.Raster2dDrawingPipeline;
 import java.io.IOException;
 import java.time.Duration;
 import java.nio.file.Files;
@@ -26,7 +16,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -45,7 +34,6 @@ public class DrawingConversionService {
     private final DrawingSourceClassifier drawingSourceClassifier;
     private final DrawingPipelineResolver drawingPipelineResolver;
 
-    @Autowired
     public DrawingConversionService(
             DrawingRepository drawingRepository,
             FileRepository fileRepository,
@@ -68,49 +56,7 @@ public class DrawingConversionService {
         this.drawingPipelineResolver = drawingPipelineResolver;
     }
 
-    public DrawingConversionService(
-            DrawingRepository drawingRepository,
-            FileRepository fileRepository,
-            StoragePort storagePort,
-            OrganizationApi organizationApi,
-            DrawingConverterProperties drawingConverterProperties
-    ) {
-        this(
-                drawingRepository,
-                fileRepository,
-                storagePort,
-                drawingConverterProperties,
-                new DrawingArtifactService(fileRepository, storagePort, organizationApi),
-                null,
-                null,
-                new DrawingSourceClassifier(),
-                createDefaultPipelineResolver(drawingConverterProperties)
-        );
-    }
-
-    private static DrawingPipelineResolver createDefaultPipelineResolver(
-            DrawingConverterProperties drawingConverterProperties
-    ) {
-        var previewRenderPort = new PdfBoxPdfPreviewRenderAdapter();
-        var cad3dConverterAdapter = new Mayo3dConverterAdapter(drawingConverterProperties);
-        return new DrawingPipelineResolver(List.of(
-                new Pdf2dDrawingPipeline(previewRenderPort),
-                new Raster2dDrawingPipeline(new PdfBoxRasterImageToPdfAdapter(), previewRenderPort),
-                new Cad2dDrawingPipeline(new EzdxfCad2dToPdfAdapter(drawingConverterProperties), previewRenderPort),
-                new Cad3dDrawingPipeline(
-                        cad3dConverterAdapter,
-                        cad3dConverterAdapter,
-                        new ImageIoWebpTranscoder()
-                )
-        ));
-    }
-
     public void requestAndConvertDrawing(UUID drawingId) {
-        if (drawingProcessingJobService == null) {
-            convertDrawing(drawingId);
-            return;
-        }
-
         Drawing drawing = drawingRepository.findById(drawingId).orElse(null);
         if (drawing == null || drawing.getDeletedAt() != null) {
             log.warn("event=drawing_conversion_skipped drawing_id={} reason=drawing_not_found", drawingId);
@@ -137,46 +83,6 @@ public class DrawingConversionService {
         }
 
         processRequestedJob(jobId);
-    }
-
-    public void convertDrawing(UUID drawingId) {
-        Drawing drawing = drawingRepository.findById(drawingId).orElse(null);
-        if (drawing == null) {
-            log.warn("event=drawing_conversion_skipped drawing_id={} reason=drawing_not_found", drawingId);
-            return;
-        }
-        if (drawing.getDeletedAt() != null) {
-            log.warn("event=drawing_conversion_skipped drawing_id={} reason=drawing_deleted", drawingId);
-            return;
-        }
-
-        File sourceFile = resolveSourceFile(drawing);
-        if (sourceFile == null) {
-            markConversionFailed(drawingId, "source_file_not_found");
-            return;
-        }
-
-        List<DrawingArtifactPublication> publications = List.of();
-        try {
-            publications = processDrawing(drawing, sourceFile, DEFAULT_PROFILE_KEY);
-            drawing.completeProcessing(null, publications);
-            drawingRepository.save(drawing);
-            if (drawingServingProjectionService != null) {
-                drawingServingProjectionService.upsert(drawing);
-            }
-        } catch (Exception ex) {
-            if (!publications.isEmpty()) {
-                drawingArtifactService.cleanupPublishedArtifacts(publications);
-            }
-            log.error(
-                    "event=drawing_conversion_failed drawing_id={} file_key={} reason={}",
-                    drawingId,
-                    sourceFile.getFileKey(),
-                    ex.getMessage(),
-                    ex
-            );
-            markConversionFailed(drawingId, ex.getMessage());
-        }
     }
 
     private void processRequestedJob(UUID jobId) {

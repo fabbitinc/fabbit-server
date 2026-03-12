@@ -16,15 +16,23 @@ import com.fabbitinc.server.application.file.port.StoragePort;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus;
+import com.fabbitinc.server.domain.drawing.model.DrawingJobStatus;
+import com.fabbitinc.server.domain.drawing.model.DrawingProcessingJob;
+import com.fabbitinc.server.domain.drawing.repository.DrawingProcessingJobRepository;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
+import com.fabbitinc.server.infrastructure.drawing.adapter.PdfBoxPdfPreviewRenderAdapter;
+import com.fabbitinc.server.infrastructure.drawing.adapter.PdfBoxRasterImageToPdfAdapter;
+import com.fabbitinc.server.infrastructure.drawing.pipeline.Pdf2dDrawingPipeline;
+import com.fabbitinc.server.infrastructure.drawing.pipeline.Raster2dDrawingPipeline;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.imageio.ImageIO;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -40,9 +48,12 @@ class DrawingConversionServiceTest {
     @Test
     void convertDrawing_pdf원본은_pdf를_재사용하고_썸네일을_생성한다() throws Exception {
         DrawingRepository drawingRepository = mock(DrawingRepository.class);
+        DrawingProcessingJobRepository drawingProcessingJobRepository = mock(DrawingProcessingJobRepository.class);
+        DrawingServingProjectionService drawingServingProjectionService = mock(DrawingServingProjectionService.class);
         FileRepository fileRepository = mock(FileRepository.class);
         StoragePort storagePort = mock(StoragePort.class);
         OrganizationApi organizationApi = mock(OrganizationApi.class);
+        AtomicReference<DrawingProcessingJob> savedJob = new AtomicReference<>();
 
         String originalKey = "tenants/org/uploaded/drawing/sample.pdf";
 
@@ -51,7 +62,8 @@ class DrawingConversionServiceTest {
         drawing.changeOriginalFileKey(originalKey);
         drawing.markConversionPending();
 
-        File originalFile = File.create(UUID.randomUUID(), "sample.pdf", originalKey, "application/pdf", samplePdf().length);
+        byte[] pdfBytes = samplePdf();
+        File originalFile = File.create(UUID.randomUUID(), "sample.pdf", originalKey, "application/pdf", pdfBytes.length);
         originalFile.markUploaded();
         originalFile.assignOwner("drawing", drawingId);
 
@@ -61,20 +73,31 @@ class DrawingConversionServiceTest {
                 .thenReturn(Optional.empty());
         when(fileRepository.save(any(File.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(drawingRepository.save(any(Drawing.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(storagePort.getObject(originalKey)).thenReturn(samplePdf());
+        when(drawingProcessingJobRepository.save(any(DrawingProcessingJob.class))).thenAnswer(invocation -> {
+            DrawingProcessingJob job = invocation.getArgument(0);
+            savedJob.set(job);
+            return job;
+        });
+        when(drawingProcessingJobRepository.findById(any(UUID.class)))
+                .thenAnswer(invocation -> Optional.ofNullable(savedJob.get()));
+        when(drawingProcessingJobRepository.findByIdForUpdate(any(UUID.class)))
+                .thenAnswer(invocation -> Optional.ofNullable(savedJob.get()));
+        when(storagePort.getObject(originalKey)).thenReturn(pdfBytes);
         doNothing().when(storagePort).putObject(eq("tenants/org/uploaded/drawing/sample.png"), any(byte[].class), eq("image/png"));
 
-        DrawingConversionService service = new DrawingConversionService(
+        DrawingConversionService service = createService(
                 drawingRepository,
+                drawingProcessingJobRepository,
+                drawingServingProjectionService,
                 fileRepository,
                 storagePort,
-                organizationApi,
-                new DrawingConverterProperties("/opt/qcad", 1, tempDir.toString(), null, 300L, 420L, 24L)
+                organizationApi
         );
 
-        service.convertDrawing(drawingId);
+        service.requestAndConvertDrawing(drawingId);
 
         assertEquals(DrawingConversionStatus.COMPLETED, drawing.getConversionStatus());
+        assertEquals(DrawingJobStatus.COMPLETED, savedJob.get().getStatus());
         assertEquals(originalKey, drawing.getPdfKey());
         assertEquals("tenants/org/uploaded/drawing/sample.png", drawing.getThumbnailKey());
         verify(storagePort, never()).putObject(eq(originalKey), any(byte[].class), eq("application/pdf"));
@@ -90,9 +113,12 @@ class DrawingConversionServiceTest {
     @Test
     void convertDrawing_이미지는_pdf와_썸네일을_생성한다() throws Exception {
         DrawingRepository drawingRepository = mock(DrawingRepository.class);
+        DrawingProcessingJobRepository drawingProcessingJobRepository = mock(DrawingProcessingJobRepository.class);
+        DrawingServingProjectionService drawingServingProjectionService = mock(DrawingServingProjectionService.class);
         FileRepository fileRepository = mock(FileRepository.class);
         StoragePort storagePort = mock(StoragePort.class);
         OrganizationApi organizationApi = mock(OrganizationApi.class);
+        AtomicReference<DrawingProcessingJob> savedJob = new AtomicReference<>();
 
         String originalKey = "tenants/org/uploaded/drawing/sample.png";
         String pdfKey = "tenants/org/uploaded/drawing/sample.pdf";
@@ -114,21 +140,32 @@ class DrawingConversionServiceTest {
         when(fileRepository.findByFileKeyAndDeletedAtIsNull(thumbnailKey)).thenReturn(Optional.empty());
         when(fileRepository.save(any(File.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(drawingRepository.save(any(Drawing.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(drawingProcessingJobRepository.save(any(DrawingProcessingJob.class))).thenAnswer(invocation -> {
+            DrawingProcessingJob job = invocation.getArgument(0);
+            savedJob.set(job);
+            return job;
+        });
+        when(drawingProcessingJobRepository.findById(any(UUID.class)))
+                .thenAnswer(invocation -> Optional.ofNullable(savedJob.get()));
+        when(drawingProcessingJobRepository.findByIdForUpdate(any(UUID.class)))
+                .thenAnswer(invocation -> Optional.ofNullable(savedJob.get()));
         when(storagePort.getObject(originalKey)).thenReturn(imageBytes);
         doNothing().when(storagePort).putObject(eq(pdfKey), any(byte[].class), eq("application/pdf"));
         doNothing().when(storagePort).putObject(eq(thumbnailKey), any(byte[].class), eq("image/png"));
 
-        DrawingConversionService service = new DrawingConversionService(
+        DrawingConversionService service = createService(
                 drawingRepository,
+                drawingProcessingJobRepository,
+                drawingServingProjectionService,
                 fileRepository,
                 storagePort,
-                organizationApi,
-                new DrawingConverterProperties("/opt/qcad", 1, tempDir.toString(), null, 300L, 420L, 24L)
+                organizationApi
         );
 
-        service.convertDrawing(drawingId);
+        service.requestAndConvertDrawing(drawingId);
 
         assertEquals(DrawingConversionStatus.COMPLETED, drawing.getConversionStatus());
+        assertEquals(DrawingJobStatus.COMPLETED, savedJob.get().getStatus());
         assertEquals(pdfKey, drawing.getPdfKey());
         assertEquals(thumbnailKey, drawing.getThumbnailKey());
         verify(storagePort).putObject(eq(pdfKey), any(byte[].class), eq("application/pdf"));
@@ -146,41 +183,64 @@ class DrawingConversionServiceTest {
     }
 
     @Test
-    void convertDrawing_qcad실패시_failed로_마킹한다() {
+    void requestAndConvertDrawing_source_file이_없으면_failed로_마킹한다() {
         DrawingRepository drawingRepository = mock(DrawingRepository.class);
+        DrawingProcessingJobRepository drawingProcessingJobRepository = mock(DrawingProcessingJobRepository.class);
+        DrawingServingProjectionService drawingServingProjectionService = mock(DrawingServingProjectionService.class);
         FileRepository fileRepository = mock(FileRepository.class);
         StoragePort storagePort = mock(StoragePort.class);
         OrganizationApi organizationApi = mock(OrganizationApi.class);
 
-        String originalKey = "tenants/org/uploaded/drawing/sample.dwg";
+        String originalKey = "tenants/org/uploaded/drawing/sample.pdf";
 
-        Drawing drawing = Drawing.create(null, "sample.dwg");
+        Drawing drawing = Drawing.create(null, "sample.pdf");
         UUID drawingId = drawing.getId();
         drawing.changeOriginalFileKey(originalKey);
         drawing.markConversionPending();
 
-        File originalFile = File.create(UUID.randomUUID(), "sample.dwg", originalKey, "application/acad", 16);
-        originalFile.markUploaded();
-        originalFile.assignOwner("drawing", drawingId);
-
         when(drawingRepository.findById(drawingId)).thenReturn(Optional.of(drawing));
-        when(fileRepository.findByFileKeyAndDeletedAtIsNull(originalKey)).thenReturn(Optional.of(originalFile));
+        when(fileRepository.findByFileKeyAndDeletedAtIsNull(originalKey)).thenReturn(Optional.empty());
         when(drawingRepository.save(any(Drawing.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(storagePort.getObject(originalKey)).thenReturn("dummy".getBytes());
 
-        DrawingConversionService service = new DrawingConversionService(
+        DrawingConversionService service = createService(
+                drawingRepository,
+                drawingProcessingJobRepository,
+                drawingServingProjectionService,
+                fileRepository,
+                storagePort,
+                organizationApi
+        );
+
+        service.requestAndConvertDrawing(drawingId);
+
+        assertEquals(DrawingConversionStatus.FAILED, drawing.getConversionStatus());
+        verify(drawingProcessingJobRepository, never()).save(any(DrawingProcessingJob.class));
+        verify(organizationApi, never()).consumeStorageForCurrentTenant(anyLong());
+    }
+
+    private DrawingConversionService createService(
+            DrawingRepository drawingRepository,
+            DrawingProcessingJobRepository drawingProcessingJobRepository,
+            DrawingServingProjectionService drawingServingProjectionService,
+            FileRepository fileRepository,
+            StoragePort storagePort,
+            OrganizationApi organizationApi
+    ) {
+        PdfBoxPdfPreviewRenderAdapter pdfPreviewRenderPort = new PdfBoxPdfPreviewRenderAdapter();
+        return new DrawingConversionService(
                 drawingRepository,
                 fileRepository,
                 storagePort,
-                organizationApi,
-                new DrawingConverterProperties("/path/that/does/not/exist", 1, tempDir.toString(), null, 300L, 420L, 24L)
+                new DrawingConverterProperties("/opt/qcad", 1, tempDir.toString(), null, 300L, 420L, 24L),
+                new DrawingArtifactService(fileRepository, storagePort, organizationApi),
+                new DrawingProcessingJobService(drawingRepository, drawingProcessingJobRepository, drawingServingProjectionService),
+                drawingServingProjectionService,
+                new DrawingSourceClassifier(),
+                new DrawingPipelineResolver(List.of(
+                        new Pdf2dDrawingPipeline(pdfPreviewRenderPort),
+                        new Raster2dDrawingPipeline(new PdfBoxRasterImageToPdfAdapter(), pdfPreviewRenderPort)
+                ))
         );
-
-        service.convertDrawing(drawingId);
-
-        assertEquals(DrawingConversionStatus.FAILED, drawing.getConversionStatus());
-        verify(drawingRepository).save(drawing);
-        verify(organizationApi, never()).consumeStorageForCurrentTenant(anyLong());
     }
 
     private byte[] samplePdf() throws Exception {

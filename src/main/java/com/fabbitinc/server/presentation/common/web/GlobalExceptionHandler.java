@@ -4,6 +4,7 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -20,6 +22,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleAppException(AppException ex) {
         ErrorCode errorCode = ex.getErrorCode();
         String message = ex.getMessage() == null ? errorCode.defaultMessage() : ex.getMessage();
+        if (errorCode.httpStatus() >= 500) {
+            log.error("event=app_exception_handled error_code={} message={}", errorCode.name(), message, ex);
+        }
         return ResponseEntity
                 .status(errorCode.httpStatus())
                 .body(new ApiErrorResponse(errorCode.name(), message));
@@ -68,6 +73,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception ex) {
+        log.error("event=unexpected_exception_handled", ex);
         return ResponseEntity
                 .status(ErrorCode.INTERNAL_SERVER_ERROR.httpStatus())
                 .body(new ApiErrorResponse(
