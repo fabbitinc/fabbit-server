@@ -16,24 +16,24 @@
 ### 2. 아직 V2가 직접 참조하는 V1/shared 클래스
 
 - 아래 파일들은 현재 V2가 직접 import 하고 있으므로, 공용 위치로 먼저 이동하기 전에는 제거하면 안 된다.
-- [src/main/java/com/fabbitinc/server/application/mapping/service/MappingService.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/mapping/service/MappingService.java)
-- [src/main/java/com/fabbitinc/server/application/mapping/support/SpreadsheetParserSupport.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/mapping/support/SpreadsheetParserSupport.java)
-- [src/main/java/com/fabbitinc/server/application/mapping/support/ExtendedPropertySupport.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/mapping/support/ExtendedPropertySupport.java)
-- [src/main/java/com/fabbitinc/server/application/mapping/usecase/result/SkippedSheetResult.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/mapping/usecase/result/SkippedSheetResult.java)
-- [src/main/java/com/fabbitinc/server/application/mapping/usecase/result/MappingImpactSummaryResult.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/mapping/usecase/result/MappingImpactSummaryResult.java)
-- [src/main/java/com/fabbitinc/server/application/mapping/usecase/result/MappingValidationIssueResult.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/mapping/usecase/result/MappingValidationIssueResult.java)
-- [src/main/java/com/fabbitinc/server/application/mapping/dto/response/SkippedSheetResponse.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/mapping/dto/response/SkippedSheetResponse.java)
-- [src/main/java/com/fabbitinc/server/application/mapping/dto/response/MappingImpactSummaryResponse.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/mapping/dto/response/MappingImpactSummaryResponse.java)
-- [src/main/java/com/fabbitinc/server/application/mapping/dto/response/ValidationIssueResponse.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/mapping/dto/response/ValidationIssueResponse.java)
-- [src/main/java/com/fabbitinc/server/application/mapping/dto/response/ValidationSeverity.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/mapping/dto/response/ValidationSeverity.java)
-- [src/main/java/com/fabbitinc/server/application/synthesis/support/SynthesisResponseMapper.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/synthesis/support/SynthesisResponseMapper.java)
-- [src/main/java/com/fabbitinc/server/application/synthesis/dto/request/SynthesisStartRequest.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/synthesis/dto/request/SynthesisStartRequest.java)
-- [src/main/java/com/fabbitinc/server/application/synthesis/dto/response/SynthesisBatchFailure.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/synthesis/dto/response/SynthesisBatchFailure.java)
-- [src/main/java/com/fabbitinc/server/application/synthesis/dto/response/SynthesisBatchStartResponse.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/synthesis/dto/response/SynthesisBatchStartResponse.java)
-- [src/main/java/com/fabbitinc/server/presentation/synthesis/dto/response/SynthesisBatchStatusResponse.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/presentation/synthesis/dto/response/SynthesisBatchStatusResponse.java)
-- [src/main/java/com/fabbitinc/server/presentation/synthesis/dto/response/SynthesisJobResponse.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/presentation/synthesis/dto/response/SynthesisJobResponse.java)
-- [src/main/java/com/fabbitinc/server/presentation/synthesis/dto/response/SynthesisListResponse.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/presentation/synthesis/dto/response/SynthesisListResponse.java)
-- [src/main/java/com/fabbitinc/server/domain/synthesis/model/SynthesisJobStatus.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/domain/synthesis/model/SynthesisJobStatus.java)
+- [src/main/java/com/fabbitinc/server/application/mapping/service/MappingService.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/mapping/service/MappingService.java)
+- [src/main/java/com/fabbitinc/server/application/mapping/support/SpreadsheetParserSupport.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/mapping/support/SpreadsheetParserSupport.java)
+- [src/main/java/com/fabbitinc/server/application/mapping/support/ExtendedPropertySupport.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/mapping/support/ExtendedPropertySupport.java)
+- [src/main/java/com/fabbitinc/server/application/mapping/usecase/result/SkippedSheetResult.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/mapping/usecase/result/SkippedSheetResult.java)
+- [src/main/java/com/fabbitinc/server/application/mapping/usecase/result/MappingImpactSummaryResult.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/mapping/usecase/result/MappingImpactSummaryResult.java)
+- [src/main/java/com/fabbitinc/server/application/mapping/usecase/result/MappingValidationIssueResult.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/mapping/usecase/result/MappingValidationIssueResult.java)
+- [src/main/java/com/fabbitinc/server/application/mapping/dto/response/SkippedSheetResponse.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/mapping/dto/response/SkippedSheetResponse.java)
+- [src/main/java/com/fabbitinc/server/application/mapping/dto/response/MappingImpactSummaryResponse.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/mapping/dto/response/MappingImpactSummaryResponse.java)
+- [src/main/java/com/fabbitinc/server/application/mapping/dto/response/ValidationIssueResponse.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/mapping/dto/response/ValidationIssueResponse.java)
+- [src/main/java/com/fabbitinc/server/application/mapping/dto/response/ValidationSeverity.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/mapping/dto/response/ValidationSeverity.java)
+- [src/main/java/com/fabbitinc/server/application/synthesis/support/SynthesisResponseMapper.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/synthesis/support/SynthesisResponseMapper.java)
+- [src/main/java/com/fabbitinc/server/application/synthesis/dto/request/SynthesisStartRequest.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/synthesis/dto/request/SynthesisStartRequest.java)
+- [src/main/java/com/fabbitinc/server/application/synthesis/dto/response/SynthesisBatchFailure.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/synthesis/dto/response/SynthesisBatchFailure.java)
+- [src/main/java/com/fabbitinc/server/application/synthesis/dto/response/SynthesisBatchStartResponse.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/synthesis/dto/response/SynthesisBatchStartResponse.java)
+- [src/main/java/com/fabbitinc/server/presentation/synthesis/dto/response/SynthesisBatchStatusResponse.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/presentation/synthesis/dto/response/SynthesisBatchStatusResponse.java)
+- [src/main/java/com/fabbitinc/server/presentation/synthesis/dto/response/SynthesisJobResponse.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/presentation/synthesis/dto/response/SynthesisJobResponse.java)
+- [src/main/java/com/fabbitinc/server/presentation/synthesis/dto/response/SynthesisListResponse.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/presentation/synthesis/dto/response/SynthesisListResponse.java)
+- [src/main/java/com/fabbitinc/server/domain/synthesis/model/SynthesisJobStatus.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/domain/synthesis/model/SynthesisJobStatus.java)
 
 ## 먼저 해야 할 것
 
@@ -46,14 +46,14 @@
 
 ### 1. API 경로 전환 후 제거할 것
 
-- [src/main/java/com/fabbitinc/server/presentation/mapping/controller/MappingController.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/presentation/mapping/controller/MappingController.java)
-- [src/main/java/com/fabbitinc/server/presentation/synthesis/controller/SynthesisController.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/presentation/synthesis/controller/SynthesisController.java)
-- [src/main/java/com/fabbitinc/server/application/mapping](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/mapping)
-- [src/main/java/com/fabbitinc/server/application/synthesis](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/application/synthesis)
-- [src/main/java/com/fabbitinc/server/domain/mapping](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/domain/mapping)
-- [src/main/java/com/fabbitinc/server/domain/synthesis](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/domain/synthesis)
-- [src/main/resources/prompts/mapping/system.st](/Users/seongha.moon/code/projects/fabbit/server2/src/main/resources/prompts/mapping/system.st)
-- [src/main/resources/prompts/mapping/user.st](/Users/seongha.moon/code/projects/fabbit/server2/src/main/resources/prompts/mapping/user.st)
+- [src/main/java/com/fabbitinc/server/presentation/mapping/controller/MappingController.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/presentation/mapping/controller/MappingController.java)
+- [src/main/java/com/fabbitinc/server/presentation/synthesis/controller/SynthesisController.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/presentation/synthesis/controller/SynthesisController.java)
+- [src/main/java/com/fabbitinc/server/application/mapping](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/mapping)
+- [src/main/java/com/fabbitinc/server/application/synthesis](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/application/synthesis)
+- [src/main/java/com/fabbitinc/server/domain/mapping](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/domain/mapping)
+- [src/main/java/com/fabbitinc/server/domain/synthesis](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/domain/synthesis)
+- [src/main/resources/prompts/mapping/system.st](/Users/seongha.moon/code/projects/fabbit/server/src/main/resources/prompts/mapping/system.st)
+- [src/main/resources/prompts/mapping/user.st](/Users/seongha.moon/code/projects/fabbit/server/src/main/resources/prompts/mapping/user.st)
 
 ### 2. 데이터 정리 후 제거할 것
 
@@ -77,14 +77,14 @@
 
 ### 2. 파일명과 패키지명
 
-- [src/main/java/com/fabbitinc/server/presentation/mapping/controller/MappingV2Controller.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/presentation/mapping/controller/MappingV2Controller.java) -> `MappingController`
-- [src/main/java/com/fabbitinc/server/presentation/synthesis/controller/SynthesisV2Controller.java](/Users/seongha.moon/code/projects/fabbit/server2/src/main/java/com/fabbitinc/server/presentation/synthesis/controller/SynthesisV2Controller.java) -> `SynthesisController`
+- [src/main/java/com/fabbitinc/server/presentation/mapping/controller/MappingV2Controller.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/presentation/mapping/controller/MappingV2Controller.java) -> `MappingController`
+- [src/main/java/com/fabbitinc/server/presentation/synthesis/controller/SynthesisV2Controller.java](/Users/seongha.moon/code/projects/fabbit/server/src/main/java/com/fabbitinc/server/presentation/synthesis/controller/SynthesisV2Controller.java) -> `SynthesisController`
 - `application.mappingv2.*` -> `application.mapping.*`
 - `application.synthesisv2.*` -> `application.synthesis.*`
 - `domain.mappingv2.*` -> `domain.mapping.*`
 - `domain.synthesisv2.*` -> `domain.synthesis.*`
-- [src/main/resources/prompts/mapping/v2/system.st](/Users/seongha.moon/code/projects/fabbit/server2/src/main/resources/prompts/mapping/v2/system.st) -> `prompts/mapping/system.st`
-- [src/main/resources/prompts/mapping/v2/user.st](/Users/seongha.moon/code/projects/fabbit/server2/src/main/resources/prompts/mapping/v2/user.st) -> `prompts/mapping/user.st`
+- [src/main/resources/prompts/mapping/v2/system.st](/Users/seongha.moon/code/projects/fabbit/server/src/main/resources/prompts/mapping/v2/system.st) -> `prompts/mapping/system.st`
+- [src/main/resources/prompts/mapping/v2/user.st](/Users/seongha.moon/code/projects/fabbit/server/src/main/resources/prompts/mapping/v2/user.st) -> `prompts/mapping/user.st`
 
 ### 3. DB 테이블명
 

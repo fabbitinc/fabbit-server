@@ -24,7 +24,7 @@
 
 ## 전환 메모
 
-- [v1-removal-plan.md](/Users/seongha.moon/code/projects/fabbit/server2/refacotr/v1-removal-plan.md)
+- [v1-removal-plan.md](/Users/seongha.moon/code/projects/fabbit/server/refacotr/v1-removal-plan.md)
   - Mapping/Synthesis의 V1 제거, V2 승격, 최종 canonical 이름 정리 기준입니다.
 
 ## 우선순위 높은 갭
