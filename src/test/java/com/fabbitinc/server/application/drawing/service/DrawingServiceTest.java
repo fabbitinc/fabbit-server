@@ -3,10 +3,12 @@ package com.fabbitinc.server.application.drawing.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
+import com.fabbitinc.server.application.part.service.PartPreviewService;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.file.model.File;
@@ -26,6 +28,7 @@ class DrawingServiceTest {
   @Mock private FileRepository fileRepository;
   @Mock private DrawingAsyncConversionService drawingAsyncConversionService;
   @Mock private OrganizationApi organizationApi;
+  @Mock private PartPreviewService partPreviewService;
 
   @AfterEach
   void clearTenantContext() {
@@ -34,6 +37,7 @@ class DrawingServiceTest {
 
   @Test
   void createDrawing_원본_파일_크기만큼_스토리지를_소비한다() {
+    UUID partId = UUID.randomUUID();
     File file =
         File.create(
             UUID.randomUUID(),
@@ -48,13 +52,18 @@ class DrawingServiceTest {
 
     DrawingService service =
         new DrawingService(
-            drawingRepository, fileRepository, drawingAsyncConversionService, organizationApi);
+            drawingRepository,
+            fileRepository,
+            drawingAsyncConversionService,
+            organizationApi,
+            partPreviewService);
 
-    Drawing drawing = service.createDrawing(file.getId());
+    Drawing drawing = service.createDrawing(partId, file.getId());
 
     assertEquals(drawing.getId(), file.getOwnerId());
+    assertEquals(partId, drawing.getPartId());
     verify(organizationApi).consumeStorageForCurrentTenant(512L);
-    verify(drawingAsyncConversionService).convertDrawingAsync(drawing.getId(), "public");
+    verify(drawingAsyncConversionService, never()).convertDrawingAsync(any(), any());
   }
 
   @Test
@@ -90,13 +99,18 @@ class DrawingServiceTest {
 
     DrawingService service =
         new DrawingService(
-            drawingRepository, fileRepository, drawingAsyncConversionService, organizationApi);
+            drawingRepository,
+            fileRepository,
+            drawingAsyncConversionService,
+            organizationApi,
+            partPreviewService);
 
     service.deleteDrawing(drawing.getId());
 
     assertNotNull(original.getDeletedAt());
     assertNotNull(pdf.getDeletedAt());
     assertNotNull(thumbnail.getDeletedAt());
+    verify(partPreviewService).clearByDrawing(drawing.getId());
     verify(organizationApi).releaseStorageForCurrentTenant(100L);
     verify(organizationApi).releaseStorageForCurrentTenant(200L);
     verify(organizationApi).releaseStorageForCurrentTenant(50L);

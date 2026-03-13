@@ -12,6 +12,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
@@ -23,7 +24,7 @@ public class DrawingProcessingJobService {
     private final DrawingProcessingJobRepository drawingProcessingJobRepository;
     private final DrawingServingProjectionService drawingServingProjectionService;
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public UUID request(UUID drawingId, String pipelineKey, String profileKey) {
         Drawing drawing = drawingRepository.findById(drawingId).orElse(null);
         if (drawing == null || drawing.getDeletedAt() != null) {
@@ -50,7 +51,7 @@ public class DrawingProcessingJobService {
         return job.getId();
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public DrawingJobClaim claim(UUID jobId) {
         DrawingProcessingJob job = drawingProcessingJobRepository.findByIdForUpdate(jobId).orElse(null);
         if (job == null || !job.canStart()) {
@@ -60,7 +61,7 @@ public class DrawingProcessingJobService {
         return new DrawingJobClaim(job.getId(), job.getDrawingId(), job.getPipelineKey(), job.getProfileKey());
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean complete(UUID jobId, List<DrawingArtifactPublication> artifacts) {
         DrawingProcessingJob job = drawingProcessingJobRepository.findByIdForUpdate(jobId).orElse(null);
         if (job == null || job.getStatus() != DrawingJobStatus.PROCESSING) {
@@ -87,7 +88,7 @@ public class DrawingProcessingJobService {
         return true;
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void fail(UUID jobId, String reason) {
         DrawingProcessingJob job = drawingProcessingJobRepository.findByIdForUpdate(jobId).orElse(null);
         if (job == null || job.isTerminal()) {

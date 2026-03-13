@@ -2,10 +2,11 @@ package com.fabbitinc.server.presentation.part.controller;
 
 import com.fabbitinc.server.application.drawing.dto.request.RegisterDrawingRequest;
 import com.fabbitinc.server.application.drawing.dto.response.RegisterDrawingResponse;
-import com.fabbitinc.server.application.file.dto.response.FileItemResponse;
 import com.fabbitinc.server.application.part.dto.request.AttachFilesRequest;
+import com.fabbitinc.server.application.part.dto.request.ChangePartPreviewRequest;
 import com.fabbitinc.server.application.part.dto.request.CreatePartRequest;
 import com.fabbitinc.server.application.part.dto.request.RenameCategoryRequest;
+import com.fabbitinc.server.application.part.dto.response.PartAttachmentItemResponse;
 import com.fabbitinc.server.application.part.dto.response.BomChildResponse;
 import com.fabbitinc.server.application.part.dto.response.BomParentResponse;
 import com.fabbitinc.server.application.part.dto.response.BomTreeNodeResponse;
@@ -23,9 +24,9 @@ import com.fabbitinc.server.application.part.dto.response.PartLookupResponse;
 import com.fabbitinc.server.application.part.dto.response.PartOwnerUserSummaryResponse;
 import com.fabbitinc.server.application.part.dto.response.PartProjectSummaryResponse;
 import com.fabbitinc.server.application.part.dto.response.PartProjectsResponse;
+import com.fabbitinc.server.application.part.dto.response.PartPreviewResponse;
 import com.fabbitinc.server.application.part.dto.response.PartSummaryResponse;
 import com.fabbitinc.server.application.part.dto.response.PartSuppliersResponse;
-import com.fabbitinc.server.application.part.dto.response.RelatedDrawingResponse;
 import com.fabbitinc.server.application.part.dto.response.RelatedSupplierResponse;
 import com.fabbitinc.server.application.part.dto.response.RenameCategoryResponse;
 import com.fabbitinc.server.application.part.query.PartQuery;
@@ -52,12 +53,15 @@ import com.fabbitinc.server.application.part.query.result.PartLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartProjectsResult;
 import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
 import com.fabbitinc.server.application.part.usecase.AttachPartFilesUseCase;
+import com.fabbitinc.server.application.part.usecase.ChangePartPreviewUseCase;
+import com.fabbitinc.server.application.part.usecase.ClearPartPreviewUseCase;
 import com.fabbitinc.server.application.part.usecase.CreatePartUseCase;
 import com.fabbitinc.server.application.part.usecase.DeletePartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.DetachPartFileUseCase;
 import com.fabbitinc.server.application.part.usecase.RegisterPartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.RenameCategoryUseCase;
 import com.fabbitinc.server.application.part.usecase.command.AttachPartFilesCommand;
+import com.fabbitinc.server.application.part.usecase.command.ChangePartPreviewCommand;
 import com.fabbitinc.server.application.part.usecase.command.CreatePartCommand;
 import com.fabbitinc.server.application.part.usecase.command.DeletePartDrawingCommand;
 import com.fabbitinc.server.application.part.usecase.command.DetachPartFileCommand;
@@ -120,6 +124,8 @@ public class PartController {
     private final DetachPartFileUseCase detachPartFileUseCase;
     private final RegisterPartDrawingUseCase registerPartDrawingUseCase;
     private final DeletePartDrawingUseCase deletePartDrawingUseCase;
+    private final ChangePartPreviewUseCase changePartPreviewUseCase;
+    private final ClearPartPreviewUseCase clearPartPreviewUseCase;
 
     @Operation(
             summary = "POST /api/v1/parts",
@@ -357,7 +363,7 @@ public class PartController {
             description = "업로드 완료 파일들을 Part에 배치 연결합니다"
     )
     @PostMapping("/{partId}/files")
-    public List<FileItemResponse> attachFiles(
+    public List<PartAttachmentItemResponse> attachFiles(
             @PathVariable UUID partId,
             @Valid @RequestBody AttachFilesRequest request
     ) {
@@ -366,7 +372,7 @@ public class PartController {
         );
         List<UUID> attachedFileIds = result.fileIds();
         return partQuery.getFiles(new FileItemsCondition(attachedFileIds)).stream()
-                .map(this::toFileItemResponse)
+                .map(this::toPartAttachmentItemResponse)
                 .toList();
     }
 
@@ -384,14 +390,15 @@ public class PartController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/parts/{partId}/drawings",
-            description = "Part에 연결된 도면을 삭제합니다 (Drawing + 연결 파일 soft delete)"
+            summary = "DELETE /api/v1/parts/{partId}/drawings/{drawingId}",
+            description = "Part에 연결된 도면 1건을 삭제합니다 (Drawing + 연결 파일 soft delete)"
     )
-    @DeleteMapping("/{partId}/drawings")
+    @DeleteMapping("/{partId}/drawings/{drawingId}")
     public ResponseEntity<Void> deleteDrawingFromPart(
-            @PathVariable UUID partId
+            @PathVariable UUID partId,
+            @PathVariable UUID drawingId
     ) {
-        deletePartDrawingUseCase.execute(new DeletePartDrawingCommand(partId));
+        deletePartDrawingUseCase.execute(new DeletePartDrawingCommand(partId, drawingId));
         return ResponseEntity.noContent().build();
     }
 
@@ -413,6 +420,35 @@ public class PartController {
                 result.name(),
                 result.conversionStatus()
         );
+    }
+
+    @Operation(
+            summary = "PATCH /api/v1/parts/{partId}/preview",
+            description = "Part 대표 미리보기 소스를 파일 또는 도면으로 변경합니다"
+    )
+    @PatchMapping("/{partId}/preview")
+    public PartPreviewResponse updatePreview(
+            @PathVariable UUID partId,
+            @Valid @RequestBody ChangePartPreviewRequest request
+    ) {
+        changePartPreviewUseCase.execute(new ChangePartPreviewCommand(
+                partId,
+                request.sourceType(),
+                request.sourceId()
+        ));
+        return toPartPreviewResponse(partQuery.get(new PartDetailCondition(partId)).preview());
+    }
+
+    @Operation(
+            summary = "DELETE /api/v1/parts/{partId}/preview",
+            description = "Part 대표 미리보기를 해제합니다"
+    )
+    @DeleteMapping("/{partId}/preview")
+    public ResponseEntity<Void> deletePreview(
+            @PathVariable UUID partId
+    ) {
+        clearPartPreviewUseCase.execute(partId);
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(
@@ -467,7 +503,7 @@ public class PartController {
                                 item.category(),
                                 item.revision(),
                                 item.lifecycleState(),
-                                item.drawingId(),
+                                item.hasDrawing(),
                                 item.childrenCount()
                         ))
                         .toList()
@@ -492,7 +528,7 @@ public class PartController {
                 toPartOwnerUserSummaryResponse(result.owner()),
                 result.ownerTeamId(),
                 result.ownerTeamName(),
-                toRelatedDrawingResponse(result.drawing()),
+                toPartPreviewResponse(result.preview()),
                 result.childrenCount(),
                 result.parentsCount(),
                 result.suppliersCount(),
@@ -559,17 +595,21 @@ public class PartController {
     private PartFilesResponse toPartFilesResponse(PartFilesResult result) {
         return new PartFilesResponse(
                 result.total(),
-                result.items().stream().map(this::toFileItemResponse).toList()
+                result.items().stream().map(this::toPartAttachmentItemResponse).toList()
         );
     }
 
-    private FileItemResponse toFileItemResponse(PartFilesResult.Item item) {
-        return new FileItemResponse(
+    private PartAttachmentItemResponse toPartAttachmentItemResponse(PartFilesResult.Item item) {
+        return new PartAttachmentItemResponse(
+                item.attachmentType(),
                 item.fileId(),
+                item.drawingId(),
                 item.originalName(),
                 item.contentType(),
                 item.fileSize(),
                 item.fileUrl(),
+                item.previewSelectable(),
+                item.selectedAsPreview(),
                 item.createdAt()
         );
     }
@@ -604,24 +644,21 @@ public class PartController {
         );
     }
 
-    private RelatedDrawingResponse toRelatedDrawingResponse(
-            com.fabbitinc.server.application.part.query.result.RelatedDrawingResult result
+    private PartPreviewResponse toPartPreviewResponse(
+            com.fabbitinc.server.application.part.query.result.PartPreviewResult result
     ) {
         if (result == null) {
             return null;
         }
-        return new RelatedDrawingResponse(
+        return new PartPreviewResponse(
                 result.id(),
-                result.drawingNumber(),
-                result.name(),
-                result.version(),
-                result.status(),
+                result.sourceType(),
+                result.sourceId(),
                 result.conversionStatus(),
                 result.viewerType(),
                 result.viewerUrl(),
                 result.previewUrl(),
-                result.originalFileUrl(),
-                result.allowedRenderSourceExtensions()
+                result.originalFileUrl()
         );
     }
 

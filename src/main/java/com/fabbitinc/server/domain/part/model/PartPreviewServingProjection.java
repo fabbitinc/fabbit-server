@@ -1,4 +1,4 @@
-package com.fabbitinc.server.domain.drawing.model;
+package com.fabbitinc.server.domain.part.model;
 
 import com.fabbitinc.server.domain.common.entity.AbstractIdEntity;
 import jakarta.persistence.AttributeOverride;
@@ -13,10 +13,10 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@AttributeOverride(name = "id", column = @Column(name = "drawing_id", nullable = false, updatable = false))
-@Table(name = "drawing_serving_projections")
+@AttributeOverride(name = "id", column = @Column(name = "part_preview_id", nullable = false, updatable = false))
+@Table(name = "part_preview_serving_projections")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class DrawingServingProjection extends AbstractIdEntity {
+public class PartPreviewServingProjection extends AbstractIdEntity {
 
     @Column(name = "original_key", length = 1000)
     private String originalKey;
@@ -33,21 +33,16 @@ public class DrawingServingProjection extends AbstractIdEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    private DrawingServingProjection(UUID drawingId) {
-        super(drawingId);
+    private PartPreviewServingProjection(UUID partPreviewId) {
+        super(partPreviewId);
         this.updatedAt = Instant.now();
     }
 
-    public static DrawingServingProjection create(UUID drawingId) {
-        return new DrawingServingProjection(drawingId);
+    public static PartPreviewServingProjection create(UUID partPreviewId) {
+        return new PartPreviewServingProjection(partPreviewId);
     }
 
-    public void changeServingKeys(
-            String originalKey,
-            String pdfKey,
-            String glbKey,
-            String webpKey
-    ) {
+    public void changeServingKeys(String originalKey, String pdfKey, String glbKey, String webpKey) {
         this.originalKey = normalizeNullable(originalKey);
         this.pdfKey = normalizeNullable(pdfKey);
         this.glbKey = normalizeNullable(glbKey);

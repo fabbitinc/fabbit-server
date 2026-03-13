@@ -1,5 +1,6 @@
-package com.fabbitinc.server.application.drawing.service;
+package com.fabbitinc.server.application.part.service;
 
+import com.fabbitinc.server.application.drawing.service.DrawingPipelineArtifact;
 import com.fabbitinc.server.application.file.port.StoragePort;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
@@ -8,6 +9,8 @@ import com.fabbitinc.server.domain.drawing.model.DrawingArtifactType;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
+import com.fabbitinc.server.domain.part.model.PartPreview;
+import com.fabbitinc.server.domain.part.model.PartPreviewArtifact;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -18,14 +21,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class DrawingArtifactService {
+public class PartPreviewArtifactService {
+
+    private static final String OWNER_TYPE = "part_preview";
 
     private final FileRepository fileRepository;
     private final StoragePort storagePort;
     private final OrganizationApi organizationApi;
 
     public List<DrawingArtifactPublication> publish(
-            UUID drawingId,
+            UUID partPreviewId,
             File sourceFile,
             List<DrawingPipelineArtifact> artifacts
     ) {
@@ -49,7 +54,7 @@ public class DrawingArtifactService {
                 storagePort.putObject(storageKey, artifact.bytes(), artifact.contentType());
 
                 File generatedFile = upsertGeneratedFile(
-                        drawingId,
+                        partPreviewId,
                         storageKey,
                         artifact.originalName(),
                         artifact.contentType(),
@@ -79,23 +84,43 @@ public class DrawingArtifactService {
             if (!publication.generated()) {
                 continue;
             }
-            try {
-                storagePort.deleteObject(publication.storageKey());
-            } catch (RuntimeException ignored) {
-            }
-            fileRepository.findByFileKeyAndDeletedAtIsNull(publication.storageKey())
-                    .ifPresent(file -> {
-                        long fileSize = file.getFileSize();
-                        file.softDelete();
-                        fileRepository.save(file);
-                        if (fileSize > 0L) {
-                            organizationApi.releaseStorageForCurrentTenant(fileSize);
-                        }
-                    });
+            deleteGeneratedFile(publication.storageKey());
         }
     }
 
-    private File upsertGeneratedFile(UUID drawingId, String fileKey, String originalName, String contentType, long fileSize) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void cleanupPreviewArtifacts(PartPreview partPreview) {
+        for (PartPreviewArtifact artifact : partPreview.getArtifacts()) {
+            if (artifact.getArtifactType() == DrawingArtifactType.SOURCE_ORIGINAL) {
+                continue;
+            }
+            deleteGeneratedFile(artifact.getStorageKey());
+        }
+    }
+
+    private void deleteGeneratedFile(String storageKey) {
+        try {
+            storagePort.deleteObject(storageKey);
+        } catch (RuntimeException ignored) {
+        }
+        fileRepository.findByFileKeyAndDeletedAtIsNull(storageKey)
+                .ifPresent(file -> {
+                    long fileSize = file.getFileSize();
+                    file.softDelete();
+                    fileRepository.save(file);
+                    if (fileSize > 0L) {
+                        organizationApi.releaseStorageForCurrentTenant(fileSize);
+                    }
+                });
+    }
+
+    private File upsertGeneratedFile(
+            UUID partPreviewId,
+            String fileKey,
+            String originalName,
+            String contentType,
+            long fileSize
+    ) {
         File generatedFile = fileRepository.findByFileKeyAndDeletedAtIsNull(fileKey)
                 .orElseGet(() -> File.create(UuidV7Generator.next(), originalName, fileKey, contentType, fileSize));
         boolean consumedStorage = false;
@@ -105,7 +130,7 @@ public class DrawingArtifactService {
             generatedFile.markUploaded();
         }
         if (generatedFile.getOwnerId() == null) {
-            generatedFile.assignOwner("drawing", drawingId);
+            generatedFile.assignOwner(OWNER_TYPE, partPreviewId);
             if (generatedFile.getFileSize() > 0L) {
                 organizationApi.consumeStorageForCurrentTenant(generatedFile.getFileSize());
                 consumedStorage = true;

@@ -12,7 +12,7 @@ public record PartSummaryResponse(
         String category,
         String revision,
         PartLifecycleState lifecycleState,
-        UUID drawingId,
+        boolean hasDrawing,
         long childrenCount
 ) {
 }

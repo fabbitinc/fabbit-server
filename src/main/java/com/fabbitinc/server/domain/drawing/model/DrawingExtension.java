@@ -56,6 +56,10 @@ public enum DrawingExtension {
         return getRequiredRenderSourceGroup() != null;
     }
 
+    public boolean canStartPipelineDirectly() {
+        return canStartPipelineDirectly;
+    }
+
     public DrawingRenderSourceGroup getRequiredRenderSourceGroup() {
         return switch (this) {
             case DWG -> DrawingRenderSourceGroup.PDF_PIPELINE;

@@ -3,6 +3,7 @@ package com.fabbitinc.server.application.drawing.service;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
+import com.fabbitinc.server.application.part.service.PartPreviewService;
 import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus;
@@ -26,26 +27,30 @@ public class DrawingService {
     private final FileRepository fileRepository;
     private final DrawingAsyncConversionService drawingAsyncConversionService;
     private final OrganizationApi organizationApi;
+    private final PartPreviewService partPreviewService;
     private final DrawingSourceClassifier drawingSourceClassifier;
 
     public DrawingService(
             DrawingRepository drawingRepository,
             FileRepository fileRepository,
             DrawingAsyncConversionService drawingAsyncConversionService,
-            OrganizationApi organizationApi
+            OrganizationApi organizationApi,
+            PartPreviewService partPreviewService
     ) {
         this.drawingRepository = drawingRepository;
         this.fileRepository = fileRepository;
         this.drawingAsyncConversionService = drawingAsyncConversionService;
         this.organizationApi = organizationApi;
+        this.partPreviewService = partPreviewService;
         this.drawingSourceClassifier = new DrawingSourceClassifier();
     }
 
-    public Drawing createDrawing(UUID fileId) {
+    public Drawing createDrawing(UUID partId, UUID fileId) {
         File file = loadUploadedFile(fileId);
         DrawingSourceDescriptor sourceDescriptor = classifySource(file);
 
         Drawing drawing = Drawing.create(null, file.getOriginalName());
+        drawing.assignPart(partId);
         drawing.registerSourceFile(
                 file.getId(),
                 sourceDescriptor.dimension(),
@@ -53,27 +58,10 @@ public class DrawingService {
                 file.getContentType(),
                 file.getFileSize()
         );
-
-        if (sourceDescriptor.extension().requiresRenderSource()) {
-            drawing.markRenderSourceRequired();
-        } else {
-            drawing.registerRenderSourceFile(
-                    file.getId(),
-                    sourceDescriptor.sourceType(),
-                    sourceDescriptor.dimension(),
-                    file.getFileKey(),
-                    file.getContentType(),
-                    file.getFileSize()
-            );
-            drawing.markConversionPending();
-        }
+        drawing.assignSourceFile(file.getId(), sourceDescriptor.sourceType(), sourceDescriptor.dimension());
 
         drawingRepository.save(drawing);
         attachFileToDrawing(file, drawing.getId());
-
-        if (drawing.getConversionStatus() == DrawingConversionStatus.PENDING) {
-            dispatchAfterCommit(drawing.getId());
-        }
         return drawing;
     }
 
@@ -151,6 +139,14 @@ public class DrawingService {
         drawing.getArtifacts().forEach(artifact -> keys.add(artifact.getStorageKey()));
         keys.forEach(this::softDeleteFileByKey);
         drawing.softDelete();
+        partPreviewService.clearByDrawing(drawingId);
+    }
+
+    public void deleteDrawing(UUID partId, UUID drawingId) {
+        Drawing drawing = drawingRepository.findById(drawingId)
+                .filter(it -> it.getDeletedAt() == null && partId.equals(it.getPartId()))
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "도면을 찾을 수 없습니다"));
+        deleteDrawing(drawing.getId());
     }
 
     private void softDeleteFileByKey(String fileKey) {

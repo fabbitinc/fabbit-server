@@ -21,7 +21,7 @@ public record PartDetailResult(
         PartUserSummaryResult owner,
         UUID ownerTeamId,
         String ownerTeamName,
-        RelatedDrawingResult drawing,
+        PartPreviewResult preview,
         long childrenCount,
         long parentsCount,
         long suppliersCount,

@@ -62,6 +62,9 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
     @Column(name = "dimension", length = 30)
     private DrawingDimension dimension;
 
+    @Column(name = "part_id")
+    private UUID partId;
+
     @Column(name = "source_file_id")
     private UUID sourceFileId;
 
@@ -102,6 +105,17 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
         this.status = status;
     }
 
+    public void assignPart(UUID partId) {
+        if (partId == null) {
+            throw new DomainException("DRAWING_PART_REQUIRED", "부품 ID는 필수입니다");
+        }
+        this.partId = partId;
+    }
+
+    public void unassignPart() {
+        this.partId = null;
+    }
+
     public void registerSourceFile(
             UUID sourceFileId,
             DrawingDimension dimension,
@@ -118,6 +132,15 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
                 normalizeNullable(contentType),
                 Math.max(fileSize, 0L)
         );
+    }
+
+    public void assignSourceFile(UUID sourceFileId, DrawingSourceType sourceType, DrawingDimension dimension) {
+        if (sourceFileId == null) {
+            throw new DomainException("DRAWING_SOURCE_FILE_REQUIRED", "도면 원본 파일 ID는 필수입니다");
+        }
+        this.sourceFileId = sourceFileId;
+        this.sourceType = sourceType;
+        this.dimension = dimension;
     }
 
     public void registerRenderSourceFile(

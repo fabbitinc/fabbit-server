@@ -23,7 +23,7 @@ public record PartDetailResponse(
         PartOwnerUserSummaryResponse owner,
         UUID ownerTeamId,
         String ownerTeamName,
-        RelatedDrawingResponse drawing,
+        PartPreviewResponse preview,
         long childrenCount,
         long parentsCount,
         long suppliersCount,

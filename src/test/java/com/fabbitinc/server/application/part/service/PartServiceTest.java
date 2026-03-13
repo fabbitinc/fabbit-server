@@ -36,6 +36,7 @@ class PartServiceTest {
   @Mock private FileRepository fileRepository;
   @Mock private OrganizationApi organizationApi;
   @Mock private ObjectMapper objectMapper;
+  @Mock private PartPreviewService partPreviewService;
 
   @Test
   void createPart_카테고리별_기본담당자를_적용한다() {
@@ -52,7 +53,8 @@ class PartServiceTest {
             partDefaultOwnerRepository,
             fileRepository,
             organizationApi,
-            objectMapper);
+            objectMapper,
+            partPreviewService);
 
     Part created =
         service.createPart(
@@ -75,7 +77,8 @@ class PartServiceTest {
             partDefaultOwnerRepository,
             fileRepository,
             organizationApi,
-            objectMapper);
+            objectMapper,
+            partPreviewService);
 
     AppException ex =
         assertThrows(
@@ -103,7 +106,8 @@ class PartServiceTest {
             partDefaultOwnerRepository,
             fileRepository,
             organizationApi,
-            objectMapper);
+            objectMapper,
+            partPreviewService);
 
     Part created =
         service.createPart(
@@ -143,7 +147,8 @@ class PartServiceTest {
             partDefaultOwnerRepository,
             fileRepository,
             organizationApi,
-            objectMapper);
+            objectMapper,
+            partPreviewService);
 
     List<File> attachedFiles =
         service.attachFiles(part.getId(), List.of(first.getId(), second.getId()));
@@ -170,11 +175,13 @@ class PartServiceTest {
             partDefaultOwnerRepository,
             fileRepository,
             organizationApi,
-            objectMapper);
+            objectMapper,
+            partPreviewService);
 
     service.detachFile(part.getId(), file.getId());
 
     assertNotNull(file.getDeletedAt());
+    verify(partPreviewService).clearByFile(file.getId());
     verify(organizationApi).releaseStorageForCurrentTenant(200L);
   }
 

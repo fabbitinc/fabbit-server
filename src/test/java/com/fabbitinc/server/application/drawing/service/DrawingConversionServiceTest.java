@@ -69,7 +69,7 @@ class DrawingConversionServiceTest {
 
         when(drawingRepository.findById(drawingId)).thenReturn(Optional.of(drawing));
         when(fileRepository.findByFileKeyAndDeletedAtIsNull(originalKey)).thenReturn(Optional.of(originalFile));
-        when(fileRepository.findByFileKeyAndDeletedAtIsNull("tenants/org/uploaded/drawing/sample.png"))
+        when(fileRepository.findByFileKeyAndDeletedAtIsNull("tenants/org/uploaded/drawing/sample.webp"))
                 .thenReturn(Optional.empty());
         when(fileRepository.save(any(File.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(drawingRepository.save(any(Drawing.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -83,7 +83,7 @@ class DrawingConversionServiceTest {
         when(drawingProcessingJobRepository.findByIdForUpdate(any(UUID.class)))
                 .thenAnswer(invocation -> Optional.ofNullable(savedJob.get()));
         when(storagePort.getObject(originalKey)).thenReturn(pdfBytes);
-        doNothing().when(storagePort).putObject(eq("tenants/org/uploaded/drawing/sample.png"), any(byte[].class), eq("image/png"));
+        doNothing().when(storagePort).putObject(eq("tenants/org/uploaded/drawing/sample.webp"), any(byte[].class), eq("image/webp"));
 
         DrawingConversionService service = createService(
                 drawingRepository,
@@ -99,14 +99,14 @@ class DrawingConversionServiceTest {
         assertEquals(DrawingConversionStatus.COMPLETED, drawing.getConversionStatus());
         assertEquals(DrawingJobStatus.COMPLETED, savedJob.get().getStatus());
         assertEquals(originalKey, drawing.getPdfKey());
-        assertEquals("tenants/org/uploaded/drawing/sample.png", drawing.getThumbnailKey());
+        assertEquals("tenants/org/uploaded/drawing/sample.webp", drawing.getThumbnailKey());
         verify(storagePort, never()).putObject(eq(originalKey), any(byte[].class), eq("application/pdf"));
         verify(organizationApi, times(1)).consumeStorageForCurrentTenant(anyLong());
 
         ArgumentCaptor<File> fileCaptor = ArgumentCaptor.forClass(File.class);
         verify(fileRepository).save(fileCaptor.capture());
         File thumbnailFile = fileCaptor.getValue();
-        assertEquals("tenants/org/uploaded/drawing/sample.png", thumbnailFile.getFileKey());
+        assertEquals("tenants/org/uploaded/drawing/sample.webp", thumbnailFile.getFileKey());
         assertEquals(drawingId, thumbnailFile.getOwnerId());
     }
 
@@ -122,7 +122,7 @@ class DrawingConversionServiceTest {
 
         String originalKey = "tenants/org/uploaded/drawing/sample.png";
         String pdfKey = "tenants/org/uploaded/drawing/sample.pdf";
-        String thumbnailKey = "tenants/org/uploaded/drawing/sample_thumbnail.png";
+        String thumbnailKey = "tenants/org/uploaded/drawing/sample.webp";
 
         Drawing drawing = Drawing.create(null, "sample.png");
         UUID drawingId = drawing.getId();
@@ -151,7 +151,7 @@ class DrawingConversionServiceTest {
                 .thenAnswer(invocation -> Optional.ofNullable(savedJob.get()));
         when(storagePort.getObject(originalKey)).thenReturn(imageBytes);
         doNothing().when(storagePort).putObject(eq(pdfKey), any(byte[].class), eq("application/pdf"));
-        doNothing().when(storagePort).putObject(eq(thumbnailKey), any(byte[].class), eq("image/png"));
+        doNothing().when(storagePort).putObject(eq(thumbnailKey), any(byte[].class), eq("image/webp"));
 
         DrawingConversionService service = createService(
                 drawingRepository,
@@ -169,7 +169,7 @@ class DrawingConversionServiceTest {
         assertEquals(pdfKey, drawing.getPdfKey());
         assertEquals(thumbnailKey, drawing.getThumbnailKey());
         verify(storagePort).putObject(eq(pdfKey), any(byte[].class), eq("application/pdf"));
-        verify(storagePort).putObject(eq(thumbnailKey), any(byte[].class), eq("image/png"));
+        verify(storagePort).putObject(eq(thumbnailKey), any(byte[].class), eq("image/webp"));
         verify(organizationApi, times(2)).consumeStorageForCurrentTenant(anyLong());
 
         ArgumentCaptor<File> fileCaptor = ArgumentCaptor.forClass(File.class);

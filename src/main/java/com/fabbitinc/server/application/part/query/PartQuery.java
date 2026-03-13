@@ -7,6 +7,7 @@ import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.mapping.api.MappingApi;
 import com.fabbitinc.server.application.part.model.BomDirection;
 import com.fabbitinc.server.application.part.model.DrawingViewerType;
+import com.fabbitinc.server.application.part.model.PartAttachmentType;
 import com.fabbitinc.server.application.part.query.condition.BomTreeCondition;
 import com.fabbitinc.server.application.part.query.condition.BomTreeExportCondition;
 import com.fabbitinc.server.application.part.query.condition.FileItemsCondition;
@@ -27,6 +28,7 @@ import com.fabbitinc.server.application.part.query.result.PartFilesResult;
 import com.fabbitinc.server.application.part.query.result.PartFilterOptionsResult;
 import com.fabbitinc.server.application.part.query.result.PartListResult;
 import com.fabbitinc.server.application.part.query.result.PartLookupResult;
+import com.fabbitinc.server.application.part.query.result.PartPreviewResult;
 import com.fabbitinc.server.application.part.query.result.PartProjectsResult;
 import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
 import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
@@ -36,6 +38,7 @@ import com.fabbitinc.server.application.team.api.TeamApi;
 import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.model.DrawingDimension;
+import com.fabbitinc.server.domain.drawing.model.DrawingExtension;
 import com.fabbitinc.server.domain.drawing.model.DrawingServingProjection;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.drawing.repository.DrawingServingProjectionRepository;
@@ -45,8 +48,13 @@ import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.BomLink;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
+import com.fabbitinc.server.domain.part.model.PartPreview;
+import com.fabbitinc.server.domain.part.model.PartPreviewServingProjection;
+import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
 import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
+import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
+import com.fabbitinc.server.domain.part.repository.PartPreviewServingProjectionRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
 import com.fabbitinc.server.domain.project.model.ProjectPart;
@@ -98,6 +106,8 @@ public class PartQuery {
     private final SupplierRepository supplierRepository;
     private final DrawingRepository drawingRepository;
     private final DrawingServingProjectionRepository drawingServingProjectionRepository;
+    private final PartPreviewRepository partPreviewRepository;
+    private final PartPreviewServingProjectionRepository partPreviewServingProjectionRepository;
     private final ProjectApi projectApi;
     private final UserApi userApi;
     private final TeamApi teamApi;
@@ -180,10 +190,11 @@ public class PartQuery {
         var partCategoryExpr = part.getString("category");
         var partRevisionExpr = part.getString("revision");
         var partLifecycleStateExpr = part.getString("lifecycleState");
-        var drawingIdExpr = part.get("drawingId", UUID.class);
+        var legacyDrawingIdExpr = part.get("drawingId", UUID.class);
 
         BooleanBuilder predicate = buildPartPredicate(
                 part,
+                drawing,
                 bomLink,
                 projectPart,
                 condition.search(),
@@ -205,6 +216,12 @@ public class PartQuery {
         var childrenCountExpr = JPAExpressions.select(bomLink.get("id", UUID.class).count())
                 .from(bomLink)
                 .where(bomLink.get("parentPartId", UUID.class).eq(partIdExpr));
+        var drawingsCountExpr = JPAExpressions.select(drawing.get("id", UUID.class).count())
+                .from(drawing)
+                .where(
+                        drawing.get("partId", UUID.class).eq(partIdExpr)
+                                .and(drawing.get("deletedAt", java.time.Instant.class).isNull())
+                );
 
         List<Tuple> rows = queryFactory()
                 .select(
@@ -214,7 +231,8 @@ public class PartQuery {
                         partCategoryExpr,
                         partRevisionExpr,
                         partLifecycleStateExpr,
-                        drawingIdExpr,
+                        legacyDrawingIdExpr,
+                        drawingsCountExpr,
                         childrenCountExpr
                 )
                 .from(part)
@@ -232,7 +250,8 @@ public class PartQuery {
                         row.get(partCategoryExpr),
                         row.get(partRevisionExpr) == null ? "1" : row.get(partRevisionExpr),
                         PartLifecycleState.from(row.get(partLifecycleStateExpr)),
-                        row.get(drawingIdExpr),
+                        row.get(legacyDrawingIdExpr) != null
+                                || (row.get(drawingsCountExpr) != null && row.get(drawingsCountExpr) > 0L),
                         row.get(childrenCountExpr) == null ? 0L : row.get(childrenCountExpr)
                 ))
                 .toList();
@@ -366,16 +385,17 @@ public class PartQuery {
         PartUserSummaryResult owner = toUserSummary(userApi.getUserOrNull(part.getOwnerId()));
         Team ownerTeam = teamApi.getTeamOrNull(part.getOwnerTeamId());
         String ownerTeamName = ownerTeam == null ? null : ownerTeam.getName();
-        RelatedDrawingResult drawing = loadDrawing(part.getDrawingId());
+        PartPreviewResult preview = loadPreview(part);
 
         long childrenCount = bomLinkRepository.countByParentPartId(part.getId());
         long parentsCount = bomLinkRepository.countByChildPartId(part.getId());
         long suppliersCount = partSupplierRepository.countByPartId(part.getId());
-        long filesCount = fileRepository.countByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
+        long partFilesCount = fileRepository.countByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
                 "part",
                 part.getId(),
                 FileStatus.UPLOADED
         );
+        long drawingsCount = countAttachedDrawings(part);
         long projectsCount = projectApi.countPartProjects(part.getId());
 
         return new PartDetailResult(
@@ -395,11 +415,11 @@ public class PartQuery {
                 owner,
                 part.getOwnerTeamId(),
                 ownerTeamName,
-                drawing,
+                preview,
                 childrenCount,
                 parentsCount,
                 suppliersCount,
-                filesCount,
+                partFilesCount + drawingsCount,
                 projectsCount
         );
     }
@@ -515,15 +535,29 @@ public class PartQuery {
 
     public PartFilesResult get(PartFilesCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        assertPartExists(condition.partId());
+        Part part = partRepository.findById(condition.partId())
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.NOT_FOUND,
+                        "Part '" + condition.partId() + "'을(를) 찾을 수 없습니다"
+                ));
 
-        List<PartFilesResult.Item> items = fileRepository.findByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
+        ActivePreviewSource activePreviewSource = loadActivePreviewSource(part);
+
+        List<PartFilesResult.Item> items = new ArrayList<>();
+        fileRepository.findByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
                         "part",
                         condition.partId(),
                         FileStatus.UPLOADED
                 ).stream()
-                .map(this::toFileItem)
-                .toList();
+                .map(file -> toPartAttachmentItem(file, activePreviewSource))
+                .forEach(items::add);
+
+        findAttachedDrawings(part).stream()
+                .map(drawing -> toDrawingAttachmentItem(drawing, activePreviewSource))
+                .filter(java.util.Objects::nonNull)
+                .forEach(items::add);
+
+        items.sort(Comparator.comparing(PartFilesResult.Item::createdAt).reversed());
 
         return new PartFilesResult(items.size(), items);
     }
@@ -531,7 +565,18 @@ public class PartQuery {
     public List<PartFilesResult.Item> getFiles(FileItemsCondition condition) {
         currentAuthProvider.getCurrentAuth();
         return fileRepository.findByIdIn(condition.fileIds()).stream()
-                .map(this::toFileItem)
+                .map(file -> new PartFilesResult.Item(
+                        PartAttachmentType.FILE,
+                        file.getId(),
+                        null,
+                        file.getOriginalName(),
+                        file.getContentType(),
+                        file.getFileSize(),
+                        fileUrlResolver.resolve(file.getFileKey()),
+                        isPreviewSelectable(file),
+                        false,
+                        file.getCreatedAt()
+                ))
                 .toList();
     }
 
@@ -556,14 +601,39 @@ public class PartQuery {
         return new PartSuppliersResult(items.size(), items);
     }
 
-    private PartFilesResult.Item toFileItem(File file) {
+    private PartFilesResult.Item toPartAttachmentItem(File file, ActivePreviewSource activePreviewSource) {
         return new PartFilesResult.Item(
+                PartAttachmentType.FILE,
                 file.getId(),
+                null,
                 file.getOriginalName(),
                 file.getContentType(),
                 file.getFileSize(),
                 fileUrlResolver.resolve(file.getFileKey()),
+                isPreviewSelectable(file),
+                activePreviewSource.sourceType() == PartPreviewSourceType.FILE
+                        && file.getId().equals(activePreviewSource.sourceId()),
                 file.getCreatedAt()
+        );
+    }
+
+    private PartFilesResult.Item toDrawingAttachmentItem(Drawing drawing, ActivePreviewSource activePreviewSource) {
+        File sourceFile = resolveDrawingFile(drawing);
+        if (sourceFile == null || sourceFile.getDeletedAt() != null) {
+            return null;
+        }
+        return new PartFilesResult.Item(
+                PartAttachmentType.DRAWING,
+                sourceFile.getId(),
+                drawing.getId(),
+                sourceFile.getOriginalName(),
+                sourceFile.getContentType(),
+                sourceFile.getFileSize(),
+                fileUrlResolver.resolve(sourceFile.getFileKey()),
+                isPreviewSelectable(sourceFile),
+                activePreviewSource.sourceType() == PartPreviewSourceType.DRAWING
+                        && drawing.getId().equals(activePreviewSource.sourceId()),
+                drawing.getCreatedAt()
         );
     }
 
@@ -578,6 +648,40 @@ public class PartQuery {
                 user.getPhone(),
                 fileUrlResolver.resolve(user.getProfileImageFileKey())
         );
+    }
+
+    private PartPreviewResult toPartPreview(PartPreview partPreview, PartPreviewServingProjection projection) {
+        if (partPreview == null || !partPreview.hasSource()) {
+            return null;
+        }
+        String previewKey = projection == null ? partPreview.getWebpKey() : projection.getWebpKey();
+        String pdfKey = projection == null ? partPreview.getPdfKey() : projection.getPdfKey();
+        String glbKey = projection == null ? partPreview.getGlbKey() : projection.getGlbKey();
+        String originalFileKey = projection == null ? partPreview.getOriginalFileKey() : projection.getOriginalKey();
+        DrawingViewerType viewerType = resolvePreviewViewerType(partPreview, pdfKey, glbKey);
+        String viewerKey = viewerType == DrawingViewerType.GLB ? glbKey : pdfKey;
+        return new PartPreviewResult(
+                partPreview.getId(),
+                partPreview.getSourceType(),
+                partPreview.getSourceId(),
+                partPreview.getConversionStatus(),
+                viewerType,
+                fileUrlResolver.resolve(viewerKey),
+                fileUrlResolver.resolve(previewKey),
+                fileUrlResolver.resolve(originalFileKey)
+        );
+    }
+
+    private DrawingViewerType resolvePreviewViewerType(PartPreview partPreview, String pdfKey, String glbKey) {
+        if (glbKey != null) {
+            return DrawingViewerType.GLB;
+        }
+        if (pdfKey != null) {
+            return DrawingViewerType.PDF;
+        }
+        return partPreview.getDimension() == DrawingDimension.THREE_D
+                ? DrawingViewerType.GLB
+                : DrawingViewerType.PDF;
     }
 
     private RelatedDrawingResult toRelatedDrawing(Drawing drawing, DrawingServingProjection projection) {
@@ -631,6 +735,83 @@ public class PartQuery {
                 supplier.getCountry(),
                 link == null ? null : link.getUnitCost()
         );
+    }
+
+    private PartPreviewResult loadPreview(Part part) {
+        PartPreview partPreview = partPreviewRepository.findByPartId(part.getId()).orElse(null);
+        if (partPreview != null && partPreview.hasSource()) {
+            PartPreviewServingProjection projection = partPreviewServingProjectionRepository.findById(partPreview.getId())
+                    .orElse(null);
+            return toPartPreview(partPreview, projection);
+        }
+
+        RelatedDrawingResult legacyDrawing = loadDrawing(part.getDrawingId());
+        if (legacyDrawing == null) {
+            return null;
+        }
+        return new PartPreviewResult(
+                legacyDrawing.id(),
+                PartPreviewSourceType.DRAWING,
+                legacyDrawing.id(),
+                legacyDrawing.conversionStatus(),
+                legacyDrawing.viewerType(),
+                legacyDrawing.viewerUrl(),
+                legacyDrawing.previewUrl(),
+                legacyDrawing.originalFileUrl()
+        );
+    }
+
+    private ActivePreviewSource loadActivePreviewSource(Part part) {
+        PartPreview partPreview = partPreviewRepository.findByPartId(part.getId()).orElse(null);
+        if (partPreview != null && partPreview.hasSource()) {
+            return new ActivePreviewSource(partPreview.getSourceType(), partPreview.getSourceId());
+        }
+        if (part.getDrawingId() != null) {
+            return new ActivePreviewSource(PartPreviewSourceType.DRAWING, part.getDrawingId());
+        }
+        return new ActivePreviewSource(null, null);
+    }
+
+    private List<Drawing> findAttachedDrawings(Part part) {
+        LinkedHashMap<UUID, Drawing> drawings = new LinkedHashMap<>();
+        drawingRepository.findByPartIdAndDeletedAtIsNullOrderByCreatedAtDesc(part.getId())
+                .forEach(drawing -> drawings.put(drawing.getId(), drawing));
+        if (part.getDrawingId() != null) {
+            drawingRepository.findById(part.getDrawingId())
+                    .filter(drawing -> drawing.getDeletedAt() == null)
+                    .ifPresent(drawing -> drawings.putIfAbsent(drawing.getId(), drawing));
+        }
+        return List.copyOf(drawings.values());
+    }
+
+    private long countAttachedDrawings(Part part) {
+        return findAttachedDrawings(part).size();
+    }
+
+    private File resolveDrawingFile(Drawing drawing) {
+        if (drawing == null) {
+            return null;
+        }
+        if (drawing.getSourceFileId() != null) {
+            File sourceFile = fileRepository.findByIdAndDeletedAtIsNull(drawing.getSourceFileId()).orElse(null);
+            if (sourceFile != null) {
+                return sourceFile;
+            }
+        }
+        String originalFileKey = drawing.getOriginalFileKey();
+        if (originalFileKey == null || originalFileKey.isBlank()) {
+            return null;
+        }
+        return fileRepository.findByFileKeyAndDeletedAtIsNull(originalFileKey).orElse(null);
+    }
+
+    private boolean isPreviewSelectable(File file) {
+        if (file == null || file.getDeletedAt() != null || file.getStatus() != FileStatus.UPLOADED) {
+            return false;
+        }
+        return DrawingExtension.fromFileName(file.getOriginalName())
+                .map(DrawingExtension::canStartPipelineDirectly)
+                .orElse(false);
     }
 
     private List<BomEdge> fetchBomEdges(UUID rootPartId, boolean reverse) {
@@ -781,11 +962,13 @@ public class PartQuery {
             UUID projectId
     ) {
         PathBuilder<Part> part = new PathBuilder<>(Part.class, "part");
+        PathBuilder<Drawing> drawing = new PathBuilder<>(Drawing.class, "drawing");
         PathBuilder<BomLink> bomLink = new PathBuilder<>(BomLink.class, "bomLink");
         PathBuilder<ProjectPart> projectPart = new PathBuilder<>(ProjectPart.class, "projectPart");
 
         BooleanBuilder predicate = buildPartPredicate(
                 part,
+                drawing,
                 bomLink,
                 projectPart,
                 search,
@@ -862,6 +1045,7 @@ public class PartQuery {
 
     private BooleanBuilder buildPartPredicate(
             PathBuilder<Part> part,
+            PathBuilder<Drawing> drawing,
             PathBuilder<BomLink> bomLink,
             PathBuilder<ProjectPart> projectPart,
             String search,
@@ -888,9 +1072,17 @@ public class PartQuery {
             predicate.and(part.getString("lifecycleState").eq(lifecycleState.value()));
         }
         if (hasDrawing != null) {
+            BooleanExpression drawingExists = JPAExpressions.selectOne()
+                    .from(drawing)
+                    .where(
+                            drawing.get("partId", UUID.class).eq(part.get("id", UUID.class))
+                                    .and(drawing.get("deletedAt", java.time.Instant.class).isNull())
+                    )
+                    .exists()
+                    .or(part.get("drawingId", UUID.class).isNotNull());
             predicate.and(Boolean.TRUE.equals(hasDrawing)
-                    ? part.get("drawingId", UUID.class).isNotNull()
-                    : part.get("drawingId", UUID.class).isNull());
+                    ? drawingExists
+                    : drawingExists.not());
         }
         if (hasChildren != null) {
             BooleanExpression childExists = JPAExpressions.selectOne()
@@ -1121,6 +1313,12 @@ public class PartQuery {
             String unit,
             String category,
             PartLifecycleState lifecycleState
+    ) {
+    }
+
+    private record ActivePreviewSource(
+            PartPreviewSourceType sourceType,
+            UUID sourceId
     ) {
     }
 
