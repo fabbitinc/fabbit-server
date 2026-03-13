@@ -2,75 +2,76 @@
 
 ## 목적
 
-`property` 도메인은 부품/공급사/도면/관계 엔티티가 가질 수 있는 속성의 메타데이터를 관리한다.
+`property` 도메인은 사용자 정의 속성과 시스템 속성의 운영 오버라이드를 관리한다.
 
-현재 목표는 아래 두 가지다.
+현재 방향은 아래처럼 나눈다.
 
-1. 시스템 기본 속성도 rename, deactivate 대상으로 관리한다.
-2. 커스텀 속성을 JSONB로 저장하되, 추후 EAV 구조로 옮길 수 있게 식별 체계를 고정한다.
+1. 시스템 속성의 기본 구조는 코드에서 관리한다.
+2. 시스템 속성의 이름 변경/비활성화/표시 순서는 DB override로 관리한다.
+3. 커스텀 속성 정의는 `property_definitions`에서 관리한다.
 
 ## 현재 구조
 
-### 1. 메타데이터 원천
+### 1. 시스템 속성
 
-현재 속성 정의의 단일 원천은 `property_definitions` 테이블이다.
+시스템 속성의 기본 목록은 코드의 `SystemPropertyRegistry`가 관리한다.
 
-- 시스템 속성도 row로 가진다.
-- 커스텀 속성도 row로 가진다.
-- 대상은 `PropertyOwnerType`으로 구분한다.
-  - `PART`
-  - `SUPPLIER`
-  - `DRAWING`
-  - `BOM_LINK`
-  - `PART_SUPPLIER`
+- 파일: `support/SystemPropertyRegistry`
+- 각 항목은 `SystemPropertySpec`
+- 포함 정보
+  - `owner_type`
+  - `property_key`
+  - `display_name`
+  - `description`
+  - `value_type`
+  - `option_mode`
+  - `options`
+  - `column_name`
+  - `display_order`
+  - `required`
 
-### 2. 시스템 속성
+즉 시스템 속성의 본체는 더 이상 `property_definitions` row가 아니다.
 
-시스템 속성은 실제 컬럼과 연결된다.
+### 2. 시스템 속성 오버라이드
 
-- `is_system = true`
-- `property_key` 필수
-- `column_name` 필수
+시스템 속성의 가변 운영 정보는 `system_property_overrides` 테이블에서 관리한다.
 
-예시:
+현재 오버라이드 대상:
 
-- `PART.material`
-- `PART.part_number`
-- `SUPPLIER.company_name`
-- `BOM_LINK.quantity`
-- `PART_SUPPLIER.unit_cost`
+- `display_name_override`
+- `display_order`
+- `is_active`
 
-`property_key`는 시스템 속성의 semantic key다.
+이 테이블은 기본 시스템 속성을 다시 정의하지 않는다.
+기본 정의는 registry에서 읽고, 운영 오버라이드만 DB에서 덮어쓴다.
 
-- 다국어 처리
-- 코드 상 식별
-- 외부 계약 고정
+`property_key`가 존재하지 않는 override row는 조회 시 무시하는 방향을 전제로 한다.
 
-을 위해 유지한다.
+### 3. 커스텀 속성 정의
 
-### 3. 커스텀 속성
+커스텀 속성은 `property_definitions` 테이블에서 관리한다.
 
-커스텀 속성은 실제 테이블 컬럼이 없고, 각 엔티티의 `extended_properties` JSONB에 저장된다.
+- `owner_type`
+- `display_name`
+- `description`
+- `value_type`
+- `option_mode`
+- `options_json`
+- `display_order`
+- `is_required`
+- `is_active`
 
-- `is_system = false`
-- `column_name = null`
-- `display_name`은 사용자가 보는 이름이다.
-- rename은 `display_name` 변경으로 처리한다.
-
-중요한 점은 현재/미래 모두 값 저장 기준은 `property_definition.id`라는 점이다.
-
-- JSONB key도 `property_definition.id`
-- 추후 EAV 전환 시 FK도 `property_definition.id`
-
-즉 커스텀 속성용 별도 문자열 key를 추가로 만들지 않는다.
+커스텀 속성은 시스템 속성과 달리 별도 `property_key`를 가지지 않는다.
+실제 값 저장 식별자는 계속 `property_definition.id`를 사용한다.
 
 ### 4. 옵션형 속성
 
-옵션형 속성은 `PropertyValueType.OPTION`으로 표현한다.
+옵션형 속성은 다음 두 필드로 표현한다.
 
-옵션 메타데이터는 현재 `options_json`에 저장한다.
+- `value_type = OPTION`
+- `option_mode = FIXED | CREATABLE`
 
-도메인에서는 raw JSON 문자열이 아니라 `PropertyOptionItem`을 사용한다.
+옵션 목록은 `options_json`에 저장하고, 도메인에서는 `PropertyOptionItem`으로 다룬다.
 
 ```java
 public record PropertyOptionItem(
@@ -82,15 +83,30 @@ public record PropertyOptionItem(
 }
 ```
 
-현재 규칙:
+의미:
 
-- 저장은 JSONB
-- 애플리케이션 경계에서는 typed model 사용
-- 옵션 구조는 `value/label/displayOrder/active`
-- `OPTION` 타입이 아니면 옵션 목록을 가질 수 없다
-- 같은 속성 내 옵션 `value`는 중복될 수 없다
+- `FIXED`
+  - 미리 정의된 옵션만 선택 가능
+- `CREATABLE`
+  - 기존 옵션 선택 가능
+  - 새 옵션도 추가 가능
 
-`value`는 저장용 식별자이고, `label`은 표시용 이름이다.
+예를 들어 `PART.category`는 registry에서 `OPTION + CREATABLE`로 정의한다.
+
+## 왜 이렇게 나누는가
+
+초기에는 시스템 속성까지 `property_definitions` row로 넣는 방향을 검토했다.
+하지만 이 방식은 아래 문제가 있었다.
+
+- 시스템 컬럼 migration과 `property_definitions` seed를 항상 같이 맞춰야 함
+- 엔티티 annotation/consistency test 같은 보조 장치가 추가로 필요함
+- 시스템 속성과 커스텀 속성이 실제로는 다른 수명주기를 가지는데 모델이 과하게 통합됨
+
+현재 구조는 그 복잡도를 줄이기 위한 타협이다.
+
+- 시스템 기본 구조: 코드
+- 시스템 운영 변경: override table
+- 커스텀 속성 정의: property_definitions
 
 ## 현재 저장 모델
 
@@ -109,38 +125,9 @@ public record PropertyOptionItem(
 
 위 key는 커스텀 속성의 표시명이 아니라 `property_definition.id`다.
 
-이렇게 하는 이유:
-
-- 커스텀 속성 rename 안전
-- display name 변경 시 데이터 migration 불필요
-- 추후 EAV migration 단순화
-
-## 현재 한계
-
-현재 구조는 상세 조회와 유연한 저장에는 적합하지만, 아래 요구가 커지면 한계가 생긴다.
-
-- 목록 검색
-- 다중 필터
-- 범위 검색
-- 정렬
-- 집계/분석
-
-이 요구가 커지면 JSONB만으로는 성능과 인덱싱 전략이 점점 불리해진다.
-
 ## 추후 확장 구조
 
-확장 방향은 `property_definitions`를 유지한 채, 값 저장만 EAV로 분리하는 것이다.
-
-### 1. 유지되는 것
-
-- `property_definitions`는 계속 메타데이터 원천으로 사용한다.
-- 시스템 속성의 `property_key`는 그대로 유지한다.
-- 커스텀 속성의 실제 식별자는 계속 `property_definition.id`다.
-- `options_json`도 초기에는 그대로 유지한다.
-
-### 2. 추가될 값 테이블
-
-향후에는 커스텀 속성 값을 별도 EAV 테이블로 분리한다.
+조회/필터/분석 요구가 커지면 커스텀 속성 값 저장만 EAV로 분리한다.
 
 예시 스키마:
 
@@ -160,57 +147,17 @@ property_values
 unique(owner_type, owner_id, property_definition_id)
 ```
 
-설명:
+핵심 원칙:
 
-- `owner_type + owner_id`로 실제 대상 row를 식별한다.
-- `property_definition_id`로 어떤 속성인지 식별한다.
-- 값은 타입별 컬럼에 나눠 담는다.
-- 옵션형은 `option_value`에 `PropertyOptionItem.value`를 저장한다.
-
-### 3. Migration 방향
-
-JSONB에서 EAV로 갈 때는 아래 순서로 옮긴다.
-
-1. 각 엔티티의 `extended_properties`를 읽는다.
-2. JSON key를 `property_definition.id`로 해석한다.
-3. `property_values.property_definition_id`에 그대로 넣는다.
-4. value type에 맞는 typed column에 값을 분배한다.
-
-핵심은 현재 JSONB key와 미래 EAV FK가 동일하다는 점이다.
-
-이 규칙 덕분에 커스텀 속성 값 migration 시 별도 key 변환 작업이 필요 없다.
-
-### 4. 조회 전략
-
-EAV 도입 후에도 API/화면 관점에서는 시스템 속성과 커스텀 속성을 분리해서 보여주지 않는다.
-
-- 사용자에게는 모두 "속성"이다.
-- 내부 저장만 컬럼/EAV로 나뉜다.
-
-즉 응답 모델은 통합하고, 저장 모델만 분리한다.
-
-### 5. 추가 최적화
-
-필터/정렬/분석이 더 무거워지면 EAV만으로도 부족할 수 있다.
-
-그 경우 다음 단계를 고려한다.
-
-- projection/search 전용 테이블
-- 속성별 보조 인덱스
-- 집계용 materialized view
-
-즉 장기 방향은 다음 순서다.
-
-1. 현재: `property_definitions + JSONB`
-2. 중기: `property_definitions + EAV(property_values)`
-3. 장기: `property_definitions + EAV + projection/search model`
+- 시스템 속성은 계속 컬럼에 남길 수 있다
+- 커스텀 속성만 EAV로 분리한다
+- 커스텀 속성의 식별자는 계속 `property_definition.id`다
 
 ## 구현 원칙 요약
 
-- 시스템 속성도 `property_definitions`에서 관리한다.
-- 시스템 속성은 `property_key`를 가진다.
-- 커스텀 속성은 문자열 key를 추가로 만들지 않는다.
+- 시스템 속성의 기본 구조는 registry에서 관리한다.
+- 시스템 속성의 rename/deactivate/order는 `system_property_overrides`에서 관리한다.
+- 커스텀 속성 정의는 `property_definitions`에서 관리한다.
 - 커스텀 속성 값의 실제 식별자는 `property_definition.id`다.
 - 옵션은 `value/label`로 분리한다.
-- 저장은 JSONB를 유지하되, 애플리케이션 경계에서는 typed model을 사용한다.
-- 추후 EAV 전환 시 `property_definition.id`를 FK로 사용한다.
+- 옵션 생성 가능 여부는 `option_mode`로 표현한다.

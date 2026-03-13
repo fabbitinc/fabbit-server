@@ -25,16 +25,8 @@ import org.hibernate.type.SqlTypes;
         name = "property_definitions",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uq_property_definitions_owner_type_property_key",
-                        columnNames = {"owner_type", "property_key"}
-                ),
-                @UniqueConstraint(
                         name = "uq_property_definitions_owner_type_display_name",
                         columnNames = {"owner_type", "display_name"}
-                ),
-                @UniqueConstraint(
-                        name = "uq_property_definitions_owner_type_column_name",
-                        columnNames = {"owner_type", "column_name"}
                 )
         },
         indexes = {
@@ -49,22 +41,14 @@ public class PropertyDefinition extends AbstractAuditableEntity {
 
     public static final String CODE_PROPERTY_DEFINITION_OWNER_TYPE_REQUIRED =
             "PROPERTY_DEFINITION_OWNER_TYPE_REQUIRED";
-    public static final String CODE_PROPERTY_DEFINITION_PROPERTY_KEY_REQUIRED =
-            "PROPERTY_DEFINITION_PROPERTY_KEY_REQUIRED";
-    public static final String CODE_PROPERTY_DEFINITION_PROPERTY_KEY_TOO_LONG =
-            "PROPERTY_DEFINITION_PROPERTY_KEY_TOO_LONG";
     public static final String CODE_PROPERTY_DEFINITION_DISPLAY_NAME_REQUIRED =
             "PROPERTY_DEFINITION_DISPLAY_NAME_REQUIRED";
     public static final String CODE_PROPERTY_DEFINITION_DISPLAY_NAME_TOO_LONG =
             "PROPERTY_DEFINITION_DISPLAY_NAME_TOO_LONG";
     public static final String CODE_PROPERTY_DEFINITION_VALUE_TYPE_REQUIRED =
             "PROPERTY_DEFINITION_VALUE_TYPE_REQUIRED";
-    public static final String CODE_PROPERTY_DEFINITION_COLUMN_NAME_REQUIRED =
-            "PROPERTY_DEFINITION_COLUMN_NAME_REQUIRED";
-    public static final String CODE_PROPERTY_DEFINITION_COLUMN_NAME_NOT_ALLOWED =
-            "PROPERTY_DEFINITION_COLUMN_NAME_NOT_ALLOWED";
-    public static final String CODE_PROPERTY_DEFINITION_COLUMN_NAME_TOO_LONG =
-            "PROPERTY_DEFINITION_COLUMN_NAME_TOO_LONG";
+    public static final String CODE_PROPERTY_DEFINITION_OPTION_MODE_NOT_ALLOWED =
+            "PROPERTY_DEFINITION_OPTION_MODE_NOT_ALLOWED";
     public static final String CODE_PROPERTY_DEFINITION_OPTIONS_NOT_ALLOWED =
             "PROPERTY_DEFINITION_OPTIONS_NOT_ALLOWED";
     public static final String CODE_PROPERTY_DEFINITION_DUPLICATE_OPTION_VALUE =
@@ -72,16 +56,11 @@ public class PropertyDefinition extends AbstractAuditableEntity {
     public static final String CODE_PROPERTY_DEFINITION_DISPLAY_ORDER_INVALID =
             "PROPERTY_DEFINITION_DISPLAY_ORDER_INVALID";
 
-    private static final int MAX_PROPERTY_KEY_LENGTH = 100;
     private static final int MAX_DISPLAY_NAME_LENGTH = 200;
-    private static final int MAX_COLUMN_NAME_LENGTH = 100;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "owner_type", nullable = false, length = 50)
     private PropertyOwnerType ownerType;
-
-    @Column(name = "property_key", length = 100)
-    private String propertyKey;
 
     @Column(name = "display_name", nullable = false, length = 200)
     private String displayName;
@@ -93,18 +72,16 @@ public class PropertyDefinition extends AbstractAuditableEntity {
     @Column(name = "value_type", nullable = false, length = 20)
     private PropertyValueType valueType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "option_mode", length = 20)
+    private PropertyOptionMode optionMode;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "options_json", nullable = false, columnDefinition = "jsonb")
     private List<PropertyOptionItem> options = List.of();
 
-    @Column(name = "column_name", length = 100)
-    private String columnName;
-
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
-
-    @Column(name = "is_system", nullable = false)
-    private boolean systemDefined;
 
     @Column(name = "is_required", nullable = false)
     private boolean required;
@@ -114,53 +91,24 @@ public class PropertyDefinition extends AbstractAuditableEntity {
 
     private PropertyDefinition(
             PropertyOwnerType ownerType,
-            String propertyKey,
             String displayName,
             String description,
             PropertyValueType valueType,
+            PropertyOptionMode optionMode,
             List<PropertyOptionItem> options,
-            String columnName,
             int displayOrder,
-            boolean systemDefined,
             boolean required
     ) {
         super(UuidV7Generator.next());
         this.ownerType = requireOwnerType(ownerType);
-        this.propertyKey = normalizePropertyKey(propertyKey, systemDefined);
         this.displayName = requireDisplayName(displayName);
         this.description = normalizeDescription(description);
         this.valueType = requireValueType(valueType);
+        this.optionMode = normalizeOptionMode(optionMode, this.valueType);
         this.options = normalizeOptions(options, this.valueType);
-        this.columnName = normalizeColumnName(columnName, systemDefined);
         this.displayOrder = requireDisplayOrder(displayOrder);
-        this.systemDefined = systemDefined;
         this.required = required;
         this.active = true;
-    }
-
-    public static PropertyDefinition defineSystemProperty(
-            PropertyOwnerType ownerType,
-            String propertyKey,
-            String displayName,
-            String description,
-            PropertyValueType valueType,
-            List<PropertyOptionItem> options,
-            String columnName,
-            int displayOrder,
-            boolean required
-    ) {
-        return new PropertyDefinition(
-                ownerType,
-                propertyKey,
-                displayName,
-                description,
-                valueType,
-                options,
-                columnName,
-                displayOrder,
-                true,
-                required
-        );
     }
 
     public static PropertyDefinition defineCustomProperty(
@@ -168,20 +116,19 @@ public class PropertyDefinition extends AbstractAuditableEntity {
             String displayName,
             String description,
             PropertyValueType valueType,
+            PropertyOptionMode optionMode,
             List<PropertyOptionItem> options,
             int displayOrder,
             boolean required
     ) {
         return new PropertyDefinition(
                 ownerType,
-                null,
                 displayName,
                 description,
                 valueType,
+                optionMode,
                 options,
-                null,
                 displayOrder,
-                false,
                 required
         );
     }
@@ -196,8 +143,13 @@ public class PropertyDefinition extends AbstractAuditableEntity {
 
     public void changeValueType(PropertyValueType valueType) {
         PropertyValueType normalizedValueType = requireValueType(valueType);
+        normalizeOptionMode(this.optionMode, normalizedValueType);
         validateOptions(this.options, normalizedValueType);
         this.valueType = normalizedValueType;
+    }
+
+    public void changeOptionMode(PropertyOptionMode optionMode) {
+        this.optionMode = normalizeOptionMode(optionMode, this.valueType);
     }
 
     public void changeOptions(List<PropertyOptionItem> options) {
@@ -244,27 +196,6 @@ public class PropertyDefinition extends AbstractAuditableEntity {
         return value;
     }
 
-    private String normalizePropertyKey(String value, boolean systemDefined) {
-        if (value == null || value.isBlank()) {
-            if (systemDefined) {
-                throw new DomainException(
-                        CODE_PROPERTY_DEFINITION_PROPERTY_KEY_REQUIRED,
-                        "시스템 속성 key는 필수입니다"
-                );
-            }
-            return null;
-        }
-
-        String trimmed = value.trim();
-        if (trimmed.length() > MAX_PROPERTY_KEY_LENGTH) {
-            throw new DomainException(
-                    CODE_PROPERTY_DEFINITION_PROPERTY_KEY_TOO_LONG,
-                    "속성 key는 100자 이하여야 합니다"
-            );
-        }
-        return trimmed;
-    }
-
     private String requireDisplayName(String value) {
         if (value == null || value.isBlank()) {
             throw new DomainException(
@@ -289,6 +220,26 @@ public class PropertyDefinition extends AbstractAuditableEntity {
         }
         String trimmed = value.trim();
         return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private PropertyOptionMode normalizeOptionMode(
+            PropertyOptionMode optionMode,
+            PropertyValueType valueType
+    ) {
+        if (valueType != PropertyValueType.OPTION) {
+            if (optionMode == null) {
+                return null;
+            }
+            throw new DomainException(
+                    CODE_PROPERTY_DEFINITION_OPTION_MODE_NOT_ALLOWED,
+                    "OPTION 타입이 아닌 속성은 option_mode를 가질 수 없습니다"
+            );
+        }
+
+        if (optionMode == null) {
+            return PropertyOptionMode.FIXED;
+        }
+        return optionMode;
     }
 
     private List<PropertyOptionItem> normalizeOptions(
@@ -320,34 +271,6 @@ public class PropertyDefinition extends AbstractAuditableEntity {
                 );
             }
         }
-    }
-
-    private String normalizeColumnName(String value, boolean systemDefined) {
-        if (!systemDefined) {
-            if (value == null || value.isBlank()) {
-                return null;
-            }
-            throw new DomainException(
-                    CODE_PROPERTY_DEFINITION_COLUMN_NAME_NOT_ALLOWED,
-                    "커스텀 속성은 column_name을 가질 수 없습니다"
-            );
-        }
-
-        if (value == null || value.isBlank()) {
-            throw new DomainException(
-                    CODE_PROPERTY_DEFINITION_COLUMN_NAME_REQUIRED,
-                    "시스템 속성은 column_name이 필수입니다"
-            );
-        }
-
-        String trimmed = value.trim();
-        if (trimmed.length() > MAX_COLUMN_NAME_LENGTH) {
-            throw new DomainException(
-                    CODE_PROPERTY_DEFINITION_COLUMN_NAME_TOO_LONG,
-                    "column_name은 100자 이하여야 합니다"
-            );
-        }
-        return trimmed;
     }
 
     private int requireDisplayOrder(int value) {
