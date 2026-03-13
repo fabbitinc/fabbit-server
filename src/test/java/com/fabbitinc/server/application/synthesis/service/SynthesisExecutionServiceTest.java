@@ -348,7 +348,7 @@ class SynthesisExecutionServiceTest {
         assertEquals("Main Drawing", saved.getName());
         assertEquals("A", saved.getVersion());
         assertEquals(DrawingStatus.RELEASED, saved.getStatus());
-        assertEquals(saved.getId(), part.getDrawingId());
+        assertEquals(part.getId(), saved.getPartId());
     }
 
     @Test

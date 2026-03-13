@@ -24,12 +24,14 @@ import com.fabbitinc.server.application.part.dto.response.PartLookupResponse;
 import com.fabbitinc.server.application.part.dto.response.PartOwnerUserSummaryResponse;
 import com.fabbitinc.server.application.part.dto.response.PartProjectSummaryResponse;
 import com.fabbitinc.server.application.part.dto.response.PartProjectsResponse;
+import com.fabbitinc.server.application.part.dto.response.PartPreviewProcessingResponse;
 import com.fabbitinc.server.application.part.dto.response.PartPreviewResponse;
 import com.fabbitinc.server.application.part.dto.response.PartSummaryResponse;
 import com.fabbitinc.server.application.part.dto.response.PartSuppliersResponse;
 import com.fabbitinc.server.application.part.dto.response.RelatedSupplierResponse;
 import com.fabbitinc.server.application.part.dto.response.RenameCategoryResponse;
 import com.fabbitinc.server.application.part.query.PartQuery;
+import com.fabbitinc.server.application.part.query.PartPreviewProcessingQuery;
 import com.fabbitinc.server.application.part.query.condition.BomTreeCondition;
 import com.fabbitinc.server.application.part.query.condition.BomTreeExportCondition;
 import com.fabbitinc.server.application.part.query.condition.FileItemsCondition;
@@ -39,6 +41,7 @@ import com.fabbitinc.server.application.part.query.condition.PartExportCondition
 import com.fabbitinc.server.application.part.query.condition.PartFilesCondition;
 import com.fabbitinc.server.application.part.query.condition.PartListCondition;
 import com.fabbitinc.server.application.part.query.condition.PartLookupCondition;
+import com.fabbitinc.server.application.part.query.condition.PartPreviewProcessingCondition;
 import com.fabbitinc.server.application.part.query.condition.PartProjectsCondition;
 import com.fabbitinc.server.application.part.query.condition.PartSuppliersCondition;
 import com.fabbitinc.server.application.part.query.result.BomTreeResult;
@@ -62,6 +65,7 @@ import com.fabbitinc.server.application.part.usecase.RegisterPartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.RenameCategoryUseCase;
 import com.fabbitinc.server.application.part.usecase.command.AttachPartFilesCommand;
 import com.fabbitinc.server.application.part.usecase.command.ChangePartPreviewCommand;
+import com.fabbitinc.server.application.part.usecase.command.ClearPartPreviewCommand;
 import com.fabbitinc.server.application.part.usecase.command.CreatePartCommand;
 import com.fabbitinc.server.application.part.usecase.command.DeletePartDrawingCommand;
 import com.fabbitinc.server.application.part.usecase.command.DetachPartFileCommand;
@@ -122,6 +126,7 @@ public class PartController {
     private final RenameCategoryUseCase renameCategoryUseCase;
     private final AttachPartFilesUseCase attachPartFilesUseCase;
     private final DetachPartFileUseCase detachPartFileUseCase;
+    private final PartPreviewProcessingQuery partPreviewProcessingQuery;
     private final RegisterPartDrawingUseCase registerPartDrawingUseCase;
     private final DeletePartDrawingUseCase deletePartDrawingUseCase;
     private final ChangePartPreviewUseCase changePartPreviewUseCase;
@@ -158,7 +163,10 @@ public class PartController {
                 request.leadTimeDays(),
                 request.extendedProperties()
         ));
-        return toPartDetailResponse(partQuery.get(new PartDetailCondition(result.partId())));
+        return toPartDetailResponse(partQuery.get(new PartDetailCondition(
+                result.partNumber(),
+                result.revisionCode()
+        )));
     }
 
     @Operation(
@@ -271,54 +279,66 @@ public class PartController {
     }
 
     @Operation(
-            summary = "GET /api/v1/parts/{partId}",
+            summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}",
             description = "Part 상세 정보와 관계 카운트(children/parents/suppliers/files/projects)를 조회합니다"
     )
-    @GetMapping("/{partId}")
+    @GetMapping("/{partNumber}/revisions/{revisionCode}")
     public PartDetailResponse getPart(
-            @Parameter(description = "조회할 부품 ID")
-            @PathVariable UUID partId
+            @Parameter(description = "조회할 품번")
+            @PathVariable String partNumber,
+            @Parameter(description = "조회할 리비전 코드")
+            @PathVariable String revisionCode
     ) {
-        return toPartDetailResponse(partQuery.get(new PartDetailCondition(partId)));
+        return toPartDetailResponse(partQuery.get(new PartDetailCondition(partNumber, revisionCode)));
     }
 
     @Operation(
-            summary = "GET /api/v1/parts/{partId}/bom",
+            summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/bom",
             description = "Part의 직접 자식/직접 부모 BOM 관계(1-depth)를 조회합니다"
     )
-    @GetMapping("/{partId}/bom")
+    @GetMapping("/{partNumber}/revisions/{revisionCode}/bom")
     public PartBomResponse getPartBom(
-            @Parameter(description = "BOM을 조회할 부품 ID")
-            @PathVariable UUID partId
+            @Parameter(description = "BOM을 조회할 품번")
+            @PathVariable String partNumber,
+            @Parameter(description = "BOM을 조회할 리비전 코드")
+            @PathVariable String revisionCode
     ) {
-        return toPartBomResponse(partQuery.get(new PartBomCondition(partId)));
+        return toPartBomResponse(partQuery.get(new PartBomCondition(partNumber, revisionCode)));
     }
 
     @Operation(
-            summary = "GET /api/v1/parts/{partId}/bom/tree",
+            summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/bom/tree",
             description = "Part BOM 트리를 정전개(forward) 또는 역전개(reverse)로 조회합니다"
     )
-    @GetMapping("/{partId}/bom/tree")
+    @GetMapping("/{partNumber}/revisions/{revisionCode}/bom/tree")
     public BomTreeResponse getBomTree(
-            @Parameter(description = "BOM 트리를 조회할 부품 ID")
-            @PathVariable UUID partId,
+            @Parameter(description = "BOM 트리를 조회할 품번")
+            @PathVariable String partNumber,
+            @Parameter(description = "BOM 트리를 조회할 리비전 코드")
+            @PathVariable String revisionCode,
             @Parameter(description = "정전개/역전개 방향", example = "FORWARD")
             @RequestParam(value = "direction", defaultValue = "FORWARD") String direction
     ) {
-        return toBomTreeResponse(partQuery.getBomTree(new BomTreeCondition(partId, direction)));
+        return toBomTreeResponse(partQuery.getBomTree(new BomTreeCondition(partNumber, revisionCode, direction)));
     }
 
     @Operation(
-            summary = "GET /api/v1/parts/{partId}/bom/tree/export",
+            summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/bom/tree/export",
             description = "Part BOM 트리를 Excel(.xlsx) 파일로 내보냅니다"
     )
-    @GetMapping(value = "/{partId}/bom/tree/export", produces = EXCEL_MEDIA_TYPE)
+    @GetMapping(value = "/{partNumber}/revisions/{revisionCode}/bom/tree/export", produces = EXCEL_MEDIA_TYPE)
     public ResponseEntity<byte[]> exportBomTree(
-            @PathVariable UUID partId,
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
             @RequestParam(value = "direction", defaultValue = "FORWARD") String direction,
             @RequestParam(value = "mapping_id", required = false) UUID mappingId
     ) {
-        byte[] content = partQuery.exportBomTree(new BomTreeExportCondition(partId, direction, mappingId));
+        byte[] content = partQuery.exportBomTree(new BomTreeExportCondition(
+                partNumber,
+                revisionCode,
+                direction,
+                mappingId
+        ));
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(EXCEL_MEDIA_TYPE));
         headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=BOM.xlsx");
@@ -326,49 +346,53 @@ public class PartController {
     }
 
     @Operation(
-            summary = "GET /api/v1/parts/{partId}/projects",
+            summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/projects",
             description = "해당 Part가 소속된 프로젝트 목록을 조회합니다"
     )
-    @GetMapping("/{partId}/projects")
+    @GetMapping("/{partNumber}/revisions/{revisionCode}/projects")
     public PartProjectsResponse getPartProjects(
-            @PathVariable UUID partId
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode
     ) {
-        return toPartProjectsResponse(partQuery.get(new PartProjectsCondition(partId)));
+        return toPartProjectsResponse(partQuery.get(new PartProjectsCondition(partNumber, revisionCode)));
     }
 
     @Operation(
-            summary = "GET /api/v1/parts/{partId}/files",
+            summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/files",
             description = "Part에 연결된 업로드 완료 파일 목록을 조회합니다"
     )
-    @GetMapping("/{partId}/files")
+    @GetMapping("/{partNumber}/revisions/{revisionCode}/files")
     public PartFilesResponse getPartFiles(
-            @PathVariable UUID partId
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode
     ) {
-        return toPartFilesResponse(partQuery.get(new PartFilesCondition(partId)));
+        return toPartFilesResponse(partQuery.get(new PartFilesCondition(partNumber, revisionCode)));
     }
 
     @Operation(
-            summary = "GET /api/v1/parts/{partId}/suppliers",
+            summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/suppliers",
             description = "Part에 연결된 공급사 목록을 조회합니다"
     )
-    @GetMapping("/{partId}/suppliers")
+    @GetMapping("/{partNumber}/revisions/{revisionCode}/suppliers")
     public PartSuppliersResponse getPartSuppliers(
-            @PathVariable UUID partId
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode
     ) {
-        return toPartSuppliersResponse(partQuery.get(new PartSuppliersCondition(partId)));
+        return toPartSuppliersResponse(partQuery.get(new PartSuppliersCondition(partNumber, revisionCode)));
     }
 
     @Operation(
-            summary = "POST /api/v1/parts/{partId}/files",
+            summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/files",
             description = "업로드 완료 파일들을 Part에 배치 연결합니다"
     )
-    @PostMapping("/{partId}/files")
+    @PostMapping("/{partNumber}/revisions/{revisionCode}/files")
     public List<PartAttachmentItemResponse> attachFiles(
-            @PathVariable UUID partId,
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
             @Valid @RequestBody AttachFilesRequest request
     ) {
         AttachPartFilesResult result = attachPartFilesUseCase.execute(
-                new AttachPartFilesCommand(partId, request.fileIds())
+                new AttachPartFilesCommand(partNumber, revisionCode, request.fileIds())
         );
         List<UUID> attachedFileIds = result.fileIds();
         return partQuery.getFiles(new FileItemsCondition(attachedFileIds)).stream()
@@ -377,77 +401,96 @@ public class PartController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/parts/{partId}/files/{fileId}",
+            summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/files/{fileId}",
             description = "Part에 연결된 첨부파일 1건을 제거(소프트 삭제)합니다"
     )
-    @DeleteMapping("/{partId}/files/{fileId}")
+    @DeleteMapping("/{partNumber}/revisions/{revisionCode}/files/{fileId}")
     public ResponseEntity<Void> detachFile(
-            @PathVariable UUID partId,
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
             @PathVariable UUID fileId
     ) {
-        detachPartFileUseCase.execute(new DetachPartFileCommand(partId, fileId));
+        detachPartFileUseCase.execute(new DetachPartFileCommand(partNumber, revisionCode, fileId));
         return ResponseEntity.noContent().build();
     }
 
     @Operation(
-            summary = "DELETE /api/v1/parts/{partId}/drawings/{drawingId}",
+            summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/drawings/{drawingId}",
             description = "Part에 연결된 도면 1건을 삭제합니다 (Drawing + 연결 파일 soft delete)"
     )
-    @DeleteMapping("/{partId}/drawings/{drawingId}")
+    @DeleteMapping("/{partNumber}/revisions/{revisionCode}/drawings/{drawingId}")
     public ResponseEntity<Void> deleteDrawingFromPart(
-            @PathVariable UUID partId,
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
             @PathVariable UUID drawingId
     ) {
-        deletePartDrawingUseCase.execute(new DeletePartDrawingCommand(partId, drawingId));
+        deletePartDrawingUseCase.execute(new DeletePartDrawingCommand(partNumber, revisionCode, drawingId));
         return ResponseEntity.noContent().build();
     }
 
     @Operation(
-            summary = "POST /api/v1/parts/{partId}/drawings",
+            summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drawings",
             description = "업로드 완료 파일을 Drawing으로 등록하고 Part에 연결합니다"
     )
-    @PostMapping("/{partId}/drawings")
+    @PostMapping("/{partNumber}/revisions/{revisionCode}/drawings")
     public RegisterDrawingResponse registerDrawingForPart(
-            @PathVariable UUID partId,
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
             @Valid @RequestBody RegisterDrawingRequest request
     ) {
         RegisterPartDrawingResult result = registerPartDrawingUseCase.execute(
-                new RegisterPartDrawingCommand(partId, request.fileId())
+                new RegisterPartDrawingCommand(partNumber, revisionCode, request.fileId())
         );
         return new RegisterDrawingResponse(
                 result.drawingId(),
                 result.drawingNumber(),
-                result.name(),
-                result.conversionStatus()
+                result.name()
         );
     }
 
     @Operation(
-            summary = "PATCH /api/v1/parts/{partId}/preview",
+            summary = "PATCH /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview",
             description = "Part 대표 미리보기 소스를 파일 또는 도면으로 변경합니다"
     )
-    @PatchMapping("/{partId}/preview")
+    @PatchMapping("/{partNumber}/revisions/{revisionCode}/preview")
     public PartPreviewResponse updatePreview(
-            @PathVariable UUID partId,
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
             @Valid @RequestBody ChangePartPreviewRequest request
     ) {
         changePartPreviewUseCase.execute(new ChangePartPreviewCommand(
-                partId,
+                partNumber,
+                revisionCode,
                 request.sourceType(),
                 request.sourceId()
         ));
-        return toPartPreviewResponse(partQuery.get(new PartDetailCondition(partId)).preview());
+        return toPartPreviewResponse(partQuery.get(new PartDetailCondition(partNumber, revisionCode)).preview());
     }
 
     @Operation(
-            summary = "DELETE /api/v1/parts/{partId}/preview",
+            summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview/processing",
+            description = "Part 대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다"
+    )
+    @GetMapping("/{partNumber}/revisions/{revisionCode}/preview/processing")
+    public PartPreviewProcessingResponse getPreviewProcessing(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode
+    ) {
+        return toPartPreviewProcessingResponse(
+                partPreviewProcessingQuery.get(new PartPreviewProcessingCondition(partNumber, revisionCode))
+        );
+    }
+
+    @Operation(
+            summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview",
             description = "Part 대표 미리보기를 해제합니다"
     )
-    @DeleteMapping("/{partId}/preview")
+    @DeleteMapping("/{partNumber}/revisions/{revisionCode}/preview")
     public ResponseEntity<Void> deletePreview(
-            @PathVariable UUID partId
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode
     ) {
-        clearPartPreviewUseCase.execute(partId);
+        clearPartPreviewUseCase.execute(new ClearPartPreviewCommand(partNumber, revisionCode));
         return ResponseEntity.noContent().build();
     }
 
@@ -654,11 +697,24 @@ public class PartController {
                 result.id(),
                 result.sourceType(),
                 result.sourceId(),
-                result.conversionStatus(),
+                result.processingStatus(),
                 result.viewerType(),
                 result.viewerUrl(),
                 result.previewUrl(),
                 result.originalFileUrl()
+        );
+    }
+
+    private PartPreviewProcessingResponse toPartPreviewProcessingResponse(
+            com.fabbitinc.server.application.part.query.result.PartPreviewProcessingResult result
+    ) {
+        return new PartPreviewProcessingResponse(
+                result.status(),
+                result.failureCode(),
+                result.failureMessage(),
+                result.pdfReady(),
+                result.webpReady(),
+                result.glbReady()
         );
     }
 

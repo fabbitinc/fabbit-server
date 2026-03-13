@@ -245,7 +245,7 @@ class SynthesisV2ExecutionServiceTest {
         verify(drawingRepository).save(drawingCaptor.capture());
         Drawing drawing = drawingCaptor.getValue();
         assertEquals("D-001", drawing.getDrawingNumber());
-        assertEquals(drawing.getId(), createdPart.getDrawingId());
+        assertEquals(createdPart.getId(), drawing.getPartId());
 
         ArgumentCaptor<Project> projectCaptor = ArgumentCaptor.forClass(Project.class);
         verify(projectRepository).save(projectCaptor.capture());

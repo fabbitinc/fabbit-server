@@ -3,7 +3,6 @@ package com.fabbitinc.server.application.drawing.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,7 +25,6 @@ class DrawingServiceTest {
 
   @Mock private DrawingRepository drawingRepository;
   @Mock private FileRepository fileRepository;
-  @Mock private DrawingAsyncConversionService drawingAsyncConversionService;
   @Mock private OrganizationApi organizationApi;
   @Mock private PartPreviewService partPreviewService;
 
@@ -54,7 +52,6 @@ class DrawingServiceTest {
         new DrawingService(
             drawingRepository,
             fileRepository,
-            drawingAsyncConversionService,
             organizationApi,
             partPreviewService);
 
@@ -63,57 +60,32 @@ class DrawingServiceTest {
     assertEquals(drawing.getId(), file.getOwnerId());
     assertEquals(partId, drawing.getPartId());
     verify(organizationApi).consumeStorageForCurrentTenant(512L);
-    verify(drawingAsyncConversionService, never()).convertDrawingAsync(any(), any());
   }
 
   @Test
-  void deleteDrawing_원본과_생성파일_모두_스토리지를_반환한다() {
+  void deleteDrawing_원본_파일_스토리지를_반환한다() {
     Drawing drawing = Drawing.create("D-100", "sample.pdf");
     drawing.changeOriginalFileKey("tenants/org/uploaded/sample.pdf");
-    drawing.markConversionCompleted(
-        "tenants/org/uploaded/sample.pdf", "tenants/org/uploaded/sample_thumbnail.png");
-    drawing.changePdfKey("tenants/org/uploaded/sample_generated.pdf");
 
     File original =
         createOwnedFile("sample.pdf", drawing.getId(), "tenants/org/uploaded/sample.pdf", 100L);
-    File pdf =
-        createOwnedFile(
-            "sample_generated.pdf",
-            drawing.getId(),
-            "tenants/org/uploaded/sample_generated.pdf",
-            200L);
-    File thumbnail =
-        createOwnedFile(
-            "sample_thumbnail.png",
-            drawing.getId(),
-            "tenants/org/uploaded/sample_thumbnail.png",
-            50L);
 
     when(drawingRepository.findById(drawing.getId())).thenReturn(Optional.of(drawing));
     when(fileRepository.findByFileKeyAndDeletedAtIsNull(original.getFileKey()))
         .thenReturn(Optional.of(original));
-    when(fileRepository.findByFileKeyAndDeletedAtIsNull(pdf.getFileKey()))
-        .thenReturn(Optional.of(pdf));
-    when(fileRepository.findByFileKeyAndDeletedAtIsNull(thumbnail.getFileKey()))
-        .thenReturn(Optional.of(thumbnail));
 
     DrawingService service =
         new DrawingService(
             drawingRepository,
             fileRepository,
-            drawingAsyncConversionService,
             organizationApi,
             partPreviewService);
 
     service.deleteDrawing(drawing.getId());
 
     assertNotNull(original.getDeletedAt());
-    assertNotNull(pdf.getDeletedAt());
-    assertNotNull(thumbnail.getDeletedAt());
     verify(partPreviewService).clearByDrawing(drawing.getId());
     verify(organizationApi).releaseStorageForCurrentTenant(100L);
-    verify(organizationApi).releaseStorageForCurrentTenant(200L);
-    verify(organizationApi).releaseStorageForCurrentTenant(50L);
   }
 
   private File createOwnedFile(String originalName, UUID drawingId, String fileKey, long fileSize) {

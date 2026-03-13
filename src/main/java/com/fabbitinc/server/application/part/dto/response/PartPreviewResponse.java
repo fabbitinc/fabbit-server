@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.part.dto.response;
 
 import com.fabbitinc.server.application.part.model.DrawingViewerType;
-import com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus;
+import com.fabbitinc.server.domain.part.model.PartPreviewProcessingStatus;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.UUID;
@@ -14,8 +14,8 @@ public record PartPreviewResponse(
         PartPreviewSourceType sourceType,
         @Schema(description = "대표 미리보기 소스 ID")
         UUID sourceId,
-        @Schema(description = "미리보기 변환 상태")
-        DrawingConversionStatus conversionStatus,
+        @Schema(description = "미리보기 처리 상태")
+        PartPreviewProcessingStatus processingStatus,
         @Schema(description = "뷰어 타입", example = "PDF")
         DrawingViewerType viewerType,
         @Schema(description = "뷰어 본문 URL")

@@ -1,6 +1,7 @@
 package com.fabbitinc.server.application.part.usecase;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
+import com.fabbitinc.server.application.part.service.PartRevisionRouteService;
 import com.fabbitinc.server.application.part.service.PartService;
 import com.fabbitinc.server.application.part.usecase.command.DetachPartFileCommand;
 import lombok.RequiredArgsConstructor;
@@ -13,10 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class DetachPartFileUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
+    private final PartRevisionRouteService partRevisionRouteService;
     private final PartService partService;
 
     public void execute(DetachPartFileCommand command) {
         currentAuthProvider.getCurrentAuth();
-        partService.detachFile(command.partId(), command.fileId());
+        partService.detachFile(
+                partRevisionRouteService.getRequiredPartId(command.partNumber(), command.revisionCode()),
+                command.fileId()
+        );
     }
 }

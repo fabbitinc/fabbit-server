@@ -1,8 +1,9 @@
 package com.fabbitinc.server.application.part.usecase;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
+import com.fabbitinc.server.application.part.service.PartRevisionRouteService;
 import com.fabbitinc.server.application.part.service.PartPreviewService;
-import java.util.UUID;
+import com.fabbitinc.server.application.part.usecase.command.ClearPartPreviewCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,10 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class ClearPartPreviewUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
+    private final PartRevisionRouteService partRevisionRouteService;
     private final PartPreviewService partPreviewService;
 
-    public void execute(UUID partId) {
+    public void execute(ClearPartPreviewCommand command) {
         currentAuthProvider.getCurrentAuth();
-        partPreviewService.clearByPart(partId);
+        partPreviewService.clearByPart(
+                partRevisionRouteService.getRequiredPartId(command.partNumber(), command.revisionCode())
+        );
     }
 }

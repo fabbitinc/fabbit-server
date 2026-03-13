@@ -18,6 +18,8 @@ import com.fabbitinc.server.domain.mapping.model.MappingRevision;
 import com.fabbitinc.server.domain.mapping.repository.MappingRevisionRepository;
 import com.fabbitinc.server.domain.part.model.BomLink;
 import com.fabbitinc.server.domain.part.model.Part;
+import com.fabbitinc.server.domain.part.model.PartRevisionActivityActionType;
+import com.fabbitinc.server.domain.part.model.PartRevisionActivitySourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
 import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
@@ -451,50 +453,94 @@ public class SynthesisExecutionService {
     private UpsertPartResult upsertPart(PartRowValues values, boolean overwrite, UUID jobId) {
         Part existing = partRepository.findByPartNumber(values.partNumber()).orElse(null);
         if (existing != null) {
+            PartRevision revision = findOrCreateWorkingRevision(existing, values.name());
             boolean changed = false;
-            if (shouldApplyString(values.name(), existing.getName(), overwrite)) {
-                existing.changeName(values.name());
+            if (shouldApplyString(values.name(), revision.getName(), overwrite)) {
+                revision.changeName(values.name());
                 changed = true;
             }
-            if (shouldApplyString(values.category(), existing.getCategory(), overwrite)) {
-                existing.changeCategory(values.category());
+            if (shouldApplyString(values.category(), revision.getCategory(), overwrite)) {
+                revision.changeCategory(values.category());
                 changed = true;
             }
-            if (shouldApplyString(values.material(), existing.getMaterial(), overwrite)) {
-                existing.changeMaterial(values.material());
+            if (shouldApplyString(values.material(), revision.getMaterial(), overwrite)) {
+                revision.changeMaterial(values.material());
                 changed = true;
             }
-            if (shouldApplyString(values.unit(), existing.getUnit(), overwrite)) {
-                existing.changeUnit(values.unit());
+            if (shouldApplyString(values.unit(), revision.getUnit(), overwrite)) {
+                revision.changeUnit(values.unit());
                 changed = true;
             }
-            if (shouldApplyString(values.description(), existing.getDescription(), overwrite)) {
-                existing.changeDescription(values.description());
+            if (shouldApplyString(values.description(), revision.getDescription(), overwrite)) {
+                revision.changeDescription(values.description());
                 changed = true;
             }
             if (changed) {
-                existing.bumpRevision();
-                partRevisionRepository.save(PartRevision.capture(existing, jobId));
+                recordSynthesisImport(revision, jobId);
+                partRevisionRepository.save(revision);
             }
             return new UpsertPartResult(existing, false);
         }
 
-        Part created = Part.create(values.partNumber(), values.name());
+        Part created = Part.create(values.partNumber());
+        partRepository.save(created);
+        PartRevision revision = PartRevision.createInitial(created, "1", values.name());
         if (values.category() != null) {
-            created.changeCategory(values.category());
+            revision.changeCategory(values.category());
         }
         if (values.material() != null) {
-            created.changeMaterial(values.material());
+            revision.changeMaterial(values.material());
         }
         if (values.unit() != null) {
-            created.changeUnit(values.unit());
+            revision.changeUnit(values.unit());
         }
         if (values.description() != null) {
-            created.changeDescription(values.description());
+            revision.changeDescription(values.description());
         }
-        partRepository.save(created);
-        partRevisionRepository.save(PartRevision.capture(created, jobId));
+        recordSynthesisImport(revision, jobId);
+        partRevisionRepository.save(revision);
         return new UpsertPartResult(created, true);
+    }
+
+    private PartRevision findOrCreateWorkingRevision(Part part, String name) {
+        PartRevision revision = resolveCurrentRevision(part);
+        if (revision != null) {
+            return revision;
+        }
+        PartRevision created = PartRevision.createInitial(part, "1", name);
+        return partRevisionRepository.save(created);
+    }
+
+    private PartRevision resolveCurrentRevision(Part part) {
+        List<PartRevision> revisions = partRevisionRepository.findByPartIdOrderByCreatedAtDesc(part.getId());
+        if (revisions.isEmpty()) {
+            return null;
+        }
+        if (part.getCurrentReleasedRevisionId() != null) {
+            for (PartRevision revision : revisions) {
+                if (part.getCurrentReleasedRevisionId().equals(revision.getId())) {
+                    return revision;
+                }
+            }
+        }
+        if (part.getCurrentApprovedRevisionId() != null) {
+            for (PartRevision revision : revisions) {
+                if (part.getCurrentApprovedRevisionId().equals(revision.getId())) {
+                    return revision;
+                }
+            }
+        }
+        return revisions.get(0);
+    }
+
+    private void recordSynthesisImport(PartRevision revision, UUID jobId) {
+        revision.recordActivity(
+                null,
+                PartRevisionActivityActionType.IMPORTED,
+                PartRevisionActivitySourceType.SYNTHESIS,
+                jobId,
+                "{}"
+        );
     }
 
     private UpsertDrawingResult upsertDrawing(DrawingRowValues values, boolean overwrite) {
@@ -653,11 +699,11 @@ public class SynthesisExecutionService {
     }
 
     private boolean linkPartToDrawing(Part part, Drawing drawing) {
-        if (part.getDrawingId() != null && part.getDrawingId().equals(drawing.getId())) {
+        if (part.getId().equals(drawing.getPartId())) {
             return false;
         }
 
-        part.assignDrawing(drawing.getId());
+        drawing.assignPart(part.getId());
         return true;
     }
 

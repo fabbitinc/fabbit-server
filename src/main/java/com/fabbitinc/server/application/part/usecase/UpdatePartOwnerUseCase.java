@@ -1,6 +1,7 @@
 package com.fabbitinc.server.application.part.usecase;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
+import com.fabbitinc.server.application.part.service.PartRevisionRouteService;
 import com.fabbitinc.server.application.part.service.PartService;
 import com.fabbitinc.server.application.part.usecase.command.UpdatePartOwnerCommand;
 import com.fabbitinc.server.application.part.usecase.result.UpdatePartOwnerResult;
@@ -14,13 +15,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class UpdatePartOwnerUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
+    private final PartRevisionRouteService partRevisionRouteService;
     private final PartService partService;
 
     public UpdatePartOwnerResult execute(UpdatePartOwnerCommand command) {
         currentAuthProvider.getCurrentAuth();
+        var partId = partRevisionRouteService.getRequiredPartId(command.partNumber(), command.revisionCode());
         return new UpdatePartOwnerResult(
                 partService.updateOwner(
-                        command.partId(),
+                        partId,
                         command.ownerId(),
                         command.ownerIdSet(),
                         command.ownerTeamId(),

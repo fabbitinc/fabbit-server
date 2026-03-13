@@ -18,7 +18,6 @@ import com.fabbitinc.server.application.part.usecase.UpsertDefaultOwnerUseCase;
 import com.fabbitinc.server.application.part.usecase.command.DeleteDefaultOwnerCommand;
 import com.fabbitinc.server.application.part.usecase.command.UpdatePartOwnerCommand;
 import com.fabbitinc.server.application.part.usecase.command.UpsertDefaultOwnerCommand;
-import com.fabbitinc.server.application.part.usecase.result.UpdatePartOwnerResult;
 import com.fabbitinc.server.application.part.usecase.result.UpsertDefaultOwnerResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -26,7 +25,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
@@ -62,38 +60,43 @@ public class PartOwnerController {
     private final DeleteDefaultOwnerUseCase deleteDefaultOwnerUseCase;
 
     @Operation(
-            summary = "GET /api/v1/parts/{partId}/owner",
+            summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/owner",
             description = "Part에 설정된 담당자(owner)와 담당팀(owner_team)을 조회합니다"
     )
-    @GetMapping("/{partId}/owner")
+    @GetMapping("/{partNumber}/revisions/{revisionCode}/owner")
     public PartOwnerResponse getPartOwner(
-            @Parameter(description = "담당자를 조회할 부품 ID")
-            @PathVariable UUID partId
+            @Parameter(description = "담당자를 조회할 품번")
+            @PathVariable String partNumber,
+            @Parameter(description = "담당자를 조회할 리비전 코드")
+            @PathVariable String revisionCode
     ) {
-        return toPartOwnerResponse(partOwnerQuery.get(new PartOwnerCondition(partId)));
+        return toPartOwnerResponse(partOwnerQuery.get(new PartOwnerCondition(partNumber, revisionCode)));
     }
 
     @Operation(
-            summary = "PATCH /api/v1/parts/{partId}/owner",
+            summary = "PATCH /api/v1/parts/{partNumber}/revisions/{revisionCode}/owner",
             description = "포함된 필드만 부분 변경하며 null은 해제, 미포함 필드는 유지합니다"
     )
-    @PatchMapping("/{partId}/owner")
+    @PatchMapping("/{partNumber}/revisions/{revisionCode}/owner")
     public PartOwnerResponse updatePartOwner(
-            @Parameter(description = "담당자를 수정할 부품 ID")
-            @PathVariable UUID partId,
+            @Parameter(description = "담당자를 수정할 품번")
+            @PathVariable String partNumber,
+            @Parameter(description = "담당자를 수정할 리비전 코드")
+            @PathVariable String revisionCode,
             @Parameter(description = "부품 담당자 수정 요청")
             @Valid @RequestBody UpdatePartOwnerRequest request
     ) {
-        UpdatePartOwnerResult result = updatePartOwnerUseCase.execute(
+        updatePartOwnerUseCase.execute(
                 new UpdatePartOwnerCommand(
-                        partId,
+                        partNumber,
+                        revisionCode,
                         request.getOwnerId(),
                         request.isOwnerIdSet(),
                         request.getOwnerTeamId(),
                         request.isOwnerTeamIdSet()
                 )
         );
-        return toPartOwnerResponse(partOwnerQuery.get(new PartOwnerCondition(result.partId())));
+        return toPartOwnerResponse(partOwnerQuery.get(new PartOwnerCondition(partNumber, revisionCode)));
     }
 
     @Operation(

@@ -7,8 +7,8 @@ import com.fabbitinc.server.application.ontology.query.condition.NodeSearchCondi
 import com.fabbitinc.server.application.ontology.query.result.NodeSearchResult;
 import com.fabbitinc.server.application.ontology.query.result.OntologySchemaResult;
 import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
+import com.fabbitinc.server.application.part.api.PartApi;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
-import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.project.repository.ProjectRepository;
 import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
 import java.util.List;
@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class OntologyQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
-    private final PartRepository partRepository;
+    private final PartApi partApi;
     private final DrawingRepository drawingRepository;
     private final SupplierRepository supplierRepository;
     private final ProjectRepository projectRepository;
@@ -103,12 +103,8 @@ public class OntologyQuery {
     }
 
     private List<NodeSearchResult.NodeSearchItemResult> searchParts(String search, int limit) {
-        return partRepository.findByPartNumberContainingIgnoreCaseOrNameContainingIgnoreCaseOrderByPartNumberAsc(
-                        search,
-                        search,
-                        PageRequest.of(0, limit)
-                ).stream()
-                .map(part -> new NodeSearchResult.NodeSearchItemResult(part.getPartNumber(), part.getName()))
+        return partApi.searchPartSnapshots(search, limit).stream()
+                .map(part -> new NodeSearchResult.NodeSearchItemResult(part.partNumber(), part.name()))
                 .toList();
     }
 

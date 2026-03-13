@@ -1,10 +1,10 @@
 package com.fabbitinc.server.application.part.service;
 
 import com.fabbitinc.server.domain.drawing.model.DrawingArtifactPublication;
-import com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus;
 import com.fabbitinc.server.domain.drawing.model.DrawingJobStatus;
 import com.fabbitinc.server.domain.part.model.PartPreview;
 import com.fabbitinc.server.domain.part.model.PartPreviewProcessingJob;
+import com.fabbitinc.server.domain.part.model.PartPreviewProcessingStatus;
 import com.fabbitinc.server.domain.part.repository.PartPreviewProcessingJobRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
 import java.util.List;
@@ -52,7 +52,12 @@ public class PartPreviewProcessingJobService {
         if (job == null || !job.canStart()) {
             return null;
         }
+        PartPreview partPreview = partPreviewRepository.findById(job.getPartPreviewId()).orElse(null);
         job.start();
+        if (partPreview != null && partPreview.hasSource()) {
+            partPreview.markProcessing(job.getId());
+            partPreviewServingProjectionService.upsert(partPreview);
+        }
         return new PartPreviewJobClaim(job.getId(), job.getPartPreviewId(), job.getPipelineKey(), job.getProfileKey());
     }
 
@@ -78,11 +83,11 @@ public class PartPreviewProcessingJobService {
         job.complete();
         partPreviewServingProjectionService.upsert(partPreview);
         log.info(
-                "event=part_preview_job_completed part_preview_id={} job_id={} job_status={} conversion_status_after={}",
+                "event=part_preview_job_completed part_preview_id={} job_id={} job_status={} processing_status_after={}",
                 partPreview.getId(),
                 jobId,
                 job.getStatus(),
-                partPreview.getConversionStatus()
+                partPreview.getProcessingStatus()
         );
         return true;
     }
@@ -99,14 +104,14 @@ public class PartPreviewProcessingJobService {
             partPreview.failProcessing(jobId);
             partPreviewServingProjectionService.upsert(partPreview);
             log.warn(
-                    "event=part_preview_job_failed part_preview_id={} job_id={} reason={} conversion_status_after={} current_job_id_after={}",
+                    "event=part_preview_job_failed part_preview_id={} job_id={} reason={} processing_status_after={} current_job_id_after={}",
                     partPreview.getId(),
                     jobId,
                     reason,
-                    partPreview.getConversionStatus(),
+                    partPreview.getProcessingStatus(),
                     partPreview.getCurrentJobId()
             );
-        } else if (partPreview != null && partPreview.getConversionStatus() == DrawingConversionStatus.PENDING) {
+        } else if (partPreview != null && partPreview.getProcessingStatus() == PartPreviewProcessingStatus.PENDING) {
             partPreview.failProcessing(null);
             partPreviewServingProjectionService.upsert(partPreview);
         }

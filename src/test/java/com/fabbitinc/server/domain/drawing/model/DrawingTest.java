@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fabbitinc.server.domain.common.exception.DomainException;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class DrawingTest {
@@ -17,20 +18,23 @@ class DrawingTest {
     }
 
     @Test
-    void drawing_변환상태_전이를_지원한다() {
+    void drawing_원본_파일_정보를_등록한다() {
         Drawing drawing = Drawing.create("D-001", "Assembly");
+        UUID sourceFileId = UUID.randomUUID();
 
         assertEquals(DrawingStatus.DRAFT, drawing.getStatus());
-        drawing.markConversionPending();
-        assertEquals(DrawingConversionStatus.PENDING, drawing.getConversionStatus());
+        drawing.registerSourceFile(
+                sourceFileId,
+                DrawingDimension.TWO_D,
+                "  files/a.pdf  ",
+                "application/pdf",
+                123L
+        );
+        drawing.assignSourceFile(sourceFileId, DrawingSourceType.PDF_DOCUMENT, DrawingDimension.TWO_D);
 
-        drawing.markConversionCompleted("  files/a.pdf  ", "  files/a.webp  ");
-        assertEquals(DrawingConversionStatus.COMPLETED, drawing.getConversionStatus());
-        assertEquals("files/a.pdf", drawing.getPdfKey());
-        assertEquals("files/a.webp", drawing.getThumbnailKey());
-
-        drawing.markConversionFailed();
-        assertEquals(DrawingConversionStatus.FAILED, drawing.getConversionStatus());
+        assertEquals(sourceFileId, drawing.getSourceFileId());
+        assertEquals("files/a.pdf", drawing.getOriginalFileKey());
+        assertEquals(DrawingDimension.TWO_D, drawing.getDimension());
     }
 
     @Test
@@ -38,41 +42,7 @@ class DrawingTest {
         Drawing drawing = Drawing.create("D-001", "Assembly");
 
         drawing.changeOriginalFileKey(" ");
-        drawing.changePdfKey(" ");
-        drawing.changeThumbnailKey(" ");
 
         assertNull(drawing.getOriginalFileKey());
-        assertNull(drawing.getPdfKey());
-        assertNull(drawing.getThumbnailKey());
-    }
-
-    @Test
-    void drawing_markConversionCompleted_pdfKey가_blank면_예외를_던진다() {
-        Drawing drawing = Drawing.create("D-001", "Assembly");
-
-        DomainException ex = assertThrows(
-                DomainException.class,
-                () -> drawing.markConversionCompleted("   ", "files/a.webp")
-        );
-
-        assertEquals(Drawing.CODE_DRAWING_PDF_KEY_REQUIRED, ex.getDomainCode());
-        assertNull(drawing.getConversionStatus());
-        assertNull(drawing.getPdfKey());
-        assertNull(drawing.getThumbnailKey());
-    }
-
-    @Test
-    void drawing_markConversionCompleted_thumbnailKey가_blank면_예외를_던진다() {
-        Drawing drawing = Drawing.create("D-001", "Assembly");
-
-        DomainException ex = assertThrows(
-                DomainException.class,
-                () -> drawing.markConversionCompleted("files/a.pdf", "   ")
-        );
-
-        assertEquals(Drawing.CODE_DRAWING_THUMBNAIL_KEY_REQUIRED, ex.getDomainCode());
-        assertNull(drawing.getConversionStatus());
-        assertNull(drawing.getPdfKey());
-        assertNull(drawing.getThumbnailKey());
     }
 }

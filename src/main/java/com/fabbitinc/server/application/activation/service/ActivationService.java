@@ -6,8 +6,8 @@ import com.fabbitinc.server.application.activation.service.output.HealthCheckIss
 import com.fabbitinc.server.application.activation.service.output.HealthCheckOutput;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.part.api.PartApi;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
-import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -33,6 +32,7 @@ import org.springframework.stereotype.Component;
 public class ActivationService {
 
     private final PartRepository partRepository;
+    private final PartApi partApi;
     private final DrawingRepository drawingRepository;
     private final SupplierRepository supplierRepository;
     private final ProjectRepository projectRepository;
@@ -54,7 +54,7 @@ public class ActivationService {
         nodeCounts.put("Project", projectCount);
 
         int consistsOf = safeToInt(bomLinkRepository.count());
-        int definedBy = Math.max(0, partCount - safeToInt(partRepository.countByDrawingIdIsNull()));
+        int definedBy = safeToInt(drawingRepository.countByPartIdIsNotNullAndDeletedAtIsNull());
         int suppliedBy = safeToInt(partSupplierRepository.count());
         int hasItem = safeToInt(projectPartRepository.count());
 
@@ -96,7 +96,7 @@ public class ActivationService {
             ));
         }
 
-        int noDrawingParts = safeToInt(partRepository.countByDrawingIdIsNull());
+        int noDrawingParts = safeToInt(countPartsWithoutDrawing());
         if (noDrawingParts > 0) {
             issues.add(new HealthCheckIssueOutput(
                     "missing_drawing",
@@ -156,11 +156,26 @@ public class ActivationService {
     }
 
     private GraphQueryOutput queryPartsWithoutDrawing() {
-        List<GraphQueryResultOutput> results = partRepository.findTop20ByDrawingIdIsNullOrderByPartNumberAsc().stream()
+        @SuppressWarnings("unchecked")
+        List<UUID> partIds = entityManager.createNativeQuery(
+                """
+                        select p.id
+                        from parts p
+                        where not exists (
+                            select 1
+                            from drawings d
+                            where d.part_id = p.id
+                              and d.deleted_at is null
+                        )
+                        order by p.part_number asc
+                        limit 20
+                        """
+        ).getResultList();
+        List<GraphQueryResultOutput> results = partApi.getPartSnapshotsByIdsOrdered(partIds).stream()
                 .map(part -> new GraphQueryResultOutput(
                         "part",
-                        part.getPartNumber(),
-                        part.getName(),
+                        part.partNumber(),
+                        part.name(),
                         "도면 미연결 부품",
                         null
                 ))
@@ -225,17 +240,12 @@ public class ActivationService {
     }
 
     private GraphQueryOutput queryPartsByKeyword(String keyword) {
-        List<Part> parts = partRepository.findByPartNumberContainingIgnoreCaseOrNameContainingIgnoreCaseOrderByPartNumberAsc(
-                keyword,
-                keyword,
-                PageRequest.of(0, 20)
-        );
-        List<GraphQueryResultOutput> results = parts.stream()
+        List<GraphQueryResultOutput> results = partApi.searchPartSnapshots(keyword, 20).stream()
                 .map(part -> new GraphQueryResultOutput(
                         "part",
-                        part.getPartNumber(),
-                        part.getName(),
-                        part.getCategory(),
+                        part.partNumber(),
+                        part.name(),
+                        part.category(),
                         null
                 ))
                 .toList();
@@ -273,20 +283,30 @@ public class ActivationService {
     }
 
     private long countChildLinksWithUnnamedPart() {
-        Number count = (Number) entityManager.createNativeQuery(
-                """
-                        select count(bl.id)
-                        from bom_links bl
-                        join parts p on p.id = bl.child_part_id
-                        where p.name is null
-                        """
-        ).getSingleResult();
-        return count.longValue();
+        return partApi.getPartSnapshotsByIdsOrdered(findDistinctChildPartIds()).stream()
+                .filter(part -> part.name() == null || part.name().isBlank())
+                .count();
     }
 
     private long countDistinctSuppliedPartIds() {
         Number count = (Number) entityManager.createQuery(
                 "select count(distinct ps.partId) from PartSupplier ps"
+        ).getSingleResult();
+        return count.longValue();
+    }
+
+    private long countPartsWithoutDrawing() {
+        Number count = (Number) entityManager.createNativeQuery(
+                """
+                        select count(*)
+                        from parts p
+                        where not exists (
+                            select 1
+                            from drawings d
+                            where d.part_id = p.id
+                              and d.deleted_at is null
+                        )
+                        """
         ).getSingleResult();
         return count.longValue();
     }

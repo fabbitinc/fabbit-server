@@ -33,6 +33,6 @@ public class CreatePartUseCase {
                 command.leadTimeDays(),
                 command.extendedProperties()
         ));
-        return new CreatePartResult(part.getId());
+        return new CreatePartResult(part.getPartNumber(), "1");
     }
 }

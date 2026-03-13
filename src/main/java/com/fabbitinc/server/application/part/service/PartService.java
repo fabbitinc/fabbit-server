@@ -11,8 +11,10 @@ import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartDefaultOwner;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
+import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.repository.PartDefaultOwnerRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
+import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +33,7 @@ public class PartService {
     private static final int MAX_CATEGORY_LENGTH = 100;
 
     private final PartRepository partRepository;
+    private final PartRevisionRepository partRevisionRepository;
     private final PartDefaultOwnerRepository partDefaultOwnerRepository;
     private final FileRepository fileRepository;
     private final OrganizationApi organizationApi;
@@ -39,14 +42,21 @@ public class PartService {
 
     public Part createPart(CreatePartInput input) {
         try {
-            Part part = Part.create(input.partNumber(), input.name());
+            Part part = Part.create(input.partNumber());
             if (partRepository.findByPartNumber(part.getPartNumber()).isPresent()) {
                 throw new AppException(ErrorCode.CONFLICT, "이미 존재하는 품번입니다: " + part.getPartNumber());
             }
+            PartLifecycleState lifecycleState = parseLifecycleState(input.lifecycleState());
+            if (lifecycleState != null) {
+                part.changeLifecycleState(lifecycleState);
+            }
 
-            applyCreateInput(part, input);
-            applyDefaultOwner(part);
-            return partRepository.save(part);
+            Part savedPart = partRepository.save(part);
+            PartRevision initialRevision = PartRevision.createInitial(savedPart, "1", input.name());
+            applyCreateInput(initialRevision, input);
+            applyDefaultOwner(savedPart, initialRevision.getCategory());
+            partRevisionRepository.save(initialRevision);
+            return savedPart;
         } catch (DomainException ex) {
             throw toAppException(ex);
         }
@@ -136,25 +146,6 @@ public class PartService {
         }
     }
 
-    public void assignDrawing(UUID partId, UUID drawingId) {
-        Part part = getPartOrThrow(partId);
-        if (part.getDrawingId() != null) {
-            part.unassignDrawing();
-        }
-        part.assignDrawing(drawingId);
-    }
-
-    public UUID unassignDrawing(UUID partId) {
-        Part part = getPartOrThrow(partId);
-        if (part.getDrawingId() == null) {
-            throw new AppException(ErrorCode.NOT_FOUND, "연결된 도면이 없습니다");
-        }
-
-        UUID drawingId = part.getDrawingId();
-        part.unassignDrawing();
-        return drawingId;
-    }
-
     public PartDefaultOwner upsertDefaultOwner(String category, UUID ownerId, UUID ownerTeamId) {
         if (ownerId == null && ownerTeamId == null) {
             throw new AppException(ErrorCode.BAD_REQUEST, "기본 담당자 또는 기본 담당 팀 중 하나는 필수입니다");
@@ -195,7 +186,7 @@ public class PartService {
             throw new AppException(ErrorCode.BAD_REQUEST, "변경 전후 카테고리 이름이 동일합니다");
         }
 
-        boolean hasOldCategory = partRepository.existsByCategory(normalizedOldName);
+        boolean hasOldCategory = partRevisionRepository.existsByCategory(normalizedOldName);
         if (!hasOldCategory) {
             throw new AppException(
                     ErrorCode.NOT_FOUND,
@@ -203,8 +194,8 @@ public class PartService {
             );
         }
 
-        boolean isMerge = partRepository.existsByCategory(normalizedNewName);
-        int updatedCount = partRepository.renameCategory(normalizedOldName, normalizedNewName);
+        boolean isMerge = partRevisionRepository.existsByCategory(normalizedNewName);
+        int updatedCount = partRevisionRepository.renameCategory(normalizedOldName, normalizedNewName);
 
         if (isMerge) {
             partDefaultOwnerRepository.deleteByCategory(normalizedOldName);
@@ -222,41 +213,47 @@ public class PartService {
                 ));
     }
 
-    private void applyCreateInput(Part part, CreatePartInput input) {
+    private void applyCreateInput(PartRevision revision, CreatePartInput input) {
         if (input.category() != null) {
-            part.changeCategory(input.category());
+            revision.changeCategory(input.category());
         }
         if (input.material() != null) {
-            part.changeMaterial(input.material());
+            revision.changeMaterial(input.material());
         }
         if (input.unit() != null) {
-            part.changeUnit(input.unit());
+            revision.changeUnit(input.unit());
         }
         if (input.description() != null) {
-            part.changeDescription(input.description());
+            revision.changeDescription(input.description());
         }
         if (input.phantom() != null) {
-            applyPhantom(part, input.phantom());
-        }
-
-        PartLifecycleState lifecycleState = parseLifecycleState(input.lifecycleState());
-        if (lifecycleState != null) {
-            part.changeLifecycleState(lifecycleState);
+            applyPhantom(revision, input.phantom());
         }
         if (input.leadTimeDays() != null) {
-            part.changeLeadTimeDays(input.leadTimeDays());
+            revision.changeLeadTimeDays(input.leadTimeDays());
         }
         if (!input.extendedProperties().isEmpty()) {
-            part.changeExtendedProperties(serializeProperties(input.extendedProperties()));
+            revision.changeExtendedProperties(serializeProperties(input.extendedProperties()));
         }
     }
 
-    private void applyPhantom(Part part, Boolean phantom) {
+    private void applyDefaultOwner(Part part, String category) {
+        resolveDefaultOwner(category).ifPresent(defaultOwner -> {
+            if (defaultOwner.getDefaultOwnerId() != null) {
+                part.assignOwner(defaultOwner.getDefaultOwnerId());
+            }
+            if (defaultOwner.getDefaultOwnerTeamId() != null) {
+                part.assignOwnerTeam(defaultOwner.getDefaultOwnerTeamId());
+            }
+        });
+    }
+
+    private void applyPhantom(PartRevision revision, Boolean phantom) {
         if (Boolean.TRUE.equals(phantom)) {
-            part.markPhantom();
+            revision.markPhantom();
             return;
         }
-        part.markReal();
+        revision.markReal();
     }
 
     private PartLifecycleState parseLifecycleState(String rawLifecycleState) {
@@ -272,17 +269,6 @@ public class PartService {
             );
         }
         return lifecycleState;
-    }
-
-    private void applyDefaultOwner(Part part) {
-        resolveDefaultOwner(part.getCategory()).ifPresent(defaultOwner -> {
-            if (defaultOwner.getDefaultOwnerId() != null) {
-                part.assignOwner(defaultOwner.getDefaultOwnerId());
-            }
-            if (defaultOwner.getDefaultOwnerTeamId() != null) {
-                part.assignOwnerTeam(defaultOwner.getDefaultOwnerTeamId());
-            }
-        });
     }
 
     private Optional<PartDefaultOwner> resolveDefaultOwner(String category) {
@@ -319,14 +305,20 @@ public class PartService {
         return switch (ex.getDomainCode()) {
             case Part.CODE_PART_NUMBER_REQUIRED,
                     Part.CODE_PART_NUMBER_TOO_LONG,
-                    Part.CODE_PART_NAME_TOO_LONG,
-                    Part.CODE_PART_CATEGORY_TOO_LONG,
-                    Part.CODE_PART_MATERIAL_TOO_LONG,
-                    Part.CODE_PART_UNIT_TOO_LONG,
-                    Part.CODE_PART_DRAWING_REQUIRED,
+                    Part.CODE_PART_NUMBER_INVALID_FORMAT,
+                    PartRevision.CODE_PART_REVISION_NAME_TOO_LONG,
+                    PartRevision.CODE_PART_REVISION_CATEGORY_TOO_LONG,
+                    PartRevision.CODE_PART_REVISION_MATERIAL_TOO_LONG,
+                    PartRevision.CODE_PART_REVISION_UNIT_TOO_LONG,
+                    PartRevision.CODE_PART_REVISION_PART_NUMBER_REQUIRED,
+                    PartRevision.CODE_PART_REVISION_PART_NUMBER_TOO_LONG,
+                    PartRevision.CODE_PART_REVISION_PART_NUMBER_INVALID_FORMAT,
+                    PartRevision.CODE_PART_REVISION_CODE_REQUIRED,
+                    PartRevision.CODE_PART_REVISION_CODE_TOO_LONG,
+                    PartRevision.CODE_PART_REVISION_CODE_INVALID_FORMAT,
                     Part.CODE_PART_OWNER_REQUIRED,
                     Part.CODE_PART_OWNER_TEAM_REQUIRED,
-                    Part.CODE_PART_LEAD_TIME_DAYS_INVALID ->
+                    PartRevision.CODE_PART_REVISION_LEAD_TIME_DAYS_INVALID ->
                     new AppException(ErrorCode.VALIDATION_ERROR, ex.getMessage());
             default ->
                     new AppException(ErrorCode.INVALID_STATE, ex.getMessage());

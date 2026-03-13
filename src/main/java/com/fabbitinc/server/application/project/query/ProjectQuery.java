@@ -8,6 +8,7 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.part.api.PartApi;
+import com.fabbitinc.server.application.part.api.PartSnapshot;
 import com.fabbitinc.server.application.project.query.condition.PartProjectsCondition;
 import com.fabbitinc.server.application.project.query.condition.ProjectActivitiesCondition;
 import com.fabbitinc.server.application.project.query.condition.ProjectDetailCondition;
@@ -35,7 +36,6 @@ import com.fabbitinc.server.application.project.query.result.ProjectUserSummaryR
 import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.activity.model.Activity;
 import com.fabbitinc.server.domain.activity.model.ActivityTargetType;
-import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.project.model.Project;
 import com.fabbitinc.server.domain.project.model.ProjectMember;
 import com.fabbitinc.server.domain.project.model.ProjectPart;
@@ -185,7 +185,7 @@ public class ProjectQuery {
         int fetchSize = Math.max(condition.limit() * 5, condition.limit());
         String normalizedSearch = normalizeSearch(condition.search());
         String keyword = normalizedSearch == null ? "" : normalizedSearch;
-        List<Part> parts = partApi.searchParts(keyword, fetchSize);
+        List<PartSnapshot> parts = partApi.searchPartSnapshots(keyword, fetchSize);
 
         Set<UUID> linkedPartIds = condition.excludeLinked()
                 ? projectPartRepository.findByProjectId(condition.projectId()).stream()
@@ -194,9 +194,9 @@ public class ProjectQuery {
                 : Set.of();
 
         List<ProjectPartLookupItemResult> items = parts.stream()
-                .filter(part -> !condition.excludeLinked() || !linkedPartIds.contains(part.getId()))
+                .filter(part -> !condition.excludeLinked() || !linkedPartIds.contains(part.id()))
                 .limit(condition.limit())
-                .map(part -> new ProjectPartLookupItemResult(part.getId(), part.getPartNumber(), part.getName()))
+                .map(part -> new ProjectPartLookupItemResult(part.id(), part.partNumber(), part.name()))
                 .toList();
 
         return new ProjectPartLookupResult(items);
@@ -217,13 +217,13 @@ public class ProjectQuery {
         }
 
         List<UUID> partIds = links.stream().map(ProjectPart::getPartId).toList();
-        List<Part> parts = partApi.getPartsByIdsOrdered(partIds);
+        List<PartSnapshot> parts = partApi.getPartSnapshotsByIdsOrdered(partIds);
         String normalizedSearch = normalizeSearch(condition.search());
         if (normalizedSearch != null) {
             String lowered = normalizedSearch.toLowerCase();
             parts = parts.stream()
-                    .filter(part -> part.getPartNumber().toLowerCase().contains(lowered)
-                            || (part.getName() != null && part.getName().toLowerCase().contains(lowered)))
+                    .filter(part -> part.partNumber().toLowerCase().contains(lowered)
+                            || (part.name() != null && part.name().toLowerCase().contains(lowered)))
                     .toList();
         }
 
@@ -231,7 +231,7 @@ public class ProjectQuery {
         int fromIndex = Math.min(condition.offset(), parts.size());
         int toIndex = Math.min(condition.offset() + condition.limit(), parts.size());
         List<ProjectPartSummaryResult> items = parts.subList(fromIndex, toIndex).stream()
-                .map(part -> new ProjectPartSummaryResult(part.getId(), part.getPartNumber(), part.getName()))
+                .map(part -> new ProjectPartSummaryResult(part.id(), part.partNumber(), part.name()))
                 .toList();
 
         return new ProjectPartsResult(total, items);

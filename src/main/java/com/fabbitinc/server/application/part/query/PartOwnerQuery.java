@@ -12,9 +12,11 @@ import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
 import com.fabbitinc.server.application.team.api.TeamApi;
 import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.part.model.Part;
+import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartDefaultOwner;
 import com.fabbitinc.server.domain.part.repository.PartDefaultOwnerRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
+import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.user.model.User;
 import java.util.Comparator;
@@ -34,6 +36,7 @@ public class PartOwnerQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final PartRepository partRepository;
+    private final PartRevisionRepository partRevisionRepository;
     private final PartDefaultOwnerRepository partDefaultOwnerRepository;
     private final UserApi userApi;
     private final TeamApi teamApi;
@@ -41,11 +44,18 @@ public class PartOwnerQuery {
 
     public PartOwnerResult get(PartOwnerCondition condition) {
         currentAuthProvider.getCurrentAuth();
-
-        Part part = partRepository.findById(condition.partId())
+        PartRevision revision = partRevisionRepository
+                .findByPartNumberAndRevisionCode(condition.partNumber(), condition.revisionCode())
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "Part '" + condition.partId() + "'을(를) 찾을 수 없습니다"
+                        "PartRevision '%s/%s'을(를) 찾을 수 없습니다"
+                                .formatted(condition.partNumber(), condition.revisionCode())
+                ));
+
+        Part part = partRepository.findById(revision.getPartId())
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.NOT_FOUND,
+                        "Part '%s'을(를) 찾을 수 없습니다".formatted(condition.partNumber())
                 ));
         return toPartOwnerResult(part);
     }

@@ -5,6 +5,8 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
+import com.fabbitinc.server.application.part.api.PartApi;
+import com.fabbitinc.server.application.part.api.PartSnapshot;
 import com.fabbitinc.server.application.issue.query.condition.ChangeRequestDetailCondition;
 import com.fabbitinc.server.application.issue.query.condition.ChangeRequestListCondition;
 import com.fabbitinc.server.application.issue.query.condition.ChangeRequestLookupCondition;
@@ -59,8 +61,6 @@ import com.fabbitinc.server.domain.issue.repository.IssueRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueTeamAssigneeRepository;
 import com.fabbitinc.server.domain.label.model.Label;
 import com.fabbitinc.server.domain.label.repository.LabelRepository;
-import com.fabbitinc.server.domain.part.model.Part;
-import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.team.repository.TeamRepository;
 import com.fabbitinc.server.domain.user.model.User;
@@ -106,7 +106,7 @@ public class IssueQuery {
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
     private final LabelRepository labelRepository;
-    private final PartRepository partRepository;
+    private final PartApi partApi;
     private final FileRepository fileRepository;
     private final ActivityRepository activityRepository;
     private final FileUrlResolver fileUrlResolver;
@@ -342,7 +342,7 @@ public class IssueQuery {
         teamAssigneeLinks.stream().map(IssueTeamAssignee::getTeamId).forEach(teamIds::add);
 
         Set<UUID> partIds = partLinks.stream().map(IssuePart::getPartId).collect(java.util.stream.Collectors.toSet());
-        Map<UUID, Part> partMap = findParts(partIds);
+        Map<UUID, PartSnapshot> partMap = findParts(partIds);
 
         Set<UUID> changeRequestIds = issues.stream()
                 .filter(issue -> issue instanceof ChangeRequest)
@@ -553,9 +553,9 @@ public class IssueQuery {
             if (!issueId.equals(link.getIssueId())) {
                 continue;
             }
-            Part part = enrichment.partMap().get(link.getPartId());
+            PartSnapshot part = enrichment.partMap().get(link.getPartId());
             if (part != null) {
-                result.add(new PartBadgeResult(part.getId(), part.getPartNumber(), part.getName()));
+                result.add(new PartBadgeResult(part.id(), part.partNumber(), part.name()));
             }
         }
         return result;
@@ -749,13 +749,11 @@ public class IssueQuery {
         return map;
     }
 
-    private Map<UUID, Part> findParts(Set<UUID> partIds) {
+    private Map<UUID, PartSnapshot> findParts(Set<UUID> partIds) {
         if (partIds.isEmpty()) {
             return Map.of();
         }
-        Map<UUID, Part> map = new HashMap<>();
-        partRepository.findAllById(partIds).forEach(part -> map.put(part.getId(), part));
-        return map;
+        return partApi.getPartSnapshotMap(partIds);
     }
 
     private Map<UUID, Long> countComments(List<UUID> issueIds) {
@@ -928,7 +926,7 @@ public class IssueQuery {
             Map<UUID, ChangeRequest> linkedCrMap,
             Map<UUID, Team> teamMap,
             Map<UUID, User> userMap,
-            Map<UUID, Part> partMap,
+            Map<UUID, PartSnapshot> partMap,
             Map<UUID, Long> commentCounts
     ) {
         private static Enrichment empty() {

@@ -6,7 +6,6 @@ import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.drawing.model.DrawingArtifactPublication;
 import com.fabbitinc.server.domain.drawing.model.DrawingArtifactType;
-import com.fabbitinc.server.domain.drawing.model.DrawingConversionStatus;
 import com.fabbitinc.server.domain.drawing.model.DrawingDimension;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -54,7 +53,7 @@ public class PartPreview extends AbstractCreatedEntity implements AggregateRoot 
 
     @Enumerated(EnumType.STRING)
     @Column(name = "conversion_status", length = 30)
-    private DrawingConversionStatus conversionStatus;
+    private PartPreviewProcessingStatus processingStatus;
 
     @Column(name = "current_job_id")
     private UUID currentJobId;
@@ -80,7 +79,7 @@ public class PartPreview extends AbstractCreatedEntity implements AggregateRoot 
         this.sourceId = requireSourceId(sourceId);
         this.dimension = requireDimension(dimension);
         this.currentJobId = null;
-        this.conversionStatus = DrawingConversionStatus.PENDING;
+        this.processingStatus = PartPreviewProcessingStatus.PENDING;
         artifacts.clear();
     }
 
@@ -105,7 +104,7 @@ public class PartPreview extends AbstractCreatedEntity implements AggregateRoot 
         this.sourceId = null;
         this.dimension = null;
         this.currentJobId = null;
-        this.conversionStatus = null;
+        this.processingStatus = null;
         artifacts.clear();
     }
 
@@ -121,7 +120,16 @@ public class PartPreview extends AbstractCreatedEntity implements AggregateRoot 
             throw new DomainException("PART_PREVIEW_JOB_REQUIRED", "미리보기 작업 ID는 필수입니다");
         }
         this.currentJobId = jobId;
-        this.conversionStatus = DrawingConversionStatus.PENDING;
+        this.processingStatus = PartPreviewProcessingStatus.PENDING;
+    }
+
+    public void markProcessing(UUID jobId) {
+        validateCurrentJob(jobId);
+        if (!hasSource()) {
+            throw new DomainException("PART_PREVIEW_SOURCE_REQUIRED", "대표 미리보기 소스는 필수입니다");
+        }
+        this.currentJobId = jobId;
+        this.processingStatus = PartPreviewProcessingStatus.PROCESSING;
     }
 
     public void completeProcessing(UUID jobId, List<DrawingArtifactPublication> publications) {
@@ -137,13 +145,13 @@ public class PartPreview extends AbstractCreatedEntity implements AggregateRoot 
             );
         }
         this.currentJobId = null;
-        this.conversionStatus = DrawingConversionStatus.COMPLETED;
+        this.processingStatus = PartPreviewProcessingStatus.COMPLETED;
     }
 
     public void failProcessing(UUID jobId) {
         validateCurrentJob(jobId);
         this.currentJobId = null;
-        this.conversionStatus = DrawingConversionStatus.FAILED;
+        this.processingStatus = PartPreviewProcessingStatus.FAILED;
     }
 
     public List<PartPreviewArtifact> getArtifacts() {

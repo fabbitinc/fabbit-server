@@ -154,15 +154,6 @@ class PartTest {
     }
 
     @Test
-    void assignDrawing_null이면_예외를_던진다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        DomainException ex = assertThrows(DomainException.class, () -> part.assignDrawing((UUID) null));
-
-        assertEquals(Part.CODE_PART_DRAWING_REQUIRED, ex.getDomainCode());
-    }
-
-    @Test
     void assignOwner_유효한_ID를_설정한다() {
         Part part = Part.create("P-001", "Bolt");
         UUID ownerId = UUID.randomUUID();
@@ -191,17 +182,6 @@ class PartTest {
         assertEquals(ownerTeamId, part.getOwnerTeamId());
     }
 
-    @Test
-    void assignDrawing_유효한_ID를_설정한다() {
-        Part part = Part.create("P-001", "Bolt");
-        UUID drawingId = UUID.randomUUID();
-
-        part.assignDrawing(drawingId);
-
-        assertEquals(drawingId, part.getDrawingId());
-    }
-
-    @Test
     void markPhantom_markReal_clearPhantomFlag로_팬텀상태를_변경한다() {
         Part part = Part.create("P-001", "Bolt");
 
