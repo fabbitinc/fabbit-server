@@ -22,7 +22,10 @@ import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.mapping.repository.MappingRevisionRepository;
 import com.fabbitinc.server.domain.part.model.BomLink;
 import com.fabbitinc.server.domain.part.model.Part;
+import com.fabbitinc.server.domain.part.model.PartRevisionActivityActionType;
+import com.fabbitinc.server.domain.part.model.PartRevisionActivitySourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
+import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
 import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
@@ -100,14 +103,18 @@ class SynthesisExecutionServiceTest {
     }
 
     @Test
-    void processRow_overwrite_true면_매핑된_part_속성들을_갱신하고_revision_snapshot을_남긴다() {
-        Part existing = Part.create("P-001", "Old Name");
-        existing.changeCategory("Old Category");
-        existing.changeMaterial("Old Material");
-        existing.changeUnit("EA");
-        existing.changeDescription("Old Description");
+    void processRow_overwrite_true면_현재_revision을_갱신하고_import_activity를_남긴다() {
+        Part existing = Part.create("P-001");
+        PartRevision existingRevision = currentRevisionOf(existing, "1", "Old Name");
+        existingRevision.changeCategory("Old Category");
+        existingRevision.changeMaterial("Old Material");
+        existingRevision.changeUnit("EA");
+        existingRevision.changeDescription("Old Description");
 
         when(partRepository.findByPartNumber("P-001")).thenReturn(Optional.of(existing));
+        when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(existing.getId()))
+                .thenReturn(List.of(existingRevision));
+        when(partRevisionRepository.save(any(PartRevision.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         MappingResultDto mapping = mappingWithPartFields();
         Map<String, Object> row = Map.of(
@@ -118,6 +125,7 @@ class SynthesisExecutionServiceTest {
                 "part_unit", "SET",
                 "part_description", "New Description"
         );
+        UUID jobId = UUID.randomUUID();
 
         ReflectionTestUtils.invokeMethod(
                 synthesisExecutionService,
@@ -127,28 +135,34 @@ class SynthesisExecutionServiceTest {
                 Map.of(),
                 true,
                 null,
-                UUID.randomUUID()
+                jobId
         );
 
-        assertEquals("New Name", existing.getName());
-        assertEquals("New Category", existing.getCategory());
-        assertEquals("AL6061", existing.getMaterial());
-        assertEquals("SET", existing.getUnit());
-        assertEquals("New Description", existing.getDescription());
-        assertEquals("2", existing.getRevision());
+        assertEquals("New Name", existingRevision.getName());
+        assertEquals("New Category", existingRevision.getCategory());
+        assertEquals("AL6061", existingRevision.getMaterial());
+        assertEquals("SET", existingRevision.getUnit());
+        assertEquals("New Description", existingRevision.getDescription());
+        assertEquals(1, existingRevision.getActivities().size());
+        assertEquals(PartRevisionActivityActionType.IMPORTED, existingRevision.getActivities().get(0).getActionType());
+        assertEquals(PartRevisionActivitySourceType.SYNTHESIS, existingRevision.getActivities().get(0).getSourceType());
+        assertEquals(jobId, existingRevision.getActivities().get(0).getSourceRefId());
         verify(partRevisionRepository).save(any(PartRevision.class));
         verify(partRepository, never()).save(any(Part.class));
     }
 
     @Test
-    void processRow_overwrite_false면_기존값이_있을때_덮어쓰지_않는다() {
-        Part existing = Part.create("P-001", "Old Name");
-        existing.changeCategory("Old Category");
-        existing.changeMaterial("Old Material");
-        existing.changeUnit("EA");
-        existing.changeDescription("Old Description");
+    void processRow_overwrite_false면_기존_revision값을_덮어쓰지_않는다() {
+        Part existing = Part.create("P-001");
+        PartRevision existingRevision = currentRevisionOf(existing, "1", "Old Name");
+        existingRevision.changeCategory("Old Category");
+        existingRevision.changeMaterial("Old Material");
+        existingRevision.changeUnit("EA");
+        existingRevision.changeDescription("Old Description");
 
         when(partRepository.findByPartNumber("P-001")).thenReturn(Optional.of(existing));
+        when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(existing.getId()))
+                .thenReturn(List.of(existingRevision));
 
         MappingResultDto mapping = mappingWithPartFields();
         Map<String, Object> row = Map.of(
@@ -171,18 +185,20 @@ class SynthesisExecutionServiceTest {
                 UUID.randomUUID()
         );
 
-        assertEquals("Old Name", existing.getName());
-        assertEquals("Old Category", existing.getCategory());
-        assertEquals("Old Material", existing.getMaterial());
-        assertEquals("EA", existing.getUnit());
-        assertEquals("Old Description", existing.getDescription());
-        assertEquals("1", existing.getRevision());
+        assertEquals("Old Name", existingRevision.getName());
+        assertEquals("Old Category", existingRevision.getCategory());
+        assertEquals("Old Material", existingRevision.getMaterial());
+        assertEquals("EA", existingRevision.getUnit());
+        assertEquals("Old Description", existingRevision.getDescription());
+        assertEquals(0, existingRevision.getActivities().size());
         verify(partRevisionRepository, never()).save(any(PartRevision.class));
     }
 
     @Test
     void processRow_신규_part_생성시_매핑된_속성을_채운다() {
         when(partRepository.findByPartNumber("P-001")).thenReturn(Optional.empty());
+        when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(partRevisionRepository.save(any(PartRevision.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         MappingResultDto mapping = mappingWithPartFields();
         Map<String, Object> row = Map.of(
@@ -206,25 +222,33 @@ class SynthesisExecutionServiceTest {
         );
 
         ArgumentCaptor<Part> partCaptor = ArgumentCaptor.forClass(Part.class);
+        ArgumentCaptor<PartRevision> revisionCaptor = ArgumentCaptor.forClass(PartRevision.class);
         verify(partRepository).save(partCaptor.capture());
-        verify(partRevisionRepository).save(any(PartRevision.class));
+        verify(partRevisionRepository).save(revisionCaptor.capture());
 
         Part created = partCaptor.getValue();
+        PartRevision createdRevision = revisionCaptor.getValue();
         assertEquals("P-001", created.getPartNumber());
-        assertEquals("New Name", created.getName());
-        assertEquals("New Category", created.getCategory());
-        assertEquals("AL6061", created.getMaterial());
-        assertEquals("SET", created.getUnit());
-        assertEquals("New Description", created.getDescription());
+        assertEquals("P-001", createdRevision.getPartNumber());
+        assertEquals("New Name", createdRevision.getName());
+        assertEquals("New Category", createdRevision.getCategory());
+        assertEquals("AL6061", createdRevision.getMaterial());
+        assertEquals("SET", createdRevision.getUnit());
+        assertEquals("New Description", createdRevision.getDescription());
+        assertEquals(1, createdRevision.getActivities().size());
     }
 
     @Test
     void processRow_consistsOf_관계_확장속성을_BOM에_저장한다() {
-        Part child = Part.create("C-001", "Child");
-        Part parent = Part.create("P-001", "Parent");
+        Part child = Part.create("C-001");
+        Part parent = Part.create("P-001");
 
         when(partRepository.findByPartNumber("C-001")).thenReturn(Optional.of(child));
         when(partRepository.findByPartNumber("P-001")).thenReturn(Optional.of(parent));
+        when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(child.getId()))
+                .thenReturn(List.of(currentRevisionOf(child, "1", "Child")));
+        when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(parent.getId()))
+                .thenReturn(List.of(currentRevisionOf(parent, "1", "Parent")));
         when(bomLinkRepository.findByParentPartIdAndChildPartId(parent.getId(), child.getId())).thenReturn(Optional.empty());
 
         MappingResultDto mapping = new MappingResultDto(
@@ -262,10 +286,12 @@ class SynthesisExecutionServiceTest {
 
     @Test
     void processRow_suppliedBy_관계_확장속성을_PartSupplier에_저장한다() {
-        Part part = Part.create("P-001", "Part");
+        Part part = Part.create("P-001");
         Supplier supplier = Supplier.create("ACME", null, null, null, "{}");
 
         when(partRepository.findByPartNumber("P-001")).thenReturn(Optional.of(part));
+        when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(part.getId()))
+                .thenReturn(List.of(currentRevisionOf(part, "1", "Part")));
         when(supplierRepository.findByCompanyName("ACME")).thenReturn(Optional.of(supplier));
         when(partSupplierRepository.findByPartIdAndSupplierId(part.getId(), supplier.getId())).thenReturn(Optional.empty());
 
@@ -304,9 +330,11 @@ class SynthesisExecutionServiceTest {
 
     @Test
     void processRow_definedBy_도면을_upsert하고_part에_연결한다() {
-        Part part = Part.create("P-001", "Part");
+        Part part = Part.create("P-001");
 
         when(partRepository.findByPartNumber("P-001")).thenReturn(Optional.of(part));
+        when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(part.getId()))
+                .thenReturn(List.of(currentRevisionOf(part, "1", "Part")));
         when(drawingRepository.findByDrawingNumberAndDeletedAtIsNull("D-001")).thenReturn(Optional.empty());
 
         MappingResultDto mapping = new MappingResultDto(
@@ -353,9 +381,11 @@ class SynthesisExecutionServiceTest {
 
     @Test
     void processRow_hasItem_프로젝트를_upsert하고_part를_연결한다() {
-        Part part = Part.create("P-001", "Part");
+        Part part = Part.create("P-001");
 
         when(partRepository.findByPartNumber("P-001")).thenReturn(Optional.of(part));
+        when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(part.getId()))
+                .thenReturn(List.of(currentRevisionOf(part, "1", "Part")));
         when(projectRepository.findByNameAndDeletedFalse("EV Motor Project")).thenReturn(Optional.empty());
         when(projectPartRepository.findByProjectIdAndPartId(any(), any())).thenReturn(Optional.empty());
 
@@ -397,13 +427,15 @@ class SynthesisExecutionServiceTest {
 
     @Test
     void processRow_hasItem_프로젝트_컬럼이_없으면_파일_소유_프로젝트를_사용한다() {
-        Part part = Part.create("P-001", "Part");
+        Part part = Part.create("P-001");
         Project project = Project.create("Owned Project", null);
         File file = File.create("items.xlsx", "files/items.xlsx", "application/vnd.ms-excel", 100L);
         file.markUploaded();
         file.assignOwner("project", project.getId());
 
         when(partRepository.findByPartNumber("P-001")).thenReturn(Optional.of(part));
+        when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(part.getId()))
+                .thenReturn(List.of(currentRevisionOf(part, "1", "Part")));
         when(projectRepository.findByIdAndDeletedFalse(project.getId())).thenReturn(Optional.of(project));
         when(projectPartRepository.findByProjectIdAndPartId(project.getId(), part.getId())).thenReturn(Optional.empty());
 
@@ -467,5 +499,12 @@ class SynthesisExecutionServiceTest {
                 UUID.randomUUID()
         );
         assertNotNull(result);
+    }
+
+    private PartRevision currentRevisionOf(Part part, String revisionCode, String name) {
+        if (revisionCode == null) {
+            return PartRevision.createInitialDraft(part, name);
+        }
+        return PartRevision.createOfficial(part, revisionCode, null, name, PartRevisionStatus.RELEASED);
     }
 }

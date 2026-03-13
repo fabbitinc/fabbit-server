@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record PartDetailResult(
         UUID id,
+        UUID revisionId,
         String partNumber,
         String name,
         String revision,

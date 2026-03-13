@@ -16,14 +16,17 @@ import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartDefaultOwner;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
+import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.repository.PartDefaultOwnerRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
+import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.ObjectMapper;
@@ -32,6 +35,7 @@ import tools.jackson.databind.ObjectMapper;
 class PartServiceTest {
 
   @Mock private PartRepository partRepository;
+  @Mock private PartRevisionRepository partRevisionRepository;
   @Mock private PartDefaultOwnerRepository partDefaultOwnerRepository;
   @Mock private FileRepository fileRepository;
   @Mock private OrganizationApi organizationApi;
@@ -40,45 +44,43 @@ class PartServiceTest {
 
   @Test
   void createPart_카테고리별_기본담당자를_적용한다() {
+    UUID actorId = UUID.randomUUID();
     UUID ownerId = UUID.randomUUID();
     UUID ownerTeamId = UUID.randomUUID();
     PartDefaultOwner defaultOwner = PartDefaultOwner.create("FASTENER", ownerId, ownerTeamId);
     when(partRepository.findByPartNumber("P-100")).thenReturn(Optional.empty());
     when(partDefaultOwnerRepository.findByCategory("FASTENER")).thenReturn(Optional.of(defaultOwner));
     when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(partRevisionRepository.save(any(PartRevision.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-    PartService service =
-        new PartService(
-            partRepository,
-            partDefaultOwnerRepository,
-            fileRepository,
-            organizationApi,
-            objectMapper,
-            partPreviewService);
+    PartService service = createService();
 
-    Part created =
+    PartRevision createdDraft =
         service.createPart(
             new CreatePartInput(
-                "  P-100  ", "Bolt", null, null, null, "  FASTENER  ", null, null, null, null));
+                "  P-100  ", "Bolt", null, null, null, "  FASTENER  ", null, null, null, null),
+            actorId);
 
-    assertEquals("P-100", created.getPartNumber());
-    assertEquals("FASTENER", created.getCategory());
-    assertEquals(ownerId, created.getOwnerId());
-    assertEquals(ownerTeamId, created.getOwnerTeamId());
+    ArgumentCaptor<PartRevision> revisionCaptor = ArgumentCaptor.forClass(PartRevision.class);
+    verify(partRevisionRepository).save(revisionCaptor.capture());
+    PartRevision savedRevision = revisionCaptor.getValue();
+
+    assertEquals("P-100", createdDraft.getPartNumber());
+    assertEquals(null, createdDraft.getRevisionCode());
+    assertEquals("Bolt", savedRevision.getName());
+    assertEquals("FASTENER", savedRevision.getCategory());
+    ArgumentCaptor<Part> partCaptor = ArgumentCaptor.forClass(Part.class);
+    verify(partRepository).save(partCaptor.capture());
+    Part savedPart = partCaptor.getValue();
+    assertEquals(ownerId, savedPart.getOwnerId());
+    assertEquals(ownerTeamId, savedPart.getOwnerTeamId());
   }
 
   @Test
   void createPart_중복된_품번이면_conflict를_던진다() {
-    when(partRepository.findByPartNumber("P-100")).thenReturn(Optional.of(Part.create("P-100", "Existing")));
+    when(partRepository.findByPartNumber("P-100")).thenReturn(Optional.of(Part.create("P-100")));
 
-    PartService service =
-        new PartService(
-            partRepository,
-            partDefaultOwnerRepository,
-            fileRepository,
-            organizationApi,
-            objectMapper,
-            partPreviewService);
+    PartService service = createService();
 
     AppException ex =
         assertThrows(
@@ -86,30 +88,26 @@ class PartServiceTest {
             () ->
                 service.createPart(
                     new CreatePartInput(
-                        "P-100", "Bolt", null, null, null, null, null, null, null, null)));
+                        "P-100", "Bolt", null, null, null, null, null, null, null, null),
+                    UUID.randomUUID()));
 
     assertEquals(ErrorCode.CONFLICT, ex.getErrorCode());
   }
 
   @Test
   void createPart_속성과_수명주기상태를_저장한다() throws Exception {
+    UUID actorId = UUID.randomUUID();
     Map<String, Object> extendedProperties = Map.of("weight", 1.2, "material_code", "AL6061");
     when(partRepository.findByPartNumber("P-200")).thenReturn(Optional.empty());
     when(partDefaultOwnerRepository.findByCategoryIsNull()).thenReturn(Optional.empty());
     when(objectMapper.writeValueAsString(extendedProperties))
         .thenReturn("{\"weight\":1.2,\"material_code\":\"AL6061\"}");
     when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(partRevisionRepository.save(any(PartRevision.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-    PartService service =
-        new PartService(
-            partRepository,
-            partDefaultOwnerRepository,
-            fileRepository,
-            organizationApi,
-            objectMapper,
-            partPreviewService);
+    PartService service = createService();
 
-    Part created =
+    PartRevision createdDraft =
         service.createPart(
             new CreatePartInput(
                 "P-200",
@@ -121,34 +119,37 @@ class PartServiceTest {
                 false,
                 "design",
                 7,
-                extendedProperties));
+                extendedProperties),
+            actorId);
 
-    assertEquals("AL6061", created.getMaterial());
-    assertEquals("EA", created.getUnit());
-    assertEquals("sample", created.getDescription());
-    assertEquals(Boolean.FALSE, created.getPhantom());
-    assertEquals(PartLifecycleState.DESIGN, created.getLifecycleState());
-    assertEquals(7, created.getLeadTimeDays());
-    assertEquals("{\"weight\":1.2,\"material_code\":\"AL6061\"}", created.getExtendedProperties());
+    ArgumentCaptor<PartRevision> revisionCaptor = ArgumentCaptor.forClass(PartRevision.class);
+    verify(partRevisionRepository).save(revisionCaptor.capture());
+    PartRevision savedRevision = revisionCaptor.getValue();
+
+    assertEquals(null, createdDraft.getRevisionCode());
+    ArgumentCaptor<Part> partCaptor = ArgumentCaptor.forClass(Part.class);
+    verify(partRepository).save(partCaptor.capture());
+    Part savedPart = partCaptor.getValue();
+    assertEquals(PartLifecycleState.DESIGN, savedPart.getLifecycleState());
+    assertEquals("Bracket", savedRevision.getName());
+    assertEquals("AL6061", savedRevision.getMaterial());
+    assertEquals("EA", savedRevision.getUnit());
+    assertEquals("sample", savedRevision.getDescription());
+    assertEquals(Boolean.FALSE, savedRevision.getPhantom());
+    assertEquals(7, savedRevision.getLeadTimeDays());
+    assertEquals("{\"weight\":1.2,\"material_code\":\"AL6061\"}", savedRevision.getExtendedProperties());
   }
 
   @Test
   void attachFiles_파일_총합만큼_스토리지를_소비한다() {
-    Part part = Part.create("P-100", "Bolt");
+    Part part = Part.create("P-100");
     File first = createUploadedFile("first.pdf", 200L);
     File second = createUploadedFile("second.pdf", 300L);
     when(partRepository.findById(part.getId())).thenReturn(Optional.of(part));
     when(fileRepository.findByIdIn(List.of(first.getId(), second.getId())))
         .thenReturn(List.of(first, second));
 
-    PartService service =
-        new PartService(
-            partRepository,
-            partDefaultOwnerRepository,
-            fileRepository,
-            organizationApi,
-            objectMapper,
-            partPreviewService);
+    PartService service = createService();
 
     List<File> attachedFiles =
         service.attachFiles(part.getId(), List.of(first.getId(), second.getId()));
@@ -161,7 +162,7 @@ class PartServiceTest {
 
   @Test
   void detachFile_파일_크기만큼_스토리지를_반환한다() {
-    Part part = Part.create("P-100", "Bolt");
+    Part part = Part.create("P-100");
     File file = createUploadedFile("first.pdf", 200L);
     file.assignOwner("part", part.getId());
     when(partRepository.findById(part.getId())).thenReturn(Optional.of(part));
@@ -169,14 +170,7 @@ class PartServiceTest {
             file.getId(), "part", part.getId()))
         .thenReturn(Optional.of(file));
 
-    PartService service =
-        new PartService(
-            partRepository,
-            partDefaultOwnerRepository,
-            fileRepository,
-            organizationApi,
-            objectMapper,
-            partPreviewService);
+    PartService service = createService();
 
     service.detachFile(part.getId(), file.getId());
 
@@ -195,5 +189,16 @@ class PartServiceTest {
             fileSize);
     file.markUploaded();
     return file;
+  }
+
+  private PartService createService() {
+    return new PartService(
+        partRepository,
+        partRevisionRepository,
+        partDefaultOwnerRepository,
+        fileRepository,
+        organizationApi,
+        objectMapper,
+        partPreviewService);
   }
 }

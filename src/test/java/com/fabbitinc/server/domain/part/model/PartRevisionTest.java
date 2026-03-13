@@ -2,6 +2,7 @@ package com.fabbitinc.server.domain.part.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import java.time.Instant;
@@ -14,11 +15,11 @@ class PartRevisionTest {
     void createInitial_파트의_품번을_스냅샷으로_보관한다() {
         Part part = Part.create("AES-100");
 
-        PartRevision revision = PartRevision.createInitial(part, "1", "본체");
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체");
 
         assertEquals(part.getId(), revision.getPartId());
         assertEquals("AES-100", revision.getPartNumber());
-        assertEquals("1", revision.getRevisionCode());
+        assertEquals(null, revision.getRevisionCode());
         assertEquals(PartRevisionStatus.DRAFT, revision.getStatus());
     }
 
@@ -27,16 +28,16 @@ class PartRevisionTest {
         Part part = Part.create("AES-100");
         UUID baseRevisionId = UUID.randomUUID();
 
-        PartRevision revision = PartRevision.createDraft(part, "2", baseRevisionId, "개정본");
+        PartRevision revision = PartRevision.createDraft(part, baseRevisionId, "개정본");
 
         assertEquals(baseRevisionId, revision.getBaseRevisionId());
         assertEquals("AES-100", revision.getPartNumber());
-        assertEquals("2", revision.getRevisionCode());
+        assertEquals(null, revision.getRevisionCode());
     }
 
     @Test
     void createInitial_파트가_null이면_예외를_던진다() {
-        DomainException ex = assertThrows(DomainException.class, () -> PartRevision.createInitial(null, "1", "본체"));
+        DomainException ex = assertThrows(DomainException.class, () -> PartRevision.createInitialDraft(null, "본체"));
 
         assertEquals(PartRevision.CODE_PART_REVISION_PART_REQUIRED, ex.getDomainCode());
     }
@@ -44,7 +45,7 @@ class PartRevisionTest {
     @Test
     void recordActivity_루트가_활동_이력을_직접_추가한다() {
         Part part = Part.create("AES-100");
-        PartRevision revision = PartRevision.createInitial(part, "1", "본체");
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체");
         UUID actorId = UUID.randomUUID();
         Instant occurredAt = Instant.parse("2026-03-14T10:15:30Z");
 
@@ -61,5 +62,41 @@ class PartRevisionTest {
         assertEquals(revision.getId(), activity.getPartRevisionId());
         assertEquals(actorId, activity.getActorId());
         assertEquals(occurredAt, activity.getOccurredAt());
+    }
+
+    @Test
+    void assertDraftEditable_DRAFT가_아니면_예외를_던진다() {
+        Part part = Part.create("AES-100");
+        PartRevision revision = PartRevision.createOfficial(part, "1", null, "본체", PartRevisionStatus.RELEASED);
+
+        DomainException ex = assertThrows(DomainException.class, revision::assertDraftEditable);
+
+        assertEquals(PartRevision.CODE_PART_REVISION_DRAFT_REQUIRED, ex.getDomainCode());
+    }
+
+    @Test
+    void copyEditableFieldsFrom_기준_리비전의_본문을_복제한다() {
+        Part part = Part.create("AES-100");
+        PartRevision source = PartRevision.createInitialDraft(part, "원본");
+        source.changeCategory("FRAME");
+        source.changeMaterial("AL6061");
+        source.changeUnit("EA");
+        source.changeDescription("원본 설명");
+        source.markPhantom();
+        source.changeLeadTimeDays(7);
+        source.changeExtendedProperties("{\"weight\":1.2}");
+
+        PartRevision target = PartRevision.createDraft(part, source.getId(), "초안");
+        target.copyEditableFieldsFrom(source);
+
+        assertEquals("원본", target.getName());
+        assertEquals("FRAME", target.getCategory());
+        assertEquals("AL6061", target.getMaterial());
+        assertEquals("EA", target.getUnit());
+        assertEquals("원본 설명", target.getDescription());
+        assertTrue(Boolean.TRUE.equals(target.getPhantom()));
+        assertEquals(7, target.getLeadTimeDays());
+        assertEquals("{\"weight\":1.2}", target.getExtendedProperties());
+        assertEquals(source.getId(), target.getBaseRevisionId());
     }
 }

@@ -40,7 +40,7 @@ public class PartService {
     private final ObjectMapper objectMapper;
     private final PartPreviewService partPreviewService;
 
-    public Part createPart(CreatePartInput input) {
+    public PartRevision createPart(CreatePartInput input, UUID actorId) {
         try {
             Part part = Part.create(input.partNumber());
             if (partRepository.findByPartNumber(part.getPartNumber()).isPresent()) {
@@ -52,11 +52,18 @@ public class PartService {
             }
 
             Part savedPart = partRepository.save(part);
-            PartRevision initialRevision = PartRevision.createInitial(savedPart, "1", input.name());
+            PartRevision initialRevision = PartRevision.createInitialDraft(savedPart, input.name());
             applyCreateInput(initialRevision, input);
+            initialRevision.recordActivity(
+                    actorId,
+                    com.fabbitinc.server.domain.part.model.PartRevisionActivityActionType.CREATED,
+                    com.fabbitinc.server.domain.part.model.PartRevisionActivitySourceType.API,
+                    null,
+                    "{}"
+            );
             applyDefaultOwner(savedPart, initialRevision.getCategory());
             partRevisionRepository.save(initialRevision);
-            return savedPart;
+            return initialRevision;
         } catch (DomainException ex) {
             throw toAppException(ex);
         }

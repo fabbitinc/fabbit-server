@@ -8,6 +8,7 @@ import java.util.UUID;
 @Schema(description = "응답 DTO")
 public record PartDetailResponse(
         UUID id,
+        UUID revisionId,
         String partNumber,
         String name,
         String revision,

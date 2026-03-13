@@ -482,7 +482,7 @@ public class SynthesisV2ExecutionService {
             created.changeLifecycleState(values.lifecycleState());
         }
         partRepository.save(created);
-        PartRevision revision = PartRevision.createInitial(created, "1", values.name());
+        PartRevision revision = PartRevision.createInitialDraft(created, values.name());
         if (values.category() != null) {
             revision.changeCategory(values.category());
         }
@@ -514,7 +514,7 @@ public class SynthesisV2ExecutionService {
         if (revision != null) {
             return revision;
         }
-        PartRevision created = PartRevision.createInitial(part, "1", name);
+        PartRevision created = PartRevision.createInitialDraft(part, name);
         return partRevisionRepository.save(created);
     }
 

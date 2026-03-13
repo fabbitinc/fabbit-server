@@ -58,6 +58,9 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
     public static final String CODE_PART_REVISION_UNIT_TOO_LONG = "PART_REVISION_UNIT_TOO_LONG";
     public static final String CODE_PART_REVISION_LEAD_TIME_DAYS_INVALID = "PART_REVISION_LEAD_TIME_DAYS_INVALID";
     public static final String CODE_PART_REVISION_STATUS_REQUIRED = "PART_REVISION_STATUS_REQUIRED";
+    public static final String CODE_PART_REVISION_DRAFT_REQUIRED = "PART_REVISION_DRAFT_REQUIRED";
+    public static final String CODE_PART_REVISION_DRAFT_SOURCE_REQUIRED = "PART_REVISION_DRAFT_SOURCE_REQUIRED";
+    public static final String CODE_PART_REVISION_DRAFT_CODE_FORBIDDEN = "PART_REVISION_DRAFT_CODE_FORBIDDEN";
 
     private static final int MAX_REVISION_CODE_LENGTH = 50;
     private static final int MAX_PART_NUMBER_LENGTH = 100;
@@ -85,7 +88,7 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
     @JoinColumn(name = "base_revision_id", insertable = false, updatable = false)
     private PartRevision _baseRevisionRelation;
 
-    @Column(name = "revision_code", nullable = false, length = 50)
+    @Column(name = "revision_code", length = 50)
     private String revisionCode;
 
     @Enumerated(EnumType.STRING)
@@ -133,19 +136,23 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
         this.partId = requiredPart.getId();
         this.partNumber = normalizePartNumber(requiredPart.getPartNumber());
         this._partRelation = requiredPart;
-        this.revisionCode = normalizeRevisionCode(revisionCode);
+        this.status = requireStatus(status);
+        this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
         this.baseRevisionId = baseRevisionId;
         this.name = normalizeName(name);
-        this.status = requireStatus(status);
         this.extendedProperties = "{}";
     }
 
-    public static PartRevision createInitial(Part part, String revisionCode, String name) {
-        return new PartRevision(part, revisionCode, null, name, PartRevisionStatus.DRAFT);
+    public static PartRevision createInitialDraft(Part part, String name) {
+        return new PartRevision(part, null, null, name, PartRevisionStatus.DRAFT);
     }
 
-    public static PartRevision createDraft(Part part, String revisionCode, UUID baseRevisionId, String name) {
-        return new PartRevision(part, revisionCode, baseRevisionId, name, PartRevisionStatus.DRAFT);
+    public static PartRevision createDraft(Part part, UUID baseRevisionId, String name) {
+        return new PartRevision(part, null, baseRevisionId, name, PartRevisionStatus.DRAFT);
+    }
+
+    public static PartRevision createOfficial(Part part, String revisionCode, UUID baseRevisionId, String name, PartRevisionStatus status) {
+        return new PartRevision(part, revisionCode, baseRevisionId, name, status);
     }
 
     public void assignBaseRevision(UUID baseRevisionId) {
@@ -161,7 +168,7 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
     }
 
     public void changeRevisionCode(String revisionCode) {
-        this.revisionCode = normalizeRevisionCode(revisionCode);
+        this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
     }
 
     public void changePartNumber(String partNumber) {
@@ -169,7 +176,9 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
     }
 
     public void changeStatus(PartRevisionStatus status) {
-        this.status = requireStatus(status);
+        PartRevisionStatus nextStatus = requireStatus(status);
+        this.status = nextStatus;
+        this.revisionCode = normalizeRevisionCode(this.revisionCode, nextStatus);
     }
 
     public void changeName(String name) {
@@ -219,6 +228,32 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
         this.extendedProperties = normalizeExtendedProperties(extendedProperties);
     }
 
+    public void assertDraftEditable() {
+        if (this.status != PartRevisionStatus.DRAFT) {
+            throw new DomainException(CODE_PART_REVISION_DRAFT_REQUIRED, "DRAFT 상태의 리비전만 수정할 수 있습니다");
+        }
+    }
+
+    public void assertDraftCreationAllowed() {
+        if (this.status == PartRevisionStatus.DRAFT) {
+            throw new DomainException(CODE_PART_REVISION_DRAFT_SOURCE_REQUIRED, "초안 리비전에서는 새 초안을 생성할 수 없습니다");
+        }
+    }
+
+    public void copyEditableFieldsFrom(PartRevision source) {
+        if (source == null) {
+            throw new DomainException(CODE_PART_REVISION_DRAFT_SOURCE_REQUIRED, "복제할 원본 리비전은 필수입니다");
+        }
+        changeName(source.getName());
+        changeCategory(source.getCategory());
+        changeMaterial(source.getMaterial());
+        changeUnit(source.getUnit());
+        changeDescription(source.getDescription());
+        this.phantom = source.getPhantom();
+        this.leadTimeDays = source.getLeadTimeDays();
+        this.extendedProperties = source.getExtendedProperties();
+    }
+
     public PartRevisionActivity recordActivity(
             UUID actorId,
             PartRevisionActivityActionType actionType,
@@ -251,9 +286,16 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
         return value;
     }
 
-    private String normalizeRevisionCode(String rawRevisionCode) {
+    private String normalizeRevisionCode(String rawRevisionCode, PartRevisionStatus status) {
+        if (status == PartRevisionStatus.DRAFT || status == PartRevisionStatus.IN_REVIEW) {
+            if (rawRevisionCode == null || rawRevisionCode.isBlank()) {
+                return null;
+            }
+            throw new DomainException(CODE_PART_REVISION_DRAFT_CODE_FORBIDDEN, "초안 상태에서는 공식 리비전 코드를 가질 수 없습니다");
+        }
+
         if (rawRevisionCode == null || rawRevisionCode.isBlank()) {
-            throw new DomainException(CODE_PART_REVISION_CODE_REQUIRED, "리비전 코드는 필수입니다");
+            throw new DomainException(CODE_PART_REVISION_CODE_REQUIRED, "공식 리비전 코드는 필수입니다");
         }
         String trimmed = rawRevisionCode.trim();
         if (trimmed.length() > MAX_REVISION_CODE_LENGTH) {

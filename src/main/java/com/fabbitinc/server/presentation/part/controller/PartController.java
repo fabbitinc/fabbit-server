@@ -6,6 +6,7 @@ import com.fabbitinc.server.application.part.dto.request.AttachFilesRequest;
 import com.fabbitinc.server.application.part.dto.request.ChangePartPreviewRequest;
 import com.fabbitinc.server.application.part.dto.request.CreatePartRequest;
 import com.fabbitinc.server.application.part.dto.request.RenameCategoryRequest;
+import com.fabbitinc.server.application.part.dto.request.UpdatePartRevisionRequest;
 import com.fabbitinc.server.application.part.dto.response.PartAttachmentItemResponse;
 import com.fabbitinc.server.application.part.dto.response.BomChildResponse;
 import com.fabbitinc.server.application.part.dto.response.BomParentResponse;
@@ -37,6 +38,7 @@ import com.fabbitinc.server.application.part.query.condition.BomTreeExportCondit
 import com.fabbitinc.server.application.part.query.condition.FileItemsCondition;
 import com.fabbitinc.server.application.part.query.condition.PartBomCondition;
 import com.fabbitinc.server.application.part.query.condition.PartDetailCondition;
+import com.fabbitinc.server.application.part.query.condition.PartDraftDetailCondition;
 import com.fabbitinc.server.application.part.query.condition.PartExportCondition;
 import com.fabbitinc.server.application.part.query.condition.PartFilesCondition;
 import com.fabbitinc.server.application.part.query.condition.PartListCondition;
@@ -59,20 +61,25 @@ import com.fabbitinc.server.application.part.usecase.AttachPartFilesUseCase;
 import com.fabbitinc.server.application.part.usecase.ChangePartPreviewUseCase;
 import com.fabbitinc.server.application.part.usecase.ClearPartPreviewUseCase;
 import com.fabbitinc.server.application.part.usecase.CreatePartUseCase;
+import com.fabbitinc.server.application.part.usecase.CreatePartDraftUseCase;
 import com.fabbitinc.server.application.part.usecase.DeletePartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.DetachPartFileUseCase;
 import com.fabbitinc.server.application.part.usecase.RegisterPartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.RenameCategoryUseCase;
+import com.fabbitinc.server.application.part.usecase.UpdatePartRevisionUseCase;
 import com.fabbitinc.server.application.part.usecase.command.AttachPartFilesCommand;
 import com.fabbitinc.server.application.part.usecase.command.ChangePartPreviewCommand;
 import com.fabbitinc.server.application.part.usecase.command.ClearPartPreviewCommand;
 import com.fabbitinc.server.application.part.usecase.command.CreatePartCommand;
+import com.fabbitinc.server.application.part.usecase.command.CreatePartDraftCommand;
 import com.fabbitinc.server.application.part.usecase.command.DeletePartDrawingCommand;
 import com.fabbitinc.server.application.part.usecase.command.DetachPartFileCommand;
 import com.fabbitinc.server.application.part.usecase.command.RegisterPartDrawingCommand;
 import com.fabbitinc.server.application.part.usecase.command.RenameCategoryCommand;
+import com.fabbitinc.server.application.part.usecase.command.UpdatePartRevisionCommand;
 import com.fabbitinc.server.application.part.usecase.result.AttachPartFilesResult;
 import com.fabbitinc.server.application.part.usecase.result.CreatePartResult;
+import com.fabbitinc.server.application.part.usecase.result.CreatePartDraftResult;
 import com.fabbitinc.server.application.part.usecase.result.RegisterPartDrawingResult;
 import com.fabbitinc.server.application.part.usecase.result.RenameCategoryResult;
 import io.swagger.v3.oas.annotations.Operation;
@@ -123,6 +130,8 @@ public class PartController {
 
     private final PartQuery partQuery;
     private final CreatePartUseCase createPartUseCase;
+    private final CreatePartDraftUseCase createPartDraftUseCase;
+    private final UpdatePartRevisionUseCase updatePartRevisionUseCase;
     private final RenameCategoryUseCase renameCategoryUseCase;
     private final AttachPartFilesUseCase attachPartFilesUseCase;
     private final DetachPartFileUseCase detachPartFileUseCase;
@@ -163,10 +172,86 @@ public class PartController {
                 request.leadTimeDays(),
                 request.extendedProperties()
         ));
-        return toPartDetailResponse(partQuery.get(new PartDetailCondition(
+        return toPartDetailResponse(partQuery.getDraft(new PartDraftDetailCondition(
                 result.partNumber(),
-                result.revisionCode()
+                result.draftId()
         )));
+    }
+
+    @Operation(
+            summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts",
+            description = "기준 리비전에서 새 초안 리비전을 생성합니다"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "생성 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음"),
+            @ApiResponse(responseCode = "409", description = "리소스 충돌"),
+            @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
+    })
+    @PostMapping("/{partNumber}/revisions/{revisionCode}/drafts")
+    @ResponseStatus(HttpStatus.CREATED)
+    public PartDetailResponse createDraft(
+            @Parameter(description = "기준 품번")
+            @PathVariable String partNumber,
+            @Parameter(description = "기준 리비전 코드")
+            @PathVariable String revisionCode
+    ) {
+        CreatePartDraftResult result = createPartDraftUseCase.execute(new CreatePartDraftCommand(
+                partNumber,
+                revisionCode
+        ));
+        return toPartDetailResponse(partQuery.getDraft(new PartDraftDetailCondition(
+                result.partNumber(),
+                result.draftId()
+        )));
+    }
+
+    @Operation(
+            summary = "PATCH /api/v1/parts/{partNumber}/drafts/{draftId}",
+            description = "DRAFT 상태의 부품 초안을 수정합니다"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "수정 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음"),
+            @ApiResponse(responseCode = "409", description = "리소스 충돌"),
+            @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
+    })
+    @PatchMapping("/{partNumber}/drafts/{draftId}")
+    public PartDetailResponse updateDraft(
+            @Parameter(description = "수정할 품번")
+            @PathVariable String partNumber,
+            @Parameter(description = "수정할 초안 식별자")
+            @PathVariable UUID draftId,
+            @Parameter(description = "부품 초안 수정 요청")
+            @Valid @RequestBody UpdatePartRevisionRequest request
+    ) {
+        updatePartRevisionUseCase.execute(new UpdatePartRevisionCommand(
+                partNumber,
+                draftId,
+                request.getName(),
+                request.isNameSet(),
+                request.getMaterial(),
+                request.isMaterialSet(),
+                request.getUnit(),
+                request.isUnitSet(),
+                request.getDescription(),
+                request.isDescriptionSet(),
+                request.getCategory(),
+                request.isCategorySet(),
+                request.getPhantom(),
+                request.isPhantomSet(),
+                request.getLeadTimeDays(),
+                request.isLeadTimeDaysSet(),
+                request.getExtendedProperties(),
+                request.isExtendedPropertiesSet()
+        ));
+        return toPartDetailResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, draftId)));
     }
 
     @Operation(
@@ -276,6 +361,27 @@ public class PartController {
                 offset,
                 limit
         )));
+    }
+
+    @Operation(
+            summary = "GET /api/v1/parts/{partNumber}/drafts/{draftId}",
+            description = "Part 초안 상세 정보와 관계 카운트(children/parents/suppliers/files/projects)를 조회합니다"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
+    @GetMapping("/{partNumber}/drafts/{draftId}")
+    public PartDetailResponse getDraft(
+            @Parameter(description = "조회할 품번")
+            @PathVariable String partNumber,
+            @Parameter(description = "조회할 초안 식별자")
+            @PathVariable UUID draftId
+    ) {
+        return toPartDetailResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, draftId)));
     }
 
     @Operation(
@@ -556,6 +662,7 @@ public class PartController {
     private PartDetailResponse toPartDetailResponse(PartDetailResult result) {
         return new PartDetailResponse(
                 result.id(),
+                result.revisionId(),
                 result.partNumber(),
                 result.name(),
                 result.revision(),

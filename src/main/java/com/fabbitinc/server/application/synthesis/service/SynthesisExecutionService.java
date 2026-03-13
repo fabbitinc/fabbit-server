@@ -484,7 +484,7 @@ public class SynthesisExecutionService {
 
         Part created = Part.create(values.partNumber());
         partRepository.save(created);
-        PartRevision revision = PartRevision.createInitial(created, "1", values.name());
+        PartRevision revision = PartRevision.createInitialDraft(created, values.name());
         if (values.category() != null) {
             revision.changeCategory(values.category());
         }
@@ -507,7 +507,7 @@ public class SynthesisExecutionService {
         if (revision != null) {
             return revision;
         }
-        PartRevision created = PartRevision.createInitial(part, "1", name);
+        PartRevision created = PartRevision.createInitialDraft(part, name);
         return partRevisionRepository.save(created);
     }
 

@@ -26,6 +26,8 @@ public interface PartRevisionRepository extends JpaRepository<PartRevision, UUID
 
     Optional<PartRevision> findByPartNumberAndRevisionCode(String partNumber, String revisionCode);
 
+    Optional<PartRevision> findByIdAndPartNumber(UUID id, String partNumber);
+
     boolean existsByCategory(String category);
 
     long countByCategory(String category);

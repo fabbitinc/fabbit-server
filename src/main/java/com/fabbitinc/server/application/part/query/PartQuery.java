@@ -13,6 +13,7 @@ import com.fabbitinc.server.application.part.query.condition.BomTreeExportCondit
 import com.fabbitinc.server.application.part.query.condition.FileItemsCondition;
 import com.fabbitinc.server.application.part.query.condition.PartBomCondition;
 import com.fabbitinc.server.application.part.query.condition.PartDetailCondition;
+import com.fabbitinc.server.application.part.query.condition.PartDraftDetailCondition;
 import com.fabbitinc.server.application.part.query.condition.PartExportCondition;
 import com.fabbitinc.server.application.part.query.condition.PartFilesCondition;
 import com.fabbitinc.server.application.part.query.condition.PartListCondition;
@@ -338,6 +339,16 @@ public class PartQuery {
     public PartDetailResult get(PartDetailCondition condition) {
         currentAuthProvider.getCurrentAuth();
         ResolvedPart resolvedPart = resolveRequiredPart(condition.partNumber(), condition.revisionCode());
+        return buildPartDetailResult(resolvedPart);
+    }
+
+    public PartDetailResult getDraft(PartDraftDetailCondition condition) {
+        currentAuthProvider.getCurrentAuth();
+        ResolvedPart resolvedPart = resolveRequiredDraft(condition.partNumber(), condition.draftId());
+        return buildPartDetailResult(resolvedPart);
+    }
+
+    private PartDetailResult buildPartDetailResult(ResolvedPart resolvedPart) {
         Part part = resolvedPart.part();
 
         PartUserSummaryResult owner = toUserSummary(userApi.getUserOrNull(part.getOwnerId()));
@@ -358,6 +369,7 @@ public class PartQuery {
 
         return new PartDetailResult(
                 part.getId(),
+                resolvedPart.revision() == null ? null : resolvedPart.revision().getId(),
                 part.getPartNumber(),
                 resolvedPart.name(),
                 resolvedPart.revisionCode(),
@@ -1113,6 +1125,22 @@ public class PartQuery {
         return resolveRequiredPart(partNumber, revisionCode).id();
     }
 
+    private ResolvedPart resolveRequiredDraft(String partNumber, UUID draftId) {
+        PartRevision draft = partRevisionRepository.findByIdAndPartNumber(draftId, partNumber)
+                .filter(revision -> revision.getStatus() == com.fabbitinc.server.domain.part.model.PartRevisionStatus.DRAFT
+                        || revision.getStatus() == com.fabbitinc.server.domain.part.model.PartRevisionStatus.IN_REVIEW)
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.NOT_FOUND,
+                        "PartDraft '%s/%s'을(를) 찾을 수 없습니다".formatted(partNumber, draftId)
+                ));
+        Part part = partRepository.findById(draft.getPartId())
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.NOT_FOUND,
+                        "Part '%s'을(를) 찾을 수 없습니다".formatted(partNumber)
+                ));
+        return new ResolvedPart(part, draft);
+    }
+
     private ResolvedPart resolveRequiredPart(String partNumber, String revisionCode) {
         PartRevision revision = partRevisionRepository.findByPartNumberAndRevisionCode(partNumber, revisionCode)
                 .orElseThrow(() -> new AppException(
@@ -1133,7 +1161,7 @@ public class PartQuery {
 
     private String resolveRevisionCode(PartRevision revision) {
         if (revision == null || revision.getRevisionCode() == null || revision.getRevisionCode().isBlank()) {
-            return "1";
+            return null;
         }
         return revision.getRevisionCode();
     }
@@ -1360,10 +1388,7 @@ public class PartQuery {
         }
 
         String revisionCode() {
-            if (revision == null || revision.getRevisionCode() == null || revision.getRevisionCode().isBlank()) {
-                return "1";
-            }
-            return revision.getRevisionCode();
+            return revision == null ? null : revision.getRevisionCode();
         }
 
         String material() {

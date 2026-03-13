@@ -1,11 +1,12 @@
 package com.fabbitinc.server.application.part.usecase;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
+import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.part.service.PartService;
 import com.fabbitinc.server.application.part.service.input.CreatePartInput;
 import com.fabbitinc.server.application.part.usecase.command.CreatePartCommand;
 import com.fabbitinc.server.application.part.usecase.result.CreatePartResult;
-import com.fabbitinc.server.domain.part.model.Part;
+import com.fabbitinc.server.domain.part.model.PartRevision;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +20,9 @@ public class CreatePartUseCase {
     private final PartService partService;
 
     public CreatePartResult execute(CreatePartCommand command) {
-        currentAuthProvider.getCurrentAuth();
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
 
-        Part part = partService.createPart(new CreatePartInput(
+        PartRevision draft = partService.createPart(new CreatePartInput(
                 command.partNumber(),
                 command.name(),
                 command.material(),
@@ -32,7 +33,7 @@ public class CreatePartUseCase {
                 command.lifecycleState(),
                 command.leadTimeDays(),
                 command.extendedProperties()
-        ));
-        return new CreatePartResult(part.getPartNumber(), "1");
+        ), auth.userId());
+        return new CreatePartResult(draft.getPartNumber(), draft.getId());
     }
 }

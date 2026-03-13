@@ -21,6 +21,7 @@ import com.fabbitinc.server.domain.mappingv2.repository.MappingV2RevisionReposit
 import com.fabbitinc.server.domain.part.model.BomLink;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartRevision;
+import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
 import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
@@ -101,10 +102,15 @@ class SynthesisV2ExecutionServiceTest {
 
     @Test
     void processRow_nodes와_relations를_해석해_각_도메인에_저장한다() throws Exception {
-        Part parent = Part.create("P-001", "Parent");
+        Part parent = Part.create("P-001");
+        PartRevision parentRevision = PartRevision.createOfficial(parent, "1", null, "Parent", PartRevisionStatus.RELEASED);
 
         when(partRepository.findByPartNumber("C-001")).thenReturn(Optional.empty());
         when(partRepository.findByPartNumber("P-001")).thenReturn(Optional.of(parent));
+        when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(parent.getId()))
+                .thenReturn(List.of(parentRevision));
+        when(partRevisionRepository.save(any(PartRevision.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(supplierRepository.findByCompanyName("ACME")).thenReturn(Optional.empty());
         when(drawingRepository.findByDrawingNumberAndDeletedAtIsNull("D-001")).thenReturn(Optional.empty());
         when(projectRepository.findByNameAndDeletedFalse("Root Project")).thenReturn(Optional.empty());
@@ -229,12 +235,15 @@ class SynthesisV2ExecutionServiceTest {
         assertNotNull(result);
 
         ArgumentCaptor<Part> partCaptor = ArgumentCaptor.forClass(Part.class);
+        ArgumentCaptor<PartRevision> revisionCaptor = ArgumentCaptor.forClass(PartRevision.class);
         verify(partRepository).save(partCaptor.capture());
+        verify(partRevisionRepository).save(revisionCaptor.capture());
         Part createdPart = partCaptor.getValue();
+        PartRevision createdRevision = revisionCaptor.getValue();
         assertEquals("C-001", createdPart.getPartNumber());
-        Map<?, ?> childExt = objectMapper.readValue(createdPart.getExtendedProperties(), Map.class);
+        Map<?, ?> childExt = objectMapper.readValue(createdRevision.getExtendedProperties(), Map.class);
         assertEquals("공용부품", childExt.get("_ext_remark"));
-        verify(partRevisionRepository).save(any(PartRevision.class));
+        assertEquals("Child", createdRevision.getName());
 
         ArgumentCaptor<Supplier> supplierCaptor = ArgumentCaptor.forClass(Supplier.class);
         verify(supplierRepository).save(supplierCaptor.capture());

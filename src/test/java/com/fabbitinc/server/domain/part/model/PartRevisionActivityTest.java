@@ -13,7 +13,7 @@ class PartRevisionActivityTest {
     @Test
     void record_활동을_기록한다() {
         Part part = Part.create("AES-100");
-        PartRevision revision = PartRevision.createInitial(part, "1", "본체");
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체");
         UUID actorId = UUID.randomUUID();
 
         PartRevisionActivity activity = PartRevisionActivity.record(
@@ -50,7 +50,7 @@ class PartRevisionActivityTest {
     @Test
     void recordAt_발생시각이_null이면_예외를_던진다() {
         Part part = Part.create("AES-100");
-        PartRevision revision = PartRevision.createInitial(part, "1", "본체");
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체");
 
         DomainException ex = assertThrows(DomainException.class, () -> PartRevisionActivity.recordAt(
                 revision,
