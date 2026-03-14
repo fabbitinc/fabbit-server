@@ -18,10 +18,11 @@ public class DeletePartDrawingUseCase {
     private final DrawingService drawingService;
 
     public void execute(DeletePartDrawingCommand command) {
-        currentAuthProvider.getCurrentAuth();
+        var auth = currentAuthProvider.getCurrentAuth();
         drawingService.deleteDrawing(
                 partRevisionRouteService.getRequiredRevisionId(command.partNumber(), command.revisionCode()),
-                command.drawingId()
+                command.drawingId(),
+                auth.userId()
         );
     }
 }

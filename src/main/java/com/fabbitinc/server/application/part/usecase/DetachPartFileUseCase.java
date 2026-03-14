@@ -18,10 +18,11 @@ public class DetachPartFileUseCase {
     private final PartService partService;
 
     public void execute(DetachPartFileCommand command) {
-        currentAuthProvider.getCurrentAuth();
+        var auth = currentAuthProvider.getCurrentAuth();
         partService.detachFile(
                 partRevisionRouteService.getRequiredRevisionId(command.partNumber(), command.revisionCode()),
-                command.fileId()
+                command.fileId(),
+                auth.userId()
         );
     }
 }

@@ -1,6 +1,6 @@
 package com.fabbitinc.server.domain.issue.model;
 
-import com.fabbitinc.server.domain.common.entity.AbstractAuditableEntity;
+import com.fabbitinc.server.domain.common.entity.AbstractActorAuditableEntity;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import jakarta.persistence.Column;
@@ -24,7 +24,7 @@ import lombok.NoArgsConstructor;
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class IssueComment extends AbstractAuditableEntity {
+public class IssueComment extends AbstractActorAuditableEntity {
 
     public static final String CODE_ISSUE_COMMENT_ISSUE_REQUIRED = "ISSUE_COMMENT_ISSUE_REQUIRED";
     public static final String CODE_ISSUE_COMMENT_BODY_REQUIRED = "ISSUE_COMMENT_BODY_REQUIRED";
@@ -40,18 +40,11 @@ public class IssueComment extends AbstractAuditableEntity {
     @Column(name = "body", nullable = false, columnDefinition = "text")
     private String body;
 
-    @Column(name = "created_by", nullable = false)
-    private UUID createdBy;
-
-    @Column(name = "updated_by", nullable = false)
-    private UUID updatedBy;
-
     private IssueComment(UUID issueId, String body, UUID actorId) {
         super(UuidV7Generator.next());
         this.issueId = requireIssueId(issueId);
         this.body = requireBody(body);
-        this.createdBy = requireActorId(actorId);
-        this.updatedBy = this.createdBy;
+        initializeActor(requireActorId(actorId));
     }
 
     public static IssueComment write(UUID issueId, String body, UUID actorId) {
@@ -70,8 +63,7 @@ public class IssueComment extends AbstractAuditableEntity {
     public void updateBody(String body, UUID actorId) {
         UUID requiredActorId = requireActorId(actorId);
         String requiredBody = requireBody(body);
-        this.body = requiredBody;
-        this.updatedBy = requiredActorId;
+        mutate(requiredActorId, () -> this.body = requiredBody);
     }
 
     private UUID requireIssueId(UUID value) {

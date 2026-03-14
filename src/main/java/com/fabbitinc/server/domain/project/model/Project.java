@@ -46,25 +46,26 @@ public class Project extends AbstractSoftDeletableEntity implements AggregateRoo
     @OneToMany(mappedBy = "project", fetch = FetchType.LAZY)
     private List<ProjectPart> parts = new ArrayList<>();
 
-    private Project(String name, String description) {
+    private Project(String name, String description, UUID actorId) {
         super(UuidV7Generator.next());
         this.name = validateName(name);
         this.description = normalizeDescription(description);
         this.archived = false;
+        initializeActor(actorId);
     }
 
-    public static Project create(String name, String description) {
-        return new Project(name, description);
+    public static Project create(String name, String description, UUID actorId) {
+        return new Project(name, description, actorId);
     }
 
-    public void rename(String name) {
+    public void rename(String name, UUID actorId) {
         ensureActive();
-        this.name = validateName(name);
+        mutate(actorId, () -> this.name = validateName(name));
     }
 
-    public void changeDescription(String description) {
+    public void changeDescription(String description, UUID actorId) {
         ensureActive();
-        this.description = normalizeDescription(description);
+        mutate(actorId, () -> this.description = normalizeDescription(description));
     }
 
     public ProjectMember addMember(UUID userId, ProjectRole role) {
@@ -90,18 +91,18 @@ public class Project extends AbstractSoftDeletableEntity implements AggregateRoo
         target.changeRole(role);
     }
 
-    public void archive() {
+    public void archive(UUID actorId) {
         if (archived) {
             throw new DomainException(CODE_PROJECT_ALREADY_ARCHIVED, "이미 보관된 프로젝트입니다");
         }
-        this.archived = true;
+        mutate(actorId, () -> this.archived = true);
     }
 
-    public void unarchive() {
+    public void unarchive(UUID actorId) {
         if (!archived) {
             throw new DomainException(CODE_PROJECT_NOT_ARCHIVED, "보관 상태가 아닌 프로젝트는 복원할 수 없습니다");
         }
-        this.archived = false;
+        mutate(actorId, () -> this.archived = false);
     }
 
     public void ensureActive() {

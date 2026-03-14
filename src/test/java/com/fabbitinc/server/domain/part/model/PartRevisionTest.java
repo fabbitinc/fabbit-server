@@ -44,13 +44,30 @@ class PartRevisionTest {
     }
 
     @Test
-    void touch_수행자가_있으면_updatedBy를_갱신한다() {
+    void editDraft_수행자가_있으면_updatedBy를_갱신한다() {
         Part part = Part.create("AES-100");
         UUID creatorId = UUID.randomUUID();
         UUID editorId = UUID.randomUUID();
         PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", creatorId);
 
-        revision.touch(editorId);
+        revision.editDraft(new PartRevisionDraftChanges(
+                null,
+                false,
+                null,
+                false,
+                null,
+                false,
+                null,
+                false,
+                null,
+                false,
+                null,
+                false,
+                null,
+                false,
+                null,
+                false
+        ), editorId);
 
         assertEquals(creatorId, revision.getCreatedBy());
         assertEquals(editorId, revision.getUpdatedBy());

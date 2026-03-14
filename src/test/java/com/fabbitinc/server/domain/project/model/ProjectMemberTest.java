@@ -11,7 +11,7 @@ class ProjectMemberTest {
 
     @Test
     void addMember_사용자_ID로_멤버를_추가한다() {
-        Project project = Project.create("프로젝트", "설명");
+        Project project = Project.create("프로젝트", "설명", UUID.randomUUID());
         UUID userId = UUID.randomUUID();
 
         ProjectMember member = project.addMember(userId, ProjectRole.ADMIN);
@@ -25,7 +25,7 @@ class ProjectMemberTest {
 
     @Test
     void addMember_역할이_null이면_예외를_던진다() {
-        Project project = Project.create("프로젝트", "설명");
+        Project project = Project.create("프로젝트", "설명", UUID.randomUUID());
         UUID userId = UUID.randomUUID();
 
         DomainException ex = assertThrows(
@@ -38,7 +38,7 @@ class ProjectMemberTest {
 
     @Test
     void addMember_사용자가_null이면_예외를_던진다() {
-        Project project = Project.create("프로젝트", "설명");
+        Project project = Project.create("프로젝트", "설명", UUID.randomUUID());
 
         DomainException ex = assertThrows(
                 DomainException.class,
@@ -50,7 +50,7 @@ class ProjectMemberTest {
 
     @Test
     void changeMemberRole_프로젝트루트에서_멤버역할을_변경한다() {
-        Project project = Project.create("프로젝트", "설명");
+        Project project = Project.create("프로젝트", "설명", UUID.randomUUID());
         ProjectMember member = project.addMember(UUID.randomUUID(), ProjectRole.MEMBER);
 
         project.changeMemberRole(member, ProjectRole.ADMIN);
@@ -60,8 +60,8 @@ class ProjectMemberTest {
 
     @Test
     void changeMemberRole_다른프로젝트_멤버면_예외를_던진다() {
-        Project project = Project.create("프로젝트", "설명");
-        Project otherProject = Project.create("다른 프로젝트", "설명");
+        Project project = Project.create("프로젝트", "설명", UUID.randomUUID());
+        Project otherProject = Project.create("다른 프로젝트", "설명", UUID.randomUUID());
         ProjectMember foreignMember = otherProject.addMember(UUID.randomUUID(), ProjectRole.MEMBER);
 
         DomainException ex = assertThrows(

@@ -161,7 +161,7 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
         );
     }
 
-    public void softDelete() {
+    public void softDelete(UUID actorId) {
         this.deletedAt = Instant.now();
     }
 

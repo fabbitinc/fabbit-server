@@ -56,22 +56,22 @@ public class DrawingService {
         return drawing;
     }
 
-    public void deleteDrawing(UUID drawingId) {
+    public void deleteDrawing(UUID drawingId, UUID actorId) {
         Drawing drawing = drawingRepository.findById(drawingId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "도면을 찾을 수 없습니다"));
 
         Set<String> keys = new LinkedHashSet<>();
         drawing.getArtifacts().forEach(artifact -> keys.add(artifact.getStorageKey()));
         keys.forEach(this::softDeleteFileByKey);
-        drawing.softDelete();
+        drawing.softDelete(actorId);
         partPreviewService.clearByDrawing(drawingId);
     }
 
-    public void deleteDrawing(UUID partRevisionId, UUID drawingId) {
+    public void deleteDrawing(UUID partRevisionId, UUID drawingId, UUID actorId) {
         Drawing drawing = drawingRepository.findById(drawingId)
                 .filter(it -> it.getDeletedAt() == null && partRevisionId.equals(it.getPartRevisionId()))
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "도면을 찾을 수 없습니다"));
-        deleteDrawing(drawing.getId());
+        deleteDrawing(drawing.getId(), actorId);
     }
 
     private void softDeleteFileByKey(String fileKey) {
@@ -81,7 +81,7 @@ public class DrawingService {
         fileRepository.findByFileKeyAndDeletedAtIsNull(fileKey)
                 .ifPresent(file -> {
                     long fileSize = file.getFileSize();
-                    file.softDelete();
+                    file.softDelete(null);
                     if (fileSize > 0L) {
                         organizationApi.releaseStorageForCurrentTenant(fileSize);
                     }

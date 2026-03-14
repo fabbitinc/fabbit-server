@@ -11,6 +11,7 @@ import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartRevisionActivityActionType;
 import com.fabbitinc.server.domain.part.model.PartRevisionActivitySourceType;
+import com.fabbitinc.server.domain.part.model.PartRevisionDraftChanges;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
@@ -73,14 +74,12 @@ public class PartRevisionService {
     public PartRevision updateDraft(UpdatePartRevisionInput input, UUID actorId) {
         try {
             PartRevision revision = getRequiredDraft(input.partNumber(), input.baseRevisionCode(), input.draftKey());
-            revision.assertDraftEditable();
-
-            if (!input.hasAnyFieldSet()) {
+            PartRevisionDraftChanges changes = toDraftChanges(input);
+            if (!changes.hasAnyChange()) {
                 return revision;
             }
 
-            applyUpdateInput(revision, input);
-            revision.touch(actorId);
+            revision.editDraft(changes, actorId);
             revision.recordActivity(actorId, PartRevisionActivityActionType.EDITED, PartRevisionActivitySourceType.UI, null, "{}");
             return revision;
         } catch (DomainException ex) {
@@ -97,9 +96,8 @@ public class PartRevisionService {
 
             String revisionCode = resolveNextRevisionCode(part);
             supersedeCurrentApprovedIfNeeded(part, draft.getId());
-            draft.approve(revisionCode);
+            draft.approve(revisionCode, actorId);
             part.assignCurrentApprovedRevision(draft.getId());
-            draft.touch(actorId);
             draft.recordActivity(
                     actorId,
                     PartRevisionActivityActionType.APPROVED,
@@ -140,10 +138,9 @@ public class PartRevisionService {
             assertReleasableApprovedRevision(part, revision);
 
             supersedeCurrentReleasedIfNeeded(part, revision.getId());
-            revision.release(revision.getRevisionCode());
+            revision.release(revision.getRevisionCode(), actorId);
             part.assignCurrentApprovedRevision(revision.getId());
             part.assignCurrentReleasedRevision(revision.getId());
-            revision.touch(actorId);
             revision.recordActivity(
                     actorId,
                     PartRevisionActivityActionType.RELEASED,
@@ -159,8 +156,7 @@ public class PartRevisionService {
 
     public void markInReview(PartRevision revision, UUID actorId) {
         try {
-            revision.markInReview();
-            revision.touch(actorId);
+            revision.markInReview(actorId);
         } catch (DomainException ex) {
             throw toAppException(ex);
         }
@@ -168,8 +164,7 @@ public class PartRevisionService {
 
     public void revertToDraft(PartRevision revision, UUID actorId) {
         try {
-            revision.revertToDraft();
-            revision.touch(actorId);
+            revision.revertToDraft(actorId);
         } catch (DomainException ex) {
             throw toAppException(ex);
         }
@@ -214,10 +209,9 @@ public class PartRevisionService {
         String revisionCode = resolveNextRevisionCode(part);
         supersedeCurrentApprovedIfNeeded(part, draft.getId());
         supersedeCurrentReleasedIfNeeded(part, draft.getId());
-        draft.release(revisionCode);
+        draft.release(revisionCode, actorId);
         part.assignCurrentApprovedRevision(draft.getId());
         part.assignCurrentReleasedRevision(draft.getId());
-        draft.touch(actorId);
         draft.recordActivity(
                 actorId,
                 PartRevisionActivityActionType.RELEASED,
@@ -228,43 +222,25 @@ public class PartRevisionService {
         return draft;
     }
 
-    private void applyUpdateInput(PartRevision revision, UpdatePartRevisionInput input) {
-        if (input.nameSet()) {
-            revision.changeName(input.name());
-        }
-        if (input.materialSet()) {
-            revision.changeMaterial(input.material());
-        }
-        if (input.unitSet()) {
-            revision.changeUnit(input.unit());
-        }
-        if (input.descriptionSet()) {
-            revision.changeDescription(input.description());
-        }
-        if (input.categorySet()) {
-            revision.changeCategory(input.category());
-        }
-        if (input.phantomSet()) {
-            applyPhantom(revision, input.phantom());
-        }
-        if (input.leadTimeDaysSet()) {
-            revision.changeLeadTimeDays(input.leadTimeDays());
-        }
-        if (input.extendedPropertiesSet()) {
-            revision.changeExtendedProperties(serializeProperties(input.extendedProperties()));
-        }
-    }
-
-    private void applyPhantom(PartRevision revision, Boolean phantom) {
-        if (phantom == null) {
-            revision.clearPhantomFlag();
-            return;
-        }
-        if (Boolean.TRUE.equals(phantom)) {
-            revision.markPhantom();
-            return;
-        }
-        revision.markReal();
+    private PartRevisionDraftChanges toDraftChanges(UpdatePartRevisionInput input) {
+        return new PartRevisionDraftChanges(
+                input.name(),
+                input.nameSet(),
+                input.material(),
+                input.materialSet(),
+                input.unit(),
+                input.unitSet(),
+                input.description(),
+                input.descriptionSet(),
+                input.category(),
+                input.categorySet(),
+                input.phantom(),
+                input.phantomSet(),
+                input.leadTimeDays(),
+                input.leadTimeDaysSet(),
+                input.extendedPropertiesSet() ? serializeProperties(input.extendedProperties()) : null,
+                input.extendedPropertiesSet()
+        );
     }
 
     private PartRevision getRequiredRevision(String partNumber, String revisionCode) {

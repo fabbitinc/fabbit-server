@@ -180,7 +180,7 @@ class PartServiceTest {
 
     PartService service = createService();
 
-    service.detachFile(revision.getId(), file.getId());
+    service.detachFile(revision.getId(), file.getId(), UUID.randomUUID());
 
     assertNotNull(file.getDeletedAt());
     verify(partPreviewService).clearByFile(file.getId());

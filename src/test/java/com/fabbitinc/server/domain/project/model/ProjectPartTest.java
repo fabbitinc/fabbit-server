@@ -11,7 +11,7 @@ class ProjectPartTest {
 
     @Test
     void linkPart_부품_ID로_링크를_추가한다() {
-        Project project = Project.create("프로젝트", "설명");
+        Project project = Project.create("프로젝트", "설명", UUID.randomUUID());
         UUID partId = UUID.randomUUID();
 
         ProjectPart link = project.linkPart(partId);
@@ -24,7 +24,7 @@ class ProjectPartTest {
 
     @Test
     void link_partId가_null이면_예외를_던진다() {
-        Project project = Project.create("프로젝트", "설명");
+        Project project = Project.create("프로젝트", "설명", UUID.randomUUID());
 
         DomainException ex = assertThrows(
                 DomainException.class,

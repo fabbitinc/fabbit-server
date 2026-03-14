@@ -1,6 +1,6 @@
 package com.fabbitinc.server.domain.label.model;
 
-import com.fabbitinc.server.domain.common.entity.AbstractAuditableEntity;
+import com.fabbitinc.server.domain.common.entity.AbstractActorAuditableEntity;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.user.model.User;
@@ -26,7 +26,7 @@ import lombok.NoArgsConstructor;
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Label extends AbstractAuditableEntity {
+public class Label extends AbstractActorAuditableEntity {
 
     public static final String CODE_LABEL_ACTOR_REQUIRED = "LABEL_ACTOR_REQUIRED";
     public static final String CODE_LABEL_NAME_REQUIRED = "LABEL_NAME_REQUIRED";
@@ -48,16 +48,10 @@ public class Label extends AbstractAuditableEntity {
     @Column(name = "color", nullable = false, length = 7)
     private String color;
 
-    @Column(name = "created_by")
-    private UUID createdBy;
-
     @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
     private User _createdByRelation;
-
-    @Column(name = "updated_by")
-    private UUID updatedBy;
 
     @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
@@ -70,8 +64,7 @@ public class Label extends AbstractAuditableEntity {
         this.description = normalizeDescription(description);
         this.color = requireColor(color);
         UUID requiredActorId = requireActorId(actorId);
-        this.createdBy = requiredActorId;
-        this.updatedBy = requiredActorId;
+        initializeActor(requiredActorId);
     }
 
     public static Label create(String name, String description, String color, UUID actorId) {
@@ -80,26 +73,22 @@ public class Label extends AbstractAuditableEntity {
 
     public void changeName(String name, UUID actorId) {
         UUID requiredActorId = requireActorId(actorId);
-        this.name = requireName(name);
-        touch(requiredActorId);
+        mutate(requiredActorId, () -> this.name = requireName(name));
     }
 
     public void changeDescription(String description, UUID actorId) {
         UUID requiredActorId = requireActorId(actorId);
-        this.description = normalizeDescription(description);
-        touch(requiredActorId);
+        mutate(requiredActorId, () -> this.description = normalizeDescription(description));
     }
 
     public void removeDescription(UUID actorId) {
         UUID requiredActorId = requireActorId(actorId);
-        this.description = null;
-        touch(requiredActorId);
+        mutate(requiredActorId, () -> this.description = null);
     }
 
     public void changeColor(String color, UUID actorId) {
         UUID requiredActorId = requireActorId(actorId);
-        this.color = requireColor(color);
-        touch(requiredActorId);
+        mutate(requiredActorId, () -> this.color = requireColor(color));
     }
 
     private UUID requireActorId(UUID value) {
@@ -145,8 +134,13 @@ public class Label extends AbstractAuditableEntity {
         return trimmed;
     }
 
-    private void touch(UUID actorId) {
-        this.updatedBy = actorId;
-        this._updatedByRelation = null;
+    @Override
+    protected void afterActorTouched(UUID actorId, boolean createdByInitialized) {
+        if (actorId != null) {
+            if (createdByInitialized) {
+                this._createdByRelation = null;
+            }
+            this._updatedByRelation = null;
+        }
     }
 }

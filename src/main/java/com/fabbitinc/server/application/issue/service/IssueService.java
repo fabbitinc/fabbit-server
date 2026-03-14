@@ -697,7 +697,7 @@ public class IssueService {
 
         String fileName = file.getOriginalName();
         long fileSize = file.getFileSize();
-        file.softDelete();
+        file.softDelete(actorId);
         if (fileSize > 0L) {
             organizationApi.releaseStorageForCurrentTenant(fileSize);
         }

@@ -678,12 +678,12 @@ public class SynthesisV2ExecutionService {
         Project existing = projectRepository.findByNameAndDeletedFalse(values.name()).orElse(null);
         if (existing != null) {
             if (shouldApplyString(values.description(), existing.getDescription(), overwrite)) {
-                existing.changeDescription(values.description());
+                existing.changeDescription(values.description(), null);
             }
             return new UpsertProjectResult(existing, false);
         }
 
-        Project created = Project.create(values.name(), values.description());
+        Project created = Project.create(values.name(), values.description(), null);
         projectRepository.save(created);
         return new UpsertProjectResult(created, true);
     }

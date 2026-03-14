@@ -1,6 +1,6 @@
 package com.fabbitinc.server.domain.issue.model;
 
-import com.fabbitinc.server.domain.common.entity.AbstractAuditableEntity;
+import com.fabbitinc.server.domain.common.entity.AbstractActorAuditableEntity;
 import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
@@ -42,7 +42,7 @@ import lombok.NoArgsConstructor;
 @DiscriminatorColumn(name = "type", discriminatorType = DiscriminatorType.STRING, length = 20)
 @DiscriminatorValue("ISSUE")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Issue extends AbstractAuditableEntity implements AggregateRoot {
+public class Issue extends AbstractActorAuditableEntity implements AggregateRoot {
 
     public static final String CODE_ISSUE_ACTOR_REQUIRED = "ISSUE_ACTOR_REQUIRED";
     public static final String CODE_ISSUE_TITLE_REQUIRED = "ISSUE_TITLE_REQUIRED";
@@ -71,12 +71,6 @@ public class Issue extends AbstractAuditableEntity implements AggregateRoot {
     @Column(name = "closed_at")
     private Instant closedAt;
 
-    @Column(name = "created_by", nullable = false)
-    private UUID createdBy;
-
-    @Column(name = "updated_by", nullable = false)
-    private UUID updatedBy;
-
     @OneToMany(mappedBy = "issue", fetch = FetchType.LAZY)
     private List<IssueAssignee> assignees = new ArrayList<>();
 
@@ -99,8 +93,7 @@ public class Issue extends AbstractAuditableEntity implements AggregateRoot {
         this.body = body;
         this.state = IssueState.OPEN;
         UUID requiredActorId = requireActorId(actorId);
-        this.createdBy = requiredActorId;
-        this.updatedBy = requiredActorId;
+        initializeActor(requiredActorId);
     }
 
     public static Issue create(int number, String title, String body, UUID actorId) {
@@ -109,34 +102,34 @@ public class Issue extends AbstractAuditableEntity implements AggregateRoot {
 
     public void updateTitle(String title, UUID actorId) {
         UUID requiredActorId = requireActorId(actorId);
-        this.title = requireTitle(title);
-        touch(requiredActorId);
+        mutate(requiredActorId, () -> this.title = requireTitle(title));
     }
 
     public void updateBody(String body, UUID actorId) {
         UUID requiredActorId = requireActorId(actorId);
-        this.body = body;
-        touch(requiredActorId);
+        mutate(requiredActorId, () -> this.body = body);
     }
 
     public void close(Instant now, UUID actorId) {
         UUID requiredActorId = requireActorId(actorId);
-        if (state != IssueState.OPEN) {
-            throw new DomainException(CODE_ISSUE_INVALID_STATE, "OPEN 상태에서만 닫을 수 있습니다");
-        }
-        this.state = IssueState.CLOSED;
-        this.closedAt = now;
-        touch(requiredActorId);
+        mutate(requiredActorId, () -> {
+            if (state != IssueState.OPEN) {
+                throw new DomainException(CODE_ISSUE_INVALID_STATE, "OPEN 상태에서만 닫을 수 있습니다");
+            }
+            this.state = IssueState.CLOSED;
+            this.closedAt = now;
+        });
     }
 
     public void reopen(UUID actorId) {
         UUID requiredActorId = requireActorId(actorId);
-        if (state != IssueState.CLOSED) {
-            throw new DomainException(CODE_ISSUE_INVALID_STATE, "CLOSED 상태에서만 다시 열 수 있습니다");
-        }
-        this.state = IssueState.OPEN;
-        this.closedAt = null;
-        touch(requiredActorId);
+        mutate(requiredActorId, () -> {
+            if (state != IssueState.CLOSED) {
+                throw new DomainException(CODE_ISSUE_INVALID_STATE, "CLOSED 상태에서만 다시 열 수 있습니다");
+            }
+            this.state = IssueState.OPEN;
+            this.closedAt = null;
+        });
     }
 
     protected void markClosed(Instant now, UUID actorId) {
@@ -213,9 +206,5 @@ public class Issue extends AbstractAuditableEntity implements AggregateRoot {
             throw new DomainException(CODE_ISSUE_TITLE_TOO_LONG, "이슈 제목은 500자 이하여야 합니다");
         }
         return trimmed;
-    }
-
-    protected void touch(UUID actorId) {
-        this.updatedBy = actorId;
     }
 }

@@ -136,7 +136,7 @@ public class PartService {
         return files;
     }
 
-    public void detachFile(UUID partRevisionId, UUID fileId) {
+    public void detachFile(UUID partRevisionId, UUID fileId, UUID actorId) {
         getRevisionOrThrow(partRevisionId);
 
         File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(fileId, "part_revision", partRevisionId)
@@ -145,7 +145,7 @@ public class PartService {
                         "PartRevision '" + partRevisionId + "'에 연결된 파일 '" + fileId + "'을(를) 찾을 수 없습니다"
                 ));
         long fileSize = file.getFileSize();
-        file.softDelete();
+        file.softDelete(actorId);
         partPreviewService.clearByFile(fileId);
         if (fileSize > 0L) {
             organizationApi.releaseStorageForCurrentTenant(fileSize);

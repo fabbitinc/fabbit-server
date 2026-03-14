@@ -25,13 +25,13 @@ public class TeamService {
         return teamRepository.save(team);
     }
 
-    public Team updateTeam(UUID teamId, String name, String description) {
+    public Team updateTeam(UUID actorId, UUID teamId, String name, String description) {
         Team team = getOrThrow(teamId);
         if (name != null && !name.equals(team.getName())) {
-            team.changeName(name);
+            team.changeName(name, actorId);
         }
         if (description != null && !description.equals(team.getDescription())) {
-            team.changeDescription(description);
+            team.changeDescription(description, actorId);
         }
         return team;
     }

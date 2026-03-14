@@ -30,6 +30,21 @@ description: Java Spring Rich Domain Model/DDD 기준으로 Entity 규칙을 적
 - relation entity는 자기 Root 참조만 객체로 둘 수 있다. Root 밖의 다른 Aggregate 참조는 ID만 보관하라.
 - relation entity에 독립 상태 전이, 승인/거절, 재처리, 별도 저장소 중심 조회/수정 흐름이 생기면 별도 Aggregate 승격을 검토하라.
 
+## 공통 베이스 엔티티 규칙
+
+- 공통 베이스 엔티티는 횡단 메타데이터를 줄이기 위한 경우에만 사용하라.
+- 공통 베이스에는 `createdAt`, `updatedAt`, `createdBy`, `updatedBy`, `deletedAt`, `deletedBy`처럼 감사/삭제 메타데이터만 올려라.
+- 위 actor 필드는 현재 기준 `UUID`를 사용하라. `String` actor 식별자는 기본 선택으로 사용하지 마라.
+- 공통 베이스에 도메인 상태 전이, 권한 정책, Aggregate별 업무 규칙을 넣지 마라.
+- 다른 Aggregate 참조용 JPA relation(`_createdByRelation`, `_updatedByRelation`)은 공통 베이스에 넣지 말고, 해당 엔티티에서 필요할 때만 읽기 전용 보조 relation으로 선언하라.
+- 공통 베이스 메서드는 `touch(UUID actorId)`, `initializeActor(UUID actorId)`, `softDelete(UUID actorId)`처럼 메타데이터 갱신 책임만 가져야 한다.
+- actor 감사가 필요한 엔티티는 공통 베이스의 `mutate(UUID actorId, Runnable change)` 패턴을 우선 사용하라.
+- 엔티티 공개 행위 메서드가 actor를 받는다면, 내부에서 `mutate(...)`로 상태 변경과 audit 갱신을 함께 묶어라.
+- `mutate(...)`는 엔티티 내부 구현 보조로만 사용하라. 공개 도메인 API가 `Runnable`, `Consumer` 같은 콜백을 직접 받지 않게 하라.
+- Service/UseCase에서 엔티티의 `touch(...)`를 직접 호출하는 구조를 만들지 마라.
+- `touch(...)`는 외부 사용을 위한 공개 API로 노출하지 말고, 엔티티 내부 구현 보조로만 사용하라.
+- Spring Data `@CreatedBy`, `@LastModifiedBy` 자동 감사는 도메인에서 수행자 ID를 명시적으로 제어하지 않아도 될 때만 사용하라. 배치/합성/시스템 처리처럼 수행자 출처가 다양한 경우에는 엔티티/서비스에서 actor를 명시적으로 넘겨 갱신하라.
+
 ## 생성 및 상태 전이 규칙
 
 - 엔티티 생성은 `static factory`를 사용하라.

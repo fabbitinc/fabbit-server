@@ -64,7 +64,7 @@ class FileCleanupServiceTest {
     void cleanupExpiredDeletedFiles_bulk_delete가_실패해도_DB_정리는_진행한다() {
         File deleted = File.create(UUID.randomUUID(), "deleted.txt", "tenants/org/uploaded/deleted.txt", "text/plain", 30);
         deleted.markUploaded();
-        deleted.softDelete();
+        deleted.softDelete(null);
 
         when(fileRepository.findByDeletedAtBeforeOrderByDeletedAtAscIdAsc(
                 any(Instant.class),

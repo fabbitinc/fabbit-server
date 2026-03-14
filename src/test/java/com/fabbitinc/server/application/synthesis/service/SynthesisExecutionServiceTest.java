@@ -436,7 +436,7 @@ class SynthesisExecutionServiceTest {
     @Test
     void processRow_hasItem_프로젝트_컬럼이_없으면_파일_소유_프로젝트를_사용한다() {
         Part part = Part.create("P-001");
-        Project project = Project.create("Owned Project", null);
+        Project project = Project.create("Owned Project", null, null);
         File file = File.create("items.xlsx", "files/items.xlsx", "application/vnd.ms-excel", 100L);
         file.markUploaded();
         file.assignOwner("project", project.getId());

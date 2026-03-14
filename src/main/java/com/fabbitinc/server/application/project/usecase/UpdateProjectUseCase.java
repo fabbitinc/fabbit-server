@@ -17,9 +17,10 @@ public class UpdateProjectUseCase {
     private final ProjectService projectService;
 
     public UpdateProjectResult execute(UpdateProjectCommand command) {
-        currentAuthProvider.getCurrentAuth();
+        var auth = currentAuthProvider.getCurrentAuth();
         return new UpdateProjectResult(projectService.updateProject(
                 command.projectId(),
+                auth.userId(),
                 command.name(),
                 command.description()
         ).getId());

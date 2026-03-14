@@ -39,9 +39,10 @@ class TeamRelationTest {
 
     @Test
     void team_changeDescription_blank면_null로_정규화한다() {
-        Team team = Team.create("Core Team", "설명", UUID.randomUUID());
+        UUID actorId = UUID.randomUUID();
+        Team team = Team.create("Core Team", "설명", actorId);
 
-        team.changeDescription("   ");
+        team.changeDescription("   ", actorId);
 
         assertNull(team.getDescription());
     }

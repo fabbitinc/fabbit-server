@@ -31,6 +31,6 @@ public class DeleteOrganizationProfileImageUseCase {
         }
 
         organizationService.deleteProfileImage(auth);
-        fileService.softDelete(files.getFirst().getId());
+        fileService.softDelete(files.getFirst().getId(), auth.userId());
     }
 }

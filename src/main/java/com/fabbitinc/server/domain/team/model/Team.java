@@ -1,6 +1,6 @@
 package com.fabbitinc.server.domain.team.model;
 
-import com.fabbitinc.server.domain.common.entity.AbstractAuditableEntity;
+import com.fabbitinc.server.domain.common.entity.AbstractActorAuditableEntity;
 import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
@@ -29,7 +29,7 @@ import lombok.NoArgsConstructor;
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Team extends AbstractAuditableEntity implements AggregateRoot {
+public class Team extends AbstractActorAuditableEntity implements AggregateRoot {
 
     public static final String CODE_TEAM_CREATED_BY_REQUIRED = "TEAM_CREATED_BY_REQUIRED";
     public static final String CODE_TEAM_NAME_REQUIRED = "TEAM_NAME_REQUIRED";
@@ -43,9 +43,6 @@ public class Team extends AbstractAuditableEntity implements AggregateRoot {
     @Column(name = "description", columnDefinition = "text")
     private String description;
 
-    @Column(name = "created_by", nullable = false)
-    private UUID createdBy;
-
     @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
@@ -58,19 +55,19 @@ public class Team extends AbstractAuditableEntity implements AggregateRoot {
         super(UuidV7Generator.next());
         this.name = validateName(name);
         this.description = normalizeDescription(description);
-        this.createdBy = requireCreatedBy(createdBy);
+        initializeActor(requireCreatedBy(createdBy));
     }
 
     public static Team create(String name, String description, UUID createdBy) {
         return new Team(name, description, createdBy);
     }
 
-    public void changeName(String name) {
-        this.name = validateName(name);
+    public void changeName(String name, UUID actorId) {
+        mutate(actorId, () -> this.name = validateName(name));
     }
 
-    public void changeDescription(String description) {
-        this.description = normalizeDescription(description);
+    public void changeDescription(String description, UUID actorId) {
+        mutate(actorId, () -> this.description = normalizeDescription(description));
     }
 
     public TeamMember addMember(UUID userId) {

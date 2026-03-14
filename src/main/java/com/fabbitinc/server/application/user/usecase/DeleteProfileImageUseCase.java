@@ -31,7 +31,7 @@ public class DeleteProfileImageUseCase {
         }
 
         userService.deleteProfileImage(auth.userId());
-        fileService.softDelete(files.getFirst().getId());
+        fileService.softDelete(files.getFirst().getId(), auth.userId());
         log.atInfo()
                 .addKeyValue("event.name", "user.profile-image.deleted")
                 .addKeyValue("user.id", auth.userId())

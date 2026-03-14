@@ -791,7 +791,7 @@ public class SynthesisExecutionService {
             return new UpsertProjectResult(existing, false);
         }
 
-        Project created = Project.create(values.name(), null);
+        Project created = Project.create(values.name(), null, null);
         projectRepository.save(created);
         return new UpsertProjectResult(created, true);
     }

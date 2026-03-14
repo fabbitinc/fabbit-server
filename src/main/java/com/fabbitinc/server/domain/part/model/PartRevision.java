@@ -1,6 +1,6 @@
 package com.fabbitinc.server.domain.part.model;
 
-import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
+import com.fabbitinc.server.domain.common.entity.AbstractActorAuditableEntity;
 import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
@@ -46,7 +46,7 @@ import org.hibernate.type.SqlTypes;
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class PartRevision extends AbstractCreatedEntity implements AggregateRoot {
+public class PartRevision extends AbstractActorAuditableEntity implements AggregateRoot {
 
     public static final String CODE_PART_REVISION_PART_REQUIRED = "PART_REVISION_PART_REQUIRED";
     public static final String CODE_PART_REVISION_PART_NUMBER_REQUIRED = "PART_REVISION_PART_NUMBER_REQUIRED";
@@ -119,16 +119,10 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
     @Column(name = "name", length = 500)
     private String name;
 
-    @Column(name = "created_by")
-    private UUID createdBy;
-
     @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", insertable = false, updatable = false)
     private User _createdByRelation;
-
-    @Column(name = "updated_by")
-    private UUID updatedBy;
 
     @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
@@ -293,18 +287,6 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
         this.name = normalizeName(name);
     }
 
-    public void touch(UUID actorId) {
-        if (actorId == null) {
-            return;
-        }
-        if (this.createdBy == null) {
-            this.createdBy = actorId;
-            this._createdByRelation = null;
-        }
-        this.updatedBy = actorId;
-        this._updatedByRelation = null;
-    }
-
     public void assignOwner(UUID ownerId) {
         if (ownerId == null) {
             throw new DomainException(CODE_PART_REVISION_OWNER_REQUIRED, "담당자 ID는 필수입니다");
@@ -378,6 +360,53 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
         this.extendedProperties = normalizeExtendedProperties(extendedProperties);
     }
 
+    public void editDraft(PartRevisionDraftChanges changes, UUID actorId) {
+        if (changes == null) {
+            throw new DomainException(CODE_PART_REVISION_DRAFT_SOURCE_REQUIRED, "변경 내용은 필수입니다");
+        }
+        assertDraftEditable();
+        mutate(actorId, () -> {
+            if (changes.nameSet()) {
+                this.name = normalizeName(changes.name());
+            }
+            if (changes.materialSet()) {
+                this.material = normalizeMaterial(changes.material());
+            }
+            if (changes.unitSet()) {
+                this.unit = normalizeUnit(changes.unit());
+            }
+            if (changes.descriptionSet()) {
+                this.description = normalizeNullableText(changes.description());
+            }
+            if (changes.categorySet()) {
+                this.category = normalizeCategory(changes.category());
+            }
+            if (changes.phantomSet()) {
+                if (changes.phantom() == null) {
+                    this.phantom = null;
+                } else {
+                    this.phantom = changes.phantom();
+                }
+            }
+            if (changes.leadTimeDaysSet()) {
+                if (changes.leadTimeDays() == null) {
+                    this.leadTimeDays = null;
+                } else {
+                    if (changes.leadTimeDays() < 0) {
+                        throw new DomainException(
+                                CODE_PART_REVISION_LEAD_TIME_DAYS_INVALID,
+                                "리드타임은 0 이상이어야 합니다"
+                        );
+                    }
+                    this.leadTimeDays = changes.leadTimeDays();
+                }
+            }
+            if (changes.extendedPropertiesSet()) {
+                this.extendedProperties = normalizeExtendedProperties(changes.extendedProperties());
+            }
+        });
+    }
+
     public void assertDraftEditable() {
         if (this.status != PartRevisionStatus.DRAFT) {
             throw new DomainException(CODE_PART_REVISION_DRAFT_REQUIRED, "DRAFT 상태의 리비전만 수정할 수 있습니다");
@@ -391,65 +420,95 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
     }
 
     public void approve(String revisionCode) {
-        assertApprovable();
-        this.status = PartRevisionStatus.APPROVED;
-        this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
-        this.draftKey = null;
+        approve(revisionCode, null);
+    }
+
+    public void approve(String revisionCode, UUID actorId) {
+        mutate(actorId, () -> {
+            assertApprovable();
+            this.status = PartRevisionStatus.APPROVED;
+            this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
+            this.draftKey = null;
+        });
     }
 
     public void release(String revisionCode) {
-        if (this.status == PartRevisionStatus.APPROVED) {
+        release(revisionCode, null);
+    }
+
+    public void release(String revisionCode, UUID actorId) {
+        mutate(actorId, () -> {
+            if (this.status == PartRevisionStatus.APPROVED) {
+                this.status = PartRevisionStatus.RELEASED;
+                this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
+                this.draftKey = null;
+                return;
+            }
+
+            assertReleasableDraft();
             this.status = PartRevisionStatus.RELEASED;
             this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
             this.draftKey = null;
-            return;
-        }
-
-        assertReleasableDraft();
-        this.status = PartRevisionStatus.RELEASED;
-        this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
-        this.draftKey = null;
+        });
     }
 
     public void markInReview() {
-        if (this.status == PartRevisionStatus.IN_REVIEW) {
-            return;
-        }
-        if (this.status != PartRevisionStatus.DRAFT) {
-            throw new DomainException(
-                    CODE_PART_REVISION_CHANGE_REQUEST_INVALID_STATE,
-                    "DRAFT 상태의 리비전만 IN_REVIEW로 전환할 수 있습니다"
-            );
-        }
-        this.status = PartRevisionStatus.IN_REVIEW;
+        markInReview(null);
+    }
+
+    public void markInReview(UUID actorId) {
+        mutate(actorId, () -> {
+            if (this.status == PartRevisionStatus.IN_REVIEW) {
+                return;
+            }
+            if (this.status != PartRevisionStatus.DRAFT) {
+                throw new DomainException(
+                        CODE_PART_REVISION_CHANGE_REQUEST_INVALID_STATE,
+                        "DRAFT 상태의 리비전만 IN_REVIEW로 전환할 수 있습니다"
+                );
+            }
+            this.status = PartRevisionStatus.IN_REVIEW;
+        });
     }
 
     public void revertToDraft() {
-        if (this.status == PartRevisionStatus.DRAFT) {
-            return;
-        }
-        if (this.status != PartRevisionStatus.IN_REVIEW) {
-            throw new DomainException(
-                    CODE_PART_REVISION_IN_REVIEW_REQUIRED,
-                    "IN_REVIEW 상태의 리비전만 DRAFT로 되돌릴 수 있습니다"
-            );
-        }
-        this.status = PartRevisionStatus.DRAFT;
+        revertToDraft(null);
+    }
+
+    public void revertToDraft(UUID actorId) {
+        mutate(actorId, () -> {
+            if (this.status == PartRevisionStatus.DRAFT) {
+                return;
+            }
+            if (this.status != PartRevisionStatus.IN_REVIEW) {
+                throw new DomainException(
+                        CODE_PART_REVISION_IN_REVIEW_REQUIRED,
+                        "IN_REVIEW 상태의 리비전만 DRAFT로 되돌릴 수 있습니다"
+                );
+            }
+            this.status = PartRevisionStatus.DRAFT;
+        });
     }
 
     public void markSuperseded() {
-        if (this.status == PartRevisionStatus.SUPERSEDED) {
-            return;
-        }
-        if (this.status != PartRevisionStatus.APPROVED && this.status != PartRevisionStatus.RELEASED) {
-            throw new DomainException(
-                    CODE_PART_REVISION_SUPERSEDE_INVALID_STATE,
-                    "공식 리비전만 SUPERSEDED 상태로 전환할 수 있습니다"
-            );
-        }
-        this.status = PartRevisionStatus.SUPERSEDED;
-        this.revisionCode = normalizeRevisionCode(this.revisionCode, this.status);
-        this.draftKey = null;
+        markSuperseded(null);
+    }
+
+    public void markSuperseded(UUID actorId) {
+        mutate(actorId, () -> {
+            if (this.status == PartRevisionStatus.SUPERSEDED) {
+                return;
+            }
+            if (this.status != PartRevisionStatus.APPROVED && this.status != PartRevisionStatus.RELEASED) {
+                throw new DomainException(
+                        CODE_PART_REVISION_SUPERSEDE_INVALID_STATE,
+                        "공식 리비전만 SUPERSEDED 상태로 전환할 수 있습니다"
+                );
+            }
+            this.status = PartRevisionStatus.SUPERSEDED;
+            this.revisionCode = normalizeRevisionCode(this.revisionCode, this.status);
+            this.draftKey = null;
+        });
     }
 
     public void copyEditableFieldsFrom(PartRevision source) {
@@ -653,7 +712,17 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
     }
 
     private static PartRevision initializeActor(PartRevision revision, UUID actorId) {
-        revision.touch(actorId);
+        revision.initializeActor(actorId);
         return revision;
+    }
+
+    @Override
+    protected void afterActorTouched(UUID actorId, boolean createdByInitialized) {
+        if (actorId != null) {
+            if (createdByInitialized) {
+                this._createdByRelation = null;
+            }
+            this._updatedByRelation = null;
+        }
     }
 }

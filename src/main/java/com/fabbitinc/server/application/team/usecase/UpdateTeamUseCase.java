@@ -17,9 +17,9 @@ public class UpdateTeamUseCase {
     private final TeamService teamService;
 
     public UpdateTeamResult execute(UpdateTeamCommand command) {
-        currentAuthProvider.getCurrentAuth();
+        var auth = currentAuthProvider.getCurrentAuth();
         return new UpdateTeamResult(
-                teamService.updateTeam(command.teamId(), command.name(), command.description()).getId()
+                teamService.updateTeam(auth.userId(), command.teamId(), command.name(), command.description()).getId()
         );
     }
 }

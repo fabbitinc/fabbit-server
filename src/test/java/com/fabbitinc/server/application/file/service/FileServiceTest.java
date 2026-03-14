@@ -120,7 +120,7 @@ class FileServiceTest {
 
         FileService service = new FileService(fileRepository, storagePort, organizationApi);
 
-        service.softDelete(file.getId());
+        service.softDelete(file.getId(), UUID.randomUUID());
 
         assertNotNull(file.getDeletedAt());
         verify(organizationApi).releaseStorageForCurrentTenant(512L);
@@ -140,7 +140,7 @@ class FileServiceTest {
 
         FileService service = new FileService(fileRepository, storagePort, organizationApi);
 
-        service.softDelete(file.getId());
+        service.softDelete(file.getId(), UUID.randomUUID());
 
         assertNotNull(file.getDeletedAt());
         verify(organizationApi, never()).releaseStorageForCurrentTenant(512L);

@@ -168,7 +168,7 @@ public class File extends AbstractCreatedEntity {
         this.status = FileStatus.UPLOADED;
     }
 
-    public void softDelete() {
+    public void softDelete(UUID actorId) {
         this.deletedAt = Instant.now();
     }
 

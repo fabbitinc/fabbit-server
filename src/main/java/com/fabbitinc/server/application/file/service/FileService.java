@@ -197,12 +197,12 @@ public class FileService {
         return fileRepository.findByOwnerTypeAndOwnerIdAndDeletedAtIsNull(ownerType, ownerId);
     }
 
-    public void softDelete(UUID fileId) {
+    public void softDelete(UUID fileId, UUID actorId) {
         File file = fileRepository.findByIdAndDeletedAtIsNull(fileId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "파일을 찾을 수 없습니다"));
         boolean releaseStorage = file.getOwnerId() != null && file.getStatus() == FileStatus.UPLOADED;
         long fileSize = file.getFileSize();
-        file.softDelete();
+        file.softDelete(actorId);
         if (releaseStorage && fileSize > 0L) {
             organizationApi.releaseStorageForCurrentTenant(fileSize);
         }

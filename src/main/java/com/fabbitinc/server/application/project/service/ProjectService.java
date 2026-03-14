@@ -29,7 +29,7 @@ public class ProjectService {
 
     public Project createProject(UUID ownerId, String name, String description) {
         try {
-            Project project = Project.create(name, description);
+            Project project = Project.create(name, description, ownerId);
             ProjectMember ownerMember = project.addMember(ownerId, ProjectRole.ADMIN);
             projectRepository.save(project);
             projectMemberRepository.save(ownerMember);
@@ -39,14 +39,14 @@ public class ProjectService {
         }
     }
 
-    public Project updateProject(UUID projectId, String name, String description) {
+    public Project updateProject(UUID projectId, UUID actorId, String name, String description) {
         Project project = getOrThrow(projectId);
         try {
             if (name != null && !name.equals(project.getName())) {
-                project.rename(name);
+                project.rename(name, actorId);
             }
             if (description != null && !description.equals(project.getDescription())) {
-                project.changeDescription(description);
+                project.changeDescription(description, actorId);
             }
             return project;
         } catch (DomainException ex) {
@@ -58,7 +58,7 @@ public class ProjectService {
         ensureProjectAdmin(projectId, userId);
         Project project = getOrThrow(projectId);
         try {
-            project.archive();
+            project.archive(userId);
         } catch (DomainException ex) {
             throw toAppException(ex);
         }
@@ -68,7 +68,7 @@ public class ProjectService {
         ensureProjectAdmin(projectId, userId);
         Project project = getOrThrow(projectId);
         try {
-            project.unarchive();
+            project.unarchive(userId);
         } catch (DomainException ex) {
             throw toAppException(ex);
         }
@@ -77,7 +77,7 @@ public class ProjectService {
     public void deleteProject(UUID projectId, UUID userId) {
         ensureProjectAdmin(projectId, userId);
         Project project = getOrThrow(projectId);
-        project.softDelete(userId.toString());
+        project.softDelete(userId);
     }
 
     public int linkParts(UUID projectId, List<UUID> partIds) {

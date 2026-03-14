@@ -19,21 +19,22 @@ public abstract class AbstractSoftDeletableEntity extends AbstractActorAuditable
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
-    @Column(name = "deleted_by", length = 100)
-    private String deletedBy;
+    @Column(name = "deleted_by")
+    private UUID deletedBy;
 
     protected AbstractSoftDeletableEntity(UUID id) {
         super(id);
         this.deleted = false;
     }
 
-    public void softDelete(String actor) {
+    public void softDelete(UUID actorId) {
         if (deleted) {
             return;
         }
         this.deleted = true;
         this.deletedAt = Instant.now();
-        this.deletedBy = actor;
+        this.deletedBy = actorId;
+        touch(actorId);
     }
 
     public void restore() {

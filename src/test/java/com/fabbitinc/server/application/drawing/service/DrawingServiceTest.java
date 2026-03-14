@@ -82,7 +82,7 @@ class DrawingServiceTest {
             organizationApi,
             partPreviewService);
 
-    service.deleteDrawing(drawing.getId());
+    service.deleteDrawing(drawing.getId(), UUID.randomUUID());
 
     assertNotNull(original.getDeletedAt());
     verify(partPreviewService).clearByDrawing(drawing.getId());

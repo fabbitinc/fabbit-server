@@ -106,7 +106,7 @@ public class PartPreviewArtifactService {
         fileRepository.findByFileKeyAndDeletedAtIsNull(storageKey)
                 .ifPresent(file -> {
                     long fileSize = file.getFileSize();
-                    file.softDelete();
+                    file.softDelete(null);
                     fileRepository.save(file);
                     if (fileSize > 0L) {
                         organizationApi.releaseStorageForCurrentTenant(fileSize);
