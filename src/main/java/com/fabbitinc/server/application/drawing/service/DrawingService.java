@@ -36,12 +36,12 @@ public class DrawingService {
         this.drawingSourceClassifier = new DrawingSourceClassifier();
     }
 
-    public Drawing createDrawing(UUID partId, UUID fileId) {
-        File file = loadUploadedFile(fileId);
+    public Drawing createDrawing(UUID partRevisionId, UUID fileId) {
+        File file = loadUploadedFile(partRevisionId, fileId);
         DrawingSourceDescriptor sourceDescriptor = classifySource(file);
 
         Drawing drawing = Drawing.create(null, file.getOriginalName());
-        drawing.assignPart(partId);
+        drawing.assignPartRevision(partRevisionId);
         drawing.registerSourceFile(
                 file.getId(),
                 sourceDescriptor.dimension(),
@@ -67,9 +67,9 @@ public class DrawingService {
         partPreviewService.clearByDrawing(drawingId);
     }
 
-    public void deleteDrawing(UUID partId, UUID drawingId) {
+    public void deleteDrawing(UUID partRevisionId, UUID drawingId) {
         Drawing drawing = drawingRepository.findById(drawingId)
-                .filter(it -> it.getDeletedAt() == null && partId.equals(it.getPartId()))
+                .filter(it -> it.getDeletedAt() == null && partRevisionId.equals(it.getPartRevisionId()))
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "도면을 찾을 수 없습니다"));
         deleteDrawing(drawing.getId());
     }
@@ -88,9 +88,9 @@ public class DrawingService {
                 });
     }
 
-    private File loadUploadedFile(UUID fileId) {
-        File file = fileRepository.findByIdAndDeletedAtIsNull(fileId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "파일을 찾을 수 없습니다"));
+    private File loadUploadedFile(UUID partRevisionId, UUID fileId) {
+        File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(fileId, "part_revision", partRevisionId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "리비전에 연결된 파일을 찾을 수 없습니다"));
 
         if (file.getStatus() != FileStatus.UPLOADED) {
             throw new AppException(

@@ -4,6 +4,8 @@ import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
 import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
+import com.fabbitinc.server.domain.team.model.Team;
+import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -52,6 +54,9 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
     public static final String CODE_PART_REVISION_CODE_REQUIRED = "PART_REVISION_CODE_REQUIRED";
     public static final String CODE_PART_REVISION_CODE_TOO_LONG = "PART_REVISION_CODE_TOO_LONG";
     public static final String CODE_PART_REVISION_CODE_INVALID_FORMAT = "PART_REVISION_CODE_INVALID_FORMAT";
+    public static final String CODE_PART_REVISION_DRAFT_KEY_REQUIRED = "PART_REVISION_DRAFT_KEY_REQUIRED";
+    public static final String CODE_PART_REVISION_DRAFT_KEY_TOO_LONG = "PART_REVISION_DRAFT_KEY_TOO_LONG";
+    public static final String CODE_PART_REVISION_DRAFT_KEY_INVALID_FORMAT = "PART_REVISION_DRAFT_KEY_INVALID_FORMAT";
     public static final String CODE_PART_REVISION_NAME_TOO_LONG = "PART_REVISION_NAME_TOO_LONG";
     public static final String CODE_PART_REVISION_CATEGORY_TOO_LONG = "PART_REVISION_CATEGORY_TOO_LONG";
     public static final String CODE_PART_REVISION_MATERIAL_TOO_LONG = "PART_REVISION_MATERIAL_TOO_LONG";
@@ -61,8 +66,17 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
     public static final String CODE_PART_REVISION_DRAFT_REQUIRED = "PART_REVISION_DRAFT_REQUIRED";
     public static final String CODE_PART_REVISION_DRAFT_SOURCE_REQUIRED = "PART_REVISION_DRAFT_SOURCE_REQUIRED";
     public static final String CODE_PART_REVISION_DRAFT_CODE_FORBIDDEN = "PART_REVISION_DRAFT_CODE_FORBIDDEN";
+    public static final String CODE_PART_REVISION_APPROVABLE_REQUIRED = "PART_REVISION_APPROVABLE_REQUIRED";
+    public static final String CODE_PART_REVISION_RELEASABLE_REQUIRED = "PART_REVISION_RELEASABLE_REQUIRED";
+    public static final String CODE_PART_REVISION_SUPERSEDE_INVALID_STATE = "PART_REVISION_SUPERSEDE_INVALID_STATE";
+    public static final String CODE_PART_REVISION_OWNER_REQUIRED = "PART_REVISION_OWNER_REQUIRED";
+    public static final String CODE_PART_REVISION_OWNER_TEAM_REQUIRED = "PART_REVISION_OWNER_TEAM_REQUIRED";
+    public static final String CODE_PART_REVISION_CHANGE_REQUEST_REQUIRED = "PART_REVISION_CHANGE_REQUEST_REQUIRED";
+    public static final String CODE_PART_REVISION_CHANGE_REQUEST_INVALID_STATE = "PART_REVISION_CHANGE_REQUEST_INVALID_STATE";
+    public static final String CODE_PART_REVISION_IN_REVIEW_REQUIRED = "PART_REVISION_IN_REVIEW_REQUIRED";
 
     private static final int MAX_REVISION_CODE_LENGTH = 50;
+    private static final int MAX_DRAFT_KEY_LENGTH = 50;
     private static final int MAX_PART_NUMBER_LENGTH = 100;
     private static final int MAX_NAME_LENGTH = 500;
     private static final int MAX_CATEGORY_LENGTH = 100;
@@ -91,12 +105,34 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
     @Column(name = "revision_code", length = 50)
     private String revisionCode;
 
+    @Column(name = "draft_key", length = 50)
+    private String draftKey;
+
+    @Column(name = "change_request_id")
+    private UUID changeRequestId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private PartRevisionStatus status;
 
     @Column(name = "name", length = 500)
     private String name;
+
+    @Column(name = "owner_id")
+    private UUID ownerId;
+
+    @Getter(AccessLevel.NONE)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id", insertable = false, updatable = false)
+    private User _ownerRelation;
+
+    @Column(name = "owner_team_id")
+    private UUID ownerTeamId;
+
+    @Getter(AccessLevel.NONE)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_team_id", insertable = false, updatable = false)
+    private Team _ownerTeamRelation;
 
     @Column(name = "material", length = 200)
     private String material;
@@ -127,6 +163,7 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
     private PartRevision(
             Part part,
             String revisionCode,
+            String draftKey,
             UUID baseRevisionId,
             String name,
             PartRevisionStatus status
@@ -138,21 +175,22 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
         this._partRelation = requiredPart;
         this.status = requireStatus(status);
         this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
+        this.draftKey = normalizeDraftKey(draftKey, this.status);
         this.baseRevisionId = baseRevisionId;
         this.name = normalizeName(name);
         this.extendedProperties = "{}";
     }
 
-    public static PartRevision createInitialDraft(Part part, String name) {
-        return new PartRevision(part, null, null, name, PartRevisionStatus.DRAFT);
+    public static PartRevision createInitialDraft(Part part, String draftKey, String name) {
+        return new PartRevision(part, null, draftKey, null, name, PartRevisionStatus.DRAFT);
     }
 
-    public static PartRevision createDraft(Part part, UUID baseRevisionId, String name) {
-        return new PartRevision(part, null, baseRevisionId, name, PartRevisionStatus.DRAFT);
+    public static PartRevision createDraft(Part part, String draftKey, UUID baseRevisionId, String name) {
+        return new PartRevision(part, null, draftKey, baseRevisionId, name, PartRevisionStatus.DRAFT);
     }
 
     public static PartRevision createOfficial(Part part, String revisionCode, UUID baseRevisionId, String name, PartRevisionStatus status) {
-        return new PartRevision(part, revisionCode, baseRevisionId, name, status);
+        return new PartRevision(part, revisionCode, null, baseRevisionId, name, status);
     }
 
     public void assignBaseRevision(UUID baseRevisionId) {
@@ -171,6 +209,30 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
         this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
     }
 
+    public void changeDraftKey(String draftKey) {
+        this.draftKey = normalizeDraftKey(draftKey, this.status);
+    }
+
+    public void assignChangeRequest(UUID changeRequestId) {
+        if (changeRequestId == null) {
+            throw new DomainException(
+                    CODE_PART_REVISION_CHANGE_REQUEST_REQUIRED,
+                    "변경요청 ID는 필수입니다"
+            );
+        }
+        if (this.status != PartRevisionStatus.DRAFT && this.status != PartRevisionStatus.IN_REVIEW) {
+            throw new DomainException(
+                    CODE_PART_REVISION_CHANGE_REQUEST_INVALID_STATE,
+                    "DRAFT 또는 IN_REVIEW 상태의 리비전만 변경요청에 연결할 수 있습니다"
+            );
+        }
+        this.changeRequestId = changeRequestId;
+    }
+
+    public void clearChangeRequest() {
+        this.changeRequestId = null;
+    }
+
     public void changePartNumber(String partNumber) {
         this.partNumber = normalizePartNumber(partNumber);
     }
@@ -179,10 +241,41 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
         PartRevisionStatus nextStatus = requireStatus(status);
         this.status = nextStatus;
         this.revisionCode = normalizeRevisionCode(this.revisionCode, nextStatus);
+        this.draftKey = normalizeDraftKey(this.draftKey, nextStatus);
     }
 
     public void changeName(String name) {
         this.name = normalizeName(name);
+    }
+
+    public void assignOwner(UUID ownerId) {
+        if (ownerId == null) {
+            throw new DomainException(CODE_PART_REVISION_OWNER_REQUIRED, "담당자 ID는 필수입니다");
+        }
+        this.ownerId = ownerId;
+        if (this._ownerRelation != null && !ownerId.equals(this._ownerRelation.getId())) {
+            this._ownerRelation = null;
+        }
+    }
+
+    public void unassignOwner() {
+        this.ownerId = null;
+        this._ownerRelation = null;
+    }
+
+    public void assignOwnerTeam(UUID ownerTeamId) {
+        if (ownerTeamId == null) {
+            throw new DomainException(CODE_PART_REVISION_OWNER_TEAM_REQUIRED, "담당 팀 ID는 필수입니다");
+        }
+        this.ownerTeamId = ownerTeamId;
+        if (this._ownerTeamRelation != null && !ownerTeamId.equals(this._ownerTeamRelation.getId())) {
+            this._ownerTeamRelation = null;
+        }
+    }
+
+    public void unassignOwnerTeam() {
+        this.ownerTeamId = null;
+        this._ownerTeamRelation = null;
     }
 
     public void changeCategory(String category) {
@@ -240,11 +333,77 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
         }
     }
 
+    public void approve(String revisionCode) {
+        assertApprovable();
+        this.status = PartRevisionStatus.APPROVED;
+        this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
+        this.draftKey = null;
+    }
+
+    public void release(String revisionCode) {
+        if (this.status == PartRevisionStatus.APPROVED) {
+            this.status = PartRevisionStatus.RELEASED;
+            this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
+            this.draftKey = null;
+            return;
+        }
+
+        assertReleasableDraft();
+        this.status = PartRevisionStatus.RELEASED;
+        this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
+        this.draftKey = null;
+    }
+
+    public void markInReview() {
+        if (this.status == PartRevisionStatus.IN_REVIEW) {
+            return;
+        }
+        if (this.status != PartRevisionStatus.DRAFT) {
+            throw new DomainException(
+                    CODE_PART_REVISION_CHANGE_REQUEST_INVALID_STATE,
+                    "DRAFT 상태의 리비전만 IN_REVIEW로 전환할 수 있습니다"
+            );
+        }
+        this.status = PartRevisionStatus.IN_REVIEW;
+    }
+
+    public void revertToDraft() {
+        if (this.status == PartRevisionStatus.DRAFT) {
+            return;
+        }
+        if (this.status != PartRevisionStatus.IN_REVIEW) {
+            throw new DomainException(
+                    CODE_PART_REVISION_IN_REVIEW_REQUIRED,
+                    "IN_REVIEW 상태의 리비전만 DRAFT로 되돌릴 수 있습니다"
+            );
+        }
+        this.status = PartRevisionStatus.DRAFT;
+    }
+
+    public void markSuperseded() {
+        if (this.status == PartRevisionStatus.SUPERSEDED) {
+            return;
+        }
+        if (this.status != PartRevisionStatus.APPROVED && this.status != PartRevisionStatus.RELEASED) {
+            throw new DomainException(
+                    CODE_PART_REVISION_SUPERSEDE_INVALID_STATE,
+                    "공식 리비전만 SUPERSEDED 상태로 전환할 수 있습니다"
+            );
+        }
+        this.status = PartRevisionStatus.SUPERSEDED;
+        this.revisionCode = normalizeRevisionCode(this.revisionCode, this.status);
+        this.draftKey = null;
+    }
+
     public void copyEditableFieldsFrom(PartRevision source) {
         if (source == null) {
             throw new DomainException(CODE_PART_REVISION_DRAFT_SOURCE_REQUIRED, "복제할 원본 리비전은 필수입니다");
         }
         changeName(source.getName());
+        this.ownerId = source.getOwnerId();
+        this.ownerTeamId = source.getOwnerTeamId();
+        this._ownerRelation = null;
+        this._ownerTeamRelation = null;
         changeCategory(source.getCategory());
         changeMaterial(source.getMaterial());
         changeUnit(source.getUnit());
@@ -279,6 +438,24 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
         return List.copyOf(activities);
     }
 
+    private void assertApprovable() {
+        if (this.status != PartRevisionStatus.DRAFT && this.status != PartRevisionStatus.IN_REVIEW) {
+            throw new DomainException(
+                    CODE_PART_REVISION_APPROVABLE_REQUIRED,
+                    "DRAFT 또는 IN_REVIEW 상태의 리비전만 승인할 수 있습니다"
+            );
+        }
+    }
+
+    private void assertReleasableDraft() {
+        if (this.status != PartRevisionStatus.DRAFT && this.status != PartRevisionStatus.IN_REVIEW) {
+            throw new DomainException(
+                    CODE_PART_REVISION_RELEASABLE_REQUIRED,
+                    "DRAFT 또는 IN_REVIEW 상태의 리비전만 바로 릴리즈할 수 있습니다"
+            );
+        }
+    }
+
     private Part requirePart(Part value) {
         if (value == null) {
             throw new DomainException(CODE_PART_REVISION_PART_REQUIRED, "파트는 필수입니다");
@@ -302,6 +479,22 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
             throw new DomainException(CODE_PART_REVISION_CODE_TOO_LONG, "리비전 코드는 50자 이하여야 합니다");
         }
         return PartRouteSegmentPolicy.validateRevisionCode(trimmed, CODE_PART_REVISION_CODE_INVALID_FORMAT);
+    }
+
+    private String normalizeDraftKey(String rawDraftKey, PartRevisionStatus status) {
+        if (status == PartRevisionStatus.DRAFT || status == PartRevisionStatus.IN_REVIEW) {
+            if (rawDraftKey == null || rawDraftKey.isBlank()) {
+                throw new DomainException(CODE_PART_REVISION_DRAFT_KEY_REQUIRED, "초안 키는 필수입니다");
+            }
+        } else {
+            return null;
+        }
+
+        String trimmed = rawDraftKey.trim();
+        if (trimmed.length() > MAX_DRAFT_KEY_LENGTH) {
+            throw new DomainException(CODE_PART_REVISION_DRAFT_KEY_TOO_LONG, "초안 키는 50자 이하여야 합니다");
+        }
+        return PartRouteSegmentPolicy.validateDraftKey(trimmed, CODE_PART_REVISION_DRAFT_KEY_INVALID_FORMAT);
     }
 
     private String normalizePartNumber(String rawPartNumber) {

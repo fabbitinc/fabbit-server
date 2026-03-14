@@ -3,6 +3,7 @@ package com.fabbitinc.server.application.part.service;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -58,7 +59,7 @@ class PartServiceTest {
     PartRevision createdDraft =
         service.createPart(
             new CreatePartInput(
-                "  P-100  ", "Bolt", null, null, null, "  FASTENER  ", null, null, null, null),
+                "  P-100  ", "Bolt", null, null, null, "  FASTENER  ", null, null, null, null, null),
             actorId);
 
     ArgumentCaptor<PartRevision> revisionCaptor = ArgumentCaptor.forClass(PartRevision.class);
@@ -67,13 +68,16 @@ class PartServiceTest {
 
     assertEquals("P-100", createdDraft.getPartNumber());
     assertEquals(null, createdDraft.getRevisionCode());
+    assertEquals("D1", createdDraft.getDraftKey());
     assertEquals("Bolt", savedRevision.getName());
     assertEquals("FASTENER", savedRevision.getCategory());
     ArgumentCaptor<Part> partCaptor = ArgumentCaptor.forClass(Part.class);
     verify(partRepository).save(partCaptor.capture());
     Part savedPart = partCaptor.getValue();
-    assertEquals(ownerId, savedPart.getOwnerId());
-    assertEquals(ownerTeamId, savedPart.getOwnerTeamId());
+    assertEquals(ownerId, savedRevision.getOwnerId());
+    assertEquals(ownerTeamId, savedRevision.getOwnerTeamId());
+    assertNull(savedPart.getOwnerId());
+    assertNull(savedPart.getOwnerTeamId());
   }
 
   @Test
@@ -88,7 +92,7 @@ class PartServiceTest {
             () ->
                 service.createPart(
                     new CreatePartInput(
-                        "P-100", "Bolt", null, null, null, null, null, null, null, null),
+                        "P-100", "Bolt", null, null, null, null, null, null, null, null, null),
                     UUID.randomUUID()));
 
     assertEquals(ErrorCode.CONFLICT, ex.getErrorCode());
@@ -117,9 +121,10 @@ class PartServiceTest {
                 "sample",
                 null,
                 false,
-                "design",
+                PartLifecycleState.DESIGN,
                 7,
-                extendedProperties),
+                extendedProperties,
+                null),
             actorId);
 
     ArgumentCaptor<PartRevision> revisionCaptor = ArgumentCaptor.forClass(PartRevision.class);
@@ -127,6 +132,7 @@ class PartServiceTest {
     PartRevision savedRevision = revisionCaptor.getValue();
 
     assertEquals(null, createdDraft.getRevisionCode());
+    assertEquals("D1", createdDraft.getDraftKey());
     ArgumentCaptor<Part> partCaptor = ArgumentCaptor.forClass(Part.class);
     verify(partRepository).save(partCaptor.capture());
     Part savedPart = partCaptor.getValue();
@@ -143,19 +149,20 @@ class PartServiceTest {
   @Test
   void attachFiles_파일_총합만큼_스토리지를_소비한다() {
     Part part = Part.create("P-100");
+    PartRevision revision = PartRevision.createInitialDraft(part, "D1", "Part");
     File first = createUploadedFile("first.pdf", 200L);
     File second = createUploadedFile("second.pdf", 300L);
-    when(partRepository.findById(part.getId())).thenReturn(Optional.of(part));
+    when(partRevisionRepository.findById(revision.getId())).thenReturn(Optional.of(revision));
     when(fileRepository.findByIdIn(List.of(first.getId(), second.getId())))
         .thenReturn(List.of(first, second));
 
     PartService service = createService();
 
     List<File> attachedFiles =
-        service.attachFiles(part.getId(), List.of(first.getId(), second.getId()));
+        service.attachFiles(revision.getId(), List.of(first.getId(), second.getId()));
 
-    assertEquals(part.getId(), first.getOwnerId());
-    assertEquals(part.getId(), second.getOwnerId());
+    assertEquals(revision.getId(), first.getOwnerId());
+    assertEquals(revision.getId(), second.getOwnerId());
     assertEquals(2, attachedFiles.size());
     verify(organizationApi).consumeStorageForCurrentTenant(500L);
   }
@@ -163,16 +170,17 @@ class PartServiceTest {
   @Test
   void detachFile_파일_크기만큼_스토리지를_반환한다() {
     Part part = Part.create("P-100");
+    PartRevision revision = PartRevision.createInitialDraft(part, "D1", "Part");
     File file = createUploadedFile("first.pdf", 200L);
-    file.assignOwner("part", part.getId());
-    when(partRepository.findById(part.getId())).thenReturn(Optional.of(part));
+    file.assignOwner("part_revision", revision.getId());
+    when(partRevisionRepository.findById(revision.getId())).thenReturn(Optional.of(revision));
     when(fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(
-            file.getId(), "part", part.getId()))
+            file.getId(), "part_revision", revision.getId()))
         .thenReturn(Optional.of(file));
 
     PartService service = createService();
 
-    service.detachFile(part.getId(), file.getId());
+    service.detachFile(revision.getId(), file.getId());
 
     assertNotNull(file.getDeletedAt());
     verify(partPreviewService).clearByFile(file.getId());

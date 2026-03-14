@@ -36,6 +36,8 @@ import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
 import com.fabbitinc.server.application.project.api.ProjectApi;
 import com.fabbitinc.server.application.team.api.TeamApi;
 import com.fabbitinc.server.application.user.api.UserApi;
+import com.fabbitinc.server.domain.bom.model.EngineeringBomItem;
+import com.fabbitinc.server.domain.bom.repository.EngineeringBomItemRepository;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.model.DrawingDimension;
 import com.fabbitinc.server.domain.drawing.model.DrawingExtension;
@@ -43,7 +45,6 @@ import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
-import com.fabbitinc.server.domain.part.model.BomLink;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartPreview;
@@ -53,7 +54,6 @@ import com.fabbitinc.server.domain.part.model.PartPreviewProcessingStatus;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
-import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewProcessingJobRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewServingProjectionRepository;
@@ -75,6 +75,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -105,7 +106,7 @@ public class PartQuery {
     private final PartRepository partRepository;
     private final PartRevisionRepository partRevisionRepository;
     private final FileRepository fileRepository;
-    private final BomLinkRepository bomLinkRepository;
+    private final EngineeringBomItemRepository engineeringBomItemRepository;
     private final PartSupplierRepository partSupplierRepository;
     private final SupplierRepository supplierRepository;
     private final DrawingRepository drawingRepository;
@@ -187,13 +188,15 @@ public class PartQuery {
                         null,
                         condition.category(),
                         lifecycleState,
-                        condition.hasDrawing(),
-                        condition.hasChildren(),
+                        null,
+                        null,
                         null,
                         condition.projectId()
                 )),
                 condition.search(),
-                condition.category()
+                condition.category(),
+                condition.hasChildren(),
+                condition.hasDrawing()
         );
         long total = filtered.size();
         int fromIndex = Math.min(condition.offset(), filtered.size());
@@ -206,8 +209,8 @@ public class PartQuery {
                         part.category(),
                         part.revisionCode(),
                         part.lifecycleState(),
-                        countAttachedDrawings(part.part()) > 0,
-                        bomLinkRepository.countByParentPartId(part.id())
+                        countAttachedDrawings(part.revision()) > 0,
+                        countEngineeringBomChildren(part.revision())
                 ))
                 .toList();
         return new PartListResult(total, condition.offset(), condition.limit(), items);
@@ -221,13 +224,15 @@ public class PartQuery {
                         null,
                         condition.category(),
                         lifecycleState,
-                        condition.hasDrawing(),
-                        condition.hasChildren(),
+                        null,
+                        null,
                         condition.partIds(),
                         condition.projectId()
                 )),
                 condition.search(),
-                condition.category()
+                condition.category(),
+                condition.hasChildren(),
+                condition.hasDrawing()
         );
 
         Set<String> extKeys = new TreeSet<>();
@@ -344,35 +349,45 @@ public class PartQuery {
 
     public PartDetailResult getDraft(PartDraftDetailCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        ResolvedPart resolvedPart = resolveRequiredDraft(condition.partNumber(), condition.draftId());
+        ResolvedPart resolvedPart = resolveRequiredDraft(
+                condition.partNumber(),
+                condition.baseRevisionCode(),
+                condition.draftKey()
+        );
         return buildPartDetailResult(resolvedPart);
     }
 
     private PartDetailResult buildPartDetailResult(ResolvedPart resolvedPart) {
         Part part = resolvedPart.part();
+        PartRevision revision = resolvedPart.revision();
 
-        PartUserSummaryResult owner = toUserSummary(userApi.getUserOrNull(part.getOwnerId()));
-        Team ownerTeam = teamApi.getTeamOrNull(part.getOwnerTeamId());
+        PartUserSummaryResult owner = toUserSummary(userApi.getUserOrNull(revision == null ? null : revision.getOwnerId()));
+        Team ownerTeam = teamApi.getTeamOrNull(revision == null ? null : revision.getOwnerTeamId());
         String ownerTeamName = ownerTeam == null ? null : ownerTeam.getName();
-        PartPreviewResult preview = loadPreview(part);
+        PartPreviewResult preview = loadPreview(revision);
 
-        long childrenCount = bomLinkRepository.countByParentPartId(part.getId());
-        long parentsCount = bomLinkRepository.countByChildPartId(part.getId());
-        long suppliersCount = partSupplierRepository.countByPartId(part.getId());
-        long partFilesCount = fileRepository.countByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
-                "part",
-                part.getId(),
-                FileStatus.UPLOADED
-        );
-        long drawingsCount = countAttachedDrawings(part);
+        long childrenCount = countEngineeringBomChildren(revision);
+        long parentsCount = countEngineeringBomParents(revision);
+        long suppliersCount = resolvedPart.revision() == null
+                ? 0L
+                : partSupplierRepository.countByPartRevisionId(revision.getId());
+        long partFilesCount = revision == null
+                ? 0L
+                : fileRepository.countByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
+                        "part_revision",
+                        revision.getId(),
+                        FileStatus.UPLOADED
+                );
+        long drawingsCount = countAttachedDrawings(revision);
         long projectsCount = projectApi.countPartProjects(part.getId());
 
         return new PartDetailResult(
                 part.getId(),
-                resolvedPart.revision() == null ? null : resolvedPart.revision().getId(),
+                revision == null ? null : revision.getId(),
                 part.getPartNumber(),
                 resolvedPart.name(),
                 resolvedPart.revisionCode(),
+                resolvedPart.draftKey(),
                 resolvedPart.material(),
                 resolvedPart.unit(),
                 resolvedPart.description(),
@@ -381,9 +396,9 @@ public class PartQuery {
                 resolvedPart.phantom(),
                 resolvedPart.leadTimeDays(),
                 parseExtendedProperties(resolvedPart.extendedProperties()),
-                part.getOwnerId(),
+                revision == null ? null : revision.getOwnerId(),
                 owner,
-                part.getOwnerTeamId(),
+                revision == null ? null : revision.getOwnerTeamId(),
                 ownerTeamName,
                 preview,
                 childrenCount,
@@ -407,73 +422,66 @@ public class PartQuery {
 
     public PartBomResult get(PartBomCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        UUID partId = resolveRequiredPartId(condition.partNumber(), condition.revisionCode());
+        ResolvedPart resolvedPart = resolveRequiredPart(condition.partNumber(), condition.revisionCode());
+        PartRevision revision = resolvedPart.revision();
+        if (revision == null) {
+            return new PartBomResult(List.of(), List.of());
+        }
 
-        PathBuilder<BomLink> bomLink = new PathBuilder<>(BomLink.class, "bomLink");
-        PathBuilder<Part> childPart = new PathBuilder<>(Part.class, "childPart");
-        PathBuilder<Part> parentPart = new PathBuilder<>(Part.class, "parentPart");
-        var quantityExpr = bomLink.getNumber("quantity", Integer.class);
-        var extendedPropertiesExpr = bomLink.getString("extendedProperties");
-        var childIdExpr = childPart.get("id", UUID.class);
-        var childPartNumberExpr = childPart.getString("partNumber");
-        var parentIdExpr = parentPart.get("id", UUID.class);
-        var parentPartNumberExpr = parentPart.getString("partNumber");
+        List<EngineeringBomItem> childItems = engineeringBomItemRepository
+                .findByParentPartRevisionIdOrderByCreatedAtAsc(revision.getId());
+        List<EngineeringBomItem> parentItems = engineeringBomItemRepository
+                .findByChildPartRevisionIdOrderByCreatedAtAsc(revision.getId());
 
-        List<Tuple> childRows = queryFactory()
-                .select(
-                        childIdExpr,
-                        childPartNumberExpr,
-                        quantityExpr,
-                        extendedPropertiesExpr
-                )
-                .from(bomLink)
-                .join(childPart).on(childIdExpr.eq(bomLink.get("childPartId", UUID.class)))
-                .where(bomLink.get("parentPartId", UUID.class).eq(partId))
-                .orderBy(childPartNumberExpr.asc())
-                .fetch();
+        Map<UUID, PartRevision> relatedRevisions = loadPartRevisions(
+                collectRelatedRevisionIds(childItems, parentItems, revision.getId())
+        );
+        Map<UUID, Part> relatedParts = loadPartsByRevisionIds(relatedRevisions.values());
 
-        List<Tuple> parentRows = queryFactory()
-                .select(
-                        parentIdExpr,
-                        parentPartNumberExpr,
-                        quantityExpr,
-                        extendedPropertiesExpr
-                )
-                .from(bomLink)
-                .join(parentPart).on(parentIdExpr.eq(bomLink.get("parentPartId", UUID.class)))
-                .where(bomLink.get("childPartId", UUID.class).eq(partId))
-                .orderBy(parentPartNumberExpr.asc())
-                .fetch();
-
-        Map<UUID, Part> relatedParts = new LinkedHashMap<>();
-        List<UUID> relatedPartIds = new ArrayList<>();
-        childRows.stream().map(row -> row.get(childIdExpr)).filter(java.util.Objects::nonNull).forEach(relatedPartIds::add);
-        parentRows.stream().map(row -> row.get(parentIdExpr)).filter(java.util.Objects::nonNull).forEach(relatedPartIds::add);
-        partRepository.findAllById(relatedPartIds).forEach(part -> relatedParts.put(part.getId(), part));
-        Map<UUID, PartRevision> relatedRevisions = resolveCurrentRevisions(relatedParts.values());
-
-        List<PartBomResult.Child> children = childRows.stream()
-                .map(row -> new PartBomResult.Child(
-                        row.get(childIdExpr),
-                        row.get(childPartNumberExpr),
-                        resolveName(relatedRevisions.get(row.get(childIdExpr))),
-                        row.get(quantityExpr) == null
-                                ? 1
-                                : row.get(quantityExpr),
-                        parseExtendedProperties(row.get(extendedPropertiesExpr))
-                ))
+        List<PartBomResult.Child> children = childItems.stream()
+                .map(item -> {
+                    PartRevision childRevision = relatedRevisions.get(item.getChildPartRevisionId());
+                    Part childPart = childRevision == null ? null : relatedParts.get(childRevision.getPartId());
+                    return new PartBomResult.Child(
+                            childPart == null ? null : childPart.getId(),
+                            childPart == null ? null : childPart.getPartNumber(),
+                            resolveName(childRevision),
+                            resolveRevisionCode(childRevision),
+                            item.getLineNumber(),
+                            item.getQuantity(),
+                            parseExtendedProperties(item.getExtendedProperties())
+                    );
+                })
+                .sorted((left, right) -> {
+                    int lineNumberCompare = compareLineNumbers(left.lineNumber(), right.lineNumber());
+                    if (lineNumberCompare != 0) {
+                        return lineNumberCompare;
+                    }
+                    return Comparator.nullsLast(String::compareTo).compare(left.partNumber(), right.partNumber());
+                })
                 .toList();
 
-        List<PartBomResult.Parent> parents = parentRows.stream()
-                .map(row -> new PartBomResult.Parent(
-                        row.get(parentIdExpr),
-                        row.get(parentPartNumberExpr),
-                        resolveName(relatedRevisions.get(row.get(parentIdExpr))),
-                        row.get(quantityExpr) == null
-                                ? 1
-                                : row.get(quantityExpr),
-                        parseExtendedProperties(row.get(extendedPropertiesExpr))
-                ))
+        List<PartBomResult.Parent> parents = parentItems.stream()
+                .map(item -> {
+                    PartRevision parentRevision = relatedRevisions.get(item.getParentPartRevisionId());
+                    Part parentPart = parentRevision == null ? null : relatedParts.get(parentRevision.getPartId());
+                    return new PartBomResult.Parent(
+                            parentPart == null ? null : parentPart.getId(),
+                            parentPart == null ? null : parentPart.getPartNumber(),
+                            resolveName(parentRevision),
+                            resolveRevisionCode(parentRevision),
+                            item.getLineNumber(),
+                            item.getQuantity(),
+                            parseExtendedProperties(item.getExtendedProperties())
+                    );
+                })
+                .sorted((left, right) -> {
+                    int lineNumberCompare = compareLineNumbers(left.lineNumber(), right.lineNumber());
+                    if (lineNumberCompare != 0) {
+                        return lineNumberCompare;
+                    }
+                    return Comparator.nullsLast(String::compareTo).compare(left.partNumber(), right.partNumber());
+                })
                 .toList();
 
         return new PartBomResult(children, parents);
@@ -482,50 +490,51 @@ public class PartQuery {
     public BomTreeResult getBomTree(BomTreeCondition condition) {
         currentAuthProvider.getCurrentAuth();
         ResolvedPart requestedRoot = resolveRequiredPart(condition.partNumber(), condition.revisionCode());
-        Part rootPart = requestedRoot.part();
         PartRevision requestedRevision = requestedRoot.revision();
+        if (requestedRevision == null) {
+            throw new AppException(ErrorCode.NOT_FOUND, "PartRevision '%s/%s'을(를) 찾을 수 없습니다"
+                    .formatted(condition.partNumber(), condition.revisionCode()));
+        }
 
         BomDirection resolvedDirection = parseBomDirection(condition.direction());
         boolean reverse = resolvedDirection == BomDirection.REVERSE;
-        List<BomEdge> edges = fetchBomEdges(rootPart.getId(), reverse);
+        List<BomEdge> edges = fetchBomEdges(requestedRevision.getId(), reverse);
 
-        Set<String> allPartNumbers = new HashSet<>();
-        allPartNumbers.add(rootPart.getPartNumber());
-        for (BomEdge edge : edges) {
-            allPartNumbers.add(edge.parentPn());
-            allPartNumbers.add(edge.childPn());
-        }
-
-        Map<String, Part> partsMap = partRepository.findByPartNumberIn(allPartNumbers).stream()
-                .collect(java.util.stream.Collectors.toMap(Part::getPartNumber, part -> part));
-        Map<UUID, PartRevision> revisionsByPartId = resolveCurrentRevisions(partsMap.values());
+        Set<UUID> revisionIds = collectRevisionIds(edges, requestedRevision.getId());
+        Map<UUID, PartRevision> revisionsById = loadPartRevisions(revisionIds);
+        Map<UUID, Part> partsById = loadPartsByRevisionIds(revisionsById.values());
         BomTreeResult.Node root = buildBomTree(
-                rootPart.getPartNumber(),
+                requestedRevision.getId(),
                 edges,
-                partsMap,
-                revisionsByPartId,
-                requestedRevision
+                revisionsById,
+                partsById,
+                reverse,
+                BigDecimal.ONE
         );
 
-        return new BomTreeResult(root, resolvedDirection, allPartNumbers.size());
+        return new BomTreeResult(root, resolvedDirection, revisionIds.size());
     }
 
     public PartFilesResult get(PartFilesCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        Part part = resolveRequiredPart(condition.partNumber(), condition.revisionCode()).part();
+        ResolvedPart resolvedPart = resolveRequiredPart(condition.partNumber(), condition.revisionCode());
+        Part part = resolvedPart.part();
+        PartRevision revision = resolvedPart.revision();
 
-        ActivePreviewSource activePreviewSource = loadActivePreviewSource(part);
+        ActivePreviewSource activePreviewSource = loadActivePreviewSource(revision);
 
         List<PartFilesResult.Item> items = new ArrayList<>();
-        fileRepository.findByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
-                        "part",
-                        part.getId(),
-                        FileStatus.UPLOADED
-                ).stream()
-                .map(file -> toPartAttachmentItem(file, activePreviewSource))
-                .forEach(items::add);
+        if (revision != null) {
+            fileRepository.findByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
+                            "part_revision",
+                            revision.getId(),
+                            FileStatus.UPLOADED
+                    ).stream()
+                    .map(file -> toPartAttachmentItem(file, activePreviewSource))
+                    .forEach(items::add);
+        }
 
-        findAttachedDrawings(part).stream()
+        findAttachedDrawings(revision).stream()
                 .map(drawing -> toDrawingAttachmentItem(drawing, activePreviewSource))
                 .filter(java.util.Objects::nonNull)
                 .forEach(items::add);
@@ -555,9 +564,17 @@ public class PartQuery {
 
     public PartSuppliersResult get(PartSuppliersCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        UUID partId = resolveRequiredPartId(condition.partNumber(), condition.revisionCode());
+        PartRevision revision = partRevisionRepository.findByPartNumberAndRevisionCode(
+                        condition.partNumber(),
+                        condition.revisionCode()
+                )
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.NOT_FOUND,
+                        "PartRevision '%s/%s'을(를) 찾을 수 없습니다"
+                                .formatted(condition.partNumber(), condition.revisionCode())
+                ));
 
-        List<PartSupplier> links = partSupplierRepository.findByPartId(partId);
+        List<PartSupplier> links = partSupplierRepository.findByPartRevisionId(revision.getId());
         if (links.isEmpty()) {
             return new PartSuppliersResult(0, List.of());
         }
@@ -682,8 +699,11 @@ public class PartQuery {
         );
     }
 
-    private PartPreviewResult loadPreview(Part part) {
-        PartPreview partPreview = partPreviewRepository.findByPartId(part.getId()).orElse(null);
+    private PartPreviewResult loadPreview(PartRevision revision) {
+        if (revision == null) {
+            return null;
+        }
+        PartPreview partPreview = partPreviewRepository.findByPartRevisionId(revision.getId()).orElse(null);
         if (partPreview != null && partPreview.hasSource()) {
             PartPreviewServingProjection projection = partPreviewServingProjectionRepository.findById(partPreview.getId())
                     .orElse(null);
@@ -692,23 +712,29 @@ public class PartQuery {
         return null;
     }
 
-    private ActivePreviewSource loadActivePreviewSource(Part part) {
-        PartPreview partPreview = partPreviewRepository.findByPartId(part.getId()).orElse(null);
+    private ActivePreviewSource loadActivePreviewSource(PartRevision revision) {
+        if (revision == null) {
+            return new ActivePreviewSource(null, null);
+        }
+        PartPreview partPreview = partPreviewRepository.findByPartRevisionId(revision.getId()).orElse(null);
         if (partPreview != null && partPreview.hasSource()) {
             return new ActivePreviewSource(partPreview.getSourceType(), partPreview.getSourceId());
         }
         return new ActivePreviewSource(null, null);
     }
 
-    private List<Drawing> findAttachedDrawings(Part part) {
+    private List<Drawing> findAttachedDrawings(PartRevision revision) {
+        if (revision == null) {
+            return List.of();
+        }
         LinkedHashMap<UUID, Drawing> drawings = new LinkedHashMap<>();
-        drawingRepository.findByPartIdAndDeletedAtIsNullOrderByCreatedAtDesc(part.getId())
+        drawingRepository.findByPartRevisionIdAndDeletedAtIsNullOrderByCreatedAtDesc(revision.getId())
                 .forEach(drawing -> drawings.put(drawing.getId(), drawing));
         return List.copyOf(drawings.values());
     }
 
-    private long countAttachedDrawings(Part part) {
-        return findAttachedDrawings(part).size();
+    private long countAttachedDrawings(PartRevision revision) {
+        return findAttachedDrawings(revision).size();
     }
 
     private File resolveDrawingFile(Drawing drawing) {
@@ -737,147 +763,160 @@ public class PartQuery {
                 .orElse(false);
     }
 
-    private List<BomEdge> fetchBomEdges(UUID rootPartId, boolean reverse) {
+    private List<BomEdge> fetchBomEdges(UUID rootRevisionId, boolean reverse) {
         String sql = reverse
                 ? """
                         with recursive bom_cte as (
                             select
-                                pp.part_number as parent_pn,
-                                cp.part_number as child_pn,
-                                bl.quantity as quantity,
-                                bl.parent_part_id as next_id,
+                                e.parent_part_revision_id as parent_revision_id,
+                                e.child_part_revision_id as child_revision_id,
+                                e.line_number as line_number,
+                                e.quantity as quantity,
+                                e.parent_part_revision_id as next_id,
                                 1 as depth
-                            from bom_links bl
-                            join parts pp on pp.id = bl.parent_part_id
-                            join parts cp on cp.id = bl.child_part_id
-                            where bl.child_part_id = :rootId
+                            from engineering_bom_items e
+                            where e.child_part_revision_id = :rootRevisionId
 
                             union all
 
                             select
-                                pp.part_number as parent_pn,
-                                cp.part_number as child_pn,
-                                bl.quantity as quantity,
-                                bl.parent_part_id as next_id,
+                                e.parent_part_revision_id as parent_revision_id,
+                                e.child_part_revision_id as child_revision_id,
+                                e.line_number as line_number,
+                                e.quantity as quantity,
+                                e.parent_part_revision_id as next_id,
                                 bc.depth + 1 as depth
                             from bom_cte bc
-                            join bom_links bl on bl.child_part_id = bc.next_id
-                            join parts pp on pp.id = bl.parent_part_id
-                            join parts cp on cp.id = bl.child_part_id
+                            join engineering_bom_items e on e.child_part_revision_id = bc.next_id
                             where bc.depth < :maxDepth
                         )
-                        select parent_pn, child_pn, quantity from bom_cte
+                        select parent_revision_id, child_revision_id, line_number, quantity from bom_cte
                         """
                 : """
                         with recursive bom_cte as (
                             select
-                                pp.part_number as parent_pn,
-                                cp.part_number as child_pn,
-                                bl.quantity as quantity,
-                                bl.child_part_id as next_id,
+                                e.parent_part_revision_id as parent_revision_id,
+                                e.child_part_revision_id as child_revision_id,
+                                e.line_number as line_number,
+                                e.quantity as quantity,
+                                e.child_part_revision_id as next_id,
                                 1 as depth
-                            from bom_links bl
-                            join parts pp on pp.id = bl.parent_part_id
-                            join parts cp on cp.id = bl.child_part_id
-                            where bl.parent_part_id = :rootId
+                            from engineering_bom_items e
+                            where e.parent_part_revision_id = :rootRevisionId
 
                             union all
 
                             select
-                                pp.part_number as parent_pn,
-                                cp.part_number as child_pn,
-                                bl.quantity as quantity,
-                                bl.child_part_id as next_id,
+                                e.parent_part_revision_id as parent_revision_id,
+                                e.child_part_revision_id as child_revision_id,
+                                e.line_number as line_number,
+                                e.quantity as quantity,
+                                e.child_part_revision_id as next_id,
                                 bc.depth + 1 as depth
                             from bom_cte bc
-                            join bom_links bl on bl.parent_part_id = bc.next_id
-                            join parts pp on pp.id = bl.parent_part_id
-                            join parts cp on cp.id = bl.child_part_id
+                            join engineering_bom_items e on e.parent_part_revision_id = bc.next_id
                             where bc.depth < :maxDepth
                         )
-                        select parent_pn, child_pn, quantity from bom_cte
+                        select parent_revision_id, child_revision_id, line_number, quantity from bom_cte
                         """;
 
         Query query = entityManager.createNativeQuery(sql);
-        query.setParameter("rootId", rootPartId);
+        query.setParameter("rootRevisionId", rootRevisionId);
         query.setParameter("maxDepth", MAX_BOM_DEPTH);
 
         @SuppressWarnings("unchecked")
         List<Object[]> rows = query.getResultList();
         return rows.stream()
                 .map(row -> new BomEdge(
-                        (String) row[0],
-                        (String) row[1],
-                        row[2] == null ? 1 : ((Number) row[2]).intValue()
+                        (UUID) row[0],
+                        (UUID) row[1],
+                        (String) row[2],
+                        row[3] == null ? BigDecimal.ONE : toBigDecimal((Number) row[3])
                 ))
                 .toList();
     }
 
-    private BomTreeResult.Node buildBomTree(
-            String rootPartNumber,
-            List<BomEdge> edges,
-            Map<String, Part> partsMap,
-            Map<UUID, PartRevision> revisionsByPartId,
-            PartRevision rootRevision
-    ) {
-        BomTreeResult.Node rootNode = createBomTreeNode(
-                partsMap.get(rootPartNumber),
-                revisionsByPartId,
-                rootPartNumber,
-                1,
-                rootRevision
-        );
-        Map<String, BomTreeResult.Node> nodeCache = new HashMap<>();
-        nodeCache.put(rootPartNumber, rootNode);
-
+    private Set<UUID> collectRevisionIds(List<BomEdge> edges, UUID rootRevisionId) {
+        Set<UUID> revisionIds = new HashSet<>();
+        revisionIds.add(rootRevisionId);
         for (BomEdge edge : edges) {
-            BomTreeResult.Node parentNode = nodeCache.computeIfAbsent(
-                    edge.parentPn(),
-                    key -> createBomTreeNode(partsMap.get(key), revisionsByPartId, key, 1, null)
-            );
-
-            String childEdgeKey = edge.parentPn() + "->" + edge.childPn();
-            if (nodeCache.containsKey(childEdgeKey)) {
-                continue;
-            }
-
-            BomTreeResult.Node childNode = createBomTreeNode(
-                    partsMap.get(edge.childPn()),
-                    revisionsByPartId,
-                    edge.childPn(),
-                    edge.quantity(),
-                    null
-            );
-            nodeCache.put(childEdgeKey, childNode);
-            nodeCache.putIfAbsent(edge.childPn(), childNode);
-            parentNode.children().add(childNode);
+            revisionIds.add(edge.parentRevisionId());
+            revisionIds.add(edge.childRevisionId());
         }
-
-        return rootNode;
+        return revisionIds;
     }
 
-    private BomTreeResult.Node createBomTreeNode(
-            Part part,
-            Map<UUID, PartRevision> revisionsByPartId,
-            String fallbackPartNumber,
-            int quantity,
-            PartRevision overrideRevision
+    private BomTreeResult.Node buildBomTree(
+            UUID rootRevisionId,
+            List<BomEdge> edges,
+            Map<UUID, PartRevision> revisionsById,
+            Map<UUID, Part> partsById,
+            boolean reverse,
+            BigDecimal quantity
     ) {
-        if (part == null) {
+        Map<UUID, List<BomEdge>> adjacency = new LinkedHashMap<>();
+        for (BomEdge edge : edges) {
+            UUID key = reverse ? edge.childRevisionId() : edge.parentRevisionId();
+            adjacency.computeIfAbsent(key, ignored -> new ArrayList<>()).add(edge);
+        }
+        return buildBomTreeNode(
+                rootRevisionId,
+                adjacency,
+                revisionsById,
+                partsById,
+                reverse,
+                quantity,
+                new ArrayList<>()
+        );
+    }
+
+    private BomTreeResult.Node buildBomTreeNode(
+            UUID revisionId,
+            Map<UUID, List<BomEdge>> adjacency,
+            Map<UUID, PartRevision> revisionsById,
+            Map<UUID, Part> partsById,
+            boolean reverse,
+            BigDecimal quantity,
+            List<UUID> ancestors
+    ) {
+        PartRevision revision = revisionsById.get(revisionId);
+        Part part = revision == null ? null : partsById.get(revision.getPartId());
+
+        List<UUID> nextAncestors = new ArrayList<>(ancestors);
+        nextAncestors.add(revisionId);
+
+        List<BomTreeResult.Node> children = adjacency.getOrDefault(revisionId, List.of()).stream()
+                .sorted((left, right) -> compareLineNumbers(left.lineNumber(), right.lineNumber()))
+                .filter(edge -> {
+                    UUID nextRevisionId = reverse ? edge.parentRevisionId() : edge.childRevisionId();
+                    return !nextAncestors.contains(nextRevisionId);
+                })
+                .map(edge -> buildBomTreeNode(
+                        reverse ? edge.parentRevisionId() : edge.childRevisionId(),
+                        adjacency,
+                        revisionsById,
+                        partsById,
+                        reverse,
+                        edge.quantity(),
+                        nextAncestors
+                ))
+                .toList();
+
+        if (part == null || revision == null) {
             return new BomTreeResult.Node(
                     null,
-                    fallbackPartNumber,
                     null,
-                    "1",
+                    null,
+                    null,
                     null,
                     null,
                     null,
                     null,
                     quantity,
-                    new ArrayList<>()
+                    children
             );
         }
-        PartRevision revision = overrideRevision == null ? revisionsByPartId.get(part.getId()) : overrideRevision;
+
         return new BomTreeResult.Node(
                 part.getId(),
                 part.getPartNumber(),
@@ -888,7 +927,7 @@ public class PartQuery {
                 revision == null ? null : revision.getCategory(),
                 part.getLifecycleState(),
                 quantity,
-                new ArrayList<>()
+                children
         );
     }
 
@@ -896,26 +935,20 @@ public class PartQuery {
             String search,
             String category,
             PartLifecycleState lifecycleState,
-            Boolean hasDrawing,
-            Boolean hasChildren,
+            Boolean ignoredHasDrawing,
+            Boolean ignoredHasChildren,
             List<UUID> partIds,
             UUID projectId
     ) {
         PathBuilder<Part> part = new PathBuilder<>(Part.class, "part");
-        PathBuilder<Drawing> drawing = new PathBuilder<>(Drawing.class, "drawing");
-        PathBuilder<BomLink> bomLink = new PathBuilder<>(BomLink.class, "bomLink");
         PathBuilder<ProjectPart> projectPart = new PathBuilder<>(ProjectPart.class, "projectPart");
 
         BooleanBuilder predicate = buildPartPredicate(
                 part,
-                drawing,
-                bomLink,
                 projectPart,
                 search,
                 category,
                 lifecycleState,
-                hasDrawing,
-                hasChildren,
                 partIds,
                 projectId
         );
@@ -925,20 +958,6 @@ public class PartQuery {
                 .where(predicate)
                 .orderBy(part.getString("partNumber").asc())
                 .fetch();
-    }
-
-    private PartLifecycleState parseLifecycleState(String rawLifecycleState) {
-        if (rawLifecycleState == null || rawLifecycleState.isBlank()) {
-            return null;
-        }
-        PartLifecycleState lifecycleState = PartLifecycleState.from(rawLifecycleState);
-        if (lifecycleState == null) {
-            throw new AppException(
-                    ErrorCode.VALIDATION_ERROR,
-                    "lifecycle_state 값이 올바르지 않습니다: " + rawLifecycleState
-            );
-        }
-        return lifecycleState;
     }
 
     private BomDirection parseBomDirection(String rawDirection) {
@@ -951,6 +970,20 @@ public class PartQuery {
             throw new AppException(
                     ErrorCode.VALIDATION_ERROR,
                     "direction 값이 올바르지 않습니다: " + rawDirection
+            );
+        }
+    }
+
+    private PartLifecycleState parseLifecycleState(String rawLifecycleState) {
+        if (rawLifecycleState == null || rawLifecycleState.isBlank()) {
+            return null;
+        }
+        try {
+            return PartLifecycleState.valueOf(rawLifecycleState.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "lifecycle_state 값이 올바르지 않습니다: " + rawLifecycleState
             );
         }
     }
@@ -977,14 +1010,10 @@ public class PartQuery {
 
     private BooleanBuilder buildPartPredicate(
             PathBuilder<Part> part,
-            PathBuilder<Drawing> drawing,
-            PathBuilder<BomLink> bomLink,
             PathBuilder<ProjectPart> projectPart,
             String search,
             String category,
             PartLifecycleState lifecycleState,
-            Boolean hasDrawing,
-            Boolean hasChildren,
             List<UUID> partIds,
             UUID projectId
     ) {
@@ -996,25 +1025,6 @@ public class PartQuery {
         }
         if (lifecycleState != null) {
             predicate.and(part.getEnum("lifecycleState", PartLifecycleState.class).eq(lifecycleState));
-        }
-        if (hasDrawing != null) {
-            BooleanExpression drawingExists = JPAExpressions.selectOne()
-                    .from(drawing)
-                    .where(
-                            drawing.get("partId", UUID.class).eq(part.get("id", UUID.class))
-                                    .and(drawing.get("deletedAt", java.time.Instant.class).isNull())
-                    )
-                    .exists();
-            predicate.and(Boolean.TRUE.equals(hasDrawing)
-                    ? drawingExists
-                    : drawingExists.not());
-        }
-        if (hasChildren != null) {
-            BooleanExpression childExists = JPAExpressions.selectOne()
-                    .from(bomLink)
-                    .where(bomLink.get("parentPartId", UUID.class).eq(part.get("id", UUID.class)))
-                    .exists();
-            predicate.and(Boolean.TRUE.equals(hasChildren) ? childExists : childExists.not());
         }
         if (partIds != null && !partIds.isEmpty()) {
             predicate.and(part.get("id", UUID.class).in(partIds));
@@ -1098,10 +1108,66 @@ public class PartQuery {
         return revisions.get(0);
     }
 
-    private List<ResolvedPart> filterResolvedParts(List<ResolvedPart> parts, String search, String category) {
+    private long countEngineeringBomChildren(PartRevision revision) {
+        if (revision == null) {
+            return 0L;
+        }
+        return engineeringBomItemRepository.countByParentPartRevisionId(revision.getId());
+    }
+
+    private long countEngineeringBomParents(PartRevision revision) {
+        if (revision == null) {
+            return 0L;
+        }
+        return engineeringBomItemRepository.countByChildPartRevisionId(revision.getId());
+    }
+
+    private Set<UUID> collectRelatedRevisionIds(
+            List<EngineeringBomItem> childItems,
+            List<EngineeringBomItem> parentItems,
+            UUID rootRevisionId
+    ) {
+        Set<UUID> revisionIds = new HashSet<>();
+        revisionIds.add(rootRevisionId);
+        childItems.forEach(item -> revisionIds.add(item.getChildPartRevisionId()));
+        parentItems.forEach(item -> revisionIds.add(item.getParentPartRevisionId()));
+        return revisionIds;
+    }
+
+    private Map<UUID, PartRevision> loadPartRevisions(Set<UUID> revisionIds) {
+        if (revisionIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, PartRevision> revisionsById = new LinkedHashMap<>();
+        partRevisionRepository.findAllById(revisionIds)
+                .forEach(revision -> revisionsById.put(revision.getId(), revision));
+        return revisionsById;
+    }
+
+    private Map<UUID, Part> loadPartsByRevisionIds(Iterable<PartRevision> revisions) {
+        Map<UUID, Part> partsById = new LinkedHashMap<>();
+        List<UUID> partIds = new ArrayList<>();
+        revisions.forEach(revision -> {
+            if (revision != null) {
+                partIds.add(revision.getPartId());
+            }
+        });
+        partRepository.findAllById(partIds).forEach(part -> partsById.put(part.getId(), part));
+        return partsById;
+    }
+
+    private List<ResolvedPart> filterResolvedParts(
+            List<ResolvedPart> parts,
+            String search,
+            String category,
+            Boolean hasChildren,
+            Boolean hasDrawing
+    ) {
         return parts.stream()
                 .filter(part -> matchesSearch(part, search))
                 .filter(part -> matchesCategory(part, category))
+                .filter(part -> matchesHasChildren(part, hasChildren))
+                .filter(part -> matchesHasDrawing(part, hasDrawing))
                 .toList();
     }
 
@@ -1121,17 +1187,41 @@ public class PartQuery {
         return category.trim().equals(part.category());
     }
 
+    private boolean matchesHasChildren(ResolvedPart part, Boolean hasChildren) {
+        if (hasChildren == null) {
+            return true;
+        }
+        if (part.revision() == null) {
+            return !Boolean.TRUE.equals(hasChildren);
+        }
+        boolean exists = engineeringBomItemRepository.existsByParentPartRevisionId(part.revision().getId());
+        return Boolean.TRUE.equals(hasChildren) ? exists : !exists;
+    }
+
+    private boolean matchesHasDrawing(ResolvedPart part, Boolean hasDrawing) {
+        if (hasDrawing == null) {
+            return true;
+        }
+        if (part.revision() == null) {
+            return !Boolean.TRUE.equals(hasDrawing);
+        }
+        boolean exists = drawingRepository.existsByPartRevisionIdAndDeletedAtIsNull(part.revision().getId());
+        return Boolean.TRUE.equals(hasDrawing) ? exists : !exists;
+    }
+
     private UUID resolveRequiredPartId(String partNumber, String revisionCode) {
         return resolveRequiredPart(partNumber, revisionCode).id();
     }
 
-    private ResolvedPart resolveRequiredDraft(String partNumber, UUID draftId) {
-        PartRevision draft = partRevisionRepository.findByIdAndPartNumber(draftId, partNumber)
+    private ResolvedPart resolveRequiredDraft(String partNumber, String baseRevisionCode, String draftKey) {
+        PartRevision draft = (baseRevisionCode == null || baseRevisionCode.isBlank()
+                ? partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionIdIsNull(partNumber, draftKey)
+                : findRevisionScopedDraft(partNumber, baseRevisionCode, draftKey))
                 .filter(revision -> revision.getStatus() == com.fabbitinc.server.domain.part.model.PartRevisionStatus.DRAFT
                         || revision.getStatus() == com.fabbitinc.server.domain.part.model.PartRevisionStatus.IN_REVIEW)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "PartDraft '%s/%s'을(를) 찾을 수 없습니다".formatted(partNumber, draftId)
+                        "PartDraft '%s/%s'을(를) 찾을 수 없습니다".formatted(partNumber, draftKey)
                 ));
         Part part = partRepository.findById(draft.getPartId())
                 .orElseThrow(() -> new AppException(
@@ -1139,6 +1229,19 @@ public class PartQuery {
                         "Part '%s'을(를) 찾을 수 없습니다".formatted(partNumber)
                 ));
         return new ResolvedPart(part, draft);
+    }
+
+    private java.util.Optional<PartRevision> findRevisionScopedDraft(String partNumber, String baseRevisionCode, String draftKey) {
+        PartRevision baseRevision = partRevisionRepository.findByPartNumberAndRevisionCode(partNumber, baseRevisionCode)
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.NOT_FOUND,
+                        "PartRevision '%s/%s'을(를) 찾을 수 없습니다".formatted(partNumber, baseRevisionCode)
+                ));
+        return partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionId(
+                partNumber,
+                draftKey,
+                baseRevision.getId()
+        );
     }
 
     private ResolvedPart resolveRequiredPart(String partNumber, String revisionCode) {
@@ -1180,6 +1283,46 @@ public class PartQuery {
         ));
         for (BomTreeResult.Node child : node.children()) {
             flattenBomTree(child, level + 1, rows);
+        }
+    }
+
+    private BigDecimal toBigDecimal(Number value) {
+        if (value == null) {
+            return BigDecimal.ONE;
+        }
+        if (value instanceof BigDecimal decimal) {
+            return decimal.stripTrailingZeros();
+        }
+        return new BigDecimal(value.toString()).stripTrailingZeros();
+    }
+
+    private int compareLineNumbers(String left, String right) {
+        if (left == null && right == null) {
+            return 0;
+        }
+        if (left == null) {
+            return 1;
+        }
+        if (right == null) {
+            return -1;
+        }
+
+        Integer leftNumber = parseLineNumber(left);
+        Integer rightNumber = parseLineNumber(right);
+        if (leftNumber != null && rightNumber != null) {
+            return Integer.compare(leftNumber, rightNumber);
+        }
+        return left.compareTo(right);
+    }
+
+    private Integer parseLineNumber(String lineNumber) {
+        if (lineNumber == null || lineNumber.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(lineNumber.trim());
+        } catch (NumberFormatException ex) {
+            return null;
         }
     }
 
@@ -1357,7 +1500,7 @@ public class PartQuery {
             String partNumber,
             String name,
             String revision,
-            int quantity,
+            BigDecimal quantity,
             String material,
             String unit,
             String category,
@@ -1389,6 +1532,10 @@ public class PartQuery {
 
         String revisionCode() {
             return revision == null ? null : revision.getRevisionCode();
+        }
+
+        String draftKey() {
+            return revision == null ? null : revision.getDraftKey();
         }
 
         String material() {
@@ -1424,6 +1571,11 @@ public class PartQuery {
         }
     }
 
-    private record BomEdge(String parentPn, String childPn, int quantity) {
+    private record BomEdge(
+            UUID parentRevisionId,
+            UUID childRevisionId,
+            String lineNumber,
+            BigDecimal quantity
+    ) {
     }
 }

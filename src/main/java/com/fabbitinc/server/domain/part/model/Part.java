@@ -7,8 +7,9 @@ import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -75,7 +76,7 @@ public class Part extends AbstractCreatedEntity implements AggregateRoot {
     @Column(name = "part_number", nullable = false, length = 100)
     private String partNumber;
 
-    @Convert(converter = PartLifecycleStateConverter.class)
+    @Enumerated(EnumType.STRING)
     @Column(name = "lifecycle_state", length = 50)
     private PartLifecycleState lifecycleState;
 

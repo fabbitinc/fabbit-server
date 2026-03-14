@@ -1,11 +1,11 @@
 package com.fabbitinc.server.application.part.usecase.command;
 
 import java.util.Map;
-import java.util.UUID;
 
 public record UpdatePartRevisionCommand(
         String partNumber,
-        UUID draftId,
+        String baseRevisionCode,
+        String draftKey,
         String name,
         boolean nameSet,
         String material,

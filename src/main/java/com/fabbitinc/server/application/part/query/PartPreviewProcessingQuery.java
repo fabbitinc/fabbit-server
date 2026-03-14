@@ -41,7 +41,7 @@ public class PartPreviewProcessingQuery {
                                 .formatted(condition.partNumber(), condition.revisionCode())
                 ));
 
-        PartPreview partPreview = partPreviewRepository.findByPartId(revision.getPartId())
+        PartPreview partPreview = partPreviewRepository.findByPartRevisionId(revision.getId())
                 .filter(PartPreview::hasSource)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "대표 미리보기를 찾을 수 없습니다"));
 

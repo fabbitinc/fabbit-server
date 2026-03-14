@@ -9,6 +9,8 @@ import com.fabbitinc.server.application.mapping.dto.common.RelationMappingDto;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.ontology.support.RelationshipType;
+import com.fabbitinc.server.domain.bom.model.EngineeringBomItem;
+import com.fabbitinc.server.domain.bom.repository.EngineeringBomItemRepository;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.model.DrawingStatus;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
@@ -16,13 +18,11 @@ import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.mapping.model.MappingRevision;
 import com.fabbitinc.server.domain.mapping.repository.MappingRevisionRepository;
-import com.fabbitinc.server.domain.part.model.BomLink;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartRevisionActivityActionType;
 import com.fabbitinc.server.domain.part.model.PartRevisionActivitySourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
-import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
@@ -35,12 +35,15 @@ import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
 import com.fabbitinc.server.domain.synthesis.model.SynthesisJob;
 import com.fabbitinc.server.domain.synthesis.model.SynthesisJobStatus;
 import com.fabbitinc.server.domain.synthesis.repository.SynthesisJobRepository;
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -60,7 +63,7 @@ public class SynthesisExecutionService {
     private final SpreadsheetParserSupport spreadsheetParserSupport;
     private final PartRepository partRepository;
     private final PartRevisionRepository partRevisionRepository;
-    private final BomLinkRepository bomLinkRepository;
+    private final EngineeringBomItemRepository engineeringBomItemRepository;
     private final DrawingRepository drawingRepository;
     private final ProjectRepository projectRepository;
     private final ProjectPartRepository projectPartRepository;
@@ -164,9 +167,24 @@ public class SynthesisExecutionService {
                     nodesCreated++;
                 }
 
-                int quantity = resolveQuantity(row, relation);
-                Map<String, Object> extendedProperties = resolveRelationExtendedProperties(row, relation, "quantity");
-                if (upsertBomLink(parentResult.part(), childResult.part(), quantity, extendedProperties, overwrite)) {
+                BigDecimal quantity = resolveQuantity(row, relation);
+                String lineNumber = resolveBomLineNumber(row, relation);
+                Map<String, Object> extendedProperties = resolveRelationExtendedProperties(
+                        row,
+                        relation,
+                        "quantity",
+                        "line_number",
+                        "find_number",
+                        "sequence"
+                );
+                if (upsertEngineeringBomItem(
+                        parentResult.revision(),
+                        childResult.revision(),
+                        lineNumber,
+                        quantity,
+                        extendedProperties,
+                        overwrite
+                )) {
                     relationshipsCreated++;
                 }
                 continue;
@@ -183,7 +201,7 @@ public class SynthesisExecutionService {
                     nodesCreated++;
                 }
 
-                if (linkPartToDrawing(childResult.part(), drawingResult.drawing())) {
+                if (linkPartRevisionToDrawing(childResult.revision(), drawingResult.drawing())) {
                     relationshipsCreated++;
                 }
                 continue;
@@ -202,7 +220,7 @@ public class SynthesisExecutionService {
 
                 Double unitCost = resolveUnitCost(row, relation);
                 Map<String, Object> extendedProperties = resolveRelationExtendedProperties(row, relation, "unit_cost");
-                if (upsertPartSupplier(childResult.part(), supplierResult.supplier(), unitCost, extendedProperties, overwrite)) {
+                if (upsertPartSupplier(childResult.revision(), supplierResult.supplier(), unitCost, extendedProperties, overwrite)) {
                     relationshipsCreated++;
                 }
                 continue;
@@ -384,19 +402,35 @@ public class SynthesisExecutionService {
         return new ProjectRowValues(ownerProject.getName(), ownerProject);
     }
 
-    private int resolveQuantity(Map<String, Object> row, RelationMappingDto relation) {
+    private BigDecimal resolveQuantity(Map<String, Object> row, RelationMappingDto relation) {
         String column = relation.relColumns().get("quantity");
         if (column == null || column.isBlank()) {
-            return 1;
+            return BigDecimal.ONE;
         }
 
         PropertyDataType dataType = relation.relColumnTypes().getOrDefault("quantity", PropertyDataType.INTEGER);
         Object value = castValue(row.get(column), dataType);
-        Integer quantity = toInteger(value);
-        if (quantity == null || quantity <= 0) {
-            return 1;
+        BigDecimal quantity = toBigDecimal(value);
+        if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ONE;
         }
         return quantity;
+    }
+
+    private String resolveBomLineNumber(Map<String, Object> row, RelationMappingDto relation) {
+        for (String propertyName : List.of("line_number", "find_number", "sequence")) {
+            String column = relation.relColumns().get(propertyName);
+            if (column == null || column.isBlank()) {
+                continue;
+            }
+            PropertyDataType dataType = relation.relColumnTypes().getOrDefault(propertyName, PropertyDataType.STRING);
+            Object value = castValue(row.get(column), dataType);
+            String normalized = normalizeText(value);
+            if (normalized != null) {
+                return normalized;
+            }
+        }
+        return null;
     }
 
     private Double resolveUnitCost(Map<String, Object> row, RelationMappingDto relation) {
@@ -430,12 +464,13 @@ public class SynthesisExecutionService {
     private Map<String, Object> resolveRelationExtendedProperties(
             Map<String, Object> row,
             RelationMappingDto relation,
-            String ignoredPropertyName
+            String... ignoredPropertyNames
     ) {
         Map<String, Object> properties = new LinkedHashMap<>();
+        Set<String> ignored = new HashSet<>(List.of(ignoredPropertyNames));
         for (Map.Entry<String, String> entry : relation.relColumns().entrySet()) {
             String propertyName = entry.getKey();
-            if (propertyName == null || propertyName.isBlank() || propertyName.equals(ignoredPropertyName)) {
+            if (propertyName == null || propertyName.isBlank() || ignored.contains(propertyName)) {
                 continue;
             }
 
@@ -479,12 +514,12 @@ public class SynthesisExecutionService {
                 recordSynthesisImport(revision, jobId);
                 partRevisionRepository.save(revision);
             }
-            return new UpsertPartResult(existing, false);
+            return new UpsertPartResult(existing, revision, false);
         }
 
         Part created = Part.create(values.partNumber());
         partRepository.save(created);
-        PartRevision revision = PartRevision.createInitialDraft(created, values.name());
+        PartRevision revision = PartRevision.createInitialDraft(created, "D1", values.name());
         if (values.category() != null) {
             revision.changeCategory(values.category());
         }
@@ -499,7 +534,7 @@ public class SynthesisExecutionService {
         }
         recordSynthesisImport(revision, jobId);
         partRevisionRepository.save(revision);
-        return new UpsertPartResult(created, true);
+        return new UpsertPartResult(created, revision, true);
     }
 
     private PartRevision findOrCreateWorkingRevision(Part part, String name) {
@@ -507,7 +542,7 @@ public class SynthesisExecutionService {
         if (revision != null) {
             return revision;
         }
-        PartRevision created = PartRevision.createInitialDraft(part, name);
+        PartRevision created = PartRevision.createInitialDraft(part, "D1", name);
         return partRevisionRepository.save(created);
     }
 
@@ -600,17 +635,30 @@ public class SynthesisExecutionService {
         return !incoming.equals(current);
     }
 
-    private boolean upsertBomLink(
-            Part parent,
-            Part child,
-            int quantity,
+    private boolean upsertEngineeringBomItem(
+            PartRevision parentRevision,
+            PartRevision childRevision,
+            String requestedLineNumber,
+            BigDecimal quantity,
             Map<String, Object> extendedProperties,
             boolean overwrite
     ) {
-        BomLink existing = bomLinkRepository.findByParentPartIdAndChildPartId(parent.getId(), child.getId()).orElse(null);
+        EngineeringBomItem existing = resolveExistingEngineeringBomItem(
+                parentRevision,
+                childRevision,
+                requestedLineNumber
+        );
         if (existing != null) {
             boolean changed = false;
-            if (overwrite && existing.getQuantity() != quantity) {
+            if (requestedLineNumber != null && overwrite && !requestedLineNumber.equals(existing.getLineNumber())) {
+                existing.changeLineNumber(requestedLineNumber);
+                changed = true;
+            }
+            if (overwrite && !existing.getChildPartRevisionId().equals(childRevision.getId())) {
+                existing.changeChildPartRevision(childRevision.getId());
+                changed = true;
+            }
+            if (overwrite && existing.getQuantity().compareTo(quantity) != 0) {
                 existing.changeQuantity(quantity);
                 changed = true;
             }
@@ -627,13 +675,61 @@ public class SynthesisExecutionService {
             return changed;
         }
 
-        bomLinkRepository.save(BomLink.connect(
-                parent.getId(),
-                child.getId(),
+        String lineNumber = requestedLineNumber == null || requestedLineNumber.isBlank()
+                ? generateNextEngineeringBomLineNumber(parentRevision.getId())
+                : requestedLineNumber;
+        engineeringBomItemRepository.save(EngineeringBomItem.add(
+                parentRevision.getId(),
+                lineNumber,
+                childRevision.getId(),
                 quantity,
                 serializeProperties(extendedProperties)
         ));
         return true;
+    }
+
+    private EngineeringBomItem resolveExistingEngineeringBomItem(
+            PartRevision parentRevision,
+            PartRevision childRevision,
+            String requestedLineNumber
+    ) {
+        if (requestedLineNumber != null && !requestedLineNumber.isBlank()) {
+            return engineeringBomItemRepository.findByParentPartRevisionIdAndLineNumber(
+                    parentRevision.getId(),
+                    requestedLineNumber
+            ).orElse(null);
+        }
+
+        List<EngineeringBomItem> existingItems = engineeringBomItemRepository
+                .findByParentPartRevisionIdAndChildPartRevisionIdOrderByCreatedAtAsc(
+                        parentRevision.getId(),
+                        childRevision.getId()
+                );
+        if (existingItems.size() == 1) {
+            return existingItems.get(0);
+        }
+        return null;
+    }
+
+    private String generateNextEngineeringBomLineNumber(UUID parentPartRevisionId) {
+        int max = engineeringBomItemRepository.findByParentPartRevisionIdOrderByCreatedAtAsc(parentPartRevisionId).stream()
+                .map(EngineeringBomItem::getLineNumber)
+                .map(this::toLineNumberValue)
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo)
+                .orElse(0);
+        return String.valueOf(max <= 0 ? 10 : max + 10);
+    }
+
+    private Integer toLineNumberValue(String lineNumber) {
+        if (lineNumber == null || lineNumber.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(lineNumber.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private UpsertSupplierResult upsertSupplier(String companyName) {
@@ -648,13 +744,15 @@ public class SynthesisExecutionService {
     }
 
     private boolean upsertPartSupplier(
-            Part part,
+            PartRevision partRevision,
             Supplier supplier,
             Double unitCost,
             Map<String, Object> extendedProperties,
             boolean overwrite
     ) {
-        PartSupplier existing = partSupplierRepository.findByPartIdAndSupplierId(part.getId(), supplier.getId()).orElse(null);
+        PartSupplier existing = partSupplierRepository
+                .findByPartRevisionIdAndSupplierId(partRevision.getId(), supplier.getId())
+                .orElse(null);
         if (existing != null) {
             boolean changed = false;
             if (shouldApplyDouble(unitCost, existing.getUnitCost(), overwrite)) {
@@ -675,7 +773,7 @@ public class SynthesisExecutionService {
         }
 
         partSupplierRepository.save(PartSupplier.link(
-                part.getId(),
+                partRevision.getId(),
                 supplier.getId(),
                 unitCost,
                 serializeProperties(extendedProperties)
@@ -698,12 +796,15 @@ public class SynthesisExecutionService {
         return new UpsertProjectResult(created, true);
     }
 
-    private boolean linkPartToDrawing(Part part, Drawing drawing) {
-        if (part.getId().equals(drawing.getPartId())) {
+    private boolean linkPartRevisionToDrawing(PartRevision partRevision, Drawing drawing) {
+        if (partRevision == null) {
+            return false;
+        }
+        if (partRevision.getId().equals(drawing.getPartRevisionId())) {
             return false;
         }
 
-        drawing.assignPart(part.getId());
+        drawing.assignPartRevision(partRevision.getId());
         return true;
     }
 
@@ -854,6 +955,23 @@ public class SynthesisExecutionService {
         }
     }
 
+    private BigDecimal toBigDecimal(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof BigDecimal decimalValue) {
+            return decimalValue.stripTrailingZeros();
+        }
+        if (value instanceof Number numberValue) {
+            return new BigDecimal(numberValue.toString()).stripTrailingZeros();
+        }
+        try {
+            return new BigDecimal(value.toString().trim()).stripTrailingZeros();
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
     private Double toDouble(Object value) {
         if (value == null) {
             return null;
@@ -890,6 +1008,7 @@ public class SynthesisExecutionService {
 
     private record UpsertPartResult(
             Part part,
+            PartRevision revision,
             boolean created
     ) {
     }

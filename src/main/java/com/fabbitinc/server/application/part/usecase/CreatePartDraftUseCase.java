@@ -23,8 +23,9 @@ public class CreatePartDraftUseCase {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         PartRevision draft = partRevisionService.createDraft(new CreatePartDraftInput(
                 command.partNumber(),
-                command.revisionCode()
+                command.revisionCode(),
+                command.reason()
         ), auth.userId());
-        return new CreatePartDraftResult(draft.getPartNumber(), draft.getId());
+        return new CreatePartDraftResult(draft.getPartNumber(), draft.getDraftKey());
     }
 }

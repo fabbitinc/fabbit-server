@@ -32,8 +32,9 @@ public class CreatePartUseCase {
                 command.isPhantom(),
                 command.lifecycleState(),
                 command.leadTimeDays(),
-                command.extendedProperties()
+                command.extendedProperties(),
+                command.reason()
         ), auth.userId());
-        return new CreatePartResult(draft.getPartNumber(), draft.getId());
+        return new CreatePartResult(draft.getPartNumber(), draft.getDraftKey());
     }
 }

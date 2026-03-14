@@ -10,6 +10,7 @@ public record PartDetailResult(
         String partNumber,
         String name,
         String revision,
+        String draftKey,
         String material,
         String unit,
         String description,

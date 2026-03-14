@@ -22,13 +22,15 @@ public class PartRevisionRouteService {
                 ));
     }
 
-    public PartRevision getRequiredDraft(String partNumber, UUID draftId) {
-        return partRevisionRepository.findByIdAndPartNumber(draftId, partNumber)
+    public PartRevision getRequiredDraft(String partNumber, String baseRevisionCode, String draftKey) {
+        return (baseRevisionCode == null || baseRevisionCode.isBlank()
+                ? partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionIdIsNull(partNumber, draftKey)
+                : findRevisionScopedDraft(partNumber, baseRevisionCode, draftKey))
                 .filter(revision -> revision.getStatus() == com.fabbitinc.server.domain.part.model.PartRevisionStatus.DRAFT
                         || revision.getStatus() == com.fabbitinc.server.domain.part.model.PartRevisionStatus.IN_REVIEW)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "PartDraft '%s/%s'을(를) 찾을 수 없습니다".formatted(partNumber, draftId)
+                        "PartDraft '%s/%s'을(를) 찾을 수 없습니다".formatted(partNumber, draftKey)
                 ));
     }
 
@@ -36,7 +38,20 @@ public class PartRevisionRouteService {
         return getRequiredRevision(partNumber, revisionCode).getPartId();
     }
 
-    public UUID getRequiredDraftPartId(String partNumber, UUID draftId) {
-        return getRequiredDraft(partNumber, draftId).getPartId();
+    public UUID getRequiredRevisionId(String partNumber, String revisionCode) {
+        return getRequiredRevision(partNumber, revisionCode).getId();
+    }
+
+    public UUID getRequiredDraftPartId(String partNumber, String baseRevisionCode, String draftKey) {
+        return getRequiredDraft(partNumber, baseRevisionCode, draftKey).getPartId();
+    }
+
+    private java.util.Optional<PartRevision> findRevisionScopedDraft(String partNumber, String baseRevisionCode, String draftKey) {
+        PartRevision baseRevision = getRequiredRevision(partNumber, baseRevisionCode);
+        return partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionId(
+                partNumber,
+                draftKey,
+                baseRevision.getId()
+        );
     }
 }

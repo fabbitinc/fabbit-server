@@ -11,11 +11,9 @@ import com.fabbitinc.server.application.part.query.result.PartOwnerResult;
 import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
 import com.fabbitinc.server.application.team.api.TeamApi;
 import com.fabbitinc.server.application.user.api.UserApi;
-import com.fabbitinc.server.domain.part.model.Part;
-import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartDefaultOwner;
+import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.repository.PartDefaultOwnerRepository;
-import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.user.model.User;
@@ -35,7 +33,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class PartOwnerQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
-    private final PartRepository partRepository;
     private final PartRevisionRepository partRevisionRepository;
     private final PartDefaultOwnerRepository partDefaultOwnerRepository;
     private final UserApi userApi;
@@ -51,13 +48,7 @@ public class PartOwnerQuery {
                         "PartRevision '%s/%s'을(를) 찾을 수 없습니다"
                                 .formatted(condition.partNumber(), condition.revisionCode())
                 ));
-
-        Part part = partRepository.findById(revision.getPartId())
-                .orElseThrow(() -> new AppException(
-                        ErrorCode.NOT_FOUND,
-                        "Part '%s'을(를) 찾을 수 없습니다".formatted(condition.partNumber())
-                ));
-        return toPartOwnerResult(part);
+        return toPartOwnerResult(revision);
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -100,13 +91,13 @@ public class PartOwnerQuery {
         );
     }
 
-    private PartOwnerResult toPartOwnerResult(Part part) {
-        User owner = userApi.getUserOrNull(part.getOwnerId());
-        Team ownerTeam = teamApi.getTeamOrNull(part.getOwnerTeamId());
+    private PartOwnerResult toPartOwnerResult(PartRevision revision) {
+        User owner = userApi.getUserOrNull(revision.getOwnerId());
+        Team ownerTeam = teamApi.getTeamOrNull(revision.getOwnerTeamId());
         return new PartOwnerResult(
-                part.getOwnerId(),
+                revision.getOwnerId(),
                 toUserSummary(owner),
-                part.getOwnerTeamId(),
+                revision.getOwnerTeamId(),
                 toTeamName(ownerTeam)
         );
     }

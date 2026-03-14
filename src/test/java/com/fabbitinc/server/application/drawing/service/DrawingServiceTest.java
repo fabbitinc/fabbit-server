@@ -35,7 +35,7 @@ class DrawingServiceTest {
 
   @Test
   void createDrawing_원본_파일_크기만큼_스토리지를_소비한다() {
-    UUID partId = UUID.randomUUID();
+    UUID partRevisionId = UUID.randomUUID();
     File file =
         File.create(
             UUID.randomUUID(),
@@ -44,7 +44,8 @@ class DrawingServiceTest {
             "application/pdf",
             512L);
     file.markUploaded();
-    when(fileRepository.findByIdAndDeletedAtIsNull(file.getId())).thenReturn(Optional.of(file));
+    when(fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(file.getId(), "part_revision", partRevisionId))
+        .thenReturn(Optional.of(file));
     when(drawingRepository.save(any(Drawing.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -55,10 +56,10 @@ class DrawingServiceTest {
             organizationApi,
             partPreviewService);
 
-    Drawing drawing = service.createDrawing(partId, file.getId());
+    Drawing drawing = service.createDrawing(partRevisionId, file.getId());
 
     assertEquals(drawing.getId(), file.getOwnerId());
-    assertEquals(partId, drawing.getPartId());
+    assertEquals(partRevisionId, drawing.getPartRevisionId());
     verify(organizationApi).consumeStorageForCurrentTenant(512L);
   }
 

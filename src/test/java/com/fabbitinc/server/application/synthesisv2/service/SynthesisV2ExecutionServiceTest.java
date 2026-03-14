@@ -14,16 +14,16 @@ import com.fabbitinc.server.application.mappingv2.dto.common.NodeMappingV2Dto;
 import com.fabbitinc.server.application.mappingv2.dto.common.RelationMappingV2Dto;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.ontology.support.RelationshipType;
+import com.fabbitinc.server.domain.bom.model.EngineeringBomItem;
+import com.fabbitinc.server.domain.bom.repository.EngineeringBomItemRepository;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.mappingv2.repository.MappingV2RevisionRepository;
-import com.fabbitinc.server.domain.part.model.BomLink;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
-import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
@@ -34,6 +34,7 @@ import com.fabbitinc.server.domain.project.repository.ProjectRepository;
 import com.fabbitinc.server.domain.supplier.model.Supplier;
 import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
 import com.fabbitinc.server.domain.synthesisv2.repository.SynthesisV2JobRepository;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -65,7 +66,7 @@ class SynthesisV2ExecutionServiceTest {
     @Mock
     private PartRevisionRepository partRevisionRepository;
     @Mock
-    private BomLinkRepository bomLinkRepository;
+    private EngineeringBomItemRepository engineeringBomItemRepository;
     @Mock
     private com.fabbitinc.server.domain.drawing.repository.DrawingRepository drawingRepository;
     @Mock
@@ -90,7 +91,7 @@ class SynthesisV2ExecutionServiceTest {
                 spreadsheetParserSupport,
                 partRepository,
                 partRevisionRepository,
-                bomLinkRepository,
+                engineeringBomItemRepository,
                 drawingRepository,
                 projectRepository,
                 projectPartRepository,
@@ -114,8 +115,8 @@ class SynthesisV2ExecutionServiceTest {
         when(supplierRepository.findByCompanyName("ACME")).thenReturn(Optional.empty());
         when(drawingRepository.findByDrawingNumberAndDeletedAtIsNull("D-001")).thenReturn(Optional.empty());
         when(projectRepository.findByNameAndDeletedFalse("Root Project")).thenReturn(Optional.empty());
-        when(bomLinkRepository.findByParentPartIdAndChildPartId(any(), any())).thenReturn(Optional.empty());
-        when(partSupplierRepository.findByPartIdAndSupplierId(any(), any())).thenReturn(Optional.empty());
+        when(engineeringBomItemRepository.findByParentPartRevisionIdAndLineNumber(any(), any())).thenReturn(Optional.empty());
+        when(partSupplierRepository.findByPartRevisionIdAndSupplierId(any(), any())).thenReturn(Optional.empty());
         when(projectPartRepository.findByProjectIdAndPartId(any(), any())).thenReturn(Optional.empty());
 
         MappingV2ResultDto mapping = new MappingV2ResultDto(
@@ -254,17 +255,17 @@ class SynthesisV2ExecutionServiceTest {
         verify(drawingRepository).save(drawingCaptor.capture());
         Drawing drawing = drawingCaptor.getValue();
         assertEquals("D-001", drawing.getDrawingNumber());
-        assertEquals(createdPart.getId(), drawing.getPartId());
+        assertEquals(createdRevision.getId(), drawing.getPartRevisionId());
 
         ArgumentCaptor<Project> projectCaptor = ArgumentCaptor.forClass(Project.class);
         verify(projectRepository).save(projectCaptor.capture());
         assertEquals("Root Project", projectCaptor.getValue().getName());
 
-        ArgumentCaptor<BomLink> bomCaptor = ArgumentCaptor.forClass(BomLink.class);
-        verify(bomLinkRepository).save(bomCaptor.capture());
-        assertEquals(2, bomCaptor.getValue().getQuantity());
+        ArgumentCaptor<EngineeringBomItem> bomCaptor = ArgumentCaptor.forClass(EngineeringBomItem.class);
+        verify(engineeringBomItemRepository).save(bomCaptor.capture());
+        assertEquals("10", bomCaptor.getValue().getLineNumber());
+        assertEquals(0, new BigDecimal("2").compareTo(bomCaptor.getValue().getQuantity()));
         Map<?, ?> bomExt = objectMapper.readValue(bomCaptor.getValue().getExtendedProperties(), Map.class);
-        assertEquals(10, ((Number) bomExt.get("sequence")).intValue());
         assertEquals("weld", bomExt.get("_ext_process"));
 
         ArgumentCaptor<PartSupplier> supplierLinkCaptor = ArgumentCaptor.forClass(PartSupplier.class);

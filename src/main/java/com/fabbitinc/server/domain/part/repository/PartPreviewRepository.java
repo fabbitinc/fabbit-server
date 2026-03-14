@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PartPreviewRepository extends JpaRepository<PartPreview, UUID> {
 
-    Optional<PartPreview> findByPartId(UUID partId);
+    Optional<PartPreview> findByPartRevisionId(UUID partRevisionId);
 
     List<PartPreview> findBySourceTypeAndSourceId(PartPreviewSourceType sourceType, UUID sourceId);
 }

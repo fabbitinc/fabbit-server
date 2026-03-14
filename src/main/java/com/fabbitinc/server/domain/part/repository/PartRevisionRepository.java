@@ -26,7 +26,13 @@ public interface PartRevisionRepository extends JpaRepository<PartRevision, UUID
 
     Optional<PartRevision> findByPartNumberAndRevisionCode(String partNumber, String revisionCode);
 
-    Optional<PartRevision> findByIdAndPartNumber(UUID id, String partNumber);
+    Optional<PartRevision> findByPartNumberAndDraftKey(String partNumber, String draftKey);
+
+    Optional<PartRevision> findByPartNumberAndDraftKeyAndBaseRevisionId(String partNumber, String draftKey, UUID baseRevisionId);
+
+    Optional<PartRevision> findByPartNumberAndDraftKeyAndBaseRevisionIdIsNull(String partNumber, String draftKey);
+
+    List<PartRevision> findByChangeRequestIdOrderByCreatedAtAsc(UUID changeRequestId);
 
     boolean existsByCategory(String category);
 

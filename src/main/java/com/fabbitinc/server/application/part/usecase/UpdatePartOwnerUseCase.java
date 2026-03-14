@@ -20,10 +20,10 @@ public class UpdatePartOwnerUseCase {
 
     public UpdatePartOwnerResult execute(UpdatePartOwnerCommand command) {
         currentAuthProvider.getCurrentAuth();
-        var partId = partRevisionRouteService.getRequiredPartId(command.partNumber(), command.revisionCode());
+        var partRevisionId = partRevisionRouteService.getRequiredRevisionId(command.partNumber(), command.revisionCode());
         return new UpdatePartOwnerResult(
                 partService.updateOwner(
-                        partId,
+                        partRevisionId,
                         command.ownerId(),
                         command.ownerIdSet(),
                         command.ownerTeamId(),

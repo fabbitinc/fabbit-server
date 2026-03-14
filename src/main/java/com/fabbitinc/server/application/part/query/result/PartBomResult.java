@@ -3,6 +3,7 @@ package com.fabbitinc.server.application.part.query.result;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.math.BigDecimal;
 
 public record PartBomResult(
         List<Child> children,
@@ -12,7 +13,9 @@ public record PartBomResult(
             UUID id,
             String partNumber,
             String name,
-            int quantity,
+            String revisionCode,
+            String lineNumber,
+            BigDecimal quantity,
             Map<String, Object> extendedProperties
     ) {
     }
@@ -21,7 +24,9 @@ public record PartBomResult(
             UUID id,
             String partNumber,
             String name,
-            int quantity,
+            String revisionCode,
+            String lineNumber,
+            BigDecimal quantity,
             Map<String, Object> extendedProperties
     ) {
     }

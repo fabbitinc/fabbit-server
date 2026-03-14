@@ -7,8 +7,8 @@ import com.fabbitinc.server.application.activation.service.output.HealthCheckOut
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.part.api.PartApi;
+import com.fabbitinc.server.domain.bom.repository.EngineeringBomItemRepository;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
-import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
 import com.fabbitinc.server.domain.project.repository.ProjectPartRepository;
@@ -36,7 +36,7 @@ public class ActivationService {
     private final DrawingRepository drawingRepository;
     private final SupplierRepository supplierRepository;
     private final ProjectRepository projectRepository;
-    private final BomLinkRepository bomLinkRepository;
+    private final EngineeringBomItemRepository engineeringBomItemRepository;
     private final PartSupplierRepository partSupplierRepository;
     private final ProjectPartRepository projectPartRepository;
     private final EntityManager entityManager;
@@ -53,8 +53,8 @@ public class ActivationService {
         nodeCounts.put("Supplier", supplierCount);
         nodeCounts.put("Project", projectCount);
 
-        int consistsOf = safeToInt(bomLinkRepository.count());
-        int definedBy = safeToInt(drawingRepository.countByPartIdIsNotNullAndDeletedAtIsNull());
+        int consistsOf = safeToInt(engineeringBomItemRepository.count());
+        int definedBy = safeToInt(drawingRepository.countByPartRevisionIdIsNotNullAndDeletedAtIsNull());
         int suppliedBy = safeToInt(partSupplierRepository.count());
         int hasItem = safeToInt(projectPartRepository.count());
 
@@ -163,8 +163,9 @@ public class ActivationService {
                         from parts p
                         where not exists (
                             select 1
-                            from drawings d
-                            where d.part_id = p.id
+                            from part_revisions pr
+                            join drawings d on d.part_revision_id = pr.id
+                            where pr.part_id = p.id
                               and d.deleted_at is null
                         )
                         order by p.part_number asc
@@ -187,9 +188,10 @@ public class ActivationService {
     private GraphQueryOutput querySupplierPartCounts() {
         Query query = entityManager.createNativeQuery(
                 """
-                        select s.company_name, count(ps.part_id) as part_count
+                        select s.company_name, count(distinct pr.part_id) as part_count
                         from suppliers s
                         left join part_suppliers ps on ps.supplier_id = s.id
+                        left join part_revisions pr on pr.id = ps.part_revision_id
                         group by s.id, s.company_name
                         order by s.company_name
                         limit 20
@@ -268,7 +270,7 @@ public class ActivationService {
 
     private List<UUID> findDistinctChildPartIds() {
         return entityManager.createQuery(
-                        "select distinct b.childPartId from BomLink b",
+                        "select distinct pr.partId from EngineeringBomItem b join PartRevision pr on pr.id = b.childPartRevisionId",
                         UUID.class
                 )
                 .getResultList();
@@ -290,7 +292,7 @@ public class ActivationService {
 
     private long countDistinctSuppliedPartIds() {
         Number count = (Number) entityManager.createQuery(
-                "select count(distinct ps.partId) from PartSupplier ps"
+                "select count(distinct pr.partId) from PartSupplier ps join PartRevision pr on pr.id = ps.partRevisionId"
         ).getSingleResult();
         return count.longValue();
     }
@@ -302,8 +304,9 @@ public class ActivationService {
                         from parts p
                         where not exists (
                             select 1
-                            from drawings d
-                            where d.part_id = p.id
+                            from part_revisions pr
+                            join drawings d on d.part_revision_id = pr.id
+                            where pr.part_id = p.id
                               and d.deleted_at is null
                         )
                         """

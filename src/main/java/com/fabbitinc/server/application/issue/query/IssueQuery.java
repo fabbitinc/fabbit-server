@@ -5,7 +5,9 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
+import com.fabbitinc.server.application.part.api.ChangeRequestPartRevisionSnapshot;
 import com.fabbitinc.server.application.part.api.PartApi;
+import com.fabbitinc.server.application.part.api.PartRevisionWorkflowApi;
 import com.fabbitinc.server.application.part.api.PartSnapshot;
 import com.fabbitinc.server.application.issue.query.condition.ChangeRequestDetailCondition;
 import com.fabbitinc.server.application.issue.query.condition.ChangeRequestListCondition;
@@ -17,6 +19,7 @@ import com.fabbitinc.server.application.issue.query.condition.IssueTimelineCondi
 import com.fabbitinc.server.application.issue.query.result.ChangeRequestDetailResult;
 import com.fabbitinc.server.application.issue.query.result.ChangeRequestListResult;
 import com.fabbitinc.server.application.issue.query.result.ChangeRequestLookupResult;
+import com.fabbitinc.server.application.issue.query.result.ChangeRequestPartRevisionResult;
 import com.fabbitinc.server.application.issue.query.result.IssueDetailResult;
 import com.fabbitinc.server.application.issue.query.result.IssueFileItemResult;
 import com.fabbitinc.server.application.issue.query.result.IssueListResult;
@@ -107,6 +110,7 @@ public class IssueQuery {
     private final TeamRepository teamRepository;
     private final LabelRepository labelRepository;
     private final PartApi partApi;
+    private final PartRevisionWorkflowApi partRevisionWorkflowApi;
     private final FileRepository fileRepository;
     private final ActivityRepository activityRepository;
     private final FileUrlResolver fileUrlResolver;
@@ -498,6 +502,7 @@ public class IssueQuery {
                 reviewersOf(changeRequest.getId(), enrichment),
                 reviewerTeamsOf(changeRequest.getId(), enrichment),
                 partsOf(changeRequest.getId(), enrichment),
+                partRevisionsOf(changeRequest.getId()),
                 filesOf(changeRequest.getId(), enrichment),
                 enrichment.commentCounts().getOrDefault(changeRequest.getId(), 0L).intValue(),
                 changeRequest.getCrState(),
@@ -559,6 +564,24 @@ public class IssueQuery {
             }
         }
         return result;
+    }
+
+    private List<ChangeRequestPartRevisionResult> partRevisionsOf(UUID changeRequestId) {
+        return partRevisionWorkflowApi.listChangeRequestPartRevisions(changeRequestId).stream()
+                .map(this::toChangeRequestPartRevisionResult)
+                .toList();
+    }
+
+    private ChangeRequestPartRevisionResult toChangeRequestPartRevisionResult(ChangeRequestPartRevisionSnapshot snapshot) {
+        return new ChangeRequestPartRevisionResult(
+                snapshot.revisionId(),
+                snapshot.partId(),
+                snapshot.partNumber(),
+                snapshot.baseRevisionCode(),
+                snapshot.draftKey(),
+                snapshot.name(),
+                snapshot.status()
+        );
     }
 
     private List<IssueFileItemResult> filesOf(UUID issueId, Enrichment enrichment) {

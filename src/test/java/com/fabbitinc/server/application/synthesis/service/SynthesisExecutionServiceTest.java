@@ -14,20 +14,20 @@ import com.fabbitinc.server.application.mapping.dto.common.RelationMappingDto;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.ontology.support.RelationshipType;
+import com.fabbitinc.server.domain.bom.model.EngineeringBomItem;
+import com.fabbitinc.server.domain.bom.repository.EngineeringBomItemRepository;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.model.DrawingStatus;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.mapping.repository.MappingRevisionRepository;
-import com.fabbitinc.server.domain.part.model.BomLink;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartRevisionActivityActionType;
 import com.fabbitinc.server.domain.part.model.PartRevisionActivitySourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
-import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
@@ -38,6 +38,7 @@ import com.fabbitinc.server.domain.project.repository.ProjectRepository;
 import com.fabbitinc.server.domain.supplier.model.Supplier;
 import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
 import com.fabbitinc.server.domain.synthesis.repository.SynthesisJobRepository;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -69,7 +70,7 @@ class SynthesisExecutionServiceTest {
     @Mock
     private PartRevisionRepository partRevisionRepository;
     @Mock
-    private BomLinkRepository bomLinkRepository;
+    private EngineeringBomItemRepository engineeringBomItemRepository;
     @Mock
     private DrawingRepository drawingRepository;
     @Mock
@@ -92,7 +93,7 @@ class SynthesisExecutionServiceTest {
                 spreadsheetParserSupport,
                 partRepository,
                 partRevisionRepository,
-                bomLinkRepository,
+                engineeringBomItemRepository,
                 drawingRepository,
                 projectRepository,
                 projectPartRepository,
@@ -242,14 +243,17 @@ class SynthesisExecutionServiceTest {
     void processRow_consistsOf_관계_확장속성을_BOM에_저장한다() {
         Part child = Part.create("C-001");
         Part parent = Part.create("P-001");
+        PartRevision childRevision = currentRevisionOf(child, "1", "Child");
+        PartRevision parentRevision = currentRevisionOf(parent, "1", "Parent");
 
         when(partRepository.findByPartNumber("C-001")).thenReturn(Optional.of(child));
         when(partRepository.findByPartNumber("P-001")).thenReturn(Optional.of(parent));
         when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(child.getId()))
-                .thenReturn(List.of(currentRevisionOf(child, "1", "Child")));
+                .thenReturn(List.of(childRevision));
         when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(parent.getId()))
-                .thenReturn(List.of(currentRevisionOf(parent, "1", "Parent")));
-        when(bomLinkRepository.findByParentPartIdAndChildPartId(parent.getId(), child.getId())).thenReturn(Optional.empty());
+                .thenReturn(List.of(parentRevision));
+        when(engineeringBomItemRepository.findByParentPartRevisionIdAndLineNumber(parentRevision.getId(), "10"))
+                .thenReturn(Optional.empty());
 
         MappingResultDto mapping = new MappingResultDto(
                 List.of(
@@ -277,23 +281,26 @@ class SynthesisExecutionServiceTest {
 
         invokeProcessRow(row, mapping, Map.of(), true, null);
 
-        ArgumentCaptor<BomLink> captor = ArgumentCaptor.forClass(BomLink.class);
-        verify(bomLinkRepository).save(captor.capture());
-        BomLink saved = captor.getValue();
-        assertEquals(2, saved.getQuantity());
-        assertEquals("{\"sequence\":10}", saved.getExtendedProperties());
+        ArgumentCaptor<EngineeringBomItem> captor = ArgumentCaptor.forClass(EngineeringBomItem.class);
+        verify(engineeringBomItemRepository).save(captor.capture());
+        EngineeringBomItem saved = captor.getValue();
+        assertEquals("10", saved.getLineNumber());
+        assertEquals(0, new BigDecimal("2").compareTo(saved.getQuantity()));
+        assertEquals("{}", saved.getExtendedProperties());
     }
 
     @Test
     void processRow_suppliedBy_관계_확장속성을_PartSupplier에_저장한다() {
         Part part = Part.create("P-001");
         Supplier supplier = Supplier.create("ACME", null, null, null, "{}");
+        PartRevision partRevision = currentRevisionOf(part, "1", "Part");
 
         when(partRepository.findByPartNumber("P-001")).thenReturn(Optional.of(part));
         when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(part.getId()))
-                .thenReturn(List.of(currentRevisionOf(part, "1", "Part")));
+                .thenReturn(List.of(partRevision));
         when(supplierRepository.findByCompanyName("ACME")).thenReturn(Optional.of(supplier));
-        when(partSupplierRepository.findByPartIdAndSupplierId(part.getId(), supplier.getId())).thenReturn(Optional.empty());
+        when(partSupplierRepository.findByPartRevisionIdAndSupplierId(partRevision.getId(), supplier.getId()))
+                .thenReturn(Optional.empty());
 
         MappingResultDto mapping = new MappingResultDto(
                 List.of(
@@ -332,9 +339,10 @@ class SynthesisExecutionServiceTest {
     void processRow_definedBy_도면을_upsert하고_part에_연결한다() {
         Part part = Part.create("P-001");
 
+        PartRevision currentRevision = currentRevisionOf(part, "1", "Part");
         when(partRepository.findByPartNumber("P-001")).thenReturn(Optional.of(part));
         when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(part.getId()))
-                .thenReturn(List.of(currentRevisionOf(part, "1", "Part")));
+                .thenReturn(List.of(currentRevision));
         when(drawingRepository.findByDrawingNumberAndDeletedAtIsNull("D-001")).thenReturn(Optional.empty());
 
         MappingResultDto mapping = new MappingResultDto(
@@ -376,7 +384,7 @@ class SynthesisExecutionServiceTest {
         assertEquals("Main Drawing", saved.getName());
         assertEquals("A", saved.getVersion());
         assertEquals(DrawingStatus.RELEASED, saved.getStatus());
-        assertEquals(part.getId(), saved.getPartId());
+        assertEquals(currentRevision.getId(), saved.getPartRevisionId());
     }
 
     @Test
@@ -503,7 +511,7 @@ class SynthesisExecutionServiceTest {
 
     private PartRevision currentRevisionOf(Part part, String revisionCode, String name) {
         if (revisionCode == null) {
-            return PartRevision.createInitialDraft(part, name);
+            return PartRevision.createInitialDraft(part, "D1", name);
         }
         return PartRevision.createOfficial(part, revisionCode, null, name, PartRevisionStatus.RELEASED);
     }

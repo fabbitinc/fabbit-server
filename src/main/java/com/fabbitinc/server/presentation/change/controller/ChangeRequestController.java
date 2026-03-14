@@ -5,6 +5,7 @@ import com.fabbitinc.server.application.issue.dto.request.AttachFilesRequest;
 import com.fabbitinc.server.application.issue.dto.request.CreateChangeRequestRequest;
 import com.fabbitinc.server.application.issue.dto.request.CreateCommentRequest;
 import com.fabbitinc.server.application.issue.dto.request.SubmitReviewRequest;
+import com.fabbitinc.server.application.issue.dto.request.SyncPartRevisionsRequest;
 import com.fabbitinc.server.application.issue.dto.request.SyncAssigneesRequest;
 import com.fabbitinc.server.application.issue.dto.request.SyncIssuesRequest;
 import com.fabbitinc.server.application.issue.dto.request.SyncLabelsRequest;
@@ -15,6 +16,7 @@ import com.fabbitinc.server.application.issue.dto.request.SyncTeamReviewersReque
 import com.fabbitinc.server.application.issue.dto.request.UpdateCommentRequest;
 import com.fabbitinc.server.application.issue.dto.request.UpdateIssueRequest;
 import com.fabbitinc.server.application.issue.dto.response.ChangeRequestListResponse;
+import com.fabbitinc.server.application.issue.dto.response.ChangeRequestPartRevisionResponse;
 import com.fabbitinc.server.application.issue.dto.response.ChangeRequestLookupItemResponse;
 import com.fabbitinc.server.application.issue.dto.response.ChangeRequestLookupResponse;
 import com.fabbitinc.server.application.issue.dto.response.ChangeRequestResponse;
@@ -39,6 +41,7 @@ import com.fabbitinc.server.application.issue.query.condition.IssueTimelineCondi
 import com.fabbitinc.server.application.issue.query.result.ChangeRequestDetailResult;
 import com.fabbitinc.server.application.issue.query.result.ChangeRequestListResult;
 import com.fabbitinc.server.application.issue.query.result.ChangeRequestLookupResult;
+import com.fabbitinc.server.application.issue.query.result.ChangeRequestPartRevisionResult;
 import com.fabbitinc.server.application.issue.query.result.IssueFileItemResult;
 import com.fabbitinc.server.application.issue.query.result.IssueTimelineResult;
 import com.fabbitinc.server.application.issue.query.result.IssueUserSummaryResult;
@@ -62,6 +65,7 @@ import com.fabbitinc.server.application.issue.usecase.SubmitReviewUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncAssigneesUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncIssuesUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncLabelsUseCase;
+import com.fabbitinc.server.application.issue.usecase.SyncChangeRequestPartRevisionsUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncPartsUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncReviewersUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncTeamAssigneesUseCase;
@@ -130,6 +134,7 @@ public class ChangeRequestController {
     private final SyncTeamReviewersUseCase syncTeamReviewersUseCase;
     private final SubmitReviewUseCase submitReviewUseCase;
     private final SyncLabelsUseCase syncLabelsUseCase;
+    private final SyncChangeRequestPartRevisionsUseCase syncChangeRequestPartRevisionsUseCase;
     private final SyncPartsUseCase syncPartsUseCase;
     private final CreateCommentUseCase createCommentUseCase;
     private final UpdateCommentUseCase updateCommentUseCase;
@@ -198,6 +203,13 @@ public class ChangeRequestController {
                         request.body(),
                         request.issueNumber(),
                         request.partIds(),
+                        request.partRevisions().stream()
+                                .map(item -> new CreateChangeRequestUseCase.CreateChangeRequestCommand.PartRevisionTarget(
+                                        item.partNumber(),
+                                        item.baseRevisionCode(),
+                                        item.draftKey()
+                                ))
+                                .toList(),
                         request.assigneeUserIds(),
                         request.teamAssigneeIds(),
                         request.labelIds(),
@@ -413,6 +425,31 @@ public class ChangeRequestController {
     }
 
     @Operation(
+            summary = "PUT /api/v1/changes/{issueNumber}/part-revisions",
+            description = "변경요청에 연결할 부품 초안 목록을 동기화합니다"
+    )
+    @PutMapping("/{issueNumber}/part-revisions")
+    public SyncDiffResponse syncPartRevisions(
+            @PathVariable int issueNumber,
+            @Valid @RequestBody SyncPartRevisionsRequest request
+    ) {
+        return toSyncDiffResponse(
+                syncChangeRequestPartRevisionsUseCase.execute(
+                        new SyncChangeRequestPartRevisionsUseCase.SyncChangeRequestPartRevisionsCommand(
+                                issueNumber,
+                                request.items().stream()
+                                        .map(item -> new SyncChangeRequestPartRevisionsUseCase.SyncChangeRequestPartRevisionsCommand.Item(
+                                                item.partNumber(),
+                                                item.baseRevisionCode(),
+                                                item.draftKey()
+                                        ))
+                                        .toList()
+                        )
+                )
+        );
+    }
+
+    @Operation(
             summary = "GET /api/v1/changes/{issueNumber}/timeline",
             description = "댓글과 활동 이력을 시간순으로 병합 조회합니다"
     )
@@ -608,6 +645,7 @@ public class ChangeRequestController {
                 result.reviewers().stream().map(this::toReviewerSummaryResponse).toList(),
                 result.reviewerTeams().stream().map(this::toTeamBadgeResponse).toList(),
                 result.parts().stream().map(this::toPartBadgeResponse).toList(),
+                result.partRevisions().stream().map(this::toPartRevisionResponse).toList(),
                 result.files().stream().map(this::toFileItemResponse).toList(),
                 result.commentsCount(),
                 result.crState(),
@@ -673,6 +711,18 @@ public class ChangeRequestController {
 
     private PartBadgeResponse toPartBadgeResponse(PartBadgeResult result) {
         return new PartBadgeResponse(result.id(), result.partNumber(), result.name());
+    }
+
+    private ChangeRequestPartRevisionResponse toPartRevisionResponse(ChangeRequestPartRevisionResult result) {
+        return new ChangeRequestPartRevisionResponse(
+                result.revisionId(),
+                result.partId(),
+                result.partNumber(),
+                result.baseRevisionCode(),
+                result.draftKey(),
+                result.name(),
+                result.status()
+        );
     }
 
     private ReviewerSummaryResponse toReviewerSummaryResponse(ReviewerSummaryResult result) {

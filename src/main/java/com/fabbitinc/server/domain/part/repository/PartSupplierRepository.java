@@ -8,9 +8,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PartSupplierRepository extends JpaRepository<PartSupplier, UUID> {
 
-    long countByPartId(UUID partId);
+    long countByPartRevisionId(UUID partRevisionId);
 
-    List<PartSupplier> findByPartId(UUID partId);
+    List<PartSupplier> findByPartRevisionId(UUID partRevisionId);
 
-    Optional<PartSupplier> findByPartIdAndSupplierId(UUID partId, UUID supplierId);
+    Optional<PartSupplier> findByPartRevisionIdAndSupplierId(UUID partRevisionId, UUID supplierId);
 }

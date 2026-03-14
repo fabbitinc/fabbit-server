@@ -1,6 +1,7 @@
 package com.fabbitinc.server.application.issue.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.List;
@@ -17,6 +18,9 @@ public record CreateChangeRequestRequest(
         Integer issueNumber,
         @Schema(description = "연결 부품 ID 목록")
         List<UUID> partIds,
+        @Schema(description = "연결할 부품 초안 목록")
+        @Valid
+        List<ChangeRequestPartRevisionTargetRequest> partRevisions,
         @Schema(description = "담당자 ID 목록")
         List<UUID> assigneeUserIds,
         @Schema(description = "팀 담당자 ID 목록")
@@ -32,6 +36,7 @@ public record CreateChangeRequestRequest(
 ) {
     public CreateChangeRequestRequest {
         partIds = partIds == null ? List.of() : List.copyOf(partIds);
+        partRevisions = partRevisions == null ? List.of() : List.copyOf(partRevisions);
         assigneeUserIds = assigneeUserIds == null ? List.of() : List.copyOf(assigneeUserIds);
         teamAssigneeIds = teamAssigneeIds == null ? List.of() : List.copyOf(teamAssigneeIds);
         labelIds = labelIds == null ? List.of() : List.copyOf(labelIds);

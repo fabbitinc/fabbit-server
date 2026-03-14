@@ -76,7 +76,7 @@ class IssueRelationTest {
     @Test
     void issue_linkPart_루트가_파트링크를_생성한다() {
         Issue issue = Issue.create(1, "제목", "본문", UUID.randomUUID());
-        Part part = Part.create("P-001", "Bolt");
+        Part part = Part.create("P-001");
 
         IssuePart issuePart = issue.linkPart(part.getId());
 

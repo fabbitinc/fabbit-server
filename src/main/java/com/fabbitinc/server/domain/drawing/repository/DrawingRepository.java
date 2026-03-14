@@ -11,13 +11,13 @@ public interface DrawingRepository extends JpaRepository<Drawing, UUID> {
 
     Optional<Drawing> findByDrawingNumberAndDeletedAtIsNull(String drawingNumber);
 
-    List<Drawing> findByPartIdAndDeletedAtIsNullOrderByCreatedAtDesc(UUID partId);
+    List<Drawing> findByPartRevisionIdAndDeletedAtIsNullOrderByCreatedAtDesc(UUID partRevisionId);
 
-    long countByPartIdAndDeletedAtIsNull(UUID partId);
+    long countByPartRevisionIdAndDeletedAtIsNull(UUID partRevisionId);
 
-    boolean existsByPartIdAndDeletedAtIsNull(UUID partId);
+    boolean existsByPartRevisionIdAndDeletedAtIsNull(UUID partRevisionId);
 
-    long countByPartIdIsNotNullAndDeletedAtIsNull();
+    long countByPartRevisionIdIsNotNullAndDeletedAtIsNull();
 
     List<Drawing> findByDrawingNumberContainingIgnoreCaseOrNameContainingIgnoreCaseOrderByDrawingNumberAsc(
             String drawingNumber,

@@ -7,6 +7,7 @@ import com.fabbitinc.server.application.issue.event.IssueUsersMentionedEvent;
 import com.fabbitinc.server.application.issue.support.MentionExtractor;
 import com.fabbitinc.server.application.issue.support.TipTapValidator;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
+import com.fabbitinc.server.application.part.api.ChangeRequestPartRevisionSnapshot;
 import com.fabbitinc.server.domain.activity.model.Activity;
 import com.fabbitinc.server.domain.activity.model.ActivityTargetType;
 import com.fabbitinc.server.domain.activity.repository.ActivityRepository;
@@ -81,6 +82,7 @@ public class IssueService {
     private static final ActivityAction ACTION_FILE_ATTACHED = ActivityAction.ISSUE_FILE_ATTACHED;
     private static final ActivityAction ACTION_FILE_DETACHED = ActivityAction.ISSUE_FILE_DETACHED;
     private static final ActivityAction ACTION_CR_ISSUE_CHANGED = ActivityAction.CR_ISSUE_CHANGED;
+    private static final ActivityAction ACTION_CR_PART_REVISION_CHANGED = ActivityAction.CR_PART_REVISION_CHANGED;
     private static final ActivityAction ACTION_ISSUE_CR_CHANGED = ActivityAction.ISSUE_CR_CHANGED;
     private static final ActivityAction ACTION_ISSUE_MENTIONED = ActivityAction.ISSUE_MENTIONED;
 
@@ -584,6 +586,24 @@ public class IssueService {
         return new DiffResult(toAdd, toRemove);
     }
 
+    public void recordChangeRequestPartRevisionDiffActivity(
+            UUID actorId,
+            UUID changeRequestId,
+            List<ChangeRequestPartRevisionSnapshot> added,
+            List<ChangeRequestPartRevisionSnapshot> removed
+    ) {
+        if ((added == null || added.isEmpty()) && (removed == null || removed.isEmpty())) {
+            return;
+        }
+        addDiffActivity(
+                changeRequestId,
+                actorId,
+                ACTION_CR_PART_REVISION_CHANGED,
+                added == null ? List.of() : added.stream().map(this::toPartRevisionRef).toList(),
+                removed == null ? List.of() : removed.stream().map(this::toPartRevisionRef).toList()
+        );
+    }
+
     public ChangeRequestReviewer submitReview(UUID actorId, UUID changeRequestId, ReviewStatus status) {
         if (status == null || status == ReviewStatus.PENDING) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "리뷰 상태는 APPROVED 또는 REJECTED만 허용됩니다");
@@ -953,6 +973,25 @@ public class IssueService {
         ref.put("id", partId.toString());
         ref.put("type", "part");
         ref.put("label", part == null ? "(알 수 없음)" : part.getPartNumber());
+        return ref;
+    }
+
+    private Map<String, Object> toPartRevisionRef(ChangeRequestPartRevisionSnapshot snapshot) {
+        Map<String, Object> ref = new LinkedHashMap<>();
+        ref.put("id", snapshot.revisionId().toString());
+        ref.put("type", "part_revision");
+        ref.put(
+                "label",
+                snapshot.baseRevisionCode() == null
+                        ? "%s/%s".formatted(snapshot.partNumber(), snapshot.draftKey())
+                        : "%s/%s/%s".formatted(snapshot.partNumber(), snapshot.baseRevisionCode(), snapshot.draftKey())
+        );
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("partNumber", snapshot.partNumber());
+        meta.put("baseRevisionCode", snapshot.baseRevisionCode());
+        meta.put("draftKey", snapshot.draftKey());
+        meta.put("status", snapshot.status().name());
+        ref.put("meta", meta);
         return ref;
     }
 

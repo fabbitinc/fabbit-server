@@ -20,6 +20,10 @@ public final class PartRouteSegmentPolicy {
         return validate(value, domainCode, "리비전 코드");
     }
 
+    public static String validateDraftKey(String value, String domainCode) {
+        return validate(value, domainCode, "초안 키");
+    }
+
     private static String validate(String value, String domainCode, String label) {
         if (value == null || value.isBlank()) {
             return value;

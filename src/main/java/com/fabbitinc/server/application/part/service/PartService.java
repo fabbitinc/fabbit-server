@@ -46,22 +46,21 @@ public class PartService {
             if (partRepository.findByPartNumber(part.getPartNumber()).isPresent()) {
                 throw new AppException(ErrorCode.CONFLICT, "이미 존재하는 품번입니다: " + part.getPartNumber());
             }
-            PartLifecycleState lifecycleState = parseLifecycleState(input.lifecycleState());
-            if (lifecycleState != null) {
-                part.changeLifecycleState(lifecycleState);
+            if (input.lifecycleState() != null) {
+                part.changeLifecycleState(input.lifecycleState());
             }
 
             Part savedPart = partRepository.save(part);
-            PartRevision initialRevision = PartRevision.createInitialDraft(savedPart, input.name());
+            PartRevision initialRevision = PartRevision.createInitialDraft(savedPart, "D1", input.name());
             applyCreateInput(initialRevision, input);
+            applyDefaultOwner(initialRevision, initialRevision.getCategory());
             initialRevision.recordActivity(
                     actorId,
                     com.fabbitinc.server.domain.part.model.PartRevisionActivityActionType.CREATED,
-                    com.fabbitinc.server.domain.part.model.PartRevisionActivitySourceType.API,
+                    com.fabbitinc.server.domain.part.model.PartRevisionActivitySourceType.UI,
                     null,
-                    "{}"
+                    serializeReasonPayload(input.reason())
             );
-            applyDefaultOwner(savedPart, initialRevision.getCategory());
             partRevisionRepository.save(initialRevision);
             return initialRevision;
         } catch (DomainException ex) {
@@ -69,35 +68,35 @@ public class PartService {
         }
     }
 
-    public Part updateOwner(
-            UUID partId,
+    public PartRevision updateOwner(
+            UUID partRevisionId,
             UUID ownerId,
             boolean ownerIdSet,
             UUID ownerTeamId,
             boolean ownerTeamIdSet
     ) {
-        Part part = getPartOrThrow(partId);
+        PartRevision revision = getRevisionOrThrow(partRevisionId);
 
         if (ownerIdSet) {
             if (ownerId == null) {
-                part.unassignOwner();
+                revision.unassignOwner();
             } else {
-                part.assignOwner(ownerId);
+                revision.assignOwner(ownerId);
             }
         }
 
         if (ownerTeamIdSet) {
             if (ownerTeamId == null) {
-                part.unassignOwnerTeam();
+                revision.unassignOwnerTeam();
             } else {
-                part.assignOwnerTeam(ownerTeamId);
+                revision.assignOwnerTeam(ownerTeamId);
             }
         }
-        return part;
+        return revision;
     }
 
-    public List<File> attachFiles(UUID partId, List<UUID> fileIds) {
-        getPartOrThrow(partId);
+    public List<File> attachFiles(UUID partRevisionId, List<UUID> fileIds) {
+        getRevisionOrThrow(partRevisionId);
 
         List<File> files = fileRepository.findByIdIn(fileIds);
         Set<UUID> foundIds = files.stream().map(File::getId).collect(java.util.stream.Collectors.toSet());
@@ -129,7 +128,7 @@ public class PartService {
             );
         }
 
-        files.forEach(file -> file.assignOwner("part", partId));
+        files.forEach(file -> file.assignOwner("part_revision", partRevisionId));
         long totalBytes = files.stream().mapToLong(File::getFileSize).sum();
         if (totalBytes > 0L) {
             organizationApi.consumeStorageForCurrentTenant(totalBytes);
@@ -137,13 +136,13 @@ public class PartService {
         return files;
     }
 
-    public void detachFile(UUID partId, UUID fileId) {
-        getPartOrThrow(partId);
+    public void detachFile(UUID partRevisionId, UUID fileId) {
+        getRevisionOrThrow(partRevisionId);
 
-        File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(fileId, "part", partId)
+        File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(fileId, "part_revision", partRevisionId)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "Part '" + partId + "'에 연결된 파일 '" + fileId + "'을(를) 찾을 수 없습니다"
+                        "PartRevision '" + partRevisionId + "'에 연결된 파일 '" + fileId + "'을(를) 찾을 수 없습니다"
                 ));
         long fileSize = file.getFileSize();
         file.softDelete();
@@ -212,11 +211,11 @@ public class PartService {
         return updatedCount;
     }
 
-    private Part getPartOrThrow(UUID partId) {
-        return partRepository.findById(partId)
+    private PartRevision getRevisionOrThrow(UUID partRevisionId) {
+        return partRevisionRepository.findById(partRevisionId)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "Part '" + partId + "'을(를) 찾을 수 없습니다"
+                        "PartRevision '" + partRevisionId + "'을(를) 찾을 수 없습니다"
                 ));
     }
 
@@ -244,13 +243,13 @@ public class PartService {
         }
     }
 
-    private void applyDefaultOwner(Part part, String category) {
+    private void applyDefaultOwner(PartRevision revision, String category) {
         resolveDefaultOwner(category).ifPresent(defaultOwner -> {
             if (defaultOwner.getDefaultOwnerId() != null) {
-                part.assignOwner(defaultOwner.getDefaultOwnerId());
+                revision.assignOwner(defaultOwner.getDefaultOwnerId());
             }
             if (defaultOwner.getDefaultOwnerTeamId() != null) {
-                part.assignOwnerTeam(defaultOwner.getDefaultOwnerTeamId());
+                revision.assignOwnerTeam(defaultOwner.getDefaultOwnerTeamId());
             }
         });
     }
@@ -261,21 +260,6 @@ public class PartService {
             return;
         }
         revision.markReal();
-    }
-
-    private PartLifecycleState parseLifecycleState(String rawLifecycleState) {
-        if (rawLifecycleState == null || rawLifecycleState.isBlank()) {
-            return null;
-        }
-
-        PartLifecycleState lifecycleState = PartLifecycleState.from(rawLifecycleState);
-        if (lifecycleState == null) {
-            throw new AppException(
-                    ErrorCode.VALIDATION_ERROR,
-                    "유효하지 않은 lifecycle_state입니다: " + rawLifecycleState
-            );
-        }
-        return lifecycleState;
     }
 
     private Optional<PartDefaultOwner> resolveDefaultOwner(String category) {
@@ -293,6 +277,17 @@ public class PartService {
             return objectMapper.writeValueAsString(properties);
         } catch (JacksonException ex) {
             throw new AppException(ErrorCode.BAD_REQUEST, "extended_properties를 직렬화할 수 없습니다");
+        }
+    }
+
+    private String serializeReasonPayload(String reason) {
+        if (reason == null || reason.isBlank()) {
+            return "{}";
+        }
+        try {
+            return objectMapper.writeValueAsString(Map.of("reason", reason.trim()));
+        } catch (JacksonException ex) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "변경 이력을 직렬화할 수 없습니다");
         }
     }
 

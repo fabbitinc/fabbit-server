@@ -2,6 +2,7 @@ package com.fabbitinc.server.application.part.dto.response;
 
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,7 +16,7 @@ public record BomTreeNodeResponse(
         String unit,
         String category,
         PartLifecycleState lifecycleState,
-        int quantity,
+        BigDecimal quantity,
         List<BomTreeNodeResponse> children
 ) {
 }

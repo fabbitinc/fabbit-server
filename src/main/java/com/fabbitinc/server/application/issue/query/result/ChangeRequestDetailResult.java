@@ -26,6 +26,7 @@ public record ChangeRequestDetailResult(
         List<ReviewerSummaryResult> reviewers,
         List<TeamBadgeResult> reviewerTeams,
         List<PartBadgeResult> parts,
+        List<ChangeRequestPartRevisionResult> partRevisions,
         List<IssueFileItemResult> files,
         int commentsCount,
         CrState crState,

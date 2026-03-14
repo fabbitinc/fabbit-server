@@ -9,12 +9,12 @@ import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
-import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartPreview;
+import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
-import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
+import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,7 +25,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @RequiredArgsConstructor
 public class PartPreviewService {
 
-    private final PartRepository partRepository;
+    private final PartRevisionRepository partRevisionRepository;
     private final PartPreviewRepository partPreviewRepository;
     private final DrawingRepository drawingRepository;
     private final FileRepository fileRepository;
@@ -33,12 +33,12 @@ public class PartPreviewService {
     private final PartPreviewAsyncConversionService partPreviewAsyncConversionService;
     private final DrawingSourceClassifier drawingSourceClassifier;
 
-    public PartPreview changeSource(UUID partId, PartPreviewSourceType sourceType, UUID sourceId) {
-        ensurePartExists(partId);
-        ResolvedSource resolvedSource = resolveSource(partId, sourceType, sourceId);
+    public PartPreview changeSource(UUID partRevisionId, PartPreviewSourceType sourceType, UUID sourceId) {
+        PartRevision revision = getRequiredRevision(partRevisionId);
+        ResolvedSource resolvedSource = resolveSource(revision, sourceType, sourceId);
 
-        PartPreview partPreview = partPreviewRepository.findByPartId(partId)
-                .orElseGet(() -> PartPreview.create(partId));
+        PartPreview partPreview = partPreviewRepository.findByPartRevisionId(partRevisionId)
+                .orElseGet(() -> PartPreview.create(partRevisionId));
         partPreviewArtifactService.cleanupPreviewArtifacts(partPreview);
         partPreview.replaceSource(sourceType, sourceId, resolvedSource.sourceDescriptor().dimension());
         partPreview.registerSourceFile(
@@ -52,8 +52,8 @@ public class PartPreviewService {
         return partPreview;
     }
 
-    public void clearByPart(UUID partId) {
-        PartPreview partPreview = partPreviewRepository.findByPartId(partId).orElse(null);
+    public void clearByPartRevision(UUID partRevisionId) {
+        PartPreview partPreview = partPreviewRepository.findByPartRevisionId(partRevisionId).orElse(null);
         if (partPreview == null || !partPreview.hasSource()) {
             return;
         }
@@ -81,30 +81,31 @@ public class PartPreviewService {
         partPreviewRepository.save(partPreview);
     }
 
-    private void ensurePartExists(UUID partId) {
-        partRepository.findById(partId)
+    private PartRevision getRequiredRevision(UUID partRevisionId) {
+        return partRevisionRepository.findById(partRevisionId)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "Part '" + partId + "'을(를) 찾을 수 없습니다"
+                        "PartRevision '" + partRevisionId + "'을(를) 찾을 수 없습니다"
                 ));
     }
 
-    private ResolvedSource resolveSource(UUID partId, PartPreviewSourceType sourceType, UUID sourceId) {
+    private ResolvedSource resolveSource(PartRevision revision, PartPreviewSourceType sourceType, UUID sourceId) {
         if (sourceType == PartPreviewSourceType.FILE) {
-            File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(sourceId, "part", partId)
+            File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(sourceId, "part_revision", revision.getId())
                     .orElseThrow(() -> new AppException(
                             ErrorCode.NOT_FOUND,
-                            "Part '" + partId + "'에 연결된 파일 '" + sourceId + "'을(를) 찾을 수 없습니다"
+                            "PartRevision '" + revision.getId() + "'에 연결된 파일 '" + sourceId + "'을(를) 찾을 수 없습니다"
                     ));
             return new ResolvedSource(file, validatePreviewable(file));
         }
 
         if (sourceType == PartPreviewSourceType.DRAWING) {
             Drawing drawing = drawingRepository.findById(sourceId)
-                    .filter(it -> it.getDeletedAt() == null && partId.equals(it.getPartId()))
+                    .filter(it -> it.getDeletedAt() == null && revision.getId().equals(it.getPartRevisionId()))
                     .orElseThrow(() -> new AppException(
                             ErrorCode.NOT_FOUND,
-                            "Part '" + partId + "'에 연결된 도면 '" + sourceId + "'을(를) 찾을 수 없습니다"
+                            "PartRevision '%s/%s'에 연결된 도면 '%s'을(를) 찾을 수 없습니다"
+                                    .formatted(revision.getPartNumber(), revision.getRevisionCode(), sourceId)
                     ));
             if (drawing.getSourceFileId() == null) {
                 throw new AppException(ErrorCode.INVALID_STATE, "도면 원본 파일이 없습니다");

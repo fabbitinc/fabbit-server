@@ -6,7 +6,7 @@ import com.fabbitinc.server.application.dashboard.query.result.DashboardBomStats
 import com.fabbitinc.server.application.dashboard.query.result.DashboardLastSynthesisResult;
 import com.fabbitinc.server.application.dashboard.query.result.DashboardPartStatsResult;
 import com.fabbitinc.server.application.dashboard.query.result.DashboardStatsResult;
-import com.fabbitinc.server.domain.part.repository.BomLinkRepository;
+import com.fabbitinc.server.domain.bom.repository.EngineeringBomItemRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.synthesis.model.SynthesisJob;
 import com.querydsl.core.types.dsl.PathBuilder;
@@ -25,7 +25,7 @@ public class DashboardQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final PartRepository partRepository;
-    private final BomLinkRepository bomLinkRepository;
+    private final EngineeringBomItemRepository engineeringBomItemRepository;
     private final EntityManager entityManager;
 
     public DashboardStatsResult get(DashboardStatsCondition condition) {
@@ -34,7 +34,7 @@ public class DashboardQuery {
         Instant since = Instant.now().minus(7, ChronoUnit.DAYS);
         int totalParts = safeToInt(partRepository.count());
         int addedThisWeek = safeToInt(partRepository.countByCreatedAtGreaterThanEqual(since));
-        int totalBomLinks = safeToInt(bomLinkRepository.count());
+        int totalBomLinks = safeToInt(engineeringBomItemRepository.count());
 
         DashboardLastSynthesisResult lastSynthesis = findLatestSynthesisJob()
                 .map(this::toLastSynthesisResponse)

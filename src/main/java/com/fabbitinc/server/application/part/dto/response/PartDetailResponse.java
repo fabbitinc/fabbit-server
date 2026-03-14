@@ -12,6 +12,7 @@ public record PartDetailResponse(
         String partNumber,
         String name,
         String revision,
+        String draftKey,
         String material,
         String unit,
         String description,

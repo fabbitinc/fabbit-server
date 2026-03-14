@@ -25,29 +25,29 @@ import org.hibernate.type.SqlTypes;
         name = "part_suppliers",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uq_part_suppliers_part_id_supplier_id",
-                        columnNames = {"part_id", "supplier_id"}
+                        name = "uq_part_suppliers_part_revision_id_supplier_id",
+                        columnNames = {"part_revision_id", "supplier_id"}
                 )
         },
         indexes = {
-                @Index(name = "ix_part_suppliers_part_id", columnList = "part_id"),
+                @Index(name = "ix_part_suppliers_part_revision_id", columnList = "part_revision_id"),
                 @Index(name = "ix_part_suppliers_supplier_id", columnList = "supplier_id")
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PartSupplier extends AbstractCreatedEntity {
 
-    public static final String CODE_PART_SUPPLIER_PART_REQUIRED = "PART_SUPPLIER_PART_REQUIRED";
+    public static final String CODE_PART_SUPPLIER_PART_REVISION_REQUIRED = "PART_SUPPLIER_PART_REVISION_REQUIRED";
     public static final String CODE_PART_SUPPLIER_SUPPLIER_REQUIRED = "PART_SUPPLIER_SUPPLIER_REQUIRED";
     public static final String CODE_PART_SUPPLIER_UNIT_COST_INVALID = "PART_SUPPLIER_UNIT_COST_INVALID";
 
-    @Column(name = "part_id", nullable = false)
-    private UUID partId;
+    @Column(name = "part_revision_id", nullable = false)
+    private UUID partRevisionId;
 
     @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "part_id", insertable = false, updatable = false)
-    private Part _partRelation;
+    @JoinColumn(name = "part_revision_id", insertable = false, updatable = false)
+    private PartRevision _partRevisionRelation;
 
     @Column(name = "supplier_id", nullable = false)
     private UUID supplierId;
@@ -64,16 +64,16 @@ public class PartSupplier extends AbstractCreatedEntity {
     @Column(name = "extended_properties", nullable = false, columnDefinition = "jsonb")
     private String extendedProperties;
 
-    private PartSupplier(UUID partId, UUID supplierId, Double unitCost, String extendedProperties) {
+    private PartSupplier(UUID partRevisionId, UUID supplierId, Double unitCost, String extendedProperties) {
         super(UuidV7Generator.next());
-        this.partId = requirePartId(partId);
+        this.partRevisionId = requirePartRevisionId(partRevisionId);
         this.supplierId = requireSupplierId(supplierId);
         this.unitCost = normalizeUnitCost(unitCost);
         this.extendedProperties = normalizeExtendedProperties(extendedProperties);
     }
 
-    public static PartSupplier link(UUID partId, UUID supplierId, Double unitCost, String extendedProperties) {
-        return new PartSupplier(partId, supplierId, unitCost, extendedProperties);
+    public static PartSupplier link(UUID partRevisionId, UUID supplierId, Double unitCost, String extendedProperties) {
+        return new PartSupplier(partRevisionId, supplierId, unitCost, extendedProperties);
     }
 
     public void changeUnitCost(Double unitCost) {
@@ -84,9 +84,9 @@ public class PartSupplier extends AbstractCreatedEntity {
         this.extendedProperties = normalizeExtendedProperties(extendedProperties);
     }
 
-    private UUID requirePartId(UUID value) {
+    private UUID requirePartRevisionId(UUID value) {
         if (value == null) {
-            throw new DomainException(CODE_PART_SUPPLIER_PART_REQUIRED, "부품 ID는 필수입니다");
+            throw new DomainException(CODE_PART_SUPPLIER_PART_REVISION_REQUIRED, "부품 리비전 ID는 필수입니다");
         }
         return value;
     }

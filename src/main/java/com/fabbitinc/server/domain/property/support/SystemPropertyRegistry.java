@@ -266,7 +266,7 @@ public final class SystemPropertyRegistry {
                     "quantity",
                     "수량",
                     "BOM 관계 수량",
-                    PropertyValueType.INTEGER,
+                    PropertyValueType.FLOAT,
                     null,
                     List.of(),
                     "quantity",

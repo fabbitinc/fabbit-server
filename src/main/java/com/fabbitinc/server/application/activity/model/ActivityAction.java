@@ -16,7 +16,8 @@ public enum ActivityAction {
     ISSUE_CR_CHANGED("issue:cr_changed", ActivityScope.ISSUE),
     ISSUE_MENTIONED("issue:mentioned", ActivityScope.ISSUE),
     CR_STATE_CHANGED("cr:state_changed", ActivityScope.CR),
-    CR_ISSUE_CHANGED("cr:issue_changed", ActivityScope.CR);
+    CR_ISSUE_CHANGED("cr:issue_changed", ActivityScope.CR),
+    CR_PART_REVISION_CHANGED("cr:part_revision_changed", ActivityScope.CR);
 
     private final String value;
     private final ActivityScope scope;

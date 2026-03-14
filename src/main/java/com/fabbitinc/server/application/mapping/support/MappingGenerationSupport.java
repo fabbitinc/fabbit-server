@@ -255,7 +255,7 @@ public class MappingGenerationSupport {
         String quantity = findHeader(headers, List.of("수량", "qty", "quantity"));
         if (quantity != null) {
             relColumns.put("quantity", quantity);
-            relColumnTypes.put("quantity", PropertyDataType.INTEGER);
+            relColumnTypes.put("quantity", PropertyDataType.FLOAT);
         }
 
         return new RelationMappingDto(

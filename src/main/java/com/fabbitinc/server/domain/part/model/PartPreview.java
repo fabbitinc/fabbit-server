@@ -30,19 +30,19 @@ import lombok.NoArgsConstructor;
 @Table(
         name = "part_previews",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uq_part_previews_part_id", columnNames = "part_id")
+                @UniqueConstraint(name = "uq_part_previews_part_revision_id", columnNames = "part_revision_id")
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PartPreview extends AbstractCreatedEntity implements AggregateRoot {
 
-    @Column(name = "part_id", nullable = false)
-    private UUID partId;
+    @Column(name = "part_revision_id", nullable = false)
+    private UUID partRevisionId;
 
     @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "part_id", insertable = false, updatable = false)
-    private Part _partRelation;
+    @JoinColumn(name = "part_revision_id", insertable = false, updatable = false)
+    private PartRevision _partRevisionRelation;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "source_type", length = 20)
@@ -65,13 +65,13 @@ public class PartPreview extends AbstractCreatedEntity implements AggregateRoot 
     @OneToMany(mappedBy = "partPreview", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PartPreviewArtifact> artifacts = new ArrayList<>();
 
-    private PartPreview(UUID partId) {
+    private PartPreview(UUID partRevisionId) {
         super(UuidV7Generator.next());
-        this.partId = requirePartId(partId);
+        this.partRevisionId = requirePartRevisionId(partRevisionId);
     }
 
-    public static PartPreview create(UUID partId) {
-        return new PartPreview(partId);
+    public static PartPreview create(UUID partRevisionId) {
+        return new PartPreview(partRevisionId);
     }
 
     public void replaceSource(PartPreviewSourceType sourceType, UUID sourceId, DrawingDimension dimension) {
@@ -235,9 +235,9 @@ public class PartPreview extends AbstractCreatedEntity implements AggregateRoot 
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private UUID requirePartId(UUID value) {
+    private UUID requirePartRevisionId(UUID value) {
         if (value == null) {
-            throw new DomainException("PART_PREVIEW_PART_REQUIRED", "부품 ID는 필수입니다");
+            throw new DomainException("PART_PREVIEW_REVISION_REQUIRED", "부품 리비전 ID는 필수입니다");
         }
         return value;
     }

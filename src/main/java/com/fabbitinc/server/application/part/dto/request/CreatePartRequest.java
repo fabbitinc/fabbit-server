@@ -1,5 +1,6 @@
 package com.fabbitinc.server.application.part.dto.request;
 
+import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -37,16 +38,20 @@ public record CreatePartRequest(
 
         @Schema(
                 description = "수명주기 상태",
-                example = "design",
-                allowableValues = {"design", "prototype", "production", "eol", "obsolete"}
+                example = "DESIGN",
+                allowableValues = {"DESIGN", "PROTOTYPE", "PRODUCTION", "EOL", "OBSOLETE"}
         )
-        String lifecycleState,
+        PartLifecycleState lifecycleState,
 
         @Schema(description = "리드타임(일)", example = "7")
         @Min(value = 0, message = "lead_time_days는 0 이상이어야 합니다")
         Integer leadTimeDays,
 
         @Schema(description = "확장 속성 JSON 객체", example = "{\"weight\":1.2,\"color\":\"silver\"}")
-        Map<String, Object> extendedProperties
+        Map<String, Object> extendedProperties,
+
+        @Schema(description = "생성 사유", example = "신규 고객 프로젝트 대응을 위해 부품을 등록합니다")
+        @Size(max = 2000, message = "reason은 최대 2000자여야 합니다")
+        String reason
 ) {
 }

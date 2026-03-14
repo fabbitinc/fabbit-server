@@ -6,6 +6,7 @@ import com.fabbitinc.server.application.part.service.PartRevisionRouteService;
 import com.fabbitinc.server.application.part.usecase.command.RegisterPartDrawingCommand;
 import com.fabbitinc.server.application.part.usecase.result.RegisterPartDrawingResult;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
+import com.fabbitinc.server.domain.part.model.PartRevision;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,9 +22,10 @@ public class RegisterPartDrawingUseCase {
 
     public RegisterPartDrawingResult execute(RegisterPartDrawingCommand command) {
         currentAuthProvider.getCurrentAuth();
+        PartRevision revision = partRevisionRouteService.getRequiredRevision(command.partNumber(), command.revisionCode());
 
         Drawing drawing = drawingService.createDrawing(
-                partRevisionRouteService.getRequiredPartId(command.partNumber(), command.revisionCode()),
+                revision.getId(),
                 command.fileId()
         );
 

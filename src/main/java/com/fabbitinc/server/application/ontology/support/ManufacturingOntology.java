@@ -109,7 +109,7 @@ public final class ManufacturingOntology {
                                             false,
                                             false,
                                             "PLM에서 부품의 성숙도를 추적하는 단계. 프로젝트 상태(Project.status)와 다르며, 부품 자체의 성숙도를 나타냄",
-                                            List.of("'design'(설계중)", "'prototype'(시작품)", "'production'(양산)", "'eol'(단종)", "'obsolete'(폐기)"),
+                                            List.of("'DESIGN'(설계중)", "'PROTOTYPE'(시작품)", "'PRODUCTION'(양산)", "'EOL'(단종)", "'OBSOLETE'(폐기)"),
                                             List.of("'수명주기'", "'상태'", "'Lifecycle'", "'Phase'")
                                     ),
                                     property(
@@ -312,7 +312,7 @@ public final class ManufacturingOntology {
                                     property(
                                             "quantity",
                                             "소요 수량",
-                                            PropertyDataType.INTEGER,
+                                            PropertyDataType.FLOAT,
                                             false,
                                             false,
                                             false,

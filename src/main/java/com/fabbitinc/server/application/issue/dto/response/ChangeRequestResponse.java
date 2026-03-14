@@ -29,6 +29,7 @@ public record ChangeRequestResponse(
         List<ReviewerSummaryResponse> reviewers,
         List<TeamBadgeResponse> reviewerTeams,
         List<PartBadgeResponse> parts,
+        List<ChangeRequestPartRevisionResponse> partRevisions,
         List<FileItemResponse> files,
         int commentsCount,
         CrState crState,

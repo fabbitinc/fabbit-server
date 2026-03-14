@@ -11,23 +11,25 @@ class PartSupplierTest {
 
     @Test
     void link_엔티티_입력시_연관과_ID를_동기화한다() {
-        Part part = Part.create("P-001", "Bolt");
+        Part part = Part.create("P-001");
+        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "Bolt");
         Supplier supplier = Supplier.create("ACME", null, null, null, "{}");
 
-        PartSupplier link = PartSupplier.link(part.getId(), supplier.getId(), 1200.0, "{}");
+        PartSupplier link = PartSupplier.link(revision.getId(), supplier.getId(), 1200.0, "{}");
 
-        assertEquals(part.getId(), link.getPartId());
+        assertEquals(revision.getId(), link.getPartRevisionId());
         assertEquals(supplier.getId(), link.getSupplierId());
     }
 
     @Test
     void link_단가가_음수면_예외를_던진다() {
-        Part part = Part.create("P-001", "Bolt");
+        Part part = Part.create("P-001");
+        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "Bolt");
         Supplier supplier = Supplier.create("ACME", null, null, null, "{}");
 
         DomainException ex = assertThrows(
                 DomainException.class,
-                () -> PartSupplier.link(part.getId(), supplier.getId(), -1.0, "{}")
+                () -> PartSupplier.link(revision.getId(), supplier.getId(), -1.0, "{}")
         );
 
         assertEquals(PartSupplier.CODE_PART_SUPPLIER_UNIT_COST_INVALID, ex.getDomainCode());
@@ -35,10 +37,11 @@ class PartSupplierTest {
 
     @Test
     void link_extendedProperties는_trim_정규화한다() {
-        Part part = Part.create("P-001", "Bolt");
+        Part part = Part.create("P-001");
+        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "Bolt");
         Supplier supplier = Supplier.create("ACME", null, null, null, "{}");
 
-        PartSupplier link = PartSupplier.link(part.getId(), supplier.getId(), 1200.0, "  {\"key\":\"value\"}  ");
+        PartSupplier link = PartSupplier.link(revision.getId(), supplier.getId(), 1200.0, "  {\"key\":\"value\"}  ");
 
         assertEquals("{\"key\":\"value\"}", link.getExtendedProperties());
     }

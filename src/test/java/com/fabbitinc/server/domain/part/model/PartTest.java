@@ -7,155 +7,26 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 class PartTest {
 
     @Test
-    void create_품번과_품명을_정규화한다() {
-        Part part = Part.create("  P-001  ", "  Bolt  ");
+    void create_품번을_정규화한다() {
+        Part part = Part.create("  P-001  ");
 
         assertEquals("P-001", part.getPartNumber());
-        assertEquals("Bolt", part.getName());
-        assertEquals("1", part.getRevision());
     }
 
     @Test
     void create_빈_품번이면_예외를_던진다() {
-        DomainException ex = assertThrows(DomainException.class, () -> Part.create("   ", "A"));
+        DomainException ex = assertThrows(DomainException.class, () -> Part.create("   "));
 
         assertEquals(Part.CODE_PART_NUMBER_REQUIRED, ex.getDomainCode());
     }
 
     @Test
-    void changeName_빈문자열은_null로_정규화한다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        part.changeName("   ");
-
-        assertNull(part.getName());
-    }
-
-    @Test
-    void changeCategory_trim_정규화한다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        part.changeCategory("  FASTENER  ");
-
-        assertEquals("FASTENER", part.getCategory());
-    }
-
-    @Test
-    void changeCategory_빈문자열은_null로_정규화한다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        part.changeCategory("   ");
-
-        assertNull(part.getCategory());
-    }
-
-    @Test
-    void changeCategory_길이초과면_예외를_던진다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        DomainException ex = assertThrows(DomainException.class, () -> part.changeCategory("a".repeat(101)));
-
-        assertEquals(Part.CODE_PART_CATEGORY_TOO_LONG, ex.getDomainCode());
-    }
-
-    @Test
-    void changeMaterial_trim_정규화한다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        part.changeMaterial("  AL6061  ");
-
-        assertEquals("AL6061", part.getMaterial());
-    }
-
-    @Test
-    void changeMaterial_빈문자열은_null로_정규화한다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        part.changeMaterial("   ");
-
-        assertNull(part.getMaterial());
-    }
-
-    @Test
-    void changeMaterial_길이초과면_예외를_던진다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        DomainException ex = assertThrows(DomainException.class, () -> part.changeMaterial("a".repeat(201)));
-
-        assertEquals(Part.CODE_PART_MATERIAL_TOO_LONG, ex.getDomainCode());
-    }
-
-    @Test
-    void changeUnit_trim_정규화한다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        part.changeUnit("  EA  ");
-
-        assertEquals("EA", part.getUnit());
-    }
-
-    @Test
-    void changeUnit_빈문자열은_null로_정규화한다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        part.changeUnit("   ");
-
-        assertNull(part.getUnit());
-    }
-
-    @Test
-    void changeUnit_길이초과면_예외를_던진다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        DomainException ex = assertThrows(DomainException.class, () -> part.changeUnit("a".repeat(21)));
-
-        assertEquals(Part.CODE_PART_UNIT_TOO_LONG, ex.getDomainCode());
-    }
-
-    @Test
-    void changeDescription_trim_정규화한다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        part.changeDescription("  sample desc  ");
-
-        assertEquals("sample desc", part.getDescription());
-    }
-
-    @Test
-    void changeDescription_빈문자열은_null로_정규화한다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        part.changeDescription("   ");
-
-        assertNull(part.getDescription());
-    }
-
-    @Test
-    void changeExtendedProperties_blank이면_기본_json으로_정규화한다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        part.changeExtendedProperties(" ");
-
-        assertEquals("{}", part.getExtendedProperties());
-    }
-
-    @Test
-    void changeExtendedProperties_trim_정규화한다() {
-        Part part = Part.create("P-001", "Bolt");
-
-        part.changeExtendedProperties("  {\"color\":\"silver\"}  ");
-
-        assertEquals("{\"color\":\"silver\"}", part.getExtendedProperties());
-    }
-
-    @Test
     void assignOwner_유효한_ID를_설정한다() {
-        Part part = Part.create("P-001", "Bolt");
+        Part part = Part.create("P-001");
         UUID ownerId = UUID.randomUUID();
 
         part.assignOwner(ownerId);
@@ -165,7 +36,7 @@ class PartTest {
 
     @Test
     void assignOwner_null이면_예외를_던진다() {
-        Part part = Part.create("P-001", "Bolt");
+        Part part = Part.create("P-001");
 
         DomainException ex = assertThrows(DomainException.class, () -> part.assignOwner(null));
 
@@ -173,8 +44,18 @@ class PartTest {
     }
 
     @Test
+    void unassignOwner_담당자를_비운다() {
+        Part part = Part.create("P-001");
+        part.assignOwner(UUID.randomUUID());
+
+        part.unassignOwner();
+
+        assertNull(part.getOwnerId());
+    }
+
+    @Test
     void assignOwnerTeam_유효한_ID를_설정한다() {
-        Part part = Part.create("P-001", "Bolt");
+        Part part = Part.create("P-001");
         UUID ownerTeamId = UUID.randomUUID();
 
         part.assignOwnerTeam(ownerTeamId);
@@ -182,22 +63,28 @@ class PartTest {
         assertEquals(ownerTeamId, part.getOwnerTeamId());
     }
 
-    void markPhantom_markReal_clearPhantomFlag로_팬텀상태를_변경한다() {
-        Part part = Part.create("P-001", "Bolt");
+    @Test
+    void assignOwnerTeam_null이면_예외를_던진다() {
+        Part part = Part.create("P-001");
 
-        part.markPhantom();
-        assertEquals(Boolean.TRUE, part.getPhantom());
+        DomainException ex = assertThrows(DomainException.class, () -> part.assignOwnerTeam(null));
 
-        part.markReal();
-        assertEquals(Boolean.FALSE, part.getPhantom());
+        assertEquals(Part.CODE_PART_OWNER_TEAM_REQUIRED, ex.getDomainCode());
+    }
 
-        part.clearPhantomFlag();
-        assertNull(part.getPhantom());
+    @Test
+    void unassignOwnerTeam_담당팀을_비운다() {
+        Part part = Part.create("P-001");
+        part.assignOwnerTeam(UUID.randomUUID());
+
+        part.unassignOwnerTeam();
+
+        assertNull(part.getOwnerTeamId());
     }
 
     @Test
     void changeLifecycleState와_clearLifecycleState로_수명주기상태를_변경한다() {
-        Part part = Part.create("P-001", "Bolt");
+        Part part = Part.create("P-001");
 
         part.changeLifecycleState(PartLifecycleState.PRODUCTION);
         assertEquals(PartLifecycleState.PRODUCTION, part.getLifecycleState());
@@ -207,38 +94,60 @@ class PartTest {
     }
 
     @Test
-    void changeLeadTimeDays_음수면_예외를_던진다() {
-        Part part = Part.create("P-001", "Bolt");
+    void assignCurrentApprovedRevision_유효한_ID를_설정한다() {
+        Part part = Part.create("P-001");
+        UUID revisionId = UUID.randomUUID();
 
-        DomainException ex = assertThrows(DomainException.class, () -> part.changeLeadTimeDays(-1));
+        part.assignCurrentApprovedRevision(revisionId);
 
-        assertEquals(Part.CODE_PART_LEAD_TIME_DAYS_INVALID, ex.getDomainCode());
+        assertEquals(revisionId, part.getCurrentApprovedRevisionId());
     }
 
     @Test
-    void changeLeadTimeDays_null이면_값을_비운다() {
-        Part part = Part.create("P-001", "Bolt");
-        part.changeLeadTimeDays(3);
+    void assignCurrentApprovedRevision_null이면_예외를_던진다() {
+        Part part = Part.create("P-001");
 
-        part.changeLeadTimeDays(null);
+        DomainException ex = assertThrows(DomainException.class, () -> part.assignCurrentApprovedRevision(null));
 
-        assertNull(part.getLeadTimeDays());
+        assertEquals(Part.CODE_PART_APPROVED_REVISION_REQUIRED, ex.getDomainCode());
     }
 
     @Test
-    void bumpRevision_숫자_리비전을_증분한다() {
-        Part part = Part.create("P-001", "Bolt");
+    void clearCurrentApprovedRevision_승인리비전을_비운다() {
+        Part part = Part.create("P-001");
+        part.assignCurrentApprovedRevision(UUID.randomUUID());
 
-        part.bumpRevision();
+        part.clearCurrentApprovedRevision();
 
-        assertEquals("2", part.getRevision());
+        assertNull(part.getCurrentApprovedRevisionId());
     }
 
     @Test
-    void bumpRevision_Z는_AA로_증분한다() {
-        Part part = Part.create("P-001", "Bolt");
-        ReflectionTestUtils.setField(part, "revision", "Z");
-        part.bumpRevision();
-        assertEquals("AA", part.getRevision());
+    void assignCurrentReleasedRevision_유효한_ID를_설정한다() {
+        Part part = Part.create("P-001");
+        UUID revisionId = UUID.randomUUID();
+
+        part.assignCurrentReleasedRevision(revisionId);
+
+        assertEquals(revisionId, part.getCurrentReleasedRevisionId());
+    }
+
+    @Test
+    void assignCurrentReleasedRevision_null이면_예외를_던진다() {
+        Part part = Part.create("P-001");
+
+        DomainException ex = assertThrows(DomainException.class, () -> part.assignCurrentReleasedRevision(null));
+
+        assertEquals(Part.CODE_PART_RELEASED_REVISION_REQUIRED, ex.getDomainCode());
+    }
+
+    @Test
+    void clearCurrentReleasedRevision_릴리즈리비전을_비운다() {
+        Part part = Part.create("P-001");
+        part.assignCurrentReleasedRevision(UUID.randomUUID());
+
+        part.clearCurrentReleasedRevision();
+
+        assertNull(part.getCurrentReleasedRevisionId());
     }
 }

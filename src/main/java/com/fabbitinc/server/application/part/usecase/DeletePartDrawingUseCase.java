@@ -20,7 +20,7 @@ public class DeletePartDrawingUseCase {
     public void execute(DeletePartDrawingCommand command) {
         currentAuthProvider.getCurrentAuth();
         drawingService.deleteDrawing(
-                partRevisionRouteService.getRequiredPartId(command.partNumber(), command.revisionCode()),
+                partRevisionRouteService.getRequiredRevisionId(command.partNumber(), command.revisionCode()),
                 command.drawingId()
         );
     }

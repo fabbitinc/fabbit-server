@@ -15,11 +15,12 @@ class PartRevisionTest {
     void createInitial_파트의_품번을_스냅샷으로_보관한다() {
         Part part = Part.create("AES-100");
 
-        PartRevision revision = PartRevision.createInitialDraft(part, "본체");
+        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체");
 
         assertEquals(part.getId(), revision.getPartId());
         assertEquals("AES-100", revision.getPartNumber());
         assertEquals(null, revision.getRevisionCode());
+        assertEquals("D1", revision.getDraftKey());
         assertEquals(PartRevisionStatus.DRAFT, revision.getStatus());
     }
 
@@ -28,16 +29,17 @@ class PartRevisionTest {
         Part part = Part.create("AES-100");
         UUID baseRevisionId = UUID.randomUUID();
 
-        PartRevision revision = PartRevision.createDraft(part, baseRevisionId, "개정본");
+        PartRevision revision = PartRevision.createDraft(part, "D2", baseRevisionId, "개정본");
 
         assertEquals(baseRevisionId, revision.getBaseRevisionId());
         assertEquals("AES-100", revision.getPartNumber());
         assertEquals(null, revision.getRevisionCode());
+        assertEquals("D2", revision.getDraftKey());
     }
 
     @Test
     void createInitial_파트가_null이면_예외를_던진다() {
-        DomainException ex = assertThrows(DomainException.class, () -> PartRevision.createInitialDraft(null, "본체"));
+        DomainException ex = assertThrows(DomainException.class, () -> PartRevision.createInitialDraft(null, "D1", "본체"));
 
         assertEquals(PartRevision.CODE_PART_REVISION_PART_REQUIRED, ex.getDomainCode());
     }
@@ -45,7 +47,7 @@ class PartRevisionTest {
     @Test
     void recordActivity_루트가_활동_이력을_직접_추가한다() {
         Part part = Part.create("AES-100");
-        PartRevision revision = PartRevision.createInitialDraft(part, "본체");
+        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체");
         UUID actorId = UUID.randomUUID();
         Instant occurredAt = Instant.parse("2026-03-14T10:15:30Z");
 
@@ -77,7 +79,7 @@ class PartRevisionTest {
     @Test
     void copyEditableFieldsFrom_기준_리비전의_본문을_복제한다() {
         Part part = Part.create("AES-100");
-        PartRevision source = PartRevision.createInitialDraft(part, "원본");
+        PartRevision source = PartRevision.createInitialDraft(part, "D1", "원본");
         source.changeCategory("FRAME");
         source.changeMaterial("AL6061");
         source.changeUnit("EA");
@@ -86,7 +88,7 @@ class PartRevisionTest {
         source.changeLeadTimeDays(7);
         source.changeExtendedProperties("{\"weight\":1.2}");
 
-        PartRevision target = PartRevision.createDraft(part, source.getId(), "초안");
+        PartRevision target = PartRevision.createDraft(part, "D2", source.getId(), "초안");
         target.copyEditableFieldsFrom(source);
 
         assertEquals("원본", target.getName());
@@ -98,5 +100,71 @@ class PartRevisionTest {
         assertEquals(7, target.getLeadTimeDays());
         assertEquals("{\"weight\":1.2}", target.getExtendedProperties());
         assertEquals(source.getId(), target.getBaseRevisionId());
+    }
+
+    @Test
+    void approve_DRAFT를_공식_APPROVED_리비전으로_전환한다() {
+        Part part = Part.create("AES-100");
+        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체");
+
+        revision.approve("1");
+
+        assertEquals(PartRevisionStatus.APPROVED, revision.getStatus());
+        assertEquals("1", revision.getRevisionCode());
+        assertEquals(null, revision.getDraftKey());
+    }
+
+    @Test
+    void release_APPROVED를_RELEASED로_전환한다() {
+        Part part = Part.create("AES-100");
+        PartRevision revision = PartRevision.createOfficial(part, "1", null, "본체", PartRevisionStatus.APPROVED);
+
+        revision.release("1");
+
+        assertEquals(PartRevisionStatus.RELEASED, revision.getStatus());
+        assertEquals("1", revision.getRevisionCode());
+        assertEquals(null, revision.getDraftKey());
+    }
+
+    @Test
+    void markSuperseded_공식_리비전만_허용한다() {
+        Part part = Part.create("AES-100");
+        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체");
+
+        DomainException ex = assertThrows(DomainException.class, revision::markSuperseded);
+
+        assertEquals(PartRevision.CODE_PART_REVISION_SUPERSEDE_INVALID_STATE, ex.getDomainCode());
+    }
+
+    @Test
+    void assignChangeRequest_DRAFT에_변경요청을_연결한다() {
+        Part part = Part.create("AES-100");
+        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체");
+        UUID changeRequestId = UUID.randomUUID();
+
+        revision.assignChangeRequest(changeRequestId);
+
+        assertEquals(changeRequestId, revision.getChangeRequestId());
+    }
+
+    @Test
+    void markInReview_DRAFT를_IN_REVIEW로_전환한다() {
+        Part part = Part.create("AES-100");
+        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체");
+
+        revision.markInReview();
+
+        assertEquals(PartRevisionStatus.IN_REVIEW, revision.getStatus());
+    }
+
+    @Test
+    void revertToDraft_IN_REVIEW를_DRAFT로_되돌린다() {
+        Part part = Part.create("AES-100");
+        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체");
+        revision.markInReview();
+
+        revision.revertToDraft();
+
+        assertEquals(PartRevisionStatus.DRAFT, revision.getStatus());
     }
 }

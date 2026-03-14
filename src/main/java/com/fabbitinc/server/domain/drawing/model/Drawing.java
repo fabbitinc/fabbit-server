@@ -4,6 +4,7 @@ import com.fabbitinc.server.domain.common.entity.AbstractCreatedEntity;
 import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
+import com.fabbitinc.server.domain.part.model.PartRevision;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -11,6 +12,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -28,6 +32,9 @@ import lombok.NoArgsConstructor;
         name = "drawings",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uq_drawings_drawing_number", columnNames = "drawing_number")
+        },
+        indexes = {
+                @Index(name = "ix_drawings_part_revision_id", columnList = "part_revision_id")
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -56,8 +63,13 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
     @Column(name = "dimension", length = 30)
     private DrawingDimension dimension;
 
-    @Column(name = "part_id")
-    private UUID partId;
+    @Column(name = "part_revision_id")
+    private UUID partRevisionId;
+
+    @Getter(AccessLevel.NONE)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "part_revision_id", insertable = false, updatable = false)
+    private PartRevision _partRevisionRelation;
 
     @Column(name = "source_file_id")
     private UUID sourceFileId;
@@ -95,15 +107,15 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
         this.status = status;
     }
 
-    public void assignPart(UUID partId) {
-        if (partId == null) {
-            throw new DomainException("DRAWING_PART_REQUIRED", "부품 ID는 필수입니다");
+    public void assignPartRevision(UUID partRevisionId) {
+        if (partRevisionId == null) {
+            throw new DomainException("DRAWING_PART_REVISION_REQUIRED", "부품 리비전 ID는 필수입니다");
         }
-        this.partId = partId;
+        this.partRevisionId = partRevisionId;
     }
 
-    public void unassignPart() {
-        this.partId = null;
+    public void unassignPartRevision() {
+        this.partRevisionId = null;
     }
 
     public void registerSourceFile(

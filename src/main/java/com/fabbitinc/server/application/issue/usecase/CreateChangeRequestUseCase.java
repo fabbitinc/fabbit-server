@@ -4,6 +4,8 @@ import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.file.service.FileService;
 import com.fabbitinc.server.application.issue.service.IssueService;
+import com.fabbitinc.server.application.part.api.ChangeRequestPartRevisionRef;
+import com.fabbitinc.server.application.part.api.PartRevisionWorkflowApi;
 import com.fabbitinc.server.domain.issue.model.ChangeRequest;
 import com.fabbitinc.server.domain.issue.model.Issue;
 import java.util.List;
@@ -21,6 +23,7 @@ public class CreateChangeRequestUseCase {
     private final CurrentAuthProvider currentAuthProvider;
     private final FileService fileService;
     private final IssueService issueService;
+    private final PartRevisionWorkflowApi partRevisionWorkflowApi;
 
     public CreateChangeRequestResult execute(CreateChangeRequestCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
@@ -33,6 +36,18 @@ public class CreateChangeRequestUseCase {
         }
         if (!command.partIds().isEmpty()) {
             issueService.syncParts(auth.userId(), changeRequest.getId(), command.partIds(), false);
+        }
+        if (!command.partRevisions().isEmpty()) {
+            partRevisionWorkflowApi.syncChangeRequestPartRevisions(
+                    changeRequest.getId(),
+                    command.partRevisions().stream()
+                            .map(item -> new ChangeRequestPartRevisionRef(
+                                    item.partNumber(),
+                                    item.baseRevisionCode(),
+                                    item.draftKey()
+                            ))
+                            .toList()
+            );
         }
         if (!command.assigneeUserIds().isEmpty()) {
             issueService.syncAssignees(auth.userId(), changeRequest.getId(), command.assigneeUserIds(), false);
@@ -66,6 +81,7 @@ public class CreateChangeRequestUseCase {
             JsonNode body,
             Integer issueNumber,
             List<UUID> partIds,
+            List<PartRevisionTarget> partRevisions,
             List<UUID> assigneeUserIds,
             List<UUID> teamAssigneeIds,
             List<UUID> labelIds,
@@ -75,12 +91,20 @@ public class CreateChangeRequestUseCase {
     ) {
         public CreateChangeRequestCommand {
             partIds = partIds == null ? List.of() : List.copyOf(partIds);
+            partRevisions = partRevisions == null ? List.of() : List.copyOf(partRevisions);
             assigneeUserIds = assigneeUserIds == null ? List.of() : List.copyOf(assigneeUserIds);
             teamAssigneeIds = teamAssigneeIds == null ? List.of() : List.copyOf(teamAssigneeIds);
             labelIds = labelIds == null ? List.of() : List.copyOf(labelIds);
             fileIds = fileIds == null ? List.of() : List.copyOf(fileIds);
             reviewerUserIds = reviewerUserIds == null ? List.of() : List.copyOf(reviewerUserIds);
             teamReviewerIds = teamReviewerIds == null ? List.of() : List.copyOf(teamReviewerIds);
+        }
+
+        public record PartRevisionTarget(
+                String partNumber,
+                String baseRevisionCode,
+                String draftKey
+        ) {
         }
     }
 

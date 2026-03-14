@@ -1,12 +1,12 @@
 package com.fabbitinc.server.application.part.service.input;
 
-import java.util.UUID;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public record UpdatePartRevisionInput(
         String partNumber,
-        UUID draftId,
+        String baseRevisionCode,
+        String draftKey,
         String name,
         boolean nameSet,
         String material,
