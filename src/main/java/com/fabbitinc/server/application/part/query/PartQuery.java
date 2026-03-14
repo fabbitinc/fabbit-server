@@ -13,6 +13,7 @@ import com.fabbitinc.server.application.part.query.condition.BomTreeExportCondit
 import com.fabbitinc.server.application.part.query.condition.FileItemsCondition;
 import com.fabbitinc.server.application.part.query.condition.PartBomCondition;
 import com.fabbitinc.server.application.part.query.condition.PartDetailCondition;
+import com.fabbitinc.server.application.part.query.condition.PartDraftLookupCondition;
 import com.fabbitinc.server.application.part.query.condition.PartDraftDetailCondition;
 import com.fabbitinc.server.application.part.query.condition.PartExportCondition;
 import com.fabbitinc.server.application.part.query.condition.PartFilesCondition;
@@ -25,6 +26,7 @@ import com.fabbitinc.server.application.part.query.result.CategoryLookupResult;
 import com.fabbitinc.server.application.part.query.result.CategoryStatsResult;
 import com.fabbitinc.server.application.part.query.result.PartBomResult;
 import com.fabbitinc.server.application.part.query.result.PartDetailResult;
+import com.fabbitinc.server.application.part.query.result.PartDraftLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartFilesResult;
 import com.fabbitinc.server.application.part.query.result.PartFilterOptionsResult;
 import com.fabbitinc.server.application.part.query.result.PartListResult;
@@ -53,6 +55,7 @@ import com.fabbitinc.server.domain.part.model.PartPreviewServingProjection;
 import com.fabbitinc.server.domain.part.model.PartPreviewProcessingStatus;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
+import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
 import com.fabbitinc.server.domain.part.repository.PartPreviewProcessingJobRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
@@ -80,6 +83,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -154,6 +158,76 @@ public class PartQuery {
                 .map(part -> new PartLookupResult.Item(part.id(), part.partNumber(), part.name()))
                 .toList();
         return new PartLookupResult(items);
+    }
+
+    public PartDraftLookupResult lookupDrafts(PartDraftLookupCondition condition) {
+        UUID actorId = currentAuthProvider.getCurrentAuth().userId();
+
+        PathBuilder<PartRevision> revision = new PathBuilder<>(PartRevision.class, "revision");
+
+        BooleanBuilder predicate = new BooleanBuilder()
+                .and(revision.getEnum("status", PartRevisionStatus.class).eq(PartRevisionStatus.DRAFT))
+                .and(revision.get("changeRequestId", UUID.class).isNull())
+                .and(revision.get("createdBy", UUID.class).eq(actorId));
+
+        if (condition.search() != null && !condition.search().isBlank()) {
+            String keyword = condition.search().trim();
+            predicate.and(
+                    revision.getString("partNumber").containsIgnoreCase(keyword)
+                            .or(revision.getString("name").containsIgnoreCase(keyword))
+            );
+        }
+
+        List<PartRevision> drafts = queryFactory()
+                .selectFrom(revision)
+                .where(predicate)
+                .orderBy(
+                        revision.getString("partNumber").asc(),
+                        revision.getDateTime("createdAt", java.time.Instant.class).desc()
+                )
+                .limit(condition.limit())
+                .fetch();
+
+        Map<UUID, PartRevision> baseRevisions = drafts.stream()
+                .map(PartRevision::getBaseRevisionId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.collectingAndThen(
+                        java.util.stream.Collectors.toSet(),
+                        baseRevisionIds -> baseRevisionIds.isEmpty()
+                                ? Map.<UUID, PartRevision>of()
+                                : partRevisionRepository.findAllById(baseRevisionIds).stream()
+                                .collect(java.util.stream.Collectors.toMap(PartRevision::getId, base -> base))
+                ));
+
+        Map<UUID, User> createdByUsers = drafts.stream()
+                .map(PartRevision::getCreatedBy)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.collectingAndThen(
+                        java.util.stream.Collectors.toCollection(LinkedHashSet::new),
+                        userIds -> userIds.isEmpty()
+                                ? Map.<UUID, User>of()
+                                : userApi.getUsersByIdsOrdered(List.copyOf(userIds)).stream()
+                                .collect(java.util.stream.Collectors.toMap(User::getId, user -> user))
+                ));
+
+        return new PartDraftLookupResult(
+                drafts.stream()
+                        .map(draft -> {
+                            PartRevision baseRevision = draft.getBaseRevisionId() == null
+                                    ? null
+                                    : baseRevisions.get(draft.getBaseRevisionId());
+                            return new PartDraftLookupResult.Item(
+                                    draft.getId(),
+                                    draft.getPartId(),
+                                    draft.getPartNumber(),
+                                    baseRevision == null ? null : baseRevision.getRevisionCode(),
+                                    draft.getDraftKey(),
+                                    draft.getName(),
+                                    toUserSummary(createdByUsers.get(draft.getCreatedBy()))
+                            );
+                        })
+                        .toList()
+        );
     }
 
     public CategoryStatsResult listCategories() {

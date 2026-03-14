@@ -14,27 +14,46 @@ class PartRevisionTest {
     @Test
     void createInitial_파트의_품번을_스냅샷으로_보관한다() {
         Part part = Part.create("AES-100");
+        UUID actorId = UUID.randomUUID();
 
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체");
+        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", actorId);
 
         assertEquals(part.getId(), revision.getPartId());
         assertEquals("AES-100", revision.getPartNumber());
         assertEquals(null, revision.getRevisionCode());
         assertEquals("D1", revision.getDraftKey());
         assertEquals(PartRevisionStatus.DRAFT, revision.getStatus());
+        assertEquals(actorId, revision.getCreatedBy());
+        assertEquals(actorId, revision.getUpdatedBy());
     }
 
     @Test
     void createDraft_baseRevisionId를_보관한다() {
         Part part = Part.create("AES-100");
         UUID baseRevisionId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
 
-        PartRevision revision = PartRevision.createDraft(part, "D2", baseRevisionId, "개정본");
+        PartRevision revision = PartRevision.createDraft(part, "D2", baseRevisionId, "개정본", actorId);
 
         assertEquals(baseRevisionId, revision.getBaseRevisionId());
         assertEquals("AES-100", revision.getPartNumber());
         assertEquals(null, revision.getRevisionCode());
         assertEquals("D2", revision.getDraftKey());
+        assertEquals(actorId, revision.getCreatedBy());
+        assertEquals(actorId, revision.getUpdatedBy());
+    }
+
+    @Test
+    void touch_수행자가_있으면_updatedBy를_갱신한다() {
+        Part part = Part.create("AES-100");
+        UUID creatorId = UUID.randomUUID();
+        UUID editorId = UUID.randomUUID();
+        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", creatorId);
+
+        revision.touch(editorId);
+
+        assertEquals(creatorId, revision.getCreatedBy());
+        assertEquals(editorId, revision.getUpdatedBy());
     }
 
     @Test

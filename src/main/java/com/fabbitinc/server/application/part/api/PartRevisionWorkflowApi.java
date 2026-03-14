@@ -99,22 +99,22 @@ public class PartRevisionWorkflowApi {
                 .toList();
     }
 
-    public void submitChangeRequest(UUID changeRequestId) {
+    public void submitChangeRequest(UUID actorId, UUID changeRequestId) {
         partRevisionWorkflowPolicyService.assertChangeRequestModeEnabled();
         for (PartRevision revision : partRevisionRepository.findByChangeRequestIdOrderByCreatedAtAsc(changeRequestId)) {
-            partRevisionService.markInReview(revision);
+            partRevisionService.markInReview(revision, actorId);
         }
     }
 
-    public void reopenChangeRequest(UUID changeRequestId) {
+    public void reopenChangeRequest(UUID actorId, UUID changeRequestId) {
         partRevisionWorkflowPolicyService.assertChangeRequestModeEnabled();
-        submitChangeRequest(changeRequestId);
+        submitChangeRequest(actorId, changeRequestId);
     }
 
-    public void closeChangeRequest(UUID changeRequestId) {
+    public void closeChangeRequest(UUID actorId, UUID changeRequestId) {
         partRevisionWorkflowPolicyService.assertChangeRequestModeEnabled();
         for (PartRevision revision : partRevisionRepository.findByChangeRequestIdOrderByCreatedAtAsc(changeRequestId)) {
-            partRevisionService.revertToDraft(revision);
+            partRevisionService.revertToDraft(revision, actorId);
         }
     }
 

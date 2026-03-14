@@ -41,7 +41,8 @@ import org.hibernate.type.SqlTypes;
         indexes = {
                 @Index(name = "ix_part_revisions_part_id", columnList = "part_id"),
                 @Index(name = "ix_part_revisions_part_number", columnList = "part_number"),
-                @Index(name = "ix_part_revisions_base_revision_id", columnList = "base_revision_id")
+                @Index(name = "ix_part_revisions_base_revision_id", columnList = "base_revision_id"),
+                @Index(name = "ix_part_revisions_created_by", columnList = "created_by")
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -118,6 +119,22 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
     @Column(name = "name", length = 500)
     private String name;
 
+    @Column(name = "created_by")
+    private UUID createdBy;
+
+    @Getter(AccessLevel.NONE)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by", insertable = false, updatable = false)
+    private User _createdByRelation;
+
+    @Column(name = "updated_by")
+    private UUID updatedBy;
+
+    @Getter(AccessLevel.NONE)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by", insertable = false, updatable = false)
+    private User _updatedByRelation;
+
     @Column(name = "owner_id")
     private UUID ownerId;
 
@@ -182,15 +199,43 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
     }
 
     public static PartRevision createInitialDraft(Part part, String draftKey, String name) {
-        return new PartRevision(part, null, draftKey, null, name, PartRevisionStatus.DRAFT);
+        return createInitialDraft(part, draftKey, name, null);
+    }
+
+    public static PartRevision createInitialDraft(Part part, String draftKey, String name, UUID actorId) {
+        return initializeActor(
+                new PartRevision(part, null, draftKey, null, name, PartRevisionStatus.DRAFT),
+                actorId
+        );
     }
 
     public static PartRevision createDraft(Part part, String draftKey, UUID baseRevisionId, String name) {
-        return new PartRevision(part, null, draftKey, baseRevisionId, name, PartRevisionStatus.DRAFT);
+        return createDraft(part, draftKey, baseRevisionId, name, null);
+    }
+
+    public static PartRevision createDraft(Part part, String draftKey, UUID baseRevisionId, String name, UUID actorId) {
+        return initializeActor(
+                new PartRevision(part, null, draftKey, baseRevisionId, name, PartRevisionStatus.DRAFT),
+                actorId
+        );
     }
 
     public static PartRevision createOfficial(Part part, String revisionCode, UUID baseRevisionId, String name, PartRevisionStatus status) {
-        return new PartRevision(part, revisionCode, null, baseRevisionId, name, status);
+        return createOfficial(part, revisionCode, baseRevisionId, name, status, null);
+    }
+
+    public static PartRevision createOfficial(
+            Part part,
+            String revisionCode,
+            UUID baseRevisionId,
+            String name,
+            PartRevisionStatus status,
+            UUID actorId
+    ) {
+        return initializeActor(
+                new PartRevision(part, revisionCode, null, baseRevisionId, name, status),
+                actorId
+        );
     }
 
     public void assignBaseRevision(UUID baseRevisionId) {
@@ -246,6 +291,18 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
 
     public void changeName(String name) {
         this.name = normalizeName(name);
+    }
+
+    public void touch(UUID actorId) {
+        if (actorId == null) {
+            return;
+        }
+        if (this.createdBy == null) {
+            this.createdBy = actorId;
+            this._createdByRelation = null;
+        }
+        this.updatedBy = actorId;
+        this._updatedByRelation = null;
     }
 
     public void assignOwner(UUID ownerId) {
@@ -593,5 +650,10 @@ public class PartRevision extends AbstractCreatedEntity implements AggregateRoot
     private PartRevisionActivity appendActivity(PartRevisionActivity activity) {
         this.activities.add(activity);
         return activity;
+    }
+
+    private static PartRevision initializeActor(PartRevision revision, UUID actorId) {
+        revision.touch(actorId);
+        return revision;
     }
 }

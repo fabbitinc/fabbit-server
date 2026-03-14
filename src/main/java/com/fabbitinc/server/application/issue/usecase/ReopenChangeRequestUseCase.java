@@ -22,7 +22,7 @@ public class ReopenChangeRequestUseCase {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         ChangeRequest changeRequest = issueService.getChangeRequestByNumberOrThrow(command.issueNumber());
         issueService.reopenChangeRequest(auth.userId(), changeRequest);
-        partRevisionWorkflowApi.reopenChangeRequest(changeRequest.getId());
+        partRevisionWorkflowApi.reopenChangeRequest(auth.userId(), changeRequest.getId());
     }
 
     public record ReopenChangeRequestCommand(int issueNumber) {

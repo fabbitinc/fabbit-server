@@ -3,6 +3,7 @@ package com.fabbitinc.server.presentation.part.controller;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toCategoryLookupResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toCategoryStatsResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartDetailResponse;
+import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartDraftLookupResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartFilterOptionsResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartListResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartLookupResponse;
@@ -12,12 +13,14 @@ import com.fabbitinc.server.application.part.dto.request.RenameCategoryRequest;
 import com.fabbitinc.server.application.part.dto.response.CategoryLookupResponse;
 import com.fabbitinc.server.application.part.dto.response.CategoryStatsResponse;
 import com.fabbitinc.server.application.part.dto.response.PartDetailResponse;
+import com.fabbitinc.server.application.part.dto.response.PartDraftLookupResponse;
 import com.fabbitinc.server.application.part.dto.response.PartFilterOptionsResponse;
 import com.fabbitinc.server.application.part.dto.response.PartListResponse;
 import com.fabbitinc.server.application.part.dto.response.PartLookupResponse;
 import com.fabbitinc.server.application.part.dto.response.RenameCategoryResponse;
 import com.fabbitinc.server.application.part.query.PartQuery;
 import com.fabbitinc.server.application.part.query.condition.PartDraftDetailCondition;
+import com.fabbitinc.server.application.part.query.condition.PartDraftLookupCondition;
 import com.fabbitinc.server.application.part.query.condition.PartExportCondition;
 import com.fabbitinc.server.application.part.query.condition.PartListCondition;
 import com.fabbitinc.server.application.part.query.condition.PartLookupCondition;
@@ -121,6 +124,18 @@ public class PartController {
             @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 50, message = "limit은 50 이하여야 합니다") int limit
     ) {
         return toPartLookupResponse(partQuery.lookup(new PartLookupCondition(search, limit)));
+    }
+
+    @Operation(summary = "GET /api/v1/parts/drafts/lookup", description = "현재 사용자가 만든 변경요청 연결 가능 초안 목록을 조회합니다")
+    @GetMapping("/drafts/lookup")
+    public PartDraftLookupResponse lookupDrafts(
+            @Parameter(description = "품번/품명 검색어", example = "AES")
+            @RequestParam(value = "search", required = false) String search,
+            @Parameter(description = "조회 건수", example = "10")
+            @RequestParam(value = "limit", defaultValue = "10")
+            @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 50, message = "limit은 50 이하여야 합니다") int limit
+    ) {
+        return toPartDraftLookupResponse(partQuery.lookupDrafts(new PartDraftLookupCondition(search, limit)));
     }
 
     @Operation(summary = "GET /api/v1/parts/export", description = "필터링된 Part 목록을 Excel(.xlsx) 파일로 내보냅니다")

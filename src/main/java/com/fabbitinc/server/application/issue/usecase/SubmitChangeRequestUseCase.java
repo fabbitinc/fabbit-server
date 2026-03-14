@@ -22,7 +22,7 @@ public class SubmitChangeRequestUseCase {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         ChangeRequest changeRequest = issueService.getChangeRequestByNumberOrThrow(command.issueNumber());
         issueService.submitChangeRequest(auth.userId(), changeRequest);
-        partRevisionWorkflowApi.submitChangeRequest(changeRequest.getId());
+        partRevisionWorkflowApi.submitChangeRequest(auth.userId(), changeRequest.getId());
     }
 
     public record SubmitChangeRequestCommand(int issueNumber) {

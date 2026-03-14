@@ -51,7 +51,7 @@ public class PartService {
             }
 
             Part savedPart = partRepository.save(part);
-            PartRevision initialRevision = PartRevision.createInitialDraft(savedPart, "D1", input.name());
+            PartRevision initialRevision = PartRevision.createInitialDraft(savedPart, "D1", input.name(), actorId);
             applyCreateInput(initialRevision, input);
             applyDefaultOwner(initialRevision, initialRevision.getCategory());
             initialRevision.recordActivity(

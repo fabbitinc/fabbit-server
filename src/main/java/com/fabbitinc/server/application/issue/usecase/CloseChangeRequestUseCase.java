@@ -22,7 +22,7 @@ public class CloseChangeRequestUseCase {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         ChangeRequest changeRequest = issueService.getChangeRequestByNumberOrThrow(command.issueNumber());
         issueService.closeChangeRequest(auth.userId(), changeRequest);
-        partRevisionWorkflowApi.closeChangeRequest(changeRequest.getId());
+        partRevisionWorkflowApi.closeChangeRequest(auth.userId(), changeRequest.getId());
     }
 
     public record CloseChangeRequestCommand(int issueNumber) {

@@ -43,7 +43,7 @@ public class PartRevisionService {
 
             Part part = getRequiredPart(baseRevision.getPartId());
             String draftKey = resolveNextDraftKey(part.getId(), baseRevision.getId());
-            PartRevision draft = PartRevision.createDraft(part, draftKey, baseRevision.getId(), baseRevision.getName());
+            PartRevision draft = PartRevision.createDraft(part, draftKey, baseRevision.getId(), baseRevision.getName(), actorId);
             draft.copyEditableFieldsFrom(baseRevision);
             draft.recordActivity(
                     actorId,
@@ -80,6 +80,7 @@ public class PartRevisionService {
             }
 
             applyUpdateInput(revision, input);
+            revision.touch(actorId);
             revision.recordActivity(actorId, PartRevisionActivityActionType.EDITED, PartRevisionActivitySourceType.UI, null, "{}");
             return revision;
         } catch (DomainException ex) {
@@ -98,6 +99,7 @@ public class PartRevisionService {
             supersedeCurrentApprovedIfNeeded(part, draft.getId());
             draft.approve(revisionCode);
             part.assignCurrentApprovedRevision(draft.getId());
+            draft.touch(actorId);
             draft.recordActivity(
                     actorId,
                     PartRevisionActivityActionType.APPROVED,
@@ -141,6 +143,7 @@ public class PartRevisionService {
             revision.release(revision.getRevisionCode());
             part.assignCurrentApprovedRevision(revision.getId());
             part.assignCurrentReleasedRevision(revision.getId());
+            revision.touch(actorId);
             revision.recordActivity(
                     actorId,
                     PartRevisionActivityActionType.RELEASED,
@@ -154,17 +157,19 @@ public class PartRevisionService {
         }
     }
 
-    public void markInReview(PartRevision revision) {
+    public void markInReview(PartRevision revision, UUID actorId) {
         try {
             revision.markInReview();
+            revision.touch(actorId);
         } catch (DomainException ex) {
             throw toAppException(ex);
         }
     }
 
-    public void revertToDraft(PartRevision revision) {
+    public void revertToDraft(PartRevision revision, UUID actorId) {
         try {
             revision.revertToDraft();
+            revision.touch(actorId);
         } catch (DomainException ex) {
             throw toAppException(ex);
         }
@@ -212,6 +217,7 @@ public class PartRevisionService {
         draft.release(revisionCode);
         part.assignCurrentApprovedRevision(draft.getId());
         part.assignCurrentReleasedRevision(draft.getId());
+        draft.touch(actorId);
         draft.recordActivity(
                 actorId,
                 PartRevisionActivityActionType.RELEASED,

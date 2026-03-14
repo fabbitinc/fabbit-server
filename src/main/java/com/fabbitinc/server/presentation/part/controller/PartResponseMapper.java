@@ -13,6 +13,8 @@ import com.fabbitinc.server.application.part.dto.response.PartBomResponse;
 import com.fabbitinc.server.application.part.dto.response.PartDefaultOwnerItemResponse;
 import com.fabbitinc.server.application.part.dto.response.PartDefaultOwnerListResponse;
 import com.fabbitinc.server.application.part.dto.response.PartDetailResponse;
+import com.fabbitinc.server.application.part.dto.response.PartDraftLookupItemResponse;
+import com.fabbitinc.server.application.part.dto.response.PartDraftLookupResponse;
 import com.fabbitinc.server.application.part.dto.response.PartFilesResponse;
 import com.fabbitinc.server.application.part.dto.response.PartFilterOptionsResponse;
 import com.fabbitinc.server.application.part.dto.response.PartListResponse;
@@ -34,6 +36,7 @@ import com.fabbitinc.server.application.part.query.result.CategoryStatsResult;
 import com.fabbitinc.server.application.part.query.result.PartBomResult;
 import com.fabbitinc.server.application.part.query.result.PartDefaultOwnerListResult;
 import com.fabbitinc.server.application.part.query.result.PartDetailResult;
+import com.fabbitinc.server.application.part.query.result.PartDraftLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartFilesResult;
 import com.fabbitinc.server.application.part.query.result.PartFilterOptionsResult;
 import com.fabbitinc.server.application.part.query.result.PartListResult;
@@ -56,6 +59,22 @@ final class PartResponseMapper {
         return new PartLookupResponse(
                 result.items().stream()
                         .map(item -> new PartLookupItemResponse(item.id(), item.partNumber(), item.name()))
+                        .toList()
+        );
+    }
+
+    static PartDraftLookupResponse toPartDraftLookupResponse(PartDraftLookupResult result) {
+        return new PartDraftLookupResponse(
+                result.items().stream()
+                        .map(item -> new PartDraftLookupItemResponse(
+                                item.revisionId(),
+                                item.partId(),
+                                item.partNumber(),
+                                item.baseRevisionCode(),
+                                item.draftKey(),
+                                item.name(),
+                                toPartOwnerUserSummaryResponse(item.createdBy())
+                        ))
                         .toList()
         );
     }
