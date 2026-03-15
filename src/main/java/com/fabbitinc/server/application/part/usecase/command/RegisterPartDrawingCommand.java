@@ -5,6 +5,7 @@ import java.util.UUID;
 public record RegisterPartDrawingCommand(
         String partNumber,
         String revisionCode,
+        String draftKey,
         UUID fileId
 ) {
 }

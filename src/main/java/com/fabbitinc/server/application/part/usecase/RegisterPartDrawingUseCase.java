@@ -22,7 +22,7 @@ public class RegisterPartDrawingUseCase {
 
     public RegisterPartDrawingResult execute(RegisterPartDrawingCommand command) {
         currentAuthProvider.getCurrentAuth();
-        PartRevision revision = partRevisionRouteService.getRequiredRevision(command.partNumber(), command.revisionCode());
+        PartRevision revision = resolveTargetRevision(command);
 
         Drawing drawing = drawingService.createDrawing(
                 revision.getId(),
@@ -34,5 +34,19 @@ public class RegisterPartDrawingUseCase {
                 drawing.getDrawingNumber(),
                 drawing.getName()
         );
+    }
+
+    private PartRevision resolveTargetRevision(RegisterPartDrawingCommand command) {
+        if (command.draftKey() == null || command.draftKey().isBlank()) {
+            return partRevisionRouteService.getRequiredRevision(command.partNumber(), command.revisionCode());
+        }
+
+        PartRevision draft = partRevisionRouteService.getRequiredDraft(
+                command.partNumber(),
+                command.revisionCode(),
+                command.draftKey()
+        );
+        draft.assertDraftEditable();
+        return draft;
     }
 }

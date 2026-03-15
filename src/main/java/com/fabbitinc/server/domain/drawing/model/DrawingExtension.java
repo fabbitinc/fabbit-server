@@ -8,7 +8,7 @@ import lombok.Getter;
 @Getter
 public enum DrawingExtension {
     // 도면
-    DWG("dwg", DrawingSourceType.CAD_2D, DrawingDimension.TWO_D, false),
+    // DWG("dwg", DrawingSourceType.CAD_2D, DrawingDimension.TWO_D, false),
     DXF("dxf", DrawingSourceType.CAD_2D, DrawingDimension.TWO_D, true),
     PDF("pdf", DrawingSourceType.PDF_DOCUMENT, DrawingDimension.TWO_D, true),
     // 이미지
@@ -20,8 +20,8 @@ public enum DrawingExtension {
     TIFF("tiff", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true),
     WEBP("webp", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true),
     // 3D
-    SLDPRT("sldprt", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, false),
-    SLDASM("sldasm", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, false),
+    // SLDPRT("sldprt", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, false),
+    // SLDASM("sldasm", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, false),
     STEP("step", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
     STP("stp", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
     IGES("iges", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
@@ -52,20 +52,8 @@ public enum DrawingExtension {
         this.canStartPipelineDirectly = canStartPipelineDirectly;
     }
 
-    public boolean requiresRenderSource() {
-        return getRequiredRenderSourceGroup() != null;
-    }
-
     public boolean canStartPipelineDirectly() {
         return canStartPipelineDirectly;
-    }
-
-    public DrawingRenderSourceGroup getRequiredRenderSourceGroup() {
-        return switch (this) {
-            case DWG -> DrawingRenderSourceGroup.PDF_PIPELINE;
-            case SLDPRT, SLDASM -> DrawingRenderSourceGroup.GLB_PIPELINE;
-            default -> null;
-        };
     }
 
     public static Optional<DrawingExtension> fromFileName(String fileName) {
