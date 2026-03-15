@@ -1,6 +1,7 @@
 package com.fabbitinc.server.domain.label.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fabbitinc.server.domain.common.exception.DomainException;
@@ -16,6 +17,14 @@ class LabelRelationTest {
 
         assertEquals(actorId, label.getCreatedBy());
         assertEquals(actorId, label.getUpdatedBy());
+    }
+
+    @Test
+    void system_default_label_생성시_createdBy와_updatedBy는_null이다() {
+        Label label = Label.createSystemDefault("기본", "설명", "#ff0000");
+
+        assertNull(label.getCreatedBy());
+        assertNull(label.getUpdatedBy());
     }
 
     @Test

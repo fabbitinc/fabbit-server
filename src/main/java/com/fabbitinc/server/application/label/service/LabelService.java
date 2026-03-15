@@ -71,11 +71,10 @@ public class LabelService {
             if (labelRepository.findByName(defaultLabel.name()).isPresent()) {
                 continue;
             }
-            labelRepository.save(Label.create(
+            labelRepository.save(Label.createSystemDefault(
                     defaultLabel.name(),
                     defaultLabel.description(),
-                    defaultLabel.color(),
-                    null
+                    defaultLabel.color()
             ));
         }
     }

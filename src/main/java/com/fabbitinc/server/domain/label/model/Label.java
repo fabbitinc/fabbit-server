@@ -58,17 +58,25 @@ public class Label extends AbstractActorAuditableEntity {
     @JoinColumn(name = "updated_by", insertable = false, updatable = false)
     private User _updatedByRelation;
 
-    private Label(String name, String description, String color, UUID actorId) {
+    private Label(String name, String description, String color) {
         super(UuidV7Generator.next());
         this.name = requireName(name);
         this.description = normalizeDescription(description);
         this.color = requireColor(color);
+    }
+
+    private Label(String name, String description, String color, UUID actorId) {
+        this(name, description, color);
         UUID requiredActorId = requireActorId(actorId);
         initializeActor(requiredActorId);
     }
 
     public static Label create(String name, String description, String color, UUID actorId) {
         return new Label(name, description, color, actorId);
+    }
+
+    public static Label createSystemDefault(String name, String description, String color) {
+        return new Label(name, description, color);
     }
 
     public void changeName(String name, UUID actorId) {

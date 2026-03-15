@@ -58,10 +58,18 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
 
             TenantContextHolder.setCurrentSchema(schemaName);
             try {
-                tenantInitializationApi.initializeTenantDefaults();
+                log.info("event=tenant_defaults_initialization_started schema={} outcome=started", schemaName);
+                try {
+                    tenantInitializationApi.initializeTenantDefaults();
+                    log.info("event=tenant_defaults_initialization_completed schema={} outcome=success", schemaName);
+                } catch (Exception ex) {
+                    log.error("event=tenant_defaults_initialization_failed schema={} outcome=failure", schemaName, ex);
+                    throw ex;
+                }
             } finally {
                 TenantContextHolder.clear();
             }
+
 
             try (Connection connection = dataSource.getConnection()) {
                 connection.setAutoCommit(true);
@@ -71,12 +79,27 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
             }
             log.info("테넌트 기본값/온톨로지 인덱스 완료: schema={}", schemaName);
         } catch (Exception ex) {
+            TenantContextHolder.clear();
+            cleanupFailedProvisioning(schemaName);
             log.error("테넌트 프로비저닝 실패: orgId={}, schema={}", orgId, schemaName, ex);
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "테넌트 프로비저닝에 실패했습니다");
         }
 
         log.info("테넌트 프로비저닝 완료: orgId={}, schema={}", orgId, schemaName);
         return schemaName;
+    }
+
+    private void cleanupFailedProvisioning(String schemaName) {
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(true);
+            loadAge(connection);
+            setSearchPath(connection, "ag_catalog, public");
+            dropGraphIfPresent(connection, schemaName);
+            dropSchemaIfExists(connection, schemaName);
+            log.info("실패한 테넌트 프로비저닝 정리 완료: schema={}", schemaName);
+        } catch (Exception cleanupEx) {
+            log.warn("실패한 테넌트 프로비저닝 정리 실패: schema={}", schemaName, cleanupEx);
+        }
     }
 
     private void applyTenantMigrations(String schemaName) throws Exception {
@@ -136,6 +159,24 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
                 }
                 return rs.getLong(1) > 0;
             }
+        }
+    }
+
+    private void dropGraphIfPresent(Connection connection, String schemaName) throws SQLException {
+        if (!isGraphPresent(connection, schemaName)) {
+            return;
+        }
+
+        try (PreparedStatement statement = connection.prepareStatement("SELECT ag_catalog.drop_graph(?, true)")) {
+            statement.setString(1, schemaName);
+            statement.execute();
+        }
+    }
+
+    private void dropSchemaIfExists(Connection connection, String schemaName) throws SQLException {
+        String sql = "DROP SCHEMA IF EXISTS " + TenantSchemaPolicy.quoteIdentifier(schemaName) + " CASCADE";
+        try (Statement statement = connection.createStatement()) {
+            statement.execute(sql);
         }
     }
 

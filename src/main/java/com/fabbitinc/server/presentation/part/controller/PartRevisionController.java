@@ -210,7 +210,8 @@ public class PartRevisionController {
     @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/approve", description = "초기 Part 초안을 직접 승인하고 공식 리비전으로 전환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "승인 성공"),
-            @ApiResponse(responseCode = "409", description = "리소스 충돌"),
+            @ApiResponse(responseCode = "403", description = "현재 워크플로 정책상 직접 승인 불가 또는 권한 없음"),
+            @ApiResponse(responseCode = "409", description = "이미 승인됨, 최신 초안 아님, 현재 상태에서 승인 불가 등 리소스 상태 충돌"),
             @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
     })
     @PostMapping("/{partNumber}/drafts/{draftKey}/approve")
@@ -231,7 +232,8 @@ public class PartRevisionController {
     @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/release", description = "초기 Part 초안을 직접 릴리즈하고 공식 리비전으로 전환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "릴리즈 성공"),
-            @ApiResponse(responseCode = "409", description = "리소스 충돌"),
+            @ApiResponse(responseCode = "403", description = "현재 워크플로 정책상 직접 릴리즈 불가 또는 권한 없음"),
+            @ApiResponse(responseCode = "409", description = "이미 릴리즈됨, 최신 초안 아님, 현재 상태에서 릴리즈 불가 등 리소스 상태 충돌"),
             @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
     })
     @PostMapping("/{partNumber}/drafts/{draftKey}/release")
@@ -284,7 +286,8 @@ public class PartRevisionController {
     @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/approve", description = "특정 공식 리비전에서 파생된 초안을 직접 승인하고 새 공식 리비전으로 전환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "승인 성공"),
-            @ApiResponse(responseCode = "409", description = "리소스 충돌"),
+            @ApiResponse(responseCode = "403", description = "현재 워크플로 정책상 직접 승인 불가 또는 권한 없음"),
+            @ApiResponse(responseCode = "409", description = "이미 승인됨, 최신 초안 아님, 현재 상태에서 승인 불가 등 리소스 상태 충돌"),
             @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
     })
     @PostMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/approve")
@@ -306,7 +309,8 @@ public class PartRevisionController {
     @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/release", description = "특정 공식 리비전에서 파생된 초안을 직접 릴리즈하고 새 공식 리비전으로 전환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "릴리즈 성공"),
-            @ApiResponse(responseCode = "409", description = "리소스 충돌"),
+            @ApiResponse(responseCode = "403", description = "현재 워크플로 정책상 직접 릴리즈 불가 또는 권한 없음"),
+            @ApiResponse(responseCode = "409", description = "이미 릴리즈됨, 최신 초안 아님, 현재 상태에서 릴리즈 불가 등 리소스 상태 충돌"),
             @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
     })
     @PostMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/release")
@@ -337,7 +341,8 @@ public class PartRevisionController {
     @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/release", description = "승인된 공식 리비전을 직접 릴리즈합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "릴리즈 성공"),
-            @ApiResponse(responseCode = "409", description = "리소스 충돌"),
+            @ApiResponse(responseCode = "403", description = "현재 워크플로 정책상 직접 릴리즈 불가 또는 권한 없음"),
+            @ApiResponse(responseCode = "409", description = "이미 릴리즈됨, 최신 승인 리비전 아님, 현재 상태에서 릴리즈 불가 등 리소스 상태 충돌"),
             @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
     })
     @PostMapping("/{partNumber}/revisions/{revisionCode}/release")
