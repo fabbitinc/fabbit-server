@@ -11,6 +11,7 @@ import static com.fabbitinc.server.presentation.part.controller.PartResponseMapp
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartSuppliersResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toRegisterDrawingResponse;
 
+import com.fabbitinc.server.presentation.common.web.ApiErrorResponse;
 import com.fabbitinc.server.presentation.drawing.dto.request.RegisterDrawingRequest;
 import com.fabbitinc.server.presentation.drawing.dto.response.RegisterDrawingResponse;
 import com.fabbitinc.server.presentation.part.request.AttachFilesRequest;
@@ -72,6 +73,9 @@ import com.fabbitinc.server.application.part.usecase.result.AttachPartFilesResul
 import com.fabbitinc.server.application.part.usecase.result.CreatePartDraftResult;
 import com.fabbitinc.server.application.part.usecase.result.ReleasePartDraftResult;
 import com.fabbitinc.server.application.part.usecase.result.ReleasePartRevisionResult;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -210,8 +214,28 @@ public class PartRevisionController {
     @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/approve", description = "초기 Part 초안을 직접 승인하고 공식 리비전으로 전환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "승인 성공"),
-            @ApiResponse(responseCode = "403", description = "현재 워크플로 정책상 직접 승인 불가 또는 권한 없음"),
-            @ApiResponse(responseCode = "409", description = "이미 승인됨, 최신 초안 아님, 현재 상태에서 승인 불가 등 리소스 상태 충돌"),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "현재 워크플로 정책상 직접 승인 불가 또는 권한 없음",
+                    content = @Content(
+                            schema = @Schema(implementation = ApiErrorResponse.class),
+                            examples = @ExampleObject(
+                                    name = "workflow_policy_forbidden",
+                                    value = "{\"code\":\"PART_WORKFLOW_POLICY_FORBIDDEN\",\"message\":\"변경관리 모드에서는 직접 승인/릴리즈를 사용할 수 없습니다\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "이미 승인됨, 최신 초안 아님, 현재 상태에서 승인 불가 등 리소스 상태 충돌",
+                    content = @Content(
+                            schema = @Schema(implementation = ApiErrorResponse.class),
+                            examples = @ExampleObject(
+                                    name = "invalid_state",
+                                    value = "{\"code\":\"INVALID_STATE\",\"message\":\"현재 상태에서는 승인할 수 없습니다\"}"
+                            )
+                    )
+            ),
             @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
     })
     @PostMapping("/{partNumber}/drafts/{draftKey}/approve")
@@ -232,8 +256,28 @@ public class PartRevisionController {
     @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/release", description = "초기 Part 초안을 직접 릴리즈하고 공식 리비전으로 전환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "릴리즈 성공"),
-            @ApiResponse(responseCode = "403", description = "현재 워크플로 정책상 직접 릴리즈 불가 또는 권한 없음"),
-            @ApiResponse(responseCode = "409", description = "이미 릴리즈됨, 최신 초안 아님, 현재 상태에서 릴리즈 불가 등 리소스 상태 충돌"),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "현재 워크플로 정책상 직접 릴리즈 불가 또는 권한 없음",
+                    content = @Content(
+                            schema = @Schema(implementation = ApiErrorResponse.class),
+                            examples = @ExampleObject(
+                                    name = "workflow_policy_forbidden",
+                                    value = "{\"code\":\"PART_WORKFLOW_POLICY_FORBIDDEN\",\"message\":\"변경관리 모드에서는 직접 승인/릴리즈를 사용할 수 없습니다\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "이미 릴리즈됨, 최신 초안 아님, 현재 상태에서 릴리즈 불가 등 리소스 상태 충돌",
+                    content = @Content(
+                            schema = @Schema(implementation = ApiErrorResponse.class),
+                            examples = @ExampleObject(
+                                    name = "invalid_state",
+                                    value = "{\"code\":\"INVALID_STATE\",\"message\":\"현재 상태에서는 릴리즈할 수 없습니다\"}"
+                            )
+                    )
+            ),
             @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
     })
     @PostMapping("/{partNumber}/drafts/{draftKey}/release")
@@ -286,8 +330,28 @@ public class PartRevisionController {
     @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/approve", description = "특정 공식 리비전에서 파생된 초안을 직접 승인하고 새 공식 리비전으로 전환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "승인 성공"),
-            @ApiResponse(responseCode = "403", description = "현재 워크플로 정책상 직접 승인 불가 또는 권한 없음"),
-            @ApiResponse(responseCode = "409", description = "이미 승인됨, 최신 초안 아님, 현재 상태에서 승인 불가 등 리소스 상태 충돌"),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "현재 워크플로 정책상 직접 승인 불가 또는 권한 없음",
+                    content = @Content(
+                            schema = @Schema(implementation = ApiErrorResponse.class),
+                            examples = @ExampleObject(
+                                    name = "workflow_policy_forbidden",
+                                    value = "{\"code\":\"PART_WORKFLOW_POLICY_FORBIDDEN\",\"message\":\"변경관리 모드에서는 직접 승인/릴리즈를 사용할 수 없습니다\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "이미 승인됨, 최신 초안 아님, 현재 상태에서 승인 불가 등 리소스 상태 충돌",
+                    content = @Content(
+                            schema = @Schema(implementation = ApiErrorResponse.class),
+                            examples = @ExampleObject(
+                                    name = "conflict",
+                                    value = "{\"code\":\"CONFLICT\",\"message\":\"최신 공식 리비전을 기준으로 다시 초안을 만들어야 합니다\"}"
+                            )
+                    )
+            ),
             @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
     })
     @PostMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/approve")
@@ -309,8 +373,28 @@ public class PartRevisionController {
     @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/release", description = "특정 공식 리비전에서 파생된 초안을 직접 릴리즈하고 새 공식 리비전으로 전환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "릴리즈 성공"),
-            @ApiResponse(responseCode = "403", description = "현재 워크플로 정책상 직접 릴리즈 불가 또는 권한 없음"),
-            @ApiResponse(responseCode = "409", description = "이미 릴리즈됨, 최신 초안 아님, 현재 상태에서 릴리즈 불가 등 리소스 상태 충돌"),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "현재 워크플로 정책상 직접 릴리즈 불가 또는 권한 없음",
+                    content = @Content(
+                            schema = @Schema(implementation = ApiErrorResponse.class),
+                            examples = @ExampleObject(
+                                    name = "workflow_policy_forbidden",
+                                    value = "{\"code\":\"PART_WORKFLOW_POLICY_FORBIDDEN\",\"message\":\"변경관리 모드에서는 직접 승인/릴리즈를 사용할 수 없습니다\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "이미 릴리즈됨, 최신 초안 아님, 현재 상태에서 릴리즈 불가 등 리소스 상태 충돌",
+                    content = @Content(
+                            schema = @Schema(implementation = ApiErrorResponse.class),
+                            examples = @ExampleObject(
+                                    name = "conflict",
+                                    value = "{\"code\":\"CONFLICT\",\"message\":\"최신 공식 리비전을 기준으로 다시 초안을 만들어야 합니다\"}"
+                            )
+                    )
+            ),
             @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
     })
     @PostMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/release")
@@ -341,8 +425,28 @@ public class PartRevisionController {
     @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/release", description = "승인된 공식 리비전을 직접 릴리즈합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "릴리즈 성공"),
-            @ApiResponse(responseCode = "403", description = "현재 워크플로 정책상 직접 릴리즈 불가 또는 권한 없음"),
-            @ApiResponse(responseCode = "409", description = "이미 릴리즈됨, 최신 승인 리비전 아님, 현재 상태에서 릴리즈 불가 등 리소스 상태 충돌"),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "현재 워크플로 정책상 직접 릴리즈 불가 또는 권한 없음",
+                    content = @Content(
+                            schema = @Schema(implementation = ApiErrorResponse.class),
+                            examples = @ExampleObject(
+                                    name = "workflow_policy_forbidden",
+                                    value = "{\"code\":\"PART_WORKFLOW_POLICY_FORBIDDEN\",\"message\":\"변경관리 모드에서는 직접 승인/릴리즈를 사용할 수 없습니다\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "이미 릴리즈됨, 최신 승인 리비전 아님, 현재 상태에서 릴리즈 불가 등 리소스 상태 충돌",
+                    content = @Content(
+                            schema = @Schema(implementation = ApiErrorResponse.class),
+                            examples = @ExampleObject(
+                                    name = "invalid_state",
+                                    value = "{\"code\":\"INVALID_STATE\",\"message\":\"현재 최신 승인 리비전이 아닙니다. 최신 승인 리비전만 릴리즈할 수 있습니다\"}"
+                            )
+                    )
+            ),
             @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
     })
     @PostMapping("/{partNumber}/revisions/{revisionCode}/release")
