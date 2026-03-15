@@ -1,7 +1,7 @@
 package com.fabbitinc.server.presentation.supplier.controller;
 
-import com.fabbitinc.server.application.supplier.dto.response.SupplierListResponse;
-import com.fabbitinc.server.application.supplier.dto.response.SupplierSummaryResponse;
+import com.fabbitinc.server.presentation.supplier.response.SupplierListResponse;
+import com.fabbitinc.server.presentation.supplier.response.SupplierSummaryResponse;
 import com.fabbitinc.server.application.supplier.query.SupplierQuery;
 import com.fabbitinc.server.application.supplier.query.condition.SupplierListCondition;
 import com.fabbitinc.server.application.supplier.query.result.SupplierListResult;

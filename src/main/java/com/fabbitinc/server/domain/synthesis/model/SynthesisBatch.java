@@ -30,13 +30,15 @@ import org.hibernate.type.SqlTypes;
         name = "synthesis_batches",
         indexes = {
                 @Index(name = "ix_synthesis_batches_project_id", columnList = "project_id"),
-                @Index(name = "ix_synthesis_batches_mapping_id", columnList = "mapping_id")
+                @Index(name = "ix_synthesis_batches_mapping_id", columnList = "mapping_id"),
+                @Index(name = "ix_synthesis_batches_requested_by", columnList = "requested_by")
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class SynthesisBatch extends AbstractCreatedEntity implements AggregateRoot {
 
     public static final String CODE_SYNTHESIS_BATCH_MAPPING_REQUIRED = "SYNTHESIS_BATCH_MAPPING_REQUIRED";
+    public static final String CODE_SYNTHESIS_BATCH_REQUESTED_BY_REQUIRED = "SYNTHESIS_BATCH_REQUESTED_BY_REQUIRED";
     public static final String CODE_SYNTHESIS_BATCH_REQUESTED_COUNT_INVALID = "SYNTHESIS_BATCH_REQUESTED_COUNT_INVALID";
     public static final String CODE_SYNTHESIS_BATCH_ACCEPTED_COUNT_INVALID = "SYNTHESIS_BATCH_ACCEPTED_COUNT_INVALID";
 
@@ -55,6 +57,9 @@ public class SynthesisBatch extends AbstractCreatedEntity implements AggregateRo
 
     @Column(name = "mapping_id", nullable = false)
     private UUID mappingId;
+
+    @Column(name = "requested_by", nullable = false)
+    private UUID requestedBy;
 
     @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
@@ -82,12 +87,14 @@ public class SynthesisBatch extends AbstractCreatedEntity implements AggregateRo
     private SynthesisBatch(
             UUID projectId,
             UUID mappingId,
+            UUID requestedBy,
             int requestedCount,
             String failedUploads
     ) {
         super(UuidV7Generator.next());
         this.projectId = projectId;
         this.mappingId = requireMappingId(mappingId);
+        this.requestedBy = requireRequestedBy(requestedBy);
         this.requestedCount = requireRequestedCount(requestedCount);
         this.acceptedCount = 0;
         this.failedUploads = normalizeFailedUploads(failedUploads);
@@ -96,10 +103,11 @@ public class SynthesisBatch extends AbstractCreatedEntity implements AggregateRo
     public static SynthesisBatch create(
             UUID projectId,
             UUID mappingId,
+            UUID requestedBy,
             int requestedCount,
             String failedUploads
     ) {
-        return new SynthesisBatch(projectId, mappingId, requestedCount, failedUploads);
+        return new SynthesisBatch(projectId, mappingId, requestedBy, requestedCount, failedUploads);
     }
 
     public SynthesisJob addJob(UUID fileId) {
@@ -122,6 +130,13 @@ public class SynthesisBatch extends AbstractCreatedEntity implements AggregateRo
     private UUID requireMappingId(UUID value) {
         if (value == null) {
             throw new DomainException(CODE_SYNTHESIS_BATCH_MAPPING_REQUIRED, "매핑 ID는 필수입니다");
+        }
+        return value;
+    }
+
+    private UUID requireRequestedBy(UUID value) {
+        if (value == null) {
+            throw new DomainException(CODE_SYNTHESIS_BATCH_REQUESTED_BY_REQUIRED, "요청 사용자 ID는 필수입니다");
         }
         return value;
     }

@@ -6,7 +6,7 @@ import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
-import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
+import com.fabbitinc.server.application.mapping.model.MappingResultDto;
 import com.fabbitinc.server.application.mapping.service.MappingService;
 import com.fabbitinc.server.application.mapping.support.MappingLlmGenerationSupport;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;

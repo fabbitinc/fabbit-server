@@ -15,11 +15,13 @@ class SynthesisRelationTest {
     void synthesisBatch_create_입력값을_보관한다() {
         UUID projectId = UUID.randomUUID();
         UUID mappingId = UUID.randomUUID();
+        UUID requestedBy = UUID.randomUUID();
 
-        SynthesisBatch batch = SynthesisBatch.create(projectId, mappingId, 10, "  []  ");
+        SynthesisBatch batch = SynthesisBatch.create(projectId, mappingId, requestedBy, 10, "  []  ");
 
         assertEquals(projectId, batch.getProjectId());
         assertEquals(mappingId, batch.getMappingId());
+        assertEquals(requestedBy, batch.getRequestedBy());
         assertEquals(10, batch.getRequestedCount());
         assertEquals(0, batch.getAcceptedCount());
         assertEquals("[]", batch.getFailedUploads());
@@ -31,6 +33,7 @@ class SynthesisRelationTest {
         DomainException ex = assertThrows(DomainException.class, () -> SynthesisBatch.create(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
+                UUID.randomUUID(),
                 -1,
                 "[]"
         ));
@@ -39,8 +42,22 @@ class SynthesisRelationTest {
     }
 
     @Test
+    void synthesisBatch_요청사용자가_null이면_예외를_던진다() {
+        DomainException ex = assertThrows(DomainException.class, () -> SynthesisBatch.create(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null,
+                1,
+                "[]"
+        ));
+
+        assertEquals(SynthesisBatch.CODE_SYNTHESIS_BATCH_REQUESTED_BY_REQUIRED, ex.getDomainCode());
+    }
+
+    @Test
     void synthesisBatch_addJob은_acceptedCount를_증가시키고_job을_연결한다() {
         SynthesisBatch batch = SynthesisBatch.create(
+                UUID.randomUUID(),
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 2,
@@ -63,6 +80,7 @@ class SynthesisRelationTest {
         SynthesisBatch batch = SynthesisBatch.create(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
+                UUID.randomUUID(),
                 1,
                 "[]"
         );
@@ -76,6 +94,7 @@ class SynthesisRelationTest {
     @Test
     void synthesisJob_정상_상태전이를_수행한다() {
         SynthesisBatch batch = SynthesisBatch.create(
+                UUID.randomUUID(),
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 1,
@@ -101,6 +120,7 @@ class SynthesisRelationTest {
         SynthesisBatch batch = SynthesisBatch.create(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
+                UUID.randomUUID(),
                 1,
                 "[]"
         );
@@ -117,6 +137,7 @@ class SynthesisRelationTest {
         SynthesisBatch batch = SynthesisBatch.create(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
+                UUID.randomUUID(),
                 1,
                 "[]"
         );
@@ -131,6 +152,7 @@ class SynthesisRelationTest {
     @Test
     void synthesisJob_fail은_PROCESSING에서만_허용한다() {
         SynthesisBatch batch = SynthesisBatch.create(
+                UUID.randomUUID(),
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 1,

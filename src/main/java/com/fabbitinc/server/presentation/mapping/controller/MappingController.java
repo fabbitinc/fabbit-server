@@ -1,29 +1,23 @@
 package com.fabbitinc.server.presentation.mapping.controller;
 
-import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
-import com.fabbitinc.server.application.mapping.dto.common.PropertyMappingDto;
-import com.fabbitinc.server.application.mapping.dto.common.RelationMappingDto;
-import com.fabbitinc.server.application.mapping.dto.request.MappingConfirmRequest;
-import com.fabbitinc.server.application.mapping.dto.request.MappingPreviewRequest;
-import com.fabbitinc.server.application.mapping.dto.request.MappingUpdateRequest;
-import com.fabbitinc.server.application.mapping.dto.request.MappingValidateRequest;
-import com.fabbitinc.server.application.mapping.dto.response.MappingImpactSummaryResponse;
-import com.fabbitinc.server.application.mapping.dto.response.MappingListResponse;
-import com.fabbitinc.server.application.mapping.dto.response.MappingPreviewResponse;
-import com.fabbitinc.server.application.mapping.dto.response.MappingResponse;
-import com.fabbitinc.server.application.mapping.dto.response.MappingValidateResponse;
-import com.fabbitinc.server.application.mapping.dto.response.SheetPreviewResponse;
-import com.fabbitinc.server.application.mapping.dto.response.SkippedSheetResponse;
-import com.fabbitinc.server.application.mapping.dto.response.ValidationIssueResponse;
-import com.fabbitinc.server.application.mapping.dto.response.ValidationSeverity;
+import static com.fabbitinc.server.presentation.mapping.mapper.MappingResponseMapper.toMappingListResponse;
+import static com.fabbitinc.server.presentation.mapping.mapper.MappingResponseMapper.toMappingPreviewResponse;
+import static com.fabbitinc.server.presentation.mapping.mapper.MappingResponseMapper.toMappingResponse;
+import static com.fabbitinc.server.presentation.mapping.mapper.MappingResponseMapper.toMappingValidateResponse;
+
+import com.fabbitinc.server.presentation.mapping.dto.request.MappingConfirmRequest;
+import com.fabbitinc.server.presentation.mapping.dto.request.MappingPreviewRequest;
+import com.fabbitinc.server.presentation.mapping.dto.request.MappingUpdateRequest;
+import com.fabbitinc.server.presentation.mapping.dto.request.MappingValidateRequest;
+import com.fabbitinc.server.presentation.mapping.dto.response.MappingListResponse;
+import com.fabbitinc.server.presentation.mapping.dto.response.MappingPreviewResponse;
+import com.fabbitinc.server.presentation.mapping.dto.response.MappingResponse;
+import com.fabbitinc.server.presentation.mapping.dto.response.MappingValidateResponse;
 import com.fabbitinc.server.application.mapping.query.MappingQuery;
 import com.fabbitinc.server.application.mapping.query.condition.MappingDetailCondition;
 import com.fabbitinc.server.application.mapping.query.condition.MappingListCondition;
-import com.fabbitinc.server.application.mapping.query.result.MappingBodyResult;
 import com.fabbitinc.server.application.mapping.query.result.MappingListResult;
 import com.fabbitinc.server.application.mapping.query.result.MappingResult;
-import com.fabbitinc.server.application.mapping.query.result.PropertyMappingResult;
-import com.fabbitinc.server.application.mapping.query.result.RelationMappingResult;
 import com.fabbitinc.server.application.mapping.usecase.ConfirmMappingUseCase;
 import com.fabbitinc.server.application.mapping.usecase.DeactivateMappingUseCase;
 import com.fabbitinc.server.application.mapping.usecase.PreviewMappingUseCase;
@@ -34,20 +28,13 @@ import com.fabbitinc.server.application.mapping.usecase.command.DeactivateMappin
 import com.fabbitinc.server.application.mapping.usecase.command.PreviewMappingCommand;
 import com.fabbitinc.server.application.mapping.usecase.command.UpdateMappingCommand;
 import com.fabbitinc.server.application.mapping.usecase.command.ValidateMappingCommand;
-import com.fabbitinc.server.application.mapping.usecase.result.MappingImpactSummaryResult;
-import com.fabbitinc.server.application.mapping.usecase.result.MappingValidationIssueResult;
-import com.fabbitinc.server.application.mapping.usecase.result.PreviewMappingResult;
-import com.fabbitinc.server.application.mapping.usecase.result.PreviewSheetResult;
 import com.fabbitinc.server.application.mapping.usecase.result.SavedMappingResult;
-import com.fabbitinc.server.application.mapping.usecase.result.SkippedSheetResult;
-import com.fabbitinc.server.application.mapping.usecase.result.ValidatedMappingResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -224,137 +211,4 @@ public class MappingController {
         return ResponseEntity.noContent().build();
     }
 
-    private MappingListResponse toMappingListResponse(MappingListResult result) {
-        return new MappingListResponse(
-                result.items().stream()
-                        .map(this::toMappingResponse)
-                        .toList()
-        );
-    }
-
-    private MappingResponse toMappingResponse(MappingResult result) {
-        return new MappingResponse(
-                result.id(),
-                result.fileId(),
-                result.name(),
-                result.sheetName(),
-                result.originalHeaders(),
-                result.mappedHeaders(),
-                toMappingResultDto(result.mapping()),
-                result.scope(),
-                result.active(),
-                result.usageCount(),
-                result.version(),
-                result.createdAt()
-        );
-    }
-
-    private MappingResponse toMappingResponse(SavedMappingResult result) {
-        return new MappingResponse(
-                result.id(),
-                result.fileId(),
-                result.name(),
-                result.sheetName(),
-                result.originalHeaders(),
-                result.mappedHeaders(),
-                result.mapping(),
-                result.scope(),
-                result.active(),
-                result.usageCount(),
-                result.version(),
-                result.createdAt()
-        );
-    }
-
-    private MappingPreviewResponse toMappingPreviewResponse(PreviewMappingResult result) {
-        return new MappingPreviewResponse(
-                result.headers(),
-                result.sampleRows(),
-                result.mapping(),
-                result.sheets().stream()
-                        .map(this::toSheetPreviewResponse)
-                        .toList(),
-                result.skippedSheets().stream()
-                        .map(this::toSkippedSheetResponse)
-                        .toList()
-        );
-    }
-
-    private SheetPreviewResponse toSheetPreviewResponse(PreviewSheetResult result) {
-        return new SheetPreviewResponse(
-                result.sheetName(),
-                result.headers(),
-                result.sampleRows(),
-                result.mapping()
-        );
-    }
-
-    private SkippedSheetResponse toSkippedSheetResponse(SkippedSheetResult result) {
-        return new SkippedSheetResponse(result.sheetName(), result.reason());
-    }
-
-    private MappingValidateResponse toMappingValidateResponse(ValidatedMappingResult result) {
-        return new MappingValidateResponse(
-                result.normalizedMapping(),
-                result.errors().stream()
-                        .map(this::toValidationIssueResponse)
-                        .toList(),
-                result.warnings().stream()
-                        .map(this::toValidationIssueResponse)
-                        .toList(),
-                toMappingImpactSummaryResponse(result.impactSummary())
-        );
-    }
-
-    private ValidationIssueResponse toValidationIssueResponse(MappingValidationIssueResult result) {
-        return new ValidationIssueResponse(
-                result.code(),
-                ValidationSeverity.from(result.severity()),
-                result.message(),
-                result.path(),
-                result.dismissedReason()
-        );
-    }
-
-    private MappingImpactSummaryResponse toMappingImpactSummaryResponse(MappingImpactSummaryResult result) {
-        return new MappingImpactSummaryResponse(result.disabledColumnCount());
-    }
-
-    private MappingResultDto toMappingResultDto(MappingBodyResult result) {
-        if (result == null) {
-            return new MappingResultDto(List.of(), List.of());
-        }
-        return new MappingResultDto(
-                result.propertyMappings().stream()
-                        .map(this::toPropertyMappingDto)
-                        .toList(),
-                result.relationMappings().stream()
-                        .map(this::toRelationMappingDto)
-                        .toList()
-        );
-    }
-
-    private PropertyMappingDto toPropertyMappingDto(PropertyMappingResult result) {
-        return new PropertyMappingDto(
-                result.sourceColumn(),
-                result.targetProperty(),
-                result.suggestedExtendedProperty(),
-                result.dataType(),
-                result.confidence(),
-                result.reason(),
-                result.isExtended()
-        );
-    }
-
-    private RelationMappingDto toRelationMappingDto(RelationMappingResult result) {
-        return new RelationMappingDto(
-                result.relType(),
-                result.targetLabel(),
-                result.nodeColumns(),
-                result.relColumns(),
-                result.relColumnTypes(),
-                result.confidence(),
-                result.reason()
-        );
-    }
 }

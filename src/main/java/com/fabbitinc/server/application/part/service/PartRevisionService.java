@@ -95,7 +95,7 @@ public class PartRevisionService {
             assertLatestOfficialBase(part, draft);
 
             String revisionCode = resolveNextRevisionCode(part);
-            supersedeCurrentApprovedIfNeeded(part, draft.getId());
+            supersedeCurrentApprovedIfNeeded(part, draft.getId(), actorId);
             draft.approve(revisionCode, actorId);
             part.assignCurrentApprovedRevision(draft.getId());
             draft.recordActivity(
@@ -137,7 +137,7 @@ public class PartRevisionService {
             PartRevision revision = getRequiredRevision(input.partNumber(), input.revisionCode());
             assertReleasableApprovedRevision(part, revision);
 
-            supersedeCurrentReleasedIfNeeded(part, revision.getId());
+            supersedeCurrentReleasedIfNeeded(part, revision.getId(), actorId);
             revision.release(revision.getRevisionCode(), actorId);
             part.assignCurrentApprovedRevision(revision.getId());
             part.assignCurrentReleasedRevision(revision.getId());
@@ -207,8 +207,8 @@ public class PartRevisionService {
             String payload
     ) {
         String revisionCode = resolveNextRevisionCode(part);
-        supersedeCurrentApprovedIfNeeded(part, draft.getId());
-        supersedeCurrentReleasedIfNeeded(part, draft.getId());
+        supersedeCurrentApprovedIfNeeded(part, draft.getId(), actorId);
+        supersedeCurrentReleasedIfNeeded(part, draft.getId(), actorId);
         draft.release(revisionCode, actorId);
         part.assignCurrentApprovedRevision(draft.getId());
         part.assignCurrentReleasedRevision(draft.getId());
@@ -331,7 +331,7 @@ public class PartRevisionService {
         }
     }
 
-    private void supersedeCurrentApprovedIfNeeded(Part part, UUID nextRevisionId) {
+    private void supersedeCurrentApprovedIfNeeded(Part part, UUID nextRevisionId, UUID actorId) {
         UUID currentApprovedRevisionId = part.getCurrentApprovedRevisionId();
         if (currentApprovedRevisionId == null || currentApprovedRevisionId.equals(nextRevisionId)) {
             return;
@@ -339,15 +339,15 @@ public class PartRevisionService {
         if (currentApprovedRevisionId.equals(part.getCurrentReleasedRevisionId())) {
             return;
         }
-        getRequiredRevision(currentApprovedRevisionId).markSuperseded();
+        getRequiredRevision(currentApprovedRevisionId).markSuperseded(actorId);
     }
 
-    private void supersedeCurrentReleasedIfNeeded(Part part, UUID nextRevisionId) {
+    private void supersedeCurrentReleasedIfNeeded(Part part, UUID nextRevisionId, UUID actorId) {
         UUID currentReleasedRevisionId = part.getCurrentReleasedRevisionId();
         if (currentReleasedRevisionId == null || currentReleasedRevisionId.equals(nextRevisionId)) {
             return;
         }
-        getRequiredRevision(currentReleasedRevisionId).markSuperseded();
+        getRequiredRevision(currentReleasedRevisionId).markSuperseded(actorId);
     }
 
     private PartRevision getRequiredRevision(UUID revisionId) {

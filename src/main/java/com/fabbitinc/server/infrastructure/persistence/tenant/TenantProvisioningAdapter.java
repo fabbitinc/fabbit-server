@@ -4,15 +4,15 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
 import com.fabbitinc.server.application.organization.port.TenantProvisioningPort;
+import com.fabbitinc.server.application.tenant.api.TenantInitializationApi;
+import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
 import com.fabbitinc.server.application.tenant.support.TenantSchemaPolicy;
-import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -35,19 +35,8 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
 
     private static final Pattern AGE_LABEL_PATTERN = Pattern.compile("^[A-Za-z_][A-Za-z0-9_]*$");
 
-    private static final List<DefaultLabel> DEFAULT_LABELS = List.of(
-            new DefaultLabel("우선순위:높음", "즉시 처리 필요", "#b60205"),
-            new DefaultLabel("우선순위:중간", "일반 처리", "#fbca04"),
-            new DefaultLabel("우선순위:낮음", "여유 시 처리", "#0e8a16"),
-            new DefaultLabel("설계변경", "설계 도면 또는 사양 변경", "#0075ca"),
-            new DefaultLabel("품질", "품질 불량 및 결함 보고", "#d73a4a"),
-            new DefaultLabel("개선", "기존 부품·공정 개선", "#a2eeef"),
-            new DefaultLabel("원가절감", "원가 절감 활동", "#c5def5"),
-            new DefaultLabel("공급사", "공급사 관련 문제", "#f9d0c4"),
-            new DefaultLabel("시험검증", "시험·검증 요청", "#bfd4f2")
-    );
-
     private final DataSource dataSource;
+    private final TenantInitializationApi tenantInitializationApi;
 
     @Override
     public String provisionTenant(UUID orgId) {
@@ -67,14 +56,20 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
             applyTenantMigrations(schemaName);
             log.info("테넌트 마이그레이션 완료: schema={}", schemaName);
 
+            TenantContextHolder.setCurrentSchema(schemaName);
+            try {
+                tenantInitializationApi.initializeTenantDefaults();
+            } finally {
+                TenantContextHolder.clear();
+            }
+
             try (Connection connection = dataSource.getConnection()) {
                 connection.setAutoCommit(true);
                 loadAge(connection);
                 setSearchPath(connection, schemaName + ", ag_catalog, public");
-                seedDefaultLabels(connection, schemaName);
                 createOntologyIndexes(connection, schemaName);
             }
-            log.info("기본 라벨/온톨로지 인덱스 완료: schema={}", schemaName);
+            log.info("테넌트 기본값/온톨로지 인덱스 완료: schema={}", schemaName);
         } catch (Exception ex) {
             log.error("테넌트 프로비저닝 실패: orgId={}, schema={}", orgId, schemaName, ex);
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "테넌트 프로비저닝에 실패했습니다");
@@ -140,22 +135,6 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
                     return false;
                 }
                 return rs.getLong(1) > 0;
-            }
-        }
-    }
-
-    private void seedDefaultLabels(Connection connection, String schemaName) throws SQLException {
-        String sql = "INSERT INTO " + TenantSchemaPolicy.quoteIdentifier(schemaName) + ".labels "
-                + "(id, name, description, color, created_at, updated_at) "
-                + "VALUES (?, ?, ?, ?, now(), now()) ON CONFLICT (name) DO NOTHING";
-
-        for (DefaultLabel defaultLabel : DEFAULT_LABELS) {
-            try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setObject(1, UuidV7Generator.next());
-                statement.setString(2, defaultLabel.name());
-                statement.setString(3, defaultLabel.description());
-                statement.setString(4, defaultLabel.color());
-                statement.executeUpdate();
             }
         }
     }
@@ -239,8 +218,5 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
     private String quoteGraphLabel(String labelName) {
         validateGraphLabel(labelName);
         return "\"" + labelName + "\"";
-    }
-
-    private record DefaultLabel(String name, String description, String color) {
     }
 }

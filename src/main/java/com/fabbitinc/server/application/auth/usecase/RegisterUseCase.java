@@ -39,7 +39,7 @@ public class RegisterUseCase {
                         command.fullName()
                 )
         );
-        Organization organization = organizationApi.createOrganization(
+        Organization organization = organizationApi.createWorkspace(
                 user.getId(),
                 new CreateOrganizationInput(
                         command.orgName(),

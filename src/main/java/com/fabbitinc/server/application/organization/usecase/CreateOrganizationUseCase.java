@@ -31,7 +31,7 @@ public class CreateOrganizationUseCase {
         CreateOrgContext context = currentCreateOrgProvider.getCurrentCreateOrg();
 
         User user = userService.getUserOrThrow(context.userId());
-        Organization organization = organizationService.createOrganization(
+        Organization organization = organizationService.createWorkspace(
                 user.getId(),
                 new CreateOrganizationInput(
                         command.orgName(),

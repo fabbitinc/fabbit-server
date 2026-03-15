@@ -22,11 +22,12 @@ public class StartSynthesisUseCase {
     private final SynthesisService synthesisService;
 
     public StartedSynthesisBatchResult execute(StartSynthesisCommand command) {
-        currentAuthProvider.getCurrentAuth();
+        var auth = currentAuthProvider.getCurrentAuth();
         SynthesisBatchStartOutput output = synthesisService.startSynthesis(
                 new StartSynthesisInput(
                         command.mappingId(),
                         command.projectId(),
+                        auth.userId(),
                         command.overwrite(),
                         command.uploads().stream()
                                 .map(item -> new SynthesisUploadInput(item.fileId(), item.rootContext()))

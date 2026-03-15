@@ -8,9 +8,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fabbitinc.server.application.file.port.StoragePort;
-import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
-import com.fabbitinc.server.application.mapping.dto.common.PropertyMappingDto;
-import com.fabbitinc.server.application.mapping.dto.common.RelationMappingDto;
+import com.fabbitinc.server.application.mapping.model.MappingResultDto;
+import com.fabbitinc.server.application.mapping.model.PropertyMappingDto;
+import com.fabbitinc.server.application.mapping.model.RelationMappingDto;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.ontology.support.RelationshipType;
@@ -127,6 +127,7 @@ class SynthesisExecutionServiceTest {
                 "part_description", "New Description"
         );
         UUID jobId = UUID.randomUUID();
+        UUID requestedBy = UUID.randomUUID();
 
         ReflectionTestUtils.invokeMethod(
                 synthesisExecutionService,
@@ -136,7 +137,8 @@ class SynthesisExecutionServiceTest {
                 Map.of(),
                 true,
                 null,
-                jobId
+                jobId,
+                requestedBy
         );
 
         assertEquals("New Name", existingRevision.getName());
@@ -145,8 +147,11 @@ class SynthesisExecutionServiceTest {
         assertEquals("SET", existingRevision.getUnit());
         assertEquals("New Description", existingRevision.getDescription());
         assertEquals(1, existingRevision.getActivities().size());
+        assertEquals(requestedBy, existingRevision.getCreatedBy());
+        assertEquals(requestedBy, existingRevision.getUpdatedBy());
         assertEquals(PartRevisionActivityActionType.IMPORTED, existingRevision.getActivities().get(0).getActionType());
         assertEquals(PartRevisionActivitySourceType.SYNTHESIS, existingRevision.getActivities().get(0).getSourceType());
+        assertEquals(requestedBy, existingRevision.getActivities().get(0).getActorId());
         assertEquals(jobId, existingRevision.getActivities().get(0).getSourceRefId());
         verify(partRevisionRepository).save(any(PartRevision.class));
         verify(partRepository, never()).save(any(Part.class));
@@ -183,6 +188,7 @@ class SynthesisExecutionServiceTest {
                 Map.of(),
                 false,
                 null,
+                UUID.randomUUID(),
                 UUID.randomUUID()
         );
 
@@ -211,6 +217,7 @@ class SynthesisExecutionServiceTest {
                 "part_description", "New Description"
         );
 
+        UUID requestedBy = UUID.randomUUID();
         ReflectionTestUtils.invokeMethod(
                 synthesisExecutionService,
                 "processRow",
@@ -219,7 +226,8 @@ class SynthesisExecutionServiceTest {
                 Map.of(),
                 true,
                 null,
-                UUID.randomUUID()
+                UUID.randomUUID(),
+                requestedBy
         );
 
         ArgumentCaptor<Part> partCaptor = ArgumentCaptor.forClass(Part.class);
@@ -237,6 +245,9 @@ class SynthesisExecutionServiceTest {
         assertEquals("SET", createdRevision.getUnit());
         assertEquals("New Description", createdRevision.getDescription());
         assertEquals(1, createdRevision.getActivities().size());
+        assertEquals(requestedBy, createdRevision.getCreatedBy());
+        assertEquals(requestedBy, createdRevision.getUpdatedBy());
+        assertEquals(requestedBy, createdRevision.getActivities().get(0).getActorId());
     }
 
     @Test
@@ -504,6 +515,7 @@ class SynthesisExecutionServiceTest {
                 rootContext,
                 overwrite,
                 sourceFile,
+                UUID.randomUUID(),
                 UUID.randomUUID()
         );
         assertNotNull(result);
@@ -511,8 +523,8 @@ class SynthesisExecutionServiceTest {
 
     private PartRevision currentRevisionOf(Part part, String revisionCode, String name) {
         if (revisionCode == null) {
-            return PartRevision.createInitialDraft(part, "D1", name);
+            return PartRevision.createInitialDraft(part, "D1", name, null);
         }
-        return PartRevision.createOfficial(part, revisionCode, null, name, PartRevisionStatus.RELEASED);
+        return PartRevision.createOfficial(part, revisionCode, null, name, PartRevisionStatus.RELEASED, null);
     }
 }

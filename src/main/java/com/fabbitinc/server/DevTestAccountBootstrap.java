@@ -1,6 +1,7 @@
 package com.fabbitinc.server;
 
 import com.fabbitinc.server.application.organization.service.OrganizationService;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.organization.service.input.CreateOrganizationInput;
 import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
@@ -38,7 +39,7 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
     private static final String TEST_ORG_NAME = "Test Org";
 
     private final UserService userService;
-    private final OrganizationService organizationService;
+    private final OrganizationApi organizationApi;
     private final OrganizationRepository organizationRepository;
     private final MembershipRepository membershipRepository;
     private final SubscriptionRepository subscriptionRepository;
@@ -60,7 +61,7 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
         Organization organization;
         Organization existingOrganization = organizationRepository.findBySlug(TEST_ORG_SLUG).orElse(null);
         if (existingOrganization == null) {
-            organization = organizationService.createOrganization(
+            organization = organizationApi.createWorkspace(
                     user.getId(),
                     new CreateOrganizationInput(
                             TEST_ORG_NAME,

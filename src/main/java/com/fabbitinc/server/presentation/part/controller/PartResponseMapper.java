@@ -1,35 +1,36 @@
 package com.fabbitinc.server.presentation.part.controller;
 
-import com.fabbitinc.server.application.drawing.dto.response.RegisterDrawingResponse;
-import com.fabbitinc.server.application.part.dto.response.BomChildResponse;
-import com.fabbitinc.server.application.part.dto.response.BomParentResponse;
-import com.fabbitinc.server.application.part.dto.response.BomTreeNodeResponse;
-import com.fabbitinc.server.application.part.dto.response.BomTreeResponse;
-import com.fabbitinc.server.application.part.dto.response.CategoryLookupResponse;
-import com.fabbitinc.server.application.part.dto.response.CategoryStatsItemResponse;
-import com.fabbitinc.server.application.part.dto.response.CategoryStatsResponse;
-import com.fabbitinc.server.application.part.dto.response.PartAttachmentItemResponse;
-import com.fabbitinc.server.application.part.dto.response.PartBomResponse;
-import com.fabbitinc.server.application.part.dto.response.PartDefaultOwnerItemResponse;
-import com.fabbitinc.server.application.part.dto.response.PartDefaultOwnerListResponse;
-import com.fabbitinc.server.application.part.dto.response.PartDetailResponse;
-import com.fabbitinc.server.application.part.dto.response.PartDraftLookupItemResponse;
-import com.fabbitinc.server.application.part.dto.response.PartDraftLookupResponse;
-import com.fabbitinc.server.application.part.dto.response.PartFilesResponse;
-import com.fabbitinc.server.application.part.dto.response.PartFilterOptionsResponse;
-import com.fabbitinc.server.application.part.dto.response.PartListResponse;
-import com.fabbitinc.server.application.part.dto.response.PartLookupItemResponse;
-import com.fabbitinc.server.application.part.dto.response.PartLookupResponse;
-import com.fabbitinc.server.application.part.dto.response.PartOwnerResponse;
-import com.fabbitinc.server.application.part.dto.response.PartOwnerUserSummaryResponse;
-import com.fabbitinc.server.application.part.dto.response.PartPreviewProcessingResponse;
-import com.fabbitinc.server.application.part.dto.response.PartPreviewResponse;
-import com.fabbitinc.server.application.part.dto.response.PartProjectSummaryResponse;
-import com.fabbitinc.server.application.part.dto.response.PartProjectsResponse;
-import com.fabbitinc.server.application.part.dto.response.PartSummaryResponse;
-import com.fabbitinc.server.application.part.dto.response.PartSuppliersResponse;
-import com.fabbitinc.server.application.part.dto.response.PartWorkflowPolicyResponse;
-import com.fabbitinc.server.application.part.dto.response.RelatedSupplierResponse;
+import com.fabbitinc.server.presentation.drawing.dto.response.RegisterDrawingResponse;
+import com.fabbitinc.server.presentation.part.response.BomChildResponse;
+import com.fabbitinc.server.presentation.part.response.BomParentResponse;
+import com.fabbitinc.server.presentation.part.response.BomTreeNodeResponse;
+import com.fabbitinc.server.presentation.part.response.BomTreeResponse;
+import com.fabbitinc.server.presentation.part.response.CategoryLookupResponse;
+import com.fabbitinc.server.presentation.part.response.CategoryStatsItemResponse;
+import com.fabbitinc.server.presentation.part.response.CategoryStatsResponse;
+import com.fabbitinc.server.presentation.part.response.PartAttachmentItemResponse;
+import com.fabbitinc.server.presentation.part.response.PartBomResponse;
+import com.fabbitinc.server.presentation.part.response.PartDefaultOwnerItemResponse;
+import com.fabbitinc.server.presentation.part.response.PartDefaultOwnerListResponse;
+import com.fabbitinc.server.presentation.part.response.PartDetailResponse;
+import com.fabbitinc.server.presentation.part.response.PartDraftLookupItemResponse;
+import com.fabbitinc.server.presentation.part.response.PartDraftLookupResponse;
+import com.fabbitinc.server.presentation.part.response.PartFilesResponse;
+import com.fabbitinc.server.presentation.part.response.PartFilterOptionsResponse;
+import com.fabbitinc.server.presentation.part.response.PartInProgressItemResponse;
+import com.fabbitinc.server.presentation.part.response.PartInProgressListResponse;
+import com.fabbitinc.server.presentation.part.response.PartListResponse;
+import com.fabbitinc.server.presentation.part.response.PartLookupItemResponse;
+import com.fabbitinc.server.presentation.part.response.PartLookupResponse;
+import com.fabbitinc.server.presentation.part.response.PartOwnerResponse;
+import com.fabbitinc.server.presentation.part.response.PartOwnerUserSummaryResponse;
+import com.fabbitinc.server.presentation.part.response.PartPreviewProcessingResponse;
+import com.fabbitinc.server.presentation.part.response.PartPreviewResponse;
+import com.fabbitinc.server.presentation.part.response.PartProjectSummaryResponse;
+import com.fabbitinc.server.presentation.part.response.PartProjectsResponse;
+import com.fabbitinc.server.presentation.part.response.PartSummaryResponse;
+import com.fabbitinc.server.presentation.part.response.PartSuppliersResponse;
+import com.fabbitinc.server.presentation.part.response.RelatedSupplierResponse;
 import com.fabbitinc.server.application.part.query.result.BomTreeResult;
 import com.fabbitinc.server.application.part.query.result.CategoryLookupResult;
 import com.fabbitinc.server.application.part.query.result.CategoryStatsResult;
@@ -39,6 +40,7 @@ import com.fabbitinc.server.application.part.query.result.PartDetailResult;
 import com.fabbitinc.server.application.part.query.result.PartDraftLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartFilesResult;
 import com.fabbitinc.server.application.part.query.result.PartFilterOptionsResult;
+import com.fabbitinc.server.application.part.query.result.PartInProgressListResult;
 import com.fabbitinc.server.application.part.query.result.PartListResult;
 import com.fabbitinc.server.application.part.query.result.PartLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartOwnerResult;
@@ -47,7 +49,6 @@ import com.fabbitinc.server.application.part.query.result.PartPreviewResult;
 import com.fabbitinc.server.application.part.query.result.PartProjectsResult;
 import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
 import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
-import com.fabbitinc.server.application.part.query.result.PartWorkflowPolicyResult;
 import com.fabbitinc.server.application.part.usecase.result.RegisterPartDrawingResult;
 
 final class PartResponseMapper {
@@ -97,19 +98,42 @@ final class PartResponseMapper {
 
     static PartListResponse toPartListResponse(PartListResult result) {
         return new PartListResponse(
-                result.total(),
-                result.offset(),
-                result.limit(),
+                result.nextCursor(),
+                result.prevCursor(),
                 result.items().stream()
                         .map(item -> new PartSummaryResponse(
                                 item.id(),
                                 item.partNumber(),
                                 item.name(),
                                 item.category(),
-                                item.revision(),
+                                item.revisionCode(),
                                 item.lifecycleState(),
                                 item.hasDrawing(),
                                 item.childrenCount()
+                        ))
+                        .toList()
+        );
+    }
+
+    static PartInProgressListResponse toPartInProgressListResponse(PartInProgressListResult result) {
+        return new PartInProgressListResponse(
+                result.nextCursor(),
+                result.prevCursor(),
+                result.items().stream()
+                        .map(item -> new PartInProgressItemResponse(
+                                item.partId(),
+                                item.revisionId(),
+                                item.partNumber(),
+                                item.name(),
+                                item.category(),
+                                item.status(),
+                                item.revisionCode(),
+                                item.draftKey(),
+                                item.baseRevisionCode(),
+                                item.lifecycleState(),
+                                item.hasDrawing(),
+                                item.childrenCount(),
+                                item.updatedAt()
                         ))
                         .toList()
         );
@@ -136,6 +160,8 @@ final class PartResponseMapper {
                 result.ownerTeamId(),
                 result.ownerTeamName(),
                 toPartPreviewResponse(result.preview()),
+                result.draftCount(),
+                result.inReviewCount(),
                 result.childrenCount(),
                 result.parentsCount(),
                 result.suppliersCount(),
@@ -299,10 +325,6 @@ final class PartResponseMapper {
                 result.drawingNumber(),
                 result.name()
         );
-    }
-
-    static PartWorkflowPolicyResponse toPartWorkflowPolicyResponse(PartWorkflowPolicyResult result) {
-        return new PartWorkflowPolicyResponse(result.mode());
     }
 
     private static PartOwnerUserSummaryResponse toPartOwnerUserSummaryResponse(PartUserSummaryResult result) {

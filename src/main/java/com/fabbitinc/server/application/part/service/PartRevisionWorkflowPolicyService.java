@@ -30,6 +30,11 @@ public class PartRevisionWorkflowPolicyService {
         return getCurrent().requiresChangeRequest();
     }
 
+    public PartRevisionWorkflowPolicy ensureDefaultPolicyExists() {
+        return partRevisionWorkflowPolicyRepository.findByPolicyKey(PartRevisionWorkflowPolicy.DEFAULT_POLICY_KEY)
+                .orElseGet(() -> partRevisionWorkflowPolicyRepository.save(PartRevisionWorkflowPolicy.createDefault()));
+    }
+
     public void assertDirectModeEnabled() {
         if (requiresChangeRequest()) {
             throw new AppException(

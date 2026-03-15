@@ -2,10 +2,10 @@ package com.fabbitinc.server.application.mappingv2.support;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.fabbitinc.server.application.mappingv2.dto.common.ExtendedPropertyMappingV2Dto;
-import com.fabbitinc.server.application.mappingv2.dto.common.MappingV2ResultDto;
-import com.fabbitinc.server.application.mappingv2.dto.common.NodeMappingV2Dto;
-import com.fabbitinc.server.application.mappingv2.dto.common.RelationMappingV2Dto;
+import com.fabbitinc.server.application.mappingv2.model.ExtendedPropertyMappingV2Dto;
+import com.fabbitinc.server.application.mappingv2.model.MappingV2ResultDto;
+import com.fabbitinc.server.application.mappingv2.model.NodeMappingV2Dto;
+import com.fabbitinc.server.application.mappingv2.model.RelationMappingV2Dto;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.ontology.support.RelationshipType;
 import java.util.List;

@@ -4,7 +4,7 @@ import com.fabbitinc.server.application.mapping.service.MappingService;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
 import com.fabbitinc.server.application.mapping.usecase.result.MappingImpactSummaryResult;
 import com.fabbitinc.server.application.mapping.usecase.result.MappingValidationIssueResult;
-import com.fabbitinc.server.application.mappingv2.dto.common.MappingV2ResultDto;
+import com.fabbitinc.server.application.mappingv2.model.MappingV2ResultDto;
 import com.fabbitinc.server.application.mappingv2.support.MappingV2NormalizationSupport;
 import com.fabbitinc.server.application.mappingv2.support.MappingV2ValidationSupport;
 import com.fabbitinc.server.application.mappingv2.usecase.command.ValidateMappingV2Command;

@@ -6,6 +6,7 @@ import java.util.UUID;
 public record StartSynthesisInput(
         UUID mappingId,
         UUID projectId,
+        UUID requestedBy,
         boolean overwrite,
         List<SynthesisUploadInput> uploads
 ) {

@@ -5,23 +5,27 @@ import static com.fabbitinc.server.presentation.part.controller.PartResponseMapp
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartDetailResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartDraftLookupResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartFilterOptionsResponse;
+import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartInProgressListResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartListResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartLookupResponse;
 
-import com.fabbitinc.server.application.part.dto.request.CreatePartRequest;
-import com.fabbitinc.server.application.part.dto.request.RenameCategoryRequest;
-import com.fabbitinc.server.application.part.dto.response.CategoryLookupResponse;
-import com.fabbitinc.server.application.part.dto.response.CategoryStatsResponse;
-import com.fabbitinc.server.application.part.dto.response.PartDetailResponse;
-import com.fabbitinc.server.application.part.dto.response.PartDraftLookupResponse;
-import com.fabbitinc.server.application.part.dto.response.PartFilterOptionsResponse;
-import com.fabbitinc.server.application.part.dto.response.PartListResponse;
-import com.fabbitinc.server.application.part.dto.response.PartLookupResponse;
-import com.fabbitinc.server.application.part.dto.response.RenameCategoryResponse;
+import com.fabbitinc.server.presentation.part.request.CreatePartRequest;
+import com.fabbitinc.server.presentation.part.request.RenameCategoryRequest;
+import com.fabbitinc.server.presentation.part.response.CategoryLookupResponse;
+import com.fabbitinc.server.presentation.part.response.CategoryStatsResponse;
+import com.fabbitinc.server.presentation.part.response.PartDetailResponse;
+import com.fabbitinc.server.presentation.part.response.PartDraftLookupResponse;
+import com.fabbitinc.server.presentation.part.response.PartFilterOptionsResponse;
+import com.fabbitinc.server.presentation.part.response.PartInProgressListResponse;
+import com.fabbitinc.server.presentation.part.response.PartListResponse;
+import com.fabbitinc.server.presentation.part.response.PartLookupResponse;
+import com.fabbitinc.server.presentation.part.response.RenameCategoryResponse;
 import com.fabbitinc.server.application.part.query.PartQuery;
 import com.fabbitinc.server.application.part.query.condition.PartDraftDetailCondition;
 import com.fabbitinc.server.application.part.query.condition.PartDraftLookupCondition;
 import com.fabbitinc.server.application.part.query.condition.PartExportCondition;
+import com.fabbitinc.server.application.part.query.condition.PartInProgressListCondition;
+import com.fabbitinc.server.application.part.query.condition.PartInProgressStatusFilter;
 import com.fabbitinc.server.application.part.query.condition.PartListCondition;
 import com.fabbitinc.server.application.part.query.condition.PartLookupCondition;
 import com.fabbitinc.server.application.part.usecase.CreatePartUseCase;
@@ -197,8 +201,10 @@ public class PartController {
             @RequestParam(value = "has_drawing", required = false) Boolean hasDrawing,
             @RequestParam(value = "has_children", required = false) Boolean hasChildren,
             @RequestParam(value = "project_id", required = false) UUID projectId,
-            @RequestParam(value = "offset", defaultValue = "0")
-            @Min(value = 0, message = "offset은 0 이상이어야 합니다") int offset,
+            @Parameter(description = "다음 페이지 조회 기준 커서", example = "QUVTLTEwMHw1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDA")
+            @RequestParam(value = "next_cursor", required = false) String nextCursor,
+            @Parameter(description = "이전 페이지 조회 기준 커서", example = "QUVTLTEwMHw1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDA")
+            @RequestParam(value = "prev_cursor", required = false) String prevCursor,
             @RequestParam(value = "limit", defaultValue = "20")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 100, message = "limit은 100 이하여야 합니다") int limit
     ) {
@@ -209,7 +215,43 @@ public class PartController {
                 hasDrawing,
                 hasChildren,
                 projectId,
-                offset,
+                nextCursor,
+                prevCursor,
+                limit
+        )));
+    }
+
+    @Operation(summary = "GET /api/v1/parts/in-progress", description = "진행중 부품 작업함 목록을 검색/필터 조건과 함께 조회합니다")
+    @GetMapping("/in-progress")
+    public PartInProgressListResponse listInProgressParts(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "lifecycle_state", required = false) String lifecycleState,
+            @Parameter(description = "조회할 리비전 상태 목록", example = "DRAFT")
+            @RequestParam(value = "statuses", required = false) List<PartInProgressStatusFilter> statuses,
+            @Parameter(description = "현재 사용자가 만든 작업만 조회할지 여부", example = "true")
+            @RequestParam(value = "mine_only", defaultValue = "false") boolean mineOnly,
+            @RequestParam(value = "has_drawing", required = false) Boolean hasDrawing,
+            @RequestParam(value = "has_children", required = false) Boolean hasChildren,
+            @RequestParam(value = "project_id", required = false) UUID projectId,
+            @Parameter(description = "다음 페이지 조회 기준 커서", example = "NTUwZTg0MDAtZTI5Yi00MWQ0LWE3MTYtNDQ2NjU1NDQwMDAw")
+            @RequestParam(value = "next_cursor", required = false) String nextCursor,
+            @Parameter(description = "이전 페이지 조회 기준 커서", example = "NTUwZTg0MDAtZTI5Yi00MWQ0LWE3MTYtNDQ2NjU1NDQwMDAw")
+            @RequestParam(value = "prev_cursor", required = false) String prevCursor,
+            @RequestParam(value = "limit", defaultValue = "20")
+            @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 100, message = "limit은 100 이하여야 합니다") int limit
+    ) {
+        return toPartInProgressListResponse(partQuery.listInProgress(new PartInProgressListCondition(
+                search,
+                category,
+                lifecycleState,
+                statuses,
+                mineOnly,
+                hasDrawing,
+                hasChildren,
+                projectId,
+                nextCursor,
+                prevCursor,
                 limit
         )));
     }

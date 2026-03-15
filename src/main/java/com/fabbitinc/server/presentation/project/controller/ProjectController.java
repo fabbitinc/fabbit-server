@@ -1,13 +1,13 @@
 package com.fabbitinc.server.presentation.project.controller;
 
-import com.fabbitinc.server.application.activity.dto.response.ActivityListResponse;
-import com.fabbitinc.server.application.activity.dto.response.ActivityResponse;
-import com.fabbitinc.server.application.activity.dto.response.UserSummaryResponse;
-import com.fabbitinc.server.application.project.dto.request.CreateProjectRequest;
-import com.fabbitinc.server.application.project.dto.request.UpdateProjectRequest;
-import com.fabbitinc.server.application.project.dto.response.ProjectDetailResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectListResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectSummaryResponse;
+import com.fabbitinc.server.presentation.project.dto.request.CreateProjectRequest;
+import com.fabbitinc.server.presentation.project.dto.request.UpdateProjectRequest;
+import com.fabbitinc.server.presentation.project.dto.response.ActivityListResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ActivityResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ProjectDetailResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ProjectListResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ProjectSummaryResponse;
+import com.fabbitinc.server.presentation.project.dto.response.UserSummaryResponse;
 import com.fabbitinc.server.application.project.query.ProjectQuery;
 import com.fabbitinc.server.application.project.query.condition.ProjectActivitiesCondition;
 import com.fabbitinc.server.application.project.query.condition.ProjectDetailCondition;

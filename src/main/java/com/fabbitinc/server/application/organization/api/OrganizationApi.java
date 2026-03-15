@@ -22,8 +22,8 @@ public class OrganizationApi {
 
     private final OrganizationService organizationService;
 
-    public Organization createOrganization(UUID userId, CreateOrganizationInput input) {
-        return organizationService.createOrganization(userId, input);
+    public Organization createWorkspace(UUID userId, CreateOrganizationInput input) {
+        return organizationService.createWorkspace(userId, input);
     }
 
     public Membership switchOrganization(UUID userId, String slug) {

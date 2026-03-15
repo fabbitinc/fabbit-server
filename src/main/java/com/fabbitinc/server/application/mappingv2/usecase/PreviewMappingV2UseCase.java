@@ -9,7 +9,7 @@ import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.mapping.service.MappingService;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
 import com.fabbitinc.server.application.mapping.usecase.result.SkippedSheetResult;
-import com.fabbitinc.server.application.mappingv2.dto.common.MappingV2ResultDto;
+import com.fabbitinc.server.application.mappingv2.model.MappingV2ResultDto;
 import com.fabbitinc.server.application.mappingv2.support.MappingV2LlmGenerationSupport;
 import com.fabbitinc.server.application.mappingv2.usecase.command.PreviewMappingV2Command;
 import com.fabbitinc.server.application.mappingv2.usecase.result.PreviewMappingV2Result;

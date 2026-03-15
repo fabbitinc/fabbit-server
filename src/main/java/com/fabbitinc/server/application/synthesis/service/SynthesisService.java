@@ -77,6 +77,7 @@ public class SynthesisService {
         SynthesisBatch batch = SynthesisBatch.create(
                 input.projectId(),
                 record.getId(),
+                input.requestedBy(),
                 input.uploads().size(),
                 serializeFailures(failed)
         );

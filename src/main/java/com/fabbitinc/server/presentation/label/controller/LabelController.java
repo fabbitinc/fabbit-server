@@ -1,11 +1,11 @@
 package com.fabbitinc.server.presentation.label.controller;
 
-import com.fabbitinc.server.application.label.dto.request.CreateLabelRequest;
-import com.fabbitinc.server.application.label.dto.request.UpdateLabelRequest;
-import com.fabbitinc.server.application.label.dto.response.LabelListResponse;
-import com.fabbitinc.server.application.label.dto.response.LabelLookupItemResponse;
-import com.fabbitinc.server.application.label.dto.response.LabelLookupResponse;
-import com.fabbitinc.server.application.label.dto.response.LabelResponse;
+import com.fabbitinc.server.presentation.label.dto.request.CreateLabelRequest;
+import com.fabbitinc.server.presentation.label.dto.request.UpdateLabelRequest;
+import com.fabbitinc.server.presentation.label.dto.response.LabelListResponse;
+import com.fabbitinc.server.presentation.label.dto.response.LabelLookupItemResponse;
+import com.fabbitinc.server.presentation.label.dto.response.LabelLookupResponse;
+import com.fabbitinc.server.presentation.label.dto.response.LabelResponse;
 import com.fabbitinc.server.application.label.query.LabelQuery;
 import com.fabbitinc.server.application.label.query.condition.LabelListCondition;
 import com.fabbitinc.server.application.label.query.condition.LabelLookupCondition;

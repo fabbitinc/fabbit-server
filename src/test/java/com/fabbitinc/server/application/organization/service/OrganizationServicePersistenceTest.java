@@ -67,10 +67,10 @@ class OrganizationServicePersistenceTest {
     private TenantProvisioningRecorder tenantProvisioningRecorder;
 
     @Test
-    void createOrganization_신규_조직과_오너_멤버십을_함께_저장한다() {
+    void createWorkspace_신규_조직과_오너_멤버십을_함께_저장한다() {
         User user = userRepository.save(User.create("owner@example.com", "hashed-password", "Owner"));
 
-        Organization organization = organizationService.createOrganization(
+        Organization organization = organizationService.createWorkspace(
                 user.getId(),
                 new CreateOrganizationInput(
                         "Acme",
@@ -102,7 +102,7 @@ class OrganizationServicePersistenceTest {
     void createOrganization_이미_생성한_워크스페이스가_있는_사용자는_새_조직을_생성할_수_없다() {
         User user = userRepository.save(User.create("owner-existing@example.com", "hashed-password", "Owner"));
 
-        organizationService.createOrganization(
+        organizationService.createWorkspace(
                 user.getId(),
                 new CreateOrganizationInput(
                         "Acme",
@@ -113,7 +113,7 @@ class OrganizationServicePersistenceTest {
                 )
         );
 
-        AppException exception = assertThrows(AppException.class, () -> organizationService.createOrganization(
+        AppException exception = assertThrows(AppException.class, () -> organizationService.createWorkspace(
                 user.getId(),
                 new CreateOrganizationInput(
                         "Beta",

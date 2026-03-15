@@ -149,7 +149,7 @@ class PartServiceTest {
   @Test
   void attachFiles_파일_총합만큼_스토리지를_소비한다() {
     Part part = Part.create("P-100");
-    PartRevision revision = PartRevision.createInitialDraft(part, "D1", "Part");
+    PartRevision revision = PartRevision.createInitialDraft(part, "D1", "Part", null);
     File first = createUploadedFile("first.pdf", 200L);
     File second = createUploadedFile("second.pdf", 300L);
     when(partRevisionRepository.findById(revision.getId())).thenReturn(Optional.of(revision));
@@ -170,7 +170,7 @@ class PartServiceTest {
   @Test
   void detachFile_파일_크기만큼_스토리지를_반환한다() {
     Part part = Part.create("P-100");
-    PartRevision revision = PartRevision.createInitialDraft(part, "D1", "Part");
+    PartRevision revision = PartRevision.createInitialDraft(part, "D1", "Part", null);
     File file = createUploadedFile("first.pdf", 200L);
     file.assignOwner("part_revision", revision.getId());
     when(partRevisionRepository.findById(revision.getId())).thenReturn(Optional.of(revision));

@@ -4,7 +4,7 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.mapping.service.MappingService;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
-import com.fabbitinc.server.application.mappingv2.dto.common.MappingV2ResultDto;
+import com.fabbitinc.server.application.mappingv2.model.MappingV2ResultDto;
 import com.fabbitinc.server.application.mappingv2.service.MappingV2Service;
 import com.fabbitinc.server.application.mappingv2.service.input.CreateMappingV2Input;
 import com.fabbitinc.server.application.mappingv2.service.output.SavedMappingV2Output;

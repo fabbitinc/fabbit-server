@@ -192,10 +192,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         this.extendedProperties = "{}";
     }
 
-    public static PartRevision createInitialDraft(Part part, String draftKey, String name) {
-        return createInitialDraft(part, draftKey, name, null);
-    }
-
     public static PartRevision createInitialDraft(Part part, String draftKey, String name, UUID actorId) {
         return initializeActor(
                 new PartRevision(part, null, draftKey, null, name, PartRevisionStatus.DRAFT),
@@ -203,19 +199,11 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         );
     }
 
-    public static PartRevision createDraft(Part part, String draftKey, UUID baseRevisionId, String name) {
-        return createDraft(part, draftKey, baseRevisionId, name, null);
-    }
-
     public static PartRevision createDraft(Part part, String draftKey, UUID baseRevisionId, String name, UUID actorId) {
         return initializeActor(
                 new PartRevision(part, null, draftKey, baseRevisionId, name, PartRevisionStatus.DRAFT),
                 actorId
         );
-    }
-
-    public static PartRevision createOfficial(Part part, String revisionCode, UUID baseRevisionId, String name, PartRevisionStatus status) {
-        return createOfficial(part, revisionCode, baseRevisionId, name, status, null);
     }
 
     public static PartRevision createOfficial(
@@ -419,10 +407,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         }
     }
 
-    public void approve(String revisionCode) {
-        approve(revisionCode, null);
-    }
-
     public void approve(String revisionCode, UUID actorId) {
         mutate(actorId, () -> {
             assertApprovable();
@@ -430,10 +414,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
             this.draftKey = null;
         });
-    }
-
-    public void release(String revisionCode) {
-        release(revisionCode, null);
     }
 
     public void release(String revisionCode, UUID actorId) {
@@ -452,10 +432,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         });
     }
 
-    public void markInReview() {
-        markInReview(null);
-    }
-
     public void markInReview(UUID actorId) {
         mutate(actorId, () -> {
             if (this.status == PartRevisionStatus.IN_REVIEW) {
@@ -471,10 +447,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         });
     }
 
-    public void revertToDraft() {
-        revertToDraft(null);
-    }
-
     public void revertToDraft(UUID actorId) {
         mutate(actorId, () -> {
             if (this.status == PartRevisionStatus.DRAFT) {
@@ -488,10 +460,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             }
             this.status = PartRevisionStatus.DRAFT;
         });
-    }
-
-    public void markSuperseded() {
-        markSuperseded(null);
     }
 
     public void markSuperseded(UUID actorId) {
@@ -536,6 +504,7 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             UUID sourceRefId,
             String payload
     ) {
+        touch(actorId);
         return appendActivity(PartRevisionActivity.record(this, actorId, actionType, sourceType, sourceRefId, payload));
     }
 

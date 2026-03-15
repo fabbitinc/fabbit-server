@@ -30,13 +30,15 @@ import org.hibernate.type.SqlTypes;
         name = "synthesis_v2_batches",
         indexes = {
                 @Index(name = "ix_synthesis_v2_batches_project_id", columnList = "project_id"),
-                @Index(name = "ix_synthesis_v2_batches_mapping_id", columnList = "mapping_id")
+                @Index(name = "ix_synthesis_v2_batches_mapping_id", columnList = "mapping_id"),
+                @Index(name = "ix_synthesis_v2_batches_requested_by", columnList = "requested_by")
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class SynthesisV2Batch extends AbstractCreatedEntity implements AggregateRoot {
 
     public static final String CODE_SYNTHESIS_V2_BATCH_MAPPING_REQUIRED = "SYNTHESIS_V2_BATCH_MAPPING_REQUIRED";
+    public static final String CODE_SYNTHESIS_V2_BATCH_REQUESTED_BY_REQUIRED = "SYNTHESIS_V2_BATCH_REQUESTED_BY_REQUIRED";
     public static final String CODE_SYNTHESIS_V2_BATCH_REQUESTED_COUNT_INVALID =
             "SYNTHESIS_V2_BATCH_REQUESTED_COUNT_INVALID";
     public static final String CODE_SYNTHESIS_V2_BATCH_ACCEPTED_COUNT_INVALID =
@@ -57,6 +59,9 @@ public class SynthesisV2Batch extends AbstractCreatedEntity implements Aggregate
 
     @Column(name = "mapping_id", nullable = false)
     private UUID mappingId;
+
+    @Column(name = "requested_by", nullable = false)
+    private UUID requestedBy;
 
     @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
@@ -81,17 +86,24 @@ public class SynthesisV2Batch extends AbstractCreatedEntity implements Aggregate
     @OneToMany(mappedBy = "batch", fetch = FetchType.LAZY)
     private List<SynthesisV2Job> jobs = new ArrayList<>();
 
-    private SynthesisV2Batch(UUID projectId, UUID mappingId, int requestedCount, String failedUploads) {
+    private SynthesisV2Batch(UUID projectId, UUID mappingId, UUID requestedBy, int requestedCount, String failedUploads) {
         super(UuidV7Generator.next());
         this.projectId = projectId;
         this.mappingId = requireMappingId(mappingId);
+        this.requestedBy = requireRequestedBy(requestedBy);
         this.requestedCount = requireRequestedCount(requestedCount);
         this.acceptedCount = 0;
         this.failedUploads = normalizeFailedUploads(failedUploads);
     }
 
-    public static SynthesisV2Batch create(UUID projectId, UUID mappingId, int requestedCount, String failedUploads) {
-        return new SynthesisV2Batch(projectId, mappingId, requestedCount, failedUploads);
+    public static SynthesisV2Batch create(
+            UUID projectId,
+            UUID mappingId,
+            UUID requestedBy,
+            int requestedCount,
+            String failedUploads
+    ) {
+        return new SynthesisV2Batch(projectId, mappingId, requestedBy, requestedCount, failedUploads);
     }
 
     public SynthesisV2Job addJob(UUID fileId) {
@@ -114,6 +126,13 @@ public class SynthesisV2Batch extends AbstractCreatedEntity implements Aggregate
     private UUID requireMappingId(UUID value) {
         if (value == null) {
             throw new DomainException(CODE_SYNTHESIS_V2_BATCH_MAPPING_REQUIRED, "매핑 ID는 필수입니다");
+        }
+        return value;
+    }
+
+    private UUID requireRequestedBy(UUID value) {
+        if (value == null) {
+            throw new DomainException(CODE_SYNTHESIS_V2_BATCH_REQUESTED_BY_REQUIRED, "요청 사용자 ID는 필수입니다");
         }
         return value;
     }

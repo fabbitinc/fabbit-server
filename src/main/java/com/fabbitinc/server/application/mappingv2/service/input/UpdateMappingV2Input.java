@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.mappingv2.service.input;
 
-import com.fabbitinc.server.application.mappingv2.dto.common.MappingV2ResultDto;
+import com.fabbitinc.server.application.mappingv2.model.MappingV2ResultDto;
 import java.util.List;
 import java.util.UUID;
 

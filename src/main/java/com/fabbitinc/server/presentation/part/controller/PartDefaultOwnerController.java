@@ -3,9 +3,9 @@ package com.fabbitinc.server.presentation.part.controller;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartDefaultOwnerItemResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartDefaultOwnerListResponse;
 
-import com.fabbitinc.server.application.part.dto.request.PartDefaultOwnerRequest;
-import com.fabbitinc.server.application.part.dto.response.PartDefaultOwnerItemResponse;
-import com.fabbitinc.server.application.part.dto.response.PartDefaultOwnerListResponse;
+import com.fabbitinc.server.presentation.part.request.PartDefaultOwnerRequest;
+import com.fabbitinc.server.presentation.part.response.PartDefaultOwnerItemResponse;
+import com.fabbitinc.server.presentation.part.response.PartDefaultOwnerListResponse;
 import com.fabbitinc.server.application.part.query.PartOwnerQuery;
 import com.fabbitinc.server.application.part.query.condition.PartDefaultOwnerCondition;
 import com.fabbitinc.server.application.part.usecase.DeleteDefaultOwnerUseCase;

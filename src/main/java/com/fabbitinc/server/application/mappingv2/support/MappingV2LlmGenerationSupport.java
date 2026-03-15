@@ -3,7 +3,7 @@ package com.fabbitinc.server.application.mappingv2.support;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.config.AppProperties;
-import com.fabbitinc.server.application.mappingv2.dto.common.MappingV2ResultDto;
+import com.fabbitinc.server.application.mappingv2.model.MappingV2ResultDto;
 import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
 import com.fabbitinc.server.application.ontology.support.OntologyMappingPromptRenderer;
 import java.io.IOException;

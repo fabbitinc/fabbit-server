@@ -2,7 +2,7 @@ package com.fabbitinc.server.application.mappingv2.query;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
-import com.fabbitinc.server.application.mappingv2.dto.common.MappingV2ResultDto;
+import com.fabbitinc.server.application.mappingv2.model.MappingV2ResultDto;
 import com.fabbitinc.server.application.mappingv2.query.condition.MappingV2DetailCondition;
 import com.fabbitinc.server.application.mappingv2.query.condition.MappingV2ListCondition;
 import com.fabbitinc.server.application.mappingv2.query.result.MappingV2ListResult;

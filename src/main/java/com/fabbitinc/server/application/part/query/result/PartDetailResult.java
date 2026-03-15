@@ -24,6 +24,8 @@ public record PartDetailResult(
         UUID ownerTeamId,
         String ownerTeamName,
         PartPreviewResult preview,
+        long draftCount,
+        long inReviewCount,
         long childrenCount,
         long parentsCount,
         long suppliersCount,

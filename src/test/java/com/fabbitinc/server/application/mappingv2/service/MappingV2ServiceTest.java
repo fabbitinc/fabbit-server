@@ -9,8 +9,8 @@ import static org.mockito.Mockito.when;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
-import com.fabbitinc.server.application.mappingv2.dto.common.MappingV2ResultDto;
-import com.fabbitinc.server.application.mappingv2.dto.common.NodeMappingV2Dto;
+import com.fabbitinc.server.application.mappingv2.model.MappingV2ResultDto;
+import com.fabbitinc.server.application.mappingv2.model.NodeMappingV2Dto;
 import com.fabbitinc.server.application.mappingv2.service.input.CreateMappingV2Input;
 import com.fabbitinc.server.application.mappingv2.service.input.UpdateMappingV2Input;
 import com.fabbitinc.server.application.mappingv2.service.output.SavedMappingV2Output;

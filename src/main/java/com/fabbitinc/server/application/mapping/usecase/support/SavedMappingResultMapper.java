@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.mapping.usecase.support;
 
-import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
+import com.fabbitinc.server.application.mapping.model.MappingResultDto;
 import com.fabbitinc.server.application.mapping.usecase.result.SavedMappingResult;
 import com.fabbitinc.server.domain.mapping.model.MappingRecord;
 import com.fabbitinc.server.domain.mapping.model.MappingRevision;

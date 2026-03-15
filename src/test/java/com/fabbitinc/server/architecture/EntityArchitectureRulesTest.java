@@ -3,11 +3,13 @@ package com.fabbitinc.server.architecture;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
+import com.fabbitinc.server.domain.common.entity.AbstractActorAuditableEntity;
 import com.fabbitinc.server.domain.common.entity.AbstractIdEntity;
 import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaConstructor;
 import com.tngtech.archunit.core.domain.JavaField;
+import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -26,6 +28,10 @@ import jakarta.persistence.OneToOne;
         importOptions = {ImportOption.DoNotIncludeTests.class}
 )
 class EntityArchitectureRulesTest {
+
+    private static final String UUID_CLASS_NAME = "java.util.UUID";
+    private static final String RUNNABLE_CLASS_NAME = "java.lang.Runnable";
+    private static final String JAVA_UTIL_FUNCTION_PACKAGE = "java.util.function";
 
     @ArchTest
     static final ArchRule entitiesMustExtendAbstractIdEntity =
@@ -86,6 +92,22 @@ class EntityArchitectureRulesTest {
                     .that().areAnnotatedWith(Entity.class)
                     .and().resideInAPackage("..domain..")
                     .should(haveValidReadOnlyRelationHelperFields())
+                    .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule actorAwareEntitiesMustNotExposeActorlessConvenienceOverloads =
+            classes()
+                    .that().areAnnotatedWith(Entity.class)
+                    .and().areAssignableTo(AbstractActorAuditableEntity.class)
+                    .should(notHaveActorlessConvenienceOverloads())
+                    .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule actorAwareEntitiesMustNotExposePublicCallbackParameters =
+            classes()
+                    .that().areAnnotatedWith(Entity.class)
+                    .and().areAssignableTo(AbstractActorAuditableEntity.class)
+                    .should(notExposePublicCallbackParameters())
                     .allowEmptyShould(true);
 
     private static ArchCondition<JavaClass> notHavePublicConstructors() {
@@ -204,5 +226,97 @@ class EntityArchitectureRulesTest {
                 }
             }
         };
+    }
+
+    private static ArchCondition<JavaClass> notHaveActorlessConvenienceOverloads() {
+        return new ArchCondition<>("actor UUID만 빠진 public convenience overload를 노출하지 않는다") {
+            @Override
+            public void check(JavaClass clazz, ConditionEvents events) {
+                for (JavaMethod method : clazz.getMethods()) {
+                    if (!method.getOwner().equals(clazz)) {
+                        continue;
+                    }
+                    if (!method.getModifiers().contains(JavaModifier.PUBLIC)) {
+                        continue;
+                    }
+                    if (hasTrailingUuidParameter(method)) {
+                        continue;
+                    }
+
+                    boolean hasActorAwareOverload = clazz.getMethods().stream()
+                            .filter(candidate -> candidate.getOwner().equals(clazz))
+                            .filter(candidate -> candidate.getModifiers().contains(JavaModifier.PUBLIC))
+                            .filter(candidate -> candidate.getName().equals(method.getName()))
+                            .filter(candidate -> candidate.getRawParameterTypes().size() == method.getRawParameterTypes().size() + 1)
+                            .filter(EntityArchitectureRulesTest::hasTrailingUuidParameter)
+                            .anyMatch(candidate -> hasSameLeadingParameterTypes(method, candidate));
+
+                    if (!hasActorAwareOverload) {
+                        continue;
+                    }
+
+                    String message = String.format(
+                            "%s#%s 는 actor UUID만 빠진 public convenience overload를 노출하고 있습니다",
+                            clazz.getName(),
+                            method.getFullName()
+                    );
+                    events.add(SimpleConditionEvent.violated(method, message));
+                }
+            }
+        };
+    }
+
+    private static ArchCondition<JavaClass> notExposePublicCallbackParameters() {
+        return new ArchCondition<>("public 도메인 API에서 Runnable/Consumer 같은 콜백을 받지 않는다") {
+            @Override
+            public void check(JavaClass clazz, ConditionEvents events) {
+                for (JavaMethod method : clazz.getMethods()) {
+                    if (!method.getOwner().equals(clazz)) {
+                        continue;
+                    }
+                    if (!method.getModifiers().contains(JavaModifier.PUBLIC)) {
+                        continue;
+                    }
+
+                    for (JavaClass parameterType : method.getRawParameterTypes()) {
+                        if (!isCallbackType(parameterType)) {
+                            continue;
+                        }
+
+                        String message = String.format(
+                                "%s#%s 는 public 도메인 API에서 콜백 파라미터 %s 를 노출하고 있습니다",
+                                clazz.getName(),
+                                method.getName(),
+                                parameterType.getName()
+                        );
+                        events.add(SimpleConditionEvent.violated(method, message));
+                    }
+                }
+            }
+        };
+    }
+
+    private static boolean hasTrailingUuidParameter(JavaMethod method) {
+        if (method.getRawParameterTypes().isEmpty()) {
+            return false;
+        }
+        JavaClass lastParameterType = method.getRawParameterTypes().get(method.getRawParameterTypes().size() - 1);
+        return UUID_CLASS_NAME.equals(lastParameterType.getName());
+    }
+
+    private static boolean hasSameLeadingParameterTypes(JavaMethod actorlessMethod, JavaMethod actorAwareMethod) {
+        for (int index = 0; index < actorlessMethod.getRawParameterTypes().size(); index++) {
+            if (!actorlessMethod.getRawParameterTypes().get(index).equals(actorAwareMethod.getRawParameterTypes().get(index))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isCallbackType(JavaClass parameterType) {
+        if (RUNNABLE_CLASS_NAME.equals(parameterType.getName())) {
+            return true;
+        }
+        return parameterType.getPackageName().startsWith(JAVA_UTIL_FUNCTION_PACKAGE);
     }
 }

@@ -3,9 +3,9 @@ package com.fabbitinc.server.application.synthesis.service;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.file.port.StoragePort;
-import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
-import com.fabbitinc.server.application.mapping.dto.common.PropertyMappingDto;
-import com.fabbitinc.server.application.mapping.dto.common.RelationMappingDto;
+import com.fabbitinc.server.application.mapping.model.MappingResultDto;
+import com.fabbitinc.server.application.mapping.model.PropertyMappingDto;
+import com.fabbitinc.server.application.mapping.model.RelationMappingDto;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.ontology.support.RelationshipType;
@@ -113,7 +113,15 @@ public class SynthesisExecutionService {
             for (Map<String, Object> row : rows) {
                 processedRows++;
                 try {
-                    RowProcessResult result = processRow(row, mapping, rootContext, overwrite, file, job.getId());
+                    RowProcessResult result = processRow(
+                            row,
+                            mapping,
+                            rootContext,
+                            overwrite,
+                            file,
+                            job.getId(),
+                            resolveRequestedBy(job)
+                    );
                     nodesCreated += result.nodesCreated();
                     relationshipsCreated += result.relationshipsCreated();
                 } catch (Exception ex) {
@@ -135,7 +143,8 @@ public class SynthesisExecutionService {
             Map<String, String> rootContext,
             boolean overwrite,
             File sourceFile,
-            UUID jobId
+            UUID jobId,
+            UUID requestedBy
     ) {
         int nodesCreated = 0;
         int relationshipsCreated = 0;
@@ -145,7 +154,7 @@ public class SynthesisExecutionService {
             return new RowProcessResult(0, 0);
         }
 
-        UpsertPartResult childResult = upsertPart(childValues, overwrite, jobId);
+        UpsertPartResult childResult = upsertPart(childValues, overwrite, jobId, requestedBy);
         if (childResult.created()) {
             nodesCreated++;
         }
@@ -161,7 +170,8 @@ public class SynthesisExecutionService {
                 UpsertPartResult parentResult = upsertPart(
                         new PartRowValues(parentPartNumber, parentName, null, null, null, null),
                         overwrite,
-                        jobId
+                        jobId,
+                        requestedBy
                 );
                 if (parentResult.created()) {
                     nodesCreated++;
@@ -232,7 +242,7 @@ public class SynthesisExecutionService {
                     continue;
                 }
 
-                UpsertProjectResult projectResult = upsertProject(projectValues);
+                UpsertProjectResult projectResult = upsertProject(projectValues, requestedBy);
                 if (projectResult.created()) {
                     nodesCreated++;
                 }
@@ -485,10 +495,10 @@ public class SynthesisExecutionService {
         return properties;
     }
 
-    private UpsertPartResult upsertPart(PartRowValues values, boolean overwrite, UUID jobId) {
+    private UpsertPartResult upsertPart(PartRowValues values, boolean overwrite, UUID jobId, UUID requestedBy) {
         Part existing = partRepository.findByPartNumber(values.partNumber()).orElse(null);
         if (existing != null) {
-            PartRevision revision = findOrCreateWorkingRevision(existing, values.name());
+            PartRevision revision = findOrCreateWorkingRevision(existing, values.name(), requestedBy);
             boolean changed = false;
             if (shouldApplyString(values.name(), revision.getName(), overwrite)) {
                 revision.changeName(values.name());
@@ -511,7 +521,7 @@ public class SynthesisExecutionService {
                 changed = true;
             }
             if (changed) {
-                recordSynthesisImport(revision, jobId);
+                recordSynthesisImport(revision, jobId, requestedBy);
                 partRevisionRepository.save(revision);
             }
             return new UpsertPartResult(existing, revision, false);
@@ -519,7 +529,7 @@ public class SynthesisExecutionService {
 
         Part created = Part.create(values.partNumber());
         partRepository.save(created);
-        PartRevision revision = PartRevision.createInitialDraft(created, "D1", values.name());
+        PartRevision revision = PartRevision.createInitialDraft(created, "D1", values.name(), requestedBy);
         if (values.category() != null) {
             revision.changeCategory(values.category());
         }
@@ -532,17 +542,17 @@ public class SynthesisExecutionService {
         if (values.description() != null) {
             revision.changeDescription(values.description());
         }
-        recordSynthesisImport(revision, jobId);
+        recordSynthesisImport(revision, jobId, requestedBy);
         partRevisionRepository.save(revision);
         return new UpsertPartResult(created, revision, true);
     }
 
-    private PartRevision findOrCreateWorkingRevision(Part part, String name) {
+    private PartRevision findOrCreateWorkingRevision(Part part, String name, UUID requestedBy) {
         PartRevision revision = resolveCurrentRevision(part);
         if (revision != null) {
             return revision;
         }
-        PartRevision created = PartRevision.createInitialDraft(part, "D1", name);
+        PartRevision created = PartRevision.createInitialDraft(part, "D1", name, requestedBy);
         return partRevisionRepository.save(created);
     }
 
@@ -568,9 +578,9 @@ public class SynthesisExecutionService {
         return revisions.get(0);
     }
 
-    private void recordSynthesisImport(PartRevision revision, UUID jobId) {
+    private void recordSynthesisImport(PartRevision revision, UUID jobId, UUID requestedBy) {
         revision.recordActivity(
-                null,
+                requestedBy,
                 PartRevisionActivityActionType.IMPORTED,
                 PartRevisionActivitySourceType.SYNTHESIS,
                 jobId,
@@ -781,7 +791,7 @@ public class SynthesisExecutionService {
         return true;
     }
 
-    private UpsertProjectResult upsertProject(ProjectRowValues values) {
+    private UpsertProjectResult upsertProject(ProjectRowValues values, UUID requestedBy) {
         if (values.existingProject() != null) {
             return new UpsertProjectResult(values.existingProject(), false);
         }
@@ -791,9 +801,16 @@ public class SynthesisExecutionService {
             return new UpsertProjectResult(existing, false);
         }
 
-        Project created = Project.create(values.name(), null, null);
+        Project created = Project.create(values.name(), null, requestedBy);
         projectRepository.save(created);
         return new UpsertProjectResult(created, true);
+    }
+
+    private UUID resolveRequestedBy(SynthesisJob job) {
+        if (job.getBatch() == null) {
+            return null;
+        }
+        return job.getBatch().getRequestedBy();
     }
 
     private boolean linkPartRevisionToDrawing(PartRevision partRevision, Drawing drawing) {

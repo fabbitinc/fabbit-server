@@ -1,13 +1,13 @@
 package com.fabbitinc.server.presentation.file.controller;
 
-import com.fabbitinc.server.application.file.dto.request.BatchCompleteRequest;
-import com.fabbitinc.server.application.file.dto.request.BatchCreateFileRequest;
-import com.fabbitinc.server.application.file.dto.request.CreateFileRequest;
-import com.fabbitinc.server.application.file.dto.response.BatchCompleteFailure;
-import com.fabbitinc.server.application.file.dto.response.BatchCompleteResponse;
-import com.fabbitinc.server.application.file.dto.response.BatchCreateFileResponse;
-import com.fabbitinc.server.application.file.dto.response.CreateFileResponse;
-import com.fabbitinc.server.application.file.dto.response.FileCompleteResponse;
+import com.fabbitinc.server.presentation.file.dto.request.BatchCompleteRequest;
+import com.fabbitinc.server.presentation.file.dto.request.BatchCreateFileRequest;
+import com.fabbitinc.server.presentation.file.dto.request.CreateFileRequest;
+import com.fabbitinc.server.presentation.file.dto.response.BatchCompleteFailure;
+import com.fabbitinc.server.presentation.file.dto.response.BatchCompleteResponse;
+import com.fabbitinc.server.presentation.file.dto.response.BatchCreateFileResponse;
+import com.fabbitinc.server.presentation.file.dto.response.CreateFileResponse;
+import com.fabbitinc.server.presentation.file.dto.response.FileCompleteResponse;
 import com.fabbitinc.server.application.file.usecase.BatchCompleteFilesUseCase;
 import com.fabbitinc.server.application.file.usecase.BatchCreateFilesUseCase;
 import com.fabbitinc.server.application.file.usecase.CompleteFileUseCase;

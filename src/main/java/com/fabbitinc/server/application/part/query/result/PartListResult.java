@@ -5,9 +5,8 @@ import java.util.List;
 import java.util.UUID;
 
 public record PartListResult(
-        long total,
-        int offset,
-        int limit,
+        String nextCursor,
+        String prevCursor,
         List<Item> items
 ) {
     public record Item(
@@ -15,7 +14,7 @@ public record PartListResult(
             String partNumber,
             String name,
             String category,
-            String revision,
+            String revisionCode,
             PartLifecycleState lifecycleState,
             boolean hasDrawing,
             long childrenCount

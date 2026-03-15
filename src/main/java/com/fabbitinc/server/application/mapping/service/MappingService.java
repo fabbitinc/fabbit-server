@@ -3,7 +3,7 @@ package com.fabbitinc.server.application.mapping.service;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.file.port.StoragePort;
-import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
+import com.fabbitinc.server.application.mapping.model.MappingResultDto;
 import com.fabbitinc.server.application.mapping.service.input.CreateMappingInput;
 import com.fabbitinc.server.application.mapping.service.input.UpdateMappingInput;
 import com.fabbitinc.server.application.mapping.service.output.SavedMappingOutput;

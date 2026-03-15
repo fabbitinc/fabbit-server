@@ -1,12 +1,12 @@
 package com.fabbitinc.server.presentation.project.controller;
 
-import com.fabbitinc.server.application.project.dto.request.AddMembersRequest;
-import com.fabbitinc.server.application.project.dto.request.ManageMembersRequest;
-import com.fabbitinc.server.application.project.dto.response.ManageMembersResponse;
-import com.fabbitinc.server.application.project.dto.response.MemberLookupResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectMemberListResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectMemberSummaryResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectUserSummaryResponse;
+import com.fabbitinc.server.presentation.project.dto.request.AddMembersRequest;
+import com.fabbitinc.server.presentation.project.dto.request.ManageMembersRequest;
+import com.fabbitinc.server.presentation.project.dto.response.ManageMembersResponse;
+import com.fabbitinc.server.presentation.project.dto.response.MemberLookupResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ProjectMemberListResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ProjectMemberSummaryResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ProjectUserSummaryResponse;
 import com.fabbitinc.server.application.project.query.ProjectQuery;
 import com.fabbitinc.server.application.project.query.condition.ProjectMembersCondition;
 import com.fabbitinc.server.application.project.query.condition.ProjectMembersLookupCondition;

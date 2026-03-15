@@ -1,8 +1,8 @@
 package com.fabbitinc.server.presentation.synthesis.controller;
 
-import com.fabbitinc.server.application.synthesis.dto.request.SynthesisStartRequest;
-import com.fabbitinc.server.application.synthesis.dto.response.SynthesisBatchFailure;
-import com.fabbitinc.server.application.synthesis.dto.response.SynthesisBatchStartResponse;
+import com.fabbitinc.server.presentation.synthesis.dto.request.SynthesisStartRequest;
+import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisBatchFailure;
+import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisBatchStartResponse;
 import com.fabbitinc.server.application.synthesisv2.query.SynthesisV2Query;
 import com.fabbitinc.server.application.synthesisv2.query.condition.SynthesisV2BatchCondition;
 import com.fabbitinc.server.application.synthesisv2.query.condition.SynthesisV2JobCondition;
@@ -174,10 +174,10 @@ public class SynthesisV2Controller {
         );
     }
 
-    private com.fabbitinc.server.application.synthesis.dto.response.SynthesisJobResponse toStartedSynthesisJobResponse(
+    private SynthesisJobResponse toStartedSynthesisJobResponse(
             StartedSynthesisV2JobResult result
     ) {
-        return new com.fabbitinc.server.application.synthesis.dto.response.SynthesisJobResponse(
+        return new SynthesisJobResponse(
                 result.id(),
                 result.mappingId(),
                 result.fileId(),

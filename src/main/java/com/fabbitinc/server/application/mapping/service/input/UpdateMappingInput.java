@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.mapping.service.input;
 
-import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
+import com.fabbitinc.server.application.mapping.model.MappingResultDto;
 import java.util.UUID;
 
 public record UpdateMappingInput(

@@ -17,8 +17,8 @@ class EngineeringBomItemTest {
     void add_리비전과_줄번호를_저장한다() {
         Part parent = Part.create("P-001");
         Part child = Part.create("P-002");
-        PartRevision parentRevision = PartRevision.createOfficial(parent, "1", null, "Parent", PartRevisionStatus.RELEASED);
-        PartRevision childRevision = PartRevision.createOfficial(child, "1", null, "Child", PartRevisionStatus.RELEASED);
+        PartRevision parentRevision = PartRevision.createOfficial(parent, "1", null, "Parent", PartRevisionStatus.RELEASED, null);
+        PartRevision childRevision = PartRevision.createOfficial(child, "1", null, "Child", PartRevisionStatus.RELEASED, null);
 
         EngineeringBomItem item = EngineeringBomItem.add(
                 parentRevision.getId(),

@@ -2,9 +2,9 @@ package com.fabbitinc.server.infrastructure.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fabbitinc.server.application.issue.dto.request.CreateChangeRequestRequest;
-import com.fabbitinc.server.application.issue.dto.request.SyncIssuesRequest;
-import com.fabbitinc.server.application.issue.dto.response.CommentResponse;
+import com.fabbitinc.server.presentation.issue.dto.request.CreateChangeRequestRequest;
+import com.fabbitinc.server.presentation.issue.dto.request.SyncIssuesRequest;
+import com.fabbitinc.server.presentation.issue.dto.response.CommentResponse;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import io.swagger.v3.core.converter.ModelConverters;
 import io.swagger.v3.core.jackson.ModelResolver;

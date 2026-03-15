@@ -8,10 +8,10 @@ import static org.mockito.Mockito.when;
 
 import com.fabbitinc.server.application.file.port.StoragePort;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
-import com.fabbitinc.server.application.mappingv2.dto.common.ExtendedPropertyMappingV2Dto;
-import com.fabbitinc.server.application.mappingv2.dto.common.MappingV2ResultDto;
-import com.fabbitinc.server.application.mappingv2.dto.common.NodeMappingV2Dto;
-import com.fabbitinc.server.application.mappingv2.dto.common.RelationMappingV2Dto;
+import com.fabbitinc.server.application.mappingv2.model.ExtendedPropertyMappingV2Dto;
+import com.fabbitinc.server.application.mappingv2.model.MappingV2ResultDto;
+import com.fabbitinc.server.application.mappingv2.model.NodeMappingV2Dto;
+import com.fabbitinc.server.application.mappingv2.model.RelationMappingV2Dto;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.ontology.support.RelationshipType;
 import com.fabbitinc.server.domain.bom.model.EngineeringBomItem;
@@ -104,7 +104,7 @@ class SynthesisV2ExecutionServiceTest {
     @Test
     void processRow_nodes와_relations를_해석해_각_도메인에_저장한다() throws Exception {
         Part parent = Part.create("P-001");
-        PartRevision parentRevision = PartRevision.createOfficial(parent, "1", null, "Parent", PartRevisionStatus.RELEASED);
+        PartRevision parentRevision = PartRevision.createOfficial(parent, "1", null, "Parent", PartRevisionStatus.RELEASED, null);
 
         when(partRepository.findByPartNumber("C-001")).thenReturn(Optional.empty());
         when(partRepository.findByPartNumber("P-001")).thenReturn(Optional.of(parent));
@@ -223,6 +223,7 @@ class SynthesisV2ExecutionServiceTest {
                 Map.entry("moq", "100")
         );
 
+        UUID requestedBy = UUID.randomUUID();
         Object result = ReflectionTestUtils.invokeMethod(
                 synthesisV2ExecutionService,
                 "processRow",
@@ -231,7 +232,8 @@ class SynthesisV2ExecutionServiceTest {
                 Map.of("Project", "Root Project"),
                 true,
                 (File) null,
-                UUID.randomUUID()
+                UUID.randomUUID(),
+                requestedBy
         );
         assertNotNull(result);
 
@@ -245,6 +247,8 @@ class SynthesisV2ExecutionServiceTest {
         Map<?, ?> childExt = objectMapper.readValue(createdRevision.getExtendedProperties(), Map.class);
         assertEquals("공용부품", childExt.get("_ext_remark"));
         assertEquals("Child", createdRevision.getName());
+        assertEquals(requestedBy, createdRevision.getCreatedBy());
+        assertEquals(requestedBy, createdRevision.getActivities().get(0).getActorId());
 
         ArgumentCaptor<Supplier> supplierCaptor = ArgumentCaptor.forClass(Supplier.class);
         verify(supplierRepository).save(supplierCaptor.capture());

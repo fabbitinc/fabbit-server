@@ -36,7 +36,7 @@ public class OrganizationService {
     private final TenantProvisioningPort tenantProvisioningPort;
     private final SubscriptionApi subscriptionApi;
 
-    public Organization createOrganization(UUID userId, CreateOrganizationInput input) {
+    public Organization createWorkspace(UUID userId, CreateOrganizationInput input) {
         if (hasOwnedOrganization(userId)) {
             throw new AppException(ErrorCode.ALREADY_EXISTS, "이미 생성한 워크스페이스가 있어 새 조직을 생성할 수 없습니다");
         }
@@ -63,11 +63,11 @@ public class OrganizationService {
         organization.reserveMemberSeat();
 
         organizationRepository.save(organization);
-
         membershipRepository.save(ownerMembership);
-        tenantProvisioningPort.provisionTenant(organization.getId());
-        subscriptionApi.createInitialSubscription(organization.getId(), planType);
 
+        tenantProvisioningPort.provisionTenant(organization.getId());
+
+        subscriptionApi.createInitialSubscription(organization.getId(), organization.getPlanType());
         return organization;
     }
 

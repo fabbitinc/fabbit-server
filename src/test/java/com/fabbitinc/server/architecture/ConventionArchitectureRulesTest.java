@@ -164,6 +164,20 @@ class ConventionArchitectureRulesTest {
                     .should(haveSchemaOnTypeOrMembers())
                     .allowEmptyShould(true);
 
+    @ArchTest
+    static final ArchRule applicationDtosMustNotDefineRequestSuffix =
+            classes()
+                    .that().resideInAPackage("..application..dto..")
+                    .should(notHaveSimpleNameEndingWith("Request"))
+                    .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule applicationDtosMustNotDefineResponseSuffix =
+            classes()
+                    .that().resideInAPackage("..application..dto..")
+                    .should(notHaveSimpleNameEndingWith("Response"))
+                    .allowEmptyShould(true);
+
     private static ArchCondition<JavaClass> haveClassLevelTransactional() {
         return new ArchCondition<>("클래스 레벨 @Transactional을 선언한다") {
             @Override
@@ -175,6 +189,24 @@ class ConventionArchitectureRulesTest {
                 String message = String.format(
                         "%s 는 클래스 레벨 @Transactional이 필요합니다",
                         clazz.getName()
+                );
+                events.add(SimpleConditionEvent.violated(clazz, message));
+            }
+        };
+    }
+
+    private static ArchCondition<JavaClass> notHaveSimpleNameEndingWith(String suffix) {
+        return new ArchCondition<>("simple name 이 %s 로 끝나지 않는다".formatted(suffix)) {
+            @Override
+            public void check(JavaClass clazz, ConditionEvents events) {
+                if (!clazz.getSimpleName().endsWith(suffix)) {
+                    return;
+                }
+
+                String message = String.format(
+                        "%s 는 application dto 패키지에서 %s suffix 를 사용할 수 없습니다",
+                        clazz.getName(),
+                        suffix
                 );
                 events.add(SimpleConditionEvent.violated(clazz, message));
             }

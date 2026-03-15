@@ -1,11 +1,11 @@
 package com.fabbitinc.server.presentation.project.controller;
 
-import com.fabbitinc.server.application.project.dto.request.LinkPartsRequest;
-import com.fabbitinc.server.application.project.dto.response.LinkPartsResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectPartLookupItemResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectPartLookupResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectPartSummaryResponse;
-import com.fabbitinc.server.application.project.dto.response.ProjectPartsResponse;
+import com.fabbitinc.server.presentation.project.dto.request.LinkPartsRequest;
+import com.fabbitinc.server.presentation.project.dto.response.LinkPartsResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ProjectPartLookupItemResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ProjectPartLookupResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ProjectPartSummaryResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ProjectPartsResponse;
 import com.fabbitinc.server.application.project.query.ProjectQuery;
 import com.fabbitinc.server.application.project.query.condition.ProjectPartsCondition;
 import com.fabbitinc.server.application.project.query.condition.ProjectPartsLookupCondition;

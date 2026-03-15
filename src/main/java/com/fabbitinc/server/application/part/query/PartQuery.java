@@ -17,6 +17,8 @@ import com.fabbitinc.server.application.part.query.condition.PartDraftLookupCond
 import com.fabbitinc.server.application.part.query.condition.PartDraftDetailCondition;
 import com.fabbitinc.server.application.part.query.condition.PartExportCondition;
 import com.fabbitinc.server.application.part.query.condition.PartFilesCondition;
+import com.fabbitinc.server.application.part.query.condition.PartInProgressListCondition;
+import com.fabbitinc.server.application.part.query.condition.PartInProgressStatusFilter;
 import com.fabbitinc.server.application.part.query.condition.PartListCondition;
 import com.fabbitinc.server.application.part.query.condition.PartLookupCondition;
 import com.fabbitinc.server.application.part.query.condition.PartProjectsCondition;
@@ -29,6 +31,7 @@ import com.fabbitinc.server.application.part.query.result.PartDetailResult;
 import com.fabbitinc.server.application.part.query.result.PartDraftLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartFilesResult;
 import com.fabbitinc.server.application.part.query.result.PartFilterOptionsResult;
+import com.fabbitinc.server.application.part.query.result.PartInProgressListResult;
 import com.fabbitinc.server.application.part.query.result.PartListResult;
 import com.fabbitinc.server.application.part.query.result.PartLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewResult;
@@ -79,7 +82,9 @@ import jakarta.persistence.Query;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -126,6 +131,12 @@ public class PartQuery {
     private static final Pattern STRING_PATTERN = Pattern.compile("^\"(.*)\"$");
     private static final Pattern NUMBER_PATTERN = Pattern.compile("^-?\\d+(?:\\.\\d+)?$");
     private static final int MAX_BOM_DEPTH = 30;
+    private static final Comparator<ResolvedPart> PART_LIST_ORDER =
+            Comparator.comparing(ResolvedPart::partNumber)
+                    .thenComparing(ResolvedPart::id);
+    private static final Comparator<ResolvedWorkItem> WORK_ITEM_ORDER =
+            Comparator.comparing((ResolvedWorkItem item) -> item.revision().getUpdatedAt(), Comparator.reverseOrder())
+                    .thenComparing(item -> item.revision().getId(), Comparator.reverseOrder());
 
     public PartLookupResult lookup(PartLookupCondition condition) {
         currentAuthProvider.getCurrentAuth();
@@ -257,8 +268,15 @@ public class PartQuery {
     public PartListResult list(PartListCondition condition) {
         currentAuthProvider.getCurrentAuth();
         PartLifecycleState lifecycleState = parseLifecycleState(condition.lifecycleState());
+        if (condition.nextCursor() != null && condition.prevCursor() != null) {
+            throw new AppException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "next_cursor와 prev_cursor는 동시에 사용할 수 없습니다"
+            );
+        }
+
         List<ResolvedPart> filtered = filterResolvedParts(
-                resolveParts(findPartsForExport(
+                resolveReleasedParts(findPartsForExport(
                         null,
                         condition.category(),
                         lifecycleState,
@@ -271,11 +289,15 @@ public class PartQuery {
                 condition.category(),
                 condition.hasChildren(),
                 condition.hasDrawing()
-        );
-        long total = filtered.size();
-        int fromIndex = Math.min(condition.offset(), filtered.size());
-        int toIndex = Math.min(condition.offset() + condition.limit(), filtered.size());
-        List<PartListResult.Item> items = filtered.subList(fromIndex, toIndex).stream()
+        ).stream()
+                .sorted(PART_LIST_ORDER)
+                .toList();
+
+        int fromIndex = resolvePartListStartIndex(filtered, condition);
+        int toIndex = Math.min(fromIndex + condition.limit(), filtered.size());
+
+        List<ResolvedPart> pageItems = filtered.subList(fromIndex, toIndex);
+        List<PartListResult.Item> items = pageItems.stream()
                 .map(part -> new PartListResult.Item(
                         part.id(),
                         part.partNumber(),
@@ -287,7 +309,84 @@ public class PartQuery {
                         countEngineeringBomChildren(part.revision())
                 ))
                 .toList();
-        return new PartListResult(total, condition.offset(), condition.limit(), items);
+
+        String prevCursor = fromIndex > 0 && !pageItems.isEmpty()
+                ? encodePartListCursor(pageItems.get(0))
+                : null;
+        String nextCursor = toIndex < filtered.size() && !pageItems.isEmpty()
+                ? encodePartListCursor(pageItems.get(pageItems.size() - 1))
+                : null;
+
+        return new PartListResult(nextCursor, prevCursor, items);
+    }
+
+    public PartInProgressListResult listInProgress(PartInProgressListCondition condition) {
+        UUID actorId = currentAuthProvider.getCurrentAuth().userId();
+        if (condition.nextCursor() != null && condition.prevCursor() != null) {
+            throw new AppException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "next_cursor와 prev_cursor는 동시에 사용할 수 없습니다"
+            );
+        }
+
+        PartLifecycleState lifecycleState = parseLifecycleState(condition.lifecycleState());
+        List<PartRevisionStatus> statuses = normalizeInProgressStatuses(condition.statuses());
+        Map<UUID, PartRevision> baseRevisionsById = new HashMap<>();
+
+        List<ResolvedWorkItem> filtered = filterResolvedWorkItems(
+                resolveWorkItems(
+                        findPartsForExport(
+                                null,
+                                condition.category(),
+                                lifecycleState,
+                                null,
+                                null,
+                                null,
+                                condition.projectId()
+                        ),
+                        statuses,
+                        baseRevisionsById
+                ),
+                actorId,
+                condition.search(),
+                condition.category(),
+                condition.mineOnly(),
+                condition.hasChildren(),
+                condition.hasDrawing()
+        ).stream()
+                .sorted(WORK_ITEM_ORDER)
+                .toList();
+
+        int fromIndex = resolveWorkItemStartIndex(filtered, condition);
+        int toIndex = Math.min(fromIndex + condition.limit(), filtered.size());
+        List<ResolvedWorkItem> pageItems = filtered.subList(fromIndex, toIndex);
+
+        List<PartInProgressListResult.Item> items = pageItems.stream()
+                .map(item -> new PartInProgressListResult.Item(
+                        item.part().getId(),
+                        item.revision().getId(),
+                        item.part().getPartNumber(),
+                        item.revision().getName(),
+                        item.revision().getCategory(),
+                        item.revision().getStatus(),
+                        item.revision().getRevisionCode(),
+                        item.revision().getDraftKey(),
+                        item.baseRevisionCode(),
+                        item.part().getLifecycleState(),
+                        countAttachedDrawings(item.revision()) > 0,
+                        countEngineeringBomChildren(item.revision()),
+                        item.revision().getUpdatedAt()
+                ))
+                .toList();
+
+        String prevCursor = fromIndex > 0 && !pageItems.isEmpty()
+                ? encodeWorkItemCursor(pageItems.get(0))
+                : null;
+        String nextCursor = toIndex < filtered.size() && !pageItems.isEmpty()
+                ? encodeWorkItemCursor(pageItems.get(pageItems.size() - 1))
+                : null;
+
+        return new PartInProgressListResult(nextCursor, prevCursor, items);
     }
 
     public byte[] export(PartExportCondition condition) {
@@ -439,6 +538,7 @@ public class PartQuery {
         Team ownerTeam = teamApi.getTeamOrNull(revision == null ? null : revision.getOwnerTeamId());
         String ownerTeamName = ownerTeam == null ? null : ownerTeam.getName();
         PartPreviewResult preview = loadPreview(revision);
+        RevisionWorkflowCounts workflowCounts = countRevisionWorkflows(part.getId());
 
         long childrenCount = countEngineeringBomChildren(revision);
         long parentsCount = countEngineeringBomParents(revision);
@@ -475,6 +575,8 @@ public class PartQuery {
                 revision == null ? null : revision.getOwnerTeamId(),
                 ownerTeamName,
                 preview,
+                workflowCounts.draftCount(),
+                workflowCounts.inReviewCount(),
                 childrenCount,
                 parentsCount,
                 suppliersCount,
@@ -1034,6 +1136,125 @@ public class PartQuery {
                 .fetch();
     }
 
+    private int resolvePartListStartIndex(List<ResolvedPart> filtered, PartListCondition condition) {
+        if (filtered.isEmpty()) {
+            return 0;
+        }
+        if (condition.nextCursor() != null && !condition.nextCursor().isBlank()) {
+            PartListCursor cursor = decodePartListCursor(condition.nextCursor());
+            return findNextStartIndex(filtered, cursor);
+        }
+        if (condition.prevCursor() != null && !condition.prevCursor().isBlank()) {
+            PartListCursor cursor = decodePartListCursor(condition.prevCursor());
+            return findPreviousStartIndex(filtered, cursor, condition.limit());
+        }
+        return 0;
+    }
+
+    private int findNextStartIndex(List<ResolvedPart> filtered, PartListCursor cursor) {
+        for (int i = 0; i < filtered.size(); i++) {
+            if (comparePartListCursor(filtered.get(i), cursor) > 0) {
+                return i;
+            }
+        }
+        return filtered.size();
+    }
+
+    private int findPreviousStartIndex(List<ResolvedPart> filtered, PartListCursor cursor, int limit) {
+        int endExclusive = filtered.size();
+        for (int i = 0; i < filtered.size(); i++) {
+            if (comparePartListCursor(filtered.get(i), cursor) >= 0) {
+                endExclusive = i;
+                break;
+            }
+        }
+        return Math.max(0, endExclusive - limit);
+    }
+
+    private int comparePartListCursor(ResolvedPart part, PartListCursor cursor) {
+        int partNumberCompare = part.partNumber().compareTo(cursor.partNumber());
+        if (partNumberCompare != 0) {
+            return partNumberCompare;
+        }
+        return part.id().compareTo(cursor.partId());
+    }
+
+    private String encodePartListCursor(ResolvedPart part) {
+        String raw = part.partNumber() + "|" + part.id();
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private PartListCursor decodePartListCursor(String encodedCursor) {
+        try {
+            String raw = new String(
+                    Base64.getUrlDecoder().decode(encodedCursor),
+                    StandardCharsets.UTF_8
+            );
+            int delimiterIndex = raw.lastIndexOf('|');
+            if (delimiterIndex <= 0 || delimiterIndex == raw.length() - 1) {
+                throw new IllegalArgumentException("invalid cursor format");
+            }
+            String partNumber = raw.substring(0, delimiterIndex);
+            UUID partId = UUID.fromString(raw.substring(delimiterIndex + 1));
+            return new PartListCursor(partNumber, partId);
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "cursor 값이 올바르지 않습니다");
+        }
+    }
+
+    private int resolveWorkItemStartIndex(List<ResolvedWorkItem> filtered, PartInProgressListCondition condition) {
+        if (filtered.isEmpty()) {
+            return 0;
+        }
+        if (condition.nextCursor() != null && !condition.nextCursor().isBlank()) {
+            UUID cursor = decodeWorkItemCursor(condition.nextCursor());
+            return findNextWorkItemStartIndex(filtered, cursor);
+        }
+        if (condition.prevCursor() != null && !condition.prevCursor().isBlank()) {
+            UUID cursor = decodeWorkItemCursor(condition.prevCursor());
+            return findPreviousWorkItemStartIndex(filtered, cursor, condition.limit());
+        }
+        return 0;
+    }
+
+    private int findNextWorkItemStartIndex(List<ResolvedWorkItem> filtered, UUID cursorRevisionId) {
+        for (int i = 0; i < filtered.size(); i++) {
+            if (filtered.get(i).revision().getId().equals(cursorRevisionId)) {
+                return i + 1;
+            }
+        }
+        throw new AppException(ErrorCode.VALIDATION_ERROR, "cursor 값이 올바르지 않습니다");
+    }
+
+    private int findPreviousWorkItemStartIndex(List<ResolvedWorkItem> filtered, UUID cursorRevisionId, int limit) {
+        for (int i = 0; i < filtered.size(); i++) {
+            if (filtered.get(i).revision().getId().equals(cursorRevisionId)) {
+                return Math.max(0, i - limit);
+            }
+        }
+        throw new AppException(ErrorCode.VALIDATION_ERROR, "cursor 값이 올바르지 않습니다");
+    }
+
+    private String encodeWorkItemCursor(ResolvedWorkItem item) {
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(item.revision().getId().toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    private UUID decodeWorkItemCursor(String encodedCursor) {
+        try {
+            String raw = new String(
+                    Base64.getUrlDecoder().decode(encodedCursor),
+                    StandardCharsets.UTF_8
+            );
+            return UUID.fromString(raw);
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "cursor 값이 올바르지 않습니다");
+        }
+    }
+
     private BomDirection parseBomDirection(String rawDirection) {
         if (rawDirection == null || rawDirection.isBlank()) {
             return BomDirection.FORWARD;
@@ -1132,6 +1353,17 @@ public class PartQuery {
                 .toList();
     }
 
+    private List<ResolvedPart> resolveReleasedParts(List<Part> parts) {
+        if (parts.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, PartRevision> revisionsByPartId = resolveReleasedRevisions(parts);
+        return parts.stream()
+                .map(part -> new ResolvedPart(part, revisionsByPartId.get(part.getId())))
+                .filter(part -> part.revision() != null)
+                .toList();
+    }
+
     private Map<UUID, PartRevision> resolveCurrentRevisions(Iterable<Part> parts) {
         LinkedHashMap<UUID, Part> partsById = new LinkedHashMap<>();
         for (Part part : parts) {
@@ -1158,6 +1390,77 @@ public class PartQuery {
         return resolved;
     }
 
+    private Map<UUID, PartRevision> resolveReleasedRevisions(Iterable<Part> parts) {
+        LinkedHashMap<UUID, Part> partsById = new LinkedHashMap<>();
+        for (Part part : parts) {
+            if (part != null) {
+                partsById.put(part.getId(), part);
+            }
+        }
+        if (partsById.isEmpty()) {
+            return Map.of();
+        }
+
+        List<PartRevision> revisions = partRevisionRepository.findByPartIdInOrderByCreatedAtDesc(partsById.keySet());
+        Map<UUID, List<PartRevision>> revisionsByPartId = new LinkedHashMap<>();
+        Map<UUID, PartRevision> revisionsById = new HashMap<>();
+        for (PartRevision revision : revisions) {
+            revisionsByPartId.computeIfAbsent(revision.getPartId(), ignored -> new ArrayList<>()).add(revision);
+            revisionsById.put(revision.getId(), revision);
+        }
+
+        Map<UUID, PartRevision> resolved = new HashMap<>();
+        for (Part part : partsById.values()) {
+            resolved.put(part.getId(), resolveOfficialRevision(part.getCurrentReleasedRevisionId(), revisionsById));
+        }
+        return resolved;
+    }
+
+    private List<ResolvedWorkItem> resolveWorkItems(
+            List<Part> parts,
+            List<PartRevisionStatus> statuses,
+            Map<UUID, PartRevision> baseRevisionsById
+    ) {
+        if (parts.isEmpty()) {
+            return List.of();
+        }
+
+        LinkedHashMap<UUID, Part> partsById = new LinkedHashMap<>();
+        for (Part part : parts) {
+            if (part != null) {
+                partsById.put(part.getId(), part);
+            }
+        }
+        if (partsById.isEmpty()) {
+            return List.of();
+        }
+
+        Set<PartRevisionStatus> statusSet = new LinkedHashSet<>(statuses);
+        List<PartRevision> revisions = partRevisionRepository.findByPartIdInOrderByCreatedAtDesc(partsById.keySet()).stream()
+                .filter(revision -> statusSet.contains(revision.getStatus()))
+                .toList();
+
+        Set<UUID> baseRevisionIds = revisions.stream()
+                .map(PartRevision::getBaseRevisionId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        if (!baseRevisionIds.isEmpty()) {
+            partRevisionRepository.findAllById(baseRevisionIds)
+                    .forEach(baseRevision -> baseRevisionsById.put(baseRevision.getId(), baseRevision));
+        }
+
+        return revisions.stream()
+                .map(revision -> {
+                    Part part = partsById.get(revision.getPartId());
+                    if (part == null) {
+                        return null;
+                    }
+                    return new ResolvedWorkItem(part, revision, baseRevisionsById.get(revision.getBaseRevisionId()));
+                })
+                .filter(java.util.Objects::nonNull)
+                .toList();
+    }
+
     private PartRevision resolveCurrentRevision(
             Part part,
             Map<UUID, List<PartRevision>> revisionsByPartId,
@@ -1180,6 +1483,67 @@ public class PartQuery {
             return null;
         }
         return revisions.get(0);
+    }
+
+    private PartRevision resolveOfficialRevision(UUID revisionId, Map<UUID, PartRevision> revisionsById) {
+        if (revisionId == null) {
+            return null;
+        }
+        return revisionsById.get(revisionId);
+    }
+
+    private List<PartRevisionStatus> normalizeInProgressStatuses(List<PartInProgressStatusFilter> rawStatuses) {
+        if (rawStatuses == null || rawStatuses.isEmpty()) {
+            return List.of(
+                    PartRevisionStatus.APPROVED,
+                    PartRevisionStatus.DRAFT,
+                    PartRevisionStatus.IN_REVIEW
+            );
+        }
+
+        LinkedHashSet<PartRevisionStatus> normalized = new LinkedHashSet<>();
+        for (PartInProgressStatusFilter status : rawStatuses) {
+            if (status == null) {
+                continue;
+            }
+            normalized.add(switch (status) {
+                case APPROVED -> PartRevisionStatus.APPROVED;
+                case DRAFT -> PartRevisionStatus.DRAFT;
+                case IN_REVIEW -> PartRevisionStatus.IN_REVIEW;
+            });
+        }
+        if (normalized.isEmpty()) {
+            throw new AppException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "statuses 값이 올바르지 않습니다"
+            );
+        }
+        return List.copyOf(normalized);
+    }
+
+    private List<ResolvedWorkItem> filterResolvedWorkItems(
+            List<ResolvedWorkItem> items,
+            UUID actorId,
+            String search,
+            String category,
+            boolean mineOnly,
+            Boolean hasChildren,
+            Boolean hasDrawing
+    ) {
+        return items.stream()
+                .filter(item -> matchesMineOnly(item, actorId, mineOnly))
+                .filter(item -> matchesSearch(item, search))
+                .filter(item -> matchesCategory(item, category))
+                .filter(item -> matchesHasChildren(item, hasChildren))
+                .filter(item -> matchesHasDrawing(item, hasDrawing))
+                .toList();
+    }
+
+    private boolean matchesMineOnly(ResolvedWorkItem item, UUID actorId, boolean mineOnly) {
+        if (!mineOnly) {
+            return true;
+        }
+        return actorId.equals(item.revision().getCreatedBy());
     }
 
     private long countEngineeringBomChildren(PartRevision revision) {
@@ -1254,11 +1618,28 @@ public class PartQuery {
                 || (part.name() != null && part.name().toLowerCase(java.util.Locale.ROOT).contains(lowered));
     }
 
+    private boolean matchesSearch(ResolvedWorkItem item, String search) {
+        if (search == null || search.isBlank()) {
+            return true;
+        }
+        String lowered = search.trim().toLowerCase(java.util.Locale.ROOT);
+        return item.part().getPartNumber().toLowerCase(java.util.Locale.ROOT).contains(lowered)
+                || (item.revision().getName() != null
+                && item.revision().getName().toLowerCase(java.util.Locale.ROOT).contains(lowered));
+    }
+
     private boolean matchesCategory(ResolvedPart part, String category) {
         if (category == null || category.isBlank()) {
             return true;
         }
         return category.trim().equals(part.category());
+    }
+
+    private boolean matchesCategory(ResolvedWorkItem item, String category) {
+        if (category == null || category.isBlank()) {
+            return true;
+        }
+        return category.trim().equals(item.revision().getCategory());
     }
 
     private boolean matchesHasChildren(ResolvedPart part, Boolean hasChildren) {
@@ -1272,6 +1653,14 @@ public class PartQuery {
         return Boolean.TRUE.equals(hasChildren) ? exists : !exists;
     }
 
+    private boolean matchesHasChildren(ResolvedWorkItem item, Boolean hasChildren) {
+        if (hasChildren == null) {
+            return true;
+        }
+        boolean exists = engineeringBomItemRepository.existsByParentPartRevisionId(item.revision().getId());
+        return Boolean.TRUE.equals(hasChildren) ? exists : !exists;
+    }
+
     private boolean matchesHasDrawing(ResolvedPart part, Boolean hasDrawing) {
         if (hasDrawing == null) {
             return true;
@@ -1280,6 +1669,14 @@ public class PartQuery {
             return !Boolean.TRUE.equals(hasDrawing);
         }
         boolean exists = drawingRepository.existsByPartRevisionIdAndDeletedAtIsNull(part.revision().getId());
+        return Boolean.TRUE.equals(hasDrawing) ? exists : !exists;
+    }
+
+    private boolean matchesHasDrawing(ResolvedWorkItem item, Boolean hasDrawing) {
+        if (hasDrawing == null) {
+            return true;
+        }
+        boolean exists = drawingRepository.existsByPartRevisionIdAndDeletedAtIsNull(item.revision().getId());
         return Boolean.TRUE.equals(hasDrawing) ? exists : !exists;
     }
 
@@ -1643,6 +2040,39 @@ public class PartQuery {
         PartLifecycleState lifecycleState() {
             return part.getLifecycleState();
         }
+    }
+
+    private record ResolvedWorkItem(
+            Part part,
+            PartRevision revision,
+            PartRevision baseRevision
+    ) {
+        String baseRevisionCode() {
+            return baseRevision == null ? null : baseRevision.getRevisionCode();
+        }
+    }
+
+    private record PartListCursor(
+            String partNumber,
+            UUID partId
+    ) {
+    }
+
+    private RevisionWorkflowCounts countRevisionWorkflows(UUID partId) {
+        List<PartRevision> revisions = partRevisionRepository.findByPartIdOrderByCreatedAtDesc(partId);
+        long draftCount = revisions.stream()
+                .filter(revision -> revision.getStatus() == PartRevisionStatus.DRAFT)
+                .count();
+        long inReviewCount = revisions.stream()
+                .filter(revision -> revision.getStatus() == PartRevisionStatus.IN_REVIEW)
+                .count();
+        return new RevisionWorkflowCounts(draftCount, inReviewCount);
+    }
+
+    private record RevisionWorkflowCounts(
+            long draftCount,
+            long inReviewCount
+    ) {
     }
 
     private record BomEdge(

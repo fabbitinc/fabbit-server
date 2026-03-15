@@ -1,15 +1,15 @@
 package com.fabbitinc.server.presentation.activation.controller;
 
-import com.fabbitinc.server.application.activation.dto.request.QueryRequest;
-import com.fabbitinc.server.application.activation.dto.response.ActivationResultType;
-import com.fabbitinc.server.application.activation.dto.response.HealthCheckIssueResponse;
-import com.fabbitinc.server.application.activation.dto.response.HealthCheckResponse;
-import com.fabbitinc.server.application.activation.dto.response.HealthIssueCategory;
-import com.fabbitinc.server.application.activation.dto.response.HealthIssueSeverity;
-import com.fabbitinc.server.application.activation.dto.response.QueryResponse;
-import com.fabbitinc.server.application.activation.dto.response.QueryResultResponse;
-import com.fabbitinc.server.application.activation.dto.response.StarterQuestionResponse;
-import com.fabbitinc.server.application.activation.dto.response.StartersResponse;
+import com.fabbitinc.server.presentation.activation.dto.request.QueryRequest;
+import com.fabbitinc.server.presentation.activation.dto.response.ActivationResultType;
+import com.fabbitinc.server.presentation.activation.dto.response.HealthCheckIssueResponse;
+import com.fabbitinc.server.presentation.activation.dto.response.HealthCheckResponse;
+import com.fabbitinc.server.presentation.activation.dto.response.HealthIssueCategory;
+import com.fabbitinc.server.presentation.activation.dto.response.HealthIssueSeverity;
+import com.fabbitinc.server.presentation.activation.dto.response.QueryResponse;
+import com.fabbitinc.server.presentation.activation.dto.response.QueryResultResponse;
+import com.fabbitinc.server.presentation.activation.dto.response.StarterQuestionResponse;
+import com.fabbitinc.server.presentation.activation.dto.response.StartersResponse;
 import com.fabbitinc.server.application.activation.query.ActivationQuery;
 import com.fabbitinc.server.application.activation.query.condition.ActivationStartersCondition;
 import com.fabbitinc.server.application.activation.query.result.ActivationStarterQuestionResult;

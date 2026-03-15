@@ -1,9 +1,9 @@
 package com.fabbitinc.server.presentation.dashboard.controller;
 
-import com.fabbitinc.server.application.dashboard.dto.response.BomStatsResponse;
-import com.fabbitinc.server.application.dashboard.dto.response.DashboardStatsResponse;
-import com.fabbitinc.server.application.dashboard.dto.response.LastSynthesisResponse;
-import com.fabbitinc.server.application.dashboard.dto.response.PartStatsResponse;
+import com.fabbitinc.server.presentation.dashboard.dto.response.BomStatsResponse;
+import com.fabbitinc.server.presentation.dashboard.dto.response.DashboardStatsResponse;
+import com.fabbitinc.server.presentation.dashboard.dto.response.LastSynthesisResponse;
+import com.fabbitinc.server.presentation.dashboard.dto.response.PartStatsResponse;
 import com.fabbitinc.server.application.dashboard.query.DashboardQuery;
 import com.fabbitinc.server.application.dashboard.query.condition.DashboardStatsCondition;
 import com.fabbitinc.server.application.dashboard.query.result.DashboardLastSynthesisResult;

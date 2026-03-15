@@ -9,7 +9,8 @@ public record PartListCondition(
         Boolean hasDrawing,
         Boolean hasChildren,
         UUID projectId,
-        int offset,
+        String nextCursor,
+        String prevCursor,
         int limit
 ) {
 }

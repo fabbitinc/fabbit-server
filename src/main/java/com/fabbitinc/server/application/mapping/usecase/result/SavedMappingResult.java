@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.mapping.usecase.result;
 
-import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
+import com.fabbitinc.server.application.mapping.model.MappingResultDto;
 import com.fabbitinc.server.domain.mapping.model.MappingScope;
 import java.time.Instant;
 import java.util.List;

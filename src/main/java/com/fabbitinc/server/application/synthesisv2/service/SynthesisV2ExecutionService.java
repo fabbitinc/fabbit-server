@@ -4,10 +4,10 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.file.port.StoragePort;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
-import com.fabbitinc.server.application.mappingv2.dto.common.ExtendedPropertyMappingV2Dto;
-import com.fabbitinc.server.application.mappingv2.dto.common.MappingV2ResultDto;
-import com.fabbitinc.server.application.mappingv2.dto.common.NodeMappingV2Dto;
-import com.fabbitinc.server.application.mappingv2.dto.common.RelationMappingV2Dto;
+import com.fabbitinc.server.application.mappingv2.model.ExtendedPropertyMappingV2Dto;
+import com.fabbitinc.server.application.mappingv2.model.MappingV2ResultDto;
+import com.fabbitinc.server.application.mappingv2.model.NodeMappingV2Dto;
+import com.fabbitinc.server.application.mappingv2.model.RelationMappingV2Dto;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.ontology.support.RelationshipType;
 import com.fabbitinc.server.domain.bom.model.EngineeringBomItem;
@@ -111,7 +111,15 @@ public class SynthesisV2ExecutionService {
             for (Map<String, Object> row : rows) {
                 processedRows++;
                 try {
-                    RowProcessResult result = processRow(row, mapping, rootContext, overwrite, file, job.getId());
+                    RowProcessResult result = processRow(
+                            row,
+                            mapping,
+                            rootContext,
+                            overwrite,
+                            file,
+                            job.getId(),
+                            resolveRequestedBy(job)
+                    );
                     nodesCreated += result.nodesCreated();
                     relationshipsCreated += result.relationshipsCreated();
                 } catch (Exception ex) {
@@ -133,14 +141,15 @@ public class SynthesisV2ExecutionService {
             Map<String, String> rootContext,
             boolean overwrite,
             File sourceFile,
-            UUID jobId
+            UUID jobId,
+            UUID requestedBy
     ) {
         int nodesCreated = 0;
         int relationshipsCreated = 0;
         Map<String, ResolvedNode> resolvedNodes = new LinkedHashMap<>();
 
         for (NodeMappingV2Dto node : mapping.nodes()) {
-            ResolvedNode resolved = resolveNode(row, node, rootContext, overwrite, sourceFile, jobId);
+            ResolvedNode resolved = resolveNode(row, node, rootContext, overwrite, sourceFile, jobId, requestedBy);
             if (resolved == null) {
                 continue;
             }
@@ -221,14 +230,15 @@ public class SynthesisV2ExecutionService {
             Map<String, String> rootContext,
             boolean overwrite,
             File sourceFile,
-            UUID jobId
+            UUID jobId,
+            UUID requestedBy
     ) {
         if ("Part".equals(node.label())) {
             PartNodeValues values = resolvePartNodeValues(row, node, rootContext);
             if (values.partNumber() == null) {
                 return null;
             }
-            UpsertPartResult result = upsertPart(values, overwrite, jobId);
+            UpsertPartResult result = upsertPart(values, overwrite, jobId, requestedBy);
             return ResolvedNode.part(result.part(), result.revision(), result.created());
         }
 
@@ -255,7 +265,7 @@ public class SynthesisV2ExecutionService {
             if (values == null || values.name() == null) {
                 return null;
             }
-            UpsertProjectResult result = upsertProject(values, overwrite);
+            UpsertProjectResult result = upsertProject(values, overwrite, requestedBy);
             return ResolvedNode.project(result.project(), result.created());
         }
 
@@ -470,10 +480,10 @@ public class SynthesisV2ExecutionService {
         return properties;
     }
 
-    private UpsertPartResult upsertPart(PartNodeValues values, boolean overwrite, UUID jobId) {
+    private UpsertPartResult upsertPart(PartNodeValues values, boolean overwrite, UUID jobId, UUID requestedBy) {
         Part existing = partRepository.findByPartNumber(values.partNumber()).orElse(null);
         if (existing != null) {
-            PartRevision revision = findOrCreateWorkingRevision(existing, values.name());
+            PartRevision revision = findOrCreateWorkingRevision(existing, values.name(), requestedBy);
             boolean changed = false;
             if (shouldApplyString(values.name(), revision.getName(), overwrite)) {
                 revision.changeName(values.name());
@@ -519,7 +529,7 @@ public class SynthesisV2ExecutionService {
             }
 
             if (changed) {
-                recordSynthesisImport(revision, jobId);
+                recordSynthesisImport(revision, jobId, requestedBy);
                 partRevisionRepository.save(revision);
             }
             return new UpsertPartResult(existing, revision, false);
@@ -530,7 +540,7 @@ public class SynthesisV2ExecutionService {
             created.changeLifecycleState(values.lifecycleState());
         }
         partRepository.save(created);
-        PartRevision revision = PartRevision.createInitialDraft(created, "D1", values.name());
+        PartRevision revision = PartRevision.createInitialDraft(created, "D1", values.name(), requestedBy);
         if (values.category() != null) {
             revision.changeCategory(values.category());
         }
@@ -552,17 +562,17 @@ public class SynthesisV2ExecutionService {
         if (!values.extendedProperties().isEmpty()) {
             revision.changeExtendedProperties(serializeProperties(values.extendedProperties()));
         }
-        recordSynthesisImport(revision, jobId);
+        recordSynthesisImport(revision, jobId, requestedBy);
         partRevisionRepository.save(revision);
         return new UpsertPartResult(created, revision, true);
     }
 
-    private PartRevision findOrCreateWorkingRevision(Part part, String name) {
+    private PartRevision findOrCreateWorkingRevision(Part part, String name, UUID requestedBy) {
         PartRevision revision = resolveCurrentRevision(part);
         if (revision != null) {
             return revision;
         }
-        PartRevision created = PartRevision.createInitialDraft(part, "D1", name);
+        PartRevision created = PartRevision.createInitialDraft(part, "D1", name, requestedBy);
         return partRevisionRepository.save(created);
     }
 
@@ -588,9 +598,9 @@ public class SynthesisV2ExecutionService {
         return revisions.get(0);
     }
 
-    private void recordSynthesisImport(PartRevision revision, UUID jobId) {
+    private void recordSynthesisImport(PartRevision revision, UUID jobId, UUID requestedBy) {
         revision.recordActivity(
-                null,
+                requestedBy,
                 PartRevisionActivityActionType.IMPORTED,
                 PartRevisionActivitySourceType.SYNTHESIS,
                 jobId,
@@ -670,7 +680,7 @@ public class SynthesisV2ExecutionService {
         return new UpsertDrawingResult(created, true);
     }
 
-    private UpsertProjectResult upsertProject(ProjectNodeValues values, boolean overwrite) {
+    private UpsertProjectResult upsertProject(ProjectNodeValues values, boolean overwrite, UUID requestedBy) {
         if (values.existingProject() != null) {
             return new UpsertProjectResult(values.existingProject(), false);
         }
@@ -678,14 +688,21 @@ public class SynthesisV2ExecutionService {
         Project existing = projectRepository.findByNameAndDeletedFalse(values.name()).orElse(null);
         if (existing != null) {
             if (shouldApplyString(values.description(), existing.getDescription(), overwrite)) {
-                existing.changeDescription(values.description(), null);
+                existing.changeDescription(values.description(), requestedBy);
             }
             return new UpsertProjectResult(existing, false);
         }
 
-        Project created = Project.create(values.name(), values.description(), null);
+        Project created = Project.create(values.name(), values.description(), requestedBy);
         projectRepository.save(created);
         return new UpsertProjectResult(created, true);
+    }
+
+    private UUID resolveRequestedBy(SynthesisV2Job job) {
+        if (job.getBatch() == null) {
+            return null;
+        }
+        return job.getBatch().getRequestedBy();
     }
 
     private boolean upsertEngineeringBomItem(

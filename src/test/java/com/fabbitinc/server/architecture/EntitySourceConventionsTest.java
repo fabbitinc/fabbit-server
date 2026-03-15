@@ -19,6 +19,7 @@ class EntitySourceConventionsTest {
     private static final Pattern FORBIDDEN_LOMBOK_PATTERN = Pattern.compile(
             "(?m)^\\s*@(Setter|Data|EqualsAndHashCode)\\b"
     );
+    private static final Pattern DIRECT_TOUCH_CALL_PATTERN = Pattern.compile("\\.touch\\(");
 
     @Test
     void entitiesMustNotUseForbiddenLombokAnnotations() throws IOException {
@@ -37,6 +38,26 @@ class EntitySourceConventionsTest {
 
         if (!violations.isEmpty()) {
             fail("금지된 Lombok 어노테이션을 사용한 엔티티/공통 엔티티가 있습니다: " + String.join(", ", violations));
+        }
+    }
+
+    @Test
+    void sourceMustNotCallTouchDirectlyOutsideActorAuditBase() throws IOException {
+        List<String> violations;
+        try (Stream<Path> paths = Files.walk(Path.of("src/main/java/com/fabbitinc/server"))) {
+            violations = paths
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .filter(Files::isRegularFile)
+                    .filter(path -> !path.endsWith("AbstractActorAuditableEntity.java"))
+                    .map(this::readFile)
+                    .filter(file -> DIRECT_TOUCH_CALL_PATTERN.matcher(file.content()).find())
+                    .map(file -> file.path().toString())
+                    .sorted()
+                    .toList();
+        }
+
+        if (!violations.isEmpty()) {
+            fail("AbstractActorAuditableEntity 밖에서 touch()를 직접 호출한 소스가 있습니다: " + String.join(", ", violations));
         }
     }
 

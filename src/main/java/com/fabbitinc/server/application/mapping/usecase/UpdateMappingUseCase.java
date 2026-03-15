@@ -2,7 +2,7 @@ package com.fabbitinc.server.application.mapping.usecase;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
-import com.fabbitinc.server.application.mapping.dto.common.MappingResultDto;
+import com.fabbitinc.server.application.mapping.model.MappingResultDto;
 import com.fabbitinc.server.application.mapping.service.MappingService;
 import com.fabbitinc.server.application.mapping.service.input.UpdateMappingInput;
 import com.fabbitinc.server.application.mapping.service.output.SavedMappingOutput;

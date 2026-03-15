@@ -1,8 +1,8 @@
 package com.fabbitinc.server.presentation.team.controller;
 
-import com.fabbitinc.server.application.team.dto.request.AddTeamMembersRequest;
-import com.fabbitinc.server.application.team.dto.request.RemoveTeamMembersRequest;
-import com.fabbitinc.server.application.team.dto.response.ManageTeamMembersResponse;
+import com.fabbitinc.server.presentation.team.dto.request.AddTeamMembersRequest;
+import com.fabbitinc.server.presentation.team.dto.request.RemoveTeamMembersRequest;
+import com.fabbitinc.server.presentation.team.dto.response.ManageTeamMembersResponse;
 import com.fabbitinc.server.application.team.query.TeamQuery;
 import com.fabbitinc.server.application.team.query.condition.TeamMemberListCondition;
 import com.fabbitinc.server.application.team.query.result.TeamMemberListResult;

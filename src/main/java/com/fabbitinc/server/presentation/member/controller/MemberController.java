@@ -1,10 +1,10 @@
 package com.fabbitinc.server.presentation.member.controller;
 
-import com.fabbitinc.server.application.member.dto.request.ChangeRoleRequest;
-import com.fabbitinc.server.application.member.dto.response.MemberListResponse;
-import com.fabbitinc.server.application.member.dto.response.MemberLookupItemResponse;
-import com.fabbitinc.server.application.member.dto.response.MemberLookupResponse;
-import com.fabbitinc.server.application.member.dto.response.MemberSummaryResponse;
+import com.fabbitinc.server.presentation.member.dto.request.ChangeRoleRequest;
+import com.fabbitinc.server.presentation.member.dto.response.MemberListResponse;
+import com.fabbitinc.server.presentation.member.dto.response.MemberLookupItemResponse;
+import com.fabbitinc.server.presentation.member.dto.response.MemberLookupResponse;
+import com.fabbitinc.server.presentation.member.dto.response.MemberSummaryResponse;
 import com.fabbitinc.server.application.member.query.MemberQuery;
 import com.fabbitinc.server.application.member.query.condition.MemberListCondition;
 import com.fabbitinc.server.application.member.query.condition.MemberLookupCondition;
