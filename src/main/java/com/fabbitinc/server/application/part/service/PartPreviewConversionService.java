@@ -42,6 +42,7 @@ public class PartPreviewConversionService {
     private final StoragePort storagePort;
     private final DrawingConverterProperties drawingConverterProperties;
     private final PartPreviewArtifactService partPreviewArtifactService;
+    private final PartPreviewArtifactCleanupService partPreviewArtifactCleanupService;
     private final PartPreviewProcessingJobService partPreviewProcessingJobService;
     private final PartPreviewServingProjectionService partPreviewServingProjectionService;
     private final DrawingSourceClassifier drawingSourceClassifier;
@@ -54,6 +55,7 @@ public class PartPreviewConversionService {
             StoragePort storagePort,
             DrawingConverterProperties drawingConverterProperties,
             PartPreviewArtifactService partPreviewArtifactService,
+            PartPreviewArtifactCleanupService partPreviewArtifactCleanupService,
             PartPreviewProcessingJobService partPreviewProcessingJobService,
             PartPreviewServingProjectionService partPreviewServingProjectionService,
             DrawingSourceClassifier drawingSourceClassifier,
@@ -65,6 +67,7 @@ public class PartPreviewConversionService {
         this.storagePort = storagePort;
         this.drawingConverterProperties = drawingConverterProperties;
         this.partPreviewArtifactService = partPreviewArtifactService;
+        this.partPreviewArtifactCleanupService = partPreviewArtifactCleanupService;
         this.partPreviewProcessingJobService = partPreviewProcessingJobService;
         this.partPreviewServingProjectionService = partPreviewServingProjectionService;
         this.drawingSourceClassifier = drawingSourceClassifier;
@@ -123,11 +126,11 @@ public class PartPreviewConversionService {
             publications = processPreview(partPreview, sourceFile, claim.profileKey());
             boolean completed = partPreviewProcessingJobService.complete(jobId, publications);
             if (!completed) {
-                partPreviewArtifactService.cleanupPublishedArtifacts(publications);
+                partPreviewArtifactCleanupService.cleanupPublishedArtifacts(publications);
             }
         } catch (Exception ex) {
             if (!publications.isEmpty()) {
-                partPreviewArtifactService.cleanupPublishedArtifacts(publications);
+                partPreviewArtifactCleanupService.cleanupPublishedArtifacts(publications);
             }
             partPreviewProcessingJobService.fail(jobId, ex.getMessage());
             log.error(

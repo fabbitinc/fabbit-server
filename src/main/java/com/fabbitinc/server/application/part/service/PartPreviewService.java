@@ -35,6 +35,7 @@ public class PartPreviewService {
     private final FileRepository fileRepository;
     private final OrganizationApi organizationApi;
     private final PartPreviewArtifactService partPreviewArtifactService;
+    private final PartPreviewArtifactCleanupService partPreviewArtifactCleanupService;
     private final PartPreviewAsyncConversionService partPreviewAsyncConversionService;
     private final DrawingSourceClassifier drawingSourceClassifier;
 
@@ -71,7 +72,7 @@ public class PartPreviewService {
             UUID sourceId
     ) {
         ResolvedSource resolvedSource = resolveSource(partPreview, revision, sourceType, sourceId);
-        partPreviewArtifactService.cleanupPreviewArtifacts(partPreview);
+        partPreviewArtifactCleanupService.cleanupPreviewArtifacts(partPreview);
         partPreview.replaceSource(sourceType, sourceId, resolvedSource.sourceDescriptor().dimension());
         partPreview.registerSourceFile(
                 resolvedSource.file().getId(),
@@ -89,7 +90,7 @@ public class PartPreviewService {
         if (partPreview == null || !partPreview.hasSource()) {
             return;
         }
-        partPreviewArtifactService.cleanupPreviewArtifacts(partPreview);
+        partPreviewArtifactCleanupService.cleanupPreviewArtifacts(partPreview);
         partPreview.clearSource();
         partPreviewRepository.save(partPreview);
     }
@@ -131,7 +132,7 @@ public class PartPreviewService {
         if (!partPreview.hasSource()) {
             return;
         }
-        partPreviewArtifactService.cleanupPreviewArtifacts(partPreview);
+        partPreviewArtifactCleanupService.cleanupPreviewArtifacts(partPreview);
         partPreview.clearSource();
         partPreviewRepository.save(partPreview);
     }
