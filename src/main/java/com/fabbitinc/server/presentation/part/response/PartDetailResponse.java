@@ -23,7 +23,6 @@ public record PartDetailResponse(
         Map<String, Object> extendedProperties,
         PartPreviewResponse preview,
         long draftCount,
-        long inReviewCount,
         long childrenCount,
         long parentsCount,
         long suppliersCount,

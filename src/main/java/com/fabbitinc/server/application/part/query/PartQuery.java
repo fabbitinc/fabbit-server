@@ -695,7 +695,6 @@ public class PartQuery {
                 parseExtendedProperties(resolvedPart.extendedProperties()),
                 preview,
                 workflowCounts.draftCount(),
-                workflowCounts.inReviewCount(),
                 childrenCount,
                 parentsCount,
                 suppliersCount,
@@ -2596,13 +2595,11 @@ public class PartQuery {
         long draftCount = revisions.stream()
                 .filter(revision -> revision.getStatus() == PartRevisionStatus.DRAFT)
                 .count();
-        long inReviewCount = 0L;
-        return new RevisionWorkflowCounts(draftCount, inReviewCount);
+        return new RevisionWorkflowCounts(draftCount);
     }
 
     private record RevisionWorkflowCounts(
-            long draftCount,
-            long inReviewCount
+            long draftCount
     ) {
     }
 

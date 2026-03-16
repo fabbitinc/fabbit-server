@@ -21,7 +21,6 @@ public record PartDetailResult(
         Map<String, Object> extendedProperties,
         PartPreviewResult preview,
         long draftCount,
-        long inReviewCount,
         long childrenCount,
         long parentsCount,
         long suppliersCount,

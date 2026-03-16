@@ -167,7 +167,6 @@ final class PartResponseMapper {
                 result.extendedProperties(),
                 toPartPreviewResponse(result.preview()),
                 result.draftCount(),
-                result.inReviewCount(),
                 result.childrenCount(),
                 result.parentsCount(),
                 result.suppliersCount(),
