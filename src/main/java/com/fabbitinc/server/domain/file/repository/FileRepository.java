@@ -18,6 +18,12 @@ public interface FileRepository extends JpaRepository<File, UUID> {
 
     List<File> findByOwnerTypeAndOwnerIdInAndDeletedAtIsNull(String ownerType, Collection<UUID> ownerIds);
 
+    List<File> findByOwnerTypeAndOwnerIdInAndStatusAndDeletedAtIsNull(
+            String ownerType,
+            Collection<UUID> ownerIds,
+            FileStatus status
+    );
+
     List<File> findByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
             String ownerType,
             UUID ownerId,

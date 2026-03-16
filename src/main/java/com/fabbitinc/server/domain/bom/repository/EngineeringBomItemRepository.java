@@ -18,6 +18,10 @@ public interface EngineeringBomItemRepository extends JpaRepository<EngineeringB
 
     List<EngineeringBomItem> findByParentPartRevisionIdOrderByCreatedAtAsc(UUID parentPartRevisionId);
 
+    List<EngineeringBomItem> findByParentPartRevisionIdInOrderByParentPartRevisionIdAscCreatedAtAsc(
+            List<UUID> parentPartRevisionIds
+    );
+
     List<EngineeringBomItem> findByChildPartRevisionIdOrderByCreatedAtAsc(UUID childPartRevisionId);
 
     List<EngineeringBomItem> findByParentPartRevisionIdAndChildPartRevisionIdOrderByCreatedAtAsc(

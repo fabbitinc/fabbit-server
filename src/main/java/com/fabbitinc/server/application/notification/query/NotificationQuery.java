@@ -1,4 +1,5 @@
 package com.fabbitinc.server.application.notification.query;
+import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;

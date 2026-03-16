@@ -1,4 +1,5 @@
 package com.fabbitinc.server.application.notification.query.result;
+import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 
 import com.fabbitinc.server.domain.notification.model.NotificationSourceIssueType;
 import com.fabbitinc.server.domain.notification.model.NotificationType;

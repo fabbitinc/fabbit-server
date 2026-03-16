@@ -1,4 +1,5 @@
 package com.fabbitinc.server.presentation.part.response;
+import com.fabbitinc.server.presentation.workitem.dto.response.UserSummaryResponse;
 
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import io.swagger.v3.oas.annotations.media.Schema;

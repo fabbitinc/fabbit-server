@@ -1,11 +1,13 @@
 package com.fabbitinc.server.application.issue.usecase;
 
+import com.fabbitinc.server.application.workitem.usecase.WorkItemUseCaseSupport;
+
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.file.service.FileService;
 import com.fabbitinc.server.application.issue.service.IssueService;
-import com.fabbitinc.server.application.issue.usecase.result.AttachedFileResult;
+import com.fabbitinc.server.application.workitem.usecase.result.AttachedFileResult;
 import com.fabbitinc.server.domain.file.model.File;
 import java.util.List;
 import java.util.UUID;
@@ -25,7 +27,7 @@ public class AddIssueFilesUseCase {
 
     public List<AttachedFileResult> execute(AddIssueFilesCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
+        UUID issueId = WorkItemUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
 
         List<File> attachableFiles = fileService.validateAttachable(command.fileIds());
         List<File> attachedFiles = issueService.attachFiles(auth.userId(), issueId, attachableFiles);

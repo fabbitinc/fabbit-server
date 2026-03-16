@@ -14,7 +14,7 @@ public class ActivityApi {
 
     private final ActivityRepository activityRepository;
 
-    public List<Activity> listTargetActivities(ActivityTargetType targetType, UUID targetId) {
+    public List<Activity> listTargetHistories(ActivityTargetType targetType, UUID targetId) {
         return activityRepository.findByTargetTypeAndTargetIdOrderByIdDesc(targetType, targetId);
     }
 }

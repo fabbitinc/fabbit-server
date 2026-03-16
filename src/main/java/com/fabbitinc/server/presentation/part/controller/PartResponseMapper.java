@@ -1,4 +1,6 @@
 package com.fabbitinc.server.presentation.part.controller;
+import com.fabbitinc.server.presentation.workitem.dto.response.UserSummaryResponse;
+import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 
 import com.fabbitinc.server.presentation.drawing.dto.response.RegisterDrawingResponse;
 import com.fabbitinc.server.presentation.part.response.BomChildResponse;
@@ -19,6 +21,16 @@ import com.fabbitinc.server.presentation.part.response.PartFilesResponse;
 import com.fabbitinc.server.presentation.part.response.PartFilterOptionsResponse;
 import com.fabbitinc.server.presentation.part.response.PartInProgressItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartInProgressListResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionDiffAssigneeChangeResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionDiffAttributeChangeResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionDiffBomChangeResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionDiffFileChangeResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionDiffResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionDiffRevisionResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionDiffSummaryResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryEntryResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryItemResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryResponse;
 import com.fabbitinc.server.presentation.part.response.PartListResponse;
 import com.fabbitinc.server.presentation.part.response.PartLookupItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartLookupResponse;
@@ -50,6 +62,9 @@ import com.fabbitinc.server.application.part.query.result.PartPreviewProcessingR
 import com.fabbitinc.server.application.part.query.result.PartPreviewResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewSourcesResult;
 import com.fabbitinc.server.application.part.query.result.PartProjectsResult;
+import com.fabbitinc.server.application.part.query.result.PartRevisionDiffResult;
+import com.fabbitinc.server.application.part.query.result.PartRevisionDiffSummaryResult;
+import com.fabbitinc.server.application.part.query.result.PartRevisionHistoryResult;
 import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
 import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
 import com.fabbitinc.server.application.part.usecase.result.RegisterPartDrawingResult;
@@ -173,6 +188,74 @@ final class PartResponseMapper {
         );
     }
 
+    static PartRevisionHistoryResponse toPartRevisionHistoryResponse(PartRevisionHistoryResult result) {
+        return new PartRevisionHistoryResponse(
+                result.items().stream()
+                        .map(item -> new PartRevisionHistoryItemResponse(
+                                item.revisionId(),
+                                item.revisionCode(),
+                                item.status(),
+                                item.name(),
+                                item.createdAt(),
+                                toPartOwnerUserSummaryResponse(item.createdBy()),
+                                toPartRevisionDiffSummaryResponse(item.summary()),
+                                item.entries().stream()
+                                        .map(entry -> new PartRevisionHistoryEntryResponse(
+                                                entry.actionType(),
+                                                entry.occurredAt(),
+                                                toPartOwnerUserSummaryResponse(entry.actor()),
+                                                entry.reason()
+                                        ))
+                                        .toList()
+                        ))
+                        .toList()
+        );
+    }
+
+    static PartRevisionDiffResponse toPartRevisionDiffResponse(PartRevisionDiffResult result) {
+        return new PartRevisionDiffResponse(
+                toPartRevisionDiffRevisionResponse(result.baseRevision()),
+                toPartRevisionDiffRevisionResponse(result.targetRevision()),
+                toPartRevisionDiffSummaryResponse(result.summary()),
+                result.attributes().stream()
+                        .map(item -> new PartRevisionDiffAttributeChangeResponse(
+                                item.fieldKey(),
+                                item.fieldLabel(),
+                                item.changeType(),
+                                item.beforeValue(),
+                                item.afterValue()
+                        ))
+                        .toList(),
+                result.files().stream()
+                        .map(item -> new PartRevisionDiffFileChangeResponse(
+                                item.itemType(),
+                                item.displayName(),
+                                item.changeType()
+                        ))
+                        .toList(),
+                result.bom().stream()
+                        .map(item -> new PartRevisionDiffBomChangeResponse(
+                                item.lineNumber(),
+                                item.beforePartNumber(),
+                                item.beforeName(),
+                                item.beforeQuantity(),
+                                item.afterPartNumber(),
+                                item.afterName(),
+                                item.afterQuantity(),
+                                item.changeType()
+                        ))
+                        .toList(),
+                result.assignees().stream()
+                        .map(item -> new PartRevisionDiffAssigneeChangeResponse(
+                                item.assigneeType(),
+                                item.changeType(),
+                                item.beforeValue(),
+                                item.afterValue()
+                        ))
+                        .toList()
+        );
+    }
+
     static PartBomResponse toPartBomResponse(PartBomResult result) {
         return new PartBomResponse(
                 result.children().stream()
@@ -220,6 +303,28 @@ final class PartResponseMapper {
                 node.lifecycleState(),
                 node.quantity(),
                 node.children().stream().map(PartResponseMapper::toBomTreeNodeResponse).toList()
+        );
+    }
+
+    private static PartRevisionDiffRevisionResponse toPartRevisionDiffRevisionResponse(PartRevisionDiffResult.Revision result) {
+        return new PartRevisionDiffRevisionResponse(
+                result.revisionId(),
+                result.revisionCode(),
+                result.status(),
+                result.createdAt(),
+                toPartOwnerUserSummaryResponse(result.createdBy())
+        );
+    }
+
+    private static PartRevisionDiffSummaryResponse toPartRevisionDiffSummaryResponse(PartRevisionDiffSummaryResult result) {
+        if (result == null) {
+            return null;
+        }
+        return new PartRevisionDiffSummaryResponse(
+                result.attributeChanges(),
+                result.fileChanges(),
+                result.bomChanges(),
+                result.assigneeChanges()
         );
     }
 

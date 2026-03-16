@@ -79,4 +79,8 @@ public class IssueTeamAssignee extends AbstractCreatedEntity {
         }
         return value;
     }
+
+    public UUID getTeamId() {
+        return teamId;
+    }
 }

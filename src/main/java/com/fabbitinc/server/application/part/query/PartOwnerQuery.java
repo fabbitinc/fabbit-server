@@ -1,4 +1,5 @@
 package com.fabbitinc.server.application.part.query;
+import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;

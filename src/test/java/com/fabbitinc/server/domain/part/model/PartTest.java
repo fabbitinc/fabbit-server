@@ -86,40 +86,11 @@ class PartTest {
     void changeLifecycleState와_clearLifecycleState로_수명주기상태를_변경한다() {
         Part part = Part.create("P-001");
 
-        part.changeLifecycleState(PartLifecycleState.PRODUCTION);
-        assertEquals(PartLifecycleState.PRODUCTION, part.getLifecycleState());
+        part.changeLifecycleState(PartLifecycleState.ACTIVE);
+        assertEquals(PartLifecycleState.ACTIVE, part.getLifecycleState());
 
         part.clearLifecycleState();
         assertNull(part.getLifecycleState());
-    }
-
-    @Test
-    void assignCurrentApprovedRevision_유효한_ID를_설정한다() {
-        Part part = Part.create("P-001");
-        UUID revisionId = UUID.randomUUID();
-
-        part.assignCurrentApprovedRevision(revisionId);
-
-        assertEquals(revisionId, part.getCurrentApprovedRevisionId());
-    }
-
-    @Test
-    void assignCurrentApprovedRevision_null이면_예외를_던진다() {
-        Part part = Part.create("P-001");
-
-        DomainException ex = assertThrows(DomainException.class, () -> part.assignCurrentApprovedRevision(null));
-
-        assertEquals(Part.CODE_PART_APPROVED_REVISION_REQUIRED, ex.getDomainCode());
-    }
-
-    @Test
-    void clearCurrentApprovedRevision_승인리비전을_비운다() {
-        Part part = Part.create("P-001");
-        part.assignCurrentApprovedRevision(UUID.randomUUID());
-
-        part.clearCurrentApprovedRevision();
-
-        assertNull(part.getCurrentApprovedRevisionId());
     }
 
     @Test

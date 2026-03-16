@@ -13,6 +13,8 @@ public interface DrawingRepository extends JpaRepository<Drawing, UUID> {
 
     List<Drawing> findByPartRevisionIdAndDeletedAtIsNullOrderByCreatedAtDesc(UUID partRevisionId);
 
+    List<Drawing> findByPartRevisionIdInAndDeletedAtIsNullOrderByCreatedAtDesc(List<UUID> partRevisionIds);
+
     long countByPartRevisionIdAndDeletedAtIsNull(UUID partRevisionId);
 
     boolean existsByPartRevisionIdAndDeletedAtIsNull(UUID partRevisionId);

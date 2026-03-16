@@ -67,7 +67,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     public static final String CODE_PART_REVISION_DRAFT_REQUIRED = "PART_REVISION_DRAFT_REQUIRED";
     public static final String CODE_PART_REVISION_DRAFT_SOURCE_REQUIRED = "PART_REVISION_DRAFT_SOURCE_REQUIRED";
     public static final String CODE_PART_REVISION_DRAFT_CODE_FORBIDDEN = "PART_REVISION_DRAFT_CODE_FORBIDDEN";
-    public static final String CODE_PART_REVISION_APPROVABLE_REQUIRED = "PART_REVISION_APPROVABLE_REQUIRED";
     public static final String CODE_PART_REVISION_RELEASABLE_REQUIRED = "PART_REVISION_RELEASABLE_REQUIRED";
     public static final String CODE_PART_REVISION_SUPERSEDE_INVALID_STATE = "PART_REVISION_SUPERSEDE_INVALID_STATE";
     public static final String CODE_PART_REVISION_OWNER_REQUIRED = "PART_REVISION_OWNER_REQUIRED";
@@ -76,7 +75,7 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             "PART_REVISION_ENGINEERING_CHANGE_REQUIRED";
     public static final String CODE_PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE =
             "PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE";
-    public static final String CODE_PART_REVISION_IN_REVIEW_REQUIRED = "PART_REVISION_IN_REVIEW_REQUIRED";
+    public static final String CODE_PART_REVISION_CANCELABLE_REQUIRED = "PART_REVISION_CANCELABLE_REQUIRED";
 
     private static final int MAX_REVISION_CODE_LENGTH = 50;
     private static final int MAX_DRAFT_KEY_LENGTH = 50;
@@ -111,7 +110,7 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     @Column(name = "draft_key", length = 50)
     private String draftKey;
 
-    @Column(name = "change_request_id")
+    @Column(name = "engineering_change_id")
     private UUID engineeringChangeId;
 
     @Enumerated(EnumType.STRING)
@@ -171,7 +170,7 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
 
     @Getter(AccessLevel.NONE)
     @OneToMany(mappedBy = "partRevision", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PartRevisionActivity> activities = new ArrayList<>();
+    private List<PartRevisionHistory> histories = new ArrayList<>();
 
     private PartRevision(
             Part part,
@@ -249,10 +248,10 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
                     "변경관리 ID는 필수입니다"
             );
         }
-        if (this.status != PartRevisionStatus.DRAFT && this.status != PartRevisionStatus.IN_REVIEW) {
+        if (this.status != PartRevisionStatus.DRAFT) {
             throw new DomainException(
                     CODE_PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE,
-                    "DRAFT 또는 IN_REVIEW 상태의 리비전만 변경관리에 연결할 수 있습니다"
+                    "DRAFT 상태의 리비전만 변경관리에 연결할 수 있습니다"
             );
         }
         this.engineeringChangeId = engineeringChangeId;
@@ -409,58 +408,12 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         }
     }
 
-    public void approve(String revisionCode, UUID actorId) {
-        mutate(actorId, () -> {
-            assertApprovable();
-            this.status = PartRevisionStatus.APPROVED;
-            this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
-            this.draftKey = null;
-        });
-    }
-
     public void release(String revisionCode, UUID actorId) {
         mutate(actorId, () -> {
-            if (this.status == PartRevisionStatus.APPROVED) {
-                this.status = PartRevisionStatus.RELEASED;
-                this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
-                this.draftKey = null;
-                return;
-            }
-
             assertReleasableDraft();
             this.status = PartRevisionStatus.RELEASED;
             this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
             this.draftKey = null;
-        });
-    }
-
-    public void markInReview(UUID actorId) {
-        mutate(actorId, () -> {
-            if (this.status == PartRevisionStatus.IN_REVIEW) {
-                return;
-            }
-            if (this.status != PartRevisionStatus.DRAFT) {
-                throw new DomainException(
-                        CODE_PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE,
-                        "DRAFT 상태의 리비전만 IN_REVIEW로 전환할 수 있습니다"
-                );
-            }
-            this.status = PartRevisionStatus.IN_REVIEW;
-        });
-    }
-
-    public void revertToDraft(UUID actorId) {
-        mutate(actorId, () -> {
-            if (this.status == PartRevisionStatus.DRAFT) {
-                return;
-            }
-            if (this.status != PartRevisionStatus.IN_REVIEW) {
-                throw new DomainException(
-                        CODE_PART_REVISION_IN_REVIEW_REQUIRED,
-                        "IN_REVIEW 상태의 리비전만 DRAFT로 되돌릴 수 있습니다"
-                );
-            }
-            this.status = PartRevisionStatus.DRAFT;
         });
     }
 
@@ -469,15 +422,32 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             if (this.status == PartRevisionStatus.SUPERSEDED) {
                 return;
             }
-            if (this.status != PartRevisionStatus.APPROVED && this.status != PartRevisionStatus.RELEASED) {
+            if (this.status != PartRevisionStatus.RELEASED) {
                 throw new DomainException(
                         CODE_PART_REVISION_SUPERSEDE_INVALID_STATE,
-                        "공식 리비전만 SUPERSEDED 상태로 전환할 수 있습니다"
+                        "RELEASED 상태의 리비전만 SUPERSEDED 상태로 전환할 수 있습니다"
                 );
             }
             this.status = PartRevisionStatus.SUPERSEDED;
             this.revisionCode = normalizeRevisionCode(this.revisionCode, this.status);
             this.draftKey = null;
+        });
+    }
+
+    public void cancel(UUID actorId) {
+        mutate(actorId, () -> {
+            if (this.status == PartRevisionStatus.CANCELED) {
+                return;
+            }
+            if (this.status != PartRevisionStatus.DRAFT) {
+                throw new DomainException(
+                        CODE_PART_REVISION_CANCELABLE_REQUIRED,
+                        "DRAFT 상태의 리비전만 취소할 수 있습니다"
+                );
+            }
+            this.status = PartRevisionStatus.CANCELED;
+            this.draftKey = null;
+            this.revisionCode = normalizeRevisionCode(this.revisionCode, this.status);
         });
     }
 
@@ -499,46 +469,37 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         this.extendedProperties = source.getExtendedProperties();
     }
 
-    public PartRevisionActivity recordActivity(
+    public PartRevisionHistory recordHistory(
             UUID actorId,
-            PartRevisionActivityActionType actionType,
-            PartRevisionActivitySourceType sourceType,
+            PartRevisionHistoryActionType actionType,
+            PartRevisionHistorySourceType sourceType,
             UUID sourceRefId,
             String payload
     ) {
         touch(actorId);
-        return appendActivity(PartRevisionActivity.record(this, actorId, actionType, sourceType, sourceRefId, payload));
+        return appendHistory(PartRevisionHistory.record(this, actorId, actionType, sourceType, sourceRefId, payload));
     }
 
-    public PartRevisionActivity recordActivityAt(
+    public PartRevisionHistory recordHistoryAt(
             UUID actorId,
-            PartRevisionActivityActionType actionType,
-            PartRevisionActivitySourceType sourceType,
+            PartRevisionHistoryActionType actionType,
+            PartRevisionHistorySourceType sourceType,
             UUID sourceRefId,
             String payload,
             Instant occurredAt
     ) {
-        return appendActivity(PartRevisionActivity.recordAt(this, actorId, actionType, sourceType, sourceRefId, payload, occurredAt));
+        return appendHistory(PartRevisionHistory.recordAt(this, actorId, actionType, sourceType, sourceRefId, payload, occurredAt));
     }
 
-    public List<PartRevisionActivity> getActivities() {
-        return List.copyOf(activities);
-    }
-
-    private void assertApprovable() {
-        if (this.status != PartRevisionStatus.DRAFT && this.status != PartRevisionStatus.IN_REVIEW) {
-            throw new DomainException(
-                    CODE_PART_REVISION_APPROVABLE_REQUIRED,
-                    "DRAFT 또는 IN_REVIEW 상태의 리비전만 승인할 수 있습니다"
-            );
-        }
+    public List<PartRevisionHistory> getHistories() {
+        return List.copyOf(histories);
     }
 
     private void assertReleasableDraft() {
-        if (this.status != PartRevisionStatus.DRAFT && this.status != PartRevisionStatus.IN_REVIEW) {
+        if (this.status != PartRevisionStatus.DRAFT) {
             throw new DomainException(
                     CODE_PART_REVISION_RELEASABLE_REQUIRED,
-                    "DRAFT 또는 IN_REVIEW 상태의 리비전만 바로 릴리즈할 수 있습니다"
+                    "DRAFT 상태의 리비전만 릴리즈할 수 있습니다"
             );
         }
     }
@@ -551,7 +512,7 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     }
 
     private String normalizeRevisionCode(String rawRevisionCode, PartRevisionStatus status) {
-        if (status == PartRevisionStatus.DRAFT || status == PartRevisionStatus.IN_REVIEW) {
+        if (status == PartRevisionStatus.DRAFT) {
             if (rawRevisionCode == null || rawRevisionCode.isBlank()) {
                 return null;
             }
@@ -569,7 +530,7 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     }
 
     private String normalizeDraftKey(String rawDraftKey, PartRevisionStatus status) {
-        if (status == PartRevisionStatus.DRAFT || status == PartRevisionStatus.IN_REVIEW) {
+        if (status == PartRevisionStatus.DRAFT) {
             if (rawDraftKey == null || rawDraftKey.isBlank()) {
                 throw new DomainException(CODE_PART_REVISION_DRAFT_KEY_REQUIRED, "초안 키는 필수입니다");
             }
@@ -677,9 +638,9 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         return raw.trim();
     }
 
-    private PartRevisionActivity appendActivity(PartRevisionActivity activity) {
-        this.activities.add(activity);
-        return activity;
+    private PartRevisionHistory appendHistory(PartRevisionHistory history) {
+        this.histories.add(history);
+        return history;
     }
 
     private static PartRevision initializeActor(PartRevision revision, UUID actorId) {

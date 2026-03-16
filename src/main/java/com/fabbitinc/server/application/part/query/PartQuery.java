@@ -1,4 +1,5 @@
 package com.fabbitinc.server.application.part.query;
+import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
@@ -8,6 +9,7 @@ import com.fabbitinc.server.application.mapping.api.MappingApi;
 import com.fabbitinc.server.application.part.model.BomDirection;
 import com.fabbitinc.server.application.part.model.DrawingViewerType;
 import com.fabbitinc.server.application.part.model.PartAttachmentType;
+import com.fabbitinc.server.application.part.model.PartRevisionDiffChangeType;
 import com.fabbitinc.server.application.part.query.condition.BomTreeCondition;
 import com.fabbitinc.server.application.part.query.condition.BomTreeExportCondition;
 import com.fabbitinc.server.application.part.query.condition.FileItemsCondition;
@@ -23,6 +25,8 @@ import com.fabbitinc.server.application.part.query.condition.PartListCondition;
 import com.fabbitinc.server.application.part.query.condition.PartLookupCondition;
 import com.fabbitinc.server.application.part.query.condition.PartPreviewSourcesCondition;
 import com.fabbitinc.server.application.part.query.condition.PartProjectsCondition;
+import com.fabbitinc.server.application.part.query.condition.PartRevisionDiffCondition;
+import com.fabbitinc.server.application.part.query.condition.PartRevisionHistoryCondition;
 import com.fabbitinc.server.application.part.query.condition.PartSuppliersCondition;
 import com.fabbitinc.server.application.part.query.result.BomTreeResult;
 import com.fabbitinc.server.application.part.query.result.CategoryLookupResult;
@@ -38,6 +42,9 @@ import com.fabbitinc.server.application.part.query.result.PartLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewSourcesResult;
 import com.fabbitinc.server.application.part.query.result.PartProjectsResult;
+import com.fabbitinc.server.application.part.query.result.PartRevisionDiffResult;
+import com.fabbitinc.server.application.part.query.result.PartRevisionDiffSummaryResult;
+import com.fabbitinc.server.application.part.query.result.PartRevisionHistoryResult;
 import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
 import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
 import com.fabbitinc.server.application.part.service.PartPreviewService;
@@ -61,9 +68,12 @@ import com.fabbitinc.server.domain.part.model.PartPreviewProcessingJob;
 import com.fabbitinc.server.domain.part.model.PartPreviewServingProjection;
 import com.fabbitinc.server.domain.part.model.PartPreviewProcessingStatus;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
+import com.fabbitinc.server.domain.part.model.PartRevisionHistory;
+import com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
+import com.fabbitinc.server.domain.part.repository.PartRevisionHistoryRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewProcessingJobRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewServingProjectionRepository;
@@ -123,6 +133,7 @@ public class PartQuery {
     private final PartSupplierRepository partSupplierRepository;
     private final SupplierRepository supplierRepository;
     private final DrawingRepository drawingRepository;
+    private final PartRevisionHistoryRepository partRevisionHistoryRepository;
     private final PartPreviewRepository partPreviewRepository;
     private final PartPreviewProcessingJobRepository partPreviewProcessingJobRepository;
     private final PartPreviewServingProjectionRepository partPreviewServingProjectionRepository;
@@ -134,6 +145,7 @@ public class PartQuery {
 
     private static final Pattern STRING_PATTERN = Pattern.compile("^\"(.*)\"$");
     private static final Pattern NUMBER_PATTERN = Pattern.compile("^-?\\d+(?:\\.\\d+)?$");
+    private static final Pattern HISTORY_REASON_PATTERN = Pattern.compile("\"reason\"\\s*:\\s*\"([^\"]*)\"");
     private static final int MAX_BOM_DEPTH = 30;
     private static final Comparator<ResolvedPart> PART_LIST_ORDER =
             Comparator.comparing(ResolvedPart::partNumber)
@@ -532,6 +544,125 @@ public class PartQuery {
                 condition.draftKey()
         );
         return buildPartDetailResult(resolvedPart);
+    }
+
+    public PartRevisionHistoryResult getHistory(PartRevisionHistoryCondition condition) {
+        currentAuthProvider.getCurrentAuth();
+
+        Part part = partRepository.findByPartNumber(condition.partNumber())
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.NOT_FOUND,
+                        "Part '%s'을(를) 찾을 수 없습니다".formatted(condition.partNumber())
+                ));
+
+        List<PartRevision> revisions = partRevisionRepository.findByPartIdOrderByCreatedAtDesc(part.getId()).stream()
+                .filter(this::isOfficialHistoryRevision)
+                .toList();
+        if (revisions.isEmpty()) {
+            return new PartRevisionHistoryResult(List.of());
+        }
+
+        Map<UUID, List<File>> filesByRevisionId = groupFilesByRevisionId(revisions);
+        Map<UUID, List<Drawing>> drawingsByRevisionId = groupDrawingsByRevisionId(revisions);
+        Map<UUID, File> drawingSourceFilesById = loadDrawingSourceFiles(drawingsByRevisionId);
+        Map<UUID, List<EngineeringBomItem>> bomItemsByRevisionId = groupBomItemsByRevisionId(revisions);
+        Map<UUID, List<PartRevisionHistory>> historiesByRevisionId = groupHistoriesByRevisionId(revisions);
+        Map<UUID, User> usersById = loadUsersByRevisionHistory(revisions, historiesByRevisionId);
+        Map<UUID, Team> teamsById = loadTeamsByRevisions(revisions);
+
+        List<PartRevisionHistoryResult.Item> items = new ArrayList<>();
+        for (int index = 0; index < revisions.size(); index++) {
+            PartRevision revision = revisions.get(index);
+            PartRevision previousRevision = index + 1 < revisions.size() ? revisions.get(index + 1) : null;
+            RevisionDiffSnapshot diff = previousRevision == null
+                    ? null
+                    : buildRevisionDiffSnapshot(
+                            previousRevision,
+                            revision,
+                            filesByRevisionId,
+                            drawingsByRevisionId,
+                            drawingSourceFilesById,
+                            bomItemsByRevisionId,
+                            usersById,
+                            teamsById
+                    );
+
+            items.add(new PartRevisionHistoryResult.Item(
+                    revision.getId(),
+                    revision.getRevisionCode(),
+                    revision.getStatus(),
+                    revision.getName(),
+                    revision.getCreatedAt(),
+                    toUserSummary(usersById.get(revision.getCreatedBy())),
+                    diff == null ? null : diff.summary(),
+                    historiesByRevisionId.getOrDefault(revision.getId(), List.of()).stream()
+                            .filter(this::isVisibleHistoryEntry)
+                            .map(history -> new PartRevisionHistoryResult.Entry(
+                                    history.getActionType(),
+                                    history.getOccurredAt(),
+                                    toUserSummary(usersById.get(history.getActorId())),
+                                    extractReason(history.getPayload())
+                            ))
+                            .toList()
+            ));
+        }
+
+        return new PartRevisionHistoryResult(items);
+    }
+
+    public PartRevisionDiffResult getDiff(PartRevisionDiffCondition condition) {
+        currentAuthProvider.getCurrentAuth();
+
+        ResolvedPart target = resolveRequiredPart(condition.partNumber(), condition.revisionCode());
+        PartRevision targetRevision = target.revision();
+        PartRevision baseRevision = resolveBaseRevision(targetRevision, condition.baseRevisionCode());
+        if (baseRevision == null) {
+            throw new AppException(
+                    ErrorCode.NOT_FOUND,
+                    "비교 기준 이전 리비전을 찾을 수 없습니다: %s/%s".formatted(condition.partNumber(), condition.revisionCode())
+            );
+        }
+
+        List<PartRevision> pair = List.of(baseRevision, targetRevision);
+        Map<UUID, List<File>> filesByRevisionId = groupFilesByRevisionId(pair);
+        Map<UUID, List<Drawing>> drawingsByRevisionId = groupDrawingsByRevisionId(pair);
+        Map<UUID, File> drawingSourceFilesById = loadDrawingSourceFiles(drawingsByRevisionId);
+        Map<UUID, List<EngineeringBomItem>> bomItemsByRevisionId = groupBomItemsByRevisionId(pair);
+        Map<UUID, User> usersById = loadUsersByRevisionHistory(pair, Map.of());
+        Map<UUID, Team> teamsById = loadTeamsByRevisions(pair);
+
+        RevisionDiffSnapshot diff = buildRevisionDiffSnapshot(
+                baseRevision,
+                targetRevision,
+                filesByRevisionId,
+                drawingsByRevisionId,
+                drawingSourceFilesById,
+                bomItemsByRevisionId,
+                usersById,
+                teamsById
+        );
+
+        return new PartRevisionDiffResult(
+                new PartRevisionDiffResult.Revision(
+                        baseRevision.getId(),
+                        baseRevision.getRevisionCode(),
+                        baseRevision.getStatus(),
+                        baseRevision.getCreatedAt(),
+                        toUserSummary(usersById.get(baseRevision.getCreatedBy()))
+                ),
+                new PartRevisionDiffResult.Revision(
+                        targetRevision.getId(),
+                        targetRevision.getRevisionCode(),
+                        targetRevision.getStatus(),
+                        targetRevision.getCreatedAt(),
+                        toUserSummary(usersById.get(targetRevision.getCreatedBy()))
+                ),
+                diff.summary(),
+                diff.attributes(),
+                diff.files(),
+                diff.bom(),
+                diff.assignees()
+        );
     }
 
     private PartDetailResult buildPartDetailResult(ResolvedPart resolvedPart) {
@@ -1551,12 +1682,6 @@ public class PartQuery {
                 return revision;
             }
         }
-        if (part.getCurrentApprovedRevisionId() != null) {
-            PartRevision revision = revisionsById.get(part.getCurrentApprovedRevisionId());
-            if (revision != null) {
-                return revision;
-            }
-        }
         List<PartRevision> revisions = revisionsByPartId.get(part.getId());
         if (revisions == null || revisions.isEmpty()) {
             return null;
@@ -1573,11 +1698,7 @@ public class PartQuery {
 
     private List<PartRevisionStatus> normalizeInProgressStatuses(List<PartInProgressStatusFilter> rawStatuses) {
         if (rawStatuses == null || rawStatuses.isEmpty()) {
-            return List.of(
-                    PartRevisionStatus.APPROVED,
-                    PartRevisionStatus.DRAFT,
-                    PartRevisionStatus.IN_REVIEW
-            );
+            return List.of(PartRevisionStatus.DRAFT);
         }
 
         LinkedHashSet<PartRevisionStatus> normalized = new LinkedHashSet<>();
@@ -1586,9 +1707,7 @@ public class PartQuery {
                 continue;
             }
             normalized.add(switch (status) {
-                case APPROVED -> PartRevisionStatus.APPROVED;
                 case DRAFT -> PartRevisionStatus.DRAFT;
-                case IN_REVIEW -> PartRevisionStatus.IN_REVIEW;
             });
         }
         if (normalized.isEmpty()) {
@@ -1763,12 +1882,409 @@ public class PartQuery {
         return resolveRequiredPart(partNumber, revisionCode).id();
     }
 
+    private boolean isOfficialHistoryRevision(PartRevision revision) {
+        return revision.getRevisionCode() != null && !revision.getRevisionCode().isBlank();
+    }
+
+    private boolean isVisibleHistoryEntry(PartRevisionHistory history) {
+        return history.getActionType() == PartRevisionHistoryActionType.RELEASED
+                || history.getActionType() == PartRevisionHistoryActionType.CANCELED
+                || history.getActionType() == PartRevisionHistoryActionType.SUPERSEDED;
+    }
+
+    private Map<UUID, List<File>> groupFilesByRevisionId(List<PartRevision> revisions) {
+        List<UUID> revisionIds = revisions.stream().map(PartRevision::getId).toList();
+        return fileRepository.findByOwnerTypeAndOwnerIdInAndStatusAndDeletedAtIsNull(
+                        "part_revision",
+                        revisionIds,
+                        FileStatus.UPLOADED
+                ).stream()
+                .collect(java.util.stream.Collectors.groupingBy(File::getOwnerId));
+    }
+
+    private Map<UUID, List<Drawing>> groupDrawingsByRevisionId(List<PartRevision> revisions) {
+        List<UUID> revisionIds = revisions.stream().map(PartRevision::getId).toList();
+        return drawingRepository.findByPartRevisionIdInAndDeletedAtIsNullOrderByCreatedAtDesc(revisionIds).stream()
+                .collect(java.util.stream.Collectors.groupingBy(Drawing::getPartRevisionId));
+    }
+
+    private Map<UUID, File> loadDrawingSourceFiles(Map<UUID, List<Drawing>> drawingsByRevisionId) {
+        Set<UUID> sourceFileIds = drawingsByRevisionId.values().stream()
+                .flatMap(List::stream)
+                .map(Drawing::getSourceFileId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        if (sourceFileIds.isEmpty()) {
+            return Map.of();
+        }
+        return fileRepository.findByIdIn(sourceFileIds).stream()
+                .collect(java.util.stream.Collectors.toMap(File::getId, file -> file));
+    }
+
+    private Map<UUID, List<EngineeringBomItem>> groupBomItemsByRevisionId(List<PartRevision> revisions) {
+        List<UUID> revisionIds = revisions.stream().map(PartRevision::getId).toList();
+        return engineeringBomItemRepository.findByParentPartRevisionIdInOrderByParentPartRevisionIdAscCreatedAtAsc(revisionIds)
+                .stream()
+                .collect(java.util.stream.Collectors.groupingBy(EngineeringBomItem::getParentPartRevisionId));
+    }
+
+    private Map<UUID, List<PartRevisionHistory>> groupHistoriesByRevisionId(List<PartRevision> revisions) {
+        List<UUID> revisionIds = revisions.stream().map(PartRevision::getId).toList();
+        return partRevisionHistoryRepository.findByPartRevisionIdInOrderByOccurredAtAsc(revisionIds).stream()
+                .collect(java.util.stream.Collectors.groupingBy(PartRevisionHistory::getPartRevisionId));
+    }
+
+    private Map<UUID, User> loadUsersByRevisionHistory(
+            List<PartRevision> revisions,
+            Map<UUID, List<PartRevisionHistory>> historiesByRevisionId
+    ) {
+        LinkedHashSet<UUID> userIds = new LinkedHashSet<>();
+        revisions.stream()
+                .map(PartRevision::getCreatedBy)
+                .filter(java.util.Objects::nonNull)
+                .forEach(userIds::add);
+        historiesByRevisionId.values().stream()
+                .flatMap(List::stream)
+                .map(PartRevisionHistory::getActorId)
+                .filter(java.util.Objects::nonNull)
+                .forEach(userIds::add);
+        revisions.stream()
+                .map(PartRevision::getOwnerId)
+                .filter(java.util.Objects::nonNull)
+                .forEach(userIds::add);
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+        return userApi.getUsersByIdsOrdered(List.copyOf(userIds)).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, user -> user));
+    }
+
+    private String extractReason(String payload) {
+        if (payload == null || payload.isBlank() || "{}".equals(payload.trim())) {
+            return null;
+        }
+        Matcher matcher = HISTORY_REASON_PATTERN.matcher(payload);
+        if (!matcher.find()) {
+            return null;
+        }
+        return matcher.group(1);
+    }
+
+    private Map<UUID, Team> loadTeamsByRevisions(List<PartRevision> revisions) {
+        LinkedHashSet<UUID> teamIds = revisions.stream()
+                .map(PartRevision::getOwnerTeamId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        if (teamIds.isEmpty()) {
+            return Map.of();
+        }
+        return teamApi.getTeamsByIds(List.copyOf(teamIds)).stream()
+                .collect(java.util.stream.Collectors.toMap(Team::getId, team -> team));
+    }
+
+    private PartRevision resolveBaseRevision(PartRevision targetRevision, String baseRevisionCode) {
+        if (baseRevisionCode != null && !baseRevisionCode.isBlank()) {
+            return partRevisionRepository.findByPartNumberAndRevisionCode(targetRevision.getPartNumber(), baseRevisionCode)
+                    .orElseThrow(() -> new AppException(
+                            ErrorCode.NOT_FOUND,
+                            "PartRevision '%s/%s'을(를) 찾을 수 없습니다"
+                                    .formatted(targetRevision.getPartNumber(), baseRevisionCode)
+                    ));
+        }
+
+        List<PartRevision> revisions = partRevisionRepository.findByPartIdOrderByCreatedAtDesc(targetRevision.getPartId()).stream()
+                .filter(this::isOfficialHistoryRevision)
+                .toList();
+        for (int index = 0; index < revisions.size(); index++) {
+            if (revisions.get(index).getId().equals(targetRevision.getId())) {
+                return index + 1 < revisions.size() ? revisions.get(index + 1) : null;
+            }
+        }
+        return null;
+    }
+
+    private RevisionDiffSnapshot buildRevisionDiffSnapshot(
+            PartRevision baseRevision,
+            PartRevision targetRevision,
+            Map<UUID, List<File>> filesByRevisionId,
+            Map<UUID, List<Drawing>> drawingsByRevisionId,
+            Map<UUID, File> drawingSourceFilesById,
+            Map<UUID, List<EngineeringBomItem>> bomItemsByRevisionId,
+            Map<UUID, User> usersById,
+            Map<UUID, Team> teamsById
+    ) {
+        List<PartRevisionDiffResult.AttributeChange> attributeChanges = compareAttributeChanges(baseRevision, targetRevision);
+        List<PartRevisionDiffResult.FileChange> fileChanges = compareFileChanges(
+                baseRevision,
+                targetRevision,
+                filesByRevisionId,
+                drawingsByRevisionId,
+                drawingSourceFilesById
+        );
+        List<PartRevisionDiffResult.BomChange> bomChanges = compareBomChanges(baseRevision, targetRevision, bomItemsByRevisionId);
+        List<PartRevisionDiffResult.AssigneeChange> assigneeChanges =
+                compareAssigneeChanges(baseRevision, targetRevision, usersById, teamsById);
+
+        return new RevisionDiffSnapshot(
+                new PartRevisionDiffSummaryResult(
+                        attributeChanges.size(),
+                        fileChanges.size(),
+                        bomChanges.size(),
+                        assigneeChanges.size()
+                ),
+                attributeChanges,
+                fileChanges,
+                bomChanges,
+                assigneeChanges
+        );
+    }
+
+    private List<PartRevisionDiffResult.AttributeChange> compareAttributeChanges(
+            PartRevision baseRevision,
+            PartRevision targetRevision
+    ) {
+        List<PartRevisionDiffResult.AttributeChange> changes = new ArrayList<>();
+        addAttributeChange(changes, "name", "품명", baseRevision.getName(), targetRevision.getName());
+        addAttributeChange(changes, "material", "재질", baseRevision.getMaterial(), targetRevision.getMaterial());
+        addAttributeChange(changes, "unit", "단위", baseRevision.getUnit(), targetRevision.getUnit());
+        addAttributeChange(changes, "description", "설명", baseRevision.getDescription(), targetRevision.getDescription());
+        addAttributeChange(changes, "category", "카테고리", baseRevision.getCategory(), targetRevision.getCategory());
+        addAttributeChange(changes, "phantom", "팬텀", formatScalar(baseRevision.getPhantom()), formatScalar(targetRevision.getPhantom()));
+        addAttributeChange(
+                changes,
+                "leadTimeDays",
+                "리드타임",
+                formatScalar(baseRevision.getLeadTimeDays()),
+                formatScalar(targetRevision.getLeadTimeDays())
+        );
+
+        Map<String, Object> beforeProperties = parseExtendedProperties(baseRevision.getExtendedProperties());
+        Map<String, Object> afterProperties = parseExtendedProperties(targetRevision.getExtendedProperties());
+        TreeSet<String> propertyKeys = new TreeSet<>();
+        propertyKeys.addAll(beforeProperties.keySet());
+        propertyKeys.addAll(afterProperties.keySet());
+        for (String propertyKey : propertyKeys) {
+            addAttributeChange(
+                    changes,
+                    "extendedProperties." + propertyKey,
+                    propertyKey,
+                    formatScalar(beforeProperties.get(propertyKey)),
+                    formatScalar(afterProperties.get(propertyKey))
+            );
+        }
+        return changes;
+    }
+
+    private void addAttributeChange(
+            List<PartRevisionDiffResult.AttributeChange> changes,
+            String fieldKey,
+            String fieldLabel,
+            String beforeValue,
+            String afterValue
+    ) {
+        if (java.util.Objects.equals(beforeValue, afterValue)) {
+            return;
+        }
+        changes.add(new PartRevisionDiffResult.AttributeChange(
+                fieldKey,
+                fieldLabel,
+                resolveChangeType(beforeValue, afterValue),
+                beforeValue,
+                afterValue
+        ));
+    }
+
+    private List<PartRevisionDiffResult.FileChange> compareFileChanges(
+            PartRevision baseRevision,
+            PartRevision targetRevision,
+            Map<UUID, List<File>> filesByRevisionId,
+            Map<UUID, List<Drawing>> drawingsByRevisionId,
+            Map<UUID, File> drawingSourceFilesById
+    ) {
+        Map<String, FileDiffEntry> beforeEntries = indexFileDiffEntries(
+                baseRevision.getId(),
+                filesByRevisionId,
+                drawingsByRevisionId,
+                drawingSourceFilesById
+        );
+        Map<String, FileDiffEntry> afterEntries = indexFileDiffEntries(
+                targetRevision.getId(),
+                filesByRevisionId,
+                drawingsByRevisionId,
+                drawingSourceFilesById
+        );
+
+        TreeSet<String> keys = new TreeSet<>();
+        keys.addAll(beforeEntries.keySet());
+        keys.addAll(afterEntries.keySet());
+
+        List<PartRevisionDiffResult.FileChange> changes = new ArrayList<>();
+        for (String key : keys) {
+            FileDiffEntry before = beforeEntries.get(key);
+            FileDiffEntry after = afterEntries.get(key);
+            if (before != null && after != null) {
+                continue;
+            }
+            FileDiffEntry entry = after != null ? after : before;
+            changes.add(new PartRevisionDiffResult.FileChange(
+                    entry.itemType(),
+                    entry.displayName(),
+                    after != null ? PartRevisionDiffChangeType.ADDED : PartRevisionDiffChangeType.REMOVED
+            ));
+        }
+        return changes;
+    }
+
+    private Map<String, FileDiffEntry> indexFileDiffEntries(
+            UUID revisionId,
+            Map<UUID, List<File>> filesByRevisionId,
+            Map<UUID, List<Drawing>> drawingsByRevisionId,
+            Map<UUID, File> drawingSourceFilesById
+    ) {
+        LinkedHashMap<String, FileDiffEntry> entries = new LinkedHashMap<>();
+        for (File file : filesByRevisionId.getOrDefault(revisionId, List.of())) {
+            entries.putIfAbsent(
+                    "FILE:" + file.getOriginalName(),
+                    new FileDiffEntry("FILE", file.getOriginalName())
+            );
+        }
+        for (Drawing drawing : drawingsByRevisionId.getOrDefault(revisionId, List.of())) {
+            File sourceFile = drawingSourceFilesById.get(drawing.getSourceFileId());
+            String displayName = sourceFile != null
+                    ? sourceFile.getOriginalName()
+                    : drawing.getDrawingNumber() != null
+                            ? drawing.getDrawingNumber()
+                            : drawing.getName();
+            entries.putIfAbsent(
+                    "DRAWING:" + displayName,
+                    new FileDiffEntry("DRAWING", displayName)
+            );
+        }
+        return entries;
+    }
+
+    private List<PartRevisionDiffResult.BomChange> compareBomChanges(
+            PartRevision baseRevision,
+            PartRevision targetRevision,
+            Map<UUID, List<EngineeringBomItem>> bomItemsByRevisionId
+    ) {
+        Map<String, EngineeringBomItem> beforeItems = bomItemsByRevisionId.getOrDefault(baseRevision.getId(), List.of()).stream()
+                .collect(java.util.stream.Collectors.toMap(EngineeringBomItem::getLineNumber, item -> item, (left, right) -> left, LinkedHashMap::new));
+        Map<String, EngineeringBomItem> afterItems = bomItemsByRevisionId.getOrDefault(targetRevision.getId(), List.of()).stream()
+                .collect(java.util.stream.Collectors.toMap(EngineeringBomItem::getLineNumber, item -> item, (left, right) -> left, LinkedHashMap::new));
+
+        Set<UUID> childRevisionIds = new LinkedHashSet<>();
+        beforeItems.values().forEach(item -> childRevisionIds.add(item.getChildPartRevisionId()));
+        afterItems.values().forEach(item -> childRevisionIds.add(item.getChildPartRevisionId()));
+        Map<UUID, PartRevision> childRevisionsById = loadPartRevisions(childRevisionIds);
+        Map<UUID, Part> childPartsById = loadPartsByRevisionIds(childRevisionsById.values());
+
+        TreeSet<String> lineNumbers = new TreeSet<>(this::compareLineNumbers);
+        lineNumbers.addAll(beforeItems.keySet());
+        lineNumbers.addAll(afterItems.keySet());
+
+        List<PartRevisionDiffResult.BomChange> changes = new ArrayList<>();
+        for (String lineNumber : lineNumbers) {
+            EngineeringBomItem before = beforeItems.get(lineNumber);
+            EngineeringBomItem after = afterItems.get(lineNumber);
+            if (before != null && after != null
+                    && java.util.Objects.equals(before.getChildPartRevisionId(), after.getChildPartRevisionId())
+                    && java.util.Objects.equals(before.getQuantity(), after.getQuantity())
+                    && java.util.Objects.equals(before.getExtendedProperties(), after.getExtendedProperties())) {
+                continue;
+            }
+
+            PartRevision beforeRevision = before == null ? null : childRevisionsById.get(before.getChildPartRevisionId());
+            PartRevision afterRevision = after == null ? null : childRevisionsById.get(after.getChildPartRevisionId());
+            Part beforePart = beforeRevision == null ? null : childPartsById.get(beforeRevision.getPartId());
+            Part afterPart = afterRevision == null ? null : childPartsById.get(afterRevision.getPartId());
+
+            changes.add(new PartRevisionDiffResult.BomChange(
+                    lineNumber,
+                    beforePart == null ? null : beforePart.getPartNumber(),
+                    beforeRevision == null ? null : beforeRevision.getName(),
+                    before == null ? null : before.getQuantity(),
+                    afterPart == null ? null : afterPart.getPartNumber(),
+                    afterRevision == null ? null : afterRevision.getName(),
+                    after == null ? null : after.getQuantity(),
+                    resolveChangeType(before, after)
+            ));
+        }
+        return changes;
+    }
+
+    private List<PartRevisionDiffResult.AssigneeChange> compareAssigneeChanges(
+            PartRevision baseRevision,
+            PartRevision targetRevision,
+            Map<UUID, User> usersById,
+            Map<UUID, Team> teamsById
+    ) {
+        List<PartRevisionDiffResult.AssigneeChange> changes = new ArrayList<>();
+        addAssigneeChange(
+                changes,
+                "OWNER",
+                formatAssigneeValue(usersById.get(baseRevision.getOwnerId())),
+                formatAssigneeValue(usersById.get(targetRevision.getOwnerId()))
+        );
+        addAssigneeChange(
+                changes,
+                "OWNER_TEAM",
+                formatTeamValue(teamsById.get(baseRevision.getOwnerTeamId())),
+                formatTeamValue(teamsById.get(targetRevision.getOwnerTeamId()))
+        );
+        return changes;
+    }
+
+    private void addAssigneeChange(
+            List<PartRevisionDiffResult.AssigneeChange> changes,
+            String assigneeType,
+            String beforeValue,
+            String afterValue
+    ) {
+        if (java.util.Objects.equals(beforeValue, afterValue)) {
+            return;
+        }
+        changes.add(new PartRevisionDiffResult.AssigneeChange(
+                assigneeType,
+                resolveChangeType(beforeValue, afterValue),
+                beforeValue,
+                afterValue
+        ));
+    }
+
+    private String formatAssigneeValue(User user) {
+        return user == null ? null : user.getFullName();
+    }
+
+    private String formatTeamValue(Team team) {
+        return team == null ? null : team.getName();
+    }
+
+    private String formatScalar(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof BigDecimal decimal) {
+            return decimal.stripTrailingZeros().toPlainString();
+        }
+        return String.valueOf(value);
+    }
+
+    private PartRevisionDiffChangeType resolveChangeType(Object beforeValue, Object afterValue) {
+        if (beforeValue == null && afterValue != null) {
+            return PartRevisionDiffChangeType.ADDED;
+        }
+        if (beforeValue != null && afterValue == null) {
+            return PartRevisionDiffChangeType.REMOVED;
+        }
+        return PartRevisionDiffChangeType.CHANGED;
+    }
+
     private ResolvedPart resolveRequiredDraft(String partNumber, String baseRevisionCode, String draftKey) {
         PartRevision draft = (baseRevisionCode == null || baseRevisionCode.isBlank()
                 ? partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionIdIsNull(partNumber, draftKey)
                 : findRevisionScopedDraft(partNumber, baseRevisionCode, draftKey))
-                .filter(revision -> revision.getStatus() == com.fabbitinc.server.domain.part.model.PartRevisionStatus.DRAFT
-                        || revision.getStatus() == com.fabbitinc.server.domain.part.model.PartRevisionStatus.IN_REVIEW)
+                .filter(revision -> revision.getStatus() == com.fabbitinc.server.domain.part.model.PartRevisionStatus.DRAFT)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
                         "PartDraft '%s/%s'을(를) 찾을 수 없습니다".formatted(partNumber, draftKey)
@@ -2142,15 +2658,28 @@ public class PartQuery {
         long draftCount = revisions.stream()
                 .filter(revision -> revision.getStatus() == PartRevisionStatus.DRAFT)
                 .count();
-        long inReviewCount = revisions.stream()
-                .filter(revision -> revision.getStatus() == PartRevisionStatus.IN_REVIEW)
-                .count();
+        long inReviewCount = 0L;
         return new RevisionWorkflowCounts(draftCount, inReviewCount);
     }
 
     private record RevisionWorkflowCounts(
             long draftCount,
             long inReviewCount
+    ) {
+    }
+
+    private record RevisionDiffSnapshot(
+            PartRevisionDiffSummaryResult summary,
+            List<PartRevisionDiffResult.AttributeChange> attributes,
+            List<PartRevisionDiffResult.FileChange> files,
+            List<PartRevisionDiffResult.BomChange> bom,
+            List<PartRevisionDiffResult.AssigneeChange> assignees
+    ) {
+    }
+
+    private record FileDiffEntry(
+            String itemType,
+            String displayName
     ) {
     }
 

@@ -7,7 +7,7 @@ import com.fabbitinc.server.presentation.project.dto.response.ActivityResponse;
 import com.fabbitinc.server.presentation.project.dto.response.ProjectDetailResponse;
 import com.fabbitinc.server.presentation.project.dto.response.ProjectListResponse;
 import com.fabbitinc.server.presentation.project.dto.response.ProjectSummaryResponse;
-import com.fabbitinc.server.presentation.project.dto.response.UserSummaryResponse;
+import com.fabbitinc.server.presentation.workitem.dto.response.UserSummaryResponse;
 import com.fabbitinc.server.application.project.query.ProjectQuery;
 import com.fabbitinc.server.application.project.query.condition.ProjectActivitiesCondition;
 import com.fabbitinc.server.application.project.query.condition.ProjectDetailCondition;
@@ -203,7 +203,7 @@ public class ProjectController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "GET /api/v1/projects/{projectId}/activities", description = "프로젝트 활동 피드를 cursor 기반으로 조회합니다")
+    @Operation(summary = "GET /api/v1/projects/{projectId}/histories", description = "프로젝트 활동 피드를 cursor 기반으로 조회합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -211,7 +211,7 @@ public class ProjectController {
             @ApiResponse(responseCode = "403", description = "권한 없음"),
             @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
     })
-    @GetMapping("/{projectId}/activities")
+    @GetMapping("/{projectId}/histories")
     public ActivityListResponse getProjectActivities(
             @Parameter(description = "활동 피드를 조회할 프로젝트 ID")
             @PathVariable UUID projectId,

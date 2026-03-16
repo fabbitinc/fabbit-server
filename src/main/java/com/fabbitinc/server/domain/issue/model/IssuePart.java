@@ -79,4 +79,8 @@ public class IssuePart extends AbstractCreatedEntity {
         }
         return value;
     }
+
+    public UUID getPartId() {
+        return partId;
+    }
 }

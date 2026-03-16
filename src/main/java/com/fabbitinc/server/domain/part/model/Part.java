@@ -36,7 +36,6 @@ public class Part extends AbstractCreatedEntity implements AggregateRoot {
     public static final String CODE_PART_NUMBER_INVALID_FORMAT = "PART_NUMBER_INVALID_FORMAT";
     public static final String CODE_PART_OWNER_REQUIRED = "PART_OWNER_REQUIRED";
     public static final String CODE_PART_OWNER_TEAM_REQUIRED = "PART_OWNER_TEAM_REQUIRED";
-    public static final String CODE_PART_APPROVED_REVISION_REQUIRED = "PART_APPROVED_REVISION_REQUIRED";
     public static final String CODE_PART_RELEASED_REVISION_REQUIRED = "PART_RELEASED_REVISION_REQUIRED";
 
     private static final int MAX_PART_NUMBER_LENGTH = 100;
@@ -56,14 +55,6 @@ public class Part extends AbstractCreatedEntity implements AggregateRoot {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_team_id", insertable = false, updatable = false)
     private Team _ownerTeamRelation;
-
-    @Column(name = "current_approved_revision_id")
-    private UUID currentApprovedRevisionId;
-
-    @Getter(AccessLevel.NONE)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "current_approved_revision_id", insertable = false, updatable = false)
-    private PartRevision _currentApprovedRevisionRelation;
 
     @Column(name = "current_released_revision_id")
     private UUID currentReleasedRevisionId;
@@ -125,21 +116,6 @@ public class Part extends AbstractCreatedEntity implements AggregateRoot {
 
     public void clearLifecycleState() {
         this.lifecycleState = null;
-    }
-
-    public void assignCurrentApprovedRevision(UUID revisionId) {
-        if (revisionId == null) {
-            throw new DomainException(CODE_PART_APPROVED_REVISION_REQUIRED, "승인 리비전 ID는 필수입니다");
-        }
-        this.currentApprovedRevisionId = revisionId;
-        if (this._currentApprovedRevisionRelation != null && !revisionId.equals(this._currentApprovedRevisionRelation.getId())) {
-            this._currentApprovedRevisionRelation = null;
-        }
-    }
-
-    public void clearCurrentApprovedRevision() {
-        this.currentApprovedRevisionId = null;
-        this._currentApprovedRevisionRelation = null;
     }
 
     public void assignCurrentReleasedRevision(UUID revisionId) {

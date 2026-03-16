@@ -17,6 +17,10 @@ public enum ActivityAction {
     ISSUE_MENTIONED("issue:mentioned", ActivityScope.ISSUE),
     ENGINEERING_CHANGE_STATE_CHANGED("engineering_change:state_changed", ActivityScope.ENGINEERING_CHANGE),
     ENGINEERING_CHANGE_ISSUE_CHANGED("engineering_change:issue_changed", ActivityScope.ENGINEERING_CHANGE),
+    ENGINEERING_CHANGE_STEP_CHANGED("engineering_change:step_changed", ActivityScope.ENGINEERING_CHANGE),
+    ENGINEERING_CHANGE_FILE_ATTACHED("engineering_change:file_attached", ActivityScope.ENGINEERING_CHANGE),
+    ENGINEERING_CHANGE_FILE_DETACHED("engineering_change:file_detached", ActivityScope.ENGINEERING_CHANGE),
+    ENGINEERING_CHANGE_MENTIONED("engineering_change:mentioned", ActivityScope.ENGINEERING_CHANGE),
     ENGINEERING_CHANGE_PART_REVISION_CHANGED(
             "engineering_change:part_revision_changed",
             ActivityScope.ENGINEERING_CHANGE

@@ -1,47 +1,48 @@
 package com.fabbitinc.server.presentation.issue.controller;
 
+import com.fabbitinc.server.presentation.issue.dto.response.LinkedEngineeringChangeSummaryResponse;
+
 import com.fabbitinc.server.presentation.file.dto.response.FileItemResponse;
-import com.fabbitinc.server.presentation.issue.dto.request.AttachFilesRequest;
-import com.fabbitinc.server.presentation.issue.dto.request.CreateCommentRequest;
+import com.fabbitinc.server.presentation.workitem.dto.request.AttachFilesRequest;
+import com.fabbitinc.server.presentation.workitem.dto.request.CreateCommentRequest;
 import com.fabbitinc.server.presentation.issue.dto.request.CreateIssueRequest;
 import com.fabbitinc.server.presentation.issue.dto.request.SyncAssigneesRequest;
-import com.fabbitinc.server.presentation.issue.dto.request.SyncChangesRequest;
+import com.fabbitinc.server.presentation.issue.dto.request.SyncLinkedEngineeringChangesRequest;
 import com.fabbitinc.server.presentation.issue.dto.request.SyncLabelsRequest;
 import com.fabbitinc.server.presentation.issue.dto.request.SyncPartsRequest;
 import com.fabbitinc.server.presentation.issue.dto.request.SyncTeamAssigneesRequest;
-import com.fabbitinc.server.presentation.issue.dto.request.UpdateCommentRequest;
+import com.fabbitinc.server.presentation.workitem.dto.request.UpdateCommentRequest;
 import com.fabbitinc.server.presentation.issue.dto.request.UpdateIssueRequest;
-import com.fabbitinc.server.presentation.issue.dto.response.CommentResponse;
+import com.fabbitinc.server.presentation.workitem.dto.response.CommentResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.IssueListResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.IssueLookupItemResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.IssueLookupResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.IssueResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.IssueSummaryResponse;
-import com.fabbitinc.server.presentation.issue.dto.response.IssueUserSummaryResponse;
+import com.fabbitinc.server.presentation.workitem.dto.response.UserSummaryResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.LabelBadgeResponse;
-import com.fabbitinc.server.presentation.issue.dto.response.LinkedEngineeringChangeBadgeResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.PartBadgeResponse;
-import com.fabbitinc.server.presentation.issue.dto.response.SyncDiffResponse;
-import com.fabbitinc.server.presentation.issue.dto.response.TeamBadgeResponse;
-import com.fabbitinc.server.presentation.issue.dto.response.TimelineItemResponse;
-import com.fabbitinc.server.presentation.issue.dto.response.TimelineItemType;
-import com.fabbitinc.server.presentation.issue.dto.response.TimelineResponse;
+import com.fabbitinc.server.presentation.workitem.dto.response.SyncDiffResponse;
+import com.fabbitinc.server.presentation.workitem.dto.response.TeamBadgeResponse;
+import com.fabbitinc.server.presentation.workitem.dto.response.TimelineItemResponse;
+import com.fabbitinc.server.presentation.workitem.dto.response.TimelineItemType;
+import com.fabbitinc.server.presentation.workitem.dto.response.TimelineResponse;
 import com.fabbitinc.server.application.issue.query.IssueQuery;
 import com.fabbitinc.server.application.issue.query.condition.IssueDetailCondition;
 import com.fabbitinc.server.application.issue.query.condition.IssueListCondition;
 import com.fabbitinc.server.application.issue.query.condition.IssueLookupCondition;
 import com.fabbitinc.server.application.issue.query.condition.IssueTimelineCondition;
 import com.fabbitinc.server.application.issue.query.result.IssueDetailResult;
-import com.fabbitinc.server.application.issue.query.result.IssueFileItemResult;
+import com.fabbitinc.server.application.workitem.query.result.FileItemResult;
 import com.fabbitinc.server.application.issue.query.result.IssueListResult;
 import com.fabbitinc.server.application.issue.query.result.IssueLookupResult;
-import com.fabbitinc.server.application.issue.query.result.IssueTimelineResult;
-import com.fabbitinc.server.application.issue.query.result.IssueUserSummaryResult;
+import com.fabbitinc.server.application.issue.query.result.LinkedEngineeringChangeSummaryResult;
+import com.fabbitinc.server.application.workitem.query.result.TimelineResult;
+import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 import com.fabbitinc.server.application.issue.query.result.LabelBadgeResult;
-import com.fabbitinc.server.application.issue.query.result.LinkedEngineeringChangeBadgeResult;
 import com.fabbitinc.server.application.issue.query.result.PartBadgeResult;
-import com.fabbitinc.server.application.issue.query.result.TeamBadgeResult;
-import com.fabbitinc.server.application.issue.query.result.TimelineItemTypeResult;
+import com.fabbitinc.server.application.workitem.query.result.TeamBadgeResult;
+import com.fabbitinc.server.application.workitem.query.result.TimelineItemTypeResult;
 import com.fabbitinc.server.application.issue.usecase.AddIssueFilesUseCase;
 import com.fabbitinc.server.application.issue.usecase.CloseIssueUseCase;
 import com.fabbitinc.server.application.issue.usecase.CreateCommentUseCase;
@@ -50,15 +51,15 @@ import com.fabbitinc.server.application.issue.usecase.DeleteCommentUseCase;
 import com.fabbitinc.server.application.issue.usecase.DeleteIssueFileUseCase;
 import com.fabbitinc.server.application.issue.usecase.ReopenIssueUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncAssigneesUseCase;
-import com.fabbitinc.server.application.issue.usecase.SyncChangesUseCase;
+import com.fabbitinc.server.application.issue.usecase.SyncLinkedEngineeringChangesUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncLabelsUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncPartsUseCase;
 import com.fabbitinc.server.application.issue.usecase.SyncTeamAssigneesUseCase;
 import com.fabbitinc.server.application.issue.usecase.UpdateCommentUseCase;
 import com.fabbitinc.server.application.issue.usecase.UpdateIssueUseCase;
-import com.fabbitinc.server.application.issue.usecase.result.AttachedFileResult;
-import com.fabbitinc.server.application.issue.usecase.result.CommentResult;
-import com.fabbitinc.server.application.issue.usecase.result.SyncDiffResult;
+import com.fabbitinc.server.application.workitem.usecase.result.AttachedFileResult;
+import com.fabbitinc.server.application.workitem.usecase.result.CommentResult;
+import com.fabbitinc.server.application.workitem.usecase.result.SyncDiffResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -110,7 +111,7 @@ public class IssueController {
     private final ReopenIssueUseCase reopenIssueUseCase;
     private final SyncAssigneesUseCase syncAssigneesUseCase;
     private final SyncTeamAssigneesUseCase syncTeamAssigneesUseCase;
-    private final SyncChangesUseCase syncChangesUseCase;
+    private final SyncLinkedEngineeringChangesUseCase syncLinkedEngineeringChangesUseCase;
     private final SyncLabelsUseCase syncLabelsUseCase;
     private final SyncPartsUseCase syncPartsUseCase;
     private final CreateCommentUseCase createCommentUseCase;
@@ -234,17 +235,20 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "PUT /api/v1/issues/{issueNumber}/changes",
+            summary = "PUT /api/v1/issues/{issueNumber}/engineering-changes",
             description = "이슈에 연결된 변경관리 목록을 동기화합니다"
     )
-    @PutMapping("/{issueNumber}/changes")
-    public SyncDiffResponse syncChanges(
+    @PutMapping("/{issueNumber}/engineering-changes")
+    public SyncDiffResponse syncLinkedEngineeringChanges(
             @PathVariable int issueNumber,
-            @Valid @RequestBody SyncChangesRequest request
+            @Valid @RequestBody SyncLinkedEngineeringChangesRequest request
     ) {
         return toSyncDiffResponse(
-                syncChangesUseCase.execute(
-                        new SyncChangesUseCase.SyncChangesCommand(issueNumber, request.engineeringChangeIds())
+                syncLinkedEngineeringChangesUseCase.execute(
+                        new SyncLinkedEngineeringChangesUseCase.SyncLinkedEngineeringChangesCommand(
+                                issueNumber,
+                                request.engineeringChangeIds()
+                        )
                 )
         );
     }
@@ -442,9 +446,9 @@ public class IssueController {
                 result.closedAt(),
                 result.createdAt(),
                 result.updatedAt(),
-                toIssueUserSummaryResponse(result.createdBy()),
+                toUserSummaryResponse(result.createdBy()),
                 result.labels().stream().map(this::toLabelBadgeResponse).toList(),
-                result.assignees().stream().map(this::toIssueUserSummaryResponse).toList(),
+                result.assignees().stream().map(this::toUserSummaryResponse).toList(),
                 result.assignedTeams().stream().map(this::toTeamBadgeResponse).toList(),
                 result.parts().stream().map(this::toPartBadgeResponse).toList(),
                 result.files().stream().map(this::toFileItemResponse).toList(),
@@ -463,20 +467,20 @@ public class IssueController {
                 result.createdAt(),
                 result.updatedAt(),
                 result.isModified(),
-                toIssueUserSummaryResponse(result.createdBy()),
+                toUserSummaryResponse(result.createdBy()),
                 result.labels().stream().map(this::toLabelBadgeResponse).toList(),
-                result.assignees().stream().map(this::toIssueUserSummaryResponse).toList(),
+                result.assignees().stream().map(this::toUserSummaryResponse).toList(),
                 result.assignedTeams().stream().map(this::toTeamBadgeResponse).toList(),
                 result.parts().stream().map(this::toPartBadgeResponse).toList(),
                 result.files().stream().map(this::toFileItemResponse).toList(),
                 result.commentsCount(),
-                result.linkedChanges().stream().map(this::toLinkedEngineeringChangeBadgeResponse).toList()
+                result.linkedEngineeringChanges().stream().map(this::toLinkedEngineeringChangeSummaryResponse).toList()
         );
     }
 
-    private TimelineResponse toTimelineResponse(IssueTimelineResult result) {
-        Map<String, IssueUserSummaryResponse> users = new LinkedHashMap<>();
-        result.users().forEach((userId, user) -> users.put(userId, toIssueUserSummaryResponse(user)));
+    private TimelineResponse toTimelineResponse(TimelineResult result) {
+        Map<String, UserSummaryResponse> users = new LinkedHashMap<>();
+        result.users().forEach((userId, user) -> users.put(userId, toUserSummaryResponse(user)));
 
         return new TimelineResponse(
                 result.items().stream().map(this::toTimelineItemResponse).toList(),
@@ -484,7 +488,7 @@ public class IssueController {
         );
     }
 
-    private TimelineItemResponse toTimelineItemResponse(IssueTimelineResult.Item result) {
+    private TimelineItemResponse toTimelineItemResponse(TimelineResult.Item result) {
         return new TimelineItemResponse(
                 toTimelineItemType(result.type()),
                 result.id(),
@@ -507,11 +511,11 @@ public class IssueController {
         return TimelineItemType.COMMENT;
     }
 
-    private IssueUserSummaryResponse toIssueUserSummaryResponse(IssueUserSummaryResult result) {
+    private UserSummaryResponse toUserSummaryResponse(UserSummaryResult result) {
         if (result == null) {
             return null;
         }
-        return new IssueUserSummaryResponse(
+        return new UserSummaryResponse(
                 result.userId(),
                 result.fullName(),
                 result.email(),
@@ -532,7 +536,7 @@ public class IssueController {
         return new PartBadgeResponse(result.id(), result.partNumber(), result.name());
     }
 
-    private FileItemResponse toFileItemResponse(IssueFileItemResult result) {
+    private FileItemResponse toFileItemResponse(FileItemResult result) {
         return new FileItemResponse(
                 result.fileId(),
                 result.originalName(),
@@ -554,13 +558,12 @@ public class IssueController {
         );
     }
 
-    private LinkedEngineeringChangeBadgeResponse toLinkedEngineeringChangeBadgeResponse(LinkedEngineeringChangeBadgeResult result) {
-        return new LinkedEngineeringChangeBadgeResponse(
+    private LinkedEngineeringChangeSummaryResponse toLinkedEngineeringChangeSummaryResponse(LinkedEngineeringChangeSummaryResult result) {
+        return new LinkedEngineeringChangeSummaryResponse(
                 result.id(),
                 result.number(),
                 result.title(),
-                result.state(),
-                result.engineeringChangeState()
+                result.state()
         );
     }
 }

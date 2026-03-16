@@ -23,8 +23,8 @@ import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.mapping.repository.MappingRevisionRepository;
 import com.fabbitinc.server.domain.part.model.Part;
-import com.fabbitinc.server.domain.part.model.PartRevisionActivityActionType;
-import com.fabbitinc.server.domain.part.model.PartRevisionActivitySourceType;
+import com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType;
+import com.fabbitinc.server.domain.part.model.PartRevisionHistorySourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
@@ -146,13 +146,13 @@ class SynthesisExecutionServiceTest {
         assertEquals("AL6061", existingRevision.getMaterial());
         assertEquals("SET", existingRevision.getUnit());
         assertEquals("New Description", existingRevision.getDescription());
-        assertEquals(1, existingRevision.getActivities().size());
+        assertEquals(1, existingRevision.getHistories().size());
         assertEquals(requestedBy, existingRevision.getCreatedBy());
         assertEquals(requestedBy, existingRevision.getUpdatedBy());
-        assertEquals(PartRevisionActivityActionType.IMPORTED, existingRevision.getActivities().get(0).getActionType());
-        assertEquals(PartRevisionActivitySourceType.SYNTHESIS, existingRevision.getActivities().get(0).getSourceType());
-        assertEquals(requestedBy, existingRevision.getActivities().get(0).getActorId());
-        assertEquals(jobId, existingRevision.getActivities().get(0).getSourceRefId());
+        assertEquals(PartRevisionHistoryActionType.IMPORTED, existingRevision.getHistories().get(0).getActionType());
+        assertEquals(PartRevisionHistorySourceType.SYNTHESIS, existingRevision.getHistories().get(0).getSourceType());
+        assertEquals(requestedBy, existingRevision.getHistories().get(0).getActorId());
+        assertEquals(jobId, existingRevision.getHistories().get(0).getSourceRefId());
         verify(partRevisionRepository).save(any(PartRevision.class));
         verify(partRepository, never()).save(any(Part.class));
     }
@@ -197,7 +197,7 @@ class SynthesisExecutionServiceTest {
         assertEquals("Old Material", existingRevision.getMaterial());
         assertEquals("EA", existingRevision.getUnit());
         assertEquals("Old Description", existingRevision.getDescription());
-        assertEquals(0, existingRevision.getActivities().size());
+        assertEquals(0, existingRevision.getHistories().size());
         verify(partRevisionRepository, never()).save(any(PartRevision.class));
     }
 
@@ -244,10 +244,10 @@ class SynthesisExecutionServiceTest {
         assertEquals("AL6061", createdRevision.getMaterial());
         assertEquals("SET", createdRevision.getUnit());
         assertEquals("New Description", createdRevision.getDescription());
-        assertEquals(1, createdRevision.getActivities().size());
+        assertEquals(1, createdRevision.getHistories().size());
         assertEquals(requestedBy, createdRevision.getCreatedBy());
         assertEquals(requestedBy, createdRevision.getUpdatedBy());
-        assertEquals(requestedBy, createdRevision.getActivities().get(0).getActorId());
+        assertEquals(requestedBy, createdRevision.getHistories().get(0).getActorId());
     }
 
     @Test

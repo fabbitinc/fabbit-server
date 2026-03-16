@@ -1,6 +1,7 @@
 package com.fabbitinc.server.domain.part.repository;
 
 import com.fabbitinc.server.domain.part.model.PartRevision;
+import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -33,6 +34,8 @@ public interface PartRevisionRepository extends JpaRepository<PartRevision, UUID
     Optional<PartRevision> findByPartNumberAndDraftKeyAndBaseRevisionIdIsNull(String partNumber, String draftKey);
 
     List<PartRevision> findByEngineeringChangeIdOrderByCreatedAtAsc(UUID engineeringChangeId);
+
+    boolean existsByStatusIn(Collection<PartRevisionStatus> statuses);
 
     boolean existsByCategory(String category);
 

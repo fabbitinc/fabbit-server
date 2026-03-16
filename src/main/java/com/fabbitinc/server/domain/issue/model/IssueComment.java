@@ -1,6 +1,7 @@
 package com.fabbitinc.server.domain.issue.model;
 
 import com.fabbitinc.server.domain.common.exception.DomainException;
+import com.fabbitinc.server.domain.workitem.model.AbstractComment;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -83,5 +84,9 @@ public class IssueComment extends AbstractComment {
             throw new DomainException(CODE_ISSUE_COMMENT_ISSUE_REQUIRED, "이슈 ID는 필수입니다");
         }
         return value;
+    }
+
+    public UUID getIssueId() {
+        return issueId;
     }
 }

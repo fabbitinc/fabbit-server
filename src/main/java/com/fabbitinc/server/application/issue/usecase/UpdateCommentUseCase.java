@@ -1,9 +1,11 @@
 package com.fabbitinc.server.application.issue.usecase;
 
+import com.fabbitinc.server.application.workitem.usecase.WorkItemUseCaseSupport;
+
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.issue.service.IssueService;
-import com.fabbitinc.server.application.issue.usecase.result.CommentResult;
+import com.fabbitinc.server.application.workitem.usecase.result.CommentResult;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -22,9 +24,9 @@ public class UpdateCommentUseCase {
 
     public CommentResult execute(UpdateCommentCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID targetId = IssueUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
+        UUID targetId = WorkItemUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
 
-        return IssueUseCaseSupport.toCommentResult(
+        return WorkItemUseCaseSupport.toCommentResult(
                 issueService.updateComment(auth.userId(), targetId, command.commentId(), command.body()),
                 objectMapper
         );

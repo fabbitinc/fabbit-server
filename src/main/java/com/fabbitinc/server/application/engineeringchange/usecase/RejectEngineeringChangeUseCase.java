@@ -1,0 +1,28 @@
+package com.fabbitinc.server.application.engineeringchange.usecase;
+
+import com.fabbitinc.server.application.auth.support.AuthContext;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
+import com.fabbitinc.server.application.engineeringchange.service.EngineeringChangeService;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChange;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+@Component
+@Transactional
+@RequiredArgsConstructor
+public class RejectEngineeringChangeUseCase {
+
+    private final CurrentAuthProvider currentAuthProvider;
+    private final EngineeringChangeService engineeringChangeService;
+
+    public void execute(RejectEngineeringChangeCommand command) {
+        AuthContext auth = currentAuthProvider.getCurrentAuth();
+        EngineeringChange engineeringChange =
+                engineeringChangeService.getEngineeringChangeByNumberOrThrow(command.engineeringChangeNumber());
+        engineeringChangeService.rejectEngineeringChange(auth.userId(), engineeringChange);
+    }
+
+    public record RejectEngineeringChangeCommand(int engineeringChangeNumber) {
+    }
+}

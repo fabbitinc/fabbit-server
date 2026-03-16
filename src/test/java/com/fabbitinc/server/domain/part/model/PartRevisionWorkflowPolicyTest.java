@@ -20,9 +20,9 @@ class PartRevisionWorkflowPolicyTest {
     void changeMode_워크플로모드를_변경한다() {
         PartRevisionWorkflowPolicy policy = PartRevisionWorkflowPolicy.createDefault();
 
-        policy.changeMode(PartRevisionWorkflowMode.CHANGE_REQUEST_REQUIRED);
+        policy.changeMode(PartRevisionWorkflowMode.ENGINEERING_CHANGE_REQUIRED);
 
-        assertEquals(PartRevisionWorkflowMode.CHANGE_REQUEST_REQUIRED, policy.getMode());
+        assertEquals(PartRevisionWorkflowMode.ENGINEERING_CHANGE_REQUIRED, policy.getMode());
     }
 
     @Test

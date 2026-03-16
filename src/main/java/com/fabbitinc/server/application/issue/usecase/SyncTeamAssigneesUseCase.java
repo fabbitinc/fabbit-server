@@ -1,8 +1,10 @@
 package com.fabbitinc.server.application.issue.usecase;
 
+import com.fabbitinc.server.application.workitem.usecase.WorkItemUseCaseSupport;
+
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.issue.service.IssueService;
-import com.fabbitinc.server.application.issue.usecase.result.SyncDiffResult;
+import com.fabbitinc.server.application.workitem.usecase.result.SyncDiffResult;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -19,10 +21,10 @@ public class SyncTeamAssigneesUseCase {
 
     public SyncDiffResult execute(SyncTeamAssigneesCommand command) {
         currentAuthProvider.getCurrentAuth();
-        UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
+        UUID issueId = WorkItemUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
 
         IssueService.DiffResult diff = issueService.syncTeamAssignees(issueId, command.teamIds());
-        return IssueUseCaseSupport.toSyncDiffResult(diff);
+        return WorkItemUseCaseSupport.toSyncDiffResult(diff);
     }
 
     public record SyncTeamAssigneesCommand(

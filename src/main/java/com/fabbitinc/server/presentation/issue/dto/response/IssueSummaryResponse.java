@@ -1,6 +1,8 @@
 package com.fabbitinc.server.presentation.issue.dto.response;
 
 import com.fabbitinc.server.presentation.file.dto.response.FileItemResponse;
+import com.fabbitinc.server.presentation.workitem.dto.response.TeamBadgeResponse;
+import com.fabbitinc.server.presentation.workitem.dto.response.UserSummaryResponse;
 import com.fabbitinc.server.domain.issue.model.IssueState;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
@@ -16,9 +18,9 @@ public record IssueSummaryResponse(
         Instant closedAt,
         Instant createdAt,
         Instant updatedAt,
-        IssueUserSummaryResponse createdBy,
+        UserSummaryResponse createdBy,
         List<LabelBadgeResponse> labels,
-        List<IssueUserSummaryResponse> assignees,
+        List<UserSummaryResponse> assignees,
         List<TeamBadgeResponse> assignedTeams,
         List<PartBadgeResponse> parts,
         List<FileItemResponse> files,

@@ -1,5 +1,8 @@
 package com.fabbitinc.server.application.issue.query.result;
 
+import com.fabbitinc.server.application.workitem.query.result.FileItemResult;
+import com.fabbitinc.server.application.workitem.query.result.TeamBadgeResult;
+import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 import com.fabbitinc.server.domain.issue.model.IssueState;
 import java.time.Instant;
 import java.util.List;
@@ -21,12 +24,12 @@ public record IssueListResult(
             Instant closedAt,
             Instant createdAt,
             Instant updatedAt,
-            IssueUserSummaryResult createdBy,
+            UserSummaryResult createdBy,
             List<LabelBadgeResult> labels,
-            List<IssueUserSummaryResult> assignees,
+            List<UserSummaryResult> assignees,
             List<TeamBadgeResult> assignedTeams,
             List<PartBadgeResult> parts,
-            List<IssueFileItemResult> files,
+            List<FileItemResult> files,
             int commentsCount
     ) {
     }

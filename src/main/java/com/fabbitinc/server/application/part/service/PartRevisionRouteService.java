@@ -26,8 +26,7 @@ public class PartRevisionRouteService {
         return (baseRevisionCode == null || baseRevisionCode.isBlank()
                 ? partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionIdIsNull(partNumber, draftKey)
                 : findRevisionScopedDraft(partNumber, baseRevisionCode, draftKey))
-                .filter(revision -> revision.getStatus() == com.fabbitinc.server.domain.part.model.PartRevisionStatus.DRAFT
-                        || revision.getStatus() == com.fabbitinc.server.domain.part.model.PartRevisionStatus.IN_REVIEW)
+                .filter(revision -> revision.getStatus() == com.fabbitinc.server.domain.part.model.PartRevisionStatus.DRAFT)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
                         "PartDraft '%s/%s'을(를) 찾을 수 없습니다".formatted(partNumber, draftKey)

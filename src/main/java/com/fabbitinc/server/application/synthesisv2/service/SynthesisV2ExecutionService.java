@@ -21,8 +21,8 @@ import com.fabbitinc.server.domain.mappingv2.model.MappingV2Revision;
 import com.fabbitinc.server.domain.mappingv2.repository.MappingV2RevisionRepository;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
-import com.fabbitinc.server.domain.part.model.PartRevisionActivityActionType;
-import com.fabbitinc.server.domain.part.model.PartRevisionActivitySourceType;
+import com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType;
+import com.fabbitinc.server.domain.part.model.PartRevisionHistorySourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
@@ -588,21 +588,14 @@ public class SynthesisV2ExecutionService {
                 }
             }
         }
-        if (part.getCurrentApprovedRevisionId() != null) {
-            for (PartRevision revision : revisions) {
-                if (part.getCurrentApprovedRevisionId().equals(revision.getId())) {
-                    return revision;
-                }
-            }
-        }
         return revisions.get(0);
     }
 
     private void recordSynthesisImport(PartRevision revision, UUID jobId, UUID requestedBy) {
-        revision.recordActivity(
+        revision.recordHistory(
                 requestedBy,
-                PartRevisionActivityActionType.IMPORTED,
-                PartRevisionActivitySourceType.SYNTHESIS,
+                PartRevisionHistoryActionType.IMPORTED,
+                PartRevisionHistorySourceType.SYNTHESIS,
                 jobId,
                 "{}"
         );

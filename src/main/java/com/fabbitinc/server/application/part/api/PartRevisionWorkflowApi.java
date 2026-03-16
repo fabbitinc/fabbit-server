@@ -2,6 +2,8 @@ package com.fabbitinc.server.application.part.api;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeApi;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeSnapshot;
 import com.fabbitinc.server.application.part.service.PartRevisionRouteService;
 import com.fabbitinc.server.application.part.service.PartRevisionService;
 import com.fabbitinc.server.application.part.service.PartRevisionWorkflowPolicyService;
@@ -25,6 +27,7 @@ public class PartRevisionWorkflowApi {
     private final PartRevisionRouteService partRevisionRouteService;
     private final PartRevisionService partRevisionService;
     private final PartRevisionWorkflowPolicyService partRevisionWorkflowPolicyService;
+    private final EngineeringChangeApi engineeringChangeApi;
 
     public DiffResult syncEngineeringChangePartRevisions(UUID engineeringChangeId, List<EngineeringChangePartRevisionRef> refs) {
         partRevisionWorkflowPolicyService.assertEngineeringChangeModeEnabled();
@@ -101,24 +104,35 @@ public class PartRevisionWorkflowApi {
 
     public void submitEngineeringChange(UUID actorId, UUID engineeringChangeId) {
         partRevisionWorkflowPolicyService.assertEngineeringChangeModeEnabled();
+        EngineeringChangeSnapshot engineeringChange = engineeringChangeApi.getEngineeringChangeSnapshotMap(Set.of(engineeringChangeId))
+                .get(engineeringChangeId);
+        if (engineeringChange == null) {
+            throw new AppException(ErrorCode.NOT_FOUND, "변경관리를 찾을 수 없습니다");
+        }
         for (PartRevision revision : partRevisionRepository.findByEngineeringChangeIdOrderByCreatedAtAsc(engineeringChangeId)) {
-            partRevisionService.markInReview(revision, actorId);
+            revision.assertDraftEditable();
         }
     }
 
-    public void reopenEngineeringChange(UUID actorId, UUID engineeringChangeId) {
+    public void cancelEngineeringChange(UUID actorId, UUID engineeringChangeId, int engineeringChangeNumber, String engineeringChangeTitle) {
         partRevisionWorkflowPolicyService.assertEngineeringChangeModeEnabled();
-        submitEngineeringChange(actorId, engineeringChangeId);
-    }
-
-    public void closeEngineeringChange(UUID actorId, UUID engineeringChangeId) {
-        partRevisionWorkflowPolicyService.assertEngineeringChangeModeEnabled();
-        for (PartRevision revision : partRevisionRepository.findByEngineeringChangeIdOrderByCreatedAtAsc(engineeringChangeId)) {
-            partRevisionService.revertToDraft(revision, actorId);
+        List<PartRevision> revisions = partRevisionRepository.findByEngineeringChangeIdOrderByCreatedAtAsc(engineeringChangeId).stream()
+                .sorted(Comparator
+                        .comparing(PartRevision::getPartNumber)
+                        .thenComparing(revision -> revision.getDraftKey() == null ? "" : revision.getDraftKey()))
+                .toList();
+        for (PartRevision revision : revisions) {
+            partRevisionService.cancelFromEngineeringChange(
+                    revision,
+                    actorId,
+                    engineeringChangeId,
+                    engineeringChangeNumber,
+                    engineeringChangeTitle
+            );
         }
     }
 
-    public void mergeEngineeringChange(UUID actorId, UUID engineeringChangeId, int engineeringChangeNumber, String engineeringChangeTitle) {
+    public void releaseEngineeringChange(UUID actorId, UUID engineeringChangeId, int engineeringChangeNumber, String engineeringChangeTitle) {
         partRevisionWorkflowPolicyService.assertEngineeringChangeModeEnabled();
         List<PartRevision> revisions = partRevisionRepository.findByEngineeringChangeIdOrderByCreatedAtAsc(engineeringChangeId).stream()
                 .sorted(Comparator

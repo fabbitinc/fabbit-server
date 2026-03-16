@@ -1,4 +1,5 @@
 package com.fabbitinc.server.presentation.notification.dto.response;
+import com.fabbitinc.server.presentation.workitem.dto.response.UserSummaryResponse;
 
 import com.fabbitinc.server.domain.notification.model.NotificationSourceIssueType;
 import com.fabbitinc.server.domain.notification.model.NotificationType;

@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.issue.usecase;
 
+import com.fabbitinc.server.application.workitem.usecase.WorkItemUseCaseSupport;
+
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.issue.service.IssueService;
@@ -18,7 +20,7 @@ public class DeleteIssueFileUseCase {
 
     public void execute(DeleteIssueFileCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
+        UUID issueId = WorkItemUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
 
         issueService.detachFile(auth.userId(), issueId, command.fileId());
     }

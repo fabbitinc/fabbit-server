@@ -5,21 +5,23 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeApi;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeSnapshot;
 import com.fabbitinc.server.application.issue.query.condition.IssueDetailCondition;
 import com.fabbitinc.server.application.issue.query.condition.IssueListCondition;
 import com.fabbitinc.server.application.issue.query.condition.IssueLookupCondition;
 import com.fabbitinc.server.application.issue.query.condition.IssueTimelineCondition;
 import com.fabbitinc.server.application.issue.query.result.IssueDetailResult;
-import com.fabbitinc.server.application.issue.query.result.IssueFileItemResult;
+import com.fabbitinc.server.application.issue.query.result.LinkedEngineeringChangeSummaryResult;
+import com.fabbitinc.server.application.workitem.query.result.FileItemResult;
 import com.fabbitinc.server.application.issue.query.result.IssueListResult;
 import com.fabbitinc.server.application.issue.query.result.IssueLookupResult;
-import com.fabbitinc.server.application.issue.query.result.IssueTimelineResult;
-import com.fabbitinc.server.application.issue.query.result.IssueUserSummaryResult;
+import com.fabbitinc.server.application.workitem.query.result.TimelineResult;
+import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 import com.fabbitinc.server.application.issue.query.result.LabelBadgeResult;
-import com.fabbitinc.server.application.issue.query.result.LinkedEngineeringChangeBadgeResult;
 import com.fabbitinc.server.application.issue.query.result.PartBadgeResult;
-import com.fabbitinc.server.application.issue.query.result.TeamBadgeResult;
-import com.fabbitinc.server.application.issue.query.result.TimelineItemTypeResult;
+import com.fabbitinc.server.application.workitem.query.result.TeamBadgeResult;
+import com.fabbitinc.server.application.workitem.query.result.TimelineItemTypeResult;
 import com.fabbitinc.server.application.part.api.PartApi;
 import com.fabbitinc.server.application.part.api.PartSnapshot;
 import com.fabbitinc.server.domain.activity.model.Activity;
@@ -27,9 +29,9 @@ import com.fabbitinc.server.domain.activity.model.ActivityTargetType;
 import com.fabbitinc.server.domain.activity.repository.ActivityRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
-import com.fabbitinc.server.domain.issue.model.AbstractComment;
-import com.fabbitinc.server.domain.issue.model.EngineeringChange;
-import com.fabbitinc.server.domain.issue.model.EngineeringChangeIssueLink;
+import com.fabbitinc.server.domain.workitem.model.AbstractComment;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChange;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeIssueLink;
 import com.fabbitinc.server.domain.issue.model.Issue;
 import com.fabbitinc.server.domain.issue.model.IssueAssignee;
 import com.fabbitinc.server.domain.issue.model.IssueComment;
@@ -37,8 +39,6 @@ import com.fabbitinc.server.domain.issue.model.IssueLabel;
 import com.fabbitinc.server.domain.issue.model.IssuePart;
 import com.fabbitinc.server.domain.issue.model.IssueState;
 import com.fabbitinc.server.domain.issue.model.IssueTeamAssignee;
-import com.fabbitinc.server.domain.issue.repository.EngineeringChangeIssueLinkRepository;
-import com.fabbitinc.server.domain.issue.repository.EngineeringChangeRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueAssigneeRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueCommentRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueLabelRepository;
@@ -81,8 +81,7 @@ public class IssueQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final IssueRepository issueRepository;
-    private final EngineeringChangeRepository engineeringChangeRepository;
-    private final EngineeringChangeIssueLinkRepository engineeringChangeIssueLinkRepository;
+    private final EngineeringChangeApi engineeringChangeApi;
     private final IssueAssigneeRepository issueAssigneeRepository;
     private final IssueTeamAssigneeRepository issueTeamAssigneeRepository;
     private final IssuePartRepository issuePartRepository;
@@ -165,21 +164,21 @@ public class IssueQuery {
         return toIssueDetail(issue, enrichment);
     }
 
-    public IssueTimelineResult getTimeline(IssueTimelineCondition condition) {
+    public TimelineResult getTimeline(IssueTimelineCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
         Issue issue = issueRepository.findByNumber(condition.issueNumber())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "이슈를 찾을 수 없습니다"));
 
         List<IssueComment> comments = issueCommentRepository.findByIssueIdOrderByCreatedAtAsc(issue.getId());
-        List<Activity> activities = activityRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(
+        List<Activity> histories = activityRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(
                 ActivityTargetType.ISSUE,
                 issue.getId()
         );
 
-        List<IssueTimelineResult.Item> items = new ArrayList<>();
+        List<TimelineResult.Item> items = new ArrayList<>();
         for (IssueComment comment : comments) {
-            items.add(new IssueTimelineResult.Item(
+            items.add(new TimelineResult.Item(
                     TimelineItemTypeResult.COMMENT,
                     comment.getId(),
                     null,
@@ -193,9 +192,9 @@ public class IssueQuery {
                     isModified(comment.getCreatedAt(), comment.getUpdatedAt())
             ));
         }
-        for (Activity activity : activities) {
+        for (Activity activity : histories) {
             ActivityAction action = ActivityAction.from(activity.getAction());
-            items.add(new IssueTimelineResult.Item(
+            items.add(new TimelineResult.Item(
                     TimelineItemTypeResult.ACTIVITY,
                     activity.getId(),
                     action,
@@ -209,10 +208,10 @@ public class IssueQuery {
                     null
             ));
         }
-        items.sort(java.util.Comparator.comparing(IssueTimelineResult.Item::createdAt));
+        items.sort(java.util.Comparator.comparing(TimelineResult.Item::createdAt));
 
-        Map<String, IssueUserSummaryResult> users = toUserSummaryMap(collectTimelineUserIds(comments, activities));
-        return new IssueTimelineResult(items, users);
+        Map<String, UserSummaryResult> users = toUserSummaryMap(collectTimelineUserIds(comments, histories));
+        return new TimelineResult(items, users);
     }
 
     private Enrichment enrichIssues(List<Issue> issues) {
@@ -226,8 +225,6 @@ public class IssueQuery {
         List<IssueTeamAssignee> teamAssigneeLinks = issueTeamAssigneeRepository.findByIssueIdIn(issueIds);
         List<IssuePart> partLinks = issuePartRepository.findByIssueIdIn(issueIds);
         List<File> files = fileRepository.findByOwnerTypeAndOwnerIdInAndDeletedAtIsNull("issue", issueIds);
-        List<EngineeringChangeIssueLink> changeLinks = engineeringChangeIssueLinkRepository.findByIssueIdIn(issueIds);
-
         Set<UUID> labelIds = new LinkedHashSet<>();
         for (IssueLabel link : labelLinks) {
             labelIds.add(link.getLabelId());
@@ -253,15 +250,6 @@ public class IssueQuery {
             partIds.add(partLink.getPartId());
         }
 
-        Set<UUID> engineeringChangeIds = new LinkedHashSet<>();
-        for (EngineeringChangeIssueLink link : changeLinks) {
-            engineeringChangeIds.add(link.getEngineeringChangeId());
-        }
-
-        Map<UUID, EngineeringChange> linkedChanges = new HashMap<>();
-        engineeringChangeRepository.findAllById(engineeringChangeIds)
-                .forEach(change -> linkedChanges.put(change.getId(), change));
-
         return new Enrichment(
                 findLabels(labelIds),
                 labelLinks,
@@ -269,8 +257,7 @@ public class IssueQuery {
                 teamAssigneeLinks,
                 partLinks,
                 files,
-                groupByIssueId(changeLinks),
-                linkedChanges,
+                engineeringChangeApi.getLinkedEngineeringChangeSnapshotMap(Set.copyOf(issueIds)),
                 findTeams(teamIds),
                 findUsers(userIds),
                 findParts(partIds),
@@ -315,7 +302,7 @@ public class IssueQuery {
                 partsOf(issue.getId(), enrichment),
                 filesOf(issue.getId(), enrichment),
                 enrichment.commentCounts().getOrDefault(issue.getId(), 0L).intValue(),
-                linkedChangesOf(issue.getId(), enrichment)
+                linkedEngineeringChangesOf(issue.getId(), enrichment)
         );
     }
 
@@ -333,13 +320,13 @@ public class IssueQuery {
         return result;
     }
 
-    private List<IssueUserSummaryResult> assigneesOf(UUID issueId, Enrichment enrichment) {
-        List<IssueUserSummaryResult> result = new ArrayList<>();
+    private List<UserSummaryResult> assigneesOf(UUID issueId, Enrichment enrichment) {
+        List<UserSummaryResult> result = new ArrayList<>();
         for (IssueAssignee link : enrichment.assigneeLinks()) {
             if (!issueId.equals(link.getIssueId())) {
                 continue;
             }
-            IssueUserSummaryResult user = toUserSummary(enrichment.userMap().get(link.getUserId()));
+            UserSummaryResult user = toUserSummary(enrichment.userMap().get(link.getUserId()));
             if (user != null) {
                 result.add(user);
             }
@@ -375,32 +362,25 @@ public class IssueQuery {
         return result;
     }
 
-    private List<IssueFileItemResult> filesOf(UUID issueId, Enrichment enrichment) {
+    private List<FileItemResult> filesOf(UUID issueId, Enrichment enrichment) {
         return enrichment.files().stream()
                 .filter(file -> issueId.equals(file.getOwnerId()))
                 .map(this::toFileItem)
                 .toList();
     }
 
-    private List<LinkedEngineeringChangeBadgeResult> linkedChangesOf(UUID issueId, Enrichment enrichment) {
-        List<LinkedEngineeringChangeBadgeResult> result = new ArrayList<>();
-        for (EngineeringChangeIssueLink link : enrichment.linksByIssueId().getOrDefault(issueId, List.of())) {
-            EngineeringChange engineeringChange = enrichment.linkedChanges().get(link.getEngineeringChangeId());
-            if (engineeringChange == null) {
-                continue;
-            }
-            result.add(new LinkedEngineeringChangeBadgeResult(
-                    engineeringChange.getId(),
-                    engineeringChange.getNumber(),
-                    engineeringChange.getTitle(),
-                    engineeringChange.getState(),
-                    engineeringChange.getEngineeringChangeState()
-            ));
-        }
-        return result;
+    private List<LinkedEngineeringChangeSummaryResult> linkedEngineeringChangesOf(UUID issueId, Enrichment enrichment) {
+        return enrichment.linkedEngineeringChangesByIssueId().getOrDefault(issueId, List.of()).stream()
+                .map(engineeringChange -> new LinkedEngineeringChangeSummaryResult(
+                        engineeringChange.id(),
+                        engineeringChange.number(),
+                        engineeringChange.title(),
+                        engineeringChange.state()
+                ))
+                .toList();
     }
 
-    private Set<UUID> collectTimelineUserIds(List<? extends AbstractComment> comments, List<Activity> activities) {
+    private Set<UUID> collectTimelineUserIds(List<? extends AbstractComment> comments, List<Activity> histories) {
         Set<UUID> userIds = new LinkedHashSet<>();
 
         for (AbstractComment comment : comments) {
@@ -409,7 +389,7 @@ public class IssueQuery {
             }
         }
 
-        for (Activity activity : activities) {
+        for (Activity activity : histories) {
             if (activity.getActorId() != null) {
                 userIds.add(activity.getActorId());
             }
@@ -451,23 +431,23 @@ public class IssueQuery {
         }
     }
 
-    private Map<String, IssueUserSummaryResult> toUserSummaryMap(Set<UUID> userIds) {
+    private Map<String, UserSummaryResult> toUserSummaryMap(Set<UUID> userIds) {
         if (userIds.isEmpty()) {
             return Map.of();
         }
 
-        Map<String, IssueUserSummaryResult> result = new LinkedHashMap<>();
+        Map<String, UserSummaryResult> result = new LinkedHashMap<>();
         for (User user : userRepository.findByIdInOrderByFullNameAsc(userIds)) {
             result.put(user.getId().toString(), toUserSummary(user));
         }
         return result;
     }
 
-    private IssueUserSummaryResult toUserSummary(User user) {
+    private UserSummaryResult toUserSummary(User user) {
         if (user == null) {
             return null;
         }
-        return new IssueUserSummaryResult(
+        return new UserSummaryResult(
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
@@ -476,8 +456,8 @@ public class IssueQuery {
         );
     }
 
-    private IssueFileItemResult toFileItem(File file) {
-        return new IssueFileItemResult(
+    private FileItemResult toFileItem(File file) {
+        return new FileItemResult(
                 file.getId(),
                 file.getOriginalName(),
                 file.getContentType(),
@@ -631,8 +611,7 @@ public class IssueQuery {
             List<IssueTeamAssignee> teamAssigneeLinks,
             List<IssuePart> partLinks,
             List<File> files,
-            Map<UUID, List<EngineeringChangeIssueLink>> linksByIssueId,
-            Map<UUID, EngineeringChange> linkedChanges,
+            Map<UUID, List<EngineeringChangeSnapshot>> linkedEngineeringChangesByIssueId,
             Map<UUID, Team> teamMap,
             Map<UUID, User> userMap,
             Map<UUID, PartSnapshot> partMap,
@@ -646,7 +625,6 @@ public class IssueQuery {
                     List.of(),
                     List.of(),
                     List.of(),
-                    Map.of(),
                     Map.of(),
                     Map.of(),
                     Map.of(),

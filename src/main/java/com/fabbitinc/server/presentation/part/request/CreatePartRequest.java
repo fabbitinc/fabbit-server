@@ -38,8 +38,8 @@ public record CreatePartRequest(
 
         @Schema(
                 description = "수명주기 상태",
-                example = "DESIGN",
-                allowableValues = {"DESIGN", "PROTOTYPE", "PRODUCTION", "EOL", "OBSOLETE"}
+                example = "ACTIVE",
+                allowableValues = {"ACTIVE", "EOL", "OBSOLETE"}
         )
         PartLifecycleState lifecycleState,
 

@@ -248,7 +248,7 @@ class SynthesisV2ExecutionServiceTest {
         assertEquals("공용부품", childExt.get("_ext_remark"));
         assertEquals("Child", createdRevision.getName());
         assertEquals(requestedBy, createdRevision.getCreatedBy());
-        assertEquals(requestedBy, createdRevision.getActivities().get(0).getActorId());
+        assertEquals(requestedBy, createdRevision.getHistories().get(0).getActorId());
 
         ArgumentCaptor<Supplier> supplierCaptor = ArgumentCaptor.forClass(Supplier.class);
         verify(supplierRepository).save(supplierCaptor.capture());

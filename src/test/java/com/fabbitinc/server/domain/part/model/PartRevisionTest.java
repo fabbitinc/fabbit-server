@@ -81,25 +81,25 @@ class PartRevisionTest {
     }
 
     @Test
-    void recordActivity_루트가_활동_이력을_직접_추가한다() {
+    void recordHistory_루트가_이력_엔트리를_직접_추가한다() {
         Part part = Part.create("AES-100");
         PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", null);
         UUID actorId = UUID.randomUUID();
         Instant occurredAt = Instant.parse("2026-03-14T10:15:30Z");
 
-        PartRevisionActivity activity = revision.recordActivityAt(
+        PartRevisionHistory history = revision.recordHistoryAt(
                 actorId,
-                PartRevisionActivityActionType.IMPORTED,
-                PartRevisionActivitySourceType.SYNTHESIS,
+                PartRevisionHistoryActionType.IMPORTED,
+                PartRevisionHistorySourceType.SYNTHESIS,
                 UUID.randomUUID(),
                 "{\"file\":\"parts.xlsx\"}",
                 occurredAt
         );
 
-        assertEquals(1, revision.getActivities().size());
-        assertEquals(revision.getId(), activity.getPartRevisionId());
-        assertEquals(actorId, activity.getActorId());
-        assertEquals(occurredAt, activity.getOccurredAt());
+        assertEquals(1, revision.getHistories().size());
+        assertEquals(revision.getId(), history.getPartRevisionId());
+        assertEquals(actorId, history.getActorId());
+        assertEquals(occurredAt, history.getOccurredAt());
     }
 
     @Test
@@ -139,21 +139,9 @@ class PartRevisionTest {
     }
 
     @Test
-    void approve_DRAFT를_공식_APPROVED_리비전으로_전환한다() {
+    void release_DRAFT를_공식_RELEASED_리비전으로_전환한다() {
         Part part = Part.create("AES-100");
         PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", null);
-
-        revision.approve("1", null);
-
-        assertEquals(PartRevisionStatus.APPROVED, revision.getStatus());
-        assertEquals("1", revision.getRevisionCode());
-        assertEquals(null, revision.getDraftKey());
-    }
-
-    @Test
-    void release_APPROVED를_RELEASED로_전환한다() {
-        Part part = Part.create("AES-100");
-        PartRevision revision = PartRevision.createOfficial(part, "1", null, "본체", PartRevisionStatus.APPROVED, null);
 
         revision.release("1", null);
 
@@ -184,23 +172,12 @@ class PartRevisionTest {
     }
 
     @Test
-    void markInReview_DRAFT를_IN_REVIEW로_전환한다() {
+    void cancel_공식전_리비전을_CANCELED로_전환한다() {
         Part part = Part.create("AES-100");
         PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", null);
 
-        revision.markInReview(null);
+        revision.cancel(null);
 
-        assertEquals(PartRevisionStatus.IN_REVIEW, revision.getStatus());
-    }
-
-    @Test
-    void revertToDraft_IN_REVIEW를_DRAFT로_되돌린다() {
-        Part part = Part.create("AES-100");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", null);
-        revision.markInReview(null);
-
-        revision.revertToDraft(null);
-
-        assertEquals(PartRevisionStatus.DRAFT, revision.getStatus());
+        assertEquals(PartRevisionStatus.CANCELED, revision.getStatus());
     }
 }

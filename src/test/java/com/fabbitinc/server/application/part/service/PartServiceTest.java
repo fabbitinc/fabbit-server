@@ -120,7 +120,7 @@ class PartServiceTest {
                 "sample",
                 null,
                 false,
-                PartLifecycleState.DESIGN,
+                PartLifecycleState.ACTIVE,
                 7,
                 extendedProperties,
                 null),
@@ -135,7 +135,7 @@ class PartServiceTest {
     ArgumentCaptor<Part> partCaptor = ArgumentCaptor.forClass(Part.class);
     verify(partRepository).save(partCaptor.capture());
     Part savedPart = partCaptor.getValue();
-    assertEquals(PartLifecycleState.DESIGN, savedPart.getLifecycleState());
+    assertEquals(PartLifecycleState.ACTIVE, savedPart.getLifecycleState());
     assertEquals("Bracket", savedRevision.getName());
     assertEquals("AL6061", savedRevision.getMaterial());
     assertEquals("EA", savedRevision.getUnit());

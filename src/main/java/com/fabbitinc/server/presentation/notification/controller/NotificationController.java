@@ -1,4 +1,6 @@
 package com.fabbitinc.server.presentation.notification.controller;
+import com.fabbitinc.server.presentation.workitem.dto.response.UserSummaryResponse;
+import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 
 import com.fabbitinc.server.application.notification.query.NotificationQuery;
 import com.fabbitinc.server.application.notification.query.condition.NotificationListCondition;

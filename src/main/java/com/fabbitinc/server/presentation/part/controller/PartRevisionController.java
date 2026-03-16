@@ -9,6 +9,8 @@ import static com.fabbitinc.server.presentation.part.controller.PartResponseMapp
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartPreviewResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartPreviewSourcesResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartProjectsResponse;
+import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartRevisionDiffResponse;
+import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartRevisionHistoryResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartSuppliersResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toRegisterDrawingResponse;
 
@@ -32,6 +34,8 @@ import com.fabbitinc.server.presentation.part.response.PartPreviewProcessingResp
 import com.fabbitinc.server.presentation.part.response.PartPreviewResponse;
 import com.fabbitinc.server.presentation.part.response.PartPreviewSourcesResponse;
 import com.fabbitinc.server.presentation.part.response.PartProjectsResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionDiffResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryResponse;
 import com.fabbitinc.server.presentation.part.response.PartSuppliersResponse;
 import com.fabbitinc.server.application.part.query.PartOwnerQuery;
 import com.fabbitinc.server.application.part.query.PartPreviewProcessingQuery;
@@ -47,9 +51,12 @@ import com.fabbitinc.server.application.part.query.condition.PartOwnerCondition;
 import com.fabbitinc.server.application.part.query.condition.PartPreviewSourcesCondition;
 import com.fabbitinc.server.application.part.query.condition.PartPreviewProcessingCondition;
 import com.fabbitinc.server.application.part.query.condition.PartProjectsCondition;
+import com.fabbitinc.server.application.part.query.condition.PartRevisionDiffCondition;
+import com.fabbitinc.server.application.part.query.condition.PartRevisionHistoryCondition;
 import com.fabbitinc.server.application.part.query.condition.PartSuppliersCondition;
 import com.fabbitinc.server.application.part.usecase.AttachPartFilesUseCase;
 import com.fabbitinc.server.application.part.usecase.ApprovePartRevisionUseCase;
+import com.fabbitinc.server.application.part.usecase.CancelPartDraftUseCase;
 import com.fabbitinc.server.application.part.usecase.ChangePartPreviewUseCase;
 import com.fabbitinc.server.application.part.usecase.ClearPartPreviewUseCase;
 import com.fabbitinc.server.application.part.usecase.CreatePartDraftUseCase;
@@ -64,6 +71,7 @@ import com.fabbitinc.server.application.part.usecase.UpdatePartOwnerUseCase;
 import com.fabbitinc.server.application.part.usecase.UpdatePartRevisionUseCase;
 import com.fabbitinc.server.application.part.usecase.command.ApprovePartRevisionCommand;
 import com.fabbitinc.server.application.part.usecase.command.AttachPartFilesCommand;
+import com.fabbitinc.server.application.part.usecase.command.CancelPartDraftCommand;
 import com.fabbitinc.server.application.part.usecase.command.ChangePartPreviewCommand;
 import com.fabbitinc.server.application.part.usecase.command.ClearPartPreviewCommand;
 import com.fabbitinc.server.application.part.usecase.command.CreatePartDraftCommand;
@@ -131,6 +139,7 @@ public class PartRevisionController {
     private final PartOwnerQuery partOwnerQuery;
     private final CreatePartDraftUseCase createPartDraftUseCase;
     private final ApprovePartRevisionUseCase approvePartRevisionUseCase;
+    private final CancelPartDraftUseCase cancelPartDraftUseCase;
     private final ReleasePartDraftUseCase releasePartDraftUseCase;
     private final ReleasePartRevisionUseCase releasePartRevisionUseCase;
     private final UpdatePartRevisionUseCase updatePartRevisionUseCase;
@@ -330,6 +339,37 @@ public class PartRevisionController {
         return toPartDetailResponse(partQuery.get(new PartDetailCondition(result.partNumber(), result.revisionCode())));
     }
 
+    @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/cancel", description = "초기 Part 초안을 직접 취소합니다")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "취소 성공"),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "현재 워크플로 정책상 직접 취소 불가 또는 권한 없음",
+                    content = @Content(
+                            schema = @Schema(implementation = ApiErrorResponse.class),
+                            examples = @ExampleObject(
+                                    name = "workflow_policy_forbidden",
+                                    value = "{\"code\":\"PART_WORKFLOW_POLICY_FORBIDDEN\",\"message\":\"변경관리 모드에서는 직접 승인/릴리즈를 사용할 수 없습니다\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
+    })
+    @PostMapping("/{partNumber}/drafts/{draftKey}/cancel")
+    public ResponseEntity<Void> cancelDraft(
+            @PathVariable String partNumber,
+            @PathVariable String draftKey,
+            @Valid @RequestBody PartRevisionChangeReasonRequest request
+    ) {
+        cancelPartDraftUseCase.execute(new CancelPartDraftCommand(
+                partNumber,
+                null,
+                draftKey,
+                request.reason()
+        ));
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "PATCH /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안을 수정합니다")
     @PatchMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}")
     public PartDetailResponse updateRevisionDraft(
@@ -448,6 +488,38 @@ public class PartRevisionController {
         return toPartDetailResponse(partQuery.get(new PartDetailCondition(result.partNumber(), result.revisionCode())));
     }
 
+    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/cancel", description = "특정 공식 리비전에서 파생된 초안을 직접 취소합니다")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "취소 성공"),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "현재 워크플로 정책상 직접 취소 불가 또는 권한 없음",
+                    content = @Content(
+                            schema = @Schema(implementation = ApiErrorResponse.class),
+                            examples = @ExampleObject(
+                                    name = "workflow_policy_forbidden",
+                                    value = "{\"code\":\"PART_WORKFLOW_POLICY_FORBIDDEN\",\"message\":\"변경관리 모드에서는 직접 승인/릴리즈를 사용할 수 없습니다\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "422", description = "입력값 검증 실패")
+    })
+    @PostMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/cancel")
+    public ResponseEntity<Void> cancelRevisionDraft(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @PathVariable String draftKey,
+            @Valid @RequestBody PartRevisionChangeReasonRequest request
+    ) {
+        cancelPartDraftUseCase.execute(new CancelPartDraftCommand(
+                partNumber,
+                revisionCode,
+                draftKey,
+                request.reason()
+        ));
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}", description = "Part 상세 정보와 관계 카운트를 조회합니다")
     @GetMapping("/{partNumber}/revisions/{revisionCode}")
     public PartDetailResponse getPart(
@@ -455,6 +527,28 @@ public class PartRevisionController {
             @PathVariable String revisionCode
     ) {
         return toPartDetailResponse(partQuery.get(new PartDetailCondition(partNumber, revisionCode)));
+    }
+
+    @Operation(summary = "GET /api/v1/parts/{partNumber}/history", description = "공식 리비전 이력 목록과 이전 리비전 대비 요약 diff를 조회합니다")
+    @GetMapping("/{partNumber}/history")
+    public PartRevisionHistoryResponse getHistory(
+            @PathVariable String partNumber
+    ) {
+        return toPartRevisionHistoryResponse(partQuery.getHistory(new PartRevisionHistoryCondition(partNumber)));
+    }
+
+    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/diff", description = "이전 또는 지정한 기준 리비전 대비 상세 diff를 조회합니다")
+    @GetMapping("/{partNumber}/revisions/{revisionCode}/diff")
+    public PartRevisionDiffResponse getDiff(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @RequestParam(value = "base_revision_code", required = false) String baseRevisionCode
+    ) {
+        return toPartRevisionDiffResponse(partQuery.getDiff(new PartRevisionDiffCondition(
+                partNumber,
+                revisionCode,
+                baseRevisionCode
+        )));
     }
 
     @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/release", description = "승인된 공식 리비전을 직접 릴리즈합니다")

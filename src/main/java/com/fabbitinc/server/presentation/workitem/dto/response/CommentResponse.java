@@ -1,0 +1,18 @@
+package com.fabbitinc.server.presentation.workitem.dto.response;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.Instant;
+import java.util.UUID;
+import tools.jackson.databind.JsonNode;
+
+@Schema(description = "댓글 응답")
+public record CommentResponse(
+        UUID id,
+        UUID targetId,
+        JsonNode body,
+        Instant createdAt,
+        Instant updatedAt,
+        boolean isModified,
+        UUID createdBy
+) {
+}

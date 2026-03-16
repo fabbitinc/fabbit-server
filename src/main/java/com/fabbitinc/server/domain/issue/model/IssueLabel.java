@@ -79,4 +79,8 @@ public class IssueLabel extends AbstractCreatedEntity {
         }
         return value;
     }
+
+    public UUID getLabelId() {
+        return labelId;
+    }
 }

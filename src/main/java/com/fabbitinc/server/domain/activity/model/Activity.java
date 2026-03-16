@@ -24,7 +24,7 @@ import org.hibernate.type.SqlTypes;
 @Getter
 @Entity
 @Table(
-        name = "activities",
+        name = "histories",
         indexes = {
                 @Index(name = "ix_activities_target", columnList = "target_type,target_id")
         }

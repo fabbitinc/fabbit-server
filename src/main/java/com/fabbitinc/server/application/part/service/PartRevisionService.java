@@ -9,8 +9,8 @@ import com.fabbitinc.server.application.part.service.input.UpdatePartRevisionInp
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartRevision;
-import com.fabbitinc.server.domain.part.model.PartRevisionActivityActionType;
-import com.fabbitinc.server.domain.part.model.PartRevisionActivitySourceType;
+import com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType;
+import com.fabbitinc.server.domain.part.model.PartRevisionHistorySourceType;
 import com.fabbitinc.server.domain.part.model.PartRevisionDraftChanges;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
@@ -46,10 +46,10 @@ public class PartRevisionService {
             String draftKey = resolveNextDraftKey(part.getId(), baseRevision.getId());
             PartRevision draft = PartRevision.createDraft(part, draftKey, baseRevision.getId(), baseRevision.getName(), actorId);
             draft.copyEditableFieldsFrom(baseRevision);
-            draft.recordActivity(
+            draft.recordHistory(
                     actorId,
-                    PartRevisionActivityActionType.CREATED,
-                    PartRevisionActivitySourceType.UI,
+                    PartRevisionHistoryActionType.CREATED,
+                    PartRevisionHistorySourceType.UI,
                     null,
                     serializeReasonPayload(input.reason())
             );
@@ -80,7 +80,6 @@ public class PartRevisionService {
             }
 
             revision.editDraft(changes, actorId);
-            revision.recordActivity(actorId, PartRevisionActivityActionType.EDITED, PartRevisionActivitySourceType.UI, null, "{}");
             return revision;
         } catch (DomainException ex) {
             throw toAppException(ex);
@@ -88,27 +87,10 @@ public class PartRevisionService {
     }
 
     public PartRevision approveDraft(PartRevisionDecisionInput input, UUID actorId) {
-        try {
-            requireChangeReason(input.reason());
-            Part part = getRequiredPartForUpdate(input.partNumber());
-            PartRevision draft = getRequiredDraft(input.partNumber(), input.baseRevisionCode(), input.draftKey());
-            assertLatestOfficialBase(part, draft);
-
-            String revisionCode = resolveNextRevisionCode(part);
-            supersedeCurrentApprovedIfNeeded(part, draft.getId(), actorId);
-            draft.approve(revisionCode, actorId);
-            part.assignCurrentApprovedRevision(draft.getId());
-            draft.recordActivity(
-                    actorId,
-                    PartRevisionActivityActionType.APPROVED,
-                    PartRevisionActivitySourceType.UI,
-                    null,
-                    serializeTransitionPayload("APPROVED", revisionCode, input.reason())
-            );
-            return draft;
-        } catch (DomainException ex) {
-            throw toAppException(ex);
-        }
+        throw new AppException(
+                ErrorCode.PART_WORKFLOW_POLICY_FORBIDDEN,
+                "직접 승인 모드에서는 승인 단계를 사용하지 않습니다. 초안을 바로 릴리즈해 주세요"
+        );
     }
 
     public PartRevision releaseDraft(PartRevisionDecisionInput input, UUID actorId) {
@@ -121,7 +103,7 @@ public class PartRevisionService {
                     part,
                     draft,
                     actorId,
-                    PartRevisionActivitySourceType.UI,
+                    PartRevisionHistorySourceType.UI,
                     null,
                     serializeTransitionPayload("RELEASED", resolveNextRevisionCode(part), input.reason())
             );
@@ -130,44 +112,30 @@ public class PartRevisionService {
         }
     }
 
-    public PartRevision releaseRevision(ReleasePartRevisionInput input, UUID actorId) {
+    public PartRevision cancelDraft(PartRevisionDecisionInput input, UUID actorId) {
         try {
             requireChangeReason(input.reason());
-            Part part = getRequiredPartForUpdate(input.partNumber());
-            PartRevision revision = getRequiredRevision(input.partNumber(), input.revisionCode());
-            assertReleasableApprovedRevision(part, revision);
-
-            supersedeCurrentReleasedIfNeeded(part, revision.getId(), actorId);
-            revision.release(revision.getRevisionCode(), actorId);
-            part.assignCurrentApprovedRevision(revision.getId());
-            part.assignCurrentReleasedRevision(revision.getId());
-            revision.recordActivity(
+            PartRevision draft = getRequiredDraft(input.partNumber(), input.baseRevisionCode(), input.draftKey());
+            String canceledDraftKey = draft.getDraftKey();
+            draft.cancel(actorId);
+            draft.recordHistory(
                     actorId,
-                    PartRevisionActivityActionType.RELEASED,
-                    PartRevisionActivitySourceType.UI,
+                    PartRevisionHistoryActionType.CANCELED,
+                    PartRevisionHistorySourceType.UI,
                     null,
-                    serializeTransitionPayload("RELEASED", revision.getRevisionCode(), input.reason())
+                    serializeTransitionPayload("CANCELED", canceledDraftKey, input.reason())
             );
-            return revision;
+            return draft;
         } catch (DomainException ex) {
             throw toAppException(ex);
         }
     }
 
-    public void markInReview(PartRevision revision, UUID actorId) {
-        try {
-            revision.markInReview(actorId);
-        } catch (DomainException ex) {
-            throw toAppException(ex);
-        }
-    }
-
-    public void revertToDraft(PartRevision revision, UUID actorId) {
-        try {
-            revision.revertToDraft(actorId);
-        } catch (DomainException ex) {
-            throw toAppException(ex);
-        }
+    public PartRevision releaseRevision(ReleasePartRevisionInput input, UUID actorId) {
+        throw new AppException(
+                ErrorCode.PART_WORKFLOW_POLICY_FORBIDDEN,
+                "직접 승인 모드에서는 승인된 리비전 릴리즈를 사용하지 않습니다. 초안을 바로 릴리즈해 주세요"
+        );
     }
 
     public PartRevision releaseDraftFromEngineeringChange(
@@ -184,7 +152,7 @@ public class PartRevisionService {
                     part,
                     draft,
                     actorId,
-                    PartRevisionActivitySourceType.ENGINEERING_CHANGE,
+                    PartRevisionHistorySourceType.ENGINEERING_CHANGE,
                     engineeringChangeId,
                     serializeEngineeringChangePayload(
                             "RELEASED",
@@ -198,23 +166,68 @@ public class PartRevisionService {
         }
     }
 
+    public PartRevision releaseApprovedFromEngineeringChange(
+            PartRevision revision,
+            UUID actorId,
+            UUID engineeringChangeId,
+            int engineeringChangeNumber,
+            String engineeringChangeTitle
+    ) {
+        return releaseDraftFromEngineeringChange(
+                revision,
+                actorId,
+                engineeringChangeId,
+                engineeringChangeNumber,
+                engineeringChangeTitle
+        );
+    }
+
+    public PartRevision cancelFromEngineeringChange(
+            PartRevision revision,
+            UUID actorId,
+            UUID engineeringChangeId,
+            int engineeringChangeNumber,
+            String engineeringChangeTitle
+    ) {
+        try {
+            requireEngineeringChangeRevision(revision);
+            Part part = getRequiredPartForUpdate(revision.getPartNumber());
+            String canceledIdentifier = revision.getRevisionCode() == null ? revision.getDraftKey() : revision.getRevisionCode();
+            clearCurrentApprovedIfMatches(part, revision.getId());
+            revision.cancel(actorId);
+            revision.recordHistory(
+                    actorId,
+                    PartRevisionHistoryActionType.CANCELED,
+                    PartRevisionHistorySourceType.ENGINEERING_CHANGE,
+                    engineeringChangeId,
+                    serializeEngineeringChangePayload(
+                            "CANCELED",
+                            canceledIdentifier,
+                            engineeringChangeNumber,
+                            engineeringChangeTitle
+                    )
+            );
+            return revision;
+        } catch (DomainException ex) {
+            throw toAppException(ex);
+        }
+    }
+
     private PartRevision releaseDraftInternal(
             Part part,
             PartRevision draft,
             UUID actorId,
-            PartRevisionActivitySourceType sourceType,
+            PartRevisionHistorySourceType sourceType,
             UUID sourceRefId,
             String payload
     ) {
         String revisionCode = resolveNextRevisionCode(part);
-        supersedeCurrentApprovedIfNeeded(part, draft.getId(), actorId);
-        supersedeCurrentReleasedIfNeeded(part, draft.getId(), actorId);
+        supersedeCurrentReleasedIfNeeded(part, draft.getId(), actorId, sourceType, sourceRefId, payload);
         draft.release(revisionCode, actorId);
-        part.assignCurrentApprovedRevision(draft.getId());
         part.assignCurrentReleasedRevision(draft.getId());
-        draft.recordActivity(
+        draft.recordHistory(
                 actorId,
-                PartRevisionActivityActionType.RELEASED,
+                PartRevisionHistoryActionType.RELEASED,
                 sourceType,
                 sourceRefId,
                 payload
@@ -316,38 +329,27 @@ public class PartRevisionService {
         }
     }
 
-    private void assertReleasableApprovedRevision(Part part, PartRevision revision) {
-        if (revision.getStatus() == PartRevisionStatus.RELEASED) {
-            throw new AppException(ErrorCode.INVALID_STATE, "이미 릴리즈된 리비전입니다");
-        }
-        if (revision.getStatus() != PartRevisionStatus.APPROVED) {
-            throw new AppException(ErrorCode.INVALID_STATE, "승인된 공식 리비전만 릴리즈할 수 있습니다");
-        }
-        if (part.getCurrentApprovedRevisionId() != null && !part.getCurrentApprovedRevisionId().equals(revision.getId())) {
-            throw new AppException(
-                    ErrorCode.CONFLICT,
-                    "현재 최신 승인 리비전이 아닙니다. 최신 승인 리비전만 릴리즈할 수 있습니다"
-            );
-        }
-    }
-
-    private void supersedeCurrentApprovedIfNeeded(Part part, UUID nextRevisionId, UUID actorId) {
-        UUID currentApprovedRevisionId = part.getCurrentApprovedRevisionId();
-        if (currentApprovedRevisionId == null || currentApprovedRevisionId.equals(nextRevisionId)) {
-            return;
-        }
-        if (currentApprovedRevisionId.equals(part.getCurrentReleasedRevisionId())) {
-            return;
-        }
-        getRequiredRevision(currentApprovedRevisionId).markSuperseded(actorId);
-    }
-
-    private void supersedeCurrentReleasedIfNeeded(Part part, UUID nextRevisionId, UUID actorId) {
+    private void supersedeCurrentReleasedIfNeeded(
+            Part part,
+            UUID nextRevisionId,
+            UUID actorId,
+            PartRevisionHistorySourceType sourceType,
+            UUID sourceRefId,
+            String payload
+    ) {
         UUID currentReleasedRevisionId = part.getCurrentReleasedRevisionId();
         if (currentReleasedRevisionId == null || currentReleasedRevisionId.equals(nextRevisionId)) {
             return;
         }
-        getRequiredRevision(currentReleasedRevisionId).markSuperseded(actorId);
+        PartRevision currentReleasedRevision = getRequiredRevision(currentReleasedRevisionId);
+        currentReleasedRevision.markSuperseded(actorId);
+        currentReleasedRevision.recordHistory(
+                actorId,
+                PartRevisionHistoryActionType.SUPERSEDED,
+                sourceType,
+                sourceRefId,
+                payload
+        );
     }
 
     private PartRevision getRequiredRevision(UUID revisionId) {
@@ -367,9 +369,7 @@ public class PartRevisionService {
     }
 
     private PartRevision resolveLatestOfficialRevision(Part part) {
-        UUID revisionId = part.getCurrentApprovedRevisionId() != null
-                ? part.getCurrentApprovedRevisionId()
-                : part.getCurrentReleasedRevisionId();
+        UUID revisionId = part.getCurrentReleasedRevisionId();
         if (revisionId != null) {
             return getRequiredRevision(revisionId);
         }
@@ -417,6 +417,16 @@ public class PartRevisionService {
         } catch (JacksonException ex) {
             throw new AppException(ErrorCode.BAD_REQUEST, "변경 이력을 직렬화할 수 없습니다");
         }
+    }
+
+    private void requireEngineeringChangeRevision(PartRevision revision) {
+        if (revision.getEngineeringChangeId() == null) {
+            throw new AppException(ErrorCode.CONFLICT, "EngineeringChange에 연결된 리비전만 처리할 수 있습니다");
+        }
+    }
+
+    private void clearCurrentApprovedIfMatches(Part part, UUID revisionId) {
+        // 승인 포인터를 사용하지 않는 구조라 no-op으로 둔다.
     }
 
     private String serializeEngineeringChangePayload(
@@ -477,8 +487,6 @@ public class PartRevisionService {
                     PartRevision.CODE_PART_REVISION_DRAFT_SOURCE_REQUIRED,
                     PartRevision.CODE_PART_REVISION_DRAFT_CODE_FORBIDDEN,
                     PartRevision.CODE_PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE,
-                    PartRevision.CODE_PART_REVISION_IN_REVIEW_REQUIRED,
-                    PartRevision.CODE_PART_REVISION_APPROVABLE_REQUIRED,
                     PartRevision.CODE_PART_REVISION_RELEASABLE_REQUIRED,
                     PartRevision.CODE_PART_REVISION_SUPERSEDE_INVALID_STATE ->
                     new AppException(ErrorCode.INVALID_STATE, ex.getMessage());

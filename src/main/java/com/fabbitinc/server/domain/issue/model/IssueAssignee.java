@@ -79,4 +79,8 @@ public class IssueAssignee extends AbstractCreatedEntity {
         }
         return value;
     }
+
+    public UUID getUserId() {
+        return userId;
+    }
 }

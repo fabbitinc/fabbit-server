@@ -3,9 +3,11 @@ package com.fabbitinc.server.application.issue.service;
 import com.fabbitinc.server.application.activity.model.ActivityAction;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
-import com.fabbitinc.server.application.issue.event.IssueUsersMentionedEvent;
-import com.fabbitinc.server.application.issue.support.MentionExtractor;
-import com.fabbitinc.server.application.issue.support.TipTapValidator;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeApi;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeSnapshot;
+import com.fabbitinc.server.application.workitem.event.WorkItemUsersMentionedEvent;
+import com.fabbitinc.server.application.workitem.support.MentionExtractor;
+import com.fabbitinc.server.application.workitem.support.TipTapValidator;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.activity.model.Activity;
 import com.fabbitinc.server.domain.activity.model.ActivityTargetType;
@@ -13,23 +15,19 @@ import com.fabbitinc.server.domain.activity.repository.ActivityRepository;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
-import com.fabbitinc.server.domain.issue.model.AbstractComment;
-import com.fabbitinc.server.domain.issue.model.EngineeringChange;
-import com.fabbitinc.server.domain.issue.model.EngineeringChangeIssueLink;
+import com.fabbitinc.server.domain.workitem.model.AbstractComment;
 import com.fabbitinc.server.domain.issue.model.Issue;
 import com.fabbitinc.server.domain.issue.model.IssueAssignee;
 import com.fabbitinc.server.domain.issue.model.IssueComment;
 import com.fabbitinc.server.domain.issue.model.IssueLabel;
-import com.fabbitinc.server.domain.issue.model.IssueNumberSequence;
+import com.fabbitinc.server.domain.workitem.model.WorkItemNumberSequence;
 import com.fabbitinc.server.domain.issue.model.IssuePart;
 import com.fabbitinc.server.domain.issue.model.IssueState;
 import com.fabbitinc.server.domain.issue.model.IssueTeamAssignee;
-import com.fabbitinc.server.domain.issue.repository.EngineeringChangeIssueLinkRepository;
-import com.fabbitinc.server.domain.issue.repository.EngineeringChangeRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueAssigneeRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueCommentRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueLabelRepository;
-import com.fabbitinc.server.domain.issue.repository.IssueNumberSequenceRepository;
+import com.fabbitinc.server.domain.workitem.repository.WorkItemNumberSequenceRepository;
 import com.fabbitinc.server.domain.issue.repository.IssuePartRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueTeamAssigneeRepository;
@@ -52,7 +50,6 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -63,7 +60,7 @@ import tools.jackson.databind.ObjectMapper;
 public class IssueService {
 
     private static final String OWNER_TYPE_ISSUE = "issue";
-    private static final UUID ISSUE_NUMBER_SEQUENCE_ID = UUID.fromString("89d98a7b-6b53-4e63-a02a-73f66f606703");
+    private static final UUID WORK_ITEM_NUMBER_SEQUENCE_ID = UUID.fromString("89d98a7b-6b53-4e63-a02a-73f66f606703");
 
     private static final ActivityAction ACTION_ISSUE_STATE_CHANGED = ActivityAction.ISSUE_STATE_CHANGED;
     private static final ActivityAction ACTION_ASSIGNEE_CHANGED = ActivityAction.ISSUE_ASSIGNEE_CHANGED;
@@ -73,12 +70,12 @@ public class IssueService {
     private static final ActivityAction ACTION_FILE_DETACHED = ActivityAction.ISSUE_FILE_DETACHED;
     private static final ActivityAction ACTION_ISSUE_ENGINEERING_CHANGE_CHANGED =
             ActivityAction.ISSUE_ENGINEERING_CHANGE_CHANGED;
+    private static final ActivityAction ACTION_ENGINEERING_CHANGE_ISSUE_CHANGED =
+            ActivityAction.ENGINEERING_CHANGE_ISSUE_CHANGED;
     private static final ActivityAction ACTION_ISSUE_MENTIONED = ActivityAction.ISSUE_MENTIONED;
 
     private final IssueRepository issueRepository;
-    private final IssueNumberSequenceRepository issueNumberSequenceRepository;
-    private final EngineeringChangeRepository engineeringChangeRepository;
-    private final EngineeringChangeIssueLinkRepository engineeringChangeIssueRepository;
+    private final WorkItemNumberSequenceRepository workItemNumberSequenceRepository;
     private final IssueAssigneeRepository issueAssigneeRepository;
     private final IssueTeamAssigneeRepository issueTeamAssigneeRepository;
     private final IssuePartRepository issuePartRepository;
@@ -92,6 +89,7 @@ public class IssueService {
     private final ActivityRepository activityRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final OrganizationApi organizationApi;
+    private final EngineeringChangeApi engineeringChangeApi;
     private final TipTapValidator tipTapValidator;
     private final MentionExtractor mentionExtractor;
     private final ObjectMapper objectMapper;
@@ -288,33 +286,21 @@ public class IssueService {
         return new DiffResult(toAdd, toRemove);
     }
 
-    public DiffResult syncChanges(UUID actorId, UUID issueId, List<UUID> engineeringChangeIds, boolean emitActivity) {
-        validateEngineeringChangeIds(engineeringChangeIds);
-
-        Set<UUID> current = engineeringChangeIssueRepository.findByIssueId(issueId).stream()
-                .map(EngineeringChangeIssueLink::getEngineeringChangeId)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        Set<UUID> desired = new LinkedHashSet<>(engineeringChangeIds);
-
-        Set<UUID> toAdd = new LinkedHashSet<>(desired);
-        toAdd.removeAll(current);
-
-        Set<UUID> toRemove = new LinkedHashSet<>(current);
-        toRemove.removeAll(desired);
-
-        if (!toRemove.isEmpty()) {
-            engineeringChangeIssueRepository.deleteByIssueIdAndEngineeringChangeIdIn(issueId, toRemove);
-        }
-        if (!toAdd.isEmpty()) {
-            Map<UUID, EngineeringChange> engineeringChanges = findEngineeringChanges(toAdd);
-            engineeringChangeIssueRepository.saveAll(toAdd.stream()
-                    .map(changeId -> engineeringChanges.get(changeId).linkIssue(issueId))
-                    .toList());
-        }
+    public DiffResult syncLinkedEngineeringChanges(
+            UUID actorId,
+            UUID issueId,
+            List<UUID> engineeringChangeIds,
+            boolean emitActivity
+    ) {
+        EngineeringChangeApi.DiffResult diff =
+                engineeringChangeApi.syncEngineeringChangesForIssue(issueId, engineeringChangeIds);
+        Set<UUID> toAdd = diff.added();
+        Set<UUID> toRemove = diff.removed();
 
         if (emitActivity && (!toAdd.isEmpty() || !toRemove.isEmpty())) {
             Issue issue = getIssueOrThrow(issueId);
-            Map<UUID, EngineeringChange> engineeringChanges = findEngineeringChanges(Set.copyOf(union(toAdd, toRemove)));
+            Map<UUID, EngineeringChangeSnapshot> engineeringChanges =
+                    engineeringChangeApi.getEngineeringChangeSnapshotMap(Set.copyOf(union(toAdd, toRemove)));
 
             addDiffActivity(
                     issueId,
@@ -329,7 +315,7 @@ public class IssueService {
                 addDiffActivity(
                         addedEngineeringChangeId,
                         actorId,
-                        ACTION_ISSUE_ENGINEERING_CHANGE_CHANGED,
+                        ACTION_ENGINEERING_CHANGE_ISSUE_CHANGED,
                         List.of(issueRef),
                         List.of()
                 );
@@ -338,7 +324,7 @@ public class IssueService {
                 addDiffActivity(
                         removedEngineeringChangeId,
                         actorId,
-                        ACTION_ISSUE_ENGINEERING_CHANGE_CHANGED,
+                        ACTION_ENGINEERING_CHANGE_ISSUE_CHANGED,
                         List.of(),
                         List.of(issueRef)
                 );
@@ -426,31 +412,27 @@ public class IssueService {
     }
 
     private int allocateIssueNumber() {
-        IssueNumberSequence sequence = issueNumberSequenceRepository.findByIdForUpdate(ISSUE_NUMBER_SEQUENCE_ID)
-                .orElseGet(this::initializeIssueNumberSequence);
+        WorkItemNumberSequence sequence = workItemNumberSequenceRepository.findByIdForUpdate(WORK_ITEM_NUMBER_SEQUENCE_ID)
+                .orElseGet(this::initializeWorkItemNumberSequence);
         return sequence.allocateNextNumber();
     }
 
-    private IssueNumberSequence initializeIssueNumberSequence() {
+    private WorkItemNumberSequence initializeWorkItemNumberSequence() {
         int nextIssueNumber = issueRepository.findTopByOrderByNumberDesc()
                 .map(issue -> issue.getNumber() + 1)
                 .orElse(1);
-        int nextEngineeringChangeNumber = engineeringChangeRepository.findAllByOrderByNumberDesc(PageRequest.of(0, 1))
-                .stream()
-                .findFirst()
-                .map(item -> item.getNumber() + 1)
-                .orElse(1);
+        int nextEngineeringChangeNumber = engineeringChangeApi.getNextEngineeringChangeNumberSeed();
         int nextNumber = Math.max(nextIssueNumber, nextEngineeringChangeNumber);
 
         try {
-            return issueNumberSequenceRepository.saveAndFlush(
-                    IssueNumberSequence.initialize(ISSUE_NUMBER_SEQUENCE_ID, nextNumber)
+            return workItemNumberSequenceRepository.saveAndFlush(
+                    WorkItemNumberSequence.initialize(WORK_ITEM_NUMBER_SEQUENCE_ID, nextNumber)
             );
         } catch (DataIntegrityViolationException ex) {
-            return issueNumberSequenceRepository.findByIdForUpdate(ISSUE_NUMBER_SEQUENCE_ID)
+            return workItemNumberSequenceRepository.findByIdForUpdate(WORK_ITEM_NUMBER_SEQUENCE_ID)
                     .orElseThrow(() -> new AppException(
                             ErrorCode.INTERNAL_SERVER_ERROR,
-                            "이슈 번호 시퀀스를 초기화할 수 없습니다"
+                            "워크아이템 번호 시퀀스를 초기화할 수 없습니다"
                     ));
         }
     }
@@ -463,17 +445,6 @@ public class IssueService {
         for (UUID labelId : labelIds) {
             if (!foundIds.contains(labelId)) {
                 throw new AppException(ErrorCode.NOT_FOUND, "Label '" + labelId + "'을(를) 찾을 수 없습니다");
-            }
-        }
-    }
-
-    private void validateEngineeringChangeIds(Iterable<UUID> engineeringChangeIds) {
-        for (UUID engineeringChangeId : engineeringChangeIds) {
-            if (engineeringChangeRepository.findById(engineeringChangeId).isEmpty()) {
-                throw new AppException(
-                        ErrorCode.NOT_FOUND,
-                        "EngineeringChange '" + engineeringChangeId + "'을(를) 찾을 수 없습니다"
-                );
             }
         }
     }
@@ -514,7 +485,7 @@ public class IssueService {
         if (issueRepository.existsById(targetId)) {
             return ActivityTargetType.ISSUE;
         }
-        if (engineeringChangeRepository.existsById(targetId)) {
+        if (engineeringChangeApi.existsEngineeringChange(targetId)) {
             return ActivityTargetType.ENGINEERING_CHANGE;
         }
         return ActivityTargetType.ISSUE;
@@ -558,7 +529,7 @@ public class IssueService {
         addedUserMentions.removeAll(oldMentions.userIds());
         addedUserMentions.remove(actorId);
         if (!addedUserMentions.isEmpty()) {
-            applicationEventPublisher.publishEvent(IssueUsersMentionedEvent.create(
+            applicationEventPublisher.publishEvent(WorkItemUsersMentionedEvent.create(
                     sourceId,
                     actorId,
                     addedUserMentions,
@@ -637,17 +608,6 @@ public class IssueService {
         return parts;
     }
 
-    private Map<UUID, EngineeringChange> findEngineeringChanges(Set<UUID> engineeringChangeIds) {
-        if (engineeringChangeIds.isEmpty()) {
-            return Map.of();
-        }
-        Map<UUID, EngineeringChange> engineeringChanges = new HashMap<>();
-        for (EngineeringChange engineeringChange : engineeringChangeRepository.findAllById(engineeringChangeIds)) {
-            engineeringChanges.put(engineeringChange.getId(), engineeringChange);
-        }
-        return engineeringChanges;
-    }
-
     private Set<UUID> union(Set<UUID> a, Set<UUID> b) {
         Set<UUID> result = new LinkedHashSet<>(a);
         result.addAll(b);
@@ -688,15 +648,15 @@ public class IssueService {
         return ref;
     }
 
-    private Map<String, Object> toEngineeringChangeRef(EngineeringChange engineeringChange) {
+    private Map<String, Object> toEngineeringChangeRef(EngineeringChangeSnapshot engineeringChange) {
         Map<String, Object> ref = new LinkedHashMap<>();
-        ref.put("id", engineeringChange == null ? "" : engineeringChange.getId().toString());
+        ref.put("id", engineeringChange == null ? "" : engineeringChange.id().toString());
         ref.put("type", "engineering_change");
         ref.put(
                 "label",
-                engineeringChange == null ? "(알 수 없음)" : "#" + engineeringChange.getNumber() + " " + engineeringChange.getTitle()
+                engineeringChange == null ? "(알 수 없음)" : "#" + engineeringChange.number() + " " + engineeringChange.title()
         );
-        ref.put("meta", Map.of("number", engineeringChange == null ? 0 : engineeringChange.getNumber()));
+        ref.put("meta", Map.of("number", engineeringChange == null ? 0 : engineeringChange.number()));
         return ref;
     }
 

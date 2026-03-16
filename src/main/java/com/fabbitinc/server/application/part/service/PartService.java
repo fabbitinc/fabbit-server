@@ -53,10 +53,10 @@ public class PartService {
             PartRevision initialRevision = PartRevision.createInitialDraft(savedPart, "D1", input.name(), actorId);
             applyCreateInput(initialRevision, input);
             applyDefaultOwner(initialRevision, initialRevision.getCategory());
-            initialRevision.recordActivity(
+            initialRevision.recordHistory(
                     actorId,
-                    com.fabbitinc.server.domain.part.model.PartRevisionActivityActionType.CREATED,
-                    com.fabbitinc.server.domain.part.model.PartRevisionActivitySourceType.UI,
+                    com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType.CREATED,
+                    com.fabbitinc.server.domain.part.model.PartRevisionHistorySourceType.UI,
                     null,
                     serializeReasonPayload(input.reason())
             );

@@ -2,9 +2,9 @@ package com.fabbitinc.server.infrastructure.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fabbitinc.server.presentation.issue.dto.request.CreateEngineeringChangeRequest;
-import com.fabbitinc.server.presentation.issue.dto.request.SyncIssuesRequest;
-import com.fabbitinc.server.presentation.issue.dto.response.CommentResponse;
+import com.fabbitinc.server.presentation.engineeringchange.dto.request.CreateEngineeringChangeRequest;
+import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncIssuesRequest;
+import com.fabbitinc.server.presentation.workitem.dto.response.CommentResponse;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import io.swagger.v3.core.converter.ModelConverters;
 import io.swagger.v3.core.jackson.ModelResolver;
@@ -68,8 +68,8 @@ class OpenApiModelResolverConfigTest {
                 .containsKey("issue_ids")
                 .doesNotContainKey("issueIds");
         assertThat(openApi.getComponents().getSchemas().get("CreateEngineeringChangeRequest").getProperties())
-                .containsKey("issue_number")
-                .doesNotContainKey("issueNumber");
+                .containsKey("source_issue_number")
+                .doesNotContainKey("sourceIssueNumber");
         assertThat(openApi.getComponents().getSchemas().get("CommentResponse").getProperties())
                 .containsKey("issue_id")
                 .containsKey("is_modified")

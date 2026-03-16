@@ -187,4 +187,24 @@ public class Issue extends AbstractActorAuditableEntity implements AggregateRoot
         }
         return trimmed;
     }
+
+    public int getNumber() {
+        return number;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getBody() {
+        return body;
+    }
+
+    public IssueState getState() {
+        return state;
+    }
+
+    public Instant getClosedAt() {
+        return closedAt;
+    }
 }

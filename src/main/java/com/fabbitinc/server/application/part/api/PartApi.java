@@ -165,10 +165,7 @@ public class PartApi {
     }
 
     private UUID pickPrioritizedRevisionId(Part part) {
-        if (part.getCurrentReleasedRevisionId() != null) {
-            return part.getCurrentReleasedRevisionId();
-        }
-        return part.getCurrentApprovedRevisionId();
+        return part.getCurrentReleasedRevisionId();
     }
 
     private PartSnapshot toSnapshot(Part part, PartRevision revision) {
