@@ -19,7 +19,7 @@ import com.fabbitinc.server.presentation.issue.dto.response.IssueResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.IssueSummaryResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.IssueUserSummaryResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.LabelBadgeResponse;
-import com.fabbitinc.server.presentation.issue.dto.response.LinkedChangeRequestBadgeResponse;
+import com.fabbitinc.server.presentation.issue.dto.response.LinkedEngineeringChangeBadgeResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.PartBadgeResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.SyncDiffResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.TeamBadgeResponse;
@@ -38,11 +38,10 @@ import com.fabbitinc.server.application.issue.query.result.IssueLookupResult;
 import com.fabbitinc.server.application.issue.query.result.IssueTimelineResult;
 import com.fabbitinc.server.application.issue.query.result.IssueUserSummaryResult;
 import com.fabbitinc.server.application.issue.query.result.LabelBadgeResult;
-import com.fabbitinc.server.application.issue.query.result.LinkedChangeRequestBadgeResult;
+import com.fabbitinc.server.application.issue.query.result.LinkedEngineeringChangeBadgeResult;
 import com.fabbitinc.server.application.issue.query.result.PartBadgeResult;
 import com.fabbitinc.server.application.issue.query.result.TeamBadgeResult;
 import com.fabbitinc.server.application.issue.query.result.TimelineItemTypeResult;
-import com.fabbitinc.server.application.issue.support.IssueTargetType;
 import com.fabbitinc.server.application.issue.usecase.AddIssueFilesUseCase;
 import com.fabbitinc.server.application.issue.usecase.CloseIssueUseCase;
 import com.fabbitinc.server.application.issue.usecase.CreateCommentUseCase;
@@ -128,18 +127,16 @@ public class IssueController {
     public IssueLookupResponse lookupIssues(
             @Parameter(description = "이슈 제목 검색어", example = "BOM")
             @RequestParam(value = "search", required = false) String search,
-            @Parameter(description = "조회할 이슈 타입", example = "ISSUE")
-            @RequestParam(value = "type", required = false) String type,
             @Parameter(description = "조회 건수", example = "10")
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 50, message = "limit은 50 이하여야 합니다") int limit
     ) {
-        return toIssueLookupResponse(issueQuery.lookupIssues(new IssueLookupCondition(search, type, limit)));
+        return toIssueLookupResponse(issueQuery.lookupIssues(new IssueLookupCondition(search, limit)));
     }
 
     @Operation(
             summary = "GET /api/v1/issues",
-            description = "일반 이슈(CHANGE_REQUEST 제외) 목록을 조회합니다"
+            description = "이슈 목록을 조회합니다"
     )
     @GetMapping
     public IssueListResponse listIssues(
@@ -215,11 +212,7 @@ public class IssueController {
     ) {
         return toSyncDiffResponse(
                 syncAssigneesUseCase.execute(
-                        new SyncAssigneesUseCase.SyncAssigneesCommand(
-                                IssueTargetType.ISSUE,
-                                issueNumber,
-                                request.userIds()
-                        )
+                        new SyncAssigneesUseCase.SyncAssigneesCommand(issueNumber, request.userIds())
                 )
         );
     }
@@ -235,18 +228,14 @@ public class IssueController {
     ) {
         return toSyncDiffResponse(
                 syncTeamAssigneesUseCase.execute(
-                        new SyncTeamAssigneesUseCase.SyncTeamAssigneesCommand(
-                                IssueTargetType.ISSUE,
-                                issueNumber,
-                                request.teamIds()
-                        )
+                        new SyncTeamAssigneesUseCase.SyncTeamAssigneesCommand(issueNumber, request.teamIds())
                 )
         );
     }
 
     @Operation(
             summary = "PUT /api/v1/issues/{issueNumber}/changes",
-            description = "이슈에 연결된 변경요청 목록을 동기화합니다"
+            description = "이슈에 연결된 변경관리 목록을 동기화합니다"
     )
     @PutMapping("/{issueNumber}/changes")
     public SyncDiffResponse syncChanges(
@@ -255,7 +244,7 @@ public class IssueController {
     ) {
         return toSyncDiffResponse(
                 syncChangesUseCase.execute(
-                        new SyncChangesUseCase.SyncChangesCommand(issueNumber, request.crIds())
+                        new SyncChangesUseCase.SyncChangesCommand(issueNumber, request.engineeringChangeIds())
                 )
         );
     }
@@ -295,11 +284,7 @@ public class IssueController {
     ) {
         return toSyncDiffResponse(
                 syncLabelsUseCase.execute(
-                        new SyncLabelsUseCase.SyncLabelsCommand(
-                                IssueTargetType.ISSUE,
-                                issueNumber,
-                                request.labelIds()
-                        )
+                        new SyncLabelsUseCase.SyncLabelsCommand(issueNumber, request.labelIds())
                 )
         );
     }
@@ -315,11 +300,7 @@ public class IssueController {
     ) {
         return toSyncDiffResponse(
                 syncPartsUseCase.execute(
-                        new SyncPartsUseCase.SyncPartsCommand(
-                                IssueTargetType.ISSUE,
-                                issueNumber,
-                                request.partIds()
-                        )
+                        new SyncPartsUseCase.SyncPartsCommand(issueNumber, request.partIds())
                 )
         );
     }
@@ -332,7 +313,7 @@ public class IssueController {
     public TimelineResponse getTimeline(
             @PathVariable int issueNumber
     ) {
-        return toTimelineResponse(issueQuery.getTimeline(new IssueTimelineCondition(issueNumber, IssueTargetType.ISSUE)));
+        return toTimelineResponse(issueQuery.getTimeline(new IssueTimelineCondition(issueNumber)));
     }
 
     @Operation(
@@ -347,11 +328,7 @@ public class IssueController {
     ) {
         return toCommentResponse(
                 createCommentUseCase.execute(
-                        new CreateCommentUseCase.CreateCommentCommand(
-                                IssueTargetType.ISSUE,
-                                issueNumber,
-                                request.body()
-                        )
+                        new CreateCommentUseCase.CreateCommentCommand(issueNumber, request.body())
                 )
         );
     }
@@ -368,12 +345,7 @@ public class IssueController {
     ) {
         return toCommentResponse(
                 updateCommentUseCase.execute(
-                        new UpdateCommentUseCase.UpdateCommentCommand(
-                                IssueTargetType.ISSUE,
-                                issueNumber,
-                                commentId,
-                                request.body()
-                        )
+                        new UpdateCommentUseCase.UpdateCommentCommand(issueNumber, commentId, request.body())
                 )
         );
     }
@@ -387,9 +359,7 @@ public class IssueController {
             @PathVariable int issueNumber,
             @PathVariable UUID commentId
     ) {
-        deleteCommentUseCase.execute(
-                new DeleteCommentUseCase.DeleteCommentCommand(IssueTargetType.ISSUE, issueNumber, commentId)
-        );
+        deleteCommentUseCase.execute(new DeleteCommentUseCase.DeleteCommentCommand(issueNumber, commentId));
         return ResponseEntity.noContent().build();
     }
 
@@ -403,11 +373,7 @@ public class IssueController {
             @Valid @RequestBody AttachFilesRequest request
     ) {
         return addIssueFilesUseCase.execute(
-                        new AddIssueFilesUseCase.AddIssueFilesCommand(
-                                IssueTargetType.ISSUE,
-                                issueNumber,
-                                request.fileIds()
-                        )
+                        new AddIssueFilesUseCase.AddIssueFilesCommand(issueNumber, request.fileIds())
                 )
                 .stream()
                 .map(this::toFileItemResponse)
@@ -423,9 +389,7 @@ public class IssueController {
             @PathVariable int issueNumber,
             @PathVariable UUID fileId
     ) {
-        deleteIssueFileUseCase.execute(
-                new DeleteIssueFileUseCase.DeleteIssueFileCommand(IssueTargetType.ISSUE, issueNumber, fileId)
-        );
+        deleteIssueFileUseCase.execute(new DeleteIssueFileUseCase.DeleteIssueFileCommand(issueNumber, fileId));
         return ResponseEntity.noContent().build();
     }
 
@@ -436,7 +400,7 @@ public class IssueController {
     private CommentResponse toCommentResponse(CommentResult result) {
         return new CommentResponse(
                 result.id(),
-                result.issueId(),
+                result.targetId(),
                 result.body(),
                 result.createdAt(),
                 result.updatedAt(),
@@ -452,8 +416,7 @@ public class IssueController {
                                 item.id(),
                                 item.number(),
                                 item.title(),
-                                item.state(),
-                                item.type()
+                                item.state()
                         ))
                         .toList()
         );
@@ -474,7 +437,6 @@ public class IssueController {
         return new IssueSummaryResponse(
                 result.id(),
                 result.number(),
-                result.type(),
                 result.title(),
                 result.state(),
                 result.closedAt(),
@@ -494,7 +456,6 @@ public class IssueController {
         return new IssueResponse(
                 result.id(),
                 result.number(),
-                result.type(),
                 result.title(),
                 result.body(),
                 result.state(),
@@ -509,7 +470,7 @@ public class IssueController {
                 result.parts().stream().map(this::toPartBadgeResponse).toList(),
                 result.files().stream().map(this::toFileItemResponse).toList(),
                 result.commentsCount(),
-                result.linkedChanges().stream().map(this::toLinkedChangeRequestBadgeResponse).toList()
+                result.linkedChanges().stream().map(this::toLinkedEngineeringChangeBadgeResponse).toList()
         );
     }
 
@@ -593,13 +554,13 @@ public class IssueController {
         );
     }
 
-    private LinkedChangeRequestBadgeResponse toLinkedChangeRequestBadgeResponse(LinkedChangeRequestBadgeResult result) {
-        return new LinkedChangeRequestBadgeResponse(
+    private LinkedEngineeringChangeBadgeResponse toLinkedEngineeringChangeBadgeResponse(LinkedEngineeringChangeBadgeResult result) {
+        return new LinkedEngineeringChangeBadgeResponse(
                 result.id(),
                 result.number(),
                 result.title(),
                 result.state(),
-                result.crState()
+                result.engineeringChangeState()
         );
     }
 }

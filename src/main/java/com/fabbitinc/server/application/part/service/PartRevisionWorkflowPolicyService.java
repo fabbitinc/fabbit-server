@@ -26,8 +26,8 @@ public class PartRevisionWorkflowPolicyService {
         return getCurrent().getMode();
     }
 
-    public boolean requiresChangeRequest() {
-        return getCurrent().requiresChangeRequest();
+    public boolean requiresEngineeringChange() {
+        return getCurrent().requiresEngineeringChange();
     }
 
     public PartRevisionWorkflowPolicy ensureDefaultPolicyExists() {
@@ -36,7 +36,7 @@ public class PartRevisionWorkflowPolicyService {
     }
 
     public void assertDirectModeEnabled() {
-        if (requiresChangeRequest()) {
+        if (requiresEngineeringChange()) {
             throw new AppException(
                     ErrorCode.PART_WORKFLOW_POLICY_FORBIDDEN,
                     "변경관리 모드에서는 직접 승인/릴리즈를 사용할 수 없습니다"
@@ -44,11 +44,11 @@ public class PartRevisionWorkflowPolicyService {
         }
     }
 
-    public void assertChangeRequestModeEnabled() {
-        if (!requiresChangeRequest()) {
+    public void assertEngineeringChangeModeEnabled() {
+        if (!requiresEngineeringChange()) {
             throw new AppException(
                     ErrorCode.PART_WORKFLOW_POLICY_FORBIDDEN,
-                    "직접 승인 모드에서는 변경요청 기반 리비전 워크플로를 사용할 수 없습니다"
+                    "직접 승인 모드에서는 변경관리 기반 리비전 워크플로를 사용할 수 없습니다"
             );
         }
     }

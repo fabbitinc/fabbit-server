@@ -25,7 +25,7 @@ public class SyncChangesUseCase {
         IssueService.DiffResult diff = issueService.syncChanges(
                 auth.userId(),
                 issueId,
-                command.changeRequestIds(),
+                command.engineeringChangeIds(),
                 true
         );
         return IssueUseCaseSupport.toSyncDiffResult(diff);
@@ -33,10 +33,10 @@ public class SyncChangesUseCase {
 
     public record SyncChangesCommand(
             int issueNumber,
-            List<UUID> changeRequestIds
+            List<UUID> engineeringChangeIds
     ) {
         public SyncChangesCommand {
-            changeRequestIds = changeRequestIds == null ? List.of() : List.copyOf(changeRequestIds);
+            engineeringChangeIds = engineeringChangeIds == null ? List.of() : List.copyOf(engineeringChangeIds);
         }
     }
 }

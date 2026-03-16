@@ -7,18 +7,15 @@ import com.fabbitinc.server.application.issue.event.IssueUsersMentionedEvent;
 import com.fabbitinc.server.application.issue.support.MentionExtractor;
 import com.fabbitinc.server.application.issue.support.TipTapValidator;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
-import com.fabbitinc.server.application.part.api.ChangeRequestPartRevisionSnapshot;
 import com.fabbitinc.server.domain.activity.model.Activity;
 import com.fabbitinc.server.domain.activity.model.ActivityTargetType;
 import com.fabbitinc.server.domain.activity.repository.ActivityRepository;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
-import com.fabbitinc.server.domain.issue.model.ChangeRequest;
-import com.fabbitinc.server.domain.issue.model.ChangeRequestIssue;
-import com.fabbitinc.server.domain.issue.model.ChangeRequestReviewer;
-import com.fabbitinc.server.domain.issue.model.ChangeRequestTeamReviewer;
-import com.fabbitinc.server.domain.issue.model.CrState;
+import com.fabbitinc.server.domain.issue.model.AbstractComment;
+import com.fabbitinc.server.domain.issue.model.EngineeringChange;
+import com.fabbitinc.server.domain.issue.model.EngineeringChangeIssueLink;
 import com.fabbitinc.server.domain.issue.model.Issue;
 import com.fabbitinc.server.domain.issue.model.IssueAssignee;
 import com.fabbitinc.server.domain.issue.model.IssueComment;
@@ -27,12 +24,8 @@ import com.fabbitinc.server.domain.issue.model.IssueNumberSequence;
 import com.fabbitinc.server.domain.issue.model.IssuePart;
 import com.fabbitinc.server.domain.issue.model.IssueState;
 import com.fabbitinc.server.domain.issue.model.IssueTeamAssignee;
-import com.fabbitinc.server.domain.issue.model.IssueType;
-import com.fabbitinc.server.domain.issue.model.ReviewStatus;
-import com.fabbitinc.server.domain.issue.repository.ChangeRequestIssueRepository;
-import com.fabbitinc.server.domain.issue.repository.ChangeRequestRepository;
-import com.fabbitinc.server.domain.issue.repository.ChangeRequestReviewerRepository;
-import com.fabbitinc.server.domain.issue.repository.ChangeRequestTeamReviewerRepository;
+import com.fabbitinc.server.domain.issue.repository.EngineeringChangeIssueLinkRepository;
+import com.fabbitinc.server.domain.issue.repository.EngineeringChangeRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueAssigneeRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueCommentRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueLabelRepository;
@@ -46,11 +39,9 @@ import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.team.model.TeamMember;
 import com.fabbitinc.server.domain.team.repository.TeamMemberRepository;
-import com.fabbitinc.server.domain.team.repository.TeamRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -59,8 +50,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -74,31 +66,25 @@ public class IssueService {
     private static final UUID ISSUE_NUMBER_SEQUENCE_ID = UUID.fromString("89d98a7b-6b53-4e63-a02a-73f66f606703");
 
     private static final ActivityAction ACTION_ISSUE_STATE_CHANGED = ActivityAction.ISSUE_STATE_CHANGED;
-    private static final ActivityAction ACTION_CR_STATE_CHANGED = ActivityAction.CR_STATE_CHANGED;
     private static final ActivityAction ACTION_ASSIGNEE_CHANGED = ActivityAction.ISSUE_ASSIGNEE_CHANGED;
-    private static final ActivityAction ACTION_REVIEWER_CHANGED = ActivityAction.ISSUE_REVIEWER_CHANGED;
     private static final ActivityAction ACTION_LABEL_CHANGED = ActivityAction.ISSUE_LABEL_CHANGED;
     private static final ActivityAction ACTION_PART_CHANGED = ActivityAction.ISSUE_PART_CHANGED;
     private static final ActivityAction ACTION_FILE_ATTACHED = ActivityAction.ISSUE_FILE_ATTACHED;
     private static final ActivityAction ACTION_FILE_DETACHED = ActivityAction.ISSUE_FILE_DETACHED;
-    private static final ActivityAction ACTION_CR_ISSUE_CHANGED = ActivityAction.CR_ISSUE_CHANGED;
-    private static final ActivityAction ACTION_CR_PART_REVISION_CHANGED = ActivityAction.CR_PART_REVISION_CHANGED;
-    private static final ActivityAction ACTION_ISSUE_CR_CHANGED = ActivityAction.ISSUE_CR_CHANGED;
+    private static final ActivityAction ACTION_ISSUE_ENGINEERING_CHANGE_CHANGED =
+            ActivityAction.ISSUE_ENGINEERING_CHANGE_CHANGED;
     private static final ActivityAction ACTION_ISSUE_MENTIONED = ActivityAction.ISSUE_MENTIONED;
 
     private final IssueRepository issueRepository;
     private final IssueNumberSequenceRepository issueNumberSequenceRepository;
-    private final ChangeRequestRepository changeRequestRepository;
+    private final EngineeringChangeRepository engineeringChangeRepository;
+    private final EngineeringChangeIssueLinkRepository engineeringChangeIssueRepository;
     private final IssueAssigneeRepository issueAssigneeRepository;
     private final IssueTeamAssigneeRepository issueTeamAssigneeRepository;
     private final IssuePartRepository issuePartRepository;
     private final IssueLabelRepository issueLabelRepository;
-    private final ChangeRequestReviewerRepository changeRequestReviewerRepository;
-    private final ChangeRequestTeamReviewerRepository changeRequestTeamReviewerRepository;
-    private final ChangeRequestIssueRepository changeRequestIssueRepository;
     private final IssueCommentRepository issueCommentRepository;
     private final TeamMemberRepository teamMemberRepository;
-    private final TeamRepository teamRepository;
     private final UserRepository userRepository;
     private final LabelRepository labelRepository;
     private final PartRepository partRepository;
@@ -111,13 +97,8 @@ public class IssueService {
     private final ObjectMapper objectMapper;
 
     public Issue getIssueByNumberOrThrow(int issueNumber) {
-        return issueRepository.findByNumberAndType(issueNumber, IssueType.ISSUE)
+        return issueRepository.findByNumber(issueNumber)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "이슈를 찾을 수 없습니다"));
-    }
-
-    public ChangeRequest getChangeRequestByNumberOrThrow(int issueNumber) {
-        return changeRequestRepository.findByNumber(issueNumber)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "변경 요청을 찾을 수 없습니다"));
     }
 
     public Issue getIssueOrThrow(UUID issueId) {
@@ -125,55 +106,13 @@ public class IssueService {
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "Issue '" + issueId + "'을(를) 찾을 수 없습니다"));
     }
 
-    public ChangeRequest getChangeRequestOrThrow(UUID issueId) {
-        return changeRequestRepository.findById(issueId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "ChangeRequest '" + issueId + "'을(를) 찾을 수 없습니다"));
-    }
-
     public Issue createIssue(UUID actorId, String title, JsonNode body) {
         tipTapValidator.validateDocument(body);
-        int nextNumber = allocateIssueNumber();
-
-        Issue issue = Issue.create(nextNumber, title, toBodyString(body), actorId);
+        Issue issue = Issue.create(allocateIssueNumber(), title, toBodyString(body), actorId);
         issueRepository.save(issue);
 
-        registerMentions(issue, actorId, body, null, false);
+        registerMentions(issue.getId(), actorId, body, null, false, issue.getNumber(), issue.getTitle(), "issue");
         return issue;
-    }
-
-    public ChangeRequest createChangeRequest(UUID actorId, String title, JsonNode body) {
-        tipTapValidator.validateDocument(body);
-        int nextNumber = allocateIssueNumber();
-
-        ChangeRequest changeRequest = ChangeRequest.create(nextNumber, title, toBodyString(body), actorId);
-        changeRequestRepository.save(changeRequest);
-
-        registerMentions(changeRequest, actorId, body, null, false);
-        return changeRequest;
-    }
-
-    private int allocateIssueNumber() {
-        IssueNumberSequence sequence = issueNumberSequenceRepository.findByIdForUpdate(ISSUE_NUMBER_SEQUENCE_ID)
-                .orElseGet(this::initializeIssueNumberSequence);
-        return sequence.allocateNextNumber();
-    }
-
-    private IssueNumberSequence initializeIssueNumberSequence() {
-        int nextNumber = issueRepository.findTopByOrderByNumberDesc()
-                .map(issue -> issue.getNumber() + 1)
-                .orElse(1);
-
-        try {
-            return issueNumberSequenceRepository.saveAndFlush(
-                    IssueNumberSequence.initialize(ISSUE_NUMBER_SEQUENCE_ID, nextNumber)
-            );
-        } catch (DataIntegrityViolationException ex) {
-            return issueNumberSequenceRepository.findByIdForUpdate(ISSUE_NUMBER_SEQUENCE_ID)
-                    .orElseThrow(() -> new AppException(
-                            ErrorCode.INTERNAL_SERVER_ERROR,
-                            "이슈 번호 시퀀스를 초기화할 수 없습니다"
-                    ));
-        }
     }
 
     public Issue updateIssue(UUID actorId, Issue issue, String title, JsonNode body) {
@@ -188,86 +127,29 @@ public class IssueService {
         if (body != null) {
             tipTapValidator.validateDocument(body);
             issue.updateBody(toBodyString(body), actorId);
-            registerMentions(issue, actorId, body, oldBody, false);
+            registerMentions(issue.getId(), actorId, body, oldBody, false, issue.getNumber(), issue.getTitle(), "issue");
         }
         return issue;
-    }
-
-    public ChangeRequest updateChangeRequest(UUID actorId, ChangeRequest changeRequest, String title, JsonNode body) {
-        if (changeRequest.getCrState() == CrState.MERGED || changeRequest.getCrState() == CrState.CLOSED) {
-            throw new AppException(
-                    ErrorCode.INVALID_STATE,
-                    "'" + changeRequest.getCrState() + "' 상태에서는 수정할 수 없습니다"
-            );
-        }
-        updateIssue(actorId, changeRequest, title, body);
-        return changeRequest;
     }
 
     public Issue closeIssue(UUID actorId, Issue issue) {
         String oldState = issue.getState().name();
         issue.close(Instant.now(), actorId);
-        addStateActivity(issue.getId(), actorId, ACTION_ISSUE_STATE_CHANGED, oldState, issue.getState().name());
+        addStateActivity(issue.getId(), actorId, oldState, issue.getState().name());
         return issue;
     }
 
     public Issue reopenIssue(UUID actorId, Issue issue) {
         String oldState = issue.getState().name();
         issue.reopen(actorId);
-        addStateActivity(issue.getId(), actorId, ACTION_ISSUE_STATE_CHANGED, oldState, issue.getState().name());
+        addStateActivity(issue.getId(), actorId, oldState, issue.getState().name());
         return issue;
-    }
-
-    public ChangeRequest submitChangeRequest(UUID actorId, ChangeRequest changeRequest) {
-        String oldState = changeRequest.getCrState().name();
-        try {
-            changeRequest.submit(actorId);
-        } catch (DomainException ex) {
-            throw new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
-        }
-        addStateActivity(changeRequest.getId(), actorId, ACTION_CR_STATE_CHANGED, oldState, changeRequest.getCrState().name());
-        return changeRequest;
-    }
-
-    public ChangeRequest mergeChangeRequest(UUID actorId, ChangeRequest changeRequest) {
-        String oldState = changeRequest.getCrState().name();
-        try {
-            changeRequest.merge(Instant.now(), actorId);
-        } catch (DomainException ex) {
-            throw new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
-        }
-        addStateActivity(changeRequest.getId(), actorId, ACTION_CR_STATE_CHANGED, oldState, changeRequest.getCrState().name());
-        closeLinkedOpenIssuesIfResolved(actorId, changeRequest.getId());
-        return changeRequest;
-    }
-
-    public ChangeRequest closeChangeRequest(UUID actorId, ChangeRequest changeRequest) {
-        String oldState = changeRequest.getCrState().name();
-        try {
-            changeRequest.closeCr(Instant.now(), actorId);
-        } catch (DomainException ex) {
-            throw new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
-        }
-        addStateActivity(changeRequest.getId(), actorId, ACTION_CR_STATE_CHANGED, oldState, changeRequest.getCrState().name());
-        return changeRequest;
-    }
-
-    public ChangeRequest reopenChangeRequest(UUID actorId, ChangeRequest changeRequest) {
-        String oldState = changeRequest.getCrState().name();
-        try {
-            changeRequest.reopenCr(actorId);
-        } catch (DomainException ex) {
-            throw new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
-        }
-        addStateActivity(changeRequest.getId(), actorId, ACTION_CR_STATE_CHANGED, oldState, changeRequest.getCrState().name());
-        return changeRequest;
     }
 
     public DiffResult syncAssignees(UUID actorId, UUID issueId, List<UUID> userIds, boolean emitActivity) {
         Set<UUID> current = issueAssigneeRepository.findByIssueId(issueId).stream()
                 .map(IssueAssignee::getUserId)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-
         Set<UUID> desired = new LinkedHashSet<>(userIds);
 
         Set<UUID> assignedTeamIds = issueTeamAssigneeRepository.findByIssueId(issueId).stream()
@@ -289,8 +171,7 @@ public class IssueService {
         }
         if (!toAdd.isEmpty()) {
             Issue issue = getIssueOrThrow(issueId);
-            List<IssueAssignee> adds = toAdd.stream().map(issue::assignUser).toList();
-            issueAssigneeRepository.saveAll(adds);
+            issueAssigneeRepository.saveAll(toAdd.stream().map(issue::assignUser).toList());
         }
 
         if (emitActivity && (!toAdd.isEmpty() || !toRemove.isEmpty())) {
@@ -324,88 +205,13 @@ public class IssueService {
         }
         if (!toAdd.isEmpty()) {
             Issue issue = getIssueOrThrow(issueId);
-            List<IssueTeamAssignee> adds = toAdd.stream().map(issue::assignTeam).toList();
-            issueTeamAssigneeRepository.saveAll(adds);
+            issueTeamAssigneeRepository.saveAll(toAdd.stream().map(issue::assignTeam).toList());
 
             Set<UUID> overlapUsers = teamMemberRepository.findByTeam_IdIn(toAdd).stream()
                     .map(TeamMember::getUserId)
                     .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
             if (!overlapUsers.isEmpty()) {
                 issueAssigneeRepository.deleteByIssueIdAndUserIdIn(issueId, overlapUsers);
-            }
-        }
-
-        return new DiffResult(toAdd, toRemove);
-    }
-
-    public DiffResult syncReviewers(UUID actorId, UUID changeRequestId, List<UUID> userIds, boolean emitActivity) {
-        Set<UUID> current = changeRequestReviewerRepository.findByChangeRequestId(changeRequestId).stream()
-                .map(ChangeRequestReviewer::getUserId)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        Set<UUID> desired = new LinkedHashSet<>(userIds);
-
-        Set<UUID> reviewerTeamIds = changeRequestTeamReviewerRepository.findByChangeRequestId(changeRequestId).stream()
-                .map(ChangeRequestTeamReviewer::getTeamId)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        Set<UUID> coveredByTeams = teamMemberRepository.findByTeam_IdIn(reviewerTeamIds).stream()
-                .map(TeamMember::getUserId)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-
-        Set<UUID> toAdd = new LinkedHashSet<>(desired);
-        toAdd.removeAll(current);
-        toAdd.removeAll(coveredByTeams);
-
-        Set<UUID> toRemove = new LinkedHashSet<>(current);
-        toRemove.removeAll(desired);
-
-        if (!toRemove.isEmpty()) {
-            changeRequestReviewerRepository.deleteByChangeRequestIdAndUserIdIn(changeRequestId, toRemove);
-        }
-        if (!toAdd.isEmpty()) {
-            ChangeRequest changeRequest = getChangeRequestOrThrow(changeRequestId);
-            List<ChangeRequestReviewer> adds = toAdd.stream().map(changeRequest::assignReviewer).toList();
-            changeRequestReviewerRepository.saveAll(adds);
-        }
-
-        if (emitActivity && (!toAdd.isEmpty() || !toRemove.isEmpty())) {
-            Map<UUID, User> users = findUsers(Set.copyOf(union(toAdd, toRemove)));
-            addDiffActivity(
-                    changeRequestId,
-                    actorId,
-                    ACTION_REVIEWER_CHANGED,
-                    toAdd.stream().map(userId -> toUserRef(userId, users.get(userId))).toList(),
-                    toRemove.stream().map(userId -> toUserRef(userId, users.get(userId))).toList()
-            );
-        }
-
-        return new DiffResult(toAdd, toRemove);
-    }
-
-    public DiffResult syncTeamReviewers(UUID changeRequestId, List<UUID> teamIds) {
-        Set<UUID> current = changeRequestTeamReviewerRepository.findByChangeRequestId(changeRequestId).stream()
-                .map(ChangeRequestTeamReviewer::getTeamId)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        Set<UUID> desired = new LinkedHashSet<>(teamIds);
-
-        Set<UUID> toAdd = new LinkedHashSet<>(desired);
-        toAdd.removeAll(current);
-
-        Set<UUID> toRemove = new LinkedHashSet<>(current);
-        toRemove.removeAll(desired);
-
-        if (!toRemove.isEmpty()) {
-            changeRequestTeamReviewerRepository.deleteByChangeRequestIdAndTeamIdIn(changeRequestId, toRemove);
-        }
-        if (!toAdd.isEmpty()) {
-            ChangeRequest changeRequest = getChangeRequestOrThrow(changeRequestId);
-            List<ChangeRequestTeamReviewer> adds = toAdd.stream().map(changeRequest::assignTeamReviewer).toList();
-            changeRequestTeamReviewerRepository.saveAll(adds);
-
-            Set<UUID> overlapUsers = teamMemberRepository.findByTeam_IdIn(toAdd).stream()
-                    .map(TeamMember::getUserId)
-                    .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-            if (!overlapUsers.isEmpty()) {
-                changeRequestReviewerRepository.deleteByChangeRequestIdAndUserIdIn(changeRequestId, overlapUsers);
             }
         }
 
@@ -431,8 +237,7 @@ public class IssueService {
         }
         if (!toAdd.isEmpty()) {
             Issue issue = getIssueOrThrow(issueId);
-            List<IssueLabel> adds = toAdd.stream().map(issue::linkLabel).toList();
-            issueLabelRepository.saveAll(adds);
+            issueLabelRepository.saveAll(toAdd.stream().map(issue::linkLabel).toList());
         }
 
         if (emitActivity && (!toAdd.isEmpty() || !toRemove.isEmpty())) {
@@ -466,8 +271,7 @@ public class IssueService {
         }
         if (!toAdd.isEmpty()) {
             Issue issue = getIssueOrThrow(issueId);
-            List<IssuePart> adds = toAdd.stream().map(issue::linkPart).toList();
-            issuePartRepository.saveAll(adds);
+            issuePartRepository.saveAll(toAdd.stream().map(issue::linkPart).toList());
         }
 
         if (emitActivity && (!toAdd.isEmpty() || !toRemove.isEmpty())) {
@@ -484,13 +288,13 @@ public class IssueService {
         return new DiffResult(toAdd, toRemove);
     }
 
-    public DiffResult syncIssues(UUID actorId, UUID changeRequestId, List<UUID> issueIds, boolean emitActivity) {
-        validateIssueIds(issueIds);
+    public DiffResult syncChanges(UUID actorId, UUID issueId, List<UUID> engineeringChangeIds, boolean emitActivity) {
+        validateEngineeringChangeIds(engineeringChangeIds);
 
-        Set<UUID> current = changeRequestIssueRepository.findByChangeRequestId(changeRequestId).stream()
-                .map(ChangeRequestIssue::getIssueId)
+        Set<UUID> current = engineeringChangeIssueRepository.findByIssueId(issueId).stream()
+                .map(EngineeringChangeIssueLink::getEngineeringChangeId)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        Set<UUID> desired = new LinkedHashSet<>(issueIds);
+        Set<UUID> desired = new LinkedHashSet<>(engineeringChangeIds);
 
         Set<UUID> toAdd = new LinkedHashSet<>(desired);
         toAdd.removeAll(current);
@@ -499,168 +303,81 @@ public class IssueService {
         toRemove.removeAll(desired);
 
         if (!toRemove.isEmpty()) {
-            changeRequestIssueRepository.deleteByChangeRequestIdAndIssueIdIn(changeRequestId, toRemove);
+            engineeringChangeIssueRepository.deleteByIssueIdAndEngineeringChangeIdIn(issueId, toRemove);
         }
         if (!toAdd.isEmpty()) {
-            ChangeRequest changeRequest = getChangeRequestOrThrow(changeRequestId);
-            List<ChangeRequestIssue> adds = toAdd.stream().map(changeRequest::linkIssue).toList();
-            changeRequestIssueRepository.saveAll(adds);
-        }
-
-        if (emitActivity && (!toAdd.isEmpty() || !toRemove.isEmpty())) {
-            ChangeRequest changeRequest = getChangeRequestOrThrow(changeRequestId);
-            Map<UUID, Issue> issues = findIssues(Set.copyOf(union(toAdd, toRemove)));
-
-            List<Map<String, Object>> addedIssueRefs = toAdd.stream().map(issueId -> toIssueRef(issues.get(issueId))).toList();
-            List<Map<String, Object>> removedIssueRefs = toRemove.stream().map(issueId -> toIssueRef(issues.get(issueId))).toList();
-
-            addDiffActivity(changeRequestId, actorId, ACTION_CR_ISSUE_CHANGED, addedIssueRefs, removedIssueRefs);
-
-            Map<String, Object> crRef = toCrRef(changeRequest);
-            for (UUID addedIssueId : toAdd) {
-                addDiffActivity(
-                        addedIssueId,
-                        actorId,
-                        ACTION_CR_ISSUE_CHANGED,
-                        List.of(crRef),
-                        List.of()
-                );
-            }
-            for (UUID removedIssueId : toRemove) {
-                addDiffActivity(
-                        removedIssueId,
-                        actorId,
-                        ACTION_CR_ISSUE_CHANGED,
-                        List.of(),
-                        List.of(crRef)
-                );
-            }
-        }
-
-        return new DiffResult(toAdd, toRemove);
-    }
-
-    public DiffResult syncChanges(UUID actorId, UUID issueId, List<UUID> changeRequestIds, boolean emitActivity) {
-        validateChangeRequestIds(changeRequestIds);
-
-        Set<UUID> current = changeRequestIssueRepository.findByIssueId(issueId).stream()
-                .map(ChangeRequestIssue::getChangeRequestId)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        Set<UUID> desired = new LinkedHashSet<>(changeRequestIds);
-
-        Set<UUID> toAdd = new LinkedHashSet<>(desired);
-        toAdd.removeAll(current);
-
-        Set<UUID> toRemove = new LinkedHashSet<>(current);
-        toRemove.removeAll(desired);
-
-        if (!toRemove.isEmpty()) {
-            changeRequestIssueRepository.deleteByIssueIdAndChangeRequestIdIn(issueId, toRemove);
-        }
-        if (!toAdd.isEmpty()) {
-            Map<UUID, ChangeRequest> changeRequests = findChangeRequests(toAdd);
-            List<ChangeRequestIssue> adds = toAdd.stream()
-                    .map(changeId -> changeRequests.get(changeId).linkIssue(issueId))
-                    .toList();
-            changeRequestIssueRepository.saveAll(adds);
+            Map<UUID, EngineeringChange> engineeringChanges = findEngineeringChanges(toAdd);
+            engineeringChangeIssueRepository.saveAll(toAdd.stream()
+                    .map(changeId -> engineeringChanges.get(changeId).linkIssue(issueId))
+                    .toList());
         }
 
         if (emitActivity && (!toAdd.isEmpty() || !toRemove.isEmpty())) {
             Issue issue = getIssueOrThrow(issueId);
-            Map<UUID, ChangeRequest> crs = findChangeRequests(Set.copyOf(union(toAdd, toRemove)));
+            Map<UUID, EngineeringChange> engineeringChanges = findEngineeringChanges(Set.copyOf(union(toAdd, toRemove)));
 
-            List<Map<String, Object>> addedCrRefs = toAdd.stream().map(changeId -> toCrRef(crs.get(changeId))).toList();
-            List<Map<String, Object>> removedCrRefs = toRemove.stream().map(changeId -> toCrRef(crs.get(changeId))).toList();
-
-            addDiffActivity(issueId, actorId, ACTION_ISSUE_CR_CHANGED, addedCrRefs, removedCrRefs);
+            addDiffActivity(
+                    issueId,
+                    actorId,
+                    ACTION_ISSUE_ENGINEERING_CHANGE_CHANGED,
+                    toAdd.stream().map(changeId -> toEngineeringChangeRef(engineeringChanges.get(changeId))).toList(),
+                    toRemove.stream().map(changeId -> toEngineeringChangeRef(engineeringChanges.get(changeId))).toList()
+            );
 
             Map<String, Object> issueRef = toIssueRef(issue);
-            for (UUID addedCrId : toAdd) {
-                addDiffActivity(addedCrId, actorId, ACTION_ISSUE_CR_CHANGED, List.of(issueRef), List.of());
+            for (UUID addedEngineeringChangeId : toAdd) {
+                addDiffActivity(
+                        addedEngineeringChangeId,
+                        actorId,
+                        ACTION_ISSUE_ENGINEERING_CHANGE_CHANGED,
+                        List.of(issueRef),
+                        List.of()
+                );
             }
-            for (UUID removedCrId : toRemove) {
-                addDiffActivity(removedCrId, actorId, ACTION_ISSUE_CR_CHANGED, List.of(), List.of(issueRef));
+            for (UUID removedEngineeringChangeId : toRemove) {
+                addDiffActivity(
+                        removedEngineeringChangeId,
+                        actorId,
+                        ACTION_ISSUE_ENGINEERING_CHANGE_CHANGED,
+                        List.of(),
+                        List.of(issueRef)
+                );
             }
         }
 
         return new DiffResult(toAdd, toRemove);
     }
 
-    public void recordChangeRequestPartRevisionDiffActivity(
-            UUID actorId,
-            UUID changeRequestId,
-            List<ChangeRequestPartRevisionSnapshot> added,
-            List<ChangeRequestPartRevisionSnapshot> removed
-    ) {
-        if ((added == null || added.isEmpty()) && (removed == null || removed.isEmpty())) {
-            return;
-        }
-        addDiffActivity(
-                changeRequestId,
-                actorId,
-                ACTION_CR_PART_REVISION_CHANGED,
-                added == null ? List.of() : added.stream().map(this::toPartRevisionRef).toList(),
-                removed == null ? List.of() : removed.stream().map(this::toPartRevisionRef).toList()
-        );
-    }
-
-    public ChangeRequestReviewer submitReview(UUID actorId, UUID changeRequestId, ReviewStatus status) {
-        if (status == null || status == ReviewStatus.PENDING) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "리뷰 상태는 APPROVED 또는 REJECTED만 허용됩니다");
-        }
-        ChangeRequestReviewer reviewer = changeRequestReviewerRepository
-                .findByChangeRequestIdAndUserId(changeRequestId, actorId)
-                .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN, "해당 변경 요청의 검토자가 아닙니다"));
-
-        reviewer.submit(status, Instant.now());
-        return reviewer;
-    }
-
-    public IssueComment createComment(UUID actorId, UUID issueId, JsonNode body) {
+    public AbstractComment createComment(UUID actorId, UUID issueId, JsonNode body) {
         tipTapValidator.validateDocument(body);
+        MentionSource source = getMentionSourceOrThrow(issueId);
         Issue issue = getIssueOrThrow(issueId);
-
         IssueComment comment = issue.writeComment(toBodyString(body), actorId);
         issueCommentRepository.save(comment);
 
-        registerMentions(issue, actorId, body, null, true);
+        registerMentions(issueId, actorId, body, null, true, source.number(), source.title(), source.type());
         return comment;
     }
 
-    public IssueComment updateComment(UUID actorId, UUID issueId, UUID commentId, JsonNode body) {
+    public AbstractComment updateComment(UUID actorId, UUID issueId, UUID commentId, JsonNode body) {
         tipTapValidator.validateDocument(body);
-        Issue issue = getIssueOrThrow(issueId);
-
-        IssueComment comment = issueCommentRepository.findById(commentId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "댓글을 찾을 수 없습니다"));
-
-        if (!comment.getIssueId().equals(issueId)) {
-            throw new AppException(ErrorCode.NOT_FOUND, "해당 이슈의 댓글이 아닙니다");
-        }
+        MentionSource source = getMentionSourceOrThrow(issueId);
+        IssueComment comment = findCommentOrThrow(issueId, commentId);
         if (!comment.getCreatedBy().equals(actorId)) {
             throw new AppException(ErrorCode.FORBIDDEN, "본인이 작성한 댓글만 수정할 수 있습니다");
         }
 
         JsonNode oldBody = parseJson(comment.getBody());
         comment.updateBody(toBodyString(body), actorId);
-        registerMentions(issue, actorId, body, oldBody, true);
-
+        registerMentions(issueId, actorId, body, oldBody, true, source.number(), source.title(), source.type());
         return comment;
     }
 
     public void deleteComment(UUID actorId, UUID issueId, UUID commentId) {
-        getIssueOrThrow(issueId);
-
-        IssueComment comment = issueCommentRepository.findById(commentId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "댓글을 찾을 수 없습니다"));
-
-        if (!comment.getIssueId().equals(issueId)) {
-            throw new AppException(ErrorCode.NOT_FOUND, "해당 이슈의 댓글이 아닙니다");
-        }
+        IssueComment comment = findCommentOrThrow(issueId, commentId);
         if (!comment.getCreatedBy().equals(actorId)) {
             throw new AppException(ErrorCode.FORBIDDEN, "본인이 작성한 댓글만 삭제할 수 있습니다");
         }
-
         issueCommentRepository.delete(comment);
     }
 
@@ -683,8 +400,7 @@ public class IssueService {
         }
 
         if (emitActivity) {
-            List<Map<String, Object>> addedRefs = files.stream().map(this::toFileRef).toList();
-            addDiffActivity(issueId, actorId, ACTION_FILE_ATTACHED, addedRefs, List.of());
+            addDiffActivity(issueId, actorId, ACTION_FILE_ATTACHED, files.stream().map(this::toFileRef).toList(), List.of());
         }
         return files;
     }
@@ -706,52 +422,44 @@ public class IssueService {
         removed.put("id", fileId.toString());
         removed.put("type", "file");
         removed.put("label", fileName == null ? "(알 수 없음)" : fileName);
-
         addDiffActivity(issueId, actorId, ACTION_FILE_DETACHED, List.of(), List.of(removed));
     }
 
-    private void closeLinkedOpenIssuesIfResolved(UUID actorId, UUID changeRequestId) {
-        List<UUID> linkedIssueIds = changeRequestIssueRepository.findByChangeRequestId(changeRequestId).stream()
-                .map(ChangeRequestIssue::getIssueId)
-                .toList();
+    private int allocateIssueNumber() {
+        IssueNumberSequence sequence = issueNumberSequenceRepository.findByIdForUpdate(ISSUE_NUMBER_SEQUENCE_ID)
+                .orElseGet(this::initializeIssueNumberSequence);
+        return sequence.allocateNextNumber();
+    }
 
-        for (UUID linkedIssueId : linkedIssueIds) {
-            Issue linked = issueRepository.findByIdAndType(linkedIssueId, IssueType.ISSUE).orElse(null);
-            if (linked == null || linked.getState() != IssueState.OPEN) {
-                continue;
-            }
+    private IssueNumberSequence initializeIssueNumberSequence() {
+        int nextIssueNumber = issueRepository.findTopByOrderByNumberDesc()
+                .map(issue -> issue.getNumber() + 1)
+                .orElse(1);
+        int nextEngineeringChangeNumber = engineeringChangeRepository.findAllByOrderByNumberDesc(PageRequest.of(0, 1))
+                .stream()
+                .findFirst()
+                .map(item -> item.getNumber() + 1)
+                .orElse(1);
+        int nextNumber = Math.max(nextIssueNumber, nextEngineeringChangeNumber);
 
-            if (!hasUnresolvedLinkedChangeRequests(linkedIssueId)) {
-                String oldState = linked.getState().name();
-                linked.close(Instant.now(), actorId);
-                addStateActivity(linked.getId(), actorId, ACTION_ISSUE_STATE_CHANGED, oldState, linked.getState().name());
-            }
+        try {
+            return issueNumberSequenceRepository.saveAndFlush(
+                    IssueNumberSequence.initialize(ISSUE_NUMBER_SEQUENCE_ID, nextNumber)
+            );
+        } catch (DataIntegrityViolationException ex) {
+            return issueNumberSequenceRepository.findByIdForUpdate(ISSUE_NUMBER_SEQUENCE_ID)
+                    .orElseThrow(() -> new AppException(
+                            ErrorCode.INTERNAL_SERVER_ERROR,
+                            "이슈 번호 시퀀스를 초기화할 수 없습니다"
+                    ));
         }
     }
 
-    private boolean hasUnresolvedLinkedChangeRequests(UUID issueId) {
-        List<UUID> changeRequestIds = changeRequestIssueRepository.findByIssueId(issueId).stream()
-                .map(ChangeRequestIssue::getChangeRequestId)
-                .toList();
-        if (changeRequestIds.isEmpty()) {
-            return false;
+    private void validateLabels(Iterable<UUID> labelIds) {
+        Set<UUID> foundIds = new LinkedHashSet<>();
+        for (Label label : labelRepository.findAllById(labelIds)) {
+            foundIds.add(label.getId());
         }
-
-        for (ChangeRequest changeRequest : changeRequestRepository.findAllById(changeRequestIds)) {
-            if (changeRequest.getCrState() != CrState.MERGED && changeRequest.getCrState() != CrState.CLOSED) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void validateLabels(Collection<UUID> labelIds) {
-        if (labelIds.isEmpty()) {
-            return;
-        }
-        Set<UUID> foundIds = labelRepository.findAllById(labelIds).stream()
-                .map(Label::getId)
-                .collect(java.util.stream.Collectors.toSet());
         for (UUID labelId : labelIds) {
             if (!foundIds.contains(labelId)) {
                 throw new AppException(ErrorCode.NOT_FOUND, "Label '" + labelId + "'을(를) 찾을 수 없습니다");
@@ -759,35 +467,28 @@ public class IssueService {
         }
     }
 
-    private void validateIssueIds(Collection<UUID> issueIds) {
-        for (UUID issueId : issueIds) {
-            if (issueRepository.findByIdAndType(issueId, IssueType.ISSUE).isEmpty()) {
-                throw new AppException(ErrorCode.NOT_FOUND, "Issue '" + issueId + "'을(를) 찾을 수 없습니다");
+    private void validateEngineeringChangeIds(Iterable<UUID> engineeringChangeIds) {
+        for (UUID engineeringChangeId : engineeringChangeIds) {
+            if (engineeringChangeRepository.findById(engineeringChangeId).isEmpty()) {
+                throw new AppException(
+                        ErrorCode.NOT_FOUND,
+                        "EngineeringChange '" + engineeringChangeId + "'을(를) 찾을 수 없습니다"
+                );
             }
         }
     }
 
-    private void validateChangeRequestIds(Collection<UUID> changeRequestIds) {
-        for (UUID changeRequestId : changeRequestIds) {
-            if (changeRequestRepository.findById(changeRequestId).isEmpty()) {
-                throw new AppException(ErrorCode.NOT_FOUND, "ChangeRequest '" + changeRequestId + "'을(를) 찾을 수 없습니다");
-            }
-        }
-    }
-
-    private void addStateActivity(UUID issueId, UUID actorId, ActivityAction action, String oldState, String newState) {
-        Map<String, Object> detail = Map.of(
-                "changes",
-                Map.of(
-                        "state",
-                        Map.of("old", oldState, "new", newState)
-                )
+    private void addStateActivity(UUID issueId, UUID actorId, String oldState, String newState) {
+        addActivity(
+                issueId,
+                actorId,
+                ACTION_ISSUE_STATE_CHANGED,
+                Map.of("changes", Map.of("state", Map.of("old", oldState, "new", newState)))
         );
-        addActivity(issueId, actorId, action, detail);
     }
 
     private void addDiffActivity(
-            UUID targetIssueId,
+            UUID targetId,
             UUID actorId,
             ActivityAction action,
             List<Map<String, Object>> added,
@@ -796,67 +497,85 @@ public class IssueService {
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("added", added);
         detail.put("removed", removed);
-        addActivity(targetIssueId, actorId, action, detail);
+        addActivity(targetId, actorId, action, detail);
     }
 
-    private void addActivity(UUID targetIssueId, UUID actorId, ActivityAction action, Object detail) {
-        Activity activity = Activity.create(
-                ActivityTargetType.ISSUE,
-                targetIssueId,
+    private void addActivity(UUID targetId, UUID actorId, ActivityAction action, Object detail) {
+        activityRepository.save(Activity.create(
+                resolveActivityTargetType(targetId),
+                targetId,
                 action.value(),
                 actorId,
                 toJsonString(detail)
-        );
-        activityRepository.save(activity);
+        ));
+    }
+
+    private ActivityTargetType resolveActivityTargetType(UUID targetId) {
+        if (issueRepository.existsById(targetId)) {
+            return ActivityTargetType.ISSUE;
+        }
+        if (engineeringChangeRepository.existsById(targetId)) {
+            return ActivityTargetType.ENGINEERING_CHANGE;
+        }
+        return ActivityTargetType.ISSUE;
+    }
+
+    private IssueComment findCommentOrThrow(UUID issueId, UUID commentId) {
+        IssueComment comment = issueCommentRepository.findById(commentId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "댓글을 찾을 수 없습니다"));
+        if (!comment.getIssueId().equals(issueId)) {
+            throw new AppException(ErrorCode.NOT_FOUND, "해당 이슈의 댓글이 아닙니다");
+        }
+        return comment;
     }
 
     private void registerMentions(
-            Issue issue,
+            UUID sourceId,
             UUID actorId,
             JsonNode newBody,
             JsonNode oldBody,
-            boolean isComment
+            boolean isComment,
+            int sourceNumber,
+            String sourceTitle,
+            String sourceType
     ) {
         MentionExtractor.MentionSet newMentions = mentionExtractor.extract(newBody);
         MentionExtractor.MentionSet oldMentions = mentionExtractor.extract(oldBody);
 
         Set<UUID> addedIssueMentions = new LinkedHashSet<>(newMentions.issueIds());
         addedIssueMentions.removeAll(oldMentions.issueIds());
-        addedIssueMentions.remove(issue.getId());
-
-        String sourceIssueType = issue.getType() == IssueType.CHANGE_REQUEST
-                ? "change_request"
-                : "issue";
+        addedIssueMentions.remove(sourceId);
         for (UUID targetIssueId : addedIssueMentions) {
             Map<String, Object> ref = new LinkedHashMap<>();
-            ref.put("id", issue.getId().toString());
-            ref.put("type", sourceIssueType);
-            ref.put("label", "#" + issue.getNumber() + " " + issue.getTitle());
-            ref.put("meta", Map.of("number", issue.getNumber(), "is_comment", isComment));
-
-            addActivity(
-                    targetIssueId,
-                    actorId,
-                    ACTION_ISSUE_MENTIONED,
-                    Map.of("refs", List.of(ref))
-            );
+            ref.put("id", sourceId.toString());
+            ref.put("type", sourceType);
+            ref.put("label", "#" + sourceNumber + " " + sourceTitle);
+            ref.put("meta", Map.of("number", sourceNumber, "is_comment", isComment));
+            addActivity(targetIssueId, actorId, ACTION_ISSUE_MENTIONED, Map.of("refs", List.of(ref)));
         }
 
         Set<UUID> addedUserMentions = new LinkedHashSet<>(newMentions.userIds());
         addedUserMentions.removeAll(oldMentions.userIds());
         addedUserMentions.remove(actorId);
-
         if (!addedUserMentions.isEmpty()) {
             applicationEventPublisher.publishEvent(IssueUsersMentionedEvent.create(
-                    issue.getId(),
+                    sourceId,
                     actorId,
                     addedUserMentions,
-                    issue.getNumber(),
-                    issue.getTitle(),
-                    sourceIssueType,
+                    sourceNumber,
+                    sourceTitle,
+                    sourceType,
                     isComment
             ));
         }
+    }
+
+    private MentionSource getMentionSourceOrThrow(UUID issueId) {
+        Issue issue = issueRepository.findById(issueId).orElse(null);
+        if (issue == null) {
+            throw new AppException(ErrorCode.NOT_FOUND, "대상을 찾을 수 없습니다");
+        }
+        return new MentionSource(issue.getId(), issue.getNumber(), issue.getTitle(), "issue");
     }
 
     private JsonNode parseJson(String raw) {
@@ -889,61 +608,50 @@ public class IssueService {
         if (userIds.isEmpty()) {
             return Map.of();
         }
-        Map<UUID, User> map = new HashMap<>();
+        Map<UUID, User> users = new HashMap<>();
         for (User user : userRepository.findByIdInOrderByFullNameAsc(userIds)) {
-            map.put(user.getId(), user);
+            users.put(user.getId(), user);
         }
-        return map;
+        return users;
     }
 
     private Map<UUID, Label> findLabels(Set<UUID> labelIds) {
         if (labelIds.isEmpty()) {
             return Map.of();
         }
-        Map<UUID, Label> map = new HashMap<>();
+        Map<UUID, Label> labels = new HashMap<>();
         for (Label label : labelRepository.findAllById(labelIds)) {
-            map.put(label.getId(), label);
+            labels.put(label.getId(), label);
         }
-        return map;
+        return labels;
     }
 
     private Map<UUID, Part> findParts(Set<UUID> partIds) {
         if (partIds.isEmpty()) {
             return Map.of();
         }
-        Map<UUID, Part> map = new HashMap<>();
+        Map<UUID, Part> parts = new HashMap<>();
         for (Part part : partRepository.findAllById(partIds)) {
-            map.put(part.getId(), part);
+            parts.put(part.getId(), part);
         }
-        return map;
+        return parts;
     }
 
-    private Map<UUID, Issue> findIssues(Set<UUID> issueIds) {
-        if (issueIds.isEmpty()) {
+    private Map<UUID, EngineeringChange> findEngineeringChanges(Set<UUID> engineeringChangeIds) {
+        if (engineeringChangeIds.isEmpty()) {
             return Map.of();
         }
-        Map<UUID, Issue> map = new HashMap<>();
-        for (Issue issue : issueRepository.findAllById(issueIds)) {
-            map.put(issue.getId(), issue);
+        Map<UUID, EngineeringChange> engineeringChanges = new HashMap<>();
+        for (EngineeringChange engineeringChange : engineeringChangeRepository.findAllById(engineeringChangeIds)) {
+            engineeringChanges.put(engineeringChange.getId(), engineeringChange);
         }
-        return map;
-    }
-
-    private Map<UUID, ChangeRequest> findChangeRequests(Set<UUID> changeRequestIds) {
-        if (changeRequestIds.isEmpty()) {
-            return Map.of();
-        }
-        Map<UUID, ChangeRequest> map = new HashMap<>();
-        for (ChangeRequest changeRequest : changeRequestRepository.findAllById(changeRequestIds)) {
-            map.put(changeRequest.getId(), changeRequest);
-        }
-        return map;
+        return engineeringChanges;
     }
 
     private Set<UUID> union(Set<UUID> a, Set<UUID> b) {
-        Set<UUID> union = new LinkedHashSet<>(a);
-        union.addAll(b);
-        return union;
+        Set<UUID> result = new LinkedHashSet<>(a);
+        result.addAll(b);
+        return result;
     }
 
     private Map<String, Object> toUserRef(UUID userId, User user) {
@@ -959,12 +667,7 @@ public class IssueService {
         ref.put("id", labelId.toString());
         ref.put("type", "label");
         ref.put("label", label == null ? "(삭제됨)" : label.getName());
-
-        if (label != null) {
-            ref.put("meta", Map.of("color", label.getColor()));
-        } else {
-            ref.put("meta", Map.of("color", "#888888"));
-        }
+        ref.put("meta", Map.of("color", label == null ? "#888888" : label.getColor()));
         return ref;
     }
 
@@ -976,40 +679,24 @@ public class IssueService {
         return ref;
     }
 
-    private Map<String, Object> toPartRevisionRef(ChangeRequestPartRevisionSnapshot snapshot) {
-        Map<String, Object> ref = new LinkedHashMap<>();
-        ref.put("id", snapshot.revisionId().toString());
-        ref.put("type", "part_revision");
-        ref.put(
-                "label",
-                snapshot.baseRevisionCode() == null
-                        ? "%s/%s".formatted(snapshot.partNumber(), snapshot.draftKey())
-                        : "%s/%s/%s".formatted(snapshot.partNumber(), snapshot.baseRevisionCode(), snapshot.draftKey())
-        );
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("partNumber", snapshot.partNumber());
-        meta.put("baseRevisionCode", snapshot.baseRevisionCode());
-        meta.put("draftKey", snapshot.draftKey());
-        meta.put("status", snapshot.status().name());
-        ref.put("meta", meta);
-        return ref;
-    }
-
     private Map<String, Object> toIssueRef(Issue issue) {
         Map<String, Object> ref = new LinkedHashMap<>();
         ref.put("id", issue == null ? "" : issue.getId().toString());
-        ref.put("type", issue == null ? "issue" : issue.getType().name());
+        ref.put("type", "issue");
         ref.put("label", issue == null ? "(알 수 없음)" : "#" + issue.getNumber() + " " + issue.getTitle());
         ref.put("meta", Map.of("number", issue == null ? 0 : issue.getNumber()));
         return ref;
     }
 
-    private Map<String, Object> toCrRef(ChangeRequest changeRequest) {
+    private Map<String, Object> toEngineeringChangeRef(EngineeringChange engineeringChange) {
         Map<String, Object> ref = new LinkedHashMap<>();
-        ref.put("id", changeRequest == null ? "" : changeRequest.getId().toString());
-        ref.put("type", "cr");
-        ref.put("label", changeRequest == null ? "(알 수 없음)" : "#" + changeRequest.getNumber() + " " + changeRequest.getTitle());
-        ref.put("meta", Map.of("number", changeRequest == null ? 0 : changeRequest.getNumber()));
+        ref.put("id", engineeringChange == null ? "" : engineeringChange.getId().toString());
+        ref.put("type", "engineering_change");
+        ref.put(
+                "label",
+                engineeringChange == null ? "(알 수 없음)" : "#" + engineeringChange.getNumber() + " " + engineeringChange.getTitle()
+        );
+        ref.put("meta", Map.of("number", engineeringChange == null ? 0 : engineeringChange.getNumber()));
         return ref;
     }
 
@@ -1025,5 +712,8 @@ public class IssueService {
             Set<UUID> added,
             Set<UUID> removed
     ) {
+    }
+
+    private record MentionSource(UUID id, int number, String title, String type) {
     }
 }

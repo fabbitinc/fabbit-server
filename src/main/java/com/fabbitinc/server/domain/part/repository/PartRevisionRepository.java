@@ -32,7 +32,7 @@ public interface PartRevisionRepository extends JpaRepository<PartRevision, UUID
 
     Optional<PartRevision> findByPartNumberAndDraftKeyAndBaseRevisionIdIsNull(String partNumber, String draftKey);
 
-    List<PartRevision> findByChangeRequestIdOrderByCreatedAtAsc(UUID changeRequestId);
+    List<PartRevision> findByEngineeringChangeIdOrderByCreatedAtAsc(UUID engineeringChangeId);
 
     boolean existsByCategory(String category);
 

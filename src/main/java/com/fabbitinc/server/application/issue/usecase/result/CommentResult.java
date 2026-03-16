@@ -6,7 +6,7 @@ import tools.jackson.databind.JsonNode;
 
 public record CommentResult(
         UUID id,
-        UUID issueId,
+        UUID targetId,
         JsonNode body,
         Instant createdAt,
         Instant updatedAt,

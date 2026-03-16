@@ -2,7 +2,6 @@ package com.fabbitinc.server.presentation.issue.dto.response;
 
 import com.fabbitinc.server.presentation.file.dto.response.FileItemResponse;
 import com.fabbitinc.server.domain.issue.model.IssueState;
-import com.fabbitinc.server.domain.issue.model.IssueType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
@@ -12,7 +11,6 @@ import java.util.UUID;
 public record IssueSummaryResponse(
         UUID id,
         int number,
-        IssueType type,
         String title,
         IssueState state,
         Instant closedAt,

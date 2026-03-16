@@ -26,9 +26,9 @@ public class PartRevisionWorkflowApi {
     private final PartRevisionService partRevisionService;
     private final PartRevisionWorkflowPolicyService partRevisionWorkflowPolicyService;
 
-    public DiffResult syncChangeRequestPartRevisions(UUID changeRequestId, List<ChangeRequestPartRevisionRef> refs) {
-        partRevisionWorkflowPolicyService.assertChangeRequestModeEnabled();
-        List<PartRevision> currentLinks = partRevisionRepository.findByChangeRequestIdOrderByCreatedAtAsc(changeRequestId);
+    public DiffResult syncEngineeringChangePartRevisions(UUID engineeringChangeId, List<EngineeringChangePartRevisionRef> refs) {
+        partRevisionWorkflowPolicyService.assertEngineeringChangeModeEnabled();
+        List<PartRevision> currentLinks = partRevisionRepository.findByEngineeringChangeIdOrderByCreatedAtAsc(engineeringChangeId);
         Map<UUID, PartRevision> desiredById = resolveDrafts(refs);
 
         Set<UUID> currentIds = currentLinks.stream()
@@ -61,21 +61,21 @@ public class PartRevisionWorkflowApi {
             currentLinks.stream()
                     .filter(revision -> revision.getId().equals(revisionId))
                     .findFirst()
-                    .ifPresent(PartRevision::clearChangeRequest);
+                    .ifPresent(PartRevision::clearEngineeringChange);
         }
 
         for (UUID revisionId : toAdd) {
             PartRevision revision = desiredById.get(revisionId);
-            if (revision.getChangeRequestId() != null && !changeRequestId.equals(revision.getChangeRequestId())) {
+            if (revision.getEngineeringChangeId() != null && !engineeringChangeId.equals(revision.getEngineeringChangeId())) {
                 throw new AppException(
                         ErrorCode.CONFLICT,
-                        "이미 다른 변경요청에 연결된 초안입니다: %s/%s".formatted(
+                        "이미 다른 변경관리에 연결된 초안입니다: %s/%s".formatted(
                                 revision.getPartNumber(),
                                 revision.getDraftKey()
                         )
                 );
             }
-            revision.assignChangeRequest(changeRequestId);
+            revision.assignEngineeringChange(engineeringChangeId);
         }
 
         Map<UUID, PartRevision> baseRevisions = resolveBaseRevisions(List.copyOf(union(currentLinks, addedRevisions)));
@@ -91,54 +91,54 @@ public class PartRevisionWorkflowApi {
         );
     }
 
-    public List<ChangeRequestPartRevisionSnapshot> listChangeRequestPartRevisions(UUID changeRequestId) {
-        List<PartRevision> revisions = partRevisionRepository.findByChangeRequestIdOrderByCreatedAtAsc(changeRequestId);
+    public List<EngineeringChangePartRevisionSnapshot> listEngineeringChangePartRevisions(UUID engineeringChangeId) {
+        List<PartRevision> revisions = partRevisionRepository.findByEngineeringChangeIdOrderByCreatedAtAsc(engineeringChangeId);
         Map<UUID, PartRevision> baseRevisions = resolveBaseRevisions(revisions);
         return revisions.stream()
                 .map(revision -> toSnapshot(revision, baseRevisions.get(revision.getBaseRevisionId())))
                 .toList();
     }
 
-    public void submitChangeRequest(UUID actorId, UUID changeRequestId) {
-        partRevisionWorkflowPolicyService.assertChangeRequestModeEnabled();
-        for (PartRevision revision : partRevisionRepository.findByChangeRequestIdOrderByCreatedAtAsc(changeRequestId)) {
+    public void submitEngineeringChange(UUID actorId, UUID engineeringChangeId) {
+        partRevisionWorkflowPolicyService.assertEngineeringChangeModeEnabled();
+        for (PartRevision revision : partRevisionRepository.findByEngineeringChangeIdOrderByCreatedAtAsc(engineeringChangeId)) {
             partRevisionService.markInReview(revision, actorId);
         }
     }
 
-    public void reopenChangeRequest(UUID actorId, UUID changeRequestId) {
-        partRevisionWorkflowPolicyService.assertChangeRequestModeEnabled();
-        submitChangeRequest(actorId, changeRequestId);
+    public void reopenEngineeringChange(UUID actorId, UUID engineeringChangeId) {
+        partRevisionWorkflowPolicyService.assertEngineeringChangeModeEnabled();
+        submitEngineeringChange(actorId, engineeringChangeId);
     }
 
-    public void closeChangeRequest(UUID actorId, UUID changeRequestId) {
-        partRevisionWorkflowPolicyService.assertChangeRequestModeEnabled();
-        for (PartRevision revision : partRevisionRepository.findByChangeRequestIdOrderByCreatedAtAsc(changeRequestId)) {
+    public void closeEngineeringChange(UUID actorId, UUID engineeringChangeId) {
+        partRevisionWorkflowPolicyService.assertEngineeringChangeModeEnabled();
+        for (PartRevision revision : partRevisionRepository.findByEngineeringChangeIdOrderByCreatedAtAsc(engineeringChangeId)) {
             partRevisionService.revertToDraft(revision, actorId);
         }
     }
 
-    public void mergeChangeRequest(UUID actorId, UUID changeRequestId, int changeRequestNumber, String changeRequestTitle) {
-        partRevisionWorkflowPolicyService.assertChangeRequestModeEnabled();
-        List<PartRevision> revisions = partRevisionRepository.findByChangeRequestIdOrderByCreatedAtAsc(changeRequestId).stream()
+    public void mergeEngineeringChange(UUID actorId, UUID engineeringChangeId, int engineeringChangeNumber, String engineeringChangeTitle) {
+        partRevisionWorkflowPolicyService.assertEngineeringChangeModeEnabled();
+        List<PartRevision> revisions = partRevisionRepository.findByEngineeringChangeIdOrderByCreatedAtAsc(engineeringChangeId).stream()
                 .sorted(Comparator
                         .comparing(PartRevision::getPartNumber)
                         .thenComparing(revision -> revision.getDraftKey() == null ? "" : revision.getDraftKey()))
                 .toList();
         for (PartRevision revision : revisions) {
-            partRevisionService.releaseDraftFromChangeRequest(
+            partRevisionService.releaseDraftFromEngineeringChange(
                     revision,
                     actorId,
-                    changeRequestId,
-                    changeRequestNumber,
-                    changeRequestTitle
+                    engineeringChangeId,
+                    engineeringChangeNumber,
+                    engineeringChangeTitle
             );
         }
     }
 
-    private Map<UUID, PartRevision> resolveDrafts(List<ChangeRequestPartRevisionRef> refs) {
+    private Map<UUID, PartRevision> resolveDrafts(List<EngineeringChangePartRevisionRef> refs) {
         Map<UUID, PartRevision> resolved = new LinkedHashMap<>();
-        for (ChangeRequestPartRevisionRef ref : refs) {
+        for (EngineeringChangePartRevisionRef ref : refs) {
             PartRevision revision = partRevisionRouteService.getRequiredDraft(
                     ref.partNumber(),
                     ref.baseRevisionCode(),
@@ -166,8 +166,8 @@ public class PartRevisionWorkflowApi {
                 ));
     }
 
-    private ChangeRequestPartRevisionSnapshot toSnapshot(PartRevision revision, PartRevision baseRevision) {
-        return new ChangeRequestPartRevisionSnapshot(
+    private EngineeringChangePartRevisionSnapshot toSnapshot(PartRevision revision, PartRevision baseRevision) {
+        return new EngineeringChangePartRevisionSnapshot(
                 revision.getId(),
                 revision.getPartId(),
                 revision.getPartNumber(),
@@ -188,8 +188,8 @@ public class PartRevisionWorkflowApi {
     public record DiffResult(
             int addedCount,
             int removedCount,
-            List<ChangeRequestPartRevisionSnapshot> addedItems,
-            List<ChangeRequestPartRevisionSnapshot> removedItems
+            List<EngineeringChangePartRevisionSnapshot> addedItems,
+            List<EngineeringChangePartRevisionSnapshot> removedItems
     ) {
     }
 }

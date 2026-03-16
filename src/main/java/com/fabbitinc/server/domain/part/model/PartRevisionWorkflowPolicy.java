@@ -56,7 +56,7 @@ public class PartRevisionWorkflowPolicy extends AbstractAuditableEntity implemen
         this.mode = requireMode(mode);
     }
 
-    public boolean requiresChangeRequest() {
+    public boolean requiresEngineeringChange() {
         return mode == PartRevisionWorkflowMode.CHANGE_REQUEST_REQUIRED;
     }
 

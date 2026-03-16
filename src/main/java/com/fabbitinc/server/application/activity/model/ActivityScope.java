@@ -6,7 +6,7 @@ import java.util.Locale;
 
 public enum ActivityScope {
     ISSUE("issue"),
-    CR("cr"),
+    ENGINEERING_CHANGE("engineering_change"),
     PROJECT("project"),
     ORGANIZATION("organization");
 

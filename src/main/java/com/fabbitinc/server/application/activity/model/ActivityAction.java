@@ -13,11 +13,14 @@ public enum ActivityAction {
     ISSUE_PART_CHANGED("issue:part_changed", ActivityScope.ISSUE),
     ISSUE_FILE_ATTACHED("issue:file_attached", ActivityScope.ISSUE),
     ISSUE_FILE_DETACHED("issue:file_detached", ActivityScope.ISSUE),
-    ISSUE_CR_CHANGED("issue:cr_changed", ActivityScope.ISSUE),
+    ISSUE_ENGINEERING_CHANGE_CHANGED("issue:engineering_change_changed", ActivityScope.ISSUE),
     ISSUE_MENTIONED("issue:mentioned", ActivityScope.ISSUE),
-    CR_STATE_CHANGED("cr:state_changed", ActivityScope.CR),
-    CR_ISSUE_CHANGED("cr:issue_changed", ActivityScope.CR),
-    CR_PART_REVISION_CHANGED("cr:part_revision_changed", ActivityScope.CR);
+    ENGINEERING_CHANGE_STATE_CHANGED("engineering_change:state_changed", ActivityScope.ENGINEERING_CHANGE),
+    ENGINEERING_CHANGE_ISSUE_CHANGED("engineering_change:issue_changed", ActivityScope.ENGINEERING_CHANGE),
+    ENGINEERING_CHANGE_PART_REVISION_CHANGED(
+            "engineering_change:part_revision_changed",
+            ActivityScope.ENGINEERING_CHANGE
+    );
 
     private final String value;
     private final ActivityScope scope;

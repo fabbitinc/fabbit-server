@@ -8,7 +8,7 @@ import tools.jackson.databind.JsonNode;
 @Schema(description = "댓글 응답")
 public record CommentResponse(
         UUID id,
-        UUID issueId,
+        UUID targetId,
         JsonNode body,
         Instant createdAt,
         Instant updatedAt,

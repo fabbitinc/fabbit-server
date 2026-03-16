@@ -3,7 +3,6 @@ package com.fabbitinc.server.application.issue.usecase;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.issue.service.IssueService;
-import com.fabbitinc.server.application.issue.support.IssueTargetType;
 import com.fabbitinc.server.application.issue.usecase.result.SyncDiffResult;
 import java.util.List;
 import java.util.UUID;
@@ -21,7 +20,7 @@ public class SyncAssigneesUseCase {
 
     public SyncDiffResult execute(SyncAssigneesCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.targetType(), command.issueNumber());
+        UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
 
         IssueService.DiffResult diff = issueService.syncAssignees(
                 auth.userId(),
@@ -33,7 +32,6 @@ public class SyncAssigneesUseCase {
     }
 
     public record SyncAssigneesCommand(
-            IssueTargetType targetType,
             int issueNumber,
             List<UUID> userIds
     ) {

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum NotificationSourceIssueType {
     ISSUE("issue"),
-    CHANGE_REQUEST("change_request");
+    ENGINEERING_CHANGE("engineering_change");
 
     private final String value;
 

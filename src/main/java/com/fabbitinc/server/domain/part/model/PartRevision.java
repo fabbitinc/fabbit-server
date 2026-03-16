@@ -72,8 +72,10 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     public static final String CODE_PART_REVISION_SUPERSEDE_INVALID_STATE = "PART_REVISION_SUPERSEDE_INVALID_STATE";
     public static final String CODE_PART_REVISION_OWNER_REQUIRED = "PART_REVISION_OWNER_REQUIRED";
     public static final String CODE_PART_REVISION_OWNER_TEAM_REQUIRED = "PART_REVISION_OWNER_TEAM_REQUIRED";
-    public static final String CODE_PART_REVISION_CHANGE_REQUEST_REQUIRED = "PART_REVISION_CHANGE_REQUEST_REQUIRED";
-    public static final String CODE_PART_REVISION_CHANGE_REQUEST_INVALID_STATE = "PART_REVISION_CHANGE_REQUEST_INVALID_STATE";
+    public static final String CODE_PART_REVISION_ENGINEERING_CHANGE_REQUIRED =
+            "PART_REVISION_ENGINEERING_CHANGE_REQUIRED";
+    public static final String CODE_PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE =
+            "PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE";
     public static final String CODE_PART_REVISION_IN_REVIEW_REQUIRED = "PART_REVISION_IN_REVIEW_REQUIRED";
 
     private static final int MAX_REVISION_CODE_LENGTH = 50;
@@ -110,7 +112,7 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     private String draftKey;
 
     @Column(name = "change_request_id")
-    private UUID changeRequestId;
+    private UUID engineeringChangeId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
@@ -240,24 +242,24 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         this.draftKey = normalizeDraftKey(draftKey, this.status);
     }
 
-    public void assignChangeRequest(UUID changeRequestId) {
-        if (changeRequestId == null) {
+    public void assignEngineeringChange(UUID engineeringChangeId) {
+        if (engineeringChangeId == null) {
             throw new DomainException(
-                    CODE_PART_REVISION_CHANGE_REQUEST_REQUIRED,
-                    "변경요청 ID는 필수입니다"
+                    CODE_PART_REVISION_ENGINEERING_CHANGE_REQUIRED,
+                    "변경관리 ID는 필수입니다"
             );
         }
         if (this.status != PartRevisionStatus.DRAFT && this.status != PartRevisionStatus.IN_REVIEW) {
             throw new DomainException(
-                    CODE_PART_REVISION_CHANGE_REQUEST_INVALID_STATE,
-                    "DRAFT 또는 IN_REVIEW 상태의 리비전만 변경요청에 연결할 수 있습니다"
+                    CODE_PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE,
+                    "DRAFT 또는 IN_REVIEW 상태의 리비전만 변경관리에 연결할 수 있습니다"
             );
         }
-        this.changeRequestId = changeRequestId;
+        this.engineeringChangeId = engineeringChangeId;
     }
 
-    public void clearChangeRequest() {
-        this.changeRequestId = null;
+    public void clearEngineeringChange() {
+        this.engineeringChangeId = null;
     }
 
     public void changePartNumber(String partNumber) {
@@ -439,7 +441,7 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             }
             if (this.status != PartRevisionStatus.DRAFT) {
                 throw new DomainException(
-                        CODE_PART_REVISION_CHANGE_REQUEST_INVALID_STATE,
+                        CODE_PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE,
                         "DRAFT 상태의 리비전만 IN_REVIEW로 전환할 수 있습니다"
                 );
             }

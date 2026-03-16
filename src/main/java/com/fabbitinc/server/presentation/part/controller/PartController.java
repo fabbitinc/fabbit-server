@@ -130,7 +130,7 @@ public class PartController {
         return toPartLookupResponse(partQuery.lookup(new PartLookupCondition(search, limit)));
     }
 
-    @Operation(summary = "GET /api/v1/parts/drafts/lookup", description = "현재 사용자가 만든 변경요청 연결 가능 초안 목록을 조회합니다")
+    @Operation(summary = "GET /api/v1/parts/drafts/lookup", description = "현재 사용자가 만든 변경관리 연결 가능 초안 목록을 조회합니다")
     @GetMapping("/drafts/lookup")
     public PartDraftLookupResponse lookupDrafts(
             @Parameter(description = "품번/품명 검색어", example = "AES")

@@ -170,12 +170,12 @@ public class PartRevisionService {
         }
     }
 
-    public PartRevision releaseDraftFromChangeRequest(
+    public PartRevision releaseDraftFromEngineeringChange(
             PartRevision draft,
             UUID actorId,
-            UUID changeRequestId,
-            int changeRequestNumber,
-            String changeRequestTitle
+            UUID engineeringChangeId,
+            int engineeringChangeNumber,
+            String engineeringChangeTitle
     ) {
         try {
             Part part = getRequiredPartForUpdate(draft.getPartNumber());
@@ -184,13 +184,13 @@ public class PartRevisionService {
                     part,
                     draft,
                     actorId,
-                    PartRevisionActivitySourceType.CHANGE_REQUEST,
-                    changeRequestId,
-                    serializeChangeRequestPayload(
+                    PartRevisionActivitySourceType.ENGINEERING_CHANGE,
+                    engineeringChangeId,
+                    serializeEngineeringChangePayload(
                             "RELEASED",
                             resolveNextRevisionCode(part),
-                            changeRequestNumber,
-                            changeRequestTitle
+                            engineeringChangeNumber,
+                            engineeringChangeTitle
                     )
             );
         } catch (DomainException ex) {
@@ -419,18 +419,18 @@ public class PartRevisionService {
         }
     }
 
-    private String serializeChangeRequestPayload(
+    private String serializeEngineeringChangePayload(
             String action,
             String revisionCode,
-            int changeRequestNumber,
-            String changeRequestTitle
+            int engineeringChangeNumber,
+            String engineeringChangeTitle
     ) {
         try {
             return objectMapper.writeValueAsString(Map.of(
                     "action", action,
                     "revisionCode", revisionCode,
-                    "changeRequestNumber", changeRequestNumber,
-                    "changeRequestTitle", changeRequestTitle == null ? "" : changeRequestTitle.trim()
+                    "engineeringChangeNumber", engineeringChangeNumber,
+                    "engineeringChangeTitle", engineeringChangeTitle == null ? "" : engineeringChangeTitle.trim()
             ));
         } catch (JacksonException ex) {
             throw new AppException(ErrorCode.BAD_REQUEST, "변경 이력을 직렬화할 수 없습니다");
@@ -476,13 +476,13 @@ public class PartRevisionService {
             case PartRevision.CODE_PART_REVISION_DRAFT_REQUIRED,
                     PartRevision.CODE_PART_REVISION_DRAFT_SOURCE_REQUIRED,
                     PartRevision.CODE_PART_REVISION_DRAFT_CODE_FORBIDDEN,
-                    PartRevision.CODE_PART_REVISION_CHANGE_REQUEST_INVALID_STATE,
+                    PartRevision.CODE_PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE,
                     PartRevision.CODE_PART_REVISION_IN_REVIEW_REQUIRED,
                     PartRevision.CODE_PART_REVISION_APPROVABLE_REQUIRED,
                     PartRevision.CODE_PART_REVISION_RELEASABLE_REQUIRED,
                     PartRevision.CODE_PART_REVISION_SUPERSEDE_INVALID_STATE ->
                     new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
-            case PartRevision.CODE_PART_REVISION_CHANGE_REQUEST_REQUIRED ->
+            case PartRevision.CODE_PART_REVISION_ENGINEERING_CHANGE_REQUIRED ->
                     new AppException(ErrorCode.VALIDATION_ERROR, ex.getMessage());
             default ->
                     new AppException(ErrorCode.INVALID_STATE, ex.getMessage());

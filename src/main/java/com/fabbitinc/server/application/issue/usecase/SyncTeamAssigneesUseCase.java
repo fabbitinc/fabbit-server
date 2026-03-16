@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.issue.usecase;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.issue.service.IssueService;
-import com.fabbitinc.server.application.issue.support.IssueTargetType;
 import com.fabbitinc.server.application.issue.usecase.result.SyncDiffResult;
 import java.util.List;
 import java.util.UUID;
@@ -20,14 +19,13 @@ public class SyncTeamAssigneesUseCase {
 
     public SyncDiffResult execute(SyncTeamAssigneesCommand command) {
         currentAuthProvider.getCurrentAuth();
-        UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.targetType(), command.issueNumber());
+        UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
 
         IssueService.DiffResult diff = issueService.syncTeamAssignees(issueId, command.teamIds());
         return IssueUseCaseSupport.toSyncDiffResult(diff);
     }
 
     public record SyncTeamAssigneesCommand(
-            IssueTargetType targetType,
             int issueNumber,
             List<UUID> teamIds
     ) {

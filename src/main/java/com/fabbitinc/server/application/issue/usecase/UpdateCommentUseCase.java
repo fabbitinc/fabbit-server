@@ -3,7 +3,6 @@ package com.fabbitinc.server.application.issue.usecase;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.issue.service.IssueService;
-import com.fabbitinc.server.application.issue.support.IssueTargetType;
 import com.fabbitinc.server.application.issue.usecase.result.CommentResult;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -23,16 +22,15 @@ public class UpdateCommentUseCase {
 
     public CommentResult execute(UpdateCommentCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.targetType(), command.issueNumber());
+        UUID targetId = IssueUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
 
         return IssueUseCaseSupport.toCommentResult(
-                issueService.updateComment(auth.userId(), issueId, command.commentId(), command.body()),
+                issueService.updateComment(auth.userId(), targetId, command.commentId(), command.body()),
                 objectMapper
         );
     }
 
     public record UpdateCommentCommand(
-            IssueTargetType targetType,
             int issueNumber,
             UUID commentId,
             JsonNode body

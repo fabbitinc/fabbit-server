@@ -5,7 +5,6 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.file.service.FileService;
 import com.fabbitinc.server.application.issue.service.IssueService;
-import com.fabbitinc.server.application.issue.support.IssueTargetType;
 import com.fabbitinc.server.application.issue.usecase.result.AttachedFileResult;
 import com.fabbitinc.server.domain.file.model.File;
 import java.util.List;
@@ -26,7 +25,7 @@ public class AddIssueFilesUseCase {
 
     public List<AttachedFileResult> execute(AddIssueFilesCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.targetType(), command.issueNumber());
+        UUID issueId = IssueUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
 
         List<File> attachableFiles = fileService.validateAttachable(command.fileIds());
         List<File> attachedFiles = issueService.attachFiles(auth.userId(), issueId, attachableFiles);
@@ -43,7 +42,6 @@ public class AddIssueFilesUseCase {
     }
 
     public record AddIssueFilesCommand(
-            IssueTargetType targetType,
             int issueNumber,
             List<UUID> fileIds
     ) {

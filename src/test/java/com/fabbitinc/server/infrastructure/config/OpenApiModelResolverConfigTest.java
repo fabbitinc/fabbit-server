@@ -2,7 +2,7 @@ package com.fabbitinc.server.infrastructure.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fabbitinc.server.presentation.issue.dto.request.CreateChangeRequestRequest;
+import com.fabbitinc.server.presentation.issue.dto.request.CreateEngineeringChangeRequest;
 import com.fabbitinc.server.presentation.issue.dto.request.SyncIssuesRequest;
 import com.fabbitinc.server.presentation.issue.dto.response.CommentResponse;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
@@ -58,7 +58,7 @@ class OpenApiModelResolverConfigTest {
         converters.addConverter(modelResolver);
 
         Map<String, Schema> schemas = new LinkedHashMap<>(converters.readAll(SyncIssuesRequest.class));
-        schemas.putAll(converters.readAll(CreateChangeRequestRequest.class));
+        schemas.putAll(converters.readAll(CreateEngineeringChangeRequest.class));
         schemas.putAll(converters.readAll(CommentResponse.class));
 
         OpenAPI openApi = new OpenAPI().components(new Components().schemas(schemas));
@@ -67,7 +67,7 @@ class OpenApiModelResolverConfigTest {
         assertThat(openApi.getComponents().getSchemas().get("SyncIssuesRequest").getProperties())
                 .containsKey("issue_ids")
                 .doesNotContainKey("issueIds");
-        assertThat(openApi.getComponents().getSchemas().get("CreateChangeRequestRequest").getProperties())
+        assertThat(openApi.getComponents().getSchemas().get("CreateEngineeringChangeRequest").getProperties())
                 .containsKey("issue_number")
                 .doesNotContainKey("issueNumber");
         assertThat(openApi.getComponents().getSchemas().get("CommentResponse").getProperties())

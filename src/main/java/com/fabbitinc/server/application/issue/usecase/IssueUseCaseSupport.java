@@ -1,10 +1,10 @@
 package com.fabbitinc.server.application.issue.usecase;
 
+import com.fabbitinc.server.application.issue.service.EngineeringChangeService;
 import com.fabbitinc.server.application.issue.service.IssueService;
-import com.fabbitinc.server.application.issue.support.IssueTargetType;
+import com.fabbitinc.server.domain.issue.model.AbstractComment;
 import com.fabbitinc.server.application.issue.usecase.result.CommentResult;
 import com.fabbitinc.server.application.issue.usecase.result.SyncDiffResult;
-import com.fabbitinc.server.domain.issue.model.IssueComment;
 import java.time.Instant;
 import java.util.UUID;
 import tools.jackson.core.JacksonException;
@@ -16,17 +16,18 @@ final class IssueUseCaseSupport {
     private IssueUseCaseSupport() {
     }
 
-    static UUID resolveIssueId(IssueService issueService, IssueTargetType targetType, int issueNumber) {
-        if (targetType == IssueTargetType.CHANGE_REQUEST) {
-            return issueService.getChangeRequestByNumberOrThrow(issueNumber).getId();
-        }
+    static UUID resolveIssueId(IssueService issueService, int issueNumber) {
         return issueService.getIssueByNumberOrThrow(issueNumber).getId();
     }
 
-    static CommentResult toCommentResult(IssueComment comment, ObjectMapper objectMapper) {
+    static UUID resolveEngineeringChangeId(EngineeringChangeService engineeringChangeService, int issueNumber) {
+        return engineeringChangeService.getEngineeringChangeByNumberOrThrow(issueNumber).getId();
+    }
+
+    static CommentResult toCommentResult(AbstractComment comment, ObjectMapper objectMapper) {
         return new CommentResult(
                 comment.getId(),
-                comment.getIssueId(),
+                comment.getTargetId(),
                 parseJson(comment.getBody(), objectMapper),
                 comment.getCreatedAt(),
                 comment.getUpdatedAt(),
@@ -36,6 +37,10 @@ final class IssueUseCaseSupport {
     }
 
     static SyncDiffResult toSyncDiffResult(IssueService.DiffResult diff) {
+        return new SyncDiffResult(diff.added().size(), diff.removed().size());
+    }
+
+    static SyncDiffResult toSyncDiffResult(EngineeringChangeService.DiffResult diff) {
         return new SyncDiffResult(diff.added().size(), diff.removed().size());
     }
 

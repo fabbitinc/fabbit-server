@@ -2,7 +2,6 @@ package com.fabbitinc.server.domain.issue.repository;
 
 import com.fabbitinc.server.domain.issue.model.Issue;
 import com.fabbitinc.server.domain.issue.model.IssueState;
-import com.fabbitinc.server.domain.issue.model.IssueType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -11,15 +10,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface IssueRepository extends JpaRepository<Issue, UUID> {
 
-    Optional<Issue> findByIdAndType(UUID id, IssueType type);
+    Optional<Issue> findByNumber(int number);
 
-    Optional<Issue> findByNumberAndType(int number, IssueType type);
-
-    long countByTypeAndState(IssueType type, IssueState state);
+    long countByState(IssueState state);
 
     Optional<Issue> findTopByOrderByNumberDesc();
 
-    List<Issue> findByTypeOrderByNumberDesc(IssueType type, Pageable pageable);
+    List<Issue> findAllByOrderByNumberDesc(Pageable pageable);
 
-    List<Issue> findByTypeOrderByNumberDesc(IssueType type);
+    List<Issue> findAllByOrderByNumberDesc();
 }

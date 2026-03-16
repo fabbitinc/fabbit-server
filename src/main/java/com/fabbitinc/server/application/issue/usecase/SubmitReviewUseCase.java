@@ -2,10 +2,10 @@ package com.fabbitinc.server.application.issue.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
-import com.fabbitinc.server.application.issue.service.IssueService;
+import com.fabbitinc.server.application.issue.service.EngineeringChangeService;
 import com.fabbitinc.server.application.issue.usecase.result.SubmitReviewResult;
-import com.fabbitinc.server.domain.issue.model.ChangeRequest;
-import com.fabbitinc.server.domain.issue.model.ChangeRequestReviewer;
+import com.fabbitinc.server.domain.issue.model.EngineeringChange;
+import com.fabbitinc.server.domain.issue.model.EngineeringChangeReviewer;
 import com.fabbitinc.server.domain.issue.model.ReviewStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -17,13 +17,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class SubmitReviewUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
-    private final IssueService issueService;
+    private final EngineeringChangeService engineeringChangeService;
 
     public SubmitReviewResult execute(SubmitReviewCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        ChangeRequest changeRequest = issueService.getChangeRequestByNumberOrThrow(command.issueNumber());
+        EngineeringChange engineeringChange =
+                engineeringChangeService.getEngineeringChangeByNumberOrThrow(command.issueNumber());
 
-        ChangeRequestReviewer reviewer = issueService.submitReview(auth.userId(), changeRequest.getId(), command.status());
+        EngineeringChangeReviewer reviewer =
+                engineeringChangeService.submitReview(auth.userId(), engineeringChange.getId(), command.status());
         return new SubmitReviewResult(reviewer.getReviewStatus(), reviewer.getReviewedAt());
     }
 

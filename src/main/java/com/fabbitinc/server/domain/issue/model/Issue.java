@@ -5,16 +5,11 @@ import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import jakarta.persistence.Column;
-import jakarta.persistence.DiscriminatorColumn;
-import jakarta.persistence.DiscriminatorType;
-import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
-import jakarta.persistence.Inheritance;
-import jakarta.persistence.InheritanceType;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -34,13 +29,10 @@ import lombok.NoArgsConstructor;
                 @UniqueConstraint(name = "uq_issues_number", columnNames = "number")
         },
         indexes = {
-                @Index(name = "ix_issues_type_state", columnList = "type,state"),
+                @Index(name = "ix_issues_state", columnList = "state"),
                 @Index(name = "ix_issues_created_by", columnList = "created_by")
         }
 )
-@Inheritance(strategy = InheritanceType.JOINED)
-@DiscriminatorColumn(name = "type", discriminatorType = DiscriminatorType.STRING, length = 20)
-@DiscriminatorValue("ISSUE")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Issue extends AbstractActorAuditableEntity implements AggregateRoot {
 
@@ -53,10 +45,6 @@ public class Issue extends AbstractActorAuditableEntity implements AggregateRoot
 
     @Column(name = "number", nullable = false)
     private int number;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false, length = 20, insertable = false, updatable = false)
-    private IssueType type;
 
     @Column(name = "title", nullable = false, length = 500)
     private String title;
@@ -130,14 +118,6 @@ public class Issue extends AbstractActorAuditableEntity implements AggregateRoot
             this.state = IssueState.OPEN;
             this.closedAt = null;
         });
-    }
-
-    protected void markClosed(Instant now, UUID actorId) {
-        close(now, actorId);
-    }
-
-    protected void markOpen(UUID actorId) {
-        reopen(actorId);
     }
 
     public IssueAssignee assignUser(UUID userId) {

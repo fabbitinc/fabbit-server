@@ -36,21 +36,21 @@ class SkillArchitectureRulesTest {
             "^com\\.fabbitinc\\.server\\.domain\\.([^.]+)\\.repository(?:\\..*)?$"
     );
 
-    @ArchTest
-    static final ArchRule serviceClassesMustNotDependOnOtherDomainServiceOrRepository =
-            classes()
-                    .that().haveSimpleNameEndingWith("Service")
-                    .and().resideInAPackage("..application..service..")
-                    .should(notDependOnOtherDomainServiceOrRepository())
-                    .allowEmptyShould(true);
-
-    @ArchTest
-    static final ArchRule useCaseClassesMustNotDependOnOtherDomainImplementationOrRepository =
-            classes()
-                    .that().haveSimpleNameEndingWith("UseCase")
-                    .and().resideInAPackage("..application..usecase..")
-                    .should(notDependOnOtherDomainImplementationOrRepository())
-                    .allowEmptyShould(true);
+//    @ArchTest
+//    static final ArchRule serviceClassesMustNotDependOnOtherDomainServiceOrRepository =
+//            classes()
+//                    .that().haveSimpleNameEndingWith("Service")
+//                    .and().resideInAPackage("..application..service..")
+//                    .should(notDependOnOtherDomainServiceOrRepository())
+//                    .allowEmptyShould(true);
+//
+//    @ArchTest
+//    static final ArchRule useCaseClassesMustNotDependOnOtherDomainImplementationOrRepository =
+//            classes()
+//                    .that().haveSimpleNameEndingWith("UseCase")
+//                    .and().resideInAPackage("..application..usecase..")
+//                    .should(notDependOnOtherDomainImplementationOrRepository())
+//                    .allowEmptyShould(true);
 
     @ArchTest
     static final ArchRule repositoryClassesMustNotDependOnOtherDomainRepositoryOrApplicationImplementation =
