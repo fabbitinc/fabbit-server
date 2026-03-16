@@ -15,6 +15,7 @@ import com.fabbitinc.server.domain.drawing.model.DrawingArtifactPublication;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.PartPreview;
+import com.fabbitinc.server.domain.part.model.PartPreviewFile;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
@@ -178,8 +179,19 @@ public class PartPreviewConversionService {
     }
 
     private File resolveSourceFile(PartPreview partPreview) {
-        if (partPreview.getSourceType() == PartPreviewSourceType.FILE) {
-            return fileRepository.findByIdAndDeletedAtIsNull(partPreview.getSourceId()).orElse(null);
+        if (partPreview.getSourceType() == PartPreviewSourceType.PREVIEW_FILE) {
+            PartPreviewFile previewFile = partPreview.getPreviewFiles().stream()
+                    .filter(it -> it.getId().equals(partPreview.getSourceId()))
+                    .findFirst()
+                    .orElse(null);
+            if (previewFile == null) {
+                return null;
+            }
+            return fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(
+                    previewFile.getFileId(),
+                    PartPreviewService.OWNER_TYPE_PREVIEW_FILE,
+                    previewFile.getId()
+            ).orElse(null);
         }
         if (partPreview.getSourceType() != PartPreviewSourceType.DRAWING) {
             return null;

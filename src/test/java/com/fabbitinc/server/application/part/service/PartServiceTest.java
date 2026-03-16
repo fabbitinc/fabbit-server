@@ -41,7 +41,6 @@ class PartServiceTest {
   @Mock private FileRepository fileRepository;
   @Mock private OrganizationApi organizationApi;
   @Mock private ObjectMapper objectMapper;
-  @Mock private PartPreviewService partPreviewService;
 
   @Test
   void createPart_카테고리별_기본담당자를_적용한다() {
@@ -183,7 +182,6 @@ class PartServiceTest {
     service.detachFile(revision.getId(), file.getId(), UUID.randomUUID());
 
     assertNotNull(file.getDeletedAt());
-    verify(partPreviewService).clearByFile(file.getId());
     verify(organizationApi).releaseStorageForCurrentTenant(200L);
   }
 
@@ -206,7 +204,6 @@ class PartServiceTest {
         partDefaultOwnerRepository,
         fileRepository,
         organizationApi,
-        objectMapper,
-        partPreviewService);
+        objectMapper);
   }
 }

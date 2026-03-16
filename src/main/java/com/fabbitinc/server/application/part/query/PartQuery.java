@@ -21,6 +21,7 @@ import com.fabbitinc.server.application.part.query.condition.PartInProgressListC
 import com.fabbitinc.server.application.part.query.condition.PartInProgressStatusFilter;
 import com.fabbitinc.server.application.part.query.condition.PartListCondition;
 import com.fabbitinc.server.application.part.query.condition.PartLookupCondition;
+import com.fabbitinc.server.application.part.query.condition.PartPreviewSourcesCondition;
 import com.fabbitinc.server.application.part.query.condition.PartProjectsCondition;
 import com.fabbitinc.server.application.part.query.condition.PartSuppliersCondition;
 import com.fabbitinc.server.application.part.query.result.BomTreeResult;
@@ -35,9 +36,11 @@ import com.fabbitinc.server.application.part.query.result.PartInProgressListResu
 import com.fabbitinc.server.application.part.query.result.PartListResult;
 import com.fabbitinc.server.application.part.query.result.PartLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewResult;
+import com.fabbitinc.server.application.part.query.result.PartPreviewSourcesResult;
 import com.fabbitinc.server.application.part.query.result.PartProjectsResult;
 import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
 import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
+import com.fabbitinc.server.application.part.service.PartPreviewService;
 import com.fabbitinc.server.application.project.api.ProjectApi;
 import com.fabbitinc.server.application.team.api.TeamApi;
 import com.fabbitinc.server.application.user.api.UserApi;
@@ -53,6 +56,7 @@ import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartPreview;
+import com.fabbitinc.server.domain.part.model.PartPreviewFile;
 import com.fabbitinc.server.domain.part.model.PartPreviewProcessingJob;
 import com.fabbitinc.server.domain.part.model.PartPreviewServingProjection;
 import com.fabbitinc.server.domain.part.model.PartPreviewProcessingStatus;
@@ -694,10 +698,7 @@ public class PartQuery {
     public PartFilesResult get(PartFilesCondition condition) {
         currentAuthProvider.getCurrentAuth();
         ResolvedPart resolvedPart = resolveRequiredPart(condition.partNumber(), condition.revisionCode());
-        Part part = resolvedPart.part();
         PartRevision revision = resolvedPart.revision();
-
-        ActivePreviewSource activePreviewSource = loadActivePreviewSource(revision);
 
         List<PartFilesResult.Item> items = new ArrayList<>();
         if (revision != null) {
@@ -706,18 +707,39 @@ public class PartQuery {
                             revision.getId(),
                             FileStatus.UPLOADED
                     ).stream()
-                    .map(file -> toPartAttachmentItem(file, activePreviewSource))
+                    .map(this::toPartAttachmentItem)
                     .forEach(items::add);
         }
 
         findAttachedDrawings(revision).stream()
-                .map(drawing -> toDrawingAttachmentItem(drawing, activePreviewSource))
+                .map(this::toDrawingAttachmentItem)
                 .filter(java.util.Objects::nonNull)
                 .forEach(items::add);
 
         items.sort(Comparator.comparing(PartFilesResult.Item::createdAt).reversed());
 
         return new PartFilesResult(items.size(), items);
+    }
+
+    public PartPreviewSourcesResult getPreviewSources(PartPreviewSourcesCondition condition) {
+        currentAuthProvider.getCurrentAuth();
+        ResolvedPart resolvedPart = resolveRequiredPart(condition.partNumber(), condition.revisionCode());
+        PartRevision revision = resolvedPart.revision();
+        ActivePreviewSource activePreviewSource = loadActivePreviewSource(revision);
+
+        List<PartPreviewSourcesResult.Item> items = new ArrayList<>();
+        findAttachedDrawings(revision).stream()
+                .map(drawing -> toDrawingPreviewSourceItem(drawing, activePreviewSource))
+                .filter(java.util.Objects::nonNull)
+                .forEach(items::add);
+
+        findPreviewFiles(revision).stream()
+                .map(previewFile -> toPreviewFileSourceItem(previewFile, activePreviewSource))
+                .filter(java.util.Objects::nonNull)
+                .forEach(items::add);
+
+        items.sort(Comparator.comparing(PartPreviewSourcesResult.Item::createdAt).reversed());
+        return new PartPreviewSourcesResult(items.size(), items);
     }
 
     public List<PartFilesResult.Item> getFiles(FileItemsCondition condition) {
@@ -731,8 +753,6 @@ public class PartQuery {
                         file.getContentType(),
                         file.getFileSize(),
                         fileUrlResolver.resolve(file.getFileKey()),
-                        isPreviewSelectable(file),
-                        false,
                         file.getCreatedAt()
                 ))
                 .toList();
@@ -767,7 +787,7 @@ public class PartQuery {
         return new PartSuppliersResult(items.size(), items);
     }
 
-    private PartFilesResult.Item toPartAttachmentItem(File file, ActivePreviewSource activePreviewSource) {
+    private PartFilesResult.Item toPartAttachmentItem(File file) {
         return new PartFilesResult.Item(
                 PartAttachmentType.FILE,
                 file.getId(),
@@ -776,14 +796,11 @@ public class PartQuery {
                 file.getContentType(),
                 file.getFileSize(),
                 fileUrlResolver.resolve(file.getFileKey()),
-                isPreviewSelectable(file),
-                activePreviewSource.sourceType() == PartPreviewSourceType.FILE
-                        && file.getId().equals(activePreviewSource.sourceId()),
                 file.getCreatedAt()
         );
     }
 
-    private PartFilesResult.Item toDrawingAttachmentItem(Drawing drawing, ActivePreviewSource activePreviewSource) {
+    private PartFilesResult.Item toDrawingAttachmentItem(Drawing drawing) {
         File sourceFile = resolveDrawingFile(drawing);
         if (sourceFile == null || sourceFile.getDeletedAt() != null) {
             return null;
@@ -796,10 +813,61 @@ public class PartQuery {
                 sourceFile.getContentType(),
                 sourceFile.getFileSize(),
                 fileUrlResolver.resolve(sourceFile.getFileKey()),
-                isPreviewSelectable(sourceFile),
+                drawing.getCreatedAt()
+        );
+    }
+
+    private PartPreviewSourcesResult.Item toDrawingPreviewSourceItem(
+            Drawing drawing,
+            ActivePreviewSource activePreviewSource
+    ) {
+        File sourceFile = resolveDrawingFile(drawing);
+        if (sourceFile == null || sourceFile.getDeletedAt() != null || !isPreviewSelectable(sourceFile)) {
+            return null;
+        }
+        return new PartPreviewSourcesResult.Item(
+                PartAttachmentType.DRAWING,
+                PartPreviewSourceType.DRAWING,
+                drawing.getId(),
+                sourceFile.getId(),
+                drawing.getId(),
+                sourceFile.getOriginalName(),
+                sourceFile.getContentType(),
+                sourceFile.getFileSize(),
+                fileUrlResolver.resolve(sourceFile.getFileKey()),
                 activePreviewSource.sourceType() == PartPreviewSourceType.DRAWING
                         && drawing.getId().equals(activePreviewSource.sourceId()),
+                false,
                 drawing.getCreatedAt()
+        );
+    }
+
+    private PartPreviewSourcesResult.Item toPreviewFileSourceItem(
+            PartPreviewFile previewFile,
+            ActivePreviewSource activePreviewSource
+    ) {
+        File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(
+                previewFile.getFileId(),
+                PartPreviewService.OWNER_TYPE_PREVIEW_FILE,
+                previewFile.getId()
+        ).orElse(null);
+        if (file == null) {
+            return null;
+        }
+        return new PartPreviewSourcesResult.Item(
+                PartAttachmentType.PREVIEW_FILE,
+                PartPreviewSourceType.PREVIEW_FILE,
+                previewFile.getId(),
+                file.getId(),
+                null,
+                file.getOriginalName(),
+                file.getContentType(),
+                file.getFileSize(),
+                fileUrlResolver.resolve(file.getFileKey()),
+                activePreviewSource.sourceType() == PartPreviewSourceType.PREVIEW_FILE
+                        && previewFile.getId().equals(activePreviewSource.sourceId()),
+                true,
+                previewFile.getCreatedAt()
         );
     }
 
@@ -911,6 +979,17 @@ public class PartQuery {
 
     private long countAttachedDrawings(PartRevision revision) {
         return findAttachedDrawings(revision).size();
+    }
+
+    private List<PartPreviewFile> findPreviewFiles(PartRevision revision) {
+        if (revision == null) {
+            return List.of();
+        }
+        PartPreview partPreview = partPreviewRepository.findByPartRevisionId(revision.getId()).orElse(null);
+        if (partPreview == null) {
+            return List.of();
+        }
+        return partPreview.getPreviewFiles();
     }
 
     private File resolveDrawingFile(Drawing drawing) {

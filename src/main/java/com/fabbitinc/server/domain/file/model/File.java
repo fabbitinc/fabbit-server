@@ -172,6 +172,10 @@ public class File extends AbstractCreatedEntity {
         this.deletedAt = Instant.now();
     }
 
+    public void restore() {
+        this.deletedAt = null;
+    }
+
     private String requireOriginalName(String value) {
         return normalizeRequiredText(value, CODE_FILE_ORIGINAL_NAME_REQUIRED, "원본 파일명은 필수입니다");
     }

@@ -65,6 +65,9 @@ public class PartPreview extends AbstractCreatedEntity implements AggregateRoot 
     @OneToMany(mappedBy = "partPreview", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PartPreviewArtifact> artifacts = new ArrayList<>();
 
+    @OneToMany(mappedBy = "partPreview", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PartPreviewFile> previewFiles = new ArrayList<>();
+
     private PartPreview(UUID partRevisionId) {
         super(UuidV7Generator.next());
         this.partRevisionId = requirePartRevisionId(partRevisionId);
@@ -158,6 +161,27 @@ public class PartPreview extends AbstractCreatedEntity implements AggregateRoot 
         return List.copyOf(artifacts);
     }
 
+    public PartPreviewFile addPreviewFile(UUID fileId) {
+        PartPreviewFile existing = findPreviewFileByFileId(fileId);
+        if (existing != null) {
+            return existing;
+        }
+        PartPreviewFile previewFile = PartPreviewFile.create(this, fileId);
+        previewFiles.add(previewFile);
+        return previewFile;
+    }
+
+    public void removePreviewFile(UUID previewFileId) {
+        PartPreviewFile existing = findPreviewFile(previewFileId);
+        if (existing != null) {
+            previewFiles.remove(existing);
+        }
+    }
+
+    public List<PartPreviewFile> getPreviewFiles() {
+        return List.copyOf(previewFiles);
+    }
+
     public String getOriginalFileKey() {
         return findArtifactKey(DrawingArtifactType.SOURCE_ORIGINAL);
     }
@@ -207,6 +231,20 @@ public class PartPreview extends AbstractCreatedEntity implements AggregateRoot 
     private PartPreviewArtifact findArtifact(DrawingArtifactType artifactType) {
         return artifacts.stream()
                 .filter(artifact -> artifact.getArtifactType() == artifactType)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private PartPreviewFile findPreviewFile(UUID previewFileId) {
+        return previewFiles.stream()
+                .filter(file -> file.getId().equals(previewFileId))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private PartPreviewFile findPreviewFileByFileId(UUID fileId) {
+        return previewFiles.stream()
+                .filter(file -> file.getFileId().equals(fileId))
                 .findFirst()
                 .orElse(null);
     }

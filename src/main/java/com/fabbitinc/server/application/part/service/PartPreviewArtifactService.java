@@ -99,15 +99,10 @@ public class PartPreviewArtifactService {
     }
 
     private void deleteGeneratedFile(String storageKey) {
-        try {
-            storagePort.deleteObject(storageKey);
-        } catch (RuntimeException ignored) {
-        }
         fileRepository.findByFileKeyAndDeletedAtIsNull(storageKey)
                 .ifPresent(file -> {
                     long fileSize = file.getFileSize();
                     file.softDelete(null);
-                    fileRepository.save(file);
                     if (fileSize > 0L) {
                         organizationApi.releaseStorageForCurrentTenant(fileSize);
                     }
@@ -121,8 +116,14 @@ public class PartPreviewArtifactService {
             String contentType,
             long fileSize
     ) {
-        File generatedFile = fileRepository.findByFileKeyAndDeletedAtIsNull(fileKey)
-                .orElseGet(() -> File.create(UuidV7Generator.next(), originalName, fileKey, contentType, fileSize));
+        File generatedFile = fileRepository.findByFileKey(fileKey).orElse(null);
+        boolean restored = generatedFile != null && generatedFile.getDeletedAt() != null;
+        boolean created = generatedFile == null;
+        if (created) {
+            generatedFile = File.create(UuidV7Generator.next(), originalName, fileKey, contentType, fileSize);
+        } else if (restored) {
+            generatedFile.restore();
+        }
         boolean consumedStorage = false;
 
         generatedFile.changeStoredObject(fileKey, contentType, fileSize);
@@ -131,10 +132,10 @@ public class PartPreviewArtifactService {
         }
         if (generatedFile.getOwnerId() == null) {
             generatedFile.assignOwner(OWNER_TYPE, partPreviewId);
-            if (generatedFile.getFileSize() > 0L) {
-                organizationApi.consumeStorageForCurrentTenant(generatedFile.getFileSize());
-                consumedStorage = true;
-            }
+        }
+        if ((created || restored) && generatedFile.getFileSize() > 0L) {
+            organizationApi.consumeStorageForCurrentTenant(generatedFile.getFileSize());
+            consumedStorage = true;
         }
 
         try {

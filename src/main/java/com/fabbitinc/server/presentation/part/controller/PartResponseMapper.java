@@ -26,6 +26,8 @@ import com.fabbitinc.server.presentation.part.response.PartOwnerResponse;
 import com.fabbitinc.server.presentation.part.response.PartOwnerUserSummaryResponse;
 import com.fabbitinc.server.presentation.part.response.PartPreviewProcessingResponse;
 import com.fabbitinc.server.presentation.part.response.PartPreviewResponse;
+import com.fabbitinc.server.presentation.part.response.PartPreviewSourceItemResponse;
+import com.fabbitinc.server.presentation.part.response.PartPreviewSourcesResponse;
 import com.fabbitinc.server.presentation.part.response.PartProjectSummaryResponse;
 import com.fabbitinc.server.presentation.part.response.PartProjectsResponse;
 import com.fabbitinc.server.presentation.part.response.PartSummaryResponse;
@@ -46,6 +48,7 @@ import com.fabbitinc.server.application.part.query.result.PartLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartOwnerResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewProcessingResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewResult;
+import com.fabbitinc.server.application.part.query.result.PartPreviewSourcesResult;
 import com.fabbitinc.server.application.part.query.result.PartProjectsResult;
 import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
 import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
@@ -245,8 +248,30 @@ final class PartResponseMapper {
                 item.contentType(),
                 item.fileSize(),
                 item.fileUrl(),
-                item.previewSelectable(),
-                item.selectedAsPreview(),
+                item.createdAt()
+        );
+    }
+
+    static PartPreviewSourcesResponse toPartPreviewSourcesResponse(PartPreviewSourcesResult result) {
+        return new PartPreviewSourcesResponse(
+                result.total(),
+                result.items().stream().map(PartResponseMapper::toPartPreviewSourceItemResponse).toList()
+        );
+    }
+
+    static PartPreviewSourceItemResponse toPartPreviewSourceItemResponse(PartPreviewSourcesResult.Item item) {
+        return new PartPreviewSourceItemResponse(
+                item.attachmentType(),
+                item.sourceType(),
+                item.sourceId(),
+                item.fileId(),
+                item.drawingId(),
+                item.originalName(),
+                item.contentType(),
+                item.fileSize(),
+                item.fileUrl(),
+                item.selected(),
+                item.deletable(),
                 item.createdAt()
         );
     }

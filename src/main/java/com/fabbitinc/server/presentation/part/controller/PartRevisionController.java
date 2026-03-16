@@ -7,6 +7,7 @@ import static com.fabbitinc.server.presentation.part.controller.PartResponseMapp
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartOwnerResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartPreviewProcessingResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartPreviewResponse;
+import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartPreviewSourcesResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartProjectsResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartSuppliersResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toRegisterDrawingResponse;
@@ -18,6 +19,7 @@ import com.fabbitinc.server.presentation.part.request.AttachFilesRequest;
 import com.fabbitinc.server.presentation.part.request.ChangePartPreviewRequest;
 import com.fabbitinc.server.presentation.part.request.CreatePartDraftRequest;
 import com.fabbitinc.server.presentation.part.request.PartRevisionChangeReasonRequest;
+import com.fabbitinc.server.presentation.part.request.UploadPartPreviewFileRequest;
 import com.fabbitinc.server.presentation.part.request.UpdatePartOwnerRequest;
 import com.fabbitinc.server.presentation.part.request.UpdatePartRevisionRequest;
 import com.fabbitinc.server.presentation.part.response.BomTreeResponse;
@@ -28,6 +30,7 @@ import com.fabbitinc.server.presentation.part.response.PartFilesResponse;
 import com.fabbitinc.server.presentation.part.response.PartOwnerResponse;
 import com.fabbitinc.server.presentation.part.response.PartPreviewProcessingResponse;
 import com.fabbitinc.server.presentation.part.response.PartPreviewResponse;
+import com.fabbitinc.server.presentation.part.response.PartPreviewSourcesResponse;
 import com.fabbitinc.server.presentation.part.response.PartProjectsResponse;
 import com.fabbitinc.server.presentation.part.response.PartSuppliersResponse;
 import com.fabbitinc.server.application.part.query.PartOwnerQuery;
@@ -41,6 +44,7 @@ import com.fabbitinc.server.application.part.query.condition.PartDetailCondition
 import com.fabbitinc.server.application.part.query.condition.PartDraftDetailCondition;
 import com.fabbitinc.server.application.part.query.condition.PartFilesCondition;
 import com.fabbitinc.server.application.part.query.condition.PartOwnerCondition;
+import com.fabbitinc.server.application.part.query.condition.PartPreviewSourcesCondition;
 import com.fabbitinc.server.application.part.query.condition.PartPreviewProcessingCondition;
 import com.fabbitinc.server.application.part.query.condition.PartProjectsCondition;
 import com.fabbitinc.server.application.part.query.condition.PartSuppliersCondition;
@@ -49,11 +53,13 @@ import com.fabbitinc.server.application.part.usecase.ApprovePartRevisionUseCase;
 import com.fabbitinc.server.application.part.usecase.ChangePartPreviewUseCase;
 import com.fabbitinc.server.application.part.usecase.ClearPartPreviewUseCase;
 import com.fabbitinc.server.application.part.usecase.CreatePartDraftUseCase;
+import com.fabbitinc.server.application.part.usecase.DeletePartPreviewFileUseCase;
 import com.fabbitinc.server.application.part.usecase.DeletePartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.DetachPartFileUseCase;
 import com.fabbitinc.server.application.part.usecase.RegisterPartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.ReleasePartDraftUseCase;
 import com.fabbitinc.server.application.part.usecase.ReleasePartRevisionUseCase;
+import com.fabbitinc.server.application.part.usecase.UploadPartPreviewFileUseCase;
 import com.fabbitinc.server.application.part.usecase.UpdatePartOwnerUseCase;
 import com.fabbitinc.server.application.part.usecase.UpdatePartRevisionUseCase;
 import com.fabbitinc.server.application.part.usecase.command.ApprovePartRevisionCommand;
@@ -61,11 +67,13 @@ import com.fabbitinc.server.application.part.usecase.command.AttachPartFilesComm
 import com.fabbitinc.server.application.part.usecase.command.ChangePartPreviewCommand;
 import com.fabbitinc.server.application.part.usecase.command.ClearPartPreviewCommand;
 import com.fabbitinc.server.application.part.usecase.command.CreatePartDraftCommand;
+import com.fabbitinc.server.application.part.usecase.command.DeletePartPreviewFileCommand;
 import com.fabbitinc.server.application.part.usecase.command.DeletePartDrawingCommand;
 import com.fabbitinc.server.application.part.usecase.command.DetachPartFileCommand;
 import com.fabbitinc.server.application.part.usecase.command.RegisterPartDrawingCommand;
 import com.fabbitinc.server.application.part.usecase.command.ReleasePartDraftCommand;
 import com.fabbitinc.server.application.part.usecase.command.ReleasePartRevisionCommand;
+import com.fabbitinc.server.application.part.usecase.command.UploadPartPreviewFileCommand;
 import com.fabbitinc.server.application.part.usecase.command.UpdatePartOwnerCommand;
 import com.fabbitinc.server.application.part.usecase.command.UpdatePartRevisionCommand;
 import com.fabbitinc.server.application.part.usecase.result.ApprovePartRevisionResult;
@@ -134,6 +142,8 @@ public class PartRevisionController {
     private final DeletePartDrawingUseCase deletePartDrawingUseCase;
     private final ChangePartPreviewUseCase changePartPreviewUseCase;
     private final ClearPartPreviewUseCase clearPartPreviewUseCase;
+    private final UploadPartPreviewFileUseCase uploadPartPreviewFileUseCase;
+    private final DeletePartPreviewFileUseCase deletePartPreviewFileUseCase;
 
     @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts", description = "기준 리비전에서 새 초안 리비전을 생성합니다")
     @ApiResponses(value = {
@@ -209,6 +219,31 @@ public class PartRevisionController {
             @PathVariable String draftKey
     ) {
         return toPartDetailResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, revisionCode, draftKey)));
+    }
+
+    @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/drawings", description = "초기 DRAFT 상태의 부품 초안에 도면을 업로드하고 등록합니다")
+    @PostMapping("/{partNumber}/drafts/{draftKey}/drawings")
+    public RegisterDrawingResponse createDraftDrawing(
+            @PathVariable String partNumber,
+            @PathVariable String draftKey,
+            @Valid @RequestBody RegisterDrawingRequest request
+    ) {
+        return toRegisterDrawingResponse(registerPartDrawingUseCase.execute(
+                new RegisterPartDrawingCommand(partNumber, null, draftKey, request.fileId())
+        ));
+    }
+
+    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/drawings", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 초안에 도면을 업로드하고 등록합니다")
+    @PostMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/drawings")
+    public RegisterDrawingResponse createRevisionDraftDrawing(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @PathVariable String draftKey,
+            @Valid @RequestBody RegisterDrawingRequest request
+    ) {
+        return toRegisterDrawingResponse(registerPartDrawingUseCase.execute(
+                new RegisterPartDrawingCommand(partNumber, revisionCode, draftKey, request.fileId())
+        ));
     }
 
     @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/approve", description = "초기 Part 초안을 직접 승인하고 공식 리비전으로 전환합니다")
@@ -603,11 +638,11 @@ public class PartRevisionController {
             @Valid @RequestBody RegisterDrawingRequest request
     ) {
         return toRegisterDrawingResponse(registerPartDrawingUseCase.execute(
-                new RegisterPartDrawingCommand(partNumber, revisionCode, request.fileId())
+                new RegisterPartDrawingCommand(partNumber, revisionCode, null, request.fileId())
         ));
     }
 
-    @Operation(summary = "PATCH /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview", description = "Part 대표 미리보기 소스를 파일 또는 도면으로 변경합니다")
+    @Operation(summary = "PATCH /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview", description = "Part 대표 미리보기 소스를 도면 또는 미리보기 전용 파일로 변경합니다")
     @PatchMapping("/{partNumber}/revisions/{revisionCode}/preview")
     public PartPreviewResponse updatePreview(
             @PathVariable String partNumber,
@@ -619,6 +654,32 @@ public class PartRevisionController {
                 revisionCode,
                 request.sourceType(),
                 request.sourceId()
+        ));
+        return toPartPreviewResponse(partQuery.get(new PartDetailCondition(partNumber, revisionCode)).preview());
+    }
+
+    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview/sources", description = "대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다")
+    @GetMapping("/{partNumber}/revisions/{revisionCode}/preview/sources")
+    public PartPreviewSourcesResponse getPreviewSources(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode
+    ) {
+        return toPartPreviewSourcesResponse(
+                partQuery.getPreviewSources(new PartPreviewSourcesCondition(partNumber, revisionCode))
+        );
+    }
+
+    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview/files", description = "업로드 완료 파일을 대표 미리보기 전용 파일로 등록하고 현재 미리보기로 설정합니다")
+    @PostMapping("/{partNumber}/revisions/{revisionCode}/preview/files")
+    public PartPreviewResponse uploadPreviewFile(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @Valid @RequestBody UploadPartPreviewFileRequest request
+    ) {
+        uploadPartPreviewFileUseCase.execute(new UploadPartPreviewFileCommand(
+                partNumber,
+                revisionCode,
+                request.fileId()
         ));
         return toPartPreviewResponse(partQuery.get(new PartDetailCondition(partNumber, revisionCode)).preview());
     }
@@ -641,6 +702,17 @@ public class PartRevisionController {
             @PathVariable String revisionCode
     ) {
         clearPartPreviewUseCase.execute(new ClearPartPreviewCommand(partNumber, revisionCode));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview/files/{previewFileId}", description = "대표 미리보기 전용 파일 1건을 삭제합니다")
+    @DeleteMapping("/{partNumber}/revisions/{revisionCode}/preview/files/{previewFileId}")
+    public ResponseEntity<Void> deletePreviewFile(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @PathVariable UUID previewFileId
+    ) {
+        deletePartPreviewFileUseCase.execute(new DeletePartPreviewFileCommand(partNumber, revisionCode, previewFileId));
         return ResponseEntity.noContent().build();
     }
 }

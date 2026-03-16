@@ -4,12 +4,14 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.drawing.service.DrawingSourceClassifier;
 import com.fabbitinc.server.application.drawing.service.DrawingSourceDescriptor;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.PartPreview;
+import com.fabbitinc.server.domain.part.model.PartPreviewFile;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
@@ -25,20 +27,50 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @RequiredArgsConstructor
 public class PartPreviewService {
 
+    public static final String OWNER_TYPE_PREVIEW_FILE = "part_preview_file";
+
     private final PartRevisionRepository partRevisionRepository;
     private final PartPreviewRepository partPreviewRepository;
     private final DrawingRepository drawingRepository;
     private final FileRepository fileRepository;
+    private final OrganizationApi organizationApi;
     private final PartPreviewArtifactService partPreviewArtifactService;
     private final PartPreviewAsyncConversionService partPreviewAsyncConversionService;
     private final DrawingSourceClassifier drawingSourceClassifier;
 
     public PartPreview changeSource(UUID partRevisionId, PartPreviewSourceType sourceType, UUID sourceId) {
         PartRevision revision = getRequiredRevision(partRevisionId);
-        ResolvedSource resolvedSource = resolveSource(revision, sourceType, sourceId);
+        PartPreview partPreview = getOrCreatePartPreview(partRevisionId);
+        return changeSource(partPreview, revision, sourceType, sourceId);
+    }
 
-        PartPreview partPreview = partPreviewRepository.findByPartRevisionId(partRevisionId)
-                .orElseGet(() -> PartPreview.create(partRevisionId));
+    public PartPreview uploadPreviewFile(UUID partRevisionId, UUID fileId) {
+        PartRevision revision = getRequiredRevision(partRevisionId);
+        PartPreview partPreview = getOrCreatePartPreview(partRevisionId);
+        File file = fileRepository.findByIdAndDeletedAtIsNull(fileId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "파일을 찾을 수 없습니다"));
+
+        if (file.getOwnerId() != null) {
+            throw new AppException(ErrorCode.CONFLICT, "이미 다른 리소스에 연결된 파일입니다");
+        }
+        validatePreviewable(file);
+
+        PartPreviewFile previewFile = partPreview.addPreviewFile(file.getId());
+        file.assignOwner(OWNER_TYPE_PREVIEW_FILE, previewFile.getId());
+        if (file.getFileSize() > 0L) {
+            organizationApi.consumeStorageForCurrentTenant(file.getFileSize());
+        }
+
+        return changeSource(partPreview, revision, PartPreviewSourceType.PREVIEW_FILE, previewFile.getId());
+    }
+
+    private PartPreview changeSource(
+            PartPreview partPreview,
+            PartRevision revision,
+            PartPreviewSourceType sourceType,
+            UUID sourceId
+    ) {
+        ResolvedSource resolvedSource = resolveSource(partPreview, revision, sourceType, sourceId);
         partPreviewArtifactService.cleanupPreviewArtifacts(partPreview);
         partPreview.replaceSource(sourceType, sourceId, resolvedSource.sourceDescriptor().dimension());
         partPreview.registerSourceFile(
@@ -62,14 +94,37 @@ public class PartPreviewService {
         partPreviewRepository.save(partPreview);
     }
 
-    public void clearByFile(UUID fileId) {
-        partPreviewRepository.findBySourceTypeAndSourceId(PartPreviewSourceType.FILE, fileId)
-                .forEach(this::clearPreview);
-    }
-
     public void clearByDrawing(UUID drawingId) {
         partPreviewRepository.findBySourceTypeAndSourceId(PartPreviewSourceType.DRAWING, drawingId)
                 .forEach(this::clearPreview);
+    }
+
+    public void deletePreviewFile(UUID partRevisionId, UUID previewFileId, UUID actorId) {
+        PartPreview partPreview = partPreviewRepository.findByPartRevisionId(partRevisionId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "대표 미리보기를 찾을 수 없습니다"));
+
+        PartPreviewFile previewFile = partPreview.getPreviewFiles().stream()
+                .filter(it -> it.getId().equals(previewFileId))
+                .findFirst()
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "미리보기 전용 파일을 찾을 수 없습니다"));
+        File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(
+                        previewFile.getFileId(),
+                        OWNER_TYPE_PREVIEW_FILE,
+                        previewFile.getId()
+                )
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "미리보기 전용 파일을 찾을 수 없습니다"));
+
+        if (partPreview.getSourceType() == PartPreviewSourceType.PREVIEW_FILE
+                && previewFile.getId().equals(partPreview.getSourceId())) {
+            clearPreview(partPreview);
+        }
+
+        partPreview.removePreviewFile(previewFile.getId());
+        long fileSize = file.getFileSize();
+        file.softDelete(actorId);
+        if (fileSize > 0L) {
+            organizationApi.releaseStorageForCurrentTenant(fileSize);
+        }
     }
 
     private void clearPreview(PartPreview partPreview) {
@@ -89,16 +144,17 @@ public class PartPreviewService {
                 ));
     }
 
-    private ResolvedSource resolveSource(PartRevision revision, PartPreviewSourceType sourceType, UUID sourceId) {
-        if (sourceType == PartPreviewSourceType.FILE) {
-            File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(sourceId, "part_revision", revision.getId())
-                    .orElseThrow(() -> new AppException(
-                            ErrorCode.NOT_FOUND,
-                            "PartRevision '" + revision.getId() + "'에 연결된 파일 '" + sourceId + "'을(를) 찾을 수 없습니다"
-                    ));
-            return new ResolvedSource(file, validatePreviewable(file));
-        }
+    private PartPreview getOrCreatePartPreview(UUID partRevisionId) {
+        return partPreviewRepository.findByPartRevisionId(partRevisionId)
+                .orElseGet(() -> PartPreview.create(partRevisionId));
+    }
 
+    private ResolvedSource resolveSource(
+            PartPreview partPreview,
+            PartRevision revision,
+            PartPreviewSourceType sourceType,
+            UUID sourceId
+    ) {
         if (sourceType == PartPreviewSourceType.DRAWING) {
             Drawing drawing = drawingRepository.findById(sourceId)
                     .filter(it -> it.getDeletedAt() == null && revision.getId().equals(it.getPartRevisionId()))
@@ -115,7 +171,30 @@ public class PartPreviewService {
             return new ResolvedSource(file, validatePreviewable(file));
         }
 
-        throw new AppException(ErrorCode.VALIDATION_ERROR, "지원하지 않는 대표 미리보기 소스 타입입니다");
+        if (sourceType == PartPreviewSourceType.PREVIEW_FILE) {
+            PartPreviewFile previewFile = partPreview.getPreviewFiles().stream()
+                    .filter(it -> it.getId().equals(sourceId))
+                    .findFirst()
+                    .orElseThrow(() -> new AppException(
+                            ErrorCode.NOT_FOUND,
+                            "대표 미리보기 전용 파일 '" + sourceId + "'을(를) 찾을 수 없습니다"
+                    ));
+            File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(
+                            previewFile.getFileId(),
+                            OWNER_TYPE_PREVIEW_FILE,
+                            previewFile.getId()
+                    )
+                    .orElseThrow(() -> new AppException(
+                            ErrorCode.NOT_FOUND,
+                            "대표 미리보기 전용 파일의 원본을 찾을 수 없습니다"
+                    ));
+            return new ResolvedSource(file, validatePreviewable(file));
+        }
+
+        throw new AppException(
+                ErrorCode.VALIDATION_ERROR,
+                "대표 미리보기는 도면 또는 미리보기 전용 파일만 선택할 수 있습니다"
+        );
     }
 
     private DrawingSourceDescriptor validatePreviewable(File file) {

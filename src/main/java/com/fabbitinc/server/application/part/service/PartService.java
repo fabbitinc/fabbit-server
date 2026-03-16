@@ -38,7 +38,6 @@ public class PartService {
     private final FileRepository fileRepository;
     private final OrganizationApi organizationApi;
     private final ObjectMapper objectMapper;
-    private final PartPreviewService partPreviewService;
 
     public PartRevision createPart(CreatePartInput input, UUID actorId) {
         try {
@@ -146,7 +145,6 @@ public class PartService {
                 ));
         long fileSize = file.getFileSize();
         file.softDelete(actorId);
-        partPreviewService.clearByFile(fileId);
         if (fileSize > 0L) {
             organizationApi.releaseStorageForCurrentTenant(fileSize);
         }

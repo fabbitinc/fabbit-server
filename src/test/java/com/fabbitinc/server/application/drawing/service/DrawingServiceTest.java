@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fabbitinc.server.application.file.port.StoragePort;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.part.service.PartPreviewService;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
@@ -25,6 +26,7 @@ class DrawingServiceTest {
 
   @Mock private DrawingRepository drawingRepository;
   @Mock private FileRepository fileRepository;
+  @Mock private StoragePort storagePort;
   @Mock private OrganizationApi organizationApi;
   @Mock private PartPreviewService partPreviewService;
 
@@ -44,8 +46,7 @@ class DrawingServiceTest {
             "application/pdf",
             512L);
     file.markUploaded();
-    when(fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(file.getId(), "part_revision", partRevisionId))
-        .thenReturn(Optional.of(file));
+    when(fileRepository.findByIdAndDeletedAtIsNull(file.getId())).thenReturn(Optional.of(file));
     when(drawingRepository.save(any(Drawing.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -53,6 +54,7 @@ class DrawingServiceTest {
         new DrawingService(
             drawingRepository,
             fileRepository,
+            storagePort,
             organizationApi,
             partPreviewService);
 
@@ -79,6 +81,7 @@ class DrawingServiceTest {
         new DrawingService(
             drawingRepository,
             fileRepository,
+            storagePort,
             organizationApi,
             partPreviewService);
 
