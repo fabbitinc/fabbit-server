@@ -8,7 +8,7 @@ import java.time.Instant;
 public record PartRevisionHistoryEntryResponse(
         PartRevisionHistoryActionType actionType,
         Instant occurredAt,
-        PartOwnerUserSummaryResponse actor,
+        PartUserSummaryResponse actor,
         String reason
 ) {
 }

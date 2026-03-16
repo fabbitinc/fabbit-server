@@ -24,65 +24,6 @@ class PartTest {
         assertEquals(Part.CODE_PART_NUMBER_REQUIRED, ex.getDomainCode());
     }
 
-    @Test
-    void assignOwner_유효한_ID를_설정한다() {
-        Part part = Part.create("P-001");
-        UUID ownerId = UUID.randomUUID();
-
-        part.assignOwner(ownerId);
-
-        assertEquals(ownerId, part.getOwnerId());
-    }
-
-    @Test
-    void assignOwner_null이면_예외를_던진다() {
-        Part part = Part.create("P-001");
-
-        DomainException ex = assertThrows(DomainException.class, () -> part.assignOwner(null));
-
-        assertEquals(Part.CODE_PART_OWNER_REQUIRED, ex.getDomainCode());
-    }
-
-    @Test
-    void unassignOwner_담당자를_비운다() {
-        Part part = Part.create("P-001");
-        part.assignOwner(UUID.randomUUID());
-
-        part.unassignOwner();
-
-        assertNull(part.getOwnerId());
-    }
-
-    @Test
-    void assignOwnerTeam_유효한_ID를_설정한다() {
-        Part part = Part.create("P-001");
-        UUID ownerTeamId = UUID.randomUUID();
-
-        part.assignOwnerTeam(ownerTeamId);
-
-        assertEquals(ownerTeamId, part.getOwnerTeamId());
-    }
-
-    @Test
-    void assignOwnerTeam_null이면_예외를_던진다() {
-        Part part = Part.create("P-001");
-
-        DomainException ex = assertThrows(DomainException.class, () -> part.assignOwnerTeam(null));
-
-        assertEquals(Part.CODE_PART_OWNER_TEAM_REQUIRED, ex.getDomainCode());
-    }
-
-    @Test
-    void unassignOwnerTeam_담당팀을_비운다() {
-        Part part = Part.create("P-001");
-        part.assignOwnerTeam(UUID.randomUUID());
-
-        part.unassignOwnerTeam();
-
-        assertNull(part.getOwnerTeamId());
-    }
-
-    @Test
     void changeLifecycleState와_clearLifecycleState로_수명주기상태를_변경한다() {
         Part part = Part.create("P-001");
 

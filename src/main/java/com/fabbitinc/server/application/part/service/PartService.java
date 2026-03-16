@@ -9,16 +9,13 @@ import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.Part;
-import com.fabbitinc.server.domain.part.model.PartDefaultOwner;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartRevision;
-import com.fabbitinc.server.domain.part.repository.PartDefaultOwnerRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +31,6 @@ public class PartService {
 
     private final PartRepository partRepository;
     private final PartRevisionRepository partRevisionRepository;
-    private final PartDefaultOwnerRepository partDefaultOwnerRepository;
     private final FileRepository fileRepository;
     private final OrganizationApi organizationApi;
     private final ObjectMapper objectMapper;
@@ -52,7 +48,6 @@ public class PartService {
             Part savedPart = partRepository.save(part);
             PartRevision initialRevision = PartRevision.createInitialDraft(savedPart, "D1", input.name(), actorId);
             applyCreateInput(initialRevision, input);
-            applyDefaultOwner(initialRevision, initialRevision.getCategory());
             initialRevision.recordHistory(
                     actorId,
                     com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType.CREATED,
@@ -65,33 +60,6 @@ public class PartService {
         } catch (DomainException ex) {
             throw toAppException(ex);
         }
-    }
-
-    public PartRevision updateOwner(
-            UUID partRevisionId,
-            UUID ownerId,
-            boolean ownerIdSet,
-            UUID ownerTeamId,
-            boolean ownerTeamIdSet
-    ) {
-        PartRevision revision = getRevisionOrThrow(partRevisionId);
-
-        if (ownerIdSet) {
-            if (ownerId == null) {
-                revision.unassignOwner();
-            } else {
-                revision.assignOwner(ownerId);
-            }
-        }
-
-        if (ownerTeamIdSet) {
-            if (ownerTeamId == null) {
-                revision.unassignOwnerTeam();
-            } else {
-                revision.assignOwnerTeam(ownerTeamId);
-            }
-        }
-        return revision;
     }
 
     public List<File> attachFiles(UUID partRevisionId, List<UUID> fileIds) {
@@ -150,38 +118,6 @@ public class PartService {
         }
     }
 
-    public PartDefaultOwner upsertDefaultOwner(String category, UUID ownerId, UUID ownerTeamId) {
-        if (ownerId == null && ownerTeamId == null) {
-            throw new AppException(ErrorCode.BAD_REQUEST, "기본 담당자 또는 기본 담당 팀 중 하나는 필수입니다");
-        }
-
-        PartDefaultOwner defaultOwner;
-        if (category != null) {
-            defaultOwner = partDefaultOwnerRepository.findByCategory(category)
-                    .orElseGet(() -> PartDefaultOwner.create(category, ownerId, ownerTeamId));
-        } else {
-            defaultOwner = partDefaultOwnerRepository.findByCategoryIsNull()
-                    .orElseGet(() -> PartDefaultOwner.create(null, ownerId, ownerTeamId));
-        }
-
-        defaultOwner.update(ownerId, ownerTeamId);
-        return partDefaultOwnerRepository.save(defaultOwner);
-    }
-
-    public void deleteDefaultOwner(String category) {
-        long deleted = category != null
-                ? partDefaultOwnerRepository.deleteByCategory(category)
-                : partDefaultOwnerRepository.deleteByCategoryIsNull();
-
-        if (deleted == 0) {
-            String categoryText = category == null ? "None" : category;
-            throw new AppException(
-                    ErrorCode.NOT_FOUND,
-                    "카테고리 '" + categoryText + "' 기본값 설정을 찾을 수 없습니다"
-            );
-        }
-    }
-
     public int renameCategory(String oldName, String newName) {
         String normalizedOldName = normalizeRequiredCategory(oldName, "기존");
         String normalizedNewName = normalizeRequiredCategory(newName, "변경");
@@ -198,14 +134,7 @@ public class PartService {
             );
         }
 
-        boolean isMerge = partRevisionRepository.existsByCategory(normalizedNewName);
         int updatedCount = partRevisionRepository.renameCategory(normalizedOldName, normalizedNewName);
-
-        if (isMerge) {
-            partDefaultOwnerRepository.deleteByCategory(normalizedOldName);
-        } else {
-            partDefaultOwnerRepository.renameCategory(normalizedOldName, normalizedNewName);
-        }
         return updatedCount;
     }
 
@@ -241,33 +170,12 @@ public class PartService {
         }
     }
 
-    private void applyDefaultOwner(PartRevision revision, String category) {
-        resolveDefaultOwner(category).ifPresent(defaultOwner -> {
-            if (defaultOwner.getDefaultOwnerId() != null) {
-                revision.assignOwner(defaultOwner.getDefaultOwnerId());
-            }
-            if (defaultOwner.getDefaultOwnerTeamId() != null) {
-                revision.assignOwnerTeam(defaultOwner.getDefaultOwnerTeamId());
-            }
-        });
-    }
-
     private void applyPhantom(PartRevision revision, Boolean phantom) {
         if (Boolean.TRUE.equals(phantom)) {
             revision.markPhantom();
             return;
         }
         revision.markReal();
-    }
-
-    private Optional<PartDefaultOwner> resolveDefaultOwner(String category) {
-        if (category != null) {
-            Optional<PartDefaultOwner> categoryDefaultOwner = partDefaultOwnerRepository.findByCategory(category);
-            if (categoryDefaultOwner.isPresent()) {
-                return categoryDefaultOwner;
-            }
-        }
-        return partDefaultOwnerRepository.findByCategoryIsNull();
     }
 
     private String serializeProperties(Map<String, Object> properties) {
@@ -316,8 +224,6 @@ public class PartService {
                     PartRevision.CODE_PART_REVISION_CODE_REQUIRED,
                     PartRevision.CODE_PART_REVISION_CODE_TOO_LONG,
                     PartRevision.CODE_PART_REVISION_CODE_INVALID_FORMAT,
-                    Part.CODE_PART_OWNER_REQUIRED,
-                    Part.CODE_PART_OWNER_TEAM_REQUIRED,
                     PartRevision.CODE_PART_REVISION_LEAD_TIME_DAYS_INVALID ->
                     new AppException(ErrorCode.VALIDATION_ERROR, ex.getMessage());
             default ->

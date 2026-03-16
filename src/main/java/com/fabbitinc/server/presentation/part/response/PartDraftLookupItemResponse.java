@@ -1,5 +1,4 @@
 package com.fabbitinc.server.presentation.part.response;
-import com.fabbitinc.server.presentation.workitem.dto.response.UserSummaryResponse;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.UUID;
@@ -19,6 +18,6 @@ public record PartDraftLookupItemResponse(
         @Schema(description = "초안 이름", example = "메인 하우징")
         String name,
         @Schema(description = "초안 작성자")
-        PartOwnerUserSummaryResponse createdBy
+        PartUserSummaryResponse createdBy
 ) {
 }

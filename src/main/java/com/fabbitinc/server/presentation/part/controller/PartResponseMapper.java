@@ -1,6 +1,4 @@
 package com.fabbitinc.server.presentation.part.controller;
-import com.fabbitinc.server.presentation.workitem.dto.response.UserSummaryResponse;
-import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 
 import com.fabbitinc.server.presentation.drawing.dto.response.RegisterDrawingResponse;
 import com.fabbitinc.server.presentation.part.response.BomChildResponse;
@@ -12,8 +10,6 @@ import com.fabbitinc.server.presentation.part.response.CategoryStatsItemResponse
 import com.fabbitinc.server.presentation.part.response.CategoryStatsResponse;
 import com.fabbitinc.server.presentation.part.response.PartAttachmentItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartBomResponse;
-import com.fabbitinc.server.presentation.part.response.PartDefaultOwnerItemResponse;
-import com.fabbitinc.server.presentation.part.response.PartDefaultOwnerListResponse;
 import com.fabbitinc.server.presentation.part.response.PartDetailResponse;
 import com.fabbitinc.server.presentation.part.response.PartDraftLookupItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartDraftLookupResponse;
@@ -21,7 +17,6 @@ import com.fabbitinc.server.presentation.part.response.PartFilesResponse;
 import com.fabbitinc.server.presentation.part.response.PartFilterOptionsResponse;
 import com.fabbitinc.server.presentation.part.response.PartInProgressItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartInProgressListResponse;
-import com.fabbitinc.server.presentation.part.response.PartRevisionDiffAssigneeChangeResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionDiffAttributeChangeResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionDiffBomChangeResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionDiffFileChangeResponse;
@@ -34,8 +29,6 @@ import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryRespon
 import com.fabbitinc.server.presentation.part.response.PartListResponse;
 import com.fabbitinc.server.presentation.part.response.PartLookupItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartLookupResponse;
-import com.fabbitinc.server.presentation.part.response.PartOwnerResponse;
-import com.fabbitinc.server.presentation.part.response.PartOwnerUserSummaryResponse;
 import com.fabbitinc.server.presentation.part.response.PartPreviewProcessingResponse;
 import com.fabbitinc.server.presentation.part.response.PartPreviewResponse;
 import com.fabbitinc.server.presentation.part.response.PartPreviewSourceItemResponse;
@@ -44,12 +37,12 @@ import com.fabbitinc.server.presentation.part.response.PartProjectSummaryRespons
 import com.fabbitinc.server.presentation.part.response.PartProjectsResponse;
 import com.fabbitinc.server.presentation.part.response.PartSummaryResponse;
 import com.fabbitinc.server.presentation.part.response.PartSuppliersResponse;
+import com.fabbitinc.server.presentation.part.response.PartUserSummaryResponse;
 import com.fabbitinc.server.presentation.part.response.RelatedSupplierResponse;
 import com.fabbitinc.server.application.part.query.result.BomTreeResult;
 import com.fabbitinc.server.application.part.query.result.CategoryLookupResult;
 import com.fabbitinc.server.application.part.query.result.CategoryStatsResult;
 import com.fabbitinc.server.application.part.query.result.PartBomResult;
-import com.fabbitinc.server.application.part.query.result.PartDefaultOwnerListResult;
 import com.fabbitinc.server.application.part.query.result.PartDetailResult;
 import com.fabbitinc.server.application.part.query.result.PartDraftLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartFilesResult;
@@ -57,7 +50,6 @@ import com.fabbitinc.server.application.part.query.result.PartFilterOptionsResul
 import com.fabbitinc.server.application.part.query.result.PartInProgressListResult;
 import com.fabbitinc.server.application.part.query.result.PartListResult;
 import com.fabbitinc.server.application.part.query.result.PartLookupResult;
-import com.fabbitinc.server.application.part.query.result.PartOwnerResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewProcessingResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewSourcesResult;
@@ -92,7 +84,7 @@ final class PartResponseMapper {
                                 item.baseRevisionCode(),
                                 item.draftKey(),
                                 item.name(),
-                                toPartOwnerUserSummaryResponse(item.createdBy())
+                                toPartUserSummaryResponse(item.createdBy())
                         ))
                         .toList()
         );
@@ -173,10 +165,6 @@ final class PartResponseMapper {
                 result.isPhantom(),
                 result.leadTimeDays(),
                 result.extendedProperties(),
-                result.ownerId(),
-                toPartOwnerUserSummaryResponse(result.owner()),
-                result.ownerTeamId(),
-                result.ownerTeamName(),
                 toPartPreviewResponse(result.preview()),
                 result.draftCount(),
                 result.inReviewCount(),
@@ -197,13 +185,13 @@ final class PartResponseMapper {
                                 item.status(),
                                 item.name(),
                                 item.createdAt(),
-                                toPartOwnerUserSummaryResponse(item.createdBy()),
+                                toPartUserSummaryResponse(item.createdBy()),
                                 toPartRevisionDiffSummaryResponse(item.summary()),
                                 item.entries().stream()
                                         .map(entry -> new PartRevisionHistoryEntryResponse(
                                                 entry.actionType(),
                                                 entry.occurredAt(),
-                                                toPartOwnerUserSummaryResponse(entry.actor()),
+                                                toPartUserSummaryResponse(entry.actor()),
                                                 entry.reason()
                                         ))
                                         .toList()
@@ -243,14 +231,6 @@ final class PartResponseMapper {
                                 item.afterName(),
                                 item.afterQuantity(),
                                 item.changeType()
-                        ))
-                        .toList(),
-                result.assignees().stream()
-                        .map(item -> new PartRevisionDiffAssigneeChangeResponse(
-                                item.assigneeType(),
-                                item.changeType(),
-                                item.beforeValue(),
-                                item.afterValue()
                         ))
                         .toList()
         );
@@ -312,7 +292,7 @@ final class PartResponseMapper {
                 result.revisionCode(),
                 result.status(),
                 result.createdAt(),
-                toPartOwnerUserSummaryResponse(result.createdBy())
+                toPartUserSummaryResponse(result.createdBy())
         );
     }
 
@@ -323,8 +303,7 @@ final class PartResponseMapper {
         return new PartRevisionDiffSummaryResponse(
                 result.attributeChanges(),
                 result.fileChanges(),
-                result.bomChanges(),
-                result.assigneeChanges()
+                result.bomChanges()
         );
     }
 
@@ -396,32 +375,6 @@ final class PartResponseMapper {
         );
     }
 
-    static PartOwnerResponse toPartOwnerResponse(PartOwnerResult result) {
-        return new PartOwnerResponse(
-                result.ownerId(),
-                toPartOwnerUserSummaryResponse(result.owner()),
-                result.ownerTeamId(),
-                result.ownerTeamName()
-        );
-    }
-
-    static PartDefaultOwnerListResponse toPartDefaultOwnerListResponse(PartDefaultOwnerListResult result) {
-        return new PartDefaultOwnerListResponse(
-                result.items().stream().map(PartResponseMapper::toPartDefaultOwnerItemResponse).toList()
-        );
-    }
-
-    static PartDefaultOwnerItemResponse toPartDefaultOwnerItemResponse(PartDefaultOwnerListResult.Item result) {
-        return new PartDefaultOwnerItemResponse(
-                result.id(),
-                result.category(),
-                result.defaultOwnerId(),
-                toPartOwnerUserSummaryResponse(result.defaultOwner()),
-                result.defaultOwnerTeamId(),
-                result.defaultOwnerTeamName()
-        );
-    }
-
     static PartPreviewResponse toPartPreviewResponse(PartPreviewResult result) {
         if (result == null) {
             return null;
@@ -457,11 +410,11 @@ final class PartResponseMapper {
         );
     }
 
-    private static PartOwnerUserSummaryResponse toPartOwnerUserSummaryResponse(PartUserSummaryResult result) {
+    private static PartUserSummaryResponse toPartUserSummaryResponse(PartUserSummaryResult result) {
         if (result == null) {
             return null;
         }
-        return new PartOwnerUserSummaryResponse(
+        return new PartUserSummaryResponse(
                 result.userId(),
                 result.fullName(),
                 result.email(),

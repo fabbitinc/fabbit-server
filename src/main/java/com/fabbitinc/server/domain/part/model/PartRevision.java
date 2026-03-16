@@ -4,7 +4,6 @@ import com.fabbitinc.server.domain.common.entity.AbstractActorAuditableEntity;
 import com.fabbitinc.server.domain.common.entity.AggregateRoot;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
-import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -69,8 +68,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     public static final String CODE_PART_REVISION_DRAFT_CODE_FORBIDDEN = "PART_REVISION_DRAFT_CODE_FORBIDDEN";
     public static final String CODE_PART_REVISION_RELEASABLE_REQUIRED = "PART_REVISION_RELEASABLE_REQUIRED";
     public static final String CODE_PART_REVISION_SUPERSEDE_INVALID_STATE = "PART_REVISION_SUPERSEDE_INVALID_STATE";
-    public static final String CODE_PART_REVISION_OWNER_REQUIRED = "PART_REVISION_OWNER_REQUIRED";
-    public static final String CODE_PART_REVISION_OWNER_TEAM_REQUIRED = "PART_REVISION_OWNER_TEAM_REQUIRED";
     public static final String CODE_PART_REVISION_ENGINEERING_CHANGE_REQUIRED =
             "PART_REVISION_ENGINEERING_CHANGE_REQUIRED";
     public static final String CODE_PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE =
@@ -129,22 +126,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by", insertable = false, updatable = false)
     private User _updatedByRelation;
-
-    @Column(name = "owner_id")
-    private UUID ownerId;
-
-    @Getter(AccessLevel.NONE)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id", insertable = false, updatable = false)
-    private User _ownerRelation;
-
-    @Column(name = "owner_team_id")
-    private UUID ownerTeamId;
-
-    @Getter(AccessLevel.NONE)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_team_id", insertable = false, updatable = false)
-    private Team _ownerTeamRelation;
 
     @Column(name = "material", length = 200)
     private String material;
@@ -274,36 +255,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
 
     public void changeName(String name) {
         this.name = normalizeName(name);
-    }
-
-    public void assignOwner(UUID ownerId) {
-        if (ownerId == null) {
-            throw new DomainException(CODE_PART_REVISION_OWNER_REQUIRED, "담당자 ID는 필수입니다");
-        }
-        this.ownerId = ownerId;
-        if (this._ownerRelation != null && !ownerId.equals(this._ownerRelation.getId())) {
-            this._ownerRelation = null;
-        }
-    }
-
-    public void unassignOwner() {
-        this.ownerId = null;
-        this._ownerRelation = null;
-    }
-
-    public void assignOwnerTeam(UUID ownerTeamId) {
-        if (ownerTeamId == null) {
-            throw new DomainException(CODE_PART_REVISION_OWNER_TEAM_REQUIRED, "담당 팀 ID는 필수입니다");
-        }
-        this.ownerTeamId = ownerTeamId;
-        if (this._ownerTeamRelation != null && !ownerTeamId.equals(this._ownerTeamRelation.getId())) {
-            this._ownerTeamRelation = null;
-        }
-    }
-
-    public void unassignOwnerTeam() {
-        this.ownerTeamId = null;
-        this._ownerTeamRelation = null;
     }
 
     public void changeCategory(String category) {
@@ -456,10 +407,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             throw new DomainException(CODE_PART_REVISION_DRAFT_SOURCE_REQUIRED, "복제할 원본 리비전은 필수입니다");
         }
         changeName(source.getName());
-        this.ownerId = source.getOwnerId();
-        this.ownerTeamId = source.getOwnerTeamId();
-        this._ownerRelation = null;
-        this._ownerTeamRelation = null;
         changeCategory(source.getCategory());
         changeMaterial(source.getMaterial());
         changeUnit(source.getUnit());

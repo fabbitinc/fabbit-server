@@ -11,6 +11,6 @@ public record PartRevisionDiffRevisionResponse(
         String revisionCode,
         PartRevisionStatus status,
         Instant createdAt,
-        PartOwnerUserSummaryResponse createdBy
+        PartUserSummaryResponse createdBy
 ) {
 }

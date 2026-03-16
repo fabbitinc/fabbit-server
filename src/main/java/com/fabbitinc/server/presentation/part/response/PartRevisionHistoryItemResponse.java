@@ -13,7 +13,7 @@ public record PartRevisionHistoryItemResponse(
         PartRevisionStatus status,
         String name,
         Instant createdAt,
-        PartOwnerUserSummaryResponse createdBy,
+        PartUserSummaryResponse createdBy,
         PartRevisionDiffSummaryResponse summary,
         List<PartRevisionHistoryEntryResponse> entries
 ) {

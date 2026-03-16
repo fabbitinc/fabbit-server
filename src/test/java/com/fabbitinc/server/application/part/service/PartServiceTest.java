@@ -15,10 +15,8 @@ import com.fabbitinc.server.application.part.service.input.CreatePartInput;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.Part;
-import com.fabbitinc.server.domain.part.model.PartDefaultOwner;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartRevision;
-import com.fabbitinc.server.domain.part.repository.PartDefaultOwnerRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import java.util.List;
@@ -37,19 +35,14 @@ class PartServiceTest {
 
   @Mock private PartRepository partRepository;
   @Mock private PartRevisionRepository partRevisionRepository;
-  @Mock private PartDefaultOwnerRepository partDefaultOwnerRepository;
   @Mock private FileRepository fileRepository;
   @Mock private OrganizationApi organizationApi;
   @Mock private ObjectMapper objectMapper;
 
   @Test
-  void createPart_카테고리별_기본담당자를_적용한다() {
+  void createPart_초기_초안을_생성한다() {
     UUID actorId = UUID.randomUUID();
-    UUID ownerId = UUID.randomUUID();
-    UUID ownerTeamId = UUID.randomUUID();
-    PartDefaultOwner defaultOwner = PartDefaultOwner.create("FASTENER", ownerId, ownerTeamId);
     when(partRepository.findByPartNumber("P-100")).thenReturn(Optional.empty());
-    when(partDefaultOwnerRepository.findByCategory("FASTENER")).thenReturn(Optional.of(defaultOwner));
     when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(partRevisionRepository.save(any(PartRevision.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -73,10 +66,7 @@ class PartServiceTest {
     ArgumentCaptor<Part> partCaptor = ArgumentCaptor.forClass(Part.class);
     verify(partRepository).save(partCaptor.capture());
     Part savedPart = partCaptor.getValue();
-    assertEquals(ownerId, savedRevision.getOwnerId());
-    assertEquals(ownerTeamId, savedRevision.getOwnerTeamId());
-    assertNull(savedPart.getOwnerId());
-    assertNull(savedPart.getOwnerTeamId());
+    assertNull(savedPart.getLifecycleState());
   }
 
   @Test
@@ -102,7 +92,6 @@ class PartServiceTest {
     UUID actorId = UUID.randomUUID();
     Map<String, Object> extendedProperties = Map.of("weight", 1.2, "material_code", "AL6061");
     when(partRepository.findByPartNumber("P-200")).thenReturn(Optional.empty());
-    when(partDefaultOwnerRepository.findByCategoryIsNull()).thenReturn(Optional.empty());
     when(objectMapper.writeValueAsString(extendedProperties))
         .thenReturn("{\"weight\":1.2,\"material_code\":\"AL6061\"}");
     when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -201,7 +190,6 @@ class PartServiceTest {
     return new PartService(
         partRepository,
         partRevisionRepository,
-        partDefaultOwnerRepository,
         fileRepository,
         organizationApi,
         objectMapper);

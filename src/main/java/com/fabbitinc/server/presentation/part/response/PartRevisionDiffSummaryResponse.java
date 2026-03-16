@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record PartRevisionDiffSummaryResponse(
         long attributeChanges,
         long fileChanges,
-        long bomChanges,
-        long assigneeChanges
+        long bomChanges
 ) {
 }

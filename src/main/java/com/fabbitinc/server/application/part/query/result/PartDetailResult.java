@@ -1,5 +1,4 @@
 package com.fabbitinc.server.application.part.query.result;
-import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import java.util.Map;
@@ -20,10 +19,6 @@ public record PartDetailResult(
         Boolean isPhantom,
         Integer leadTimeDays,
         Map<String, Object> extendedProperties,
-        UUID ownerId,
-        PartUserSummaryResult owner,
-        UUID ownerTeamId,
-        String ownerTeamName,
         PartPreviewResult preview,
         long draftCount,
         long inReviewCount,

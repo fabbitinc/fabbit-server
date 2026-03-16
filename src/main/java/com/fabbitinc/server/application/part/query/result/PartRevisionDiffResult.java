@@ -13,8 +13,7 @@ public record PartRevisionDiffResult(
         PartRevisionDiffSummaryResult summary,
         List<AttributeChange> attributes,
         List<FileChange> files,
-        List<BomChange> bom,
-        List<AssigneeChange> assignees
+        List<BomChange> bom
 ) {
 
     public record Revision(
@@ -51,14 +50,6 @@ public record PartRevisionDiffResult(
             String afterName,
             BigDecimal afterQuantity,
             PartRevisionDiffChangeType changeType
-    ) {
-    }
-
-    public record AssigneeChange(
-            String assigneeType,
-            PartRevisionDiffChangeType changeType,
-            String beforeValue,
-            String afterValue
     ) {
     }
 }

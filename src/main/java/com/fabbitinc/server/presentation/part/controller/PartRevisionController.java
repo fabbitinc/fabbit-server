@@ -4,7 +4,6 @@ import static com.fabbitinc.server.presentation.part.controller.PartResponseMapp
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartBomResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartDetailResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartFilesResponse;
-import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartOwnerResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartPreviewProcessingResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartPreviewResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartPreviewSourcesResponse;
@@ -22,14 +21,12 @@ import com.fabbitinc.server.presentation.part.request.ChangePartPreviewRequest;
 import com.fabbitinc.server.presentation.part.request.CreatePartDraftRequest;
 import com.fabbitinc.server.presentation.part.request.PartRevisionChangeReasonRequest;
 import com.fabbitinc.server.presentation.part.request.UploadPartPreviewFileRequest;
-import com.fabbitinc.server.presentation.part.request.UpdatePartOwnerRequest;
 import com.fabbitinc.server.presentation.part.request.UpdatePartRevisionRequest;
 import com.fabbitinc.server.presentation.part.response.BomTreeResponse;
 import com.fabbitinc.server.presentation.part.response.PartAttachmentItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartBomResponse;
 import com.fabbitinc.server.presentation.part.response.PartDetailResponse;
 import com.fabbitinc.server.presentation.part.response.PartFilesResponse;
-import com.fabbitinc.server.presentation.part.response.PartOwnerResponse;
 import com.fabbitinc.server.presentation.part.response.PartPreviewProcessingResponse;
 import com.fabbitinc.server.presentation.part.response.PartPreviewResponse;
 import com.fabbitinc.server.presentation.part.response.PartPreviewSourcesResponse;
@@ -37,7 +34,6 @@ import com.fabbitinc.server.presentation.part.response.PartProjectsResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionDiffResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryResponse;
 import com.fabbitinc.server.presentation.part.response.PartSuppliersResponse;
-import com.fabbitinc.server.application.part.query.PartOwnerQuery;
 import com.fabbitinc.server.application.part.query.PartPreviewProcessingQuery;
 import com.fabbitinc.server.application.part.query.PartQuery;
 import com.fabbitinc.server.application.part.query.condition.BomTreeCondition;
@@ -47,7 +43,6 @@ import com.fabbitinc.server.application.part.query.condition.PartBomCondition;
 import com.fabbitinc.server.application.part.query.condition.PartDetailCondition;
 import com.fabbitinc.server.application.part.query.condition.PartDraftDetailCondition;
 import com.fabbitinc.server.application.part.query.condition.PartFilesCondition;
-import com.fabbitinc.server.application.part.query.condition.PartOwnerCondition;
 import com.fabbitinc.server.application.part.query.condition.PartPreviewSourcesCondition;
 import com.fabbitinc.server.application.part.query.condition.PartPreviewProcessingCondition;
 import com.fabbitinc.server.application.part.query.condition.PartProjectsCondition;
@@ -67,7 +62,6 @@ import com.fabbitinc.server.application.part.usecase.RegisterPartDrawingUseCase;
 import com.fabbitinc.server.application.part.usecase.ReleasePartDraftUseCase;
 import com.fabbitinc.server.application.part.usecase.ReleasePartRevisionUseCase;
 import com.fabbitinc.server.application.part.usecase.UploadPartPreviewFileUseCase;
-import com.fabbitinc.server.application.part.usecase.UpdatePartOwnerUseCase;
 import com.fabbitinc.server.application.part.usecase.UpdatePartRevisionUseCase;
 import com.fabbitinc.server.application.part.usecase.command.ApprovePartRevisionCommand;
 import com.fabbitinc.server.application.part.usecase.command.AttachPartFilesCommand;
@@ -82,7 +76,6 @@ import com.fabbitinc.server.application.part.usecase.command.RegisterPartDrawing
 import com.fabbitinc.server.application.part.usecase.command.ReleasePartDraftCommand;
 import com.fabbitinc.server.application.part.usecase.command.ReleasePartRevisionCommand;
 import com.fabbitinc.server.application.part.usecase.command.UploadPartPreviewFileCommand;
-import com.fabbitinc.server.application.part.usecase.command.UpdatePartOwnerCommand;
 import com.fabbitinc.server.application.part.usecase.command.UpdatePartRevisionCommand;
 import com.fabbitinc.server.application.part.usecase.result.ApprovePartRevisionResult;
 import com.fabbitinc.server.application.part.usecase.result.AttachPartFilesResult;
@@ -136,14 +129,12 @@ public class PartRevisionController {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     private final PartQuery partQuery;
-    private final PartOwnerQuery partOwnerQuery;
     private final CreatePartDraftUseCase createPartDraftUseCase;
     private final ApprovePartRevisionUseCase approvePartRevisionUseCase;
     private final CancelPartDraftUseCase cancelPartDraftUseCase;
     private final ReleasePartDraftUseCase releasePartDraftUseCase;
     private final ReleasePartRevisionUseCase releasePartRevisionUseCase;
     private final UpdatePartRevisionUseCase updatePartRevisionUseCase;
-    private final UpdatePartOwnerUseCase updatePartOwnerUseCase;
     private final AttachPartFilesUseCase attachPartFilesUseCase;
     private final DetachPartFileUseCase detachPartFileUseCase;
     private final PartPreviewProcessingQuery partPreviewProcessingQuery;
@@ -590,35 +581,6 @@ public class PartRevisionController {
                 request.reason()
         ));
         return toPartDetailResponse(partQuery.get(new PartDetailCondition(result.partNumber(), result.revisionCode())));
-    }
-
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/owner", description = "Part에 설정된 담당자와 담당팀을 조회합니다")
-    @GetMapping("/{partNumber}/revisions/{revisionCode}/owner")
-    public PartOwnerResponse getPartOwner(
-            @PathVariable String partNumber,
-            @PathVariable String revisionCode
-    ) {
-        return toPartOwnerResponse(partOwnerQuery.get(new PartOwnerCondition(partNumber, revisionCode)));
-    }
-
-    @Operation(summary = "PATCH /api/v1/parts/{partNumber}/revisions/{revisionCode}/owner", description = "포함된 필드만 부분 변경하며 null은 해제, 미포함 필드는 유지합니다")
-    @PatchMapping("/{partNumber}/revisions/{revisionCode}/owner")
-    public PartOwnerResponse updatePartOwner(
-            @PathVariable String partNumber,
-            @PathVariable String revisionCode,
-            @Valid @RequestBody UpdatePartOwnerRequest request
-    ) {
-        updatePartOwnerUseCase.execute(
-                new UpdatePartOwnerCommand(
-                        partNumber,
-                        revisionCode,
-                        request.getOwnerId(),
-                        request.isOwnerIdSet(),
-                        request.getOwnerTeamId(),
-                        request.isOwnerTeamIdSet()
-                )
-        );
-        return toPartOwnerResponse(partOwnerQuery.get(new PartOwnerCondition(partNumber, revisionCode)));
     }
 
     @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/bom", description = "Part의 직접 자식/직접 부모 BOM 관계를 조회합니다")

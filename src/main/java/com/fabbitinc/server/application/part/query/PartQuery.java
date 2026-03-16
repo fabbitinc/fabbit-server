@@ -1,5 +1,4 @@
 package com.fabbitinc.server.application.part.query;
-import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
@@ -49,7 +48,6 @@ import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
 import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
 import com.fabbitinc.server.application.part.service.PartPreviewService;
 import com.fabbitinc.server.application.project.api.ProjectApi;
-import com.fabbitinc.server.application.team.api.TeamApi;
 import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.bom.model.EngineeringBomItem;
 import com.fabbitinc.server.domain.bom.repository.EngineeringBomItemRepository;
@@ -83,7 +81,6 @@ import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
 import com.fabbitinc.server.domain.project.model.ProjectPart;
 import com.fabbitinc.server.domain.supplier.model.Supplier;
 import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
-import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.user.model.User;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -139,7 +136,6 @@ public class PartQuery {
     private final PartPreviewServingProjectionRepository partPreviewServingProjectionRepository;
     private final ProjectApi projectApi;
     private final UserApi userApi;
-    private final TeamApi teamApi;
     private final FileUrlResolver fileUrlResolver;
     private final EntityManager entityManager;
 
@@ -568,7 +564,6 @@ public class PartQuery {
         Map<UUID, List<EngineeringBomItem>> bomItemsByRevisionId = groupBomItemsByRevisionId(revisions);
         Map<UUID, List<PartRevisionHistory>> historiesByRevisionId = groupHistoriesByRevisionId(revisions);
         Map<UUID, User> usersById = loadUsersByRevisionHistory(revisions, historiesByRevisionId);
-        Map<UUID, Team> teamsById = loadTeamsByRevisions(revisions);
 
         List<PartRevisionHistoryResult.Item> items = new ArrayList<>();
         for (int index = 0; index < revisions.size(); index++) {
@@ -583,8 +578,7 @@ public class PartQuery {
                             drawingsByRevisionId,
                             drawingSourceFilesById,
                             bomItemsByRevisionId,
-                            usersById,
-                            teamsById
+                            usersById
                     );
 
             items.add(new PartRevisionHistoryResult.Item(
@@ -629,7 +623,6 @@ public class PartQuery {
         Map<UUID, File> drawingSourceFilesById = loadDrawingSourceFiles(drawingsByRevisionId);
         Map<UUID, List<EngineeringBomItem>> bomItemsByRevisionId = groupBomItemsByRevisionId(pair);
         Map<UUID, User> usersById = loadUsersByRevisionHistory(pair, Map.of());
-        Map<UUID, Team> teamsById = loadTeamsByRevisions(pair);
 
         RevisionDiffSnapshot diff = buildRevisionDiffSnapshot(
                 baseRevision,
@@ -638,8 +631,7 @@ public class PartQuery {
                 drawingsByRevisionId,
                 drawingSourceFilesById,
                 bomItemsByRevisionId,
-                usersById,
-                teamsById
+                usersById
         );
 
         return new PartRevisionDiffResult(
@@ -660,8 +652,7 @@ public class PartQuery {
                 diff.summary(),
                 diff.attributes(),
                 diff.files(),
-                diff.bom(),
-                diff.assignees()
+                diff.bom()
         );
     }
 
@@ -669,9 +660,6 @@ public class PartQuery {
         Part part = resolvedPart.part();
         PartRevision revision = resolvedPart.revision();
 
-        PartUserSummaryResult owner = toUserSummary(userApi.getUserOrNull(revision == null ? null : revision.getOwnerId()));
-        Team ownerTeam = teamApi.getTeamOrNull(revision == null ? null : revision.getOwnerTeamId());
-        String ownerTeamName = ownerTeam == null ? null : ownerTeam.getName();
         PartPreviewResult preview = loadPreview(revision);
         RevisionWorkflowCounts workflowCounts = countRevisionWorkflows(part.getId());
 
@@ -705,10 +693,6 @@ public class PartQuery {
                 resolvedPart.phantom(),
                 resolvedPart.leadTimeDays(),
                 parseExtendedProperties(resolvedPart.extendedProperties()),
-                revision == null ? null : revision.getOwnerId(),
-                owner,
-                revision == null ? null : revision.getOwnerTeamId(),
-                ownerTeamName,
                 preview,
                 workflowCounts.draftCount(),
                 workflowCounts.inReviewCount(),
@@ -1948,10 +1932,6 @@ public class PartQuery {
                 .map(PartRevisionHistory::getActorId)
                 .filter(java.util.Objects::nonNull)
                 .forEach(userIds::add);
-        revisions.stream()
-                .map(PartRevision::getOwnerId)
-                .filter(java.util.Objects::nonNull)
-                .forEach(userIds::add);
         if (userIds.isEmpty()) {
             return Map.of();
         }
@@ -1968,18 +1948,6 @@ public class PartQuery {
             return null;
         }
         return matcher.group(1);
-    }
-
-    private Map<UUID, Team> loadTeamsByRevisions(List<PartRevision> revisions) {
-        LinkedHashSet<UUID> teamIds = revisions.stream()
-                .map(PartRevision::getOwnerTeamId)
-                .filter(java.util.Objects::nonNull)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        if (teamIds.isEmpty()) {
-            return Map.of();
-        }
-        return teamApi.getTeamsByIds(List.copyOf(teamIds)).stream()
-                .collect(java.util.stream.Collectors.toMap(Team::getId, team -> team));
     }
 
     private PartRevision resolveBaseRevision(PartRevision targetRevision, String baseRevisionCode) {
@@ -2010,8 +1978,7 @@ public class PartQuery {
             Map<UUID, List<Drawing>> drawingsByRevisionId,
             Map<UUID, File> drawingSourceFilesById,
             Map<UUID, List<EngineeringBomItem>> bomItemsByRevisionId,
-            Map<UUID, User> usersById,
-            Map<UUID, Team> teamsById
+            Map<UUID, User> usersById
     ) {
         List<PartRevisionDiffResult.AttributeChange> attributeChanges = compareAttributeChanges(baseRevision, targetRevision);
         List<PartRevisionDiffResult.FileChange> fileChanges = compareFileChanges(
@@ -2022,20 +1989,16 @@ public class PartQuery {
                 drawingSourceFilesById
         );
         List<PartRevisionDiffResult.BomChange> bomChanges = compareBomChanges(baseRevision, targetRevision, bomItemsByRevisionId);
-        List<PartRevisionDiffResult.AssigneeChange> assigneeChanges =
-                compareAssigneeChanges(baseRevision, targetRevision, usersById, teamsById);
 
         return new RevisionDiffSnapshot(
                 new PartRevisionDiffSummaryResult(
                         attributeChanges.size(),
                         fileChanges.size(),
-                        bomChanges.size(),
-                        assigneeChanges.size()
+                        bomChanges.size()
                 ),
                 attributeChanges,
                 fileChanges,
-                bomChanges,
-                assigneeChanges
+                bomChanges
         );
     }
 
@@ -2211,53 +2174,6 @@ public class PartQuery {
             ));
         }
         return changes;
-    }
-
-    private List<PartRevisionDiffResult.AssigneeChange> compareAssigneeChanges(
-            PartRevision baseRevision,
-            PartRevision targetRevision,
-            Map<UUID, User> usersById,
-            Map<UUID, Team> teamsById
-    ) {
-        List<PartRevisionDiffResult.AssigneeChange> changes = new ArrayList<>();
-        addAssigneeChange(
-                changes,
-                "OWNER",
-                formatAssigneeValue(usersById.get(baseRevision.getOwnerId())),
-                formatAssigneeValue(usersById.get(targetRevision.getOwnerId()))
-        );
-        addAssigneeChange(
-                changes,
-                "OWNER_TEAM",
-                formatTeamValue(teamsById.get(baseRevision.getOwnerTeamId())),
-                formatTeamValue(teamsById.get(targetRevision.getOwnerTeamId()))
-        );
-        return changes;
-    }
-
-    private void addAssigneeChange(
-            List<PartRevisionDiffResult.AssigneeChange> changes,
-            String assigneeType,
-            String beforeValue,
-            String afterValue
-    ) {
-        if (java.util.Objects.equals(beforeValue, afterValue)) {
-            return;
-        }
-        changes.add(new PartRevisionDiffResult.AssigneeChange(
-                assigneeType,
-                resolveChangeType(beforeValue, afterValue),
-                beforeValue,
-                afterValue
-        ));
-    }
-
-    private String formatAssigneeValue(User user) {
-        return user == null ? null : user.getFullName();
-    }
-
-    private String formatTeamValue(Team team) {
-        return team == null ? null : team.getName();
     }
 
     private String formatScalar(Object value) {
@@ -2672,8 +2588,7 @@ public class PartQuery {
             PartRevisionDiffSummaryResult summary,
             List<PartRevisionDiffResult.AttributeChange> attributes,
             List<PartRevisionDiffResult.FileChange> files,
-            List<PartRevisionDiffResult.BomChange> bom,
-            List<PartRevisionDiffResult.AssigneeChange> assignees
+            List<PartRevisionDiffResult.BomChange> bom
     ) {
     }
 

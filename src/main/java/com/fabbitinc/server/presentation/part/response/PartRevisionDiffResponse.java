@@ -10,7 +10,6 @@ public record PartRevisionDiffResponse(
         PartRevisionDiffSummaryResponse summary,
         List<PartRevisionDiffAttributeChangeResponse> attributes,
         List<PartRevisionDiffFileChangeResponse> files,
-        List<PartRevisionDiffBomChangeResponse> bom,
-        List<PartRevisionDiffAssigneeChangeResponse> assignees
+        List<PartRevisionDiffBomChangeResponse> bom
 ) {
 }
