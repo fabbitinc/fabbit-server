@@ -41,6 +41,27 @@ public class PartRevisionRouteService {
         return getRequiredRevision(partNumber, revisionCode).getId();
     }
 
+    public PartRevision getRequiredTarget(
+            String partNumber,
+            String revisionCode,
+            String baseRevisionCode,
+            String draftKey
+    ) {
+        if (draftKey != null && !draftKey.isBlank()) {
+            return getRequiredDraft(partNumber, baseRevisionCode, draftKey);
+        }
+        return getRequiredRevision(partNumber, revisionCode);
+    }
+
+    public UUID getRequiredTargetId(
+            String partNumber,
+            String revisionCode,
+            String baseRevisionCode,
+            String draftKey
+    ) {
+        return getRequiredTarget(partNumber, revisionCode, baseRevisionCode, draftKey).getId();
+    }
+
     public UUID getRequiredDraftPartId(String partNumber, String baseRevisionCode, String draftKey) {
         return getRequiredDraft(partNumber, baseRevisionCode, draftKey).getPartId();
     }

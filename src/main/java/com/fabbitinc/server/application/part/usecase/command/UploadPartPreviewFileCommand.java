@@ -5,6 +5,8 @@ import java.util.UUID;
 public record UploadPartPreviewFileCommand(
         String partNumber,
         String revisionCode,
+        String baseRevisionCode,
+        String draftKey,
         UUID fileId
 ) {
 }

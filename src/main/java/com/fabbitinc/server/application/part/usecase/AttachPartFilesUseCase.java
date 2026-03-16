@@ -21,7 +21,12 @@ public class AttachPartFilesUseCase {
 
     public AttachPartFilesResult execute(AttachPartFilesCommand command) {
         currentAuthProvider.getCurrentAuth();
-        var partRevisionId = partRevisionRouteService.getRequiredRevisionId(command.partNumber(), command.revisionCode());
+        var partRevisionId = partRevisionRouteService.getRequiredTargetId(
+                command.partNumber(),
+                command.revisionCode(),
+                command.baseRevisionCode(),
+                command.draftKey()
+        );
         return new AttachPartFilesResult(
                 partService.attachFiles(partRevisionId, command.fileIds()).stream()
                         .map(File::getId)

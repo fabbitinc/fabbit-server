@@ -20,7 +20,12 @@ public class DeletePartPreviewFileUseCase {
     public void execute(DeletePartPreviewFileCommand command) {
         var auth = currentAuthProvider.getCurrentAuth();
         partPreviewService.deletePreviewFile(
-                partRevisionRouteService.getRequiredRevisionId(command.partNumber(), command.revisionCode()),
+                partRevisionRouteService.getRequiredTargetId(
+                        command.partNumber(),
+                        command.revisionCode(),
+                        command.baseRevisionCode(),
+                        command.draftKey()
+                ),
                 command.previewFileId(),
                 auth.userId()
         );

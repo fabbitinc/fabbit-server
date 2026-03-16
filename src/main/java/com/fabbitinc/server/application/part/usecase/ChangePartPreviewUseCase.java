@@ -20,7 +20,12 @@ public class ChangePartPreviewUseCase {
     public void execute(ChangePartPreviewCommand command) {
         currentAuthProvider.getCurrentAuth();
         partPreviewService.changeSource(
-                partRevisionRouteService.getRequiredRevisionId(command.partNumber(), command.revisionCode()),
+                partRevisionRouteService.getRequiredTargetId(
+                        command.partNumber(),
+                        command.revisionCode(),
+                        command.baseRevisionCode(),
+                        command.draftKey()
+                ),
                 command.sourceType(),
                 command.sourceId()
         );

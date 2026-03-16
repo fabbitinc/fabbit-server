@@ -812,7 +812,12 @@ public class PartQuery {
 
     public PartFilesResult get(PartFilesCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        ResolvedPart resolvedPart = resolveRequiredPart(condition.partNumber(), condition.revisionCode());
+        ResolvedPart resolvedPart = resolveRequiredTarget(
+                condition.partNumber(),
+                condition.revisionCode(),
+                condition.baseRevisionCode(),
+                condition.draftKey()
+        );
         PartRevision revision = resolvedPart.revision();
 
         List<PartFilesResult.Item> items = new ArrayList<>();
@@ -838,7 +843,12 @@ public class PartQuery {
 
     public PartPreviewSourcesResult getPreviewSources(PartPreviewSourcesCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        ResolvedPart resolvedPart = resolveRequiredPart(condition.partNumber(), condition.revisionCode());
+        ResolvedPart resolvedPart = resolveRequiredTarget(
+                condition.partNumber(),
+                condition.revisionCode(),
+                condition.baseRevisionCode(),
+                condition.draftKey()
+        );
         PartRevision revision = resolvedPart.revision();
         ActivePreviewSource activePreviewSource = loadActivePreviewSource(revision);
 
@@ -2211,6 +2221,18 @@ public class PartQuery {
                         "Part '%s'을(를) 찾을 수 없습니다".formatted(partNumber)
                 ));
         return new ResolvedPart(part, draft);
+    }
+
+    private ResolvedPart resolveRequiredTarget(
+            String partNumber,
+            String revisionCode,
+            String baseRevisionCode,
+            String draftKey
+    ) {
+        if (draftKey != null && !draftKey.isBlank()) {
+            return resolveRequiredDraft(partNumber, baseRevisionCode, draftKey);
+        }
+        return resolveRequiredPart(partNumber, revisionCode);
     }
 
     private java.util.Optional<PartRevision> findRevisionScopedDraft(String partNumber, String baseRevisionCode, String draftKey) {

@@ -6,6 +6,8 @@ import java.util.UUID;
 public record AttachPartFilesCommand(
         String partNumber,
         String revisionCode,
+        String baseRevisionCode,
+        String draftKey,
         List<UUID> fileIds
 ) {
 }

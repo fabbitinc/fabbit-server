@@ -20,7 +20,12 @@ public class UploadPartPreviewFileUseCase {
     public void execute(UploadPartPreviewFileCommand command) {
         currentAuthProvider.getCurrentAuth();
         partPreviewService.uploadPreviewFile(
-                partRevisionRouteService.getRequiredRevisionId(command.partNumber(), command.revisionCode()),
+                partRevisionRouteService.getRequiredTargetId(
+                        command.partNumber(),
+                        command.revisionCode(),
+                        command.baseRevisionCode(),
+                        command.draftKey()
+                ),
                 command.fileId()
         );
     }

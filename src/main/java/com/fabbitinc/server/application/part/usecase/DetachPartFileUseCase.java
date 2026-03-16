@@ -20,7 +20,12 @@ public class DetachPartFileUseCase {
     public void execute(DetachPartFileCommand command) {
         var auth = currentAuthProvider.getCurrentAuth();
         partService.detachFile(
-                partRevisionRouteService.getRequiredRevisionId(command.partNumber(), command.revisionCode()),
+                partRevisionRouteService.getRequiredTargetId(
+                        command.partNumber(),
+                        command.revisionCode(),
+                        command.baseRevisionCode(),
+                        command.draftKey()
+                ),
                 command.fileId(),
                 auth.userId()
         );

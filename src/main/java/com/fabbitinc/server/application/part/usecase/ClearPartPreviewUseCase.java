@@ -20,7 +20,12 @@ public class ClearPartPreviewUseCase {
     public void execute(ClearPartPreviewCommand command) {
         currentAuthProvider.getCurrentAuth();
         partPreviewService.clearByPartRevision(
-                partRevisionRouteService.getRequiredRevisionId(command.partNumber(), command.revisionCode())
+                partRevisionRouteService.getRequiredTargetId(
+                        command.partNumber(),
+                        command.revisionCode(),
+                        command.baseRevisionCode(),
+                        command.draftKey()
+                )
         );
     }
 }

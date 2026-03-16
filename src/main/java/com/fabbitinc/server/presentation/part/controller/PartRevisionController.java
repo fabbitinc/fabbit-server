@@ -246,6 +246,102 @@ public class PartRevisionController {
         ));
     }
 
+    @Operation(summary = "GET /api/v1/parts/{partNumber}/drafts/{draftKey}/files", description = "초기 DRAFT 상태의 부품 초안에 연결된 업로드 완료 파일 목록을 조회합니다")
+    @GetMapping("/{partNumber}/drafts/{draftKey}/files")
+    public PartFilesResponse getDraftFiles(
+            @PathVariable String partNumber,
+            @PathVariable String draftKey
+    ) {
+        return toPartFilesResponse(partQuery.get(new PartFilesCondition(partNumber, null, null, draftKey)));
+    }
+
+    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/files", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 연결된 업로드 완료 파일 목록을 조회합니다")
+    @GetMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/files")
+    public PartFilesResponse getRevisionDraftFiles(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @PathVariable String draftKey
+    ) {
+        return toPartFilesResponse(partQuery.get(new PartFilesCondition(partNumber, null, revisionCode, draftKey)));
+    }
+
+    @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/files", description = "업로드 완료 파일들을 초기 DRAFT 상태의 부품 초안에 배치 연결합니다")
+    @PostMapping("/{partNumber}/drafts/{draftKey}/files")
+    public List<PartAttachmentItemResponse> attachDraftFiles(
+            @PathVariable String partNumber,
+            @PathVariable String draftKey,
+            @Valid @RequestBody AttachFilesRequest request
+    ) {
+        AttachPartFilesResult result = attachPartFilesUseCase.execute(
+                new AttachPartFilesCommand(partNumber, null, null, draftKey, request.fileIds())
+        );
+        return partQuery.getFiles(new FileItemsCondition(result.fileIds())).stream()
+                .map(PartResponseMapper::toPartAttachmentItemResponse)
+                .toList();
+    }
+
+    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/files", description = "업로드 완료 파일들을 특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 배치 연결합니다")
+    @PostMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/files")
+    public List<PartAttachmentItemResponse> attachRevisionDraftFiles(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @PathVariable String draftKey,
+            @Valid @RequestBody AttachFilesRequest request
+    ) {
+        AttachPartFilesResult result = attachPartFilesUseCase.execute(
+                new AttachPartFilesCommand(partNumber, null, revisionCode, draftKey, request.fileIds())
+        );
+        return partQuery.getFiles(new FileItemsCondition(result.fileIds())).stream()
+                .map(PartResponseMapper::toPartAttachmentItemResponse)
+                .toList();
+    }
+
+    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/drafts/{draftKey}/files/{fileId}", description = "초기 DRAFT 상태의 부품 초안에 연결된 첨부파일 1건을 제거합니다")
+    @DeleteMapping("/{partNumber}/drafts/{draftKey}/files/{fileId}")
+    public ResponseEntity<Void> detachDraftFile(
+            @PathVariable String partNumber,
+            @PathVariable String draftKey,
+            @PathVariable UUID fileId
+    ) {
+        detachPartFileUseCase.execute(new DetachPartFileCommand(partNumber, null, null, draftKey, fileId));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/files/{fileId}", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 연결된 첨부파일 1건을 제거합니다")
+    @DeleteMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/files/{fileId}")
+    public ResponseEntity<Void> detachRevisionDraftFile(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @PathVariable String draftKey,
+            @PathVariable UUID fileId
+    ) {
+        detachPartFileUseCase.execute(new DetachPartFileCommand(partNumber, null, revisionCode, draftKey, fileId));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/drafts/{draftKey}/drawings/{drawingId}", description = "초기 DRAFT 상태의 부품 초안에 연결된 도면 1건을 삭제합니다")
+    @DeleteMapping("/{partNumber}/drafts/{draftKey}/drawings/{drawingId}")
+    public ResponseEntity<Void> deleteDrawingFromDraft(
+            @PathVariable String partNumber,
+            @PathVariable String draftKey,
+            @PathVariable UUID drawingId
+    ) {
+        deletePartDrawingUseCase.execute(new DeletePartDrawingCommand(partNumber, null, null, draftKey, drawingId));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/drawings/{drawingId}", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 연결된 도면 1건을 삭제합니다")
+    @DeleteMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/drawings/{drawingId}")
+    public ResponseEntity<Void> deleteDrawingFromRevisionDraft(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @PathVariable String draftKey,
+            @PathVariable UUID drawingId
+    ) {
+        deletePartDrawingUseCase.execute(new DeletePartDrawingCommand(partNumber, null, revisionCode, draftKey, drawingId));
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/approve", description = "초기 Part 초안을 직접 승인하고 공식 리비전으로 전환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "승인 성공"),
@@ -637,7 +733,7 @@ public class PartRevisionController {
             @PathVariable String partNumber,
             @PathVariable String revisionCode
     ) {
-        return toPartFilesResponse(partQuery.get(new PartFilesCondition(partNumber, revisionCode)));
+        return toPartFilesResponse(partQuery.get(new PartFilesCondition(partNumber, revisionCode, null, null)));
     }
 
     @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/suppliers", description = "Part에 연결된 공급사 목록을 조회합니다")
@@ -657,7 +753,7 @@ public class PartRevisionController {
             @Valid @RequestBody AttachFilesRequest request
     ) {
         AttachPartFilesResult result = attachPartFilesUseCase.execute(
-                new AttachPartFilesCommand(partNumber, revisionCode, request.fileIds())
+                new AttachPartFilesCommand(partNumber, revisionCode, null, null, request.fileIds())
         );
         return partQuery.getFiles(new FileItemsCondition(result.fileIds())).stream()
                 .map(PartResponseMapper::toPartAttachmentItemResponse)
@@ -671,7 +767,7 @@ public class PartRevisionController {
             @PathVariable String revisionCode,
             @PathVariable UUID fileId
     ) {
-        detachPartFileUseCase.execute(new DetachPartFileCommand(partNumber, revisionCode, fileId));
+        detachPartFileUseCase.execute(new DetachPartFileCommand(partNumber, revisionCode, null, null, fileId));
         return ResponseEntity.noContent().build();
     }
 
@@ -682,7 +778,7 @@ public class PartRevisionController {
             @PathVariable String revisionCode,
             @PathVariable UUID drawingId
     ) {
-        deletePartDrawingUseCase.execute(new DeletePartDrawingCommand(partNumber, revisionCode, drawingId));
+        deletePartDrawingUseCase.execute(new DeletePartDrawingCommand(partNumber, revisionCode, null, null, drawingId));
         return ResponseEntity.noContent().build();
     }
 
@@ -708,10 +804,49 @@ public class PartRevisionController {
         changePartPreviewUseCase.execute(new ChangePartPreviewCommand(
                 partNumber,
                 revisionCode,
+                null,
+                null,
                 request.sourceType(),
                 request.sourceId()
         ));
         return toPartPreviewResponse(partQuery.get(new PartDetailCondition(partNumber, revisionCode)).preview());
+    }
+
+    @Operation(summary = "PATCH /api/v1/parts/{partNumber}/drafts/{draftKey}/preview", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기 소스를 도면 또는 미리보기 전용 파일로 변경합니다")
+    @PatchMapping("/{partNumber}/drafts/{draftKey}/preview")
+    public PartPreviewResponse updateDraftPreview(
+            @PathVariable String partNumber,
+            @PathVariable String draftKey,
+            @Valid @RequestBody ChangePartPreviewRequest request
+    ) {
+        changePartPreviewUseCase.execute(new ChangePartPreviewCommand(
+                partNumber,
+                null,
+                null,
+                draftKey,
+                request.sourceType(),
+                request.sourceId()
+        ));
+        return toPartPreviewResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, null, draftKey)).preview());
+    }
+
+    @Operation(summary = "PATCH /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 소스를 도면 또는 미리보기 전용 파일로 변경합니다")
+    @PatchMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview")
+    public PartPreviewResponse updateRevisionDraftPreview(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @PathVariable String draftKey,
+            @Valid @RequestBody ChangePartPreviewRequest request
+    ) {
+        changePartPreviewUseCase.execute(new ChangePartPreviewCommand(
+                partNumber,
+                null,
+                revisionCode,
+                draftKey,
+                request.sourceType(),
+                request.sourceId()
+        ));
+        return toPartPreviewResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, revisionCode, draftKey)).preview());
     }
 
     @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview/sources", description = "대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다")
@@ -721,7 +856,30 @@ public class PartRevisionController {
             @PathVariable String revisionCode
     ) {
         return toPartPreviewSourcesResponse(
-                partQuery.getPreviewSources(new PartPreviewSourcesCondition(partNumber, revisionCode))
+                partQuery.getPreviewSources(new PartPreviewSourcesCondition(partNumber, revisionCode, null, null))
+        );
+    }
+
+    @Operation(summary = "GET /api/v1/parts/{partNumber}/drafts/{draftKey}/preview/sources", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다")
+    @GetMapping("/{partNumber}/drafts/{draftKey}/preview/sources")
+    public PartPreviewSourcesResponse getDraftPreviewSources(
+            @PathVariable String partNumber,
+            @PathVariable String draftKey
+    ) {
+        return toPartPreviewSourcesResponse(
+                partQuery.getPreviewSources(new PartPreviewSourcesCondition(partNumber, null, null, draftKey))
+        );
+    }
+
+    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/sources", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다")
+    @GetMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/sources")
+    public PartPreviewSourcesResponse getRevisionDraftPreviewSources(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @PathVariable String draftKey
+    ) {
+        return toPartPreviewSourcesResponse(
+                partQuery.getPreviewSources(new PartPreviewSourcesCondition(partNumber, null, revisionCode, draftKey))
         );
     }
 
@@ -735,9 +893,46 @@ public class PartRevisionController {
         uploadPartPreviewFileUseCase.execute(new UploadPartPreviewFileCommand(
                 partNumber,
                 revisionCode,
+                null,
+                null,
                 request.fileId()
         ));
         return toPartPreviewResponse(partQuery.get(new PartDetailCondition(partNumber, revisionCode)).preview());
+    }
+
+    @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/preview/files", description = "업로드 완료 파일을 초기 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일로 등록하고 현재 미리보기로 설정합니다")
+    @PostMapping("/{partNumber}/drafts/{draftKey}/preview/files")
+    public PartPreviewResponse uploadDraftPreviewFile(
+            @PathVariable String partNumber,
+            @PathVariable String draftKey,
+            @Valid @RequestBody UploadPartPreviewFileRequest request
+    ) {
+        uploadPartPreviewFileUseCase.execute(new UploadPartPreviewFileCommand(
+                partNumber,
+                null,
+                null,
+                draftKey,
+                request.fileId()
+        ));
+        return toPartPreviewResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, null, draftKey)).preview());
+    }
+
+    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/files", description = "업로드 완료 파일을 특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일로 등록하고 현재 미리보기로 설정합니다")
+    @PostMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/files")
+    public PartPreviewResponse uploadRevisionDraftPreviewFile(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @PathVariable String draftKey,
+            @Valid @RequestBody UploadPartPreviewFileRequest request
+    ) {
+        uploadPartPreviewFileUseCase.execute(new UploadPartPreviewFileCommand(
+                partNumber,
+                null,
+                revisionCode,
+                draftKey,
+                request.fileId()
+        ));
+        return toPartPreviewResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, revisionCode, draftKey)).preview());
     }
 
     @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview/processing", description = "Part 대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다")
@@ -747,7 +942,30 @@ public class PartRevisionController {
             @PathVariable String revisionCode
     ) {
         return toPartPreviewProcessingResponse(
-                partPreviewProcessingQuery.get(new PartPreviewProcessingCondition(partNumber, revisionCode))
+                partPreviewProcessingQuery.get(new PartPreviewProcessingCondition(partNumber, revisionCode, null, null))
+        );
+    }
+
+    @Operation(summary = "GET /api/v1/parts/{partNumber}/drafts/{draftKey}/preview/processing", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다")
+    @GetMapping("/{partNumber}/drafts/{draftKey}/preview/processing")
+    public PartPreviewProcessingResponse getDraftPreviewProcessing(
+            @PathVariable String partNumber,
+            @PathVariable String draftKey
+    ) {
+        return toPartPreviewProcessingResponse(
+                partPreviewProcessingQuery.get(new PartPreviewProcessingCondition(partNumber, null, null, draftKey))
+        );
+    }
+
+    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/processing", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다")
+    @GetMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/processing")
+    public PartPreviewProcessingResponse getRevisionDraftPreviewProcessing(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @PathVariable String draftKey
+    ) {
+        return toPartPreviewProcessingResponse(
+                partPreviewProcessingQuery.get(new PartPreviewProcessingCondition(partNumber, null, revisionCode, draftKey))
         );
     }
 
@@ -757,7 +975,28 @@ public class PartRevisionController {
             @PathVariable String partNumber,
             @PathVariable String revisionCode
     ) {
-        clearPartPreviewUseCase.execute(new ClearPartPreviewCommand(partNumber, revisionCode));
+        clearPartPreviewUseCase.execute(new ClearPartPreviewCommand(partNumber, revisionCode, null, null));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/drafts/{draftKey}/preview", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기를 해제합니다")
+    @DeleteMapping("/{partNumber}/drafts/{draftKey}/preview")
+    public ResponseEntity<Void> deleteDraftPreview(
+            @PathVariable String partNumber,
+            @PathVariable String draftKey
+    ) {
+        clearPartPreviewUseCase.execute(new ClearPartPreviewCommand(partNumber, null, null, draftKey));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기를 해제합니다")
+    @DeleteMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview")
+    public ResponseEntity<Void> deleteRevisionDraftPreview(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @PathVariable String draftKey
+    ) {
+        clearPartPreviewUseCase.execute(new ClearPartPreviewCommand(partNumber, null, revisionCode, draftKey));
         return ResponseEntity.noContent().build();
     }
 
@@ -768,7 +1007,48 @@ public class PartRevisionController {
             @PathVariable String revisionCode,
             @PathVariable UUID previewFileId
     ) {
-        deletePartPreviewFileUseCase.execute(new DeletePartPreviewFileCommand(partNumber, revisionCode, previewFileId));
+        deletePartPreviewFileUseCase.execute(new DeletePartPreviewFileCommand(
+                partNumber,
+                revisionCode,
+                null,
+                null,
+                previewFileId
+        ));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/drafts/{draftKey}/preview/files/{previewFileId}", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일 1건을 삭제합니다")
+    @DeleteMapping("/{partNumber}/drafts/{draftKey}/preview/files/{previewFileId}")
+    public ResponseEntity<Void> deleteDraftPreviewFile(
+            @PathVariable String partNumber,
+            @PathVariable String draftKey,
+            @PathVariable UUID previewFileId
+    ) {
+        deletePartPreviewFileUseCase.execute(new DeletePartPreviewFileCommand(
+                partNumber,
+                null,
+                null,
+                draftKey,
+                previewFileId
+        ));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/files/{previewFileId}", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일 1건을 삭제합니다")
+    @DeleteMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/files/{previewFileId}")
+    public ResponseEntity<Void> deleteRevisionDraftPreviewFile(
+            @PathVariable String partNumber,
+            @PathVariable String revisionCode,
+            @PathVariable String draftKey,
+            @PathVariable UUID previewFileId
+    ) {
+        deletePartPreviewFileUseCase.execute(new DeletePartPreviewFileCommand(
+                partNumber,
+                null,
+                revisionCode,
+                draftKey,
+                previewFileId
+        ));
         return ResponseEntity.noContent().build();
     }
 }
