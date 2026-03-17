@@ -179,7 +179,10 @@ public class PartPreviewService {
         }
 
         if (sourceType == PartPreviewSourceType.PREVIEW_FILE) {
-            PartPreviewFile previewFile = partPreviewFileRepository.findByIdAndPartPreview_Id(sourceId, partPreview.getId())
+            PartPreviewFile previewFile = partPreview.getPreviewFiles().stream()
+                    .filter(file -> file.getId().equals(sourceId))
+                    .findFirst()
+                    .or(() -> partPreviewFileRepository.findByIdAndPartPreview_Id(sourceId, partPreview.getId()))
                     .orElseThrow(() -> new AppException(
                             ErrorCode.NOT_FOUND,
                             "대표 미리보기 전용 파일 '" + sourceId + "'을(를) 찾을 수 없습니다"

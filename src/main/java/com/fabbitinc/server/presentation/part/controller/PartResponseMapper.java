@@ -23,7 +23,7 @@ import com.fabbitinc.server.presentation.part.response.PartRevisionDiffFileChang
 import com.fabbitinc.server.presentation.part.response.PartRevisionDiffResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionDiffRevisionResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionDiffSummaryResponse;
-import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryEntryResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryDraftResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryResponse;
 import com.fabbitinc.server.presentation.part.response.PartListResponse;
@@ -183,15 +183,20 @@ final class PartResponseMapper {
                                 item.revisionCode(),
                                 item.status(),
                                 item.name(),
-                                item.createdAt(),
-                                toPartUserSummaryResponse(item.createdBy()),
+                                item.releasedAt(),
+                                toPartUserSummaryResponse(item.releasedBy()),
                                 toPartRevisionDiffSummaryResponse(item.summary()),
-                                item.entries().stream()
-                                        .map(entry -> new PartRevisionHistoryEntryResponse(
-                                                entry.actionType(),
-                                                entry.occurredAt(),
-                                                toPartUserSummaryResponse(entry.actor()),
-                                                entry.reason()
+                                item.drafts().stream()
+                                        .map(draft -> new PartRevisionHistoryDraftResponse(
+                                                draft.revisionId(),
+                                                draft.name(),
+                                                draft.status(),
+                                                draft.createdAt(),
+                                                toPartUserSummaryResponse(draft.createdBy()),
+                                                draft.completedAt(),
+                                                toPartUserSummaryResponse(draft.completedBy()),
+                                                draft.releasedRevisionCode(),
+                                                draft.reason()
                                         ))
                                         .toList()
                         ))

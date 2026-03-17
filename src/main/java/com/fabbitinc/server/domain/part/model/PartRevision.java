@@ -466,6 +466,17 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             throw new DomainException(CODE_PART_REVISION_DRAFT_CODE_FORBIDDEN, "초안 상태에서는 공식 리비전 코드를 가질 수 없습니다");
         }
 
+        if (status == PartRevisionStatus.CANCELED) {
+            if (rawRevisionCode == null || rawRevisionCode.isBlank()) {
+                return null;
+            }
+            String trimmed = rawRevisionCode.trim();
+            if (trimmed.length() > MAX_REVISION_CODE_LENGTH) {
+                throw new DomainException(CODE_PART_REVISION_CODE_TOO_LONG, "리비전 코드는 50자 이하여야 합니다");
+            }
+            return PartRouteSegmentPolicy.validateRevisionCode(trimmed, CODE_PART_REVISION_CODE_INVALID_FORMAT);
+        }
+
         if (rawRevisionCode == null || rawRevisionCode.isBlank()) {
             throw new DomainException(CODE_PART_REVISION_CODE_REQUIRED, "공식 리비전 코드는 필수입니다");
         }

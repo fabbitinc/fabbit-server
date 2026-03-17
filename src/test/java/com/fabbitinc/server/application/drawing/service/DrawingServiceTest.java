@@ -2,14 +2,19 @@ package com.fabbitinc.server.application.drawing.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fabbitinc.server.application.common.exception.AppException;
+import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.file.port.StoragePort;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.part.service.PartPreviewService;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
+import com.fabbitinc.server.domain.drawing.model.DrawingDimension;
+import com.fabbitinc.server.domain.drawing.model.DrawingSourceType;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
@@ -66,9 +71,94 @@ class DrawingServiceTest {
   }
 
   @Test
+  void createDrawing_DWG도면은_등록할_수_있다() {
+    UUID partRevisionId = UUID.randomUUID();
+    File file =
+        File.create(
+            UUID.randomUUID(),
+            "sample.dwg",
+            "tenants/org/uploaded/sample.dwg",
+            "application/acad",
+            256L);
+    file.markUploaded();
+    when(fileRepository.findByIdAndDeletedAtIsNull(file.getId())).thenReturn(Optional.of(file));
+    when(drawingRepository.save(any(Drawing.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    DrawingService service =
+        new DrawingService(
+            drawingRepository,
+            fileRepository,
+            storagePort,
+            organizationApi,
+            partPreviewService);
+
+    Drawing drawing = service.createDrawing(partRevisionId, file.getId());
+
+    assertEquals(DrawingSourceType.CAD_2D, drawing.getSourceType());
+    assertEquals(DrawingDimension.TWO_D, drawing.getDimension());
+    assertEquals("tenants/org/uploaded/sample.dwg", drawing.getOriginalFileKey());
+  }
+
+  @Test
+  void createDrawing_업로드미완료파일도_스토리지에_있으면_완료처리후_등록한다() {
+    UUID partRevisionId = UUID.randomUUID();
+    File file =
+        File.create(
+            UUID.randomUUID(),
+            "sample.step",
+            "tenants/org/uploaded/sample.step",
+            "model/step",
+            256L);
+    when(fileRepository.findByIdAndDeletedAtIsNull(file.getId())).thenReturn(Optional.of(file));
+    when(storagePort.headObject(file.getFileKey())).thenReturn(org.mockito.Mockito.mock(com.fabbitinc.server.application.file.port.StorageObjectMeta.class));
+    when(drawingRepository.save(any(Drawing.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    DrawingService service =
+        new DrawingService(
+            drawingRepository,
+            fileRepository,
+            storagePort,
+            organizationApi,
+            partPreviewService);
+
+    Drawing drawing = service.createDrawing(partRevisionId, file.getId());
+
+    assertEquals(drawing.getId(), file.getOwnerId());
+    assertEquals(com.fabbitinc.server.domain.file.model.FileStatus.UPLOADED, file.getStatus());
+  }
+
+  @Test
+  void createDrawing_이미_다른_리소스에_연결된_파일이면_거부된다() {
+    File file =
+        File.create(
+            UUID.randomUUID(),
+            "sample.pdf",
+            "tenants/org/uploaded/sample.pdf",
+            "application/pdf",
+            100L);
+    file.markUploaded();
+    file.assignOwner("part_revision", UUID.randomUUID());
+    when(fileRepository.findByIdAndDeletedAtIsNull(file.getId())).thenReturn(Optional.of(file));
+
+    DrawingService service =
+        new DrawingService(
+            drawingRepository,
+            fileRepository,
+            storagePort,
+            organizationApi,
+            partPreviewService);
+
+    AppException ex = assertThrows(AppException.class, () -> service.createDrawing(UUID.randomUUID(), file.getId()));
+
+    assertEquals(ErrorCode.CONFLICT, ex.getErrorCode());
+  }
+
+  @Test
   void deleteDrawing_원본_파일_스토리지를_반환한다() {
     Drawing drawing = Drawing.create("D-100", "sample.pdf");
-    drawing.assignSourceFile(UUID.randomUUID(), com.fabbitinc.server.domain.drawing.model.DrawingSourceType.PDF_DOCUMENT, com.fabbitinc.server.domain.drawing.model.DrawingDimension.TWO_D);
+    drawing.assignSourceFile(UUID.randomUUID(), DrawingSourceType.PDF_DOCUMENT, DrawingDimension.TWO_D);
     drawing.changeOriginalFileKey("tenants/org/uploaded/sample.pdf");
 
     File original =
@@ -91,6 +181,34 @@ class DrawingServiceTest {
 
     assertNotNull(original.getDeletedAt());
     verify(partPreviewService).clearByDrawing(drawing.getId());
+    verify(organizationApi).releaseStorageForCurrentTenant(100L);
+  }
+
+  @Test
+  void deleteDrawing_source파일행이_없어도_originalFileKey로_정리한다() {
+    Drawing drawing = Drawing.create("D-101", "sample.pdf");
+    drawing.assignSourceFile(UUID.randomUUID(), DrawingSourceType.PDF_DOCUMENT, DrawingDimension.TWO_D);
+    drawing.changeOriginalFileKey("tenants/org/uploaded/sample.pdf");
+
+    File original =
+        createOwnedFile("sample.pdf", drawing.getId(), "tenants/org/uploaded/sample.pdf", 100L);
+
+    when(drawingRepository.findById(drawing.getId())).thenReturn(Optional.of(drawing));
+    when(fileRepository.findByIdAndDeletedAtIsNull(drawing.getSourceFileId())).thenReturn(Optional.empty());
+    when(fileRepository.findByFileKeyAndDeletedAtIsNull(original.getFileKey()))
+        .thenReturn(Optional.of(original));
+
+    DrawingService service =
+        new DrawingService(
+            drawingRepository,
+            fileRepository,
+            storagePort,
+            organizationApi,
+            partPreviewService);
+
+    service.deleteDrawing(drawing.getId(), UUID.randomUUID());
+
+    assertNotNull(original.getDeletedAt());
     verify(organizationApi).releaseStorageForCurrentTenant(100L);
   }
 

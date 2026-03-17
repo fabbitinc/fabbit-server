@@ -179,5 +179,7 @@ class PartRevisionTest {
         revision.cancel(null);
 
         assertEquals(PartRevisionStatus.CANCELED, revision.getStatus());
+        assertEquals(null, revision.getRevisionCode());
+        assertEquals(null, revision.getDraftKey());
     }
 }

@@ -95,6 +95,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
@@ -144,6 +145,7 @@ public class PartQuery {
     private static final Pattern STRING_PATTERN = Pattern.compile("^\"(.*)\"$");
     private static final Pattern NUMBER_PATTERN = Pattern.compile("^-?\\d+(?:\\.\\d+)?$");
     private static final Pattern HISTORY_REASON_PATTERN = Pattern.compile("\"reason\"\\s*:\\s*\"([^\"]*)\"");
+    private static final Pattern HISTORY_IDENTIFIER_PATTERN = Pattern.compile("\"revisionCode\"\\s*:\\s*\"([^\"]*)\"");
     private static final int MAX_BOM_DEPTH = 30;
     private static final Comparator<ResolvedPart> PART_LIST_ORDER =
             Comparator.comparing(ResolvedPart::partNumber)
@@ -554,23 +556,39 @@ public class PartQuery {
                 ));
 
         List<PartRevision> revisions = partRevisionRepository.findByPartIdOrderByCreatedAtDesc(part.getId()).stream()
-                .filter(this::isOfficialHistoryRevision)
                 .toList();
         if (revisions.isEmpty()) {
             return new PartRevisionHistoryResult(List.of());
         }
 
-        Map<UUID, List<File>> filesByRevisionId = groupFilesByRevisionId(revisions);
-        Map<UUID, List<Drawing>> drawingsByRevisionId = groupDrawingsByRevisionId(revisions);
-        Map<UUID, File> drawingSourceFilesById = loadDrawingSourceFiles(drawingsByRevisionId);
-        Map<UUID, List<EngineeringBomItem>> bomItemsByRevisionId = groupBomItemsByRevisionId(revisions);
         Map<UUID, List<PartRevisionHistory>> historiesByRevisionId = groupHistoriesByRevisionId(revisions);
         Map<UUID, User> usersById = loadUsersByRevisionHistory(revisions, historiesByRevisionId);
+        List<PartRevision> officialRevisions = revisions.stream()
+                .filter(this::isOfficialRevision)
+                .sorted(Comparator
+                        .comparing(
+                                (PartRevision revision) -> resolveReleaseOccurredAt(revision, historiesByRevisionId),
+                                Comparator.nullsLast(Comparator.naturalOrder())
+                        )
+                        .reversed()
+                        .thenComparing(PartRevision::getCreatedAt, Comparator.reverseOrder()))
+                .toList();
+        if (officialRevisions.isEmpty()) {
+            return new PartRevisionHistoryResult(List.of());
+        }
 
-        List<PartRevisionHistoryResult.Item> items = new ArrayList<>();
-        for (int index = 0; index < revisions.size(); index++) {
-            PartRevision revision = revisions.get(index);
-            PartRevision previousRevision = index + 1 < revisions.size() ? revisions.get(index + 1) : null;
+        Map<UUID, List<File>> filesByRevisionId = groupFilesByRevisionId(officialRevisions);
+        Map<UUID, List<Drawing>> drawingsByRevisionId = groupDrawingsByRevisionId(officialRevisions);
+        Map<UUID, File> drawingSourceFilesById = loadDrawingSourceFiles(drawingsByRevisionId);
+        Map<UUID, List<EngineeringBomItem>> bomItemsByRevisionId = groupBomItemsByRevisionId(officialRevisions);
+        Map<UUID, List<PartRevision>> draftsByBaseRevisionId = revisions.stream()
+                .filter(revision -> revision.getBaseRevisionId() != null)
+                .collect(java.util.stream.Collectors.groupingBy(PartRevision::getBaseRevisionId));
+
+        List<PartRevisionHistoryResult.Card> items = new ArrayList<>();
+        for (int index = 0; index < officialRevisions.size(); index++) {
+            PartRevision revision = officialRevisions.get(index);
+            PartRevision previousRevision = index + 1 < officialRevisions.size() ? officialRevisions.get(index + 1) : null;
             RevisionDiffSnapshot diff = previousRevision == null
                     ? null
                     : buildRevisionDiffSnapshot(
@@ -583,22 +601,22 @@ public class PartQuery {
                             usersById
                     );
 
-            items.add(new PartRevisionHistoryResult.Item(
+            PartRevisionHistory history = findHistoryByAction(
+                    historiesByRevisionId.getOrDefault(revision.getId(), List.of()),
+                    PartRevisionHistoryActionType.RELEASED
+            );
+
+            items.add(new PartRevisionHistoryResult.Card(
                     revision.getId(),
                     revision.getRevisionCode(),
                     revision.getStatus(),
                     revision.getName(),
-                    revision.getCreatedAt(),
-                    toUserSummary(usersById.get(revision.getCreatedBy())),
+                    history == null ? revision.getCreatedAt() : history.getOccurredAt(),
+                    history == null ? toUserSummary(usersById.get(revision.getCreatedBy())) : toUserSummary(usersById.get(history.getActorId())),
                     diff == null ? null : diff.summary(),
-                    historiesByRevisionId.getOrDefault(revision.getId(), List.of()).stream()
-                            .filter(this::isVisibleHistoryEntry)
-                            .map(history -> new PartRevisionHistoryResult.Entry(
-                                    history.getActionType(),
-                                    history.getOccurredAt(),
-                                    toUserSummary(usersById.get(history.getActorId())),
-                                    extractReason(history.getPayload())
-                            ))
+                    draftsByBaseRevisionId.getOrDefault(revision.getId(), List.of()).stream()
+                            .sorted(Comparator.comparing(PartRevision::getCreatedAt))
+                            .map(draft -> toHistoryDraft(draft, historiesByRevisionId.getOrDefault(draft.getId(), List.of()), usersById))
                             .toList()
             ));
         }
@@ -1900,14 +1918,8 @@ public class PartQuery {
         return resolveRequiredPart(partNumber, revisionCode).id();
     }
 
-    private boolean isOfficialHistoryRevision(PartRevision revision) {
+    private boolean isOfficialRevision(PartRevision revision) {
         return revision.getRevisionCode() != null && !revision.getRevisionCode().isBlank();
-    }
-
-    private boolean isVisibleHistoryEntry(PartRevisionHistory history) {
-        return history.getActionType() == PartRevisionHistoryActionType.RELEASED
-                || history.getActionType() == PartRevisionHistoryActionType.CANCELED
-                || history.getActionType() == PartRevisionHistoryActionType.SUPERSEDED;
     }
 
     private Map<UUID, List<File>> groupFilesByRevisionId(List<PartRevision> revisions) {
@@ -1984,6 +1996,63 @@ public class PartQuery {
         return matcher.group(1);
     }
 
+    private String extractHistoryIdentifier(String payload) {
+        if (payload == null || payload.isBlank() || "{}".equals(payload.trim())) {
+            return null;
+        }
+        Matcher matcher = HISTORY_IDENTIFIER_PATTERN.matcher(payload);
+        if (!matcher.find()) {
+            return null;
+        }
+        return matcher.group(1);
+    }
+
+    private Instant resolveReleaseOccurredAt(
+            PartRevision revision,
+            Map<UUID, List<PartRevisionHistory>> historiesByRevisionId
+    ) {
+        PartRevisionHistory history = findHistoryByAction(
+                historiesByRevisionId.getOrDefault(revision.getId(), List.of()),
+                PartRevisionHistoryActionType.RELEASED
+        );
+        return history == null ? revision.getCreatedAt() : history.getOccurredAt();
+    }
+
+    private PartRevisionHistory findHistoryByAction(List<PartRevisionHistory> histories, PartRevisionHistoryActionType actionType) {
+        return histories.stream()
+                .filter(history -> history.getActionType() == actionType)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private PartRevisionHistoryResult.Draft toHistoryDraft(
+            PartRevision revision,
+            List<PartRevisionHistory> histories,
+            Map<UUID, User> usersById
+    ) {
+        PartRevisionHistory completionHistory = switch (revision.getStatus()) {
+            case CANCELED -> findHistoryByAction(histories, PartRevisionHistoryActionType.CANCELED);
+            case RELEASED, SUPERSEDED -> findHistoryByAction(histories, PartRevisionHistoryActionType.RELEASED);
+            default -> null;
+        };
+        String releasedRevisionCode = revision.getStatus() == PartRevisionStatus.RELEASED
+                || revision.getStatus() == PartRevisionStatus.SUPERSEDED
+                ? revision.getRevisionCode()
+                : null;
+
+        return new PartRevisionHistoryResult.Draft(
+                revision.getId(),
+                revision.getName(),
+                revision.getStatus(),
+                revision.getCreatedAt(),
+                toUserSummary(usersById.get(revision.getCreatedBy())),
+                completionHistory == null ? null : completionHistory.getOccurredAt(),
+                completionHistory == null ? null : toUserSummary(usersById.get(completionHistory.getActorId())),
+                releasedRevisionCode == null ? extractHistoryIdentifier(completionHistory == null ? null : completionHistory.getPayload()) : releasedRevisionCode,
+                completionHistory == null ? null : extractReason(completionHistory.getPayload())
+        );
+    }
+
     private PartRevision resolveBaseRevision(PartRevision targetRevision, String baseRevisionCode) {
         if (baseRevisionCode != null && !baseRevisionCode.isBlank()) {
             return partRevisionRepository.findByPartNumberAndRevisionCode(targetRevision.getPartNumber(), baseRevisionCode)
@@ -1995,7 +2064,7 @@ public class PartQuery {
         }
 
         List<PartRevision> revisions = partRevisionRepository.findByPartIdOrderByCreatedAtDesc(targetRevision.getPartId()).stream()
-                .filter(this::isOfficialHistoryRevision)
+                .filter(this::isOfficialRevision)
                 .toList();
         for (int index = 0; index < revisions.size(); index++) {
             if (revisions.get(index).getId().equals(targetRevision.getId())) {
