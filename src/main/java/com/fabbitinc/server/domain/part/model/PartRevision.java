@@ -54,9 +54,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     public static final String CODE_PART_REVISION_CODE_REQUIRED = "PART_REVISION_CODE_REQUIRED";
     public static final String CODE_PART_REVISION_CODE_TOO_LONG = "PART_REVISION_CODE_TOO_LONG";
     public static final String CODE_PART_REVISION_CODE_INVALID_FORMAT = "PART_REVISION_CODE_INVALID_FORMAT";
-    public static final String CODE_PART_REVISION_DRAFT_KEY_REQUIRED = "PART_REVISION_DRAFT_KEY_REQUIRED";
-    public static final String CODE_PART_REVISION_DRAFT_KEY_TOO_LONG = "PART_REVISION_DRAFT_KEY_TOO_LONG";
-    public static final String CODE_PART_REVISION_DRAFT_KEY_INVALID_FORMAT = "PART_REVISION_DRAFT_KEY_INVALID_FORMAT";
     public static final String CODE_PART_REVISION_NAME_TOO_LONG = "PART_REVISION_NAME_TOO_LONG";
     public static final String CODE_PART_REVISION_CATEGORY_TOO_LONG = "PART_REVISION_CATEGORY_TOO_LONG";
     public static final String CODE_PART_REVISION_MATERIAL_TOO_LONG = "PART_REVISION_MATERIAL_TOO_LONG";
@@ -75,7 +72,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     public static final String CODE_PART_REVISION_CANCELABLE_REQUIRED = "PART_REVISION_CANCELABLE_REQUIRED";
 
     private static final int MAX_REVISION_CODE_LENGTH = 50;
-    private static final int MAX_DRAFT_KEY_LENGTH = 50;
     private static final int MAX_PART_NUMBER_LENGTH = 100;
     private static final int MAX_NAME_LENGTH = 500;
     private static final int MAX_CATEGORY_LENGTH = 100;
@@ -103,9 +99,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
 
     @Column(name = "revision_code", length = 50)
     private String revisionCode;
-
-    @Column(name = "draft_key", length = 50)
-    private String draftKey;
 
     @Column(name = "engineering_change_id")
     private UUID engineeringChangeId;
@@ -156,7 +149,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     private PartRevision(
             Part part,
             String revisionCode,
-            String draftKey,
             UUID baseRevisionId,
             String name,
             PartRevisionStatus status
@@ -168,22 +160,21 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         this._partRelation = requiredPart;
         this.status = requireStatus(status);
         this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
-        this.draftKey = normalizeDraftKey(draftKey, this.status);
         this.baseRevisionId = baseRevisionId;
         this.name = normalizeName(name);
         this.extendedProperties = "{}";
     }
 
-    public static PartRevision createInitialDraft(Part part, String draftKey, String name, UUID actorId) {
+    public static PartRevision createInitialDraft(Part part, String name, UUID actorId) {
         return initializeActor(
-                new PartRevision(part, null, draftKey, null, name, PartRevisionStatus.DRAFT),
+                new PartRevision(part, null, null, name, PartRevisionStatus.DRAFT),
                 actorId
         );
     }
 
-    public static PartRevision createDraft(Part part, String draftKey, UUID baseRevisionId, String name, UUID actorId) {
+    public static PartRevision createDraft(Part part, UUID baseRevisionId, String name, UUID actorId) {
         return initializeActor(
-                new PartRevision(part, null, draftKey, baseRevisionId, name, PartRevisionStatus.DRAFT),
+                new PartRevision(part, null, baseRevisionId, name, PartRevisionStatus.DRAFT),
                 actorId
         );
     }
@@ -197,7 +188,7 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             UUID actorId
     ) {
         return initializeActor(
-                new PartRevision(part, revisionCode, null, baseRevisionId, name, status),
+                new PartRevision(part, revisionCode, baseRevisionId, name, status),
                 actorId
         );
     }
@@ -216,10 +207,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
 
     public void changeRevisionCode(String revisionCode) {
         this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
-    }
-
-    public void changeDraftKey(String draftKey) {
-        this.draftKey = normalizeDraftKey(draftKey, this.status);
     }
 
     public void assignEngineeringChange(UUID engineeringChangeId) {
@@ -242,15 +229,10 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         this.engineeringChangeId = null;
     }
 
-    public void changePartNumber(String partNumber) {
-        this.partNumber = normalizePartNumber(partNumber);
-    }
-
     public void changeStatus(PartRevisionStatus status) {
         PartRevisionStatus nextStatus = requireStatus(status);
         this.status = nextStatus;
         this.revisionCode = normalizeRevisionCode(this.revisionCode, nextStatus);
-        this.draftKey = normalizeDraftKey(this.draftKey, nextStatus);
     }
 
     public void changeName(String name) {
@@ -364,7 +346,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             assertReleasableDraft();
             this.status = PartRevisionStatus.RELEASED;
             this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
-            this.draftKey = null;
         });
     }
 
@@ -381,7 +362,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             }
             this.status = PartRevisionStatus.SUPERSEDED;
             this.revisionCode = normalizeRevisionCode(this.revisionCode, this.status);
-            this.draftKey = null;
         });
     }
 
@@ -397,7 +377,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
                 );
             }
             this.status = PartRevisionStatus.CANCELED;
-            this.draftKey = null;
             this.revisionCode = normalizeRevisionCode(this.revisionCode, this.status);
         });
     }
@@ -485,22 +464,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             throw new DomainException(CODE_PART_REVISION_CODE_TOO_LONG, "리비전 코드는 50자 이하여야 합니다");
         }
         return PartRouteSegmentPolicy.validateRevisionCode(trimmed, CODE_PART_REVISION_CODE_INVALID_FORMAT);
-    }
-
-    private String normalizeDraftKey(String rawDraftKey, PartRevisionStatus status) {
-        if (status == PartRevisionStatus.DRAFT) {
-            if (rawDraftKey == null || rawDraftKey.isBlank()) {
-                throw new DomainException(CODE_PART_REVISION_DRAFT_KEY_REQUIRED, "초안 키는 필수입니다");
-            }
-        } else {
-            return null;
-        }
-
-        String trimmed = rawDraftKey.trim();
-        if (trimmed.length() > MAX_DRAFT_KEY_LENGTH) {
-            throw new DomainException(CODE_PART_REVISION_DRAFT_KEY_TOO_LONG, "초안 키는 50자 이하여야 합니다");
-        }
-        return PartRouteSegmentPolicy.validateDraftKey(trimmed, CODE_PART_REVISION_DRAFT_KEY_INVALID_FORMAT);
     }
 
     private String normalizePartNumber(String rawPartNumber) {

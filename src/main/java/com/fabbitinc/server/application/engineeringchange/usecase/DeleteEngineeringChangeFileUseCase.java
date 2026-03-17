@@ -22,13 +22,13 @@ public class DeleteEngineeringChangeFileUseCase {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         engineeringChangeService.detachFile(
                 auth.userId(),
-                WorkItemUseCaseSupport.resolveEngineeringChangeId(engineeringChangeService, command.engineeringChangeNumber()),
+                command.engineeringChangeId(),
                 command.fileId()
         );
     }
 
     public record DeleteEngineeringChangeFileCommand(
-            int engineeringChangeNumber,
+            UUID engineeringChangeId,
             UUID fileId
     ) {
     }

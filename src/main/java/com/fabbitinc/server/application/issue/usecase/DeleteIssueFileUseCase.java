@@ -20,13 +20,11 @@ public class DeleteIssueFileUseCase {
 
     public void execute(DeleteIssueFileCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = WorkItemUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
-
-        issueService.detachFile(auth.userId(), issueId, command.fileId());
+        issueService.detachFile(auth.userId(), command.issueId(), command.fileId());
     }
 
     public record DeleteIssueFileCommand(
-            int issueNumber,
+            UUID issueId,
             UUID fileId
     ) {
     }

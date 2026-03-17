@@ -18,12 +18,6 @@ public class IssueApi {
 
     private final IssueRepository issueRepository;
 
-    public UUID getIssueIdByNumberOrThrow(int issueNumber) {
-        return issueRepository.findByNumber(issueNumber)
-                .map(Issue::getId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "이슈를 찾을 수 없습니다"));
-    }
-
     public boolean existsIssue(UUID issueId) {
         return issueRepository.existsById(issueId);
     }

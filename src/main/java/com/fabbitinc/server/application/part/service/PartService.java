@@ -46,7 +46,7 @@ public class PartService {
             }
 
             Part savedPart = partRepository.save(part);
-            PartRevision initialRevision = PartRevision.createInitialDraft(savedPart, "D1", input.name(), actorId);
+            PartRevision initialRevision = PartRevision.createInitialDraft(savedPart, input.name(), actorId);
             applyCreateInput(initialRevision, input);
             initialRevision.recordHistory(
                     actorId,
@@ -62,8 +62,8 @@ public class PartService {
         }
     }
 
-    public List<File> attachFiles(UUID partRevisionId, List<UUID> fileIds) {
-        getRevisionOrThrow(partRevisionId);
+    public List<File> attachFiles(UUID partId, UUID revisionId, List<UUID> fileIds) {
+        getRevisionOrThrow(partId, revisionId);
 
         List<File> files = fileRepository.findByIdIn(fileIds);
         Set<UUID> foundIds = files.stream().map(File::getId).collect(java.util.stream.Collectors.toSet());
@@ -95,7 +95,7 @@ public class PartService {
             );
         }
 
-        files.forEach(file -> file.assignOwner("part_revision", partRevisionId));
+        files.forEach(file -> file.assignOwner("part_revision", revisionId));
         long totalBytes = files.stream().mapToLong(File::getFileSize).sum();
         if (totalBytes > 0L) {
             organizationApi.consumeStorageForCurrentTenant(totalBytes);
@@ -103,13 +103,13 @@ public class PartService {
         return files;
     }
 
-    public void detachFile(UUID partRevisionId, UUID fileId, UUID actorId) {
-        getRevisionOrThrow(partRevisionId);
+    public void detachFile(UUID partId, UUID revisionId, UUID fileId, UUID actorId) {
+        getRevisionOrThrow(partId, revisionId);
 
-        File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(fileId, "part_revision", partRevisionId)
+        File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(fileId, "part_revision", revisionId)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "PartRevision '" + partRevisionId + "'에 연결된 파일 '" + fileId + "'을(를) 찾을 수 없습니다"
+                        "PartRevision '" + revisionId + "'에 연결된 파일 '" + fileId + "'을(를) 찾을 수 없습니다"
                 ));
         long fileSize = file.getFileSize();
         file.softDelete(actorId);
@@ -138,11 +138,11 @@ public class PartService {
         return updatedCount;
     }
 
-    private PartRevision getRevisionOrThrow(UUID partRevisionId) {
-        return partRevisionRepository.findById(partRevisionId)
+    private PartRevision getRevisionOrThrow(UUID partId, UUID revisionId) {
+        return partRevisionRepository.findByIdAndPartId(revisionId, partId)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "PartRevision '" + partRevisionId + "'을(를) 찾을 수 없습니다"
+                        "PartRevision '%s/%s'을(를) 찾을 수 없습니다".formatted(partId, revisionId)
                 ));
     }
 

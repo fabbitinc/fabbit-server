@@ -14,8 +14,8 @@ public record CreateEngineeringChangeRequest(
         String title,
         @Schema(description = "변경관리 본문(TipTap JSON)")
         JsonNode body,
-        @Schema(description = "연결할 원본 이슈 번호")
-        Integer sourceIssueNumber,
+        @Schema(description = "연결할 원본 이슈 ID")
+        UUID sourceIssueId,
         @Schema(description = "연결할 부품 초안 목록")
         @Valid
         List<EngineeringChangePartRevisionTargetRequest> partRevisions,

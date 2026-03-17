@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.part.usecase;
 
-import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.auth.support.AuthContext;
+import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.part.service.PartService;
 import com.fabbitinc.server.application.part.service.input.CreatePartInput;
 import com.fabbitinc.server.application.part.usecase.command.CreatePartCommand;
@@ -35,6 +35,6 @@ public class CreatePartUseCase {
                 command.extendedProperties(),
                 command.reason()
         ), auth.userId());
-        return new CreatePartResult(draft.getPartNumber(), draft.getDraftKey());
+        return new CreatePartResult(draft.getPartId(), draft.getId());
     }
 }

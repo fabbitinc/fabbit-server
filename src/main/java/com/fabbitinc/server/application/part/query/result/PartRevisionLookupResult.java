@@ -1,10 +1,10 @@
 package com.fabbitinc.server.application.part.query.result;
-import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 
+import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import java.util.List;
 import java.util.UUID;
 
-public record PartDraftLookupResult(
+public record PartRevisionLookupResult(
         List<Item> items
 ) {
     public record Item(
@@ -12,8 +12,8 @@ public record PartDraftLookupResult(
             UUID partId,
             String partNumber,
             String baseRevisionCode,
-            String draftKey,
             String name,
+            PartRevisionStatus status,
             PartUserSummaryResult createdBy
     ) {
     }

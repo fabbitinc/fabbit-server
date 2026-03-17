@@ -1,6 +1,7 @@
 package com.fabbitinc.server.presentation.part.response;
 
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
+import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Map;
 import java.util.UUID;
@@ -9,10 +10,12 @@ import java.util.UUID;
 public record PartDetailResponse(
         UUID id,
         UUID revisionId,
+        PartRevisionStatus revisionStatus,
         String partNumber,
+        UUID baseRevisionId,
+        String baseRevisionCode,
         String name,
         String revision,
-        String draftKey,
         String material,
         String unit,
         String description,

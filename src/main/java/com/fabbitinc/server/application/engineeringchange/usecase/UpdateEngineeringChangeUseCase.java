@@ -26,7 +26,7 @@ public class UpdateEngineeringChangeUseCase {
     public void execute(UpdateEngineeringChangeCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         EngineeringChange engineeringChange =
-                engineeringChangeService.getEngineeringChangeByNumberOrThrow(command.engineeringChangeNumber());
+                engineeringChangeService.getEngineeringChangeByIdOrThrow(command.engineeringChangeId());
         engineeringChangeService.updateEngineeringChange(auth.userId(), engineeringChange, command.title(), command.body());
         if (command.steps() != null) {
             engineeringChangeService.replaceSteps(
@@ -46,7 +46,7 @@ public class UpdateEngineeringChangeUseCase {
     }
 
     public record UpdateEngineeringChangeCommand(
-            int engineeringChangeNumber,
+            UUID engineeringChangeId,
             String title,
             JsonNode body,
             List<StepTarget> steps

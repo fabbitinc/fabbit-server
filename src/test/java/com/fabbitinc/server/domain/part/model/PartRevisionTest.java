@@ -16,12 +16,11 @@ class PartRevisionTest {
         Part part = Part.create("AES-100");
         UUID actorId = UUID.randomUUID();
 
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", actorId);
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체", actorId);
 
         assertEquals(part.getId(), revision.getPartId());
         assertEquals("AES-100", revision.getPartNumber());
         assertEquals(null, revision.getRevisionCode());
-        assertEquals("D1", revision.getDraftKey());
         assertEquals(PartRevisionStatus.DRAFT, revision.getStatus());
         assertEquals(actorId, revision.getCreatedBy());
         assertEquals(actorId, revision.getUpdatedBy());
@@ -33,12 +32,11 @@ class PartRevisionTest {
         UUID baseRevisionId = UUID.randomUUID();
         UUID actorId = UUID.randomUUID();
 
-        PartRevision revision = PartRevision.createDraft(part, "D2", baseRevisionId, "개정본", actorId);
+        PartRevision revision = PartRevision.createDraft(part, baseRevisionId, "개정본", actorId);
 
         assertEquals(baseRevisionId, revision.getBaseRevisionId());
         assertEquals("AES-100", revision.getPartNumber());
         assertEquals(null, revision.getRevisionCode());
-        assertEquals("D2", revision.getDraftKey());
         assertEquals(actorId, revision.getCreatedBy());
         assertEquals(actorId, revision.getUpdatedBy());
     }
@@ -48,7 +46,7 @@ class PartRevisionTest {
         Part part = Part.create("AES-100");
         UUID creatorId = UUID.randomUUID();
         UUID editorId = UUID.randomUUID();
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", creatorId);
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체", creatorId);
 
         revision.editDraft(new PartRevisionDraftChanges(
                 null,
@@ -75,7 +73,7 @@ class PartRevisionTest {
 
     @Test
     void createInitial_파트가_null이면_예외를_던진다() {
-        DomainException ex = assertThrows(DomainException.class, () -> PartRevision.createInitialDraft(null, "D1", "본체", null));
+        DomainException ex = assertThrows(DomainException.class, () -> PartRevision.createInitialDraft(null, "본체", null));
 
         assertEquals(PartRevision.CODE_PART_REVISION_PART_REQUIRED, ex.getDomainCode());
     }
@@ -83,7 +81,7 @@ class PartRevisionTest {
     @Test
     void recordHistory_루트가_이력_엔트리를_직접_추가한다() {
         Part part = Part.create("AES-100");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", null);
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체", null);
         UUID actorId = UUID.randomUUID();
         Instant occurredAt = Instant.parse("2026-03-14T10:15:30Z");
 
@@ -115,7 +113,7 @@ class PartRevisionTest {
     @Test
     void copyEditableFieldsFrom_기준_리비전의_본문을_복제한다() {
         Part part = Part.create("AES-100");
-        PartRevision source = PartRevision.createInitialDraft(part, "D1", "원본", null);
+        PartRevision source = PartRevision.createInitialDraft(part, "원본", null);
         source.changeCategory("FRAME");
         source.changeMaterial("AL6061");
         source.changeUnit("EA");
@@ -124,7 +122,7 @@ class PartRevisionTest {
         source.changeLeadTimeDays(7);
         source.changeExtendedProperties("{\"weight\":1.2}");
 
-        PartRevision target = PartRevision.createDraft(part, "D2", source.getId(), "초안", null);
+        PartRevision target = PartRevision.createDraft(part, source.getId(), "초안", null);
         target.copyEditableFieldsFrom(source);
 
         assertEquals("원본", target.getName());
@@ -141,19 +139,18 @@ class PartRevisionTest {
     @Test
     void release_DRAFT를_공식_RELEASED_리비전으로_전환한다() {
         Part part = Part.create("AES-100");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", null);
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체", null);
 
         revision.release("1", null);
 
         assertEquals(PartRevisionStatus.RELEASED, revision.getStatus());
         assertEquals("1", revision.getRevisionCode());
-        assertEquals(null, revision.getDraftKey());
     }
 
     @Test
     void markSuperseded_공식_리비전만_허용한다() {
         Part part = Part.create("AES-100");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", null);
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체", null);
 
         DomainException ex = assertThrows(DomainException.class, () -> revision.markSuperseded(null));
 
@@ -163,7 +160,7 @@ class PartRevisionTest {
     @Test
     void assignEngineeringChange_DRAFT에_변경관리를_연결한다() {
         Part part = Part.create("AES-100");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", null);
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체", null);
         UUID engineeringChangeId = UUID.randomUUID();
 
         revision.assignEngineeringChange(engineeringChangeId);
@@ -174,12 +171,11 @@ class PartRevisionTest {
     @Test
     void cancel_공식전_리비전을_CANCELED로_전환한다() {
         Part part = Part.create("AES-100");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", null);
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체", null);
 
         revision.cancel(null);
 
         assertEquals(PartRevisionStatus.CANCELED, revision.getStatus());
         assertEquals(null, revision.getRevisionCode());
-        assertEquals(null, revision.getDraftKey());
     }
 }

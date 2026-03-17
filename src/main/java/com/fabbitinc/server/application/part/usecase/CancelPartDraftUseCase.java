@@ -23,9 +23,8 @@ public class CancelPartDraftUseCase {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         partRevisionWorkflowPolicyService.assertDirectModeEnabled();
         partRevisionService.cancelDraft(new PartRevisionDecisionInput(
-                command.partNumber(),
-                command.baseRevisionCode(),
-                command.draftKey(),
+                command.partId(),
+                command.revisionId(),
                 command.reason()
         ), auth.userId());
     }

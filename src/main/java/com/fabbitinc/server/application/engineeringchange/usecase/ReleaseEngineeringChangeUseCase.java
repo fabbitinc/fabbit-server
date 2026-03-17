@@ -21,20 +21,18 @@ public class ReleaseEngineeringChangeUseCase {
     public void execute(ReleaseEngineeringChangeCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         EngineeringChange engineeringChange =
-                engineeringChangeService.getEngineeringChangeByNumberOrThrow(command.engineeringChangeNumber());
+                engineeringChangeService.getEngineeringChangeByIdOrThrow(command.engineeringChangeId());
         boolean readyToRelease = engineeringChangeService.approveReleaseStep(auth.userId(), engineeringChange);
         if (!readyToRelease) {
             return;
         }
         partRevisionWorkflowApi.releaseEngineeringChange(
                 auth.userId(),
-                engineeringChange.getId(),
-                engineeringChange.getNumber(),
-                engineeringChange.getTitle()
+                engineeringChange.getId()
         );
         engineeringChangeService.completeRelease(auth.userId(), engineeringChange);
     }
 
-    public record ReleaseEngineeringChangeCommand(int engineeringChangeNumber) {
+    public record ReleaseEngineeringChangeCommand(java.util.UUID engineeringChangeId) {
     }
 }

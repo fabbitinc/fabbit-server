@@ -4,7 +4,6 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeApi;
 import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeSnapshot;
-import com.fabbitinc.server.application.part.service.PartRevisionRouteService;
 import com.fabbitinc.server.application.part.service.PartRevisionService;
 import com.fabbitinc.server.application.part.service.PartRevisionWorkflowPolicyService;
 import com.fabbitinc.server.domain.part.model.PartRevision;
@@ -24,7 +23,6 @@ import org.springframework.stereotype.Component;
 public class PartRevisionWorkflowApi {
 
     private final PartRevisionRepository partRevisionRepository;
-    private final PartRevisionRouteService partRevisionRouteService;
     private final PartRevisionService partRevisionService;
     private final PartRevisionWorkflowPolicyService partRevisionWorkflowPolicyService;
     private final EngineeringChangeApi engineeringChangeApi;
@@ -72,10 +70,7 @@ public class PartRevisionWorkflowApi {
             if (revision.getEngineeringChangeId() != null && !engineeringChangeId.equals(revision.getEngineeringChangeId())) {
                 throw new AppException(
                         ErrorCode.CONFLICT,
-                        "이미 다른 변경관리에 연결된 초안입니다: %s/%s".formatted(
-                                revision.getPartNumber(),
-                                revision.getDraftKey()
-                        )
+                        "이미 다른 변경관리에 연결된 초안입니다: %s".formatted(revision.getId())
                 );
             }
             revision.assignEngineeringChange(engineeringChangeId);
@@ -114,38 +109,34 @@ public class PartRevisionWorkflowApi {
         }
     }
 
-    public void cancelEngineeringChange(UUID actorId, UUID engineeringChangeId, int engineeringChangeNumber, String engineeringChangeTitle) {
+    public void cancelEngineeringChange(UUID actorId, UUID engineeringChangeId) {
         partRevisionWorkflowPolicyService.assertEngineeringChangeModeEnabled();
         List<PartRevision> revisions = partRevisionRepository.findByEngineeringChangeIdOrderByCreatedAtAsc(engineeringChangeId).stream()
                 .sorted(Comparator
                         .comparing(PartRevision::getPartNumber)
-                        .thenComparing(revision -> revision.getDraftKey() == null ? "" : revision.getDraftKey()))
+                        .thenComparing(PartRevision::getCreatedAt))
                 .toList();
         for (PartRevision revision : revisions) {
             partRevisionService.cancelFromEngineeringChange(
                     revision,
                     actorId,
-                    engineeringChangeId,
-                    engineeringChangeNumber,
-                    engineeringChangeTitle
+                    engineeringChangeId
             );
         }
     }
 
-    public void releaseEngineeringChange(UUID actorId, UUID engineeringChangeId, int engineeringChangeNumber, String engineeringChangeTitle) {
+    public void releaseEngineeringChange(UUID actorId, UUID engineeringChangeId) {
         partRevisionWorkflowPolicyService.assertEngineeringChangeModeEnabled();
         List<PartRevision> revisions = partRevisionRepository.findByEngineeringChangeIdOrderByCreatedAtAsc(engineeringChangeId).stream()
                 .sorted(Comparator
                         .comparing(PartRevision::getPartNumber)
-                        .thenComparing(revision -> revision.getDraftKey() == null ? "" : revision.getDraftKey()))
+                        .thenComparing(PartRevision::getCreatedAt))
                 .toList();
         for (PartRevision revision : revisions) {
             partRevisionService.releaseDraftFromEngineeringChange(
                     revision,
                     actorId,
-                    engineeringChangeId,
-                    engineeringChangeNumber,
-                    engineeringChangeTitle
+                    engineeringChangeId
             );
         }
     }
@@ -153,11 +144,12 @@ public class PartRevisionWorkflowApi {
     private Map<UUID, PartRevision> resolveDrafts(List<EngineeringChangePartRevisionRef> refs) {
         Map<UUID, PartRevision> resolved = new LinkedHashMap<>();
         for (EngineeringChangePartRevisionRef ref : refs) {
-            PartRevision revision = partRevisionRouteService.getRequiredDraft(
-                    ref.partNumber(),
-                    ref.baseRevisionCode(),
-                    ref.draftKey()
-            );
+            PartRevision revision = partRevisionRepository.findById(ref.revisionId())
+                    .filter(it -> it.getStatus() == com.fabbitinc.server.domain.part.model.PartRevisionStatus.DRAFT)
+                    .orElseThrow(() -> new AppException(
+                            ErrorCode.NOT_FOUND,
+                            "PartDraft '%s'을(를) 찾을 수 없습니다".formatted(ref.revisionId())
+                    ));
             resolved.putIfAbsent(revision.getId(), revision);
         }
         return resolved;
@@ -186,7 +178,7 @@ public class PartRevisionWorkflowApi {
                 revision.getPartId(),
                 revision.getPartNumber(),
                 baseRevision == null ? null : baseRevision.getRevisionCode(),
-                revision.getDraftKey(),
+                revision.getRevisionCode(),
                 revision.getName(),
                 revision.getStatus()
         );

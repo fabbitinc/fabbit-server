@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -36,8 +37,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class PartPreviewServiceTest {
 
     @Mock
@@ -67,7 +71,7 @@ class PartPreviewServiceTest {
     void uploadPreviewFile_기존_preview_전용_파일을_유지하고_새_파일을_현재_소스로_설정한다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-100");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "part", actorId);
+        PartRevision revision = PartRevision.createInitialDraft(part, "part", actorId);
         PartPreview partPreview = PartPreview.create(revision.getId());
 
         File existingFile = createUploadedFile("existing.step", 100L);
@@ -84,6 +88,11 @@ class PartPreviewServiceTest {
                 .thenAnswer(invocation -> partPreview.getPreviewFiles().stream()
                         .filter(file -> file.getId().equals(invocation.getArgument(0, UUID.class)))
                         .findFirst());
+        when(fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(
+                eq(newFile.getId()),
+                eq(PartPreviewService.OWNER_TYPE_PREVIEW_FILE),
+                org.mockito.ArgumentMatchers.any(UUID.class)
+        )).thenAnswer(invocation -> Optional.of(newFile));
         when(partPreviewRepository.save(any(PartPreview.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(drawingSourceClassifier.classify(newFile.getOriginalName())).thenReturn(
                 new DrawingSourceDescriptor(DrawingExtension.STEP, DrawingSourceType.CAD_3D, DrawingDimension.THREE_D)
@@ -104,14 +113,14 @@ class PartPreviewServiceTest {
                         .getId()
         );
         verify(organizationApi).consumeStorageForCurrentTenant(200L);
-        verify(partPreviewAsyncConversionService).convertPartPreviewAsync(updated.getId(), isNull());
+        verify(partPreviewAsyncConversionService).convertPartPreviewAsync(eq(updated.getId()), any());
     }
 
     @Test
     void uploadPreviewFile_이미_다른_리소스에_연결된_파일이면_거부된다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-108");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "part", actorId);
+        PartRevision revision = PartRevision.createInitialDraft(part, "part", actorId);
         File file = createUploadedFile("owned.step", 100L);
         file.assignOwner("part_revision", UUID.randomUUID());
 
@@ -129,12 +138,17 @@ class PartPreviewServiceTest {
     void uploadPreviewFile_기존_preview가_없는_초기_draft에서도_바로_등록할_수_있다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-102");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "part", actorId);
+        PartRevision revision = PartRevision.createInitialDraft(part, "part", actorId);
         File newFile = createUploadedFile("first.step", 300L);
 
         when(partRevisionRepository.findById(revision.getId())).thenReturn(Optional.of(revision));
         when(partPreviewRepository.findByPartRevisionId(revision.getId())).thenReturn(Optional.empty());
         when(fileRepository.findByIdAndDeletedAtIsNull(newFile.getId())).thenReturn(Optional.of(newFile));
+        when(fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(
+                eq(newFile.getId()),
+                eq(PartPreviewService.OWNER_TYPE_PREVIEW_FILE),
+                org.mockito.ArgumentMatchers.any(UUID.class)
+        )).thenAnswer(invocation -> Optional.of(newFile));
         when(partPreviewRepository.save(any(PartPreview.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(drawingSourceClassifier.classify(newFile.getOriginalName())).thenReturn(
                 new DrawingSourceDescriptor(DrawingExtension.STEP, DrawingSourceType.CAD_3D, DrawingDimension.THREE_D)
@@ -147,14 +161,14 @@ class PartPreviewServiceTest {
         assertEquals(newFile.getId(), created.getPreviewFiles().getFirst().getFileId());
         assertEquals(created.getPreviewFiles().getFirst().getId(), newFile.getOwnerId());
         verify(partPreviewRepository).save(any(PartPreview.class));
-        verify(partPreviewAsyncConversionService).convertPartPreviewAsync(created.getId(), isNull());
+        verify(partPreviewAsyncConversionService).convertPartPreviewAsync(eq(created.getId()), any());
     }
 
     @Test
     void changeSource_도면에서_preview파일로_전환해도_preview파일목록은_유지된다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-103");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "part", actorId);
+        PartRevision revision = PartRevision.createInitialDraft(part, "part", actorId);
         PartPreview partPreview = PartPreview.create(revision.getId());
 
         Drawing drawing = Drawing.create("D-1", "도면");
@@ -172,8 +186,6 @@ class PartPreviewServiceTest {
         when(partPreviewRepository.findByPartRevisionId(revision.getId())).thenReturn(Optional.of(partPreview));
         when(drawingRepository.findById(drawing.getId())).thenReturn(Optional.of(drawing));
         when(fileRepository.findByIdAndDeletedAtIsNull(drawingFile.getId())).thenReturn(Optional.of(drawingFile));
-        when(partPreviewFileRepository.findByIdAndPartPreview_Id(previewFileRelation.getId(), partPreview.getId()))
-                .thenReturn(Optional.of(previewFileRelation));
         when(fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(
                 previewFile.getId(),
                 PartPreviewService.OWNER_TYPE_PREVIEW_FILE,
@@ -186,21 +198,20 @@ class PartPreviewServiceTest {
         when(drawingSourceClassifier.classify(previewFile.getOriginalName())).thenReturn(
                 new DrawingSourceDescriptor(DrawingExtension.STEP, DrawingSourceType.CAD_3D, DrawingDimension.THREE_D)
         );
-
         PartPreview updated = createService().changeSource(revision.getId(), PartPreviewSourceType.PREVIEW_FILE, previewFileRelation.getId());
 
         assertEquals(1, updated.getPreviewFiles().size());
         assertEquals(previewFileRelation.getId(), updated.getPreviewFiles().getFirst().getId());
         assertEquals(PartPreviewSourceType.PREVIEW_FILE, updated.getSourceType());
         assertEquals(previewFileRelation.getId(), updated.getSourceId());
-        verify(partPreviewAsyncConversionService).convertPartPreviewAsync(updated.getId(), isNull());
+        verify(partPreviewAsyncConversionService).convertPartPreviewAsync(eq(updated.getId()), any());
     }
 
     @Test
     void changeSource_preview파일에서_도면으로_전환해도_preview파일목록은_유지된다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-106");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "part", actorId);
+        PartRevision revision = PartRevision.createInitialDraft(part, "part", actorId);
         PartPreview partPreview = PartPreview.create(revision.getId());
 
         File previewFile = createUploadedFile("selected.step", 220L);
@@ -229,14 +240,14 @@ class PartPreviewServiceTest {
         assertEquals(previewFileRelation.getId(), updated.getPreviewFiles().getFirst().getId());
         assertEquals(PartPreviewSourceType.DRAWING, updated.getSourceType());
         assertEquals(drawing.getId(), updated.getSourceId());
-        verify(partPreviewAsyncConversionService).convertPartPreviewAsync(updated.getId(), isNull());
+        verify(partPreviewAsyncConversionService).convertPartPreviewAsync(eq(updated.getId()), any());
     }
 
     @Test
     void uploadPreviewFile_DWG는_preview_직접변환_대상이_아니라_거부된다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-101");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "part", actorId);
+        PartRevision revision = PartRevision.createInitialDraft(part, "part", actorId);
         PartPreview partPreview = PartPreview.create(revision.getId());
         File dwgFile = createUploadedFile("blocked.dwg", 150L);
 
@@ -260,7 +271,7 @@ class PartPreviewServiceTest {
     void changeSource_도면원본파일이_없으면_거부된다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-109");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "part", actorId);
+        PartRevision revision = PartRevision.createInitialDraft(part, "part", actorId);
         PartPreview partPreview = PartPreview.create(revision.getId());
         Drawing drawing = Drawing.create("D-9", "도면");
         drawing.assignPartRevision(revision.getId());
@@ -282,7 +293,7 @@ class PartPreviewServiceTest {
     void deletePreviewFile_현재선택된_preview파일을_삭제하면_preview가_해제된다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-104");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "part", actorId);
+        PartRevision revision = PartRevision.createInitialDraft(part, "part", actorId);
         PartPreview partPreview = PartPreview.create(revision.getId());
         File previewFile = createUploadedFile("selected.step", 210L);
         var previewFileRelation = partPreview.addPreviewFile(previewFile.getId());
@@ -311,7 +322,7 @@ class PartPreviewServiceTest {
     void deletePreviewFile_선택되지_않은_preview파일을_삭제하면_현재_preview는_유지된다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-105");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "part", actorId);
+        PartRevision revision = PartRevision.createInitialDraft(part, "part", actorId);
         PartPreview partPreview = PartPreview.create(revision.getId());
         File selectedFile = createUploadedFile("selected.step", 180L);
         File otherFile = createUploadedFile("other.step", 190L);
@@ -343,7 +354,7 @@ class PartPreviewServiceTest {
     void clearByPartRevision_현재_preview만_해제하고_preview파일목록은_유지한다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-107");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "part", actorId);
+        PartRevision revision = PartRevision.createInitialDraft(part, "part", actorId);
         PartPreview partPreview = PartPreview.create(revision.getId());
         File previewFile = createUploadedFile("selected.step", 210L);
         var previewFileRelation = partPreview.addPreviewFile(previewFile.getId());

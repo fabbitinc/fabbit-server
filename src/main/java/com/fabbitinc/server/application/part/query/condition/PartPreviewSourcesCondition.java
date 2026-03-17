@@ -1,9 +1,9 @@
 package com.fabbitinc.server.application.part.query.condition;
 
+import java.util.UUID;
+
 public record PartPreviewSourcesCondition(
-        String partNumber,
-        String revisionCode,
-        String baseRevisionCode,
-        String draftKey
+        UUID partId,
+        UUID revisionId
 ) {
 }

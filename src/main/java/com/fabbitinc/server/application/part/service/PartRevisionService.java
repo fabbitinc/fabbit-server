@@ -4,7 +4,6 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.part.service.input.CreatePartDraftInput;
 import com.fabbitinc.server.application.part.service.input.PartRevisionDecisionInput;
-import com.fabbitinc.server.application.part.service.input.ReleasePartRevisionInput;
 import com.fabbitinc.server.application.part.service.input.UpdatePartRevisionInput;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.part.model.Part;
@@ -15,10 +14,8 @@ import com.fabbitinc.server.domain.part.model.PartRevisionDraftChanges;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
@@ -39,12 +36,11 @@ public class PartRevisionService {
 
     public PartRevision createDraft(CreatePartDraftInput input, UUID actorId) {
         try {
-            PartRevision baseRevision = getRequiredRevision(input.partNumber(), input.baseRevisionCode());
+            Part part = getRequiredPart(input.partId());
+            PartRevision baseRevision = getRequiredRevision(input.partId(), input.baseRevisionId());
             baseRevision.assertDraftCreationAllowed();
 
-            Part part = getRequiredPart(baseRevision.getPartId());
-            String draftKey = resolveNextDraftKey(part.getId(), baseRevision.getId());
-            PartRevision draft = PartRevision.createDraft(part, draftKey, baseRevision.getId(), baseRevision.getName(), actorId);
+            PartRevision draft = PartRevision.createDraft(part, baseRevision.getId(), baseRevision.getName(), actorId);
             draft.copyEditableFieldsFrom(baseRevision);
             draft.recordHistory(
                     actorId,
@@ -59,21 +55,9 @@ public class PartRevisionService {
         }
     }
 
-    private String resolveNextDraftKey(UUID partId, UUID baseRevisionId) {
-        List<PartRevision> revisions = partRevisionRepository.findByPartIdOrderByCreatedAtDesc(partId);
-        int next = revisions.stream()
-                .filter(revision -> baseRevisionId.equals(revision.getBaseRevisionId()))
-                .map(PartRevision::getDraftKey)
-                .filter(value -> value != null && value.matches("D\\d+"))
-                .map(value -> Integer.parseInt(value.substring(1)))
-                .max(Comparator.naturalOrder())
-                .orElse(0);
-        return "D" + (next + 1);
-    }
-
     public PartRevision updateDraft(UpdatePartRevisionInput input, UUID actorId) {
         try {
-            PartRevision revision = getRequiredDraft(input.partNumber(), input.baseRevisionCode(), input.draftKey());
+            PartRevision revision = getRequiredDraft(input.partId(), input.revisionId());
             PartRevisionDraftChanges changes = toDraftChanges(input);
             if (!changes.hasAnyChange()) {
                 return revision;
@@ -96,8 +80,8 @@ public class PartRevisionService {
     public PartRevision releaseDraft(PartRevisionDecisionInput input, UUID actorId) {
         try {
             requireChangeReason(input.reason());
-            Part part = getRequiredPartForUpdate(input.partNumber());
-            PartRevision draft = getRequiredDraft(input.partNumber(), input.baseRevisionCode(), input.draftKey());
+            Part part = getRequiredPartForUpdate(input.partId());
+            PartRevision draft = getRequiredDraft(input.partId(), input.revisionId());
             assertLatestOfficialBase(part, draft);
             return releaseDraftInternal(
                     part,
@@ -105,7 +89,7 @@ public class PartRevisionService {
                     actorId,
                     PartRevisionHistorySourceType.UI,
                     null,
-                    serializeTransitionPayload("RELEASED", resolveNextRevisionCode(part), input.reason())
+                    serializeReasonPayload(input.reason())
             );
         } catch (DomainException ex) {
             throw toAppException(ex);
@@ -115,15 +99,14 @@ public class PartRevisionService {
     public PartRevision cancelDraft(PartRevisionDecisionInput input, UUID actorId) {
         try {
             requireChangeReason(input.reason());
-            PartRevision draft = getRequiredDraft(input.partNumber(), input.baseRevisionCode(), input.draftKey());
-            String canceledDraftKey = draft.getDraftKey();
+            PartRevision draft = getRequiredDraft(input.partId(), input.revisionId());
             draft.cancel(actorId);
             draft.recordHistory(
                     actorId,
                     PartRevisionHistoryActionType.CANCELED,
                     PartRevisionHistorySourceType.UI,
                     null,
-                    serializeTransitionPayload("CANCELED", canceledDraftKey, input.reason())
+                    serializeReasonPayload(input.reason())
             );
             return draft;
         } catch (DomainException ex) {
@@ -131,22 +114,13 @@ public class PartRevisionService {
         }
     }
 
-    public PartRevision releaseRevision(ReleasePartRevisionInput input, UUID actorId) {
-        throw new AppException(
-                ErrorCode.PART_WORKFLOW_POLICY_FORBIDDEN,
-                "직접 승인 모드에서는 승인된 리비전 릴리즈를 사용하지 않습니다. 초안을 바로 릴리즈해 주세요"
-        );
-    }
-
     public PartRevision releaseDraftFromEngineeringChange(
             PartRevision draft,
             UUID actorId,
-            UUID engineeringChangeId,
-            int engineeringChangeNumber,
-            String engineeringChangeTitle
+            UUID engineeringChangeId
     ) {
         try {
-            Part part = getRequiredPartForUpdate(draft.getPartNumber());
+            Part part = getRequiredPartForUpdate(draft.getPartId());
             assertLatestOfficialBase(part, draft);
             return releaseDraftInternal(
                     part,
@@ -154,45 +128,21 @@ public class PartRevisionService {
                     actorId,
                     PartRevisionHistorySourceType.ENGINEERING_CHANGE,
                     engineeringChangeId,
-                    serializeEngineeringChangePayload(
-                            "RELEASED",
-                            resolveNextRevisionCode(part),
-                            engineeringChangeNumber,
-                            engineeringChangeTitle
-                    )
+                    "{}"
             );
         } catch (DomainException ex) {
             throw toAppException(ex);
         }
     }
 
-    public PartRevision releaseApprovedFromEngineeringChange(
-            PartRevision revision,
-            UUID actorId,
-            UUID engineeringChangeId,
-            int engineeringChangeNumber,
-            String engineeringChangeTitle
-    ) {
-        return releaseDraftFromEngineeringChange(
-                revision,
-                actorId,
-                engineeringChangeId,
-                engineeringChangeNumber,
-                engineeringChangeTitle
-        );
-    }
-
     public PartRevision cancelFromEngineeringChange(
             PartRevision revision,
             UUID actorId,
-            UUID engineeringChangeId,
-            int engineeringChangeNumber,
-            String engineeringChangeTitle
+            UUID engineeringChangeId
     ) {
         try {
             requireEngineeringChangeRevision(revision);
-            Part part = getRequiredPartForUpdate(revision.getPartNumber());
-            String canceledIdentifier = revision.getRevisionCode() == null ? revision.getDraftKey() : revision.getRevisionCode();
+            Part part = getRequiredPartForUpdate(revision.getPartId());
             clearCurrentApprovedIfMatches(part, revision.getId());
             revision.cancel(actorId);
             revision.recordHistory(
@@ -200,17 +150,18 @@ public class PartRevisionService {
                     PartRevisionHistoryActionType.CANCELED,
                     PartRevisionHistorySourceType.ENGINEERING_CHANGE,
                     engineeringChangeId,
-                    serializeEngineeringChangePayload(
-                            "CANCELED",
-                            canceledIdentifier,
-                            engineeringChangeNumber,
-                            engineeringChangeTitle
-                    )
+                    "{}"
             );
             return revision;
         } catch (DomainException ex) {
             throw toAppException(ex);
         }
+    }
+
+    public PartRevision getRequiredEditableRevision(UUID partId, UUID revisionId) {
+        PartRevision revision = getRequiredRevision(partId, revisionId);
+        revision.assertDraftEditable();
+        return revision;
     }
 
     private PartRevision releaseDraftInternal(
@@ -256,33 +207,21 @@ public class PartRevisionService {
         );
     }
 
-    private PartRevision getRequiredRevision(String partNumber, String revisionCode) {
-        return partRevisionRepository.findByPartNumberAndRevisionCode(partNumber, revisionCode)
+    private PartRevision getRequiredRevision(UUID partId, UUID revisionId) {
+        return partRevisionRepository.findByIdAndPartId(revisionId, partId)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "PartRevision '%s/%s'을(를) 찾을 수 없습니다".formatted(partNumber, revisionCode)
+                        "PartRevision '%s/%s'을(를) 찾을 수 없습니다".formatted(partId, revisionId)
                 ));
     }
 
-    private PartRevision getRequiredDraft(String partNumber, String baseRevisionCode, String draftKey) {
-        Optional<PartRevision> candidate = baseRevisionCode == null || baseRevisionCode.isBlank()
-                ? partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionIdIsNull(partNumber, draftKey)
-                : findRevisionScopedDraft(partNumber, baseRevisionCode, draftKey);
-        return candidate
+    private PartRevision getRequiredDraft(UUID partId, UUID revisionId) {
+        return partRevisionRepository.findByIdAndPartId(revisionId, partId)
                 .filter(revision -> revision.getStatus() == PartRevisionStatus.DRAFT)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "PartDraft '%s/%s'을(를) 찾을 수 없습니다".formatted(partNumber, draftKey)
+                        "PartDraft '%s/%s'을(를) 찾을 수 없습니다".formatted(partId, revisionId)
                 ));
-    }
-
-    private Optional<PartRevision> findRevisionScopedDraft(String partNumber, String baseRevisionCode, String draftKey) {
-        PartRevision baseRevision = getRequiredRevision(partNumber, baseRevisionCode);
-        return partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionId(
-                partNumber,
-                draftKey,
-                baseRevision.getId()
-        );
     }
 
     private Part getRequiredPart(UUID partId) {
@@ -293,11 +232,11 @@ public class PartRevisionService {
                 ));
     }
 
-    private Part getRequiredPartForUpdate(String partNumber) {
-        return partRepository.findByPartNumberForUpdate(partNumber)
+    private Part getRequiredPartForUpdate(UUID partId) {
+        return partRepository.findByIdForUpdate(partId)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "Part '%s'을(를) 찾을 수 없습니다".formatted(partNumber)
+                        "Part '%s'을(를) 찾을 수 없습니다".formatted(partId)
                 ));
     }
 
@@ -407,18 +346,6 @@ public class PartRevisionService {
         return new String(chars);
     }
 
-    private String serializeTransitionPayload(String action, String revisionCode, String reason) {
-        try {
-            return objectMapper.writeValueAsString(Map.of(
-                    "action", action,
-                    "revisionCode", revisionCode,
-                    "reason", reason.trim()
-            ));
-        } catch (JacksonException ex) {
-            throw new AppException(ErrorCode.BAD_REQUEST, "변경 이력을 직렬화할 수 없습니다");
-        }
-    }
-
     private void requireEngineeringChangeRevision(PartRevision revision) {
         if (revision.getEngineeringChangeId() == null) {
             throw new AppException(ErrorCode.CONFLICT, "EngineeringChange에 연결된 리비전만 처리할 수 있습니다");
@@ -427,24 +354,6 @@ public class PartRevisionService {
 
     private void clearCurrentApprovedIfMatches(Part part, UUID revisionId) {
         // 승인 포인터를 사용하지 않는 구조라 no-op으로 둔다.
-    }
-
-    private String serializeEngineeringChangePayload(
-            String action,
-            String revisionCode,
-            int engineeringChangeNumber,
-            String engineeringChangeTitle
-    ) {
-        try {
-            return objectMapper.writeValueAsString(Map.of(
-                    "action", action,
-                    "revisionCode", revisionCode,
-                    "engineeringChangeNumber", engineeringChangeNumber,
-                    "engineeringChangeTitle", engineeringChangeTitle == null ? "" : engineeringChangeTitle.trim()
-            ));
-        } catch (JacksonException ex) {
-            throw new AppException(ErrorCode.BAD_REQUEST, "변경 이력을 직렬화할 수 없습니다");
-        }
     }
 
     private String serializeReasonPayload(String reason) {
@@ -478,9 +387,6 @@ public class PartRevisionService {
                     PartRevision.CODE_PART_REVISION_CODE_REQUIRED,
                     PartRevision.CODE_PART_REVISION_CODE_TOO_LONG,
                     PartRevision.CODE_PART_REVISION_CODE_INVALID_FORMAT,
-                    PartRevision.CODE_PART_REVISION_DRAFT_KEY_REQUIRED,
-                    PartRevision.CODE_PART_REVISION_DRAFT_KEY_TOO_LONG,
-                    PartRevision.CODE_PART_REVISION_DRAFT_KEY_INVALID_FORMAT,
                     PartRevision.CODE_PART_REVISION_LEAD_TIME_DAYS_INVALID ->
                     new AppException(ErrorCode.VALIDATION_ERROR, ex.getMessage());
             case PartRevision.CODE_PART_REVISION_DRAFT_REQUIRED,

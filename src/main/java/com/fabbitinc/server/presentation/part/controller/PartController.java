@@ -3,37 +3,37 @@ package com.fabbitinc.server.presentation.part.controller;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toCategoryLookupResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toCategoryStatsResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartDetailResponse;
-import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartDraftLookupResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartFilterOptionsResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartInProgressListResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartListResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartLookupResponse;
+import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartRevisionLookupResponse;
 
-import com.fabbitinc.server.presentation.part.request.CreatePartRequest;
-import com.fabbitinc.server.presentation.part.request.RenameCategoryRequest;
-import com.fabbitinc.server.presentation.part.response.CategoryLookupResponse;
-import com.fabbitinc.server.presentation.part.response.CategoryStatsResponse;
-import com.fabbitinc.server.presentation.part.response.PartDetailResponse;
-import com.fabbitinc.server.presentation.part.response.PartDraftLookupResponse;
-import com.fabbitinc.server.presentation.part.response.PartFilterOptionsResponse;
-import com.fabbitinc.server.presentation.part.response.PartInProgressListResponse;
-import com.fabbitinc.server.presentation.part.response.PartListResponse;
-import com.fabbitinc.server.presentation.part.response.PartLookupResponse;
-import com.fabbitinc.server.presentation.part.response.RenameCategoryResponse;
 import com.fabbitinc.server.application.part.query.PartQuery;
-import com.fabbitinc.server.application.part.query.condition.PartDraftDetailCondition;
-import com.fabbitinc.server.application.part.query.condition.PartDraftLookupCondition;
+import com.fabbitinc.server.application.part.query.condition.PartDetailCondition;
 import com.fabbitinc.server.application.part.query.condition.PartExportCondition;
 import com.fabbitinc.server.application.part.query.condition.PartInProgressListCondition;
 import com.fabbitinc.server.application.part.query.condition.PartInProgressStatusFilter;
 import com.fabbitinc.server.application.part.query.condition.PartListCondition;
 import com.fabbitinc.server.application.part.query.condition.PartLookupCondition;
+import com.fabbitinc.server.application.part.query.condition.PartRevisionLookupCondition;
 import com.fabbitinc.server.application.part.usecase.CreatePartUseCase;
 import com.fabbitinc.server.application.part.usecase.RenameCategoryUseCase;
 import com.fabbitinc.server.application.part.usecase.command.CreatePartCommand;
 import com.fabbitinc.server.application.part.usecase.command.RenameCategoryCommand;
 import com.fabbitinc.server.application.part.usecase.result.CreatePartResult;
 import com.fabbitinc.server.application.part.usecase.result.RenameCategoryResult;
+import com.fabbitinc.server.presentation.part.request.CreatePartRequest;
+import com.fabbitinc.server.presentation.part.request.RenameCategoryRequest;
+import com.fabbitinc.server.presentation.part.response.CategoryLookupResponse;
+import com.fabbitinc.server.presentation.part.response.CategoryStatsResponse;
+import com.fabbitinc.server.presentation.part.response.PartDetailResponse;
+import com.fabbitinc.server.presentation.part.response.PartFilterOptionsResponse;
+import com.fabbitinc.server.presentation.part.response.PartInProgressListResponse;
+import com.fabbitinc.server.presentation.part.response.PartListResponse;
+import com.fabbitinc.server.presentation.part.response.PartLookupResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionLookupResponse;
+import com.fabbitinc.server.presentation.part.response.RenameCategoryResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -83,10 +83,7 @@ public class PartController {
     private final CreatePartUseCase createPartUseCase;
     private final RenameCategoryUseCase renameCategoryUseCase;
 
-    @Operation(
-            summary = "부품을 생성하고 생성 직후 상세 정보를 반환합니다",
-            description = "부품을 생성하고 생성 직후 상세 정보를 반환합니다"
-    )
+    @Operation(summary = "부품을 생성하고 초안 상세를 반환합니다", description = "부품을 생성하고 생성된 초기 초안 상세를 반환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "생성 성공"),
             @ApiResponse(responseCode = "409", description = "리소스 충돌"),
@@ -94,10 +91,7 @@ public class PartController {
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public PartDetailResponse createPart(
-            @Parameter(description = "부품 생성 요청")
-            @Valid @RequestBody CreatePartRequest request
-    ) {
+    public PartDetailResponse createPart(@Valid @RequestBody CreatePartRequest request) {
         CreatePartResult result = createPartUseCase.execute(new CreatePartCommand(
                 request.partNumber(),
                 request.name(),
@@ -111,38 +105,30 @@ public class PartController {
                 request.extendedProperties(),
                 request.reason()
         ));
-        return toPartDetailResponse(partQuery.getDraft(new PartDraftDetailCondition(
-                result.partNumber(),
-                null,
-                result.draftKey()
-        )));
+        return toPartDetailResponse(partQuery.get(new PartDetailCondition(result.partId(), result.revisionId())));
     }
 
     @Operation(summary = "품번/품명으로 경량 Part 목록을 조회합니다", description = "품번/품명으로 경량 Part 목록을 조회합니다")
     @GetMapping("/lookup")
     public PartLookupResponse lookupParts(
-            @Parameter(description = "품번/품명 검색어", example = "M3")
             @RequestParam(value = "search", required = false) String search,
-            @Parameter(description = "조회 건수", example = "10")
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 50, message = "limit은 50 이하여야 합니다") int limit
     ) {
         return toPartLookupResponse(partQuery.lookup(new PartLookupCondition(search, limit)));
     }
 
-    @Operation(summary = "현재 사용자가 만든 변경관리 연결 가능 초안 목록을 조회합니다", description = "현재 사용자가 만든 변경관리 연결 가능 초안 목록을 조회합니다")
-    @GetMapping("/drafts/lookup")
-    public PartDraftLookupResponse lookupDrafts(
-            @Parameter(description = "품번/품명 검색어", example = "AES")
+    @Operation(summary = "변경관리 연결 가능한 리비전 목록을 조회합니다", description = "현재 사용자가 만든 변경관리 연결 가능한 DRAFT 리비전 목록을 조회합니다")
+    @GetMapping("/revisions/lookup")
+    public PartRevisionLookupResponse lookupRevisions(
             @RequestParam(value = "search", required = false) String search,
-            @Parameter(description = "조회 건수", example = "10")
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 50, message = "limit은 50 이하여야 합니다") int limit
     ) {
-        return toPartDraftLookupResponse(partQuery.lookupDrafts(new PartDraftLookupCondition(search, limit)));
+        return toPartRevisionLookupResponse(partQuery.lookupRevisions(new PartRevisionLookupCondition(search, limit)));
     }
 
-    @Operation(summary = "필터링된 Part 목록을 Excel(.xlsx) 파일로 내보냅니다", description = "필터링된 Part 목록을 Excel(.xlsx) 파일로 내보냅니다")
+    @Operation(summary = "필터링된 Part 목록을 Excel 파일로 내보냅니다", description = "필터링된 Part 목록을 Excel(.xlsx) 파일로 내보냅니다")
     @GetMapping(value = "/export", produces = EXCEL_MEDIA_TYPE)
     public ResponseEntity<byte[]> exportParts(
             @RequestParam(value = "search", required = false) String search,
@@ -186,13 +172,13 @@ public class PartController {
         return toCategoryLookupResponse(partQuery.lookupCategories());
     }
 
-    @Operation(summary = "Part 목록 필터 옵션(카테고리/수명주기 상태)을 조회합니다", description = "Part 목록 필터 옵션(카테고리/수명주기 상태)을 조회합니다")
+    @Operation(summary = "Part 목록 필터 옵션을 조회합니다", description = "Part 목록 필터 옵션(카테고리/수명주기 상태)을 조회합니다")
     @GetMapping("/filter-options")
     public PartFilterOptionsResponse getFilterOptions() {
         return toPartFilterOptionsResponse(partQuery.getFilterOptions());
     }
 
-    @Operation(summary = "Part 목록을 검색/필터 조건과 함께 조회합니다", description = "Part 목록을 검색/필터 조건과 함께 조회합니다")
+    @Operation(summary = "Part 목록을 조회합니다", description = "검색/필터 조건과 함께 Part 목록을 조회합니다")
     @GetMapping
     public PartListResponse listParts(
             @RequestParam(value = "search", required = false) String search,
@@ -201,9 +187,7 @@ public class PartController {
             @RequestParam(value = "has_drawing", required = false) Boolean hasDrawing,
             @RequestParam(value = "has_children", required = false) Boolean hasChildren,
             @RequestParam(value = "project_id", required = false) UUID projectId,
-            @Parameter(description = "다음 페이지 조회 기준 커서", example = "QUVTLTEwMHw1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDA")
             @RequestParam(value = "next_cursor", required = false) String nextCursor,
-            @Parameter(description = "이전 페이지 조회 기준 커서", example = "QUVTLTEwMHw1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDA")
             @RequestParam(value = "prev_cursor", required = false) String prevCursor,
             @RequestParam(value = "limit", defaultValue = "20")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 100, message = "limit은 100 이하여야 합니다") int limit
@@ -221,22 +205,18 @@ public class PartController {
         )));
     }
 
-    @Operation(summary = "진행중 부품 작업함 목록을 검색/필터 조건과 함께 조회합니다", description = "진행중 부품 작업함 목록을 검색/필터 조건과 함께 조회합니다")
+    @Operation(summary = "진행중 부품 작업함 목록을 조회합니다", description = "검색/필터 조건과 함께 진행중 부품 작업함 목록을 조회합니다")
     @GetMapping("/in-progress")
     public PartInProgressListResponse listInProgressParts(
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "lifecycle_state", required = false) String lifecycleState,
-            @Parameter(description = "조회할 리비전 상태 목록", example = "DRAFT")
             @RequestParam(value = "statuses", required = false) List<PartInProgressStatusFilter> statuses,
-            @Parameter(description = "현재 사용자가 만든 작업만 조회할지 여부", example = "true")
             @RequestParam(value = "mine_only", defaultValue = "false") boolean mineOnly,
             @RequestParam(value = "has_drawing", required = false) Boolean hasDrawing,
             @RequestParam(value = "has_children", required = false) Boolean hasChildren,
             @RequestParam(value = "project_id", required = false) UUID projectId,
-            @Parameter(description = "다음 페이지 조회 기준 커서", example = "NTUwZTg0MDAtZTI5Yi00MWQ0LWE3MTYtNDQ2NjU1NDQwMDAw")
             @RequestParam(value = "next_cursor", required = false) String nextCursor,
-            @Parameter(description = "이전 페이지 조회 기준 커서", example = "NTUwZTg0MDAtZTI5Yi00MWQ0LWE3MTYtNDQ2NjU1NDQwMDAw")
             @RequestParam(value = "prev_cursor", required = false) String prevCursor,
             @RequestParam(value = "limit", defaultValue = "20")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 100, message = "limit은 100 이하여야 합니다") int limit
@@ -256,15 +236,13 @@ public class PartController {
         )));
     }
 
-    @Operation(summary = "카테고리 이름을 일괄 변경하고 변경 건수를 반환합니다", description = "카테고리 이름을 일괄 변경하고 변경 건수를 반환합니다")
+    @Operation(summary = "카테고리 이름을 일괄 변경합니다", description = "카테고리 이름을 일괄 변경하고 변경 건수를 반환합니다")
     @PatchMapping("/categories/{category}")
     public RenameCategoryResponse renameCategory(
             @PathVariable String category,
             @Valid @RequestBody RenameCategoryRequest request
     ) {
-        RenameCategoryResult result = renameCategoryUseCase.execute(
-                new RenameCategoryCommand(category, request.newName())
-        );
+        RenameCategoryResult result = renameCategoryUseCase.execute(new RenameCategoryCommand(category, request.newName()));
         return new RenameCategoryResponse(result.updatedCount());
     }
 }

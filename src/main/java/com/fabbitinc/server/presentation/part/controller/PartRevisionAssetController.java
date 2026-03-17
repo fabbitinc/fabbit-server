@@ -21,7 +21,6 @@ import com.fabbitinc.server.presentation.part.request.AttachFilesRequest;
 import com.fabbitinc.server.presentation.part.response.PartAttachmentItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartFilesResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,7 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/parts")
-@Tag(name = "part-revision-assets", description = "공식 부품 리비전 파일 및 도면 자산 관리 API")
+@Tag(name = "part-revision-assets", description = "부품 리비전 파일/도면 자산 API")
 @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "요청 성공"),
         @ApiResponse(responseCode = "201", description = "생성 성공"),
@@ -61,73 +60,58 @@ public class PartRevisionAssetController {
     private final RegisterPartDrawingUseCase registerPartDrawingUseCase;
     private final DeletePartDrawingUseCase deletePartDrawingUseCase;
 
-    @Operation(summary = "Part에 연결된 업로드 완료 파일 목록을 조회합니다", description = "Part에 연결된 업로드 완료 파일 목록을 조회합니다")
-    @GetMapping("/{partNumber}/revisions/{revisionCode}/files")
-    public PartFilesResponse getFiles(
-            @Parameter(description = "품번")
-            @PathVariable String partNumber,
-            @Parameter(description = "리비전 코드")
-            @PathVariable String revisionCode
-    ) {
-        return toPartFilesResponse(partQuery.get(new PartFilesCondition(partNumber, revisionCode, null, null)));
+    @Operation(summary = "연결된 파일 목록을 조회합니다", description = "리비전에 연결된 파일과 도면 목록을 조회합니다")
+    @GetMapping("/{partId}/revisions/{revisionId}/files")
+    public PartFilesResponse getFiles(@PathVariable UUID partId, @PathVariable UUID revisionId) {
+        return toPartFilesResponse(partQuery.get(new PartFilesCondition(partId, revisionId)));
     }
 
-    @Operation(summary = "업로드 완료 파일들을 Part에 배치 연결합니다", description = "업로드 완료 파일들을 Part에 배치 연결합니다")
-    @PostMapping("/{partNumber}/revisions/{revisionCode}/files")
+    @Operation(summary = "파일을 첨부합니다", description = "업로드 완료 파일들을 리비전에 배치 연결합니다")
+    @PostMapping("/{partId}/revisions/{revisionId}/files")
     public List<PartAttachmentItemResponse> attachFiles(
-            @Parameter(description = "품번")
-            @PathVariable String partNumber,
-            @Parameter(description = "리비전 코드")
-            @PathVariable String revisionCode,
+            @PathVariable UUID partId,
+            @PathVariable UUID revisionId,
             @Valid @RequestBody AttachFilesRequest request
     ) {
         AttachPartFilesResult result = attachPartFilesUseCase.execute(
-                new AttachPartFilesCommand(partNumber, revisionCode, null, null, request.fileIds())
+                new AttachPartFilesCommand(partId, revisionId, request.fileIds())
         );
         return partQuery.getFiles(new FileItemsCondition(result.fileIds())).stream()
                 .map(PartResponseMapper::toPartAttachmentItemResponse)
                 .toList();
     }
 
-    @Operation(summary = "Part에 연결된 첨부파일 1건을 제거합니다", description = "Part에 연결된 첨부파일 1건을 제거합니다")
-    @DeleteMapping("/{partNumber}/revisions/{revisionCode}/files/{fileId}")
+    @Operation(summary = "첨부 파일을 제거합니다", description = "리비전에 연결된 첨부 파일 1건을 제거합니다")
+    @DeleteMapping("/{partId}/revisions/{revisionId}/files/{fileId}")
     public ResponseEntity<Void> deleteFile(
-            @Parameter(description = "품번")
-            @PathVariable String partNumber,
-            @Parameter(description = "리비전 코드")
-            @PathVariable String revisionCode,
-            @Parameter(description = "파일 ID")
+            @PathVariable UUID partId,
+            @PathVariable UUID revisionId,
             @PathVariable UUID fileId
     ) {
-        detachPartFileUseCase.execute(new DetachPartFileCommand(partNumber, revisionCode, null, null, fileId));
+        detachPartFileUseCase.execute(new DetachPartFileCommand(partId, revisionId, fileId));
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "업로드 완료 파일을 Drawing으로 등록하고 PartRevision에 연결합니다", description = "업로드 완료 파일을 Drawing으로 등록하고 PartRevision에 연결합니다")
-    @PostMapping("/{partNumber}/revisions/{revisionCode}/drawings")
+    @Operation(summary = "도면을 등록합니다", description = "업로드 완료 파일을 Drawing으로 등록하고 리비전에 연결합니다")
+    @PostMapping("/{partId}/revisions/{revisionId}/drawings")
     public RegisterDrawingResponse createDrawing(
-            @Parameter(description = "품번")
-            @PathVariable String partNumber,
-            @Parameter(description = "리비전 코드")
-            @PathVariable String revisionCode,
+            @PathVariable UUID partId,
+            @PathVariable UUID revisionId,
             @Valid @RequestBody RegisterDrawingRequest request
     ) {
-        return toRegisterDrawingResponse(registerPartDrawingUseCase.execute(
-                new RegisterPartDrawingCommand(partNumber, revisionCode, null, request.fileId())
-        ));
+        return toRegisterDrawingResponse(
+                registerPartDrawingUseCase.execute(new RegisterPartDrawingCommand(partId, revisionId, request.fileId()))
+        );
     }
 
-    @Operation(summary = "PartRevision에 연결된 도면 1건을 삭제합니다", description = "PartRevision에 연결된 도면 1건을 삭제합니다")
-    @DeleteMapping("/{partNumber}/revisions/{revisionCode}/drawings/{drawingId}")
+    @Operation(summary = "도면을 삭제합니다", description = "리비전에 연결된 도면 1건을 삭제합니다")
+    @DeleteMapping("/{partId}/revisions/{revisionId}/drawings/{drawingId}")
     public ResponseEntity<Void> deleteDrawing(
-            @Parameter(description = "품번")
-            @PathVariable String partNumber,
-            @Parameter(description = "리비전 코드")
-            @PathVariable String revisionCode,
-            @Parameter(description = "도면 ID")
+            @PathVariable UUID partId,
+            @PathVariable UUID revisionId,
             @PathVariable UUID drawingId
     ) {
-        deletePartDrawingUseCase.execute(new DeletePartDrawingCommand(partNumber, revisionCode, null, null, drawingId));
+        deletePartDrawingUseCase.execute(new DeletePartDrawingCommand(partId, revisionId, drawingId));
         return ResponseEntity.noContent().build();
     }
 }

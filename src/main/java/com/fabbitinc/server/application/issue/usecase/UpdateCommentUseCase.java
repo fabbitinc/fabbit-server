@@ -24,16 +24,14 @@ public class UpdateCommentUseCase {
 
     public CommentResult execute(UpdateCommentCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID targetId = WorkItemUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
-
         return WorkItemUseCaseSupport.toCommentResult(
-                issueService.updateComment(auth.userId(), targetId, command.commentId(), command.body()),
+                issueService.updateComment(auth.userId(), command.issueId(), command.commentId(), command.body()),
                 objectMapper
         );
     }
 
     public record UpdateCommentCommand(
-            int issueNumber,
+            UUID issueId,
             UUID commentId,
             JsonNode body
     ) {

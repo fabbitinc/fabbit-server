@@ -523,7 +523,7 @@ class SynthesisExecutionServiceTest {
 
     private PartRevision currentRevisionOf(Part part, String revisionCode, String name) {
         if (revisionCode == null) {
-            return PartRevision.createInitialDraft(part, "D1", name, null);
+            return PartRevision.createInitialDraft(part, name, null);
         }
         return PartRevision.createOfficial(part, revisionCode, null, name, PartRevisionStatus.RELEASED, null);
     }

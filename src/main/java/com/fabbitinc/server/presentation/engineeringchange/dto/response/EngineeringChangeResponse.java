@@ -21,12 +21,13 @@ public record EngineeringChangeResponse(
         Instant updatedAt,
         boolean isModified,
         UserSummaryResponse createdBy,
+        LinkedIssueSummaryResponse sourceIssue,
         List<EngineeringChangeStepResponse> steps,
         List<EngineeringChangePartRevisionResponse> partRevisions,
         List<FileItemResponse> files,
         int commentsCount,
-        Instant mergedAt,
-        UUID mergedBy,
+        Instant releasedAt,
+        UserSummaryResponse releasedBy,
         List<LinkedIssueSummaryResponse> linkedIssues
 ) {
 }

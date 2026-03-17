@@ -93,12 +93,7 @@ public class IssueService {
     private final MentionExtractor mentionExtractor;
     private final ObjectMapper objectMapper;
 
-    public Issue getIssueByNumberOrThrow(int issueNumber) {
-        return issueRepository.findByNumber(issueNumber)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "이슈를 찾을 수 없습니다"));
-    }
-
-    public Issue getIssueOrThrow(UUID issueId) {
+    public Issue getIssueByIdOrThrow(UUID issueId) {
         return issueRepository.findById(issueId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "Issue '" + issueId + "'을(를) 찾을 수 없습니다"));
     }
@@ -167,7 +162,7 @@ public class IssueService {
             issueAssigneeRepository.deleteByIssueIdAndUserIdIn(issueId, toRemove);
         }
         if (!toAdd.isEmpty()) {
-            Issue issue = getIssueOrThrow(issueId);
+            Issue issue = getIssueByIdOrThrow(issueId);
             issueAssigneeRepository.saveAll(toAdd.stream().map(issue::assignUser).toList());
         }
 
@@ -201,7 +196,7 @@ public class IssueService {
             issueTeamAssigneeRepository.deleteByIssueIdAndTeamIdIn(issueId, toRemove);
         }
         if (!toAdd.isEmpty()) {
-            Issue issue = getIssueOrThrow(issueId);
+            Issue issue = getIssueByIdOrThrow(issueId);
             issueTeamAssigneeRepository.saveAll(toAdd.stream().map(issue::assignTeam).toList());
 
             Set<UUID> overlapUsers = teamMemberRepository.findByTeam_IdIn(toAdd).stream()
@@ -233,7 +228,7 @@ public class IssueService {
             issueLabelRepository.deleteByIssueIdAndLabelIdIn(issueId, toRemove);
         }
         if (!toAdd.isEmpty()) {
-            Issue issue = getIssueOrThrow(issueId);
+            Issue issue = getIssueByIdOrThrow(issueId);
             issueLabelRepository.saveAll(toAdd.stream().map(issue::linkLabel).toList());
         }
 
@@ -267,7 +262,7 @@ public class IssueService {
             issuePartRepository.deleteByIssueIdAndPartIdIn(issueId, toRemove);
         }
         if (!toAdd.isEmpty()) {
-            Issue issue = getIssueOrThrow(issueId);
+            Issue issue = getIssueByIdOrThrow(issueId);
             issuePartRepository.saveAll(toAdd.stream().map(issue::linkPart).toList());
         }
 
@@ -297,7 +292,7 @@ public class IssueService {
         Set<UUID> toRemove = diff.removed();
 
         if (emitActivity && (!toAdd.isEmpty() || !toRemove.isEmpty())) {
-            Issue issue = getIssueOrThrow(issueId);
+            Issue issue = getIssueByIdOrThrow(issueId);
             Map<UUID, EngineeringChangeSnapshot> engineeringChanges =
                     engineeringChangeApi.getEngineeringChangeSnapshotMap(Set.copyOf(union(toAdd, toRemove)));
 
@@ -336,7 +331,7 @@ public class IssueService {
     public AbstractComment createComment(UUID actorId, UUID issueId, JsonNode body) {
         tipTapValidator.validateDocument(body);
         MentionSource source = getMentionSourceOrThrow(issueId);
-        Issue issue = getIssueOrThrow(issueId);
+        Issue issue = getIssueByIdOrThrow(issueId);
         IssueComment comment = issue.writeComment(toBodyString(body), actorId);
         issueCommentRepository.save(comment);
 
@@ -371,7 +366,7 @@ public class IssueService {
     }
 
     public List<File> attachFiles(UUID actorId, UUID issueId, List<File> files, boolean emitActivity) {
-        getIssueOrThrow(issueId);
+        getIssueByIdOrThrow(issueId);
         if (files.isEmpty()) {
             return List.of();
         }
@@ -391,7 +386,7 @@ public class IssueService {
     }
 
     public void detachFile(UUID actorId, UUID issueId, UUID fileId) {
-        getIssueOrThrow(issueId);
+        getIssueByIdOrThrow(issueId);
 
         File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(fileId, OWNER_TYPE_ISSUE, issueId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "해당 이슈에 연결된 파일을 찾을 수 없습니다"));

@@ -1,7 +1,5 @@
 package com.fabbitinc.server.application.issue.usecase;
 
-import com.fabbitinc.server.application.workitem.usecase.WorkItemUseCaseSupport;
-
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.issue.service.IssueService;
@@ -21,12 +19,12 @@ public class UpdateIssueUseCase {
 
     public void execute(UpdateIssueCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        Issue issue = issueService.getIssueByNumberOrThrow(command.issueNumber());
+        Issue issue = issueService.getIssueByIdOrThrow(command.issueId());
         issueService.updateIssue(auth.userId(), issue, command.title(), command.body());
     }
 
     public record UpdateIssueCommand(
-            int issueNumber,
+            java.util.UUID issueId,
             String title,
             JsonNode body
     ) {

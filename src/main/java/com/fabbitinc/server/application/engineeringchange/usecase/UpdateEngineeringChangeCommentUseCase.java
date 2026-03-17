@@ -27,7 +27,7 @@ public class UpdateEngineeringChangeCommentUseCase {
         return WorkItemUseCaseSupport.toCommentResult(
                 engineeringChangeService.updateComment(
                         auth.userId(),
-                        WorkItemUseCaseSupport.resolveEngineeringChangeId(engineeringChangeService, command.engineeringChangeNumber()),
+                        command.engineeringChangeId(),
                         command.commentId(),
                         command.body()
                 ),
@@ -36,7 +36,7 @@ public class UpdateEngineeringChangeCommentUseCase {
     }
 
     public record UpdateEngineeringChangeCommentCommand(
-            int engineeringChangeNumber,
+            UUID engineeringChangeId,
             UUID commentId,
             JsonNode body
     ) {

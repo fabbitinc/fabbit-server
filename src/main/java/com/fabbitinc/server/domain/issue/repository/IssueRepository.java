@@ -10,8 +10,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface IssueRepository extends JpaRepository<Issue, UUID> {
 
-    Optional<Issue> findByNumber(int number);
-
     long countByState(IssueState state);
 
     Optional<Issue> findTopByOrderByNumberDesc();

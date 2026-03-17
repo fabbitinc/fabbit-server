@@ -21,14 +21,12 @@ public class SyncTeamAssigneesUseCase {
 
     public SyncDiffResult execute(SyncTeamAssigneesCommand command) {
         currentAuthProvider.getCurrentAuth();
-        UUID issueId = WorkItemUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
-
-        IssueService.DiffResult diff = issueService.syncTeamAssignees(issueId, command.teamIds());
+        IssueService.DiffResult diff = issueService.syncTeamAssignees(command.issueId(), command.teamIds());
         return WorkItemUseCaseSupport.toSyncDiffResult(diff);
     }
 
     public record SyncTeamAssigneesCommand(
-            int issueNumber,
+            UUID issueId,
             List<UUID> teamIds
     ) {
         public SyncTeamAssigneesCommand {

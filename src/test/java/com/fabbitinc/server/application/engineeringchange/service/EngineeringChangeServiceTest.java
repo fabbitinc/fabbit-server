@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import com.fabbitinc.server.application.common.exception.AppException;
@@ -38,10 +39,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.context.ApplicationEventPublisher;
 import tools.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class EngineeringChangeServiceTest {
 
     @Mock
@@ -100,8 +104,8 @@ class EngineeringChangeServiceTest {
                 objectMapper
         );
 
-        when(engineeringChangeRepository.existsById(any())).thenReturn(true);
-        when(issueApi.existsIssue(any())).thenReturn(false);
+        lenient().when(engineeringChangeRepository.existsById(any())).thenReturn(true);
+        lenient().when(issueApi.existsIssue(any())).thenReturn(false);
     }
 
     @Test
@@ -109,7 +113,7 @@ class EngineeringChangeServiceTest {
         UUID actorId = UUID.randomUUID();
         UUID firstReviewerId = UUID.randomUUID();
         UUID secondReviewerId = UUID.randomUUID();
-        EngineeringChange engineeringChange = EngineeringChange.create(101, "변경", "본문", actorId);
+        EngineeringChange engineeringChange = EngineeringChange.create(101, "변경", "본문", null, actorId);
         EngineeringChangeStep firstStep = engineeringChange.addStep(
                 EngineeringChangeStepType.REVIEW,
                 EngineeringChangeStepAssigneeType.USER,
@@ -146,7 +150,7 @@ class EngineeringChangeServiceTest {
         UUID actorId = UUID.randomUUID();
         Team team = Team.create("검토팀", null, actorId);
         TeamMember teamMember = team.addMember(actorId);
-        EngineeringChange engineeringChange = EngineeringChange.create(102, "변경", "본문", actorId);
+        EngineeringChange engineeringChange = EngineeringChange.create(102, "변경", "본문", null, actorId);
         EngineeringChangeStep reviewStep = engineeringChange.addStep(
                 EngineeringChangeStepType.REVIEW,
                 EngineeringChangeStepAssigneeType.TEAM,
@@ -168,7 +172,7 @@ class EngineeringChangeServiceTest {
     @Test
     void rejectEngineeringChange_approvalPending이면Draft로되돌아간다() {
         UUID actorId = UUID.randomUUID();
-        EngineeringChange engineeringChange = EngineeringChange.create(103, "변경", "본문", actorId);
+        EngineeringChange engineeringChange = EngineeringChange.create(103, "변경", "본문", null, actorId);
         EngineeringChangeStep approvalStep = engineeringChange.addStep(
                 EngineeringChangeStepType.APPROVAL,
                 EngineeringChangeStepAssigneeType.USER,
@@ -191,7 +195,7 @@ class EngineeringChangeServiceTest {
     @Test
     void rejectEngineeringChange_releasePending이면Draft로되돌아간다() {
         UUID actorId = UUID.randomUUID();
-        EngineeringChange engineeringChange = EngineeringChange.create(104, "변경", "본문", actorId);
+        EngineeringChange engineeringChange = EngineeringChange.create(104, "변경", "본문", null, actorId);
         EngineeringChangeStep releaseStep = engineeringChange.addStep(
                 EngineeringChangeStepType.RELEASE,
                 EngineeringChangeStepAssigneeType.USER,
@@ -215,7 +219,7 @@ class EngineeringChangeServiceTest {
     @Test
     void cancelEngineeringChange_후에는다시submit할수없다() {
         UUID actorId = UUID.randomUUID();
-        EngineeringChange engineeringChange = EngineeringChange.create(105, "변경", "본문", actorId);
+        EngineeringChange engineeringChange = EngineeringChange.create(105, "변경", "본문", null, actorId);
         EngineeringChangeStep reviewStep = engineeringChange.addStep(
                 EngineeringChangeStepType.REVIEW,
                 EngineeringChangeStepAssigneeType.USER,
@@ -237,9 +241,6 @@ class EngineeringChangeServiceTest {
                 1,
                 actorId
         );
-        when(engineeringChangeStepRepository.findByEngineeringChangeIdOrderBySequenceAscCreatedAtAsc(engineeringChange.getId()))
-                .thenReturn(List.of(reviewStep, approvalStep, releaseStep));
-
         engineeringChangeService.cancelEngineeringChange(actorId, engineeringChange);
 
         AppException exception = assertThrows(

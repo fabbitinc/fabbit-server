@@ -22,13 +22,13 @@ public class DeleteEngineeringChangeCommentUseCase {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         engineeringChangeService.deleteComment(
                 auth.userId(),
-                WorkItemUseCaseSupport.resolveEngineeringChangeId(engineeringChangeService, command.engineeringChangeNumber()),
+                command.engineeringChangeId(),
                 command.commentId()
         );
     }
 
     public record DeleteEngineeringChangeCommentCommand(
-            int engineeringChangeNumber,
+            UUID engineeringChangeId,
             UUID commentId
     ) {
     }

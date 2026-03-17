@@ -4,10 +4,8 @@ import java.util.List;
 import java.util.UUID;
 
 public record AttachPartFilesCommand(
-        String partNumber,
-        String revisionCode,
-        String baseRevisionCode,
-        String draftKey,
+        UUID partId,
+        UUID revisionId,
         List<UUID> fileIds
 ) {
 }

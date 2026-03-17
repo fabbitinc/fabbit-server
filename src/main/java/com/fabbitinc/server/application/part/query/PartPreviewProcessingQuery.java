@@ -7,15 +7,15 @@ import com.fabbitinc.server.application.part.query.condition.PartPreviewProcessi
 import com.fabbitinc.server.application.part.query.result.PartPreviewProcessingFailureCode;
 import com.fabbitinc.server.application.part.query.result.PartPreviewProcessingResult;
 import com.fabbitinc.server.domain.drawing.model.DrawingJobStatus;
-import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartPreview;
 import com.fabbitinc.server.domain.part.model.PartPreviewProcessingJob;
 import com.fabbitinc.server.domain.part.model.PartPreviewProcessingStatus;
 import com.fabbitinc.server.domain.part.model.PartPreviewServingProjection;
+import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.repository.PartPreviewProcessingJobRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
-import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewServingProjectionRepository;
+import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +33,11 @@ public class PartPreviewProcessingQuery {
 
     public PartPreviewProcessingResult get(PartPreviewProcessingCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        PartRevision revision = resolveTargetRevision(condition);
+        PartRevision revision = partRevisionRepository.findByIdAndPartId(condition.revisionId(), condition.partId())
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.NOT_FOUND,
+                        "PartRevision '%s/%s'을(를) 찾을 수 없습니다".formatted(condition.partId(), condition.revisionId())
+                ));
 
         PartPreview partPreview = partPreviewRepository.findByPartRevisionId(revision.getId())
                 .filter(PartPreview::hasSource)
@@ -46,6 +50,8 @@ public class PartPreviewProcessingQuery {
                 .orElse(null);
 
         return new PartPreviewProcessingResult(
+                partPreview.getSourceType(),
+                partPreview.getSourceId(),
                 resolveStatus(partPreview, latestJob),
                 resolveFailureCode(partPreview, latestJob),
                 resolveFailureMessage(partPreview, latestJob),
@@ -151,42 +157,6 @@ public class PartPreviewProcessingQuery {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
-    }
-
-    private PartRevision resolveTargetRevision(PartPreviewProcessingCondition condition) {
-        if (condition.draftKey() != null && !condition.draftKey().isBlank()) {
-            return (condition.baseRevisionCode() == null || condition.baseRevisionCode().isBlank()
-                    ? partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionIdIsNull(
-                            condition.partNumber(),
-                            condition.draftKey()
-                    )
-                    : findRevisionScopedDraft(condition.partNumber(), condition.baseRevisionCode(), condition.draftKey()))
-                    .filter(revision -> revision.getStatus() == com.fabbitinc.server.domain.part.model.PartRevisionStatus.DRAFT)
-                    .orElseThrow(() -> new AppException(
-                            ErrorCode.NOT_FOUND,
-                            "PartDraft '%s/%s'을(를) 찾을 수 없습니다".formatted(condition.partNumber(), condition.draftKey())
-                    ));
-        }
-
-        return partRevisionRepository.findByPartNumberAndRevisionCode(condition.partNumber(), condition.revisionCode())
-                .orElseThrow(() -> new AppException(
-                        ErrorCode.NOT_FOUND,
-                        "PartRevision '%s/%s'을(를) 찾을 수 없습니다"
-                                .formatted(condition.partNumber(), condition.revisionCode())
-                ));
-    }
-
-    private java.util.Optional<PartRevision> findRevisionScopedDraft(String partNumber, String baseRevisionCode, String draftKey) {
-        PartRevision baseRevision = partRevisionRepository.findByPartNumberAndRevisionCode(partNumber, baseRevisionCode)
-                .orElseThrow(() -> new AppException(
-                        ErrorCode.NOT_FOUND,
-                        "PartRevision '%s/%s'을(를) 찾을 수 없습니다".formatted(partNumber, baseRevisionCode)
-                ));
-        return partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionId(
-                partNumber,
-                draftKey,
-                baseRevision.getId()
-        );
     }
 
     private record FailureDescriptor(

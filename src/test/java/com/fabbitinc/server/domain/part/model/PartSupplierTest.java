@@ -12,7 +12,7 @@ class PartSupplierTest {
     @Test
     void link_엔티티_입력시_연관과_ID를_동기화한다() {
         Part part = Part.create("P-001");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "Bolt", null);
+        PartRevision revision = PartRevision.createInitialDraft(part, "Bolt", null);
         Supplier supplier = Supplier.create("ACME", null, null, null, "{}");
 
         PartSupplier link = PartSupplier.link(revision.getId(), supplier.getId(), 1200.0, "{}");
@@ -24,7 +24,7 @@ class PartSupplierTest {
     @Test
     void link_단가가_음수면_예외를_던진다() {
         Part part = Part.create("P-001");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "Bolt", null);
+        PartRevision revision = PartRevision.createInitialDraft(part, "Bolt", null);
         Supplier supplier = Supplier.create("ACME", null, null, null, "{}");
 
         DomainException ex = assertThrows(
@@ -38,7 +38,7 @@ class PartSupplierTest {
     @Test
     void link_extendedProperties는_trim_정규화한다() {
         Part part = Part.create("P-001");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "Bolt", null);
+        PartRevision revision = PartRevision.createInitialDraft(part, "Bolt", null);
         Supplier supplier = Supplier.create("ACME", null, null, null, "{}");
 
         PartSupplier link = PartSupplier.link(revision.getId(), supplier.getId(), 1200.0, "  {\"key\":\"value\"}  ");

@@ -23,11 +23,11 @@ public class SubmitEngineeringChangeUseCase {
     public void execute(SubmitEngineeringChangeCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         EngineeringChange engineeringChange =
-                engineeringChangeService.getEngineeringChangeByNumberOrThrow(command.engineeringChangeNumber());
+                engineeringChangeService.getEngineeringChangeByIdOrThrow(command.engineeringChangeId());
         engineeringChangeService.submitEngineeringChange(auth.userId(), engineeringChange);
         partRevisionWorkflowApi.submitEngineeringChange(auth.userId(), engineeringChange.getId());
     }
 
-    public record SubmitEngineeringChangeCommand(int engineeringChangeNumber) {
+    public record SubmitEngineeringChangeCommand(java.util.UUID engineeringChangeId) {
     }
 }

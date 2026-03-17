@@ -22,10 +22,10 @@ public class CreatePartDraftUseCase {
     public CreatePartDraftResult execute(CreatePartDraftCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         PartRevision draft = partRevisionService.createDraft(new CreatePartDraftInput(
-                command.partNumber(),
-                command.revisionCode(),
+                command.partId(),
+                command.baseRevisionId(),
                 command.reason()
         ), auth.userId());
-        return new CreatePartDraftResult(draft.getPartNumber(), draft.getDraftKey());
+        return new CreatePartDraftResult(draft.getPartId(), draft.getId());
     }
 }

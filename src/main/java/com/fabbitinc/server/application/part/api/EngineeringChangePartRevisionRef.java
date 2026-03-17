@@ -1,8 +1,8 @@
 package com.fabbitinc.server.application.part.api;
 
+import java.util.UUID;
+
 public record EngineeringChangePartRevisionRef(
-        String partNumber,
-        String baseRevisionCode,
-        String draftKey
+        UUID revisionId
 ) {
 }

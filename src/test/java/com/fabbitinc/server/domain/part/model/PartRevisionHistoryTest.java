@@ -13,7 +13,7 @@ class PartRevisionHistoryTest {
     @Test
     void record_이력을_기록한다() {
         Part part = Part.create("AES-100");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", null);
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체", null);
         UUID actorId = UUID.randomUUID();
 
         PartRevisionHistory history = PartRevisionHistory.record(
@@ -50,7 +50,7 @@ class PartRevisionHistoryTest {
     @Test
     void recordAt_발생시각이_null이면_예외를_던진다() {
         Part part = Part.create("AES-100");
-        PartRevision revision = PartRevision.createInitialDraft(part, "D1", "본체", null);
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체", null);
 
         DomainException ex = assertThrows(DomainException.class, () -> PartRevisionHistory.recordAt(
                 revision,

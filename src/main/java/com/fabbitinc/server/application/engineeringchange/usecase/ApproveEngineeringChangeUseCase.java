@@ -19,10 +19,10 @@ public class ApproveEngineeringChangeUseCase {
     public void execute(ApproveEngineeringChangeCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         EngineeringChange engineeringChange =
-                engineeringChangeService.getEngineeringChangeByNumberOrThrow(command.engineeringChangeNumber());
+                engineeringChangeService.getEngineeringChangeByIdOrThrow(command.engineeringChangeId());
         engineeringChangeService.approveEngineeringChange(auth.userId(), engineeringChange);
     }
 
-    public record ApproveEngineeringChangeCommand(int engineeringChangeNumber) {
+    public record ApproveEngineeringChangeCommand(java.util.UUID engineeringChangeId) {
     }
 }

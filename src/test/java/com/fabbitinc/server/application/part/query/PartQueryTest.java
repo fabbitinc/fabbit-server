@@ -10,10 +10,15 @@ import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.mapping.api.MappingApi;
-import com.fabbitinc.server.application.part.query.condition.PartDraftDetailCondition;
+import com.fabbitinc.server.application.part.query.condition.PartDetailCondition;
+import com.fabbitinc.server.application.part.query.condition.PartBomCondition;
+import com.fabbitinc.server.application.part.query.condition.PartListCondition;
 import com.fabbitinc.server.application.part.query.condition.PartRevisionHistoryCondition;
 import com.fabbitinc.server.application.part.query.condition.PartPreviewSourcesCondition;
+import com.fabbitinc.server.application.part.query.result.PartBomResult;
 import com.fabbitinc.server.application.part.query.result.PartDetailResult;
+import com.fabbitinc.server.application.part.query.result.PartListResult;
+import com.fabbitinc.server.application.part.query.result.PartLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartRevisionHistoryResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewSourcesResult;
 import com.fabbitinc.server.application.project.api.ProjectApi;
@@ -23,6 +28,7 @@ import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.model.DrawingDimension;
 import com.fabbitinc.server.domain.drawing.model.DrawingSourceType;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
+import com.fabbitinc.server.domain.bom.model.EngineeringBomItem;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
@@ -52,8 +58,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class PartQueryTest {
 
     @Mock
@@ -126,18 +136,20 @@ class PartQueryTest {
     void getPreviewSources_preview_전용_파일이_두개면_둘다_조회된다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-100");
-        PartRevision draft = PartRevision.createInitialDraft(part, "D1", "part", actorId);
+        PartRevision draft = PartRevision.createInitialDraft(part, "part", actorId);
         PartPreview partPreview = PartPreview.create(draft.getId());
 
         File firstFile = createUploadedFile("first.step", 100L);
         File secondFile = createUploadedFile("second.step", 200L);
         var firstPreviewFile = partPreview.addPreviewFile(firstFile.getId());
         var secondPreviewFile = partPreview.addPreviewFile(secondFile.getId());
+        setCreatedAt(firstPreviewFile, Instant.parse("2026-03-18T00:00:00Z"));
+        setCreatedAt(secondPreviewFile, Instant.parse("2026-03-18T01:00:00Z"));
         firstFile.assignOwner("part_preview_file", firstPreviewFile.getId());
         secondFile.assignOwner("part_preview_file", secondPreviewFile.getId());
         partPreview.replaceSource(PartPreviewSourceType.PREVIEW_FILE, secondPreviewFile.getId(), DrawingDimension.THREE_D);
 
-        when(partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionIdIsNull("P-100", "D1"))
+        when(partRevisionRepository.findByIdAndPartId(draft.getId(), part.getId()))
                 .thenReturn(Optional.of(draft));
         when(partRepository.findById(part.getId())).thenReturn(Optional.of(part));
         when(drawingRepository.findByPartRevisionIdAndDeletedAtIsNullOrderByCreatedAtDesc(draft.getId()))
@@ -153,7 +165,7 @@ class PartQueryTest {
         )).thenReturn(Optional.of(secondFile));
 
         PartPreviewSourcesResult result = partQuery.getPreviewSources(
-                new PartPreviewSourcesCondition("P-100", null, null, "D1")
+                new PartPreviewSourcesCondition(part.getId(), draft.getId())
         );
 
         assertEquals(2, result.total());
@@ -166,18 +178,20 @@ class PartQueryTest {
     void getHistory_공식리비전과_초안_생성_폐기가_모두_보인다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-110");
-        PartRevision released = PartRevision.createInitialDraft(part, "D0", "released", actorId);
+        PartRevision released = PartRevision.createInitialDraft(part, "released", actorId);
+        setCreatedAt(released, Instant.parse("2026-03-18T00:00:00Z"));
         released.release("1", actorId);
         released.recordHistoryAt(
                 actorId,
                 PartRevisionHistoryActionType.RELEASED,
                 PartRevisionHistorySourceType.UI,
                 null,
-                "{\"action\":\"RELEASED\",\"revisionCode\":\"1\",\"reason\":\"최초 반영\"}",
+                "{\"reason\":\"최초 반영\"}",
                 Instant.parse("2026-03-18T00:00:00Z")
         );
 
-        PartRevision canceledDraft = PartRevision.createDraft(part, "D1", released.getId(), "draft", actorId);
+        PartRevision canceledDraft = PartRevision.createDraft(part, released.getId(), "draft", actorId);
+        setCreatedAt(canceledDraft, Instant.parse("2026-03-18T01:00:00Z"));
         canceledDraft.recordHistoryAt(
                 actorId,
                 PartRevisionHistoryActionType.CREATED,
@@ -192,11 +206,12 @@ class PartQueryTest {
                 PartRevisionHistoryActionType.CANCELED,
                 PartRevisionHistorySourceType.UI,
                 null,
-                "{\"action\":\"CANCELED\",\"revisionCode\":\"D1\",\"reason\":\"폐기\"}",
+                "{\"action\":\"CANCELED\",\"reason\":\"폐기\"}",
                 Instant.parse("2026-03-18T02:00:00Z")
         );
 
-        PartRevision releasedDraft = PartRevision.createDraft(part, "D2", released.getId(), "released-draft", actorId);
+        PartRevision releasedDraft = PartRevision.createDraft(part, released.getId(), "released-draft", actorId);
+        setCreatedAt(releasedDraft, Instant.parse("2026-03-18T03:00:00Z"));
         releasedDraft.recordHistoryAt(
                 actorId,
                 PartRevisionHistoryActionType.CREATED,
@@ -211,11 +226,11 @@ class PartQueryTest {
                 PartRevisionHistoryActionType.RELEASED,
                 PartRevisionHistorySourceType.UI,
                 null,
-                "{\"action\":\"RELEASED\",\"revisionCode\":\"2\",\"reason\":\"반영\"}",
+                "{\"reason\":\"반영\"}",
                 Instant.parse("2026-03-18T04:00:00Z")
         );
 
-        when(partRepository.findByPartNumber("P-110")).thenReturn(Optional.of(part));
+        when(partRepository.findById(part.getId())).thenReturn(Optional.of(part));
         when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(part.getId())).thenReturn(List.of(releasedDraft, canceledDraft, released));
         when(fileRepository.findByOwnerTypeAndOwnerIdInAndStatusAndDeletedAtIsNull(
                 org.mockito.ArgumentMatchers.eq("part_revision"),
@@ -237,7 +252,7 @@ class PartQueryTest {
                 ));
         when(userApi.getUsersByIdsOrdered(org.mockito.ArgumentMatchers.anyList())).thenReturn(List.of());
 
-        PartRevisionHistoryResult result = partQuery.getHistory(new PartRevisionHistoryCondition("P-110"));
+        PartRevisionHistoryResult result = partQuery.getHistory(new PartRevisionHistoryCondition(part.getId()));
 
         assertEquals(2, result.items().size());
         assertEquals("1", result.items().getLast().revisionCode());
@@ -253,7 +268,7 @@ class PartQueryTest {
     void getPreviewSources_DWG도면은_업로드가능해도_preview후보에는_포함되지_않는다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-150");
-        PartRevision draft = PartRevision.createInitialDraft(part, "D1", "part", actorId);
+        PartRevision draft = PartRevision.createInitialDraft(part, "part", actorId);
         Drawing dwgDrawing = Drawing.create("DRW-1", "dwg 도면");
         File dwgFile = createUploadedFile("sample.dwg", 111L);
 
@@ -261,7 +276,7 @@ class PartQueryTest {
         dwgDrawing.assignSourceFile(dwgFile.getId(), DrawingSourceType.CAD_2D, DrawingDimension.TWO_D);
         dwgDrawing.changeOriginalFileKey(dwgFile.getFileKey());
 
-        when(partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionIdIsNull("P-150", "D1"))
+        when(partRevisionRepository.findByIdAndPartId(draft.getId(), part.getId()))
                 .thenReturn(Optional.of(draft));
         when(partRepository.findById(part.getId())).thenReturn(Optional.of(part));
         when(drawingRepository.findByPartRevisionIdAndDeletedAtIsNullOrderByCreatedAtDesc(draft.getId()))
@@ -270,7 +285,7 @@ class PartQueryTest {
         when(fileRepository.findByIdAndDeletedAtIsNull(dwgFile.getId())).thenReturn(Optional.of(dwgFile));
 
         PartPreviewSourcesResult result = partQuery.getPreviewSources(
-                new PartPreviewSourcesCondition("P-150", null, null, "D1")
+                new PartPreviewSourcesCondition(part.getId(), draft.getId())
         );
 
         assertEquals(0, result.total());
@@ -281,7 +296,7 @@ class PartQueryTest {
     void getDraft_원본_파일이_없는_도면은_files_count에_포함하지_않는다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-200");
-        PartRevision draft = PartRevision.createInitialDraft(part, "D1", "part", actorId);
+        PartRevision draft = PartRevision.createInitialDraft(part, "part", actorId);
         UUID missingSourceFileId = UUID.randomUUID();
 
         Drawing danglingDrawing = Drawing.create("DRW-1", "도면");
@@ -293,10 +308,9 @@ class PartQueryTest {
         );
         danglingDrawing.changeOriginalFileKey("tenants/org/missing.pdf");
 
-        when(partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionIdIsNull("P-200", "D1"))
+        when(partRevisionRepository.findByIdAndPartId(draft.getId(), part.getId()))
                 .thenReturn(Optional.of(draft));
         when(partRepository.findById(part.getId())).thenReturn(Optional.of(part));
-        when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(part.getId())).thenReturn(List.of(draft));
         when(partPreviewRepository.findByPartRevisionId(draft.getId())).thenReturn(Optional.empty());
         when(partSupplierRepository.countByPartRevisionId(draft.getId())).thenReturn(0L);
         when(fileRepository.countByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
@@ -312,7 +326,7 @@ class PartQueryTest {
         when(engineeringBomItemRepository.countByChildPartRevisionId(draft.getId())).thenReturn(0L);
         when(projectApi.countPartProjects(part.getId())).thenReturn(0L);
 
-        PartDetailResult result = partQuery.getDraft(new PartDraftDetailCondition("P-200", null, "D1"));
+        PartDetailResult result = partQuery.get(new PartDetailCondition(part.getId(), draft.getId()));
 
         assertEquals(0L, result.filesCount());
     }
@@ -321,18 +335,22 @@ class PartQueryTest {
     void getDraft_preview전용파일만_있으면_filesCount는_0이다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-201");
-        PartRevision draft = PartRevision.createInitialDraft(part, "D1", "part", actorId);
+        PartRevision draft = PartRevision.createInitialDraft(part, "part", actorId);
         PartPreview partPreview = PartPreview.create(draft.getId());
         File previewFile = createUploadedFile("preview.step", 220L);
         var previewFileRelation = partPreview.addPreviewFile(previewFile.getId());
+        setCreatedAt(previewFileRelation, Instant.parse("2026-03-18T00:00:00Z"));
         previewFile.assignOwner("part_preview_file", previewFileRelation.getId());
         partPreview.replaceSource(PartPreviewSourceType.PREVIEW_FILE, previewFileRelation.getId(), DrawingDimension.THREE_D);
 
-        when(partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionIdIsNull("P-201", "D1"))
+        when(partRevisionRepository.findByIdAndPartId(draft.getId(), part.getId()))
                 .thenReturn(Optional.of(draft));
         when(partRepository.findById(part.getId())).thenReturn(Optional.of(part));
-        when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(part.getId())).thenReturn(List.of(draft));
         when(partPreviewRepository.findByPartRevisionId(draft.getId())).thenReturn(Optional.of(partPreview));
+        when(fileRepository.findByOwnerTypeAndOwnerIdAndDeletedAtIsNull(
+                "part_preview_file",
+                previewFileRelation.getId()
+        )).thenReturn(List.of(previewFile));
         when(partSupplierRepository.countByPartRevisionId(draft.getId())).thenReturn(0L);
         when(fileRepository.countByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
                 "part_revision",
@@ -345,9 +363,123 @@ class PartQueryTest {
         when(engineeringBomItemRepository.countByChildPartRevisionId(draft.getId())).thenReturn(0L);
         when(projectApi.countPartProjects(part.getId())).thenReturn(0L);
 
-        PartDetailResult result = partQuery.getDraft(new PartDraftDetailCondition("P-201", null, "D1"));
+        PartDetailResult result = partQuery.get(new PartDetailCondition(part.getId(), draft.getId()));
 
         assertEquals(0L, result.filesCount());
+    }
+
+    @Test
+    void get_상세응답은_revisionStatus와_baseRevision문맥을_포함한다() {
+        UUID actorId = UUID.randomUUID();
+        Part part = Part.create("P-300");
+        PartRevision baseRevision = PartRevision.createInitialDraft(part, "base", actorId);
+        setCreatedAt(baseRevision, Instant.parse("2026-03-18T00:00:00Z"));
+        baseRevision.release("1", actorId);
+        PartRevision draft = PartRevision.createDraft(part, baseRevision.getId(), "draft", actorId);
+
+        when(partRevisionRepository.findByIdAndPartId(draft.getId(), part.getId()))
+                .thenReturn(Optional.of(draft));
+        when(partRepository.findById(part.getId())).thenReturn(Optional.of(part));
+        when(partRevisionRepository.findById(baseRevision.getId())).thenReturn(Optional.of(baseRevision));
+        when(partPreviewRepository.findByPartRevisionId(draft.getId())).thenReturn(Optional.empty());
+        when(partSupplierRepository.countByPartRevisionId(draft.getId())).thenReturn(0L);
+        when(fileRepository.countByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
+                "part_revision",
+                draft.getId(),
+                FileStatus.UPLOADED
+        )).thenReturn(0L);
+        when(drawingRepository.findByPartRevisionIdAndDeletedAtIsNullOrderByCreatedAtDesc(draft.getId()))
+                .thenReturn(List.of());
+        when(engineeringBomItemRepository.countByParentPartRevisionId(draft.getId())).thenReturn(0L);
+        when(engineeringBomItemRepository.countByChildPartRevisionId(draft.getId())).thenReturn(0L);
+        when(projectApi.countPartProjects(part.getId())).thenReturn(0L);
+
+        PartDetailResult result = partQuery.get(new PartDetailCondition(part.getId(), draft.getId()));
+
+        assertEquals(draft.getId(), result.revisionId());
+        assertEquals(PartRevisionStatus.DRAFT, result.revisionStatus());
+        assertEquals(baseRevision.getId(), result.baseRevisionId());
+        assertEquals("1", result.baseRevisionCode());
+    }
+
+    @Test
+    void list_목록응답은_revisionId와_revisionStatus를_포함한다() {
+        UUID actorId = UUID.randomUUID();
+        Part part = Part.create("P-301");
+        PartRevision released = PartRevision.createInitialDraft(part, "released", actorId);
+        released.release("1", actorId);
+        part.assignCurrentReleasedRevision(released.getId());
+
+        when(partRepository.findAllByOrderByPartNumberAsc(org.mockito.ArgumentMatchers.any())).thenReturn(List.of(part));
+        when(partRevisionRepository.findByPartIdInOrderByCreatedAtDesc(org.mockito.ArgumentMatchers.anyCollection()))
+                .thenReturn(List.of(released));
+        when(drawingRepository.findByPartRevisionIdAndDeletedAtIsNullOrderByCreatedAtDesc(released.getId()))
+                .thenReturn(List.of());
+        when(engineeringBomItemRepository.countByParentPartRevisionId(released.getId())).thenReturn(0L);
+
+        PartListResult result = partQuery.list(new PartListCondition(null, null, null, null, null, null, null, null, 20));
+
+        assertEquals(1, result.items().size());
+        assertEquals(released.getId(), result.items().getFirst().revisionId());
+        assertEquals(PartRevisionStatus.RELEASED, result.items().getFirst().revisionStatus());
+    }
+
+    @Test
+    void lookup_항목은_revisionId를_포함한다() {
+        UUID actorId = UUID.randomUUID();
+        Part part = Part.create("P-302");
+        PartRevision released = PartRevision.createInitialDraft(part, "released", actorId);
+        released.release("1", actorId);
+        part.assignCurrentReleasedRevision(released.getId());
+
+        when(partRepository.findAllByOrderByPartNumberAsc(org.mockito.ArgumentMatchers.any())).thenReturn(List.of(part));
+        when(partRevisionRepository.findByPartIdInOrderByCreatedAtDesc(org.mockito.ArgumentMatchers.anyCollection()))
+                .thenReturn(List.of(released));
+
+        PartLookupResult result = partQuery.lookup(new com.fabbitinc.server.application.part.query.condition.PartLookupCondition(null, 10));
+
+        assertEquals(1, result.items().size());
+        assertEquals(part.getId(), result.items().getFirst().id());
+        assertEquals(released.getId(), result.items().getFirst().revisionId());
+    }
+
+    @Test
+    void getBom_항목은_partId_revisionId_revisionStatus를_포함한다() {
+        UUID actorId = UUID.randomUUID();
+        Part parentPart = Part.create("P-400");
+        PartRevision parentRevision = PartRevision.createInitialDraft(parentPart, "parent", actorId);
+        parentRevision.release("1", actorId);
+
+        Part childPart = Part.create("P-401");
+        PartRevision childRevision = PartRevision.createInitialDraft(childPart, "child", actorId);
+        childRevision.release("1", actorId);
+
+        EngineeringBomItem bomItem = EngineeringBomItem.add(
+                parentRevision.getId(),
+                "1",
+                childRevision.getId(),
+                java.math.BigDecimal.ONE,
+                "{}"
+        );
+
+        when(partRevisionRepository.findByIdAndPartId(parentRevision.getId(), parentPart.getId()))
+                .thenReturn(Optional.of(parentRevision));
+        when(partRepository.findById(parentPart.getId())).thenReturn(Optional.of(parentPart));
+        when(engineeringBomItemRepository.findByParentPartRevisionIdOrderByCreatedAtAsc(parentRevision.getId()))
+                .thenReturn(List.of(bomItem));
+        when(engineeringBomItemRepository.findByChildPartRevisionIdOrderByCreatedAtAsc(parentRevision.getId()))
+                .thenReturn(List.of());
+        when(partRevisionRepository.findAllById(org.mockito.ArgumentMatchers.anyCollection()))
+                .thenReturn(List.of(childRevision));
+        when(partRepository.findAllById(org.mockito.ArgumentMatchers.anyCollection()))
+                .thenReturn(List.of(childPart));
+
+        PartBomResult result = partQuery.get(new PartBomCondition(parentPart.getId(), parentRevision.getId()));
+
+        assertEquals(1, result.children().size());
+        assertEquals(childPart.getId(), result.children().getFirst().partId());
+        assertEquals(childRevision.getId(), result.children().getFirst().revisionId());
+        assertEquals(PartRevisionStatus.RELEASED, result.children().getFirst().revisionStatus());
     }
 
     private File createUploadedFile(String originalName, long fileSize) {
@@ -360,5 +492,9 @@ class PartQueryTest {
         );
         file.markUploaded();
         return file;
+    }
+
+    private void setCreatedAt(Object target, Instant createdAt) {
+        ReflectionTestUtils.setField(target, "createdAt", createdAt);
     }
 }

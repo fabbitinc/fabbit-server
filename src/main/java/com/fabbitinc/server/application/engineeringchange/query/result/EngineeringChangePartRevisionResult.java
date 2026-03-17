@@ -8,7 +8,7 @@ public record EngineeringChangePartRevisionResult(
         UUID partId,
         String partNumber,
         String baseRevisionCode,
-        String draftKey,
+        String revisionCode,
         String name,
         PartRevisionStatus status
 ) {
