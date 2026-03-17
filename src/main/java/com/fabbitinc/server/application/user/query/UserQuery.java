@@ -6,6 +6,7 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
+import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.application.user.query.condition.MeCondition;
 import com.fabbitinc.server.application.user.query.result.MeResult;
 import com.fabbitinc.server.application.user.query.result.QueryOrganizationResult;
@@ -28,6 +29,7 @@ public class UserQuery {
     private final CurrentAuthProvider currentAuthProvider;
     private final UserRepository userRepository;
     private final OrganizationApi organizationApi;
+    private final SubscriptionApi subscriptionApi;
     private final FileUrlResolver fileUrlResolver;
 
     public MeResult getMe(MeCondition condition) {
@@ -56,7 +58,7 @@ public class UserQuery {
                         organization.getName(),
                         organization.getIndustry(),
                         organization.getTeamSize(),
-                        organization.getPlanType(),
+                        subscriptionApi.getCurrentPlanType(organization.getId()),
                         fileUrlResolver.resolve(organization.getProfileImageFileKey())
                 )
         );

@@ -393,9 +393,14 @@ public class AuthController {
                 result.displayName(),
                 result.description(),
                 result.maxMembers(),
-                result.storageGb(),
-                result.aiCredits(),
-                result.priceMonthly()
+                result.baseStorageBytes(),
+                result.extraStorageBytesPerFullSeat(),
+                result.starterMonthlyAiCredits(),
+                result.aiBillingMode(),
+                result.viewerMonthlyPrice(),
+                result.collaboratorMonthlyPrice(),
+                result.fullSeatMonthlyPrice(),
+                result.storageOveragePricePerGb()
         );
     }
 

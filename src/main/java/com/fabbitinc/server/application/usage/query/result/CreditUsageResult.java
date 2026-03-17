@@ -7,11 +7,11 @@ public record CreditUsageResult(
         Instant currentPeriodStart,
         Instant currentPeriodEnd,
         int totalCreditsUsed,
-        int planCreditsUsed,
-        int planCreditsLimit,
-        int planCreditsRemaining,
-        int bonusCreditsUsed,
-        int bonusCreditsRemaining,
+        int includedCreditsLimit,
+        int includedCreditsUsed,
+        int includedCreditsRemaining,
+        Integer meteredCreditsLimit,
+        boolean hardLimitEnabled,
         List<CreditCategoryItemResult> categories
 ) {
     public record CreditCategoryItemResult(

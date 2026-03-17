@@ -15,12 +15,16 @@ import com.fabbitinc.server.application.subscription.service.SubscriptionService
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
-import com.fabbitinc.server.domain.organization.model.PlanType;
 import com.fabbitinc.server.domain.organization.repository.MembershipRepository;
 import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
+import com.fabbitinc.server.domain.subscription.model.SeatType;
 import com.fabbitinc.server.domain.subscription.model.Subscription;
 import com.fabbitinc.server.domain.subscription.model.SubscriptionStatus;
+import com.fabbitinc.server.domain.subscription.model.SubscriptionUsagePolicy;
+import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 import com.fabbitinc.server.domain.subscription.repository.SubscriptionRepository;
+import com.fabbitinc.server.domain.subscription.repository.SubscriptionSeatAssignmentRepository;
+import com.fabbitinc.server.domain.subscription.repository.SubscriptionUsagePolicyRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import java.util.UUID;
@@ -64,10 +68,14 @@ class OrganizationServicePersistenceTest {
     @Autowired
     private SubscriptionRepository subscriptionRepository;
     @Autowired
+    private SubscriptionSeatAssignmentRepository subscriptionSeatAssignmentRepository;
+    @Autowired
+    private SubscriptionUsagePolicyRepository subscriptionUsagePolicyRepository;
+    @Autowired
     private TenantProvisioningRecorder tenantProvisioningRecorder;
 
     @Test
-    void createWorkspace_신규_조직과_오너_멤버십을_함께_저장한다() {
+    void createWorkspace_신규_조직과_구독정책과_오너좌석을_함께_저장한다() {
         User user = userRepository.save(User.create("owner@example.com", "hashed-password", "Owner"));
 
         Organization organization = organizationService.createWorkspace(
@@ -77,24 +85,23 @@ class OrganizationServicePersistenceTest {
                         "acme",
                         "manufacturing",
                         "11-50",
-                        PlanType.STARTER
+                        WorkspacePlanType.STARTER
                 )
         );
 
-        assertTrue(organizationRepository.findById(organization.getId()).isPresent());
-
         Membership membership = membershipRepository.findByUserIdAndOrgId(user.getId(), organization.getId())
                 .orElseThrow();
+        Subscription subscription = subscriptionRepository.findByOrgIdAndStatus(organization.getId(), SubscriptionStatus.ACTIVE)
+                .orElseThrow();
+        SubscriptionUsagePolicy usagePolicy = subscriptionUsagePolicyRepository.findBySubscriptionId(subscription.getId())
+                .orElseThrow();
+
+        assertTrue(organizationRepository.findById(organization.getId()).isPresent());
         assertEquals(MembershipRole.OWNER, membership.getRole());
         assertEquals(organization.getId(), tenantProvisioningRecorder.provisionedOrgId());
-
-        Subscription subscription = subscriptionRepository
-                .findByOrgIdAndStatus(organization.getId(), SubscriptionStatus.ACTIVE)
-                .orElseThrow();
-        assertEquals(PlanType.STARTER.name(), subscription.getPlanType());
-        assertEquals(PlanType.STARTER.maxMembers(), subscription.getMaxMembers());
-        assertEquals(PlanType.STARTER.aiCredits(), subscription.getAiCreditsGranted());
-        assertEquals((long) PlanType.STARTER.storageGb() * 1_000_000_000L, subscription.getStorageBytesLimit());
+        assertEquals(WorkspacePlanType.STARTER, subscription.getPlanType());
+        assertEquals(WorkspacePlanType.STARTER.baseStorageBytes(), usagePolicy.getBaseStorageBytes());
+        assertEquals(1, subscriptionSeatAssignmentRepository.countByOrgIdAndSeatType(organization.getId(), SeatType.STARTER));
         assertTrue(subscription.getCurrentPeriodEnd().isAfter(subscription.getCurrentPeriodStart()));
     }
 
@@ -109,7 +116,7 @@ class OrganizationServicePersistenceTest {
                         "acme-existing",
                         "manufacturing",
                         "11-50",
-                        PlanType.STARTER
+                        WorkspacePlanType.STARTER
                 )
         );
 
@@ -120,7 +127,7 @@ class OrganizationServicePersistenceTest {
                         "beta-existing",
                         "manufacturing",
                         "11-50",
-                        PlanType.BUSINESS
+                        WorkspacePlanType.ORG
                 )
         ));
 
@@ -136,11 +143,7 @@ class OrganizationServicePersistenceTest {
                 "Acme Storage",
                 user.getId(),
                 null,
-                null,
-                PlanType.STARTER,
-                5,
-                100,
-                1_024L
+                null
         ));
 
         organizationService.consumeStorage(organization.getId(), 512L);
@@ -151,21 +154,24 @@ class OrganizationServicePersistenceTest {
     }
 
     @Test
-    void consumeStorage는_한도초과시_quotaExceeded를_발생시킨다() {
+    void starter_checkStorageQuota는_포함량을_초과하면_quotaExceeded를_발생시킨다() {
         User user = userRepository.save(User.create("owner-limit@example.com", "hashed-password", "Owner"));
-        Organization organization = organizationRepository.save(Organization.create(
-                "acme-limit",
-                "Acme Limit",
+        Organization organization = organizationService.createWorkspace(
                 user.getId(),
-                null,
-                null,
-                PlanType.STARTER,
-                5,
-                100,
-                100L
-        ));
+                new CreateOrganizationInput(
+                        "Acme Limit",
+                        "acme-limit",
+                        null,
+                        null,
+                        WorkspacePlanType.STARTER
+                )
+        );
 
-        AppException exception = assertThrows(AppException.class, () -> organizationService.consumeStorage(organization.getId(), 101L));
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> organizationService.checkStorageQuota(organization.getId(), WorkspacePlanType.STARTER.baseStorageBytes() + 1L)
+        );
+
         assertEquals(ErrorCode.QUOTA_EXCEEDED, exception.getErrorCode());
     }
 

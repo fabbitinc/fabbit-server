@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.auth.usecase.result;
 
-import com.fabbitinc.server.domain.organization.model.PlanType;
+import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 import java.util.UUID;
 
 public record AuthOrganizationResult(
@@ -9,7 +9,7 @@ public record AuthOrganizationResult(
         String name,
         String industry,
         String teamSize,
-        PlanType planType,
+        WorkspacePlanType planType,
         String profileImageUrl
 ) {
 }

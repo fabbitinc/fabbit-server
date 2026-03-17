@@ -2,6 +2,7 @@ package com.fabbitinc.server.domain.subscription.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -17,18 +18,17 @@ class SubscriptionRelationTest {
         UUID orgId = UUID.randomUUID();
         Subscription subscription = Subscription.create(
                 orgId,
-                "STARTER",
+                WorkspacePlanType.STARTER,
                 SubscriptionStatus.ACTIVE,
+                BillingCycle.MONTHLY,
                 Instant.parse("2026-03-01T00:00:00Z"),
-                Instant.parse("2026-04-01T00:00:00Z"),
-                10,
-                1000,
-                1024L
+                Instant.parse("2026-04-01T00:00:00Z")
         );
 
         assertEquals(orgId, subscription.getOrgId());
-        assertEquals("STARTER", subscription.getPlanType());
+        assertEquals(WorkspacePlanType.STARTER, subscription.getPlanType());
         assertEquals(SubscriptionStatus.ACTIVE, subscription.getStatus());
+        assertEquals(BillingCycle.MONTHLY, subscription.getBillingCycle());
         assertFalse(subscription.isCancelAtPeriodEnd());
     }
 
@@ -39,32 +39,28 @@ class SubscriptionRelationTest {
 
         DomainException ex = assertThrows(DomainException.class, () -> Subscription.create(
                 null,
-                "STARTER",
+                WorkspacePlanType.STARTER,
                 SubscriptionStatus.ACTIVE,
+                BillingCycle.MONTHLY,
                 start,
-                end,
-                10,
-                1000,
-                1024L
+                end
         ));
 
         assertEquals(Subscription.CODE_SUBSCRIPTION_ORG_REQUIRED, ex.getDomainCode());
     }
 
     @Test
-    void subscription_planType이_비어있으면_예외를_던진다() {
+    void subscription_planType이_null이면_예외를_던진다() {
         Instant start = Instant.now();
         Instant end = start.plusSeconds(3600);
 
         DomainException ex = assertThrows(DomainException.class, () -> Subscription.create(
                 UUID.randomUUID(),
-                " ",
+                null,
                 SubscriptionStatus.ACTIVE,
+                BillingCycle.MONTHLY,
                 start,
-                end,
-                10,
-                1000,
-                1024L
+                end
         ));
 
         assertEquals(Subscription.CODE_SUBSCRIPTION_PLAN_TYPE_REQUIRED, ex.getDomainCode());
@@ -74,13 +70,11 @@ class SubscriptionRelationTest {
     void subscription_종료시각이_시작시각보다_이전이면_예외를_던진다() {
         DomainException ex = assertThrows(DomainException.class, () -> Subscription.create(
                 UUID.randomUUID(),
-                "STARTER",
+                WorkspacePlanType.STARTER,
                 SubscriptionStatus.ACTIVE,
+                BillingCycle.MONTHLY,
                 Instant.parse("2026-04-01T00:00:00Z"),
-                Instant.parse("2026-03-01T00:00:00Z"),
-                10,
-                1000,
-                1024L
+                Instant.parse("2026-03-01T00:00:00Z")
         ));
 
         assertEquals(Subscription.CODE_SUBSCRIPTION_PERIOD_INVALID, ex.getDomainCode());
@@ -93,6 +87,29 @@ class SubscriptionRelationTest {
         subscription.scheduleCancelAtPeriodEnd();
 
         assertTrue(subscription.isCancelAtPeriodEnd());
+    }
+
+    @Test
+    void subscription_플랜변경예약을_저장할수있다() {
+        Subscription subscription = createActiveSubscription();
+        Instant effectiveAt = Instant.parse("2026-04-01T00:00:00Z");
+
+        subscription.schedulePlanChange(WorkspacePlanType.ORG, effectiveAt);
+
+        assertEquals(WorkspacePlanType.ORG, subscription.getScheduledPlanType());
+        assertEquals(effectiveAt, subscription.getScheduledChangeEffectiveAt());
+    }
+
+    @Test
+    void subscription_즉시플랜변경은_예약정보를_초기화한다() {
+        Subscription subscription = createActiveSubscription();
+        subscription.schedulePlanChange(WorkspacePlanType.ORG, Instant.parse("2026-04-01T00:00:00Z"));
+
+        subscription.changePlan(WorkspacePlanType.TEAM);
+
+        assertEquals(WorkspacePlanType.TEAM, subscription.getPlanType());
+        assertNull(subscription.getScheduledPlanType());
+        assertNull(subscription.getScheduledChangeEffectiveAt());
     }
 
     @Test
@@ -138,13 +155,11 @@ class SubscriptionRelationTest {
     private Subscription createActiveSubscription() {
         return Subscription.create(
                 UUID.randomUUID(),
-                "STARTER",
+                WorkspacePlanType.STARTER,
                 SubscriptionStatus.ACTIVE,
+                BillingCycle.MONTHLY,
                 Instant.parse("2026-03-01T00:00:00Z"),
-                Instant.parse("2026-04-01T00:00:00Z"),
-                10,
-                1000,
-                1024L
+                Instant.parse("2026-04-01T00:00:00Z")
         );
     }
 }

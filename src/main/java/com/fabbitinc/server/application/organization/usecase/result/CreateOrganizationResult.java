@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.organization.usecase.result;
 
-import com.fabbitinc.server.domain.organization.model.PlanType;
+import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 import java.util.UUID;
 
 public record CreateOrganizationResult(
@@ -9,7 +9,7 @@ public record CreateOrganizationResult(
         String organizationName,
         String organizationIndustry,
         String organizationTeamSize,
-        PlanType organizationPlanType,
+        WorkspacePlanType organizationPlanType,
         String organizationProfileImageUrl,
         String accessToken,
         String refreshToken,

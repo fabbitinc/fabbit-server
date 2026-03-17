@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.auth.usecase.command;
 
-import com.fabbitinc.server.domain.organization.model.PlanType;
+import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 
 public record RegisterCommand(
         String verificationToken,
@@ -11,6 +11,6 @@ public record RegisterCommand(
         String slug,
         String industry,
         String teamSize,
-        PlanType planType
+        WorkspacePlanType planType
 ) {
 }

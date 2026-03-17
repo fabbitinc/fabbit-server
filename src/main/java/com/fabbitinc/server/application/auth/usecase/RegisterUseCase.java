@@ -11,6 +11,7 @@ import com.fabbitinc.server.application.auth.usecase.result.RegisterResult;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.organization.service.input.CreateOrganizationInput;
+import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
 import com.fabbitinc.server.domain.user.model.User;
@@ -27,6 +28,7 @@ public class RegisterUseCase {
 
     private final AuthAccountService authAccountService;
     private final OrganizationApi organizationApi;
+    private final SubscriptionApi subscriptionApi;
     private final JwtTokenService jwtTokenService;
     private final FileUrlResolver fileUrlResolver;
 
@@ -90,7 +92,7 @@ public class RegisterUseCase {
                 organization.getName(),
                 organization.getIndustry(),
                 organization.getTeamSize(),
-                organization.getPlanType(),
+                subscriptionApi.getCurrentPlanType(organization.getId()),
                 fileUrlResolver.resolve(organization.getProfileImageFileKey())
         );
     }

@@ -7,8 +7,6 @@ import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
@@ -39,15 +37,7 @@ public class Organization extends AbstractIdEntity implements AggregateRoot {
     public static final String CODE_ORGANIZATION_NAME_REQUIRED = "ORGANIZATION_NAME_REQUIRED";
     public static final String CODE_ORGANIZATION_NAME_TOO_LONG = "ORGANIZATION_NAME_TOO_LONG";
     public static final String CODE_ORGANIZATION_OWNER_REQUIRED = "ORGANIZATION_OWNER_REQUIRED";
-    public static final String CODE_ORGANIZATION_PLAN_REQUIRED = "ORGANIZATION_PLAN_REQUIRED";
-    public static final String CODE_ORGANIZATION_MAX_MEMBERS_INVALID = "ORGANIZATION_MAX_MEMBERS_INVALID";
-    public static final String CODE_ORGANIZATION_PLAN_CREDITS_INVALID = "ORGANIZATION_PLAN_CREDITS_INVALID";
-    public static final String CODE_ORGANIZATION_STORAGE_LIMIT_INVALID = "ORGANIZATION_STORAGE_LIMIT_INVALID";
-    public static final String CODE_ORGANIZATION_MEMBER_LIMIT_EXCEEDED = "ORGANIZATION_MEMBER_LIMIT_EXCEEDED";
     public static final String CODE_ORGANIZATION_STORAGE_USAGE_INVALID = "ORGANIZATION_STORAGE_USAGE_INVALID";
-    public static final String CODE_ORGANIZATION_STORAGE_LIMIT_EXCEEDED = "ORGANIZATION_STORAGE_LIMIT_EXCEEDED";
-    public static final String CODE_ORGANIZATION_CREDIT_USAGE_INVALID = "ORGANIZATION_CREDIT_USAGE_INVALID";
-    public static final String CODE_ORGANIZATION_CREDIT_EXCEEDED = "ORGANIZATION_CREDIT_EXCEEDED";
     public static final String CODE_ORGANIZATION_MEMBERSHIP_REQUIRED = "ORGANIZATION_MEMBERSHIP_REQUIRED";
     public static final String CODE_ORGANIZATION_MEMBERSHIP_MISMATCH = "ORGANIZATION_MEMBERSHIP_MISMATCH";
     public static final String CODE_ORGANIZATION_LAST_OWNER_ROLE_CHANGE_FORBIDDEN = "ORGANIZATION_LAST_OWNER_ROLE_CHANGE_FORBIDDEN";
@@ -67,7 +57,7 @@ public class Organization extends AbstractIdEntity implements AggregateRoot {
     @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", insertable = false, updatable = false)
-    private User _ownerRelation;
+    private User owner;
 
     @Column(name = "industry", length = 50)
     private String industry;
@@ -75,27 +65,8 @@ public class Organization extends AbstractIdEntity implements AggregateRoot {
     @Column(name = "team_size", length = 20)
     private String teamSize;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "plan_type", nullable = false, length = 20)
-    private PlanType planType;
-
-    @Column(name = "max_members", nullable = false)
-    private int maxMembers;
-
-    @Column(name = "plan_credits_remaining", nullable = false)
-    private int planCreditsRemaining;
-
-    @Column(name = "bonus_credits_remaining", nullable = false)
-    private int bonusCreditsRemaining;
-
-    @Column(name = "storage_bytes_limit", nullable = false)
-    private long storageBytesLimit;
-
     @Column(name = "storage_bytes_used", nullable = false)
     private long storageBytesUsed;
-
-    @Column(name = "allow_storage_overage", nullable = false)
-    private boolean allowStorageOverage;
 
     @Column(name = "used_members", nullable = false)
     private int usedMembers;
@@ -106,55 +77,19 @@ public class Organization extends AbstractIdEntity implements AggregateRoot {
     @OneToMany(mappedBy = "organization", fetch = FetchType.LAZY)
     private List<Membership> memberships = new ArrayList<>();
 
-    private Organization(
-            String slug,
-            String name,
-            UUID ownerId,
-            String industry,
-            String teamSize,
-            PlanType planType,
-            int maxMembers,
-            int planCreditsRemaining,
-            long storageBytesLimit
-    ) {
+    private Organization(String slug, String name, UUID ownerId, String industry, String teamSize) {
         super(UuidV7Generator.next());
         this.slug = requireSlug(slug);
         this.name = requireName(name);
         this.ownerId = requireOwnerId(ownerId);
         this.industry = normalizeOptionalText(industry);
         this.teamSize = normalizeOptionalText(teamSize);
-        this.planType = requirePlanType(planType);
-        this.maxMembers = requirePositiveOrUnlimited(maxMembers, CODE_ORGANIZATION_MAX_MEMBERS_INVALID, "최대 멤버 수는 -1(무제한) 또는 1 이상이어야 합니다");
-        this.planCreditsRemaining = requireNonNegative(planCreditsRemaining, CODE_ORGANIZATION_PLAN_CREDITS_INVALID, "플랜 크레딧은 0 이상이어야 합니다");
-        this.bonusCreditsRemaining = 0;
-        this.storageBytesLimit = requireNonNegative(storageBytesLimit, CODE_ORGANIZATION_STORAGE_LIMIT_INVALID, "스토리지 한도는 0 이상이어야 합니다");
         this.storageBytesUsed = 0L;
-        this.allowStorageOverage = false;
         this.usedMembers = 0;
     }
 
-    public static Organization create(
-            String slug,
-            String name,
-            UUID ownerId,
-            String industry,
-            String teamSize,
-            PlanType planType,
-            int maxMembers,
-            int planCreditsRemaining,
-            long storageBytesLimit
-    ) {
-        return new Organization(
-                slug,
-                name,
-                ownerId,
-                industry,
-                teamSize,
-                planType,
-                maxMembers,
-                planCreditsRemaining,
-                storageBytesLimit
-        );
+    public static Organization create(String slug, String name, UUID ownerId, String industry, String teamSize) {
+        return new Organization(slug, name, ownerId, industry, teamSize);
     }
 
     public void rename(String name) {
@@ -170,15 +105,10 @@ public class Organization extends AbstractIdEntity implements AggregateRoot {
     }
 
     public Membership addMember(UUID userId, MembershipRole role, String jobRole) {
-        Membership membership = Membership.create(this, userId, role, jobRole);
-        memberships.add(membership);
-        return membership;
+        return Membership.create(this, userId, role, jobRole);
     }
 
     public void reserveMemberSeat() {
-        if (maxMembers != -1 && usedMembers >= maxMembers) {
-            throw new DomainException(CODE_ORGANIZATION_MEMBER_LIMIT_EXCEEDED, "멤버 수 한도를 초과했습니다");
-        }
         usedMembers++;
     }
 
@@ -188,55 +118,14 @@ public class Organization extends AbstractIdEntity implements AggregateRoot {
         }
     }
 
-    public void useCredits(int credits) {
-        int amount = requireNonNegative(credits, CODE_ORGANIZATION_CREDIT_USAGE_INVALID, "사용 크레딧은 0 이상이어야 합니다");
-        if (amount == 0) {
-            return;
-        }
-        if (planCreditsRemaining + bonusCreditsRemaining < amount) {
-            throw new DomainException(CODE_ORGANIZATION_CREDIT_EXCEEDED, "사용 가능한 크레딧이 부족합니다");
-        }
-
-        int planUsage = Math.min(planCreditsRemaining, amount);
-        planCreditsRemaining -= planUsage;
-        bonusCreditsRemaining -= (amount - planUsage);
-    }
-
-    public void grantBonusCredits(int credits) {
-        bonusCreditsRemaining += requireNonNegative(credits, CODE_ORGANIZATION_CREDIT_USAGE_INVALID, "지급 크레딧은 0 이상이어야 합니다");
-    }
-
     public void addStorageUsage(long bytes) {
         long amount = requireNonNegative(bytes, CODE_ORGANIZATION_STORAGE_USAGE_INVALID, "스토리지 사용량은 0 이상이어야 합니다");
-        long nextUsage = storageBytesUsed + amount;
-        if (!allowStorageOverage && nextUsage > storageBytesLimit) {
-            throw new DomainException(CODE_ORGANIZATION_STORAGE_LIMIT_EXCEEDED, "스토리지 한도를 초과했습니다");
-        }
-        storageBytesUsed = nextUsage;
+        storageBytesUsed += amount;
     }
 
     public void reduceStorageUsage(long bytes) {
         long amount = requireNonNegative(bytes, CODE_ORGANIZATION_STORAGE_USAGE_INVALID, "스토리지 사용량은 0 이상이어야 합니다");
         storageBytesUsed = Math.max(0L, storageBytesUsed - amount);
-    }
-
-    public void changeStorageLimit(long storageBytesLimit) {
-        long nextLimit = requireNonNegative(storageBytesLimit, CODE_ORGANIZATION_STORAGE_LIMIT_INVALID, "스토리지 한도는 0 이상이어야 합니다");
-        if (!allowStorageOverage && storageBytesUsed > nextLimit) {
-            throw new DomainException(CODE_ORGANIZATION_STORAGE_LIMIT_EXCEEDED, "현재 사용량보다 작은 스토리지 한도로 변경할 수 없습니다");
-        }
-        this.storageBytesLimit = nextLimit;
-    }
-
-    public void allowStorageOverage() {
-        allowStorageOverage = true;
-    }
-
-    public void disallowStorageOverage() {
-        if (storageBytesUsed > storageBytesLimit) {
-            throw new DomainException(CODE_ORGANIZATION_STORAGE_LIMIT_EXCEEDED, "현재 사용량이 한도를 초과한 상태에서는 초과 허용을 해제할 수 없습니다");
-        }
-        allowStorageOverage = false;
     }
 
     public void changeMemberRole(Membership membership, MembershipRole newRole, long ownerCount) {
@@ -258,11 +147,11 @@ public class Organization extends AbstractIdEntity implements AggregateRoot {
 
     private String requireSlug(String value) {
         if (value == null || value.isBlank()) {
-            throw new DomainException(CODE_ORGANIZATION_SLUG_REQUIRED, "워크스페이스 주소는 필수입니다");
+            throw new DomainException(CODE_ORGANIZATION_SLUG_REQUIRED, "워크스페이스 slug는 필수입니다");
         }
         String trimmed = value.trim();
         if (trimmed.length() > MAX_SLUG_LENGTH) {
-            throw new DomainException(CODE_ORGANIZATION_SLUG_TOO_LONG, "워크스페이스 주소는 50자 이하여야 합니다");
+            throw new DomainException(CODE_ORGANIZATION_SLUG_TOO_LONG, "워크스페이스 slug는 50자 이하여야 합니다");
         }
         return trimmed;
     }
@@ -280,34 +169,27 @@ public class Organization extends AbstractIdEntity implements AggregateRoot {
 
     private UUID requireOwnerId(UUID value) {
         if (value == null) {
-            throw new DomainException(CODE_ORGANIZATION_OWNER_REQUIRED, "소유자 ID는 필수입니다");
+            throw new DomainException(CODE_ORGANIZATION_OWNER_REQUIRED, "조직 소유자는 필수입니다");
         }
         return value;
     }
 
-    private PlanType requirePlanType(PlanType value) {
-        if (value == null) {
-            throw new DomainException(CODE_ORGANIZATION_PLAN_REQUIRED, "플랜 타입은 필수입니다");
+    private Membership requireMembership(Membership membership) {
+        if (membership == null) {
+            throw new DomainException(CODE_ORGANIZATION_MEMBERSHIP_REQUIRED, "조직 멤버십은 필수입니다");
         }
-        return value;
+        return membership;
     }
 
-    private int requirePositiveOrUnlimited(int value, String code, String message) {
-        if (value == 0 || value < -1) {
-            throw new DomainException(code, message);
+    private MembershipRole requireMembershipRole(MembershipRole role) {
+        if (role == null) {
+            throw new DomainException(CODE_ORGANIZATION_MEMBERSHIP_REQUIRED, "조직 멤버 역할은 필수입니다");
         }
-        return value;
-    }
-
-    private int requireNonNegative(int value, String code, String message) {
-        if (value < 0) {
-            throw new DomainException(code, message);
-        }
-        return value;
+        return role;
     }
 
     private long requireNonNegative(long value, String code, String message) {
-        if (value < 0L) {
+        if (value < 0) {
             throw new DomainException(code, message);
         }
         return value;
@@ -319,19 +201,5 @@ public class Organization extends AbstractIdEntity implements AggregateRoot {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    private Membership requireMembership(Membership value) {
-        if (value == null) {
-            throw new DomainException(CODE_ORGANIZATION_MEMBERSHIP_REQUIRED, "멤버십은 필수입니다");
-        }
-        return value;
-    }
-
-    private MembershipRole requireMembershipRole(MembershipRole value) {
-        if (value == null) {
-            throw new DomainException(Membership.CODE_MEMBERSHIP_ROLE_REQUIRED, "멤버 역할은 필수입니다");
-        }
-        return value;
     }
 }

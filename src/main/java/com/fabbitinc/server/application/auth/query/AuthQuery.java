@@ -12,8 +12,8 @@ import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.config.AppProperties;
 import com.fabbitinc.server.domain.organization.model.Organization;
-import com.fabbitinc.server.domain.organization.model.PlanType;
 import com.fabbitinc.server.domain.organization.model.WorkspaceSlugPolicy;
+import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import java.util.Arrays;
@@ -35,7 +35,7 @@ public class AuthQuery {
     private final FileUrlResolver fileUrlResolver;
 
     public List<PlanResult> listPlans() {
-        return Arrays.stream(PlanType.values())
+        return Arrays.stream(WorkspacePlanType.values())
                 .map(this::toPlanResult)
                 .toList();
     }
@@ -79,15 +79,20 @@ public class AuthQuery {
         );
     }
 
-    private PlanResult toPlanResult(PlanType planType) {
+    private PlanResult toPlanResult(WorkspacePlanType planType) {
         return new PlanResult(
                 planType,
                 planType.displayName(),
                 planType.description(),
                 planType.maxMembers(),
-                planType.storageGb(),
-                planType.aiCredits(),
-                planType.priceMonthly()
+                planType.baseStorageBytes(),
+                planType.extraStorageBytesPerFullSeat(),
+                planType.starterMonthlyAiCredits(),
+                planType.aiBillingMode(),
+                planType.viewerMonthlyPrice(),
+                planType.collaboratorMonthlyPrice(),
+                planType.fullSeatMonthlyPrice(),
+                WorkspacePlanType.STORAGE_OVERAGE_UNIT_PRICE.intValue()
         );
     }
 

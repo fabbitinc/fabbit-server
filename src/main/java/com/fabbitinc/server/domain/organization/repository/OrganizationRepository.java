@@ -30,7 +30,6 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
             update Organization o
             set o.usedMembers = o.usedMembers + 1
             where o.id = :orgId
-              and (o.maxMembers = -1 or o.usedMembers < o.maxMembers)
             """)
     int reserveMemberSeat(UUID orgId);
 
@@ -52,7 +51,6 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
             update Organization o
             set o.storageBytesUsed = o.storageBytesUsed + :deltaBytes
             where o.id = :orgId
-              and (o.allowStorageOverage = true or o.storageBytesUsed + :deltaBytes <= o.storageBytesLimit)
             """)
     int consumeStorageBytes(UUID orgId, long deltaBytes);
 

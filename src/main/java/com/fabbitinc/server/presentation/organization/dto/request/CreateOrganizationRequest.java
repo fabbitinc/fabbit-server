@@ -1,6 +1,6 @@
 package com.fabbitinc.server.presentation.organization.dto.request;
 
-import com.fabbitinc.server.domain.organization.model.PlanType;
+import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -20,6 +20,6 @@ public record CreateOrganizationRequest(
         @Size(max = 20, message = "team_size 길이는 최대 20자입니다") String teamSize,
 
         @Schema(description = "플랜 유형", example = "STARTER")
-        @NotNull(message = "plan_type은 필수입니다") PlanType planType
+        @NotNull(message = "plan_type은 필수입니다") WorkspacePlanType planType
 ) {
 }

@@ -1,6 +1,7 @@
 package com.fabbitinc.server.application.member.query.result;
 
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
+import com.fabbitinc.server.domain.subscription.model.SeatType;
 import java.util.UUID;
 
 public record MemberSummaryResult(
@@ -10,6 +11,7 @@ public record MemberSummaryResult(
         String phone,
         String profileImageUrl,
         MembershipRole role,
-        String jobRole
+        String jobRole,
+        SeatType seatType
 ) {
 }

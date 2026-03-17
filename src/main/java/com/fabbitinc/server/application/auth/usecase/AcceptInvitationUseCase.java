@@ -9,6 +9,7 @@ import com.fabbitinc.server.application.auth.usecase.result.AuthTokenResult;
 import com.fabbitinc.server.application.auth.usecase.result.AuthUserResult;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
+import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.domain.auth.model.Invitation;
 import com.fabbitinc.server.domain.organization.model.Organization;
@@ -28,6 +29,7 @@ public class AcceptInvitationUseCase {
     private final AuthInvitationService authInvitationService;
     private final UserService userService;
     private final OrganizationApi organizationApi;
+    private final SubscriptionApi subscriptionApi;
     private final JwtTokenService jwtTokenService;
     private final FileUrlResolver fileUrlResolver;
 
@@ -88,7 +90,7 @@ public class AcceptInvitationUseCase {
                 organization.getName(),
                 organization.getIndustry(),
                 organization.getTeamSize(),
-                organization.getPlanType(),
+                subscriptionApi.getCurrentPlanType(organization.getId()),
                 fileUrlResolver.resolve(organization.getProfileImageFileKey())
         );
     }
