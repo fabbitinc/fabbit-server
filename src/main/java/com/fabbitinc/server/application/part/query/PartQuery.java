@@ -1102,7 +1102,10 @@ public class PartQuery {
     }
 
     private long countAttachedDrawings(PartRevision revision) {
-        return findAttachedDrawings(revision).size();
+        return findAttachedDrawings(revision).stream()
+                .map(this::toDrawingAttachmentItem)
+                .filter(java.util.Objects::nonNull)
+                .count();
     }
 
     private List<PartPreviewFile> findPreviewFiles(PartRevision revision) {

@@ -75,7 +75,7 @@ public class PartPreviewConversionService {
     }
 
     public void requestAndConvertPartPreview(UUID partPreviewId) {
-        PartPreview partPreview = partPreviewRepository.findById(partPreviewId).orElse(null);
+        PartPreview partPreview = partPreviewRepository.findWithPreviewFilesById(partPreviewId).orElse(null);
         if (partPreview == null || !partPreview.hasSource()) {
             log.warn("event=part_preview_conversion_skipped part_preview_id={} reason=part_preview_not_found", partPreviewId);
             return;
@@ -109,7 +109,7 @@ public class PartPreviewConversionService {
             return;
         }
 
-        PartPreview partPreview = partPreviewRepository.findById(claim.partPreviewId()).orElse(null);
+        PartPreview partPreview = partPreviewRepository.findWithPreviewFilesById(claim.partPreviewId()).orElse(null);
         if (partPreview == null || !partPreview.hasSource()) {
             partPreviewProcessingJobService.fail(jobId, "part_preview_not_found");
             return;

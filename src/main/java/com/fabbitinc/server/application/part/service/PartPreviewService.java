@@ -11,7 +11,6 @@ import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.PartPreview;
-import com.fabbitinc.server.domain.part.model.PartPreviewArtifact;
 import com.fabbitinc.server.domain.part.model.PartPreviewFile;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
@@ -21,11 +20,14 @@ import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.drawing.model.DrawingArtifactType;
 import java.util.UUID;
 import java.util.List;
+import java.util.LinkedHashSet;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PartPreviewService {
@@ -40,6 +42,7 @@ public class PartPreviewService {
     private final PartPreviewArtifactService partPreviewArtifactService;
     private final PartPreviewArtifactCleanupService partPreviewArtifactCleanupService;
     private final PartPreviewAsyncConversionService partPreviewAsyncConversionService;
+    private final PartPreviewServingProjectionService partPreviewServingProjectionService;
     private final DrawingSourceClassifier drawingSourceClassifier;
 
     public PartPreview changeSource(UUID partRevisionId, PartPreviewSourceType sourceType, UUID sourceId) {
@@ -85,6 +88,7 @@ public class PartPreviewService {
                 resolvedSource.file().getFileSize()
         );
         partPreviewRepository.save(partPreview);
+        partPreviewServingProjectionService.upsert(partPreview);
         dispatchAfterCommit(partPreview.getId(), generatedArtifactKeys);
         return partPreview;
     }
@@ -97,6 +101,7 @@ public class PartPreviewService {
         List<String> generatedArtifactKeys = collectGeneratedArtifactKeys(partPreview);
         partPreview.clearSource();
         partPreviewRepository.save(partPreview);
+        partPreviewServingProjectionService.upsert(partPreview);
         dispatchCleanupAfterCommit(generatedArtifactKeys);
     }
 
@@ -140,6 +145,7 @@ public class PartPreviewService {
         List<String> generatedArtifactKeys = collectGeneratedArtifactKeys(partPreview);
         partPreview.clearSource();
         partPreviewRepository.save(partPreview);
+        partPreviewServingProjectionService.upsert(partPreview);
         dispatchCleanupAfterCommit(generatedArtifactKeys);
     }
 
@@ -224,18 +230,47 @@ public class PartPreviewService {
     }
 
     private List<String> collectGeneratedArtifactKeys(PartPreview partPreview) {
-        return partPreview.getArtifacts().stream()
+        List<UUID> artifactFileIds = partPreview.getArtifacts().stream()
                 .filter(artifact -> artifact.getArtifactType() != DrawingArtifactType.SOURCE_ORIGINAL)
-                .map(PartPreviewArtifact::getStorageKey)
-                .filter(storageKey -> storageKey != null && !storageKey.isBlank())
+                .map(artifact -> artifact.getFileId())
+                .filter(fileId -> fileId != null)
                 .distinct()
                 .toList();
+        if (artifactFileIds.isEmpty()) {
+            return List.of();
+        }
+
+        return fileRepository.findByIdIn(artifactFileIds).stream()
+                .filter(file -> file.getDeletedAt() == null)
+                .filter(file -> PartPreviewArtifactService.OWNER_TYPE.equals(file.getOwnerType()))
+                .filter(file -> partPreview.getId().equals(file.getOwnerId()))
+                .map(File::getFileKey)
+                .filter(storageKey -> storageKey != null && !storageKey.isBlank())
+                .collect(java.util.stream.Collectors.collectingAndThen(
+                        java.util.stream.Collectors.toCollection(LinkedHashSet::new),
+                        List::copyOf
+                ));
     }
 
     private void dispatchAfterCommit(UUID partPreviewId, List<String> generatedArtifactKeys) {
         String schemaName = TenantContextHolder.getCurrentSchema();
         Runnable dispatch = () -> {
-            partPreviewArtifactCleanupService.cleanupArtifactFiles(generatedArtifactKeys);
+            try {
+                partPreviewArtifactCleanupService.cleanupArtifactFiles(generatedArtifactKeys);
+            } catch (Exception ex) {
+                log.error(
+                        "event=part_preview_cleanup_after_commit_failed part_preview_id={} generated_artifact_count={} reason={}",
+                        partPreviewId,
+                        generatedArtifactKeys.size(),
+                        ex.getMessage(),
+                        ex
+                );
+            }
+            log.info(
+                    "event=part_preview_conversion_dispatched part_preview_id={} generated_artifact_count={}",
+                    partPreviewId,
+                    generatedArtifactKeys.size()
+            );
             partPreviewAsyncConversionService.convertPartPreviewAsync(partPreviewId, schemaName);
         };
 
@@ -253,7 +288,18 @@ public class PartPreviewService {
     }
 
     private void dispatchCleanupAfterCommit(List<String> generatedArtifactKeys) {
-        Runnable dispatch = () -> partPreviewArtifactCleanupService.cleanupArtifactFiles(generatedArtifactKeys);
+        Runnable dispatch = () -> {
+            try {
+                partPreviewArtifactCleanupService.cleanupArtifactFiles(generatedArtifactKeys);
+            } catch (Exception ex) {
+                log.error(
+                        "event=part_preview_cleanup_only_after_commit_failed generated_artifact_count={} reason={}",
+                        generatedArtifactKeys.size(),
+                        ex.getMessage(),
+                        ex
+                );
+            }
+        };
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

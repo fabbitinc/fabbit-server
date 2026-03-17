@@ -37,7 +37,7 @@ public class PartPreviewArtifactCleanupService {
     }
 
     private void deleteGeneratedFile(String storageKey) {
-        fileRepository.findByFileKeyAndDeletedAtIsNull(storageKey)
+        fileRepository.findByFileKeyAndOwnerTypeAndDeletedAtIsNull(storageKey, PartPreviewArtifactService.OWNER_TYPE)
                 .ifPresent(file -> {
                     long fileSize = file.getFileSize();
                     file.softDelete(null);

@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class PartPreviewArtifactService {
 
-    private static final String OWNER_TYPE = "part_preview";
+    public static final String OWNER_TYPE = "part_preview";
 
     private final FileRepository fileRepository;
     private final StoragePort storagePort;
