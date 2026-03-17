@@ -43,3 +43,6 @@ out/
 sample
 
 openapi.json
+
+.claude/worktrees
+.codex/worktrees
