@@ -72,7 +72,7 @@ public class PartRevisionController {
     private final PartQuery partQuery;
     private final ReleasePartRevisionUseCase releasePartRevisionUseCase;
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}", description = "Part 상세 정보와 관계 카운트를 조회합니다")
+    @Operation(summary = "Part 상세 정보와 관계 카운트를 조회합니다", description = "Part 상세 정보와 관계 카운트를 조회합니다")
     @GetMapping("/{partNumber}/revisions/{revisionCode}")
     public PartDetailResponse get(
             @Parameter(description = "품번")
@@ -83,7 +83,7 @@ public class PartRevisionController {
         return toPartDetailResponse(partQuery.get(new PartDetailCondition(partNumber, revisionCode)));
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/history", description = "공식 리비전 이력 목록과 이전 리비전 대비 요약 diff를 조회합니다")
+    @Operation(summary = "공식 리비전 이력 목록과 이전 리비전 대비 요약 diff를 조회합니다", description = "공식 리비전 이력 목록과 이전 리비전 대비 요약 diff를 조회합니다")
     @GetMapping("/{partNumber}/history")
     public PartRevisionHistoryResponse getHistory(
             @Parameter(description = "품번")
@@ -92,7 +92,7 @@ public class PartRevisionController {
         return toPartRevisionHistoryResponse(partQuery.getHistory(new PartRevisionHistoryCondition(partNumber)));
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/diff", description = "이전 또는 지정한 기준 리비전 대비 상세 diff를 조회합니다")
+    @Operation(summary = "이전 또는 지정한 기준 리비전 대비 상세 diff를 조회합니다", description = "이전 또는 지정한 기준 리비전 대비 상세 diff를 조회합니다")
     @GetMapping("/{partNumber}/revisions/{revisionCode}/diff")
     public PartRevisionDiffResponse getDiff(
             @Parameter(description = "품번")
@@ -109,7 +109,7 @@ public class PartRevisionController {
         )));
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/release", description = "공식 리비전을 직접 릴리즈합니다")
+    @Operation(summary = "공식 리비전을 직접 릴리즈합니다", description = "공식 리비전을 직접 릴리즈합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "릴리즈 성공"),
             @ApiResponse(
@@ -152,7 +152,7 @@ public class PartRevisionController {
         return toPartDetailResponse(partQuery.get(new PartDetailCondition(result.partNumber(), result.revisionCode())));
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/bom", description = "Part의 직접 자식/직접 부모 BOM 관계를 조회합니다")
+    @Operation(summary = "Part의 직접 자식/직접 부모 BOM 관계를 조회합니다", description = "Part의 직접 자식/직접 부모 BOM 관계를 조회합니다")
     @GetMapping("/{partNumber}/revisions/{revisionCode}/bom")
     public PartBomResponse getBom(
             @Parameter(description = "품번")
@@ -163,7 +163,7 @@ public class PartRevisionController {
         return toPartBomResponse(partQuery.get(new PartBomCondition(partNumber, revisionCode)));
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/bom/tree", description = "Part BOM 트리를 정전개 또는 역전개로 조회합니다")
+    @Operation(summary = "Part BOM 트리를 정전개 또는 역전개로 조회합니다", description = "Part BOM 트리를 정전개 또는 역전개로 조회합니다")
     @GetMapping("/{partNumber}/revisions/{revisionCode}/bom/tree")
     public BomTreeResponse getBomTree(
             @Parameter(description = "품번")
@@ -176,7 +176,7 @@ public class PartRevisionController {
         return toBomTreeResponse(partQuery.getBomTree(new BomTreeCondition(partNumber, revisionCode, direction)));
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/bom/tree/export", description = "Part BOM 트리를 Excel(.xlsx) 파일로 내보냅니다")
+    @Operation(summary = "Part BOM 트리를 Excel(.xlsx) 파일로 내보냅니다", description = "Part BOM 트리를 Excel(.xlsx) 파일로 내보냅니다")
     @GetMapping(value = "/{partNumber}/revisions/{revisionCode}/bom/tree/export", produces = EXCEL_MEDIA_TYPE)
     public ResponseEntity<byte[]> exportBomTree(
             @Parameter(description = "품번")
@@ -200,7 +200,7 @@ public class PartRevisionController {
         return ResponseEntity.ok().headers(headers).body(content);
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/projects", description = "해당 Part가 소속된 프로젝트 목록을 조회합니다")
+    @Operation(summary = "해당 Part가 소속된 프로젝트 목록을 조회합니다", description = "해당 Part가 소속된 프로젝트 목록을 조회합니다")
     @GetMapping("/{partNumber}/revisions/{revisionCode}/projects")
     public PartProjectsResponse getProjects(
             @Parameter(description = "품번")
@@ -211,7 +211,7 @@ public class PartRevisionController {
         return toPartProjectsResponse(partQuery.get(new PartProjectsCondition(partNumber, revisionCode)));
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/suppliers", description = "Part에 연결된 공급사 목록을 조회합니다")
+    @Operation(summary = "Part에 연결된 공급사 목록을 조회합니다", description = "Part에 연결된 공급사 목록을 조회합니다")
     @GetMapping("/{partNumber}/revisions/{revisionCode}/suppliers")
     public PartSuppliersResponse getSuppliers(
             @Parameter(description = "품번")

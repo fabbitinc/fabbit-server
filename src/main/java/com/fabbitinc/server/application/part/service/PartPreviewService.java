@@ -73,6 +73,10 @@ public class PartPreviewService {
     ) {
         ResolvedSource resolvedSource = resolveSource(partPreview, revision, sourceType, sourceId);
         partPreviewArtifactCleanupService.cleanupPreviewArtifacts(partPreview);
+        if (partPreview.hasSource() || !partPreview.getArtifacts().isEmpty()) {
+            partPreview.clearSource();
+            partPreviewRepository.saveAndFlush(partPreview);
+        }
         partPreview.replaceSource(sourceType, sourceId, resolvedSource.sourceDescriptor().dimension());
         partPreview.registerSourceFile(
                 resolvedSource.file().getId(),

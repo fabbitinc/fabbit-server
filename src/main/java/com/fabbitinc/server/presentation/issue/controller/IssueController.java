@@ -121,7 +121,7 @@ public class IssueController {
     private final DeleteIssueFileUseCase deleteIssueFileUseCase;
 
     @Operation(
-            summary = "GET /api/v1/issues/lookup",
+            summary = "이슈 연결 picker UI용 경량 목록을 조회합니다",
             description = "이슈 연결 picker UI용 경량 목록을 조회합니다"
     )
     @GetMapping("/lookup")
@@ -136,7 +136,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "GET /api/v1/issues",
+            summary = "이슈 목록을 조회합니다",
             description = "이슈 목록을 조회합니다"
     )
     @GetMapping
@@ -152,7 +152,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "GET /api/v1/issues/{issueNumber}",
+            summary = "이슈 번호로 상세 정보를 조회합니다",
             description = "이슈 번호로 상세 정보를 조회합니다"
     )
     @GetMapping("/{issueNumber}")
@@ -164,7 +164,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "POST /api/v1/issues",
+            summary = "이슈를 생성하고 연관 정보(부품/담당자/라벨/파일)를 일괄 연결합니다",
             description = "이슈를 생성하고 연관 정보(부품/담당자/라벨/파일)를 일괄 연결합니다"
     )
     @PostMapping
@@ -188,7 +188,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "PATCH /api/v1/issues/{issueNumber}",
+            summary = "이슈 제목/본문을 수정합니다",
             description = "이슈 제목/본문을 수정합니다"
     )
     @PatchMapping("/{issueNumber}")
@@ -203,7 +203,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "PUT /api/v1/issues/{issueNumber}/assignees",
+            summary = "개인 담당자 목록을 동기화합니다",
             description = "개인 담당자 목록을 동기화합니다"
     )
     @PutMapping("/{issueNumber}/assignees")
@@ -219,7 +219,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "PUT /api/v1/issues/{issueNumber}/assigned-teams",
+            summary = "팀 담당자 목록을 동기화합니다",
             description = "팀 담당자 목록을 동기화합니다"
     )
     @PutMapping("/{issueNumber}/assigned-teams")
@@ -235,7 +235,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "PUT /api/v1/issues/{issueNumber}/engineering-changes",
+            summary = "이슈에 연결된 변경관리 목록을 동기화합니다",
             description = "이슈에 연결된 변경관리 목록을 동기화합니다"
     )
     @PutMapping("/{issueNumber}/engineering-changes")
@@ -254,7 +254,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "POST /api/v1/issues/{issueNumber}/close",
+            summary = "이슈를 닫습니다 (OPEN -> CLOSED)",
             description = "이슈를 닫습니다 (OPEN -> CLOSED)"
     )
     @PostMapping("/{issueNumber}/close")
@@ -266,7 +266,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "POST /api/v1/issues/{issueNumber}/reopen",
+            summary = "이슈를 다시 엽니다 (CLOSED -> OPEN)",
             description = "이슈를 다시 엽니다 (CLOSED -> OPEN)"
     )
     @PostMapping("/{issueNumber}/reopen")
@@ -278,7 +278,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "PUT /api/v1/issues/{issueNumber}/labels",
+            summary = "라벨 목록을 동기화합니다",
             description = "라벨 목록을 동기화합니다"
     )
     @PutMapping("/{issueNumber}/labels")
@@ -294,7 +294,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "PUT /api/v1/issues/{issueNumber}/parts",
+            summary = "부품 목록을 동기화합니다",
             description = "부품 목록을 동기화합니다"
     )
     @PutMapping("/{issueNumber}/parts")
@@ -310,7 +310,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "GET /api/v1/issues/{issueNumber}/timeline",
+            summary = "댓글과 활동 이력을 시간순으로 병합 조회합니다",
             description = "댓글과 활동 이력을 시간순으로 병합 조회합니다"
     )
     @GetMapping("/{issueNumber}/timeline")
@@ -321,7 +321,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "POST /api/v1/issues/{issueNumber}/comments",
+            summary = "댓글을 생성합니다",
             description = "댓글을 생성합니다"
     )
     @PostMapping("/{issueNumber}/comments")
@@ -338,7 +338,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "PATCH /api/v1/issues/{issueNumber}/comments/{commentId}",
+            summary = "댓글을 수정합니다",
             description = "댓글을 수정합니다"
     )
     @PatchMapping("/{issueNumber}/comments/{commentId}")
@@ -355,7 +355,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/issues/{issueNumber}/comments/{commentId}",
+            summary = "댓글을 삭제합니다",
             description = "댓글을 삭제합니다"
     )
     @DeleteMapping("/{issueNumber}/comments/{commentId}")
@@ -368,7 +368,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "POST /api/v1/issues/{issueNumber}/files",
+            summary = "첨부파일을 배치 연결합니다",
             description = "첨부파일을 배치 연결합니다"
     )
     @PostMapping("/{issueNumber}/files")
@@ -385,7 +385,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/issues/{issueNumber}/files/{fileId}",
+            summary = "첨부파일 1건을 삭제(soft delete)합니다",
             description = "첨부파일 1건을 삭제(soft delete)합니다"
     )
     @DeleteMapping("/{issueNumber}/files/{fileId}")

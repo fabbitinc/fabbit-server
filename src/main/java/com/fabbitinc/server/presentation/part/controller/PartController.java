@@ -84,7 +84,7 @@ public class PartController {
     private final RenameCategoryUseCase renameCategoryUseCase;
 
     @Operation(
-            summary = "POST /api/v1/parts",
+            summary = "부품을 생성하고 생성 직후 상세 정보를 반환합니다",
             description = "부품을 생성하고 생성 직후 상세 정보를 반환합니다"
     )
     @ApiResponses(value = {
@@ -118,7 +118,7 @@ public class PartController {
         )));
     }
 
-    @Operation(summary = "GET /api/v1/parts/lookup", description = "품번/품명으로 경량 Part 목록을 조회합니다")
+    @Operation(summary = "품번/품명으로 경량 Part 목록을 조회합니다", description = "품번/품명으로 경량 Part 목록을 조회합니다")
     @GetMapping("/lookup")
     public PartLookupResponse lookupParts(
             @Parameter(description = "품번/품명 검색어", example = "M3")
@@ -130,7 +130,7 @@ public class PartController {
         return toPartLookupResponse(partQuery.lookup(new PartLookupCondition(search, limit)));
     }
 
-    @Operation(summary = "GET /api/v1/parts/drafts/lookup", description = "현재 사용자가 만든 변경관리 연결 가능 초안 목록을 조회합니다")
+    @Operation(summary = "현재 사용자가 만든 변경관리 연결 가능 초안 목록을 조회합니다", description = "현재 사용자가 만든 변경관리 연결 가능 초안 목록을 조회합니다")
     @GetMapping("/drafts/lookup")
     public PartDraftLookupResponse lookupDrafts(
             @Parameter(description = "품번/품명 검색어", example = "AES")
@@ -142,7 +142,7 @@ public class PartController {
         return toPartDraftLookupResponse(partQuery.lookupDrafts(new PartDraftLookupCondition(search, limit)));
     }
 
-    @Operation(summary = "GET /api/v1/parts/export", description = "필터링된 Part 목록을 Excel(.xlsx) 파일로 내보냅니다")
+    @Operation(summary = "필터링된 Part 목록을 Excel(.xlsx) 파일로 내보냅니다", description = "필터링된 Part 목록을 Excel(.xlsx) 파일로 내보냅니다")
     @GetMapping(value = "/export", produces = EXCEL_MEDIA_TYPE)
     public ResponseEntity<byte[]> exportParts(
             @RequestParam(value = "search", required = false) String search,
@@ -174,25 +174,25 @@ public class PartController {
         return ResponseEntity.ok().headers(headers).body(content);
     }
 
-    @Operation(summary = "GET /api/v1/parts/categories", description = "카테고리별 부품 개수를 조회합니다")
+    @Operation(summary = "카테고리별 부품 개수를 조회합니다", description = "카테고리별 부품 개수를 조회합니다")
     @GetMapping("/categories")
     public CategoryStatsResponse listCategories() {
         return toCategoryStatsResponse(partQuery.listCategories());
     }
 
-    @Operation(summary = "GET /api/v1/parts/categories/lookup", description = "카테고리 문자열 목록을 경량 조회합니다")
+    @Operation(summary = "카테고리 문자열 목록을 경량 조회합니다", description = "카테고리 문자열 목록을 경량 조회합니다")
     @GetMapping("/categories/lookup")
     public CategoryLookupResponse lookupCategories() {
         return toCategoryLookupResponse(partQuery.lookupCategories());
     }
 
-    @Operation(summary = "GET /api/v1/parts/filter-options", description = "Part 목록 필터 옵션(카테고리/수명주기 상태)을 조회합니다")
+    @Operation(summary = "Part 목록 필터 옵션(카테고리/수명주기 상태)을 조회합니다", description = "Part 목록 필터 옵션(카테고리/수명주기 상태)을 조회합니다")
     @GetMapping("/filter-options")
     public PartFilterOptionsResponse getFilterOptions() {
         return toPartFilterOptionsResponse(partQuery.getFilterOptions());
     }
 
-    @Operation(summary = "GET /api/v1/parts", description = "Part 목록을 검색/필터 조건과 함께 조회합니다")
+    @Operation(summary = "Part 목록을 검색/필터 조건과 함께 조회합니다", description = "Part 목록을 검색/필터 조건과 함께 조회합니다")
     @GetMapping
     public PartListResponse listParts(
             @RequestParam(value = "search", required = false) String search,
@@ -221,7 +221,7 @@ public class PartController {
         )));
     }
 
-    @Operation(summary = "GET /api/v1/parts/in-progress", description = "진행중 부품 작업함 목록을 검색/필터 조건과 함께 조회합니다")
+    @Operation(summary = "진행중 부품 작업함 목록을 검색/필터 조건과 함께 조회합니다", description = "진행중 부품 작업함 목록을 검색/필터 조건과 함께 조회합니다")
     @GetMapping("/in-progress")
     public PartInProgressListResponse listInProgressParts(
             @RequestParam(value = "search", required = false) String search,
@@ -256,7 +256,7 @@ public class PartController {
         )));
     }
 
-    @Operation(summary = "PATCH /api/v1/parts/categories/{category}", description = "카테고리 이름을 일괄 변경하고 변경 건수를 반환합니다")
+    @Operation(summary = "카테고리 이름을 일괄 변경하고 변경 건수를 반환합니다", description = "카테고리 이름을 일괄 변경하고 변경 건수를 반환합니다")
     @PatchMapping("/categories/{category}")
     public RenameCategoryResponse renameCategory(
             @PathVariable String category,

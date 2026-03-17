@@ -121,7 +121,7 @@ public class EngineeringChangeController {
     private final DeleteEngineeringChangeFileUseCase deleteEngineeringChangeFileUseCase;
 
     @Operation(
-            summary = "GET /api/v1/engineering-changes",
+            summary = "변경관리 목록을 조회합니다",
             description = "변경관리 목록을 조회합니다"
     )
     @GetMapping
@@ -140,7 +140,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "GET /api/v1/engineering-changes/lookup",
+            summary = "변경관리 연결 picker UI용 경량 목록을 조회합니다",
             description = "변경관리 연결 picker UI용 경량 목록을 조회합니다"
     )
     @GetMapping("/lookup")
@@ -155,7 +155,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "GET /api/v1/engineering-changes/{engineeringChangeNumber}",
+            summary = "변경관리 번호로 상세 정보를 조회합니다",
             description = "변경관리 번호로 상세 정보를 조회합니다"
     )
     @GetMapping("/{engineeringChangeNumber}")
@@ -169,7 +169,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes",
+            summary = "변경관리를 생성하고 연관 정보(이슈/부품 리비전/단계/파일)를 일괄 연결합니다",
             description = "변경관리를 생성하고 연관 정보(이슈/부품 리비전/단계/파일)를 일괄 연결합니다"
     )
     @PostMapping
@@ -207,7 +207,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "PATCH /api/v1/engineering-changes/{engineeringChangeNumber}",
+            summary = "변경관리 제목/본문을 수정합니다",
             description = "변경관리 제목/본문을 수정합니다"
     )
     @PatchMapping("/{engineeringChangeNumber}")
@@ -238,7 +238,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/submit",
+            summary = "변경관리를 검토 대기로 전환합니다 (DRAFT -> REVIEW_PENDING)",
             description = "변경관리를 검토 대기로 전환합니다 (DRAFT -> REVIEW_PENDING)"
     )
     @PostMapping("/{engineeringChangeNumber}/submit")
@@ -252,7 +252,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/reject",
+            summary = "변경관리를 작성 단계로 되돌립니다 (*_PENDING -> DRAFT)",
             description = "변경관리를 작성 단계로 되돌립니다 (*_PENDING -> DRAFT)"
     )
     @PostMapping("/{engineeringChangeNumber}/reject")
@@ -268,7 +268,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/approve",
+            summary = "현재 승인 단계 담당자가 변경관리를 승인해 반영 대기로 전환합니다 (APPROVAL_PENDING -> RELEASE_PENDING)",
             description = "현재 승인 단계 담당자가 변경관리를 승인해 반영 대기로 전환합니다 (APPROVAL_PENDING -> RELEASE_PENDING)"
     )
     @PostMapping("/{engineeringChangeNumber}/approve")
@@ -284,7 +284,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/release",
+            summary = "현재 반영 단계 담당자가 변경관리를 반영 완료합니다 (RELEASE_PENDING -> RELEASED)",
             description = "현재 반영 단계 담당자가 변경관리를 반영 완료합니다 (RELEASE_PENDING -> RELEASED)"
     )
     @PostMapping("/{engineeringChangeNumber}/release")
@@ -300,7 +300,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/cancel",
+            summary = "변경관리를 폐기하고 미반영 리비전을 취소합니다",
             description = "변경관리를 폐기하고 미반영 리비전을 취소합니다"
     )
     @PostMapping("/{engineeringChangeNumber}/cancel")
@@ -316,7 +316,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "PUT /api/v1/engineering-changes/{engineeringChangeNumber}/issues",
+            summary = "변경관리에 연결된 이슈 목록을 동기화합니다",
             description = "변경관리에 연결된 이슈 목록을 동기화합니다"
     )
     @PutMapping("/{engineeringChangeNumber}/issues")
@@ -330,7 +330,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "PUT /api/v1/engineering-changes/{engineeringChangeNumber}/steps",
+            summary = "변경관리 단계 목록을 동기화합니다",
             description = "변경관리 단계 목록을 동기화합니다"
     )
     @PutMapping("/{engineeringChangeNumber}/steps")
@@ -357,7 +357,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/review/approve",
+            summary = "현재 검토 단계 담당자가 자신의 검토 단계를 승인합니다",
             description = "현재 검토 단계 담당자가 자신의 검토 단계를 승인합니다"
     )
     @PostMapping("/{engineeringChangeNumber}/review/approve")
@@ -373,7 +373,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "PUT /api/v1/engineering-changes/{engineeringChangeNumber}/part-revisions",
+            summary = "변경관리에 연결할 부품 초안 목록을 동기화합니다",
             description = "변경관리에 연결할 부품 초안 목록을 동기화합니다"
     )
     @PutMapping("/{engineeringChangeNumber}/part-revisions")
@@ -398,7 +398,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "GET /api/v1/engineering-changes/{engineeringChangeNumber}/timeline",
+            summary = "댓글과 활동 이력을 시간순으로 병합 조회합니다",
             description = "댓글과 활동 이력을 시간순으로 병합 조회합니다"
     )
     @GetMapping("/{engineeringChangeNumber}/timeline")
@@ -409,7 +409,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/comments",
+            summary = "댓글을 생성합니다",
             description = "댓글을 생성합니다"
     )
     @PostMapping("/{engineeringChangeNumber}/comments")
@@ -429,7 +429,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "PATCH /api/v1/engineering-changes/{engineeringChangeNumber}/comments/{commentId}",
+            summary = "댓글을 수정합니다",
             description = "댓글을 수정합니다"
     )
     @PatchMapping("/{engineeringChangeNumber}/comments/{commentId}")
@@ -450,7 +450,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/engineering-changes/{engineeringChangeNumber}/comments/{commentId}",
+            summary = "댓글을 삭제합니다",
             description = "댓글을 삭제합니다"
     )
     @DeleteMapping("/{engineeringChangeNumber}/comments/{commentId}")
@@ -465,7 +465,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/files",
+            summary = "첨부파일을 배치 연결합니다",
             description = "첨부파일을 배치 연결합니다"
     )
     @PostMapping("/{engineeringChangeNumber}/files")
@@ -485,7 +485,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/engineering-changes/{engineeringChangeNumber}/files/{fileId}",
+            summary = "첨부파일 1건을 삭제(soft delete)합니다",
             description = "첨부파일 1건을 삭제(soft delete)합니다"
     )
     @DeleteMapping("/{engineeringChangeNumber}/files/{fileId}")

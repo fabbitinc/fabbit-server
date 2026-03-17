@@ -51,7 +51,7 @@ public class TeamMemberController {
     private final RemoveTeamMembersUseCase removeTeamMembersUseCase;
 
     @Operation(
-            summary = "GET /api/v1/teams/{teamId}/members",
+            summary = "팀 멤버 목록을 조회합니다",
             description = "팀 멤버 목록을 조회합니다"
     )
     @GetMapping
@@ -63,7 +63,7 @@ public class TeamMemberController {
     }
 
     @Operation(
-            summary = "POST /api/v1/teams/{teamId}/members",
+            summary = "팀에 멤버를 배치 추가합니다. 이미 추가된 멤버는 제외됩니다",
             description = "팀에 멤버를 배치 추가합니다. 이미 추가된 멤버는 제외됩니다"
     )
     @PostMapping
@@ -81,7 +81,7 @@ public class TeamMemberController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/teams/{teamId}/members",
+            summary = "팀에서 멤버를 배치 제거합니다",
             description = "팀에서 멤버를 배치 제거합니다"
     )
     @DeleteMapping

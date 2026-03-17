@@ -64,7 +64,7 @@ public class PartRevisionPreviewController {
     private final UploadPartPreviewFileUseCase uploadPartPreviewFileUseCase;
     private final DeletePartPreviewFileUseCase deletePartPreviewFileUseCase;
 
-    @Operation(summary = "PATCH /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview", description = "Part 대표 미리보기 소스를 도면 또는 미리보기 전용 파일로 변경합니다")
+    @Operation(summary = "Part 대표 미리보기 소스를 도면 또는 미리보기 전용 파일로 변경합니다", description = "Part 대표 미리보기 소스를 도면 또는 미리보기 전용 파일로 변경합니다")
     @PatchMapping("/{partNumber}/revisions/{revisionCode}/preview")
     public PartPreviewResponse update(
             @Parameter(description = "품번")
@@ -84,7 +84,7 @@ public class PartRevisionPreviewController {
         return toPartPreviewResponse(partQuery.get(new PartDetailCondition(partNumber, revisionCode)).preview());
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview/sources", description = "대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다")
+    @Operation(summary = "대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다", description = "대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다")
     @GetMapping("/{partNumber}/revisions/{revisionCode}/preview/sources")
     public PartPreviewSourcesResponse getSources(
             @Parameter(description = "품번")
@@ -97,7 +97,7 @@ public class PartRevisionPreviewController {
         );
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview/files", description = "업로드 완료 파일을 대표 미리보기 전용 파일로 등록하고 현재 미리보기로 설정합니다")
+    @Operation(summary = "업로드 완료 파일을 대표 미리보기 전용 파일로 등록하고 현재 미리보기로 설정합니다", description = "업로드 완료 파일을 대표 미리보기 전용 파일로 등록하고 현재 미리보기로 설정합니다")
     @PostMapping("/{partNumber}/revisions/{revisionCode}/preview/files")
     public PartPreviewResponse createPreviewFile(
             @Parameter(description = "품번")
@@ -116,7 +116,7 @@ public class PartRevisionPreviewController {
         return toPartPreviewResponse(partQuery.get(new PartDetailCondition(partNumber, revisionCode)).preview());
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview/processing", description = "Part 대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다")
+    @Operation(summary = "Part 대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다", description = "Part 대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다")
     @GetMapping("/{partNumber}/revisions/{revisionCode}/preview/processing")
     public PartPreviewProcessingResponse getProcessing(
             @Parameter(description = "품번")
@@ -129,7 +129,7 @@ public class PartRevisionPreviewController {
         );
     }
 
-    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview", description = "Part 대표 미리보기를 해제합니다")
+    @Operation(summary = "Part 대표 미리보기를 해제합니다", description = "Part 대표 미리보기를 해제합니다")
     @DeleteMapping("/{partNumber}/revisions/{revisionCode}/preview")
     public ResponseEntity<Void> delete(
             @Parameter(description = "품번")
@@ -141,7 +141,7 @@ public class PartRevisionPreviewController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview/files/{previewFileId}", description = "대표 미리보기 전용 파일 1건을 삭제합니다")
+    @Operation(summary = "대표 미리보기 전용 파일 1건을 삭제합니다", description = "대표 미리보기 전용 파일 1건을 삭제합니다")
     @DeleteMapping("/{partNumber}/revisions/{revisionCode}/preview/files/{previewFileId}")
     public ResponseEntity<Void> deletePreviewFile(
             @Parameter(description = "품번")

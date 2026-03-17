@@ -46,7 +46,7 @@ public class SynthesisController {
     private final SynthesisQuery synthesisQuery;
 
     @Operation(
-            summary = "POST /api/v1/synthesis",
+            summary = "매핑 기반 합성 배치를 시작하고 batch/job 정보를 반환합니다",
             description = "매핑 기반 합성 배치를 시작하고 batch/job 정보를 반환합니다"
     )
     @ApiResponses(value = {
@@ -74,7 +74,7 @@ public class SynthesisController {
     }
 
     @Operation(
-            summary = "GET /api/v1/synthesis/batches/{batchId}",
+            summary = "합성 배치 진행 상태를 조회합니다",
             description = "합성 배치 진행 상태를 조회합니다"
     )
     @ApiResponses(value = {
@@ -92,7 +92,7 @@ public class SynthesisController {
     }
 
     @Operation(
-            summary = "GET /api/v1/synthesis/{jobId}",
+            summary = "개별 합성 작업 상태를 조회합니다",
             description = "개별 합성 작업 상태를 조회합니다"
     )
     @ApiResponses(value = {
@@ -110,7 +110,7 @@ public class SynthesisController {
     }
 
     @Operation(
-            summary = "GET /api/v1/synthesis",
+            summary = "전체 합성 작업 이력을 최신순으로 조회합니다",
             description = "전체 합성 작업 이력을 최신순으로 조회합니다"
     )
     @ApiResponses(value = {

@@ -49,7 +49,7 @@ public class MemberController {
     private final RemoveMemberUseCase removeMemberUseCase;
 
     @Operation(
-            summary = "GET /api/v1/members/lookup",
+            summary = "조직 멤버 lookup 목록을 조회합니다 (autocomplete/picker 용도)",
             description = "조직 멤버 lookup 목록을 조회합니다 (autocomplete/picker 용도)"
     )
     @ApiResponses(value = {
@@ -71,7 +71,7 @@ public class MemberController {
     }
 
     @Operation(
-            summary = "GET /api/v1/members",
+            summary = "현재 조직의 전체 멤버 목록을 조회합니다",
             description = "현재 조직의 전체 멤버 목록을 조회합니다"
     )
     @ApiResponses(value = {
@@ -90,7 +90,7 @@ public class MemberController {
     }
 
     @Operation(
-            summary = "PATCH /api/v1/members/{userId}/role",
+            summary = "소유자(OWNER) 권한으로 멤버 역할을 변경합니다",
             description = "소유자(OWNER) 권한으로 멤버 역할을 변경합니다"
     )
     @ApiResponses(value = {
@@ -112,7 +112,7 @@ public class MemberController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/members/{userId}",
+            summary = "관리자(ADMIN 이상) 권한으로 조직 멤버를 제거합니다",
             description = "관리자(ADMIN 이상) 권한으로 조직 멤버를 제거합니다"
     )
     @ApiResponses(value = {

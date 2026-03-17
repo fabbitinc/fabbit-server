@@ -63,7 +63,7 @@ public class MappingController {
     private final MappingQuery mappingQuery;
 
     @Operation(
-            summary = "POST /api/v1/mappings/preview",
+            summary = "업로드된 파일의 헤더/샘플 행을 기반으로 매핑 미리보기를 생성합니다",
             description = "업로드된 파일의 헤더/샘플 행을 기반으로 매핑 미리보기를 생성합니다"
     )
     @ApiResponses(value = {
@@ -84,7 +84,7 @@ public class MappingController {
     }
 
     @Operation(
-            summary = "POST /api/v1/mappings/confirm",
+            summary = "검토된 매핑을 확정하여 새 매핑 레코드(버전 1)를 생성합니다",
             description = "검토된 매핑을 확정하여 새 매핑 레코드(버전 1)를 생성합니다"
     )
     @ApiResponses(value = {
@@ -110,7 +110,7 @@ public class MappingController {
     }
 
     @Operation(
-            summary = "POST /api/v1/mappings/validate",
+            summary = "매핑을 정규화하고 파일 샘플 데이터 기준으로 오류/경고를 검증합니다",
             description = "매핑을 정규화하고 파일 샘플 데이터 기준으로 오류/경고를 검증합니다"
     )
     @ApiResponses(value = {
@@ -131,7 +131,7 @@ public class MappingController {
     }
 
     @Operation(
-            summary = "GET /api/v1/mappings",
+            summary = "활성 매핑 목록을 최신순으로 조회합니다",
             description = "활성 매핑 목록을 최신순으로 조회합니다"
     )
     @ApiResponses(value = {
@@ -147,7 +147,7 @@ public class MappingController {
     }
 
     @Operation(
-            summary = "GET /api/v1/mappings/{mappingId}",
+            summary = "매핑 ID로 최신 리비전을 조회합니다",
             description = "매핑 ID로 최신 리비전을 조회합니다"
     )
     @ApiResponses(value = {
@@ -165,7 +165,7 @@ public class MappingController {
     }
 
     @Operation(
-            summary = "PUT /api/v1/mappings/{mappingId}",
+            summary = "매핑을 수정하고 새로운 리비전을 생성합니다",
             description = "매핑을 수정하고 새로운 리비전을 생성합니다"
     )
     @ApiResponses(value = {
@@ -193,7 +193,7 @@ public class MappingController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/mappings/{mappingId}",
+            summary = "매핑을 비활성화(soft delete)합니다",
             description = "매핑을 비활성화(soft delete)합니다"
     )
     @ApiResponses(value = {

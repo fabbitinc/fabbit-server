@@ -114,7 +114,7 @@ public class PartDraftController {
     private final UploadPartPreviewFileUseCase uploadPartPreviewFileUseCase;
     private final DeletePartPreviewFileUseCase deletePartPreviewFileUseCase;
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts", description = "기준 리비전에서 새 초안 리비전을 생성합니다")
+    @Operation(summary = "기준 리비전에서 새 초안 리비전을 생성합니다", description = "기준 리비전에서 새 초안 리비전을 생성합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "생성 성공"),
             @ApiResponse(responseCode = "409", description = "리소스 충돌"),
@@ -140,7 +140,7 @@ public class PartDraftController {
         )));
     }
 
-    @Operation(summary = "PATCH /api/v1/parts/{partNumber}/drafts/{draftKey}", description = "초기 DRAFT 상태의 부품 초안을 수정합니다")
+    @Operation(summary = "초기 DRAFT 상태의 부품 초안을 수정합니다", description = "초기 DRAFT 상태의 부품 초안을 수정합니다")
     @PatchMapping("/{partNumber}/drafts/{draftKey}")
     public PartDetailResponse update(
             @Parameter(description = "품번")
@@ -173,7 +173,7 @@ public class PartDraftController {
         return toPartDetailResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, null, draftKey)));
     }
 
-    @Operation(summary = "PATCH /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안을 수정합니다")
+    @Operation(summary = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안을 수정합니다", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안을 수정합니다")
     @PatchMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}")
     public PartDetailResponse updateFromRevision(
             @Parameter(description = "품번")
@@ -208,7 +208,7 @@ public class PartDraftController {
         return toPartDetailResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, revisionCode, draftKey)));
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/drafts/{draftKey}", description = "초기 Part 초안 상세 정보와 관계 카운트를 조회합니다")
+    @Operation(summary = "초기 Part 초안 상세 정보와 관계 카운트를 조회합니다", description = "초기 Part 초안 상세 정보와 관계 카운트를 조회합니다")
     @GetMapping("/{partNumber}/drafts/{draftKey}")
     public PartDetailResponse get(
             @Parameter(description = "품번")
@@ -219,7 +219,7 @@ public class PartDraftController {
         return toPartDetailResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, null, draftKey)));
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}", description = "특정 공식 리비전에서 파생된 Part 초안 상세를 조회합니다")
+    @Operation(summary = "특정 공식 리비전에서 파생된 Part 초안 상세를 조회합니다", description = "특정 공식 리비전에서 파생된 Part 초안 상세를 조회합니다")
     @GetMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}")
     public PartDetailResponse getFromRevision(
             @Parameter(description = "품번")
@@ -232,7 +232,7 @@ public class PartDraftController {
         return toPartDetailResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, revisionCode, draftKey)));
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/approve", description = "초기 Part 초안을 직접 승인하고 공식 리비전으로 전환합니다")
+    @Operation(summary = "초기 Part 초안을 직접 승인하고 공식 리비전으로 전환합니다", description = "초기 Part 초안을 직접 승인하고 공식 리비전으로 전환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "승인 성공"),
             @ApiResponse(
@@ -268,7 +268,7 @@ public class PartDraftController {
         )));
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/approve", description = "특정 공식 리비전에서 파생된 초안을 직접 승인하고 새 공식 리비전으로 전환합니다")
+    @Operation(summary = "특정 공식 리비전에서 파생된 초안을 직접 승인하고 새 공식 리비전으로 전환합니다", description = "특정 공식 리비전에서 파생된 초안을 직접 승인하고 새 공식 리비전으로 전환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "승인 성공"),
             @ApiResponse(
@@ -306,7 +306,7 @@ public class PartDraftController {
         )));
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/release", description = "초기 Part 초안을 직접 릴리즈하고 공식 리비전으로 전환합니다")
+    @Operation(summary = "초기 Part 초안을 직접 릴리즈하고 공식 리비전으로 전환합니다", description = "초기 Part 초안을 직접 릴리즈하고 공식 리비전으로 전환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "릴리즈 성공"),
             @ApiResponse(
@@ -342,7 +342,7 @@ public class PartDraftController {
         )));
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/release", description = "특정 공식 리비전에서 파생된 초안을 직접 릴리즈하고 새 공식 리비전으로 전환합니다")
+    @Operation(summary = "특정 공식 리비전에서 파생된 초안을 직접 릴리즈하고 새 공식 리비전으로 전환합니다", description = "특정 공식 리비전에서 파생된 초안을 직접 릴리즈하고 새 공식 리비전으로 전환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "릴리즈 성공"),
             @ApiResponse(
@@ -380,7 +380,7 @@ public class PartDraftController {
         )));
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/cancel", description = "초기 Part 초안을 직접 취소합니다")
+    @Operation(summary = "초기 Part 초안을 직접 취소합니다", description = "초기 Part 초안을 직접 취소합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "취소 성공"),
             @ApiResponse(
@@ -408,7 +408,7 @@ public class PartDraftController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/cancel", description = "특정 공식 리비전에서 파생된 초안을 직접 취소합니다")
+    @Operation(summary = "특정 공식 리비전에서 파생된 초안을 직접 취소합니다", description = "특정 공식 리비전에서 파생된 초안을 직접 취소합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "취소 성공"),
             @ApiResponse(
@@ -438,7 +438,7 @@ public class PartDraftController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/drafts/{draftKey}/files", description = "초기 DRAFT 상태의 부품 초안에 연결된 업로드 완료 파일 목록을 조회합니다")
+    @Operation(summary = "초기 DRAFT 상태의 부품 초안에 연결된 업로드 완료 파일 목록을 조회합니다", description = "초기 DRAFT 상태의 부품 초안에 연결된 업로드 완료 파일 목록을 조회합니다")
     @GetMapping("/{partNumber}/drafts/{draftKey}/files")
     public PartFilesResponse getFiles(
             @Parameter(description = "품번")
@@ -449,7 +449,7 @@ public class PartDraftController {
         return toPartFilesResponse(partQuery.get(new PartFilesCondition(partNumber, null, null, draftKey)));
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/files", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 연결된 업로드 완료 파일 목록을 조회합니다")
+    @Operation(summary = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 연결된 업로드 완료 파일 목록을 조회합니다", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 연결된 업로드 완료 파일 목록을 조회합니다")
     @GetMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/files")
     public PartFilesResponse getFilesFromRevision(
             @Parameter(description = "품번")
@@ -462,7 +462,7 @@ public class PartDraftController {
         return toPartFilesResponse(partQuery.get(new PartFilesCondition(partNumber, null, revisionCode, draftKey)));
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/files", description = "업로드 완료 파일들을 초기 DRAFT 상태의 부품 초안에 배치 연결합니다")
+    @Operation(summary = "업로드 완료 파일들을 초기 DRAFT 상태의 부품 초안에 배치 연결합니다", description = "업로드 완료 파일들을 초기 DRAFT 상태의 부품 초안에 배치 연결합니다")
     @PostMapping("/{partNumber}/drafts/{draftKey}/files")
     public List<PartAttachmentItemResponse> attachFiles(
             @Parameter(description = "품번")
@@ -479,7 +479,7 @@ public class PartDraftController {
                 .toList();
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/files", description = "업로드 완료 파일들을 특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 배치 연결합니다")
+    @Operation(summary = "업로드 완료 파일들을 특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 배치 연결합니다", description = "업로드 완료 파일들을 특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 배치 연결합니다")
     @PostMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/files")
     public List<PartAttachmentItemResponse> attachFilesFromRevision(
             @Parameter(description = "품번")
@@ -498,7 +498,7 @@ public class PartDraftController {
                 .toList();
     }
 
-    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/drafts/{draftKey}/files/{fileId}", description = "초기 DRAFT 상태의 부품 초안에 연결된 첨부파일 1건을 제거합니다")
+    @Operation(summary = "초기 DRAFT 상태의 부품 초안에 연결된 첨부파일 1건을 제거합니다", description = "초기 DRAFT 상태의 부품 초안에 연결된 첨부파일 1건을 제거합니다")
     @DeleteMapping("/{partNumber}/drafts/{draftKey}/files/{fileId}")
     public ResponseEntity<Void> deleteFile(
             @Parameter(description = "품번")
@@ -512,7 +512,7 @@ public class PartDraftController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/files/{fileId}", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 연결된 첨부파일 1건을 제거합니다")
+    @Operation(summary = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 연결된 첨부파일 1건을 제거합니다", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 연결된 첨부파일 1건을 제거합니다")
     @DeleteMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/files/{fileId}")
     public ResponseEntity<Void> deleteFileFromRevision(
             @Parameter(description = "품번")
@@ -528,7 +528,7 @@ public class PartDraftController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/drawings", description = "초기 DRAFT 상태의 부품 초안에 도면을 업로드하고 등록합니다")
+    @Operation(summary = "초기 DRAFT 상태의 부품 초안에 도면을 업로드하고 등록합니다", description = "초기 DRAFT 상태의 부품 초안에 도면을 업로드하고 등록합니다")
     @PostMapping("/{partNumber}/drafts/{draftKey}/drawings")
     public RegisterDrawingResponse createDrawing(
             @Parameter(description = "품번")
@@ -542,7 +542,7 @@ public class PartDraftController {
         ));
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/drawings", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 초안에 도면을 업로드하고 등록합니다")
+    @Operation(summary = "특정 공식 리비전에서 파생된 DRAFT 상태의 초안에 도면을 업로드하고 등록합니다", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 초안에 도면을 업로드하고 등록합니다")
     @PostMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/drawings")
     public RegisterDrawingResponse createDrawingFromRevision(
             @Parameter(description = "품번")
@@ -558,7 +558,7 @@ public class PartDraftController {
         ));
     }
 
-    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/drafts/{draftKey}/drawings/{drawingId}", description = "초기 DRAFT 상태의 부품 초안에 연결된 도면 1건을 삭제합니다")
+    @Operation(summary = "초기 DRAFT 상태의 부품 초안에 연결된 도면 1건을 삭제합니다", description = "초기 DRAFT 상태의 부품 초안에 연결된 도면 1건을 삭제합니다")
     @DeleteMapping("/{partNumber}/drafts/{draftKey}/drawings/{drawingId}")
     public ResponseEntity<Void> deleteDrawing(
             @Parameter(description = "품번")
@@ -572,7 +572,7 @@ public class PartDraftController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/drawings/{drawingId}", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 연결된 도면 1건을 삭제합니다")
+    @Operation(summary = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 연결된 도면 1건을 삭제합니다", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안에 연결된 도면 1건을 삭제합니다")
     @DeleteMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/drawings/{drawingId}")
     public ResponseEntity<Void> deleteDrawingFromRevision(
             @Parameter(description = "품번")
@@ -588,7 +588,7 @@ public class PartDraftController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "PATCH /api/v1/parts/{partNumber}/drafts/{draftKey}/preview", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기 소스를 도면 또는 미리보기 전용 파일로 변경합니다")
+    @Operation(summary = "초기 DRAFT 상태의 부품 초안 대표 미리보기 소스를 도면 또는 미리보기 전용 파일로 변경합니다", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기 소스를 도면 또는 미리보기 전용 파일로 변경합니다")
     @PatchMapping("/{partNumber}/drafts/{draftKey}/preview")
     public PartPreviewResponse updatePreview(
             @Parameter(description = "품번")
@@ -608,7 +608,7 @@ public class PartDraftController {
         return toPartPreviewResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, null, draftKey)).preview());
     }
 
-    @Operation(summary = "PATCH /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 소스를 도면 또는 미리보기 전용 파일로 변경합니다")
+    @Operation(summary = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 소스를 도면 또는 미리보기 전용 파일로 변경합니다", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 소스를 도면 또는 미리보기 전용 파일로 변경합니다")
     @PatchMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview")
     public PartPreviewResponse updatePreviewFromRevision(
             @Parameter(description = "품번")
@@ -630,7 +630,7 @@ public class PartDraftController {
         return toPartPreviewResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, revisionCode, draftKey)).preview());
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/drafts/{draftKey}/preview/sources", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다")
+    @Operation(summary = "초기 DRAFT 상태의 부품 초안 대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다")
     @GetMapping("/{partNumber}/drafts/{draftKey}/preview/sources")
     public PartPreviewSourcesResponse getPreviewSources(
             @Parameter(description = "품번")
@@ -643,7 +643,7 @@ public class PartDraftController {
         );
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/sources", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다")
+    @Operation(summary = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다")
     @GetMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/sources")
     public PartPreviewSourcesResponse getPreviewSourcesFromRevision(
             @Parameter(description = "품번")
@@ -658,7 +658,7 @@ public class PartDraftController {
         );
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/preview/files", description = "업로드 완료 파일을 초기 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일로 등록하고 현재 미리보기로 설정합니다")
+    @Operation(summary = "업로드 완료 파일을 초기 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일로 등록하고 현재 미리보기로 설정합니다", description = "업로드 완료 파일을 초기 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일로 등록하고 현재 미리보기로 설정합니다")
     @PostMapping("/{partNumber}/drafts/{draftKey}/preview/files")
     public PartPreviewResponse uploadPreviewFile(
             @Parameter(description = "품번")
@@ -677,7 +677,7 @@ public class PartDraftController {
         return toPartPreviewResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, null, draftKey)).preview());
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/files", description = "업로드 완료 파일을 특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일로 등록하고 현재 미리보기로 설정합니다")
+    @Operation(summary = "업로드 완료 파일을 특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일로 등록하고 현재 미리보기로 설정합니다", description = "업로드 완료 파일을 특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일로 등록하고 현재 미리보기로 설정합니다")
     @PostMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/files")
     public PartPreviewResponse uploadPreviewFileFromRevision(
             @Parameter(description = "품번")
@@ -698,7 +698,7 @@ public class PartDraftController {
         return toPartPreviewResponse(partQuery.getDraft(new PartDraftDetailCondition(partNumber, revisionCode, draftKey)).preview());
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/drafts/{draftKey}/preview/processing", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다")
+    @Operation(summary = "초기 DRAFT 상태의 부품 초안 대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다")
     @GetMapping("/{partNumber}/drafts/{draftKey}/preview/processing")
     public PartPreviewProcessingResponse getPreviewProcessing(
             @Parameter(description = "품번")
@@ -711,7 +711,7 @@ public class PartDraftController {
         );
     }
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/processing", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다")
+    @Operation(summary = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다")
     @GetMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/processing")
     public PartPreviewProcessingResponse getPreviewProcessingFromRevision(
             @Parameter(description = "품번")
@@ -726,7 +726,7 @@ public class PartDraftController {
         );
     }
 
-    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/drafts/{draftKey}/preview", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기를 해제합니다")
+    @Operation(summary = "초기 DRAFT 상태의 부품 초안 대표 미리보기를 해제합니다", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기를 해제합니다")
     @DeleteMapping("/{partNumber}/drafts/{draftKey}/preview")
     public ResponseEntity<Void> deletePreview(
             @Parameter(description = "품번")
@@ -738,7 +738,7 @@ public class PartDraftController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기를 해제합니다")
+    @Operation(summary = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기를 해제합니다", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기를 해제합니다")
     @DeleteMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview")
     public ResponseEntity<Void> deletePreviewFromRevision(
             @Parameter(description = "품번")
@@ -752,7 +752,7 @@ public class PartDraftController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/drafts/{draftKey}/preview/files/{previewFileId}", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일 1건을 삭제합니다")
+    @Operation(summary = "초기 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일 1건을 삭제합니다", description = "초기 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일 1건을 삭제합니다")
     @DeleteMapping("/{partNumber}/drafts/{draftKey}/preview/files/{previewFileId}")
     public ResponseEntity<Void> deletePreviewFile(
             @Parameter(description = "품번")
@@ -772,7 +772,7 @@ public class PartDraftController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/files/{previewFileId}", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일 1건을 삭제합니다")
+    @Operation(summary = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일 1건을 삭제합니다", description = "특정 공식 리비전에서 파생된 DRAFT 상태의 부품 초안 대표 미리보기 전용 파일 1건을 삭제합니다")
     @DeleteMapping("/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/preview/files/{previewFileId}")
     public ResponseEntity<Void> deletePreviewFileFromRevision(
             @Parameter(description = "품번")

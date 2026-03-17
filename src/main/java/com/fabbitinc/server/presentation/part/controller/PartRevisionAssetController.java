@@ -61,7 +61,7 @@ public class PartRevisionAssetController {
     private final RegisterPartDrawingUseCase registerPartDrawingUseCase;
     private final DeletePartDrawingUseCase deletePartDrawingUseCase;
 
-    @Operation(summary = "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/files", description = "Part에 연결된 업로드 완료 파일 목록을 조회합니다")
+    @Operation(summary = "Part에 연결된 업로드 완료 파일 목록을 조회합니다", description = "Part에 연결된 업로드 완료 파일 목록을 조회합니다")
     @GetMapping("/{partNumber}/revisions/{revisionCode}/files")
     public PartFilesResponse getFiles(
             @Parameter(description = "품번")
@@ -72,7 +72,7 @@ public class PartRevisionAssetController {
         return toPartFilesResponse(partQuery.get(new PartFilesCondition(partNumber, revisionCode, null, null)));
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/files", description = "업로드 완료 파일들을 Part에 배치 연결합니다")
+    @Operation(summary = "업로드 완료 파일들을 Part에 배치 연결합니다", description = "업로드 완료 파일들을 Part에 배치 연결합니다")
     @PostMapping("/{partNumber}/revisions/{revisionCode}/files")
     public List<PartAttachmentItemResponse> attachFiles(
             @Parameter(description = "품번")
@@ -89,7 +89,7 @@ public class PartRevisionAssetController {
                 .toList();
     }
 
-    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/files/{fileId}", description = "Part에 연결된 첨부파일 1건을 제거합니다")
+    @Operation(summary = "Part에 연결된 첨부파일 1건을 제거합니다", description = "Part에 연결된 첨부파일 1건을 제거합니다")
     @DeleteMapping("/{partNumber}/revisions/{revisionCode}/files/{fileId}")
     public ResponseEntity<Void> deleteFile(
             @Parameter(description = "품번")
@@ -103,7 +103,7 @@ public class PartRevisionAssetController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drawings", description = "업로드 완료 파일을 Drawing으로 등록하고 PartRevision에 연결합니다")
+    @Operation(summary = "업로드 완료 파일을 Drawing으로 등록하고 PartRevision에 연결합니다", description = "업로드 완료 파일을 Drawing으로 등록하고 PartRevision에 연결합니다")
     @PostMapping("/{partNumber}/revisions/{revisionCode}/drawings")
     public RegisterDrawingResponse createDrawing(
             @Parameter(description = "품번")
@@ -117,7 +117,7 @@ public class PartRevisionAssetController {
         ));
     }
 
-    @Operation(summary = "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/drawings/{drawingId}", description = "PartRevision에 연결된 도면 1건을 삭제합니다")
+    @Operation(summary = "PartRevision에 연결된 도면 1건을 삭제합니다", description = "PartRevision에 연결된 도면 1건을 삭제합니다")
     @DeleteMapping("/{partNumber}/revisions/{revisionCode}/drawings/{drawingId}")
     public ResponseEntity<Void> deleteDrawing(
             @Parameter(description = "품번")

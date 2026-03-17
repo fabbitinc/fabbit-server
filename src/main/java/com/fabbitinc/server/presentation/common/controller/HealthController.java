@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "health", description = "애플리케이션 헬스체크 API")
 public class HealthController {
 
-    @Operation(summary = "GET /health", description = "애플리케이션 기본 상태를 확인합니다")
+    @Operation(summary = "애플리케이션 기본 상태를 확인합니다", description = "애플리케이션 기본 상태를 확인합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "정상 응답")
     })
