@@ -13,6 +13,6 @@ public record CommentResponse(
         Instant createdAt,
         Instant updatedAt,
         boolean isModified,
-        UUID createdBy
+        UserSummaryResponse createdBy
 ) {
 }

@@ -13,10 +13,10 @@ public record TimelineItemResponse(
         UUID id,
         ActivityAction action,
         ActivityScope scope,
-        UUID actorId,
+        UserSummaryResponse actor,
         JsonNode detail,
         JsonNode body,
-        UUID authorId,
+        UserSummaryResponse author,
         Instant createdAt,
         Instant updatedAt,
         Boolean isModified

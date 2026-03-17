@@ -4,7 +4,9 @@ import com.fabbitinc.server.application.workitem.usecase.WorkItemUseCaseSupport;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
+import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.issue.service.IssueService;
+import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.application.workitem.usecase.result.CommentResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -19,13 +21,17 @@ public class CreateCommentUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final IssueService issueService;
+    private final UserApi userApi;
+    private final FileUrlResolver fileUrlResolver;
     private final ObjectMapper objectMapper;
 
     public CommentResult execute(CreateCommentCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         return WorkItemUseCaseSupport.toCommentResult(
                 issueService.createComment(auth.userId(), command.issueId(), command.body()),
-                objectMapper
+                objectMapper,
+                userApi.getUserOrNull(auth.userId()),
+                fileUrlResolver
         );
     }
 

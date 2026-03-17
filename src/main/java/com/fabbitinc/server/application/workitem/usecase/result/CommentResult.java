@@ -1,5 +1,4 @@
 package com.fabbitinc.server.application.workitem.usecase.result;
-import com.fabbitinc.server.application.workitem.usecase.result.CommentResult;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -12,6 +11,6 @@ public record CommentResult(
         Instant createdAt,
         Instant updatedAt,
         boolean isModified,
-        UUID createdBy
+        CommentUserSummaryResult createdBy
 ) {
 }

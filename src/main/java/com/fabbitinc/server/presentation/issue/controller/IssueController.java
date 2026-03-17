@@ -59,6 +59,7 @@ import com.fabbitinc.server.application.issue.usecase.UpdateCommentUseCase;
 import com.fabbitinc.server.application.issue.usecase.UpdateIssueUseCase;
 import com.fabbitinc.server.application.workitem.usecase.result.AttachedFileResult;
 import com.fabbitinc.server.application.workitem.usecase.result.CommentResult;
+import com.fabbitinc.server.application.workitem.usecase.result.CommentUserSummaryResult;
 import com.fabbitinc.server.application.workitem.usecase.result.SyncDiffResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -68,9 +69,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -409,7 +408,7 @@ public class IssueController {
                 result.createdAt(),
                 result.updatedAt(),
                 result.isModified(),
-                result.createdBy()
+                toUserSummaryResponse(result.createdBy())
         );
     }
 
@@ -479,12 +478,8 @@ public class IssueController {
     }
 
     private TimelineResponse toTimelineResponse(TimelineResult result) {
-        Map<String, UserSummaryResponse> users = new LinkedHashMap<>();
-        result.users().forEach((userId, user) -> users.put(userId, toUserSummaryResponse(user)));
-
         return new TimelineResponse(
-                result.items().stream().map(this::toTimelineItemResponse).toList(),
-                users
+                result.items().stream().map(this::toTimelineItemResponse).toList()
         );
     }
 
@@ -494,10 +489,10 @@ public class IssueController {
                 result.id(),
                 result.action(),
                 result.scope(),
-                result.actorId(),
+                toUserSummaryResponse(result.actor()),
                 result.detail(),
                 result.body(),
-                result.authorId(),
+                toUserSummaryResponse(result.author()),
                 result.createdAt(),
                 result.updatedAt(),
                 result.isModified()
@@ -512,6 +507,19 @@ public class IssueController {
     }
 
     private UserSummaryResponse toUserSummaryResponse(UserSummaryResult result) {
+        if (result == null) {
+            return null;
+        }
+        return new UserSummaryResponse(
+                result.userId(),
+                result.fullName(),
+                result.email(),
+                result.phone(),
+                result.profileImageUrl()
+        );
+    }
+
+    private UserSummaryResponse toUserSummaryResponse(CommentUserSummaryResult result) {
         if (result == null) {
             return null;
         }

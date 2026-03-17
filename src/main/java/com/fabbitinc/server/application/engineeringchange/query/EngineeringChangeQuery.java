@@ -192,6 +192,7 @@ public class EngineeringChangeQuery {
                 engineeringChange.getId()
         );
 
+        Map<String, UserSummaryResult> users = toUserSummaryMap(collectTimelineUserIds(comments, histories));
         List<TimelineResult.Item> items = new ArrayList<>();
         for (EngineeringChangeComment comment : comments) {
             items.add(new TimelineResult.Item(
@@ -202,7 +203,7 @@ public class EngineeringChangeQuery {
                     null,
                     null,
                     parseJson(comment.getBody()),
-                    comment.getCreatedBy(),
+                    users.get(comment.getCreatedBy() == null ? null : comment.getCreatedBy().toString()),
                     comment.getCreatedAt(),
                     comment.getUpdatedAt(),
                     isModified(comment.getCreatedAt(), comment.getUpdatedAt())
@@ -215,7 +216,7 @@ public class EngineeringChangeQuery {
                     activity.getId(),
                     action,
                     action.scope(),
-                    activity.getActorId(),
+                    users.get(activity.getActorId() == null ? null : activity.getActorId().toString()),
                     parseJson(activity.getDetail()),
                     null,
                     null,
@@ -226,8 +227,7 @@ public class EngineeringChangeQuery {
         }
         items.sort(java.util.Comparator.comparing(TimelineResult.Item::createdAt));
 
-        Map<String, UserSummaryResult> users = toUserSummaryMap(collectTimelineUserIds(comments, histories));
-        return new TimelineResult(items, users);
+        return new TimelineResult(items);
     }
 
     private Enrichment enrichEngineeringChanges(List<EngineeringChange> engineeringChanges) {
