@@ -14,7 +14,7 @@ public record TimelineItemResponse(
         ActivityAction action,
         ActivityScope scope,
         UserSummaryResponse actor,
-        JsonNode detail,
+        TimelineDetailResponse detail,
         JsonNode body,
         UserSummaryResponse author,
         Instant createdAt,

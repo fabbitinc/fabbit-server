@@ -16,7 +16,7 @@ public record TimelineResult(
             ActivityAction action,
             ActivityScope scope,
             UserSummaryResult actor,
-            JsonNode detail,
+            TimelineDetailResult detail,
             JsonNode body,
             UserSummaryResult author,
             Instant createdAt,

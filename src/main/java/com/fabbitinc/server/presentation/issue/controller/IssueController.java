@@ -24,9 +24,12 @@ import com.fabbitinc.server.presentation.issue.dto.response.LabelBadgeResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.PartBadgeResponse;
 import com.fabbitinc.server.presentation.workitem.dto.response.SyncDiffResponse;
 import com.fabbitinc.server.presentation.workitem.dto.response.TeamBadgeResponse;
+import com.fabbitinc.server.presentation.workitem.dto.response.TimelineDetailResponse;
 import com.fabbitinc.server.presentation.workitem.dto.response.TimelineItemResponse;
 import com.fabbitinc.server.presentation.workitem.dto.response.TimelineItemType;
+import com.fabbitinc.server.presentation.workitem.dto.response.TimelineRefResponse;
 import com.fabbitinc.server.presentation.workitem.dto.response.TimelineResponse;
+import com.fabbitinc.server.presentation.workitem.dto.response.TimelineValueChangeResponse;
 import com.fabbitinc.server.application.issue.query.IssueQuery;
 import com.fabbitinc.server.application.issue.query.condition.IssueDetailCondition;
 import com.fabbitinc.server.application.issue.query.condition.IssueListCondition;
@@ -37,7 +40,10 @@ import com.fabbitinc.server.application.workitem.query.result.FileItemResult;
 import com.fabbitinc.server.application.issue.query.result.IssueListResult;
 import com.fabbitinc.server.application.issue.query.result.IssueLookupResult;
 import com.fabbitinc.server.application.issue.query.result.LinkedEngineeringChangeSummaryResult;
+import com.fabbitinc.server.application.workitem.query.result.TimelineDetailResult;
+import com.fabbitinc.server.application.workitem.query.result.TimelineRefResult;
 import com.fabbitinc.server.application.workitem.query.result.TimelineResult;
+import com.fabbitinc.server.application.workitem.query.result.TimelineValueChangeResult;
 import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 import com.fabbitinc.server.application.issue.query.result.LabelBadgeResult;
 import com.fabbitinc.server.application.issue.query.result.PartBadgeResult;
@@ -490,13 +496,39 @@ public class IssueController {
                 result.action(),
                 result.scope(),
                 toUserSummaryResponse(result.actor()),
-                result.detail(),
+                toTimelineDetailResponse(result.detail()),
                 result.body(),
                 toUserSummaryResponse(result.author()),
                 result.createdAt(),
                 result.updatedAt(),
                 result.isModified()
         );
+    }
+
+    private TimelineDetailResponse toTimelineDetailResponse(TimelineDetailResult result) {
+        if (result == null) {
+            return null;
+        }
+        return new TimelineDetailResponse(
+                result.changes().entrySet().stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                java.util.Map.Entry::getKey,
+                                entry -> toTimelineValueChangeResponse(entry.getValue()),
+                                (left, right) -> right,
+                                java.util.LinkedHashMap::new
+                        )),
+                result.refs().stream().map(this::toTimelineRefResponse).toList(),
+                result.added().stream().map(this::toTimelineRefResponse).toList(),
+                result.removed().stream().map(this::toTimelineRefResponse).toList()
+        );
+    }
+
+    private TimelineValueChangeResponse toTimelineValueChangeResponse(TimelineValueChangeResult result) {
+        return new TimelineValueChangeResponse(result.oldValue(), result.newValue());
+    }
+
+    private TimelineRefResponse toTimelineRefResponse(TimelineRefResult result) {
+        return new TimelineRefResponse(result.id(), result.type(), result.label(), result.meta());
     }
 
     private TimelineItemType toTimelineItemType(TimelineItemTypeResult result) {

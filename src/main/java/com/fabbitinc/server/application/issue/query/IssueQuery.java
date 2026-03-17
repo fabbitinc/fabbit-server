@@ -16,6 +16,7 @@ import com.fabbitinc.server.application.issue.query.result.LinkedEngineeringChan
 import com.fabbitinc.server.application.workitem.query.result.FileItemResult;
 import com.fabbitinc.server.application.issue.query.result.IssueListResult;
 import com.fabbitinc.server.application.issue.query.result.IssueLookupResult;
+import com.fabbitinc.server.application.workitem.query.TimelineDetailParser;
 import com.fabbitinc.server.application.workitem.query.result.TimelineResult;
 import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 import com.fabbitinc.server.application.issue.query.result.LabelBadgeResult;
@@ -201,7 +202,7 @@ public class IssueQuery {
                     action,
                     action.scope(),
                     users.get(activity.getActorId() == null ? null : activity.getActorId().toString()),
-                    parseJson(activity.getDetail()),
+                    TimelineDetailParser.parse(parseJson(activity.getDetail())),
                     null,
                     null,
                     activity.getCreatedAt(),

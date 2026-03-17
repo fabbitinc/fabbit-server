@@ -19,6 +19,7 @@ import com.fabbitinc.server.application.issue.api.IssueApi;
 import com.fabbitinc.server.application.issue.api.IssueSnapshot;
 import com.fabbitinc.server.application.part.api.EngineeringChangePartRevisionSnapshot;
 import com.fabbitinc.server.application.part.api.PartRevisionWorkflowApi;
+import com.fabbitinc.server.application.workitem.query.TimelineDetailParser;
 import com.fabbitinc.server.application.workitem.query.result.FileItemResult;
 import com.fabbitinc.server.application.workitem.query.result.TeamBadgeResult;
 import com.fabbitinc.server.application.workitem.query.result.TimelineItemTypeResult;
@@ -217,7 +218,7 @@ public class EngineeringChangeQuery {
                     action,
                     action.scope(),
                     users.get(activity.getActorId() == null ? null : activity.getActorId().toString()),
-                    parseJson(activity.getDetail()),
+                    TimelineDetailParser.parse(parseJson(activity.getDetail())),
                     null,
                     null,
                     activity.getCreatedAt(),
