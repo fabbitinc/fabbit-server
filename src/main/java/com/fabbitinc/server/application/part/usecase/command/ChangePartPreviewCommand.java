@@ -4,8 +4,8 @@ import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
 import java.util.UUID;
 
 public record ChangePartPreviewCommand(
-        String partNumber,
-        String revisionCode,
+        UUID partId,
+        UUID revisionId,
         PartPreviewSourceType sourceType,
         UUID sourceId
 ) {

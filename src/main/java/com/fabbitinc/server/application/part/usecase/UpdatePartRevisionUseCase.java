@@ -20,9 +20,8 @@ public class UpdatePartRevisionUseCase {
     public void execute(UpdatePartRevisionCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         partRevisionService.updateDraft(new UpdatePartRevisionInput(
-                command.partNumber(),
-                command.baseRevisionCode(),
-                command.draftKey(),
+                command.partId(),
+                command.revisionId(),
                 command.name(),
                 command.nameSet(),
                 command.material(),

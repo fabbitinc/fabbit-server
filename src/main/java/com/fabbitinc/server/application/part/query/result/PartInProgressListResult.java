@@ -19,7 +19,6 @@ public record PartInProgressListResult(
             String category,
             PartRevisionStatus status,
             String revisionCode,
-            String draftKey,
             String baseRevisionCode,
             PartLifecycleState lifecycleState,
             boolean hasDrawing,

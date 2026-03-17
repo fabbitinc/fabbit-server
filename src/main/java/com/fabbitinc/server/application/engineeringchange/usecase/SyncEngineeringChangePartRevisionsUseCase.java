@@ -29,7 +29,7 @@ public class SyncEngineeringChangePartRevisionsUseCase {
     public SyncDiffResult execute(SyncEngineeringChangePartRevisionsCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         EngineeringChange engineeringChange =
-                engineeringChangeService.getEngineeringChangeByNumberOrThrow(command.engineeringChangeNumber());
+                engineeringChangeService.getEngineeringChangeByIdOrThrow(command.engineeringChangeId());
         if (engineeringChange.getState() != EngineeringChangeState.DRAFT) {
             throw new AppException(
                     ErrorCode.INVALID_STATE,
@@ -39,11 +39,7 @@ public class SyncEngineeringChangePartRevisionsUseCase {
         PartRevisionWorkflowApi.DiffResult diff = partRevisionWorkflowApi.syncEngineeringChangePartRevisions(
                 engineeringChange.getId(),
                 command.items().stream()
-                        .map(item -> new EngineeringChangePartRevisionRef(
-                                item.partNumber(),
-                                item.baseRevisionCode(),
-                                item.draftKey()
-                        ))
+                        .map(item -> new EngineeringChangePartRevisionRef(item.revisionId()))
                         .toList()
         );
         engineeringChangeService.recordEngineeringChangePartRevisionDiffActivity(
@@ -56,7 +52,7 @@ public class SyncEngineeringChangePartRevisionsUseCase {
     }
 
     public record SyncEngineeringChangePartRevisionsCommand(
-            int engineeringChangeNumber,
+            java.util.UUID engineeringChangeId,
             List<Item> items
     ) {
         public SyncEngineeringChangePartRevisionsCommand {
@@ -64,9 +60,7 @@ public class SyncEngineeringChangePartRevisionsUseCase {
         }
 
         public record Item(
-                String partNumber,
-                String baseRevisionCode,
-                String draftKey
+                java.util.UUID revisionId
         ) {
         }
     }

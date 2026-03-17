@@ -26,7 +26,7 @@ public class DashboardController {
     private final DashboardQuery dashboardQuery;
 
     @Operation(
-            summary = "GET /api/v1/dashboard/stats",
+            summary = "Part 총 수, 금주 추가 수, BOM 링크 수, 최근 합성 작업 상태를 조회합니다",
             description = "Part 총 수, 금주 추가 수, BOM 링크 수, 최근 합성 작업 상태를 조회합니다"
     )
     @ApiResponses(value = {

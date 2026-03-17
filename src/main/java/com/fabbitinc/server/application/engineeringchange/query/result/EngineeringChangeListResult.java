@@ -27,8 +27,8 @@ public record EngineeringChangeListResult(
             List<EngineeringChangeStepResult> steps,
             List<FileItemResult> files,
             int commentsCount,
-            Instant mergedAt,
-            UUID mergedBy
+            Instant releasedAt,
+            UserSummaryResult releasedBy
     ) {
     }
 }

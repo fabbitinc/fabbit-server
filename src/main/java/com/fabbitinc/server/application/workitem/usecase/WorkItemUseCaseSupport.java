@@ -6,7 +6,6 @@ import com.fabbitinc.server.domain.workitem.model.AbstractComment;
 import com.fabbitinc.server.application.workitem.usecase.result.CommentResult;
 import com.fabbitinc.server.application.workitem.usecase.result.SyncDiffResult;
 import java.time.Instant;
-import java.util.UUID;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -14,17 +13,6 @@ import tools.jackson.databind.ObjectMapper;
 public final class WorkItemUseCaseSupport {
 
     private WorkItemUseCaseSupport() {
-    }
-
-    public static UUID resolveIssueId(IssueService issueService, int issueNumber) {
-        return issueService.getIssueByNumberOrThrow(issueNumber).getId();
-    }
-
-    public static UUID resolveEngineeringChangeId(
-            EngineeringChangeService engineeringChangeService,
-            int engineeringChangeNumber
-    ) {
-        return engineeringChangeService.getEngineeringChangeByNumberOrThrow(engineeringChangeNumber).getId();
     }
 
     public static CommentResult toCommentResult(AbstractComment comment, ObjectMapper objectMapper) {

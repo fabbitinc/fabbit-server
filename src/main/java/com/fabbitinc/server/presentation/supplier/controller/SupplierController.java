@@ -30,7 +30,7 @@ public class SupplierController {
     private final SupplierQuery supplierQuery;
 
     @Operation(
-            summary = "GET /api/v1/suppliers",
+            summary = "company_name 또는 code로 공급사를 검색해 페이징 목록을 조회합니다",
             description = "company_name 또는 code로 공급사를 검색해 페이징 목록을 조회합니다"
     )
     @ApiResponses(value = {

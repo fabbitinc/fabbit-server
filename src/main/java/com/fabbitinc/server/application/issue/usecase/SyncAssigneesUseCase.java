@@ -22,11 +22,9 @@ public class SyncAssigneesUseCase {
 
     public SyncDiffResult execute(SyncAssigneesCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = WorkItemUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
-
         IssueService.DiffResult diff = issueService.syncAssignees(
                 auth.userId(),
-                issueId,
+                command.issueId(),
                 command.userIds(),
                 true
         );
@@ -34,7 +32,7 @@ public class SyncAssigneesUseCase {
     }
 
     public record SyncAssigneesCommand(
-            int issueNumber,
+            UUID issueId,
             List<UUID> userIds
     ) {
         public SyncAssigneesCommand {

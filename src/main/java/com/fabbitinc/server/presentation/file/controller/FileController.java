@@ -56,7 +56,7 @@ public class FileController {
     private final CompleteFileUseCase completeFileUseCase;
 
     @Operation(
-            summary = "POST /api/v1/files/upload",
+            summary = "단건 파일 업로드를 위한 presigned URL을 발급합니다",
             description = "단건 파일 업로드를 위한 presigned URL을 발급합니다"
     )
     @PostMapping("/upload")
@@ -75,7 +75,7 @@ public class FileController {
     }
 
     @Operation(
-            summary = "POST /api/v1/files/upload/batch",
+            summary = "최대 100건 파일 업로드를 위한 presigned URL을 일괄 발급합니다",
             description = "최대 100건 파일 업로드를 위한 presigned URL을 일괄 발급합니다"
     )
     @PostMapping("/upload/batch")
@@ -98,7 +98,7 @@ public class FileController {
     }
 
     @Operation(
-            summary = "POST /api/v1/files/upload/batch/complete",
+            summary = "배치 업로드 완료를 확인하고 성공/실패 목록을 반환합니다",
             description = "배치 업로드 완료를 확인하고 성공/실패 목록을 반환합니다"
     )
     @PostMapping("/upload/batch/complete")
@@ -112,7 +112,7 @@ public class FileController {
     }
 
     @Operation(
-            summary = "POST /api/v1/files/upload/{fileId}/complete",
+            summary = "단건 업로드 완료를 확인하고 파일 상태를 UPLOADED로 전이합니다",
             description = "단건 업로드 완료를 확인하고 파일 상태를 UPLOADED로 전이합니다"
     )
     @PostMapping("/upload/{fileId}/complete")

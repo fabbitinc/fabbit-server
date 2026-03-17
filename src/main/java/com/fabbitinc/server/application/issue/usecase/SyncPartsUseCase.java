@@ -22,14 +22,12 @@ public class SyncPartsUseCase {
 
     public SyncDiffResult execute(SyncPartsCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = WorkItemUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
-
-        IssueService.DiffResult diff = issueService.syncParts(auth.userId(), issueId, command.partIds(), true);
+        IssueService.DiffResult diff = issueService.syncParts(auth.userId(), command.issueId(), command.partIds(), true);
         return WorkItemUseCaseSupport.toSyncDiffResult(diff);
     }
 
     public record SyncPartsCommand(
-            int issueNumber,
+            UUID issueId,
             List<UUID> partIds
     ) {
         public SyncPartsCommand {

@@ -11,8 +11,6 @@ import com.fabbitinc.server.presentation.part.response.CategoryStatsResponse;
 import com.fabbitinc.server.presentation.part.response.PartAttachmentItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartBomResponse;
 import com.fabbitinc.server.presentation.part.response.PartDetailResponse;
-import com.fabbitinc.server.presentation.part.response.PartDraftLookupItemResponse;
-import com.fabbitinc.server.presentation.part.response.PartDraftLookupResponse;
 import com.fabbitinc.server.presentation.part.response.PartFilesResponse;
 import com.fabbitinc.server.presentation.part.response.PartFilterOptionsResponse;
 import com.fabbitinc.server.presentation.part.response.PartInProgressItemResponse;
@@ -23,9 +21,11 @@ import com.fabbitinc.server.presentation.part.response.PartRevisionDiffFileChang
 import com.fabbitinc.server.presentation.part.response.PartRevisionDiffResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionDiffRevisionResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionDiffSummaryResponse;
-import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryEntryResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryDraftResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionLookupItemResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionLookupResponse;
 import com.fabbitinc.server.presentation.part.response.PartListResponse;
 import com.fabbitinc.server.presentation.part.response.PartLookupItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartLookupResponse;
@@ -44,7 +44,6 @@ import com.fabbitinc.server.application.part.query.result.CategoryLookupResult;
 import com.fabbitinc.server.application.part.query.result.CategoryStatsResult;
 import com.fabbitinc.server.application.part.query.result.PartBomResult;
 import com.fabbitinc.server.application.part.query.result.PartDetailResult;
-import com.fabbitinc.server.application.part.query.result.PartDraftLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartFilesResult;
 import com.fabbitinc.server.application.part.query.result.PartFilterOptionsResult;
 import com.fabbitinc.server.application.part.query.result.PartInProgressListResult;
@@ -57,6 +56,7 @@ import com.fabbitinc.server.application.part.query.result.PartProjectsResult;
 import com.fabbitinc.server.application.part.query.result.PartRevisionDiffResult;
 import com.fabbitinc.server.application.part.query.result.PartRevisionDiffSummaryResult;
 import com.fabbitinc.server.application.part.query.result.PartRevisionHistoryResult;
+import com.fabbitinc.server.application.part.query.result.PartRevisionLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
 import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
 import com.fabbitinc.server.application.part.usecase.result.RegisterPartDrawingResult;
@@ -69,21 +69,21 @@ final class PartResponseMapper {
     static PartLookupResponse toPartLookupResponse(PartLookupResult result) {
         return new PartLookupResponse(
                 result.items().stream()
-                        .map(item -> new PartLookupItemResponse(item.id(), item.partNumber(), item.name()))
+                        .map(item -> new PartLookupItemResponse(item.id(), item.revisionId(), item.partNumber(), item.name()))
                         .toList()
         );
     }
 
-    static PartDraftLookupResponse toPartDraftLookupResponse(PartDraftLookupResult result) {
-        return new PartDraftLookupResponse(
+    static PartRevisionLookupResponse toPartRevisionLookupResponse(PartRevisionLookupResult result) {
+        return new PartRevisionLookupResponse(
                 result.items().stream()
-                        .map(item -> new PartDraftLookupItemResponse(
+                        .map(item -> new PartRevisionLookupItemResponse(
                                 item.revisionId(),
                                 item.partId(),
                                 item.partNumber(),
                                 item.baseRevisionCode(),
-                                item.draftKey(),
                                 item.name(),
+                                item.status(),
                                 toPartUserSummaryResponse(item.createdBy())
                         ))
                         .toList()
@@ -113,10 +113,12 @@ final class PartResponseMapper {
                 result.items().stream()
                         .map(item -> new PartSummaryResponse(
                                 item.id(),
+                                item.revisionId(),
                                 item.partNumber(),
                                 item.name(),
                                 item.category(),
                                 item.revisionCode(),
+                                item.revisionStatus(),
                                 item.lifecycleState(),
                                 item.hasDrawing(),
                                 item.childrenCount()
@@ -138,7 +140,6 @@ final class PartResponseMapper {
                                 item.category(),
                                 item.status(),
                                 item.revisionCode(),
-                                item.draftKey(),
                                 item.baseRevisionCode(),
                                 item.lifecycleState(),
                                 item.hasDrawing(),
@@ -153,10 +154,12 @@ final class PartResponseMapper {
         return new PartDetailResponse(
                 result.id(),
                 result.revisionId(),
+                result.revisionStatus(),
                 result.partNumber(),
+                result.baseRevisionId(),
+                result.baseRevisionCode(),
                 result.name(),
                 result.revision(),
-                result.draftKey(),
                 result.material(),
                 result.unit(),
                 result.description(),
@@ -167,7 +170,6 @@ final class PartResponseMapper {
                 result.extendedProperties(),
                 toPartPreviewResponse(result.preview()),
                 result.draftCount(),
-                result.inReviewCount(),
                 result.childrenCount(),
                 result.parentsCount(),
                 result.suppliersCount(),
@@ -184,15 +186,20 @@ final class PartResponseMapper {
                                 item.revisionCode(),
                                 item.status(),
                                 item.name(),
-                                item.createdAt(),
-                                toPartUserSummaryResponse(item.createdBy()),
+                                item.releasedAt(),
+                                toPartUserSummaryResponse(item.releasedBy()),
                                 toPartRevisionDiffSummaryResponse(item.summary()),
-                                item.entries().stream()
-                                        .map(entry -> new PartRevisionHistoryEntryResponse(
-                                                entry.actionType(),
-                                                entry.occurredAt(),
-                                                toPartUserSummaryResponse(entry.actor()),
-                                                entry.reason()
+                                item.drafts().stream()
+                                        .map(draft -> new PartRevisionHistoryDraftResponse(
+                                                draft.revisionId(),
+                                                draft.name(),
+                                                draft.status(),
+                                                draft.createdAt(),
+                                                toPartUserSummaryResponse(draft.createdBy()),
+                                                draft.completedAt(),
+                                                toPartUserSummaryResponse(draft.completedBy()),
+                                                draft.releasedRevisionCode(),
+                                                draft.reason()
                                         ))
                                         .toList()
                         ))
@@ -240,10 +247,12 @@ final class PartResponseMapper {
         return new PartBomResponse(
                 result.children().stream()
                         .map(item -> new BomChildResponse(
-                                item.id(),
+                                item.partId(),
+                                item.revisionId(),
                                 item.partNumber(),
                                 item.name(),
                                 item.revisionCode(),
+                                item.revisionStatus(),
                                 item.lineNumber(),
                                 item.quantity(),
                                 item.extendedProperties()
@@ -251,10 +260,12 @@ final class PartResponseMapper {
                         .toList(),
                 result.parents().stream()
                         .map(item -> new BomParentResponse(
-                                item.id(),
+                                item.partId(),
+                                item.revisionId(),
                                 item.partNumber(),
                                 item.name(),
                                 item.revisionCode(),
+                                item.revisionStatus(),
                                 item.lineNumber(),
                                 item.quantity(),
                                 item.extendedProperties()
@@ -273,10 +284,12 @@ final class PartResponseMapper {
 
     private static BomTreeNodeResponse toBomTreeNodeResponse(BomTreeResult.Node node) {
         return new BomTreeNodeResponse(
-                node.id(),
+                node.partId(),
+                node.revisionId(),
                 node.partNumber(),
                 node.name(),
-                node.revision(),
+                node.revisionCode(),
+                node.revisionStatus(),
                 node.material(),
                 node.unit(),
                 node.category(),
@@ -393,6 +406,8 @@ final class PartResponseMapper {
 
     static PartPreviewProcessingResponse toPartPreviewProcessingResponse(PartPreviewProcessingResult result) {
         return new PartPreviewProcessingResponse(
+                result.sourceType(),
+                result.sourceId(),
                 result.status(),
                 result.failureCode(),
                 result.failureMessage(),

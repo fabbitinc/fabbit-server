@@ -48,7 +48,6 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -94,12 +93,7 @@ public class EngineeringChangeService {
     private final MentionExtractor mentionExtractor;
     private final ObjectMapper objectMapper;
 
-    public EngineeringChange getEngineeringChangeByNumberOrThrow(int engineeringChangeNumber) {
-        return engineeringChangeRepository.findByNumber(engineeringChangeNumber)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "변경관리를 찾을 수 없습니다"));
-    }
-
-    public EngineeringChange getEngineeringChangeOrThrow(UUID engineeringChangeId) {
+    public EngineeringChange getEngineeringChangeByIdOrThrow(UUID engineeringChangeId) {
         return engineeringChangeRepository.findById(engineeringChangeId)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
@@ -107,12 +101,13 @@ public class EngineeringChangeService {
                 ));
     }
 
-    public EngineeringChange createEngineeringChange(UUID actorId, String title, JsonNode body) {
+    public EngineeringChange createEngineeringChange(UUID actorId, String title, JsonNode body, UUID sourceIssueId) {
         tipTapValidator.validateDocument(body);
         EngineeringChange engineeringChange = EngineeringChange.create(
                 allocateWorkItemNumber(),
                 title,
                 toBodyString(body),
+                sourceIssueId,
                 actorId
         );
         engineeringChangeRepository.save(engineeringChange);
@@ -336,7 +331,7 @@ public class EngineeringChangeService {
     }
 
     public DiffResult syncIssues(UUID actorId, UUID engineeringChangeId, List<UUID> issueIds, boolean emitActivity) {
-        assertDraftEditable(getEngineeringChangeOrThrow(engineeringChangeId));
+        assertDraftEditable(getEngineeringChangeByIdOrThrow(engineeringChangeId));
         issueApi.validateIssueIds(issueIds);
 
         Set<UUID> current = engineeringChangeIssueRepository.findByEngineeringChangeId(engineeringChangeId).stream()
@@ -354,14 +349,14 @@ public class EngineeringChangeService {
             engineeringChangeIssueRepository.deleteByEngineeringChangeIdAndIssueIdIn(engineeringChangeId, toRemove);
         }
         if (!toAdd.isEmpty()) {
-            EngineeringChange engineeringChange = getEngineeringChangeOrThrow(engineeringChangeId);
+            EngineeringChange engineeringChange = getEngineeringChangeByIdOrThrow(engineeringChangeId);
             engineeringChangeIssueRepository.saveAll(toAdd.stream()
                     .map(engineeringChange::linkIssue)
                     .toList());
         }
 
         if (emitActivity && (!toAdd.isEmpty() || !toRemove.isEmpty())) {
-            EngineeringChange engineeringChange = getEngineeringChangeOrThrow(engineeringChangeId);
+            EngineeringChange engineeringChange = getEngineeringChangeByIdOrThrow(engineeringChangeId);
             Map<UUID, IssueSnapshot> issues = issueApi.getIssueSnapshotMap(Set.copyOf(union(toAdd, toRemove)));
 
             addDiffActivity(
@@ -417,7 +412,7 @@ public class EngineeringChangeService {
     public AbstractComment createComment(UUID actorId, UUID engineeringChangeId, JsonNode body) {
         tipTapValidator.validateDocument(body);
         MentionSource source = getMentionSourceOrThrow(engineeringChangeId);
-        EngineeringChange engineeringChange = getEngineeringChangeOrThrow(engineeringChangeId);
+        EngineeringChange engineeringChange = getEngineeringChangeByIdOrThrow(engineeringChangeId);
         EngineeringChangeComment comment = engineeringChange.writeComment(toBodyString(body), actorId);
         engineeringChangeCommentRepository.save(comment);
 
@@ -470,7 +465,7 @@ public class EngineeringChangeService {
     }
 
     public List<File> attachFiles(UUID actorId, UUID engineeringChangeId, List<File> files, boolean emitActivity) {
-        assertDraftEditable(getEngineeringChangeOrThrow(engineeringChangeId));
+        assertDraftEditable(getEngineeringChangeByIdOrThrow(engineeringChangeId));
         if (files.isEmpty()) {
             return List.of();
         }
@@ -496,7 +491,7 @@ public class EngineeringChangeService {
     }
 
     public void detachFile(UUID actorId, UUID engineeringChangeId, UUID fileId) {
-        getEngineeringChangeOrThrow(engineeringChangeId);
+        getEngineeringChangeByIdOrThrow(engineeringChangeId);
 
         File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(
                         fileId,
@@ -534,17 +529,12 @@ public class EngineeringChangeService {
                 .orElse(1);
         int nextNumber = Math.max(nextIssueNumber, nextEngineeringChangeNumber);
 
-        try {
-            return workItemNumberSequenceRepository.saveAndFlush(
-                    WorkItemNumberSequence.initialize(WORK_ITEM_NUMBER_SEQUENCE_ID, nextNumber)
-            );
-        } catch (DataIntegrityViolationException ex) {
-            return workItemNumberSequenceRepository.findByIdForUpdate(WORK_ITEM_NUMBER_SEQUENCE_ID)
-                    .orElseThrow(() -> new AppException(
-                            ErrorCode.INTERNAL_SERVER_ERROR,
-                            "워크아이템 번호 시퀀스를 초기화할 수 없습니다"
-                    ));
-        }
+        workItemNumberSequenceRepository.insertIfAbsent(WORK_ITEM_NUMBER_SEQUENCE_ID, nextNumber);
+        return workItemNumberSequenceRepository.findByIdForUpdate(WORK_ITEM_NUMBER_SEQUENCE_ID)
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.INTERNAL_SERVER_ERROR,
+                        "워크아이템 번호 시퀀스를 초기화할 수 없습니다"
+                ));
     }
 
     private void addStateActivity(UUID targetId, UUID actorId, ActivityAction action, String oldState, String newState) {
@@ -962,11 +952,10 @@ public class EngineeringChangeService {
         Map<String, Object> ref = new LinkedHashMap<>();
         ref.put("id", snapshot.revisionId().toString());
         ref.put("type", "part_revision");
-        ref.put("label", snapshot.partNumber() + " / draft " + snapshot.draftKey());
+        ref.put("label", snapshot.partNumber() + " / " + snapshot.status());
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("part_number", snapshot.partNumber());
         meta.put("base_revision_code", snapshot.baseRevisionCode());
-        meta.put("draft_key", snapshot.draftKey());
         meta.put("status", snapshot.status());
         ref.put("meta", meta);
         return ref;

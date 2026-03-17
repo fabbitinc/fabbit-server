@@ -68,12 +68,12 @@ class OpenApiModelResolverConfigTest {
                 .containsKey("issue_ids")
                 .doesNotContainKey("issueIds");
         assertThat(openApi.getComponents().getSchemas().get("CreateEngineeringChangeRequest").getProperties())
-                .containsKey("source_issue_number")
-                .doesNotContainKey("sourceIssueNumber");
+                .containsKey("source_issue_id")
+                .doesNotContainKey("sourceIssueId");
         assertThat(openApi.getComponents().getSchemas().get("CommentResponse").getProperties())
-                .containsKey("issue_id")
+                .containsKey("target_id")
                 .containsKey("is_modified")
-                .doesNotContainKey("issueId");
+                .doesNotContainKey("targetId");
     }
 
     @Test

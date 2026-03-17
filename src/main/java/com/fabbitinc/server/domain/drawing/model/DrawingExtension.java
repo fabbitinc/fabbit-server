@@ -3,12 +3,13 @@ package com.fabbitinc.server.domain.drawing.model;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Optional;
+
 import lombok.Getter;
 
 @Getter
 public enum DrawingExtension {
     // 도면
-    // DWG("dwg", DrawingSourceType.CAD_2D, DrawingDimension.TWO_D, false),
+    DWG("dwg", DrawingSourceType.CAD_2D, DrawingDimension.TWO_D, false),
     DXF("dxf", DrawingSourceType.CAD_2D, DrawingDimension.TWO_D, true),
     PDF("pdf", DrawingSourceType.PDF_DOCUMENT, DrawingDimension.TWO_D, true),
     // 이미지
@@ -20,8 +21,8 @@ public enum DrawingExtension {
     TIFF("tiff", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true),
     WEBP("webp", DrawingSourceType.RASTER_IMAGE, DrawingDimension.TWO_D, true),
     // 3D
-    // SLDPRT("sldprt", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, false),
-    // SLDASM("sldasm", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, false),
+    SLDPRT("sldprt", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, false),
+    SLDASM("sldasm", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, false),
     STEP("step", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
     STP("stp", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
     IGES("iges", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
@@ -35,10 +36,10 @@ public enum DrawingExtension {
     GLB("glb", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true),
     GLTF("gltf", DrawingSourceType.CAD_3D, DrawingDimension.THREE_D, true);
 
-    private final String format;
+    private final String            format;
     private final DrawingSourceType sourceType;
-    private final DrawingDimension dimension;
-    private final boolean canStartPipelineDirectly;
+    private final DrawingDimension  dimension;
+    private final boolean           canStartPipelineDirectly;
 
     DrawingExtension(
             String format,
@@ -66,8 +67,8 @@ public enum DrawingExtension {
             return Optional.empty();
         }
         return Arrays.stream(values())
-                .filter(extension -> extension.format.equals(normalized))
-                .findFirst();
+                     .filter(extension -> extension.format.equals(normalized))
+                     .findFirst();
     }
 
     private static String extractFormat(String fileName) {

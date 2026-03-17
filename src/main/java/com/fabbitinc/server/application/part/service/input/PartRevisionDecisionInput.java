@@ -1,9 +1,10 @@
 package com.fabbitinc.server.application.part.service.input;
 
+import java.util.UUID;
+
 public record PartRevisionDecisionInput(
-        String partNumber,
-        String baseRevisionCode,
-        String draftKey,
+        UUID partId,
+        UUID revisionId,
         String reason
 ) {
 }

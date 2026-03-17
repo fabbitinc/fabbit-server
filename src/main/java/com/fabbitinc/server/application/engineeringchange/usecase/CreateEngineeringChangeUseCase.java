@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.engineeringchange.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
-import com.fabbitinc.server.application.issue.api.IssueApi;
 import com.fabbitinc.server.application.file.service.FileService;
 import com.fabbitinc.server.application.engineeringchange.service.EngineeringChangeService;
 import com.fabbitinc.server.application.part.api.EngineeringChangePartRevisionRef;
@@ -24,7 +23,6 @@ public class CreateEngineeringChangeUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final FileService fileService;
-    private final IssueApi issueApi;
     private final EngineeringChangeService engineeringChangeService;
     private final PartRevisionWorkflowApi partRevisionWorkflowApi;
 
@@ -32,13 +30,13 @@ public class CreateEngineeringChangeUseCase {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
 
         EngineeringChange engineeringChange =
-                engineeringChangeService.createEngineeringChange(auth.userId(), command.title(), command.body());
+                engineeringChangeService.createEngineeringChange(auth.userId(), command.title(), command.body(), command.sourceIssueId());
 
-        if (command.sourceIssueNumber() != null) {
+        if (command.sourceIssueId() != null) {
             engineeringChangeService.syncIssues(
                     auth.userId(),
                     engineeringChange.getId(),
-                    java.util.List.of(issueApi.getIssueIdByNumberOrThrow(command.sourceIssueNumber())),
+                    java.util.List.of(command.sourceIssueId()),
                     false
             );
         }
@@ -46,11 +44,7 @@ public class CreateEngineeringChangeUseCase {
             partRevisionWorkflowApi.syncEngineeringChangePartRevisions(
                     engineeringChange.getId(),
                     command.partRevisions().stream()
-                            .map(item -> new EngineeringChangePartRevisionRef(
-                                    item.partNumber(),
-                                    item.baseRevisionCode(),
-                                    item.draftKey()
-                            ))
+                            .map(item -> new EngineeringChangePartRevisionRef(item.revisionId()))
                             .toList()
             );
         }
@@ -78,13 +72,13 @@ public class CreateEngineeringChangeUseCase {
             );
         }
 
-        return new CreateEngineeringChangeResult(engineeringChange.getNumber());
+        return new CreateEngineeringChangeResult(engineeringChange.getId());
     }
 
     public record CreateEngineeringChangeCommand(
             String title,
             JsonNode body,
-            Integer sourceIssueNumber,
+            UUID sourceIssueId,
             List<PartRevisionTarget> partRevisions,
             List<UUID> fileIds,
             List<StepTarget> steps
@@ -96,9 +90,7 @@ public class CreateEngineeringChangeUseCase {
         }
 
         public record PartRevisionTarget(
-                String partNumber,
-                String baseRevisionCode,
-                String draftKey
+                UUID revisionId
         ) {
         }
 
@@ -111,6 +103,6 @@ public class CreateEngineeringChangeUseCase {
         }
     }
 
-    public record CreateEngineeringChangeResult(int engineeringChangeNumber) {
+    public record CreateEngineeringChangeResult(UUID engineeringChangeId) {
     }
 }

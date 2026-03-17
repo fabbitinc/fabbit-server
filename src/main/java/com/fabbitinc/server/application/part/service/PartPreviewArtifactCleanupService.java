@@ -2,10 +2,7 @@ package com.fabbitinc.server.application.part.service;
 
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.drawing.model.DrawingArtifactPublication;
-import com.fabbitinc.server.domain.drawing.model.DrawingArtifactType;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
-import com.fabbitinc.server.domain.part.model.PartPreview;
-import com.fabbitinc.server.domain.part.model.PartPreviewArtifact;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,17 +27,17 @@ public class PartPreviewArtifactCleanupService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void cleanupPreviewArtifacts(PartPreview partPreview) {
-        for (PartPreviewArtifact artifact : partPreview.getArtifacts()) {
-            if (artifact.getArtifactType() == DrawingArtifactType.SOURCE_ORIGINAL) {
+    public void cleanupArtifactFiles(List<String> storageKeys) {
+        for (String storageKey : storageKeys) {
+            if (storageKey == null || storageKey.isBlank()) {
                 continue;
             }
-            deleteGeneratedFile(artifact.getStorageKey());
+            deleteGeneratedFile(storageKey);
         }
     }
 
     private void deleteGeneratedFile(String storageKey) {
-        fileRepository.findByFileKeyAndDeletedAtIsNull(storageKey)
+        fileRepository.findByFileKeyAndOwnerTypeAndDeletedAtIsNull(storageKey, PartPreviewArtifactService.OWNER_TYPE)
                 .ifPresent(file -> {
                     long fileSize = file.getFileSize();
                     file.softDelete(null);

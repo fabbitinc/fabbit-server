@@ -47,14 +47,8 @@ public class DrawingService {
 
         Drawing drawing = Drawing.create(null, file.getOriginalName());
         drawing.assignPartRevision(partRevisionId);
-        drawing.registerSourceFile(
-                file.getId(),
-                sourceDescriptor.dimension(),
-                file.getFileKey(),
-                file.getContentType(),
-                file.getFileSize()
-        );
         drawing.assignSourceFile(file.getId(), sourceDescriptor.sourceType(), sourceDescriptor.dimension());
+        drawing.changeOriginalFileKey(file.getFileKey());
 
         drawingRepository.save(drawing);
         attachFileToDrawing(file, drawing.getId());
@@ -66,6 +60,14 @@ public class DrawingService {
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "도면을 찾을 수 없습니다"));
 
         Set<String> keys = new LinkedHashSet<>();
+        if (drawing.getSourceFileId() != null) {
+            fileRepository.findByIdAndDeletedAtIsNull(drawing.getSourceFileId())
+                    .map(File::getFileKey)
+                    .ifPresent(keys::add);
+        }
+        if (keys.isEmpty() && drawing.getOriginalFileKey() != null && !drawing.getOriginalFileKey().isBlank()) {
+            keys.add(drawing.getOriginalFileKey());
+        }
         drawing.getArtifacts().forEach(artifact -> keys.add(artifact.getStorageKey()));
         keys.forEach(this::softDeleteFileByKey);
         drawing.softDelete(actorId);

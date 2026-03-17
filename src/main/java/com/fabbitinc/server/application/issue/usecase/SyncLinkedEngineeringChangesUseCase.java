@@ -19,13 +19,12 @@ public class SyncLinkedEngineeringChangesUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final IssueService issueService;
+
     public SyncDiffResult execute(SyncLinkedEngineeringChangesCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = issueService.getIssueByNumberOrThrow(command.issueNumber()).getId();
-
         IssueService.DiffResult diff = issueService.syncLinkedEngineeringChanges(
                 auth.userId(),
-                issueId,
+                command.issueId(),
                 command.engineeringChangeIds(),
                 true
         );
@@ -33,7 +32,7 @@ public class SyncLinkedEngineeringChangesUseCase {
     }
 
     public record SyncLinkedEngineeringChangesCommand(
-            int issueNumber,
+            UUID issueId,
             List<UUID> engineeringChangeIds
     ) {
         public SyncLinkedEngineeringChangesCommand {

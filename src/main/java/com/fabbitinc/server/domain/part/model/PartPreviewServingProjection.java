@@ -18,9 +18,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PartPreviewServingProjection extends AbstractIdEntity {
 
-    @Column(name = "original_key", length = 1000)
-    private String originalKey;
-
     @Column(name = "pdf_key", length = 1000)
     private String pdfKey;
 
@@ -42,8 +39,7 @@ public class PartPreviewServingProjection extends AbstractIdEntity {
         return new PartPreviewServingProjection(partPreviewId);
     }
 
-    public void changeServingKeys(String originalKey, String pdfKey, String glbKey, String webpKey) {
-        this.originalKey = normalizeNullable(originalKey);
+    public void changeServingKeys(String pdfKey, String glbKey, String webpKey) {
         this.pdfKey = normalizeNullable(pdfKey);
         this.glbKey = normalizeNullable(glbKey);
         this.webpKey = normalizeNullable(webpKey);

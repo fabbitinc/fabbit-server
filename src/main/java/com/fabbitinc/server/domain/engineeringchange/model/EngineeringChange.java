@@ -54,6 +54,9 @@ public class EngineeringChange extends AbstractActorAuditableEntity implements A
     @Column(name = "body", columnDefinition = "text")
     private String body;
 
+    @Column(name = "source_issue_id")
+    private UUID sourceIssueId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "state", nullable = false, length = 20)
     private EngineeringChangeState state;
@@ -61,11 +64,11 @@ public class EngineeringChange extends AbstractActorAuditableEntity implements A
     @Column(name = "closed_at")
     private Instant closedAt;
 
-    @Column(name = "merged_at")
-    private Instant mergedAt;
+    @Column(name = "released_at")
+    private Instant releasedAt;
 
-    @Column(name = "merged_by")
-    private UUID mergedBy;
+    @Column(name = "released_by")
+    private UUID releasedBy;
 
     @OneToMany(mappedBy = "engineeringChange", fetch = FetchType.LAZY)
     private List<EngineeringChangeIssueLink> linkedIssues = new ArrayList<>();
@@ -76,17 +79,18 @@ public class EngineeringChange extends AbstractActorAuditableEntity implements A
     @OneToMany(mappedBy = "engineeringChange", fetch = FetchType.LAZY)
     private List<EngineeringChangeComment> comments = new ArrayList<>();
 
-    private EngineeringChange(int number, String title, String body, UUID actorId) {
+    private EngineeringChange(int number, String title, String body, UUID sourceIssueId, UUID actorId) {
         super(UuidV7Generator.next());
         this.number = number;
         this.title = requireTitle(title);
         this.body = body;
+        this.sourceIssueId = sourceIssueId;
         this.state = EngineeringChangeState.DRAFT;
         initializeActor(requireActorId(actorId));
     }
 
-    public static EngineeringChange create(int number, String title, String body, UUID actorId) {
-        return new EngineeringChange(number, title, body, actorId);
+    public static EngineeringChange create(int number, String title, String body, UUID sourceIssueId, UUID actorId) {
+        return new EngineeringChange(number, title, body, sourceIssueId, actorId);
     }
 
     public void updateTitle(String title, UUID actorId) {
@@ -164,8 +168,8 @@ public class EngineeringChange extends AbstractActorAuditableEntity implements A
             }
             this.state = EngineeringChangeState.RELEASED;
             this.closedAt = now;
-            this.mergedAt = now;
-            this.mergedBy = requiredActorId;
+            this.releasedAt = now;
+            this.releasedBy = requiredActorId;
         });
     }
 
@@ -258,11 +262,11 @@ public class EngineeringChange extends AbstractActorAuditableEntity implements A
         return closedAt;
     }
 
-    public Instant getMergedAt() {
-        return mergedAt;
+    public Instant getReleasedAt() {
+        return releasedAt;
     }
 
-    public UUID getMergedBy() {
-        return mergedBy;
+    public UUID getReleasedBy() {
+        return releasedBy;
     }
 }

@@ -20,13 +20,11 @@ public class DeleteCommentUseCase {
 
     public void execute(DeleteCommentCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID targetId = WorkItemUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
-
-        issueService.deleteComment(auth.userId(), targetId, command.commentId());
+        issueService.deleteComment(auth.userId(), command.issueId(), command.commentId());
     }
 
     public record DeleteCommentCommand(
-            int issueNumber,
+            UUID issueId,
             UUID commentId
     ) {
     }

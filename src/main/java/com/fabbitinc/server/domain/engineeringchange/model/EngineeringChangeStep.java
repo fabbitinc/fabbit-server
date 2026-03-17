@@ -120,18 +120,22 @@ public class EngineeringChangeStep extends AbstractCreatedEntity {
         if (status != EngineeringChangeStepStatus.PENDING) {
             throw new DomainException(CODE_ENGINEERING_CHANGE_STEP_INVALID_STATUS, "대기 중인 단계만 승인할 수 있습니다");
         }
+        UUID requiredActorId = requireActorId(actorId);
+        Instant requiredActedAt = requireActedAt(actedAt);
         this.status = EngineeringChangeStepStatus.APPROVED;
-        this.actedBy = requireActorId(actorId);
-        this.actedAt = requireActedAt(actedAt);
+        this.actedBy = requiredActorId;
+        this.actedAt = requiredActedAt;
     }
 
     public void reject(UUID actorId, Instant actedAt) {
         if (status != EngineeringChangeStepStatus.PENDING) {
             throw new DomainException(CODE_ENGINEERING_CHANGE_STEP_INVALID_STATUS, "대기 중인 단계만 반려할 수 있습니다");
         }
+        UUID requiredActorId = requireActorId(actorId);
+        Instant requiredActedAt = requireActedAt(actedAt);
         this.status = EngineeringChangeStepStatus.REJECTED;
-        this.actedBy = requireActorId(actorId);
-        this.actedAt = requireActedAt(actedAt);
+        this.actedBy = requiredActorId;
+        this.actedAt = requiredActedAt;
     }
 
     public void reset() {

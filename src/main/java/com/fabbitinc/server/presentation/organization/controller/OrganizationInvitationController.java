@@ -39,7 +39,7 @@ public class OrganizationInvitationController {
     private final CancelInvitationUseCase cancelInvitationUseCase;
 
     @Operation(
-            summary = "POST /api/v1/organizations/invitations",
+            summary = "관리자(ADMIN 이상)가 이메일로 조직 초대를 발송합니다",
             description = "관리자(ADMIN 이상)가 이메일로 조직 초대를 발송합니다"
     )
     @ApiResponses(value = {
@@ -72,7 +72,7 @@ public class OrganizationInvitationController {
     }
 
     @Operation(
-            summary = "GET /api/v1/organizations/invitations",
+            summary = "관리자(ADMIN 이상)가 조직의 초대 목록(PENDING/ACCEPTED/CANCELLED)을 최신순으로 조회합니다",
             description = "관리자(ADMIN 이상)가 조직의 초대 목록(PENDING/ACCEPTED/CANCELLED)을 최신순으로 조회합니다"
     )
     @ApiResponses(value = {
@@ -103,7 +103,7 @@ public class OrganizationInvitationController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/organizations/invitations/{invitationId}",
+            summary = "관리자(ADMIN 이상)가 PENDING 상태 초대를 취소합니다",
             description = "관리자(ADMIN 이상)가 PENDING 상태 초대를 취소합니다"
     )
     @ApiResponses(value = {

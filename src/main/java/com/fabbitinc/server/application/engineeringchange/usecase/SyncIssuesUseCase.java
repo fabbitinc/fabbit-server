@@ -22,12 +22,9 @@ public class SyncIssuesUseCase {
 
     public SyncDiffResult execute(SyncIssuesCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID engineeringChangeId =
-                engineeringChangeService.getEngineeringChangeByNumberOrThrow(command.engineeringChangeNumber()).getId();
-
         EngineeringChangeService.DiffResult diff = engineeringChangeService.syncIssues(
                 auth.userId(),
-                engineeringChangeId,
+                command.engineeringChangeId(),
                 command.issueIds(),
                 true
         );
@@ -35,7 +32,7 @@ public class SyncIssuesUseCase {
     }
 
     public record SyncIssuesCommand(
-            int engineeringChangeNumber,
+            UUID engineeringChangeId,
             List<UUID> issueIds
     ) {
         public SyncIssuesCommand {

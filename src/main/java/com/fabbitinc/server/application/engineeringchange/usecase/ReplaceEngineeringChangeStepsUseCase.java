@@ -23,7 +23,7 @@ public class ReplaceEngineeringChangeStepsUseCase {
     public void execute(ReplaceEngineeringChangeStepsCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         EngineeringChange engineeringChange =
-                engineeringChangeService.getEngineeringChangeByNumberOrThrow(command.engineeringChangeNumber());
+                engineeringChangeService.getEngineeringChangeByIdOrThrow(command.engineeringChangeId());
         engineeringChangeService.replaceSteps(
                 auth.userId(),
                 engineeringChange,
@@ -40,7 +40,7 @@ public class ReplaceEngineeringChangeStepsUseCase {
     }
 
     public record ReplaceEngineeringChangeStepsCommand(
-            int engineeringChangeNumber,
+            UUID engineeringChangeId,
             List<Item> steps
     ) {
         public ReplaceEngineeringChangeStepsCommand {

@@ -12,9 +12,9 @@ public record PartRevisionHistoryItemResponse(
         String revisionCode,
         PartRevisionStatus status,
         String name,
-        Instant createdAt,
-        PartUserSummaryResponse createdBy,
+        Instant releasedAt,
+        PartUserSummaryResponse releasedBy,
         PartRevisionDiffSummaryResponse summary,
-        List<PartRevisionHistoryEntryResponse> entries
+        List<PartRevisionHistoryDraftResponse> drafts
 ) {
 }

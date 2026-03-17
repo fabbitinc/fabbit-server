@@ -26,7 +26,7 @@ public class CreateEngineeringChangeCommentUseCase {
         return WorkItemUseCaseSupport.toCommentResult(
                 engineeringChangeService.createComment(
                         auth.userId(),
-                        WorkItemUseCaseSupport.resolveEngineeringChangeId(engineeringChangeService, command.engineeringChangeNumber()),
+                        command.engineeringChangeId(),
                         command.body()
                 ),
                 objectMapper
@@ -34,7 +34,7 @@ public class CreateEngineeringChangeCommentUseCase {
     }
 
     public record CreateEngineeringChangeCommentCommand(
-            int engineeringChangeNumber,
+            java.util.UUID engineeringChangeId,
             JsonNode body
     ) {
     }

@@ -65,7 +65,7 @@ public class TeamController {
     private final DeleteTeamUseCase deleteTeamUseCase;
 
     @Operation(
-            summary = "POST /api/v1/teams",
+            summary = "팀을 생성합니다. 생성 직후 팀 상세를 반환합니다",
             description = "팀을 생성합니다. 생성 직후 팀 상세를 반환합니다"
     )
     @PostMapping
@@ -81,7 +81,7 @@ public class TeamController {
     }
 
     @Operation(
-            summary = "GET /api/v1/teams/lookup",
+            summary = "팀 picker/autocomplete용 경량 목록을 조회합니다",
             description = "팀 picker/autocomplete용 경량 목록을 조회합니다"
     )
     @GetMapping("/lookup")
@@ -96,7 +96,7 @@ public class TeamController {
     }
 
     @Operation(
-            summary = "GET /api/v1/teams",
+            summary = "팀 목록을 조회합니다",
             description = "팀 목록을 조회합니다"
     )
     @GetMapping
@@ -105,7 +105,7 @@ public class TeamController {
     }
 
     @Operation(
-            summary = "GET /api/v1/teams/{teamId}",
+            summary = "팀 상세를 조회합니다",
             description = "팀 상세를 조회합니다"
     )
     @GetMapping("/{teamId}")
@@ -117,7 +117,7 @@ public class TeamController {
     }
 
     @Operation(
-            summary = "PATCH /api/v1/teams/{teamId}",
+            summary = "팀 이름/설명을 부분 수정하고 최신 팀 상세를 반환합니다",
             description = "팀 이름/설명을 부분 수정하고 최신 팀 상세를 반환합니다"
     )
     @PatchMapping("/{teamId}")
@@ -134,7 +134,7 @@ public class TeamController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/teams/{teamId}",
+            summary = "팀을 삭제합니다. 팀 멤버 관계도 함께 제거됩니다",
             description = "팀을 삭제합니다. 팀 멤버 관계도 함께 제거됩니다"
     )
     @DeleteMapping("/{teamId}")

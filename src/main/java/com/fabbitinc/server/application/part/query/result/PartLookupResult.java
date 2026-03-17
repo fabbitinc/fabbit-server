@@ -8,6 +8,7 @@ public record PartLookupResult(
 ) {
     public record Item(
             UUID id,
+            UUID revisionId,
             String partNumber,
             String name
     ) {

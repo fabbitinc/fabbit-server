@@ -60,7 +60,6 @@ class PartServiceTest {
 
     assertEquals("P-100", createdDraft.getPartNumber());
     assertEquals(null, createdDraft.getRevisionCode());
-    assertEquals("D1", createdDraft.getDraftKey());
     assertEquals("Bolt", savedRevision.getName());
     assertEquals("FASTENER", savedRevision.getCategory());
     ArgumentCaptor<Part> partCaptor = ArgumentCaptor.forClass(Part.class);
@@ -120,7 +119,6 @@ class PartServiceTest {
     PartRevision savedRevision = revisionCaptor.getValue();
 
     assertEquals(null, createdDraft.getRevisionCode());
-    assertEquals("D1", createdDraft.getDraftKey());
     ArgumentCaptor<Part> partCaptor = ArgumentCaptor.forClass(Part.class);
     verify(partRepository).save(partCaptor.capture());
     Part savedPart = partCaptor.getValue();
@@ -137,17 +135,17 @@ class PartServiceTest {
   @Test
   void attachFiles_파일_총합만큼_스토리지를_소비한다() {
     Part part = Part.create("P-100");
-    PartRevision revision = PartRevision.createInitialDraft(part, "D1", "Part", null);
+    PartRevision revision = PartRevision.createInitialDraft(part, "Part", null);
     File first = createUploadedFile("first.pdf", 200L);
     File second = createUploadedFile("second.pdf", 300L);
-    when(partRevisionRepository.findById(revision.getId())).thenReturn(Optional.of(revision));
+    when(partRevisionRepository.findByIdAndPartId(revision.getId(), part.getId())).thenReturn(Optional.of(revision));
     when(fileRepository.findByIdIn(List.of(first.getId(), second.getId())))
         .thenReturn(List.of(first, second));
 
     PartService service = createService();
 
     List<File> attachedFiles =
-        service.attachFiles(revision.getId(), List.of(first.getId(), second.getId()));
+        service.attachFiles(part.getId(), revision.getId(), List.of(first.getId(), second.getId()));
 
     assertEquals(revision.getId(), first.getOwnerId());
     assertEquals(revision.getId(), second.getOwnerId());
@@ -158,17 +156,17 @@ class PartServiceTest {
   @Test
   void detachFile_파일_크기만큼_스토리지를_반환한다() {
     Part part = Part.create("P-100");
-    PartRevision revision = PartRevision.createInitialDraft(part, "D1", "Part", null);
+    PartRevision revision = PartRevision.createInitialDraft(part, "Part", null);
     File file = createUploadedFile("first.pdf", 200L);
     file.assignOwner("part_revision", revision.getId());
-    when(partRevisionRepository.findById(revision.getId())).thenReturn(Optional.of(revision));
+    when(partRevisionRepository.findByIdAndPartId(revision.getId(), part.getId())).thenReturn(Optional.of(revision));
     when(fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(
             file.getId(), "part_revision", revision.getId()))
         .thenReturn(Optional.of(file));
 
     PartService service = createService();
 
-    service.detachFile(revision.getId(), file.getId(), UUID.randomUUID());
+    service.detachFile(part.getId(), revision.getId(), file.getId(), UUID.randomUUID());
 
     assertNotNull(file.getDeletedAt());
     verify(organizationApi).releaseStorageForCurrentTenant(200L);

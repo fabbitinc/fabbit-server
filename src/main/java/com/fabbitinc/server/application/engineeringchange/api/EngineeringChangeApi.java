@@ -24,12 +24,6 @@ public class EngineeringChangeApi {
     private final EngineeringChangeRepository engineeringChangeRepository;
     private final EngineeringChangeIssueLinkRepository engineeringChangeIssueLinkRepository;
 
-    public UUID getEngineeringChangeIdByNumberOrThrow(int engineeringChangeNumber) {
-        return engineeringChangeRepository.findByNumber(engineeringChangeNumber)
-                .map(EngineeringChange::getId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "변경관리를 찾을 수 없습니다"));
-    }
-
     public boolean existsEngineeringChange(UUID engineeringChangeId) {
         return engineeringChangeRepository.existsById(engineeringChangeId);
     }

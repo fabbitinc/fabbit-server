@@ -154,10 +154,10 @@ public class IssueQuery {
     public IssueDetailResult getIssue(IssueDetailCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        Issue issue = issueRepository.findByNumber(condition.issueNumber())
+        Issue issue = issueRepository.findById(condition.issueId())
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "Issue #" + condition.issueNumber() + "을(를) 찾을 수 없습니다"
+                        "Issue '" + condition.issueId() + "'을(를) 찾을 수 없습니다"
                 ));
 
         Enrichment enrichment = enrichIssues(List.of(issue));
@@ -167,7 +167,7 @@ public class IssueQuery {
     public TimelineResult getTimeline(IssueTimelineCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        Issue issue = issueRepository.findByNumber(condition.issueNumber())
+        Issue issue = issueRepository.findById(condition.issueId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "이슈를 찾을 수 없습니다"));
 
         List<IssueComment> comments = issueCommentRepository.findByIssueIdOrderByCreatedAtAsc(issue.getId());

@@ -165,24 +165,24 @@ public class EngineeringChangeQuery {
     public EngineeringChangeDetailResult getEngineeringChange(EngineeringChangeDetailCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        EngineeringChange engineeringChange = engineeringChangeRepository.findByNumber(condition.engineeringChangeNumber())
+        EngineeringChange engineeringChange = engineeringChangeRepository.findById(condition.engineeringChangeId())
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "EngineeringChange #" + condition.engineeringChangeNumber() + "을(를) 찾을 수 없습니다"
+                        "EngineeringChange '" + condition.engineeringChangeId() + "'을(를) 찾을 수 없습니다"
                 ));
 
         Enrichment enrichment = enrichEngineeringChanges(List.of(engineeringChange));
         return toEngineeringChangeDetail(engineeringChange, enrichment);
     }
 
-    public TimelineResult getTimeline(int engineeringChangeNumber) {
-        return getTimeline(new EngineeringChangeTimelineCondition(engineeringChangeNumber));
+    public TimelineResult getTimeline(UUID engineeringChangeId) {
+        return getTimeline(new EngineeringChangeTimelineCondition(engineeringChangeId));
     }
 
     public TimelineResult getTimeline(EngineeringChangeTimelineCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        EngineeringChange engineeringChange = engineeringChangeRepository.findByNumber(condition.engineeringChangeNumber())
+        EngineeringChange engineeringChange = engineeringChangeRepository.findById(condition.engineeringChangeId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "변경관리를 찾을 수 없습니다"));
 
         List<EngineeringChangeComment> comments =
@@ -248,8 +248,8 @@ public class EngineeringChangeQuery {
             if (engineeringChange.getCreatedBy() != null) {
                 userIds.add(engineeringChange.getCreatedBy());
             }
-            if (engineeringChange.getMergedBy() != null) {
-                userIds.add(engineeringChange.getMergedBy());
+            if (engineeringChange.getReleasedBy() != null) {
+                userIds.add(engineeringChange.getReleasedBy());
             }
         }
         for (EngineeringChangeStep step : steps) {
@@ -293,8 +293,8 @@ public class EngineeringChangeQuery {
                 stepsOf(engineeringChange.getId(), enrichment),
                 filesOf(engineeringChange.getId(), enrichment),
                 enrichment.commentCounts().getOrDefault(engineeringChange.getId(), 0L).intValue(),
-                engineeringChange.getMergedAt(),
-                engineeringChange.getMergedBy()
+                engineeringChange.getReleasedAt(),
+                toUserSummary(enrichment.userMap().get(engineeringChange.getReleasedBy()))
         );
     }
 
@@ -310,12 +310,13 @@ public class EngineeringChangeQuery {
                 engineeringChange.getUpdatedAt(),
                 isModified(engineeringChange.getCreatedAt(), engineeringChange.getUpdatedAt()),
                 toUserSummary(enrichment.userMap().get(engineeringChange.getCreatedBy())),
+                toLinkedIssueSummary(enrichment.linkedIssues().get(engineeringChange.getSourceIssueId())),
                 stepsOf(engineeringChange.getId(), enrichment),
                 partRevisionsOf(engineeringChange.getId()),
                 filesOf(engineeringChange.getId(), enrichment),
                 enrichment.commentCounts().getOrDefault(engineeringChange.getId(), 0L).intValue(),
-                engineeringChange.getMergedAt(),
-                engineeringChange.getMergedBy(),
+                engineeringChange.getReleasedAt(),
+                toUserSummary(enrichment.userMap().get(engineeringChange.getReleasedBy())),
                 linkedIssuesOf(engineeringChange.getId(), enrichment)
         );
     }
@@ -358,7 +359,7 @@ public class EngineeringChangeQuery {
                 snapshot.partId(),
                 snapshot.partNumber(),
                 snapshot.baseRevisionCode(),
-                snapshot.draftKey(),
+                snapshot.revisionCode(),
                 snapshot.name(),
                 snapshot.status()
         );
@@ -374,13 +375,19 @@ public class EngineeringChangeQuery {
     private List<LinkedIssueSummaryResult> linkedIssuesOf(UUID engineeringChangeId, Enrichment enrichment) {
         List<LinkedIssueSummaryResult> result = new ArrayList<>();
         for (EngineeringChangeIssueLink link : enrichment.linksByEngineeringChangeId().getOrDefault(engineeringChangeId, List.of())) {
-            IssueSnapshot issue = enrichment.linkedIssues().get(link.getIssueId());
-            if (issue == null) {
-                continue;
+            LinkedIssueSummaryResult summary = toLinkedIssueSummary(enrichment.linkedIssues().get(link.getIssueId()));
+            if (summary != null) {
+                result.add(summary);
             }
-            result.add(new LinkedIssueSummaryResult(issue.id(), issue.number(), issue.title(), issue.state()));
         }
         return result;
+    }
+
+    private LinkedIssueSummaryResult toLinkedIssueSummary(IssueSnapshot issue) {
+        if (issue == null) {
+            return null;
+        }
+        return new LinkedIssueSummaryResult(issue.id(), issue.number(), issue.title(), issue.state());
     }
 
     private Set<UUID> collectTimelineUserIds(List<? extends AbstractComment> comments, List<Activity> histories) {

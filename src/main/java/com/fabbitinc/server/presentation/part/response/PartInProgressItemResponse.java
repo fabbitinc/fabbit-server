@@ -22,8 +22,6 @@ public record PartInProgressItemResponse(
         PartRevisionStatus status,
         @Schema(description = "공식 리비전 코드")
         String revisionCode,
-        @Schema(description = "초안 키")
-        String draftKey,
         @Schema(description = "기준 리비전 코드")
         String baseRevisionCode,
         @Schema(description = "라이프사이클 상태")

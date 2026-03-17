@@ -47,7 +47,7 @@ public class ActivationController {
     private final ActivationQuery activationQuery;
 
     @Operation(
-            summary = "POST /api/v1/activation/health-check",
+            summary = "그래프/관계 데이터 상태를 점검하여 이슈를 반환합니다",
             description = "그래프/관계 데이터 상태를 점검하여 이슈를 반환합니다"
     )
     @ApiResponses(value = {
@@ -64,7 +64,7 @@ public class ActivationController {
     }
 
     @Operation(
-            summary = "POST /api/v1/activation/query",
+            summary = "자연어 질문을 실행해 탐색 결과와 요약 답변을 반환합니다",
             description = "자연어 질문을 실행해 탐색 결과와 요약 답변을 반환합니다"
     )
     @ApiResponses(value = {
@@ -83,7 +83,7 @@ public class ActivationController {
     }
 
     @Operation(
-            summary = "GET /api/v1/activation/starters",
+            summary = "초기 탐색용 추천 질문 목록을 조회합니다",
             description = "초기 탐색용 추천 질문 목록을 조회합니다"
     )
     @ApiResponses(value = {

@@ -83,23 +83,10 @@ public class PartPreview extends AbstractCreatedEntity implements AggregateRoot 
         this.dimension = requireDimension(dimension);
         this.currentJobId = null;
         this.processingStatus = PartPreviewProcessingStatus.PENDING;
-        artifacts.clear();
     }
 
-    public void registerSourceFile(
-            UUID sourceFileId,
-            String storageKey,
-            String contentType,
-            long fileSize
-    ) {
-        upsertArtifact(
-                DrawingArtifactType.SOURCE_ORIGINAL,
-                sourceFileId,
-                detectFormat(storageKey),
-                storageKey,
-                normalizeNullable(contentType),
-                Math.max(fileSize, 0L)
-        );
+    public void clearArtifacts() {
+        artifacts.clear();
     }
 
     public void clearSource() {
@@ -182,10 +169,6 @@ public class PartPreview extends AbstractCreatedEntity implements AggregateRoot 
         return List.copyOf(previewFiles);
     }
 
-    public String getOriginalFileKey() {
-        return findArtifactKey(DrawingArtifactType.SOURCE_ORIGINAL);
-    }
-
     public String getPdfKey() {
         return findArtifactKey(DrawingArtifactType.DERIVED_PDF);
     }
@@ -252,17 +235,6 @@ public class PartPreview extends AbstractCreatedEntity implements AggregateRoot 
     private String findArtifactKey(DrawingArtifactType artifactType) {
         PartPreviewArtifact artifact = findArtifact(artifactType);
         return artifact == null ? null : artifact.getStorageKey();
-    }
-
-    private String detectFormat(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        int idx = value.lastIndexOf('.');
-        if (idx < 0 || idx >= value.length() - 1) {
-            return null;
-        }
-        return value.substring(idx + 1).trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     private String normalizeNullable(String value) {

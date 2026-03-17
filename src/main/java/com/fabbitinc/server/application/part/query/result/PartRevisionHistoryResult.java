@@ -1,31 +1,35 @@
 package com.fabbitinc.server.application.part.query.result;
 
-import com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 public record PartRevisionHistoryResult(
-        List<Item> items
+        List<Card> items
 ) {
 
-    public record Item(
+    public record Card(
             UUID revisionId,
             String revisionCode,
             PartRevisionStatus status,
             String name,
-            Instant createdAt,
-            PartUserSummaryResult createdBy,
+            Instant releasedAt,
+            PartUserSummaryResult releasedBy,
             PartRevisionDiffSummaryResult summary,
-            List<Entry> entries
+            List<Draft> drafts
     ) {
     }
 
-    public record Entry(
-            PartRevisionHistoryActionType actionType,
-            Instant occurredAt,
-            PartUserSummaryResult actor,
+    public record Draft(
+            UUID revisionId,
+            String name,
+            PartRevisionStatus status,
+            Instant createdAt,
+            PartUserSummaryResult createdBy,
+            Instant completedAt,
+            PartUserSummaryResult completedBy,
+            String releasedRevisionCode,
             String reason
     ) {
     }

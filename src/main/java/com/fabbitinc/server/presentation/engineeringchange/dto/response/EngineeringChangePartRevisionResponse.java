@@ -14,8 +14,8 @@ public record EngineeringChangePartRevisionResponse(
         String partNumber,
         @Schema(description = "기준 공식 리비전 코드", example = "1")
         String baseRevisionCode,
-        @Schema(description = "초안 키", example = "D1")
-        String draftKey,
+        @Schema(description = "현재 리비전 코드", example = "2")
+        String revisionCode,
         @Schema(description = "초안 이름", example = "메인 하우징")
         String name,
         @Schema(description = "초안 상태", example = "DRAFT")

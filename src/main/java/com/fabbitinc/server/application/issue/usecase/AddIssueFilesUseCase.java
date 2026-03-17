@@ -27,10 +27,8 @@ public class AddIssueFilesUseCase {
 
     public List<AttachedFileResult> execute(AddIssueFilesCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = WorkItemUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
-
         List<File> attachableFiles = fileService.validateAttachable(command.fileIds());
-        List<File> attachedFiles = issueService.attachFiles(auth.userId(), issueId, attachableFiles);
+        List<File> attachedFiles = issueService.attachFiles(auth.userId(), command.issueId(), attachableFiles);
         return attachedFiles.stream()
                 .map(file -> new AttachedFileResult(
                         file.getId(),
@@ -44,7 +42,7 @@ public class AddIssueFilesUseCase {
     }
 
     public record AddIssueFilesCommand(
-            int issueNumber,
+            UUID issueId,
             List<UUID> fileIds
     ) {
         public AddIssueFilesCommand {

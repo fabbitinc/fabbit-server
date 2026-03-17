@@ -1,8 +1,10 @@
 package com.fabbitinc.server.application.part.query.condition;
 
+import java.util.UUID;
+
 public record PartRevisionDiffCondition(
-        String partNumber,
-        String revisionCode,
-        String baseRevisionCode
+        UUID partId,
+        UUID revisionId,
+        UUID baseRevisionId
 ) {
 }

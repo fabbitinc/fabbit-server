@@ -23,16 +23,14 @@ public class CreateCommentUseCase {
 
     public CommentResult execute(CreateCommentCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        java.util.UUID targetId = WorkItemUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
-
         return WorkItemUseCaseSupport.toCommentResult(
-                issueService.createComment(auth.userId(), targetId, command.body()),
+                issueService.createComment(auth.userId(), command.issueId(), command.body()),
                 objectMapper
         );
     }
 
     public record CreateCommentCommand(
-            int issueNumber,
+            java.util.UUID issueId,
             JsonNode body
     ) {
     }

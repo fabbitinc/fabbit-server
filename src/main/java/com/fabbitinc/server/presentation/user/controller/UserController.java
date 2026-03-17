@@ -54,7 +54,7 @@ public class UserController {
     private final DeleteProfileImageUseCase deleteProfileImageUseCase;
 
     @Operation(
-            summary = "GET /api/v1/users/me",
+            summary = "현재 인증된 사용자의 프로필과 소속 조직 목록을 조회합니다",
             description = "현재 인증된 사용자의 프로필과 소속 조직 목록을 조회합니다"
     )
     @ApiResponses(value = {
@@ -73,7 +73,7 @@ public class UserController {
     }
 
     @Operation(
-            summary = "PATCH /api/v1/users/me",
+            summary = "내 프로필을 부분 수정합니다",
             description = "내 프로필을 부분 수정합니다"
     )
     @ApiResponses(value = {
@@ -102,7 +102,7 @@ public class UserController {
     }
 
     @Operation(
-            summary = "PUT /api/v1/users/me/password",
+            summary = "현재 비밀번호를 검증한 후 새 비밀번호로 변경합니다",
             description = "현재 비밀번호를 검증한 후 새 비밀번호로 변경합니다"
     )
     @ApiResponses(value = {
@@ -124,7 +124,7 @@ public class UserController {
     }
 
     @Operation(
-            summary = "PUT /api/v1/users/me/profile-image",
+            summary = "업로드 완료된 파일(file_id)을 사용자 프로필 이미지로 설정합니다",
             description = "업로드 완료된 파일(file_id)을 사용자 프로필 이미지로 설정합니다"
     )
     @ApiResponses(value = {
@@ -146,7 +146,7 @@ public class UserController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/users/me/profile-image",
+            summary = "사용자 프로필 이미지를 제거하고 연결된 파일을 소프트 삭제합니다",
             description = "사용자 프로필 이미지를 제거하고 연결된 파일을 소프트 삭제합니다"
     )
     @ApiResponses(value = {

@@ -65,7 +65,7 @@ public class MappingV2Controller {
     private final MappingV2Query mappingV2Query;
 
     @Operation(
-            summary = "POST /api/v2/mappings/preview",
+            summary = "업로드된 파일을 nodes[] + relations[] 구조의 V2 매핑으로 미리보기합니다",
             description = "업로드된 파일을 nodes[] + relations[] 구조의 V2 매핑으로 미리보기합니다"
     )
     @ApiResponses(value = {
@@ -86,7 +86,7 @@ public class MappingV2Controller {
     }
 
     @Operation(
-            summary = "POST /api/v2/mappings/confirm",
+            summary = "검토된 V2 매핑을 확정하여 새 V2 매핑 레코드(버전 1)를 생성합니다",
             description = "검토된 V2 매핑을 확정하여 새 V2 매핑 레코드(버전 1)를 생성합니다"
     )
     @ApiResponses(value = {
@@ -110,7 +110,7 @@ public class MappingV2Controller {
     }
 
     @Operation(
-            summary = "POST /api/v2/mappings/validate",
+            summary = "V2 매핑을 정규화하고 파일 샘플 데이터 기준으로 오류/경고를 검증합니다",
             description = "V2 매핑을 정규화하고 파일 샘플 데이터 기준으로 오류/경고를 검증합니다"
     )
     @ApiResponses(value = {
@@ -131,7 +131,7 @@ public class MappingV2Controller {
     }
 
     @Operation(
-            summary = "GET /api/v2/mappings",
+            summary = "활성 V2 매핑 목록을 최신순으로 조회합니다",
             description = "활성 V2 매핑 목록을 최신순으로 조회합니다"
     )
     @ApiResponses(value = {
@@ -147,7 +147,7 @@ public class MappingV2Controller {
     }
 
     @Operation(
-            summary = "GET /api/v2/mappings/{mappingId}",
+            summary = "V2 매핑 ID로 최신 리비전을 조회합니다",
             description = "V2 매핑 ID로 최신 리비전을 조회합니다"
     )
     @ApiResponses(value = {
@@ -165,7 +165,7 @@ public class MappingV2Controller {
     }
 
     @Operation(
-            summary = "PUT /api/v2/mappings/{mappingId}",
+            summary = "V2 매핑을 수정하고 새로운 리비전을 생성합니다",
             description = "V2 매핑을 수정하고 새로운 리비전을 생성합니다"
     )
     @ApiResponses(value = {
@@ -191,7 +191,7 @@ public class MappingV2Controller {
     }
 
     @Operation(
-            summary = "DELETE /api/v2/mappings/{mappingId}",
+            summary = "V2 매핑을 비활성화(soft delete)합니다",
             description = "V2 매핑을 비활성화(soft delete)합니다"
     )
     @ApiResponses(value = {

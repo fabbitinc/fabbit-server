@@ -29,7 +29,7 @@ public class AddEngineeringChangeFilesUseCase {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         List<File> attachedFiles = engineeringChangeService.attachFiles(
                 auth.userId(),
-                WorkItemUseCaseSupport.resolveEngineeringChangeId(engineeringChangeService, command.engineeringChangeNumber()),
+                command.engineeringChangeId(),
                 fileService.validateAttachable(command.fileIds())
         );
         return attachedFiles.stream()
@@ -45,7 +45,7 @@ public class AddEngineeringChangeFilesUseCase {
     }
 
     public record AddEngineeringChangeFilesCommand(
-            int engineeringChangeNumber,
+            UUID engineeringChangeId,
             List<UUID> fileIds
     ) {
         public AddEngineeringChangeFilesCommand {

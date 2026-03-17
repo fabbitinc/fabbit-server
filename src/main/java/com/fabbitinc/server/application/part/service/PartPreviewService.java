@@ -14,15 +14,21 @@ import com.fabbitinc.server.domain.part.model.PartPreview;
 import com.fabbitinc.server.domain.part.model.PartPreviewFile;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
+import com.fabbitinc.server.domain.part.repository.PartPreviewFileRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
+import com.fabbitinc.server.domain.drawing.model.DrawingArtifactType;
 import java.util.UUID;
+import java.util.List;
+import java.util.LinkedHashSet;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PartPreviewService {
@@ -31,12 +37,14 @@ public class PartPreviewService {
 
     private final PartRevisionRepository partRevisionRepository;
     private final PartPreviewRepository partPreviewRepository;
+    private final PartPreviewFileRepository partPreviewFileRepository;
     private final DrawingRepository drawingRepository;
     private final FileRepository fileRepository;
     private final OrganizationApi organizationApi;
     private final PartPreviewArtifactService partPreviewArtifactService;
     private final PartPreviewArtifactCleanupService partPreviewArtifactCleanupService;
     private final PartPreviewAsyncConversionService partPreviewAsyncConversionService;
+    private final PartPreviewServingProjectionService partPreviewServingProjectionService;
     private final DrawingSourceClassifier drawingSourceClassifier;
 
     public PartPreview changeSource(UUID partRevisionId, PartPreviewSourceType sourceType, UUID sourceId) {
@@ -58,11 +66,11 @@ public class PartPreviewService {
 
         PartPreviewFile previewFile = partPreview.addPreviewFile(file.getId());
         file.assignOwner(OWNER_TYPE_PREVIEW_FILE, previewFile.getId());
+        PartPreview updatedPreview = changeSource(partPreview, revision, PartPreviewSourceType.PREVIEW_FILE, previewFile.getId());
         if (file.getFileSize() > 0L) {
             organizationApi.consumeStorageForCurrentTenant(file.getFileSize());
         }
-
-        return changeSource(partPreview, revision, PartPreviewSourceType.PREVIEW_FILE, previewFile.getId());
+        return updatedPreview;
     }
 
     private PartPreview changeSource(
@@ -72,16 +80,12 @@ public class PartPreviewService {
             UUID sourceId
     ) {
         ResolvedSource resolvedSource = resolveSource(partPreview, revision, sourceType, sourceId);
-        partPreviewArtifactCleanupService.cleanupPreviewArtifacts(partPreview);
+        List<String> generatedArtifactKeys = collectGeneratedArtifactKeys(partPreview);
+        partPreview.clearArtifacts();
         partPreview.replaceSource(sourceType, sourceId, resolvedSource.sourceDescriptor().dimension());
-        partPreview.registerSourceFile(
-                resolvedSource.file().getId(),
-                resolvedSource.file().getFileKey(),
-                resolvedSource.file().getContentType(),
-                resolvedSource.file().getFileSize()
-        );
         partPreviewRepository.save(partPreview);
-        dispatchAfterCommit(partPreview.getId());
+        partPreviewServingProjectionService.upsert(partPreview);
+        dispatchAfterCommit(partPreview.getId(), generatedArtifactKeys);
         return partPreview;
     }
 
@@ -90,9 +94,11 @@ public class PartPreviewService {
         if (partPreview == null || !partPreview.hasSource()) {
             return;
         }
-        partPreviewArtifactCleanupService.cleanupPreviewArtifacts(partPreview);
+        List<String> generatedArtifactKeys = collectGeneratedArtifactKeys(partPreview);
         partPreview.clearSource();
         partPreviewRepository.save(partPreview);
+        partPreviewServingProjectionService.upsert(partPreview);
+        dispatchCleanupAfterCommit(generatedArtifactKeys);
     }
 
     public void clearByDrawing(UUID drawingId) {
@@ -104,9 +110,7 @@ public class PartPreviewService {
         PartPreview partPreview = partPreviewRepository.findByPartRevisionId(partRevisionId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "대표 미리보기를 찾을 수 없습니다"));
 
-        PartPreviewFile previewFile = partPreview.getPreviewFiles().stream()
-                .filter(it -> it.getId().equals(previewFileId))
-                .findFirst()
+        PartPreviewFile previewFile = partPreviewFileRepository.findByIdAndPartPreview_Id(previewFileId, partPreview.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "미리보기 전용 파일을 찾을 수 없습니다"));
         File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(
                         previewFile.getFileId(),
@@ -132,9 +136,11 @@ public class PartPreviewService {
         if (!partPreview.hasSource()) {
             return;
         }
-        partPreviewArtifactCleanupService.cleanupPreviewArtifacts(partPreview);
+        List<String> generatedArtifactKeys = collectGeneratedArtifactKeys(partPreview);
         partPreview.clearSource();
         partPreviewRepository.save(partPreview);
+        partPreviewServingProjectionService.upsert(partPreview);
+        dispatchCleanupAfterCommit(generatedArtifactKeys);
     }
 
     private PartRevision getRequiredRevision(UUID partRevisionId) {
@@ -174,8 +180,9 @@ public class PartPreviewService {
 
         if (sourceType == PartPreviewSourceType.PREVIEW_FILE) {
             PartPreviewFile previewFile = partPreview.getPreviewFiles().stream()
-                    .filter(it -> it.getId().equals(sourceId))
+                    .filter(file -> file.getId().equals(sourceId))
                     .findFirst()
+                    .or(() -> partPreviewFileRepository.findByIdAndPartPreview_Id(sourceId, partPreview.getId()))
                     .orElseThrow(() -> new AppException(
                             ErrorCode.NOT_FOUND,
                             "대표 미리보기 전용 파일 '" + sourceId + "'을(를) 찾을 수 없습니다"
@@ -217,9 +224,76 @@ public class PartPreviewService {
         return sourceDescriptor;
     }
 
-    private void dispatchAfterCommit(UUID partPreviewId) {
+    private List<String> collectGeneratedArtifactKeys(PartPreview partPreview) {
+        List<UUID> artifactFileIds = partPreview.getArtifacts().stream()
+                .map(artifact -> artifact.getFileId())
+                .filter(fileId -> fileId != null)
+                .distinct()
+                .toList();
+        if (artifactFileIds.isEmpty()) {
+            return List.of();
+        }
+
+        return fileRepository.findByIdIn(artifactFileIds).stream()
+                .filter(file -> file.getDeletedAt() == null)
+                .filter(file -> PartPreviewArtifactService.OWNER_TYPE.equals(file.getOwnerType()))
+                .filter(file -> partPreview.getId().equals(file.getOwnerId()))
+                .map(File::getFileKey)
+                .filter(storageKey -> storageKey != null && !storageKey.isBlank())
+                .collect(java.util.stream.Collectors.collectingAndThen(
+                        java.util.stream.Collectors.toCollection(LinkedHashSet::new),
+                        List::copyOf
+                ));
+    }
+
+    private void dispatchAfterCommit(UUID partPreviewId, List<String> generatedArtifactKeys) {
         String schemaName = TenantContextHolder.getCurrentSchema();
-        Runnable dispatch = () -> partPreviewAsyncConversionService.convertPartPreviewAsync(partPreviewId, schemaName);
+        Runnable dispatch = () -> {
+            try {
+                partPreviewArtifactCleanupService.cleanupArtifactFiles(generatedArtifactKeys);
+            } catch (Exception ex) {
+                log.error(
+                        "event=part_preview_cleanup_after_commit_failed part_preview_id={} generated_artifact_count={} reason={}",
+                        partPreviewId,
+                        generatedArtifactKeys.size(),
+                        ex.getMessage(),
+                        ex
+                );
+            }
+            log.info(
+                    "event=part_preview_conversion_dispatched part_preview_id={} generated_artifact_count={}",
+                    partPreviewId,
+                    generatedArtifactKeys.size()
+            );
+            partPreviewAsyncConversionService.convertPartPreviewAsync(partPreviewId, schemaName);
+        };
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    dispatch.run();
+                }
+            });
+            return;
+        }
+
+        dispatch.run();
+    }
+
+    private void dispatchCleanupAfterCommit(List<String> generatedArtifactKeys) {
+        Runnable dispatch = () -> {
+            try {
+                partPreviewArtifactCleanupService.cleanupArtifactFiles(generatedArtifactKeys);
+            } catch (Exception ex) {
+                log.error(
+                        "event=part_preview_cleanup_only_after_commit_failed generated_artifact_count={} reason={}",
+                        generatedArtifactKeys.size(),
+                        ex.getMessage(),
+                        ex
+                );
+            }
+        };
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

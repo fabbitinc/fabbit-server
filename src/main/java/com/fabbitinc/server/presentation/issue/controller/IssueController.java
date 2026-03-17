@@ -121,7 +121,7 @@ public class IssueController {
     private final DeleteIssueFileUseCase deleteIssueFileUseCase;
 
     @Operation(
-            summary = "GET /api/v1/issues/lookup",
+            summary = "이슈 연결 picker UI용 경량 목록을 조회합니다",
             description = "이슈 연결 picker UI용 경량 목록을 조회합니다"
     )
     @GetMapping("/lookup")
@@ -136,7 +136,7 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "GET /api/v1/issues",
+            summary = "이슈 목록을 조회합니다",
             description = "이슈 목록을 조회합니다"
     )
     @GetMapping
@@ -152,19 +152,19 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "GET /api/v1/issues/{issueNumber}",
-            description = "이슈 번호로 상세 정보를 조회합니다"
+            summary = "이슈 상세 정보를 조회합니다",
+            description = "이슈 ID로 상세 정보를 조회합니다"
     )
-    @GetMapping("/{issueNumber}")
+    @GetMapping("/{issueId}")
     public IssueResponse getIssue(
-            @Parameter(description = "조회할 이슈 번호", example = "101")
-            @PathVariable int issueNumber
+            @Parameter(description = "조회할 이슈 ID")
+            @PathVariable UUID issueId
     ) {
-        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueNumber)));
+        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueId)));
     }
 
     @Operation(
-            summary = "POST /api/v1/issues",
+            summary = "이슈를 생성하고 연관 정보(부품/담당자/라벨/파일)를 일괄 연결합니다",
             description = "이슈를 생성하고 연관 정보(부품/담당자/라벨/파일)를 일괄 연결합니다"
     )
     @PostMapping
@@ -184,69 +184,69 @@ public class IssueController {
                         request.fileIds()
                 )
         );
-        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(result.issueNumber())));
+        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(result.issueId())));
     }
 
     @Operation(
-            summary = "PATCH /api/v1/issues/{issueNumber}",
+            summary = "이슈 제목/본문을 수정합니다",
             description = "이슈 제목/본문을 수정합니다"
     )
-    @PatchMapping("/{issueNumber}")
+    @PatchMapping("/{issueId}")
     public IssueResponse updateIssue(
-            @Parameter(description = "수정할 이슈 번호", example = "101")
-            @PathVariable int issueNumber,
+            @Parameter(description = "수정할 이슈 ID")
+            @PathVariable UUID issueId,
             @Parameter(description = "이슈 수정 요청")
             @Valid @RequestBody UpdateIssueRequest request
     ) {
-        updateIssueUseCase.execute(new UpdateIssueUseCase.UpdateIssueCommand(issueNumber, request.title(), request.body()));
-        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueNumber)));
+        updateIssueUseCase.execute(new UpdateIssueUseCase.UpdateIssueCommand(issueId, request.title(), request.body()));
+        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueId)));
     }
 
     @Operation(
-            summary = "PUT /api/v1/issues/{issueNumber}/assignees",
+            summary = "개인 담당자 목록을 동기화합니다",
             description = "개인 담당자 목록을 동기화합니다"
     )
-    @PutMapping("/{issueNumber}/assignees")
+    @PutMapping("/{issueId}/assignees")
     public SyncDiffResponse syncAssignees(
-            @PathVariable int issueNumber,
+            @PathVariable UUID issueId,
             @Valid @RequestBody SyncAssigneesRequest request
     ) {
         return toSyncDiffResponse(
                 syncAssigneesUseCase.execute(
-                        new SyncAssigneesUseCase.SyncAssigneesCommand(issueNumber, request.userIds())
+                        new SyncAssigneesUseCase.SyncAssigneesCommand(issueId, request.userIds())
                 )
         );
     }
 
     @Operation(
-            summary = "PUT /api/v1/issues/{issueNumber}/assigned-teams",
+            summary = "팀 담당자 목록을 동기화합니다",
             description = "팀 담당자 목록을 동기화합니다"
     )
-    @PutMapping("/{issueNumber}/assigned-teams")
+    @PutMapping("/{issueId}/assigned-teams")
     public SyncDiffResponse syncTeamAssignees(
-            @PathVariable int issueNumber,
+            @PathVariable UUID issueId,
             @Valid @RequestBody SyncTeamAssigneesRequest request
     ) {
         return toSyncDiffResponse(
                 syncTeamAssigneesUseCase.execute(
-                        new SyncTeamAssigneesUseCase.SyncTeamAssigneesCommand(issueNumber, request.teamIds())
+                        new SyncTeamAssigneesUseCase.SyncTeamAssigneesCommand(issueId, request.teamIds())
                 )
         );
     }
 
     @Operation(
-            summary = "PUT /api/v1/issues/{issueNumber}/engineering-changes",
+            summary = "이슈에 연결된 변경관리 목록을 동기화합니다",
             description = "이슈에 연결된 변경관리 목록을 동기화합니다"
     )
-    @PutMapping("/{issueNumber}/engineering-changes")
+    @PutMapping("/{issueId}/engineering-changes")
     public SyncDiffResponse syncLinkedEngineeringChanges(
-            @PathVariable int issueNumber,
+            @PathVariable UUID issueId,
             @Valid @RequestBody SyncLinkedEngineeringChangesRequest request
     ) {
         return toSyncDiffResponse(
                 syncLinkedEngineeringChangesUseCase.execute(
                         new SyncLinkedEngineeringChangesUseCase.SyncLinkedEngineeringChangesCommand(
-                                issueNumber,
+                                issueId,
                                 request.engineeringChangeIds()
                         )
                 )
@@ -254,130 +254,130 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "POST /api/v1/issues/{issueNumber}/close",
+            summary = "이슈를 닫습니다 (OPEN -> CLOSED)",
             description = "이슈를 닫습니다 (OPEN -> CLOSED)"
     )
-    @PostMapping("/{issueNumber}/close")
+    @PostMapping("/{issueId}/close")
     public IssueResponse closeIssue(
-            @PathVariable int issueNumber
+            @PathVariable UUID issueId
     ) {
-        closeIssueUseCase.execute(new CloseIssueUseCase.CloseIssueCommand(issueNumber));
-        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueNumber)));
+        closeIssueUseCase.execute(new CloseIssueUseCase.CloseIssueCommand(issueId));
+        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueId)));
     }
 
     @Operation(
-            summary = "POST /api/v1/issues/{issueNumber}/reopen",
+            summary = "이슈를 다시 엽니다 (CLOSED -> OPEN)",
             description = "이슈를 다시 엽니다 (CLOSED -> OPEN)"
     )
-    @PostMapping("/{issueNumber}/reopen")
+    @PostMapping("/{issueId}/reopen")
     public IssueResponse reopenIssue(
-            @PathVariable int issueNumber
+            @PathVariable UUID issueId
     ) {
-        reopenIssueUseCase.execute(new ReopenIssueUseCase.ReopenIssueCommand(issueNumber));
-        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueNumber)));
+        reopenIssueUseCase.execute(new ReopenIssueUseCase.ReopenIssueCommand(issueId));
+        return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueId)));
     }
 
     @Operation(
-            summary = "PUT /api/v1/issues/{issueNumber}/labels",
+            summary = "라벨 목록을 동기화합니다",
             description = "라벨 목록을 동기화합니다"
     )
-    @PutMapping("/{issueNumber}/labels")
+    @PutMapping("/{issueId}/labels")
     public SyncDiffResponse syncLabels(
-            @PathVariable int issueNumber,
+            @PathVariable UUID issueId,
             @Valid @RequestBody SyncLabelsRequest request
     ) {
         return toSyncDiffResponse(
                 syncLabelsUseCase.execute(
-                        new SyncLabelsUseCase.SyncLabelsCommand(issueNumber, request.labelIds())
+                        new SyncLabelsUseCase.SyncLabelsCommand(issueId, request.labelIds())
                 )
         );
     }
 
     @Operation(
-            summary = "PUT /api/v1/issues/{issueNumber}/parts",
+            summary = "부품 목록을 동기화합니다",
             description = "부품 목록을 동기화합니다"
     )
-    @PutMapping("/{issueNumber}/parts")
+    @PutMapping("/{issueId}/parts")
     public SyncDiffResponse syncParts(
-            @PathVariable int issueNumber,
+            @PathVariable UUID issueId,
             @Valid @RequestBody SyncPartsRequest request
     ) {
         return toSyncDiffResponse(
                 syncPartsUseCase.execute(
-                        new SyncPartsUseCase.SyncPartsCommand(issueNumber, request.partIds())
+                        new SyncPartsUseCase.SyncPartsCommand(issueId, request.partIds())
                 )
         );
     }
 
     @Operation(
-            summary = "GET /api/v1/issues/{issueNumber}/timeline",
+            summary = "댓글과 활동 이력을 시간순으로 병합 조회합니다",
             description = "댓글과 활동 이력을 시간순으로 병합 조회합니다"
     )
-    @GetMapping("/{issueNumber}/timeline")
+    @GetMapping("/{issueId}/timeline")
     public TimelineResponse getTimeline(
-            @PathVariable int issueNumber
+            @PathVariable UUID issueId
     ) {
-        return toTimelineResponse(issueQuery.getTimeline(new IssueTimelineCondition(issueNumber)));
+        return toTimelineResponse(issueQuery.getTimeline(new IssueTimelineCondition(issueId)));
     }
 
     @Operation(
-            summary = "POST /api/v1/issues/{issueNumber}/comments",
+            summary = "댓글을 생성합니다",
             description = "댓글을 생성합니다"
     )
-    @PostMapping("/{issueNumber}/comments")
+    @PostMapping("/{issueId}/comments")
     @ResponseStatus(HttpStatus.CREATED)
     public CommentResponse createComment(
-            @PathVariable int issueNumber,
+            @PathVariable UUID issueId,
             @Valid @RequestBody CreateCommentRequest request
     ) {
         return toCommentResponse(
                 createCommentUseCase.execute(
-                        new CreateCommentUseCase.CreateCommentCommand(issueNumber, request.body())
+                        new CreateCommentUseCase.CreateCommentCommand(issueId, request.body())
                 )
         );
     }
 
     @Operation(
-            summary = "PATCH /api/v1/issues/{issueNumber}/comments/{commentId}",
+            summary = "댓글을 수정합니다",
             description = "댓글을 수정합니다"
     )
-    @PatchMapping("/{issueNumber}/comments/{commentId}")
+    @PatchMapping("/{issueId}/comments/{commentId}")
     public CommentResponse updateComment(
-            @PathVariable int issueNumber,
+            @PathVariable UUID issueId,
             @PathVariable UUID commentId,
             @Valid @RequestBody UpdateCommentRequest request
     ) {
         return toCommentResponse(
                 updateCommentUseCase.execute(
-                        new UpdateCommentUseCase.UpdateCommentCommand(issueNumber, commentId, request.body())
+                        new UpdateCommentUseCase.UpdateCommentCommand(issueId, commentId, request.body())
                 )
         );
     }
 
     @Operation(
-            summary = "DELETE /api/v1/issues/{issueNumber}/comments/{commentId}",
+            summary = "댓글을 삭제합니다",
             description = "댓글을 삭제합니다"
     )
-    @DeleteMapping("/{issueNumber}/comments/{commentId}")
+    @DeleteMapping("/{issueId}/comments/{commentId}")
     public ResponseEntity<Void> deleteComment(
-            @PathVariable int issueNumber,
+            @PathVariable UUID issueId,
             @PathVariable UUID commentId
     ) {
-        deleteCommentUseCase.execute(new DeleteCommentUseCase.DeleteCommentCommand(issueNumber, commentId));
+        deleteCommentUseCase.execute(new DeleteCommentUseCase.DeleteCommentCommand(issueId, commentId));
         return ResponseEntity.noContent().build();
     }
 
     @Operation(
-            summary = "POST /api/v1/issues/{issueNumber}/files",
+            summary = "첨부파일을 배치 연결합니다",
             description = "첨부파일을 배치 연결합니다"
     )
-    @PostMapping("/{issueNumber}/files")
+    @PostMapping("/{issueId}/files")
     public List<FileItemResponse> addFiles(
-            @PathVariable int issueNumber,
+            @PathVariable UUID issueId,
             @Valid @RequestBody AttachFilesRequest request
     ) {
         return addIssueFilesUseCase.execute(
-                        new AddIssueFilesUseCase.AddIssueFilesCommand(issueNumber, request.fileIds())
+                        new AddIssueFilesUseCase.AddIssueFilesCommand(issueId, request.fileIds())
                 )
                 .stream()
                 .map(this::toFileItemResponse)
@@ -385,15 +385,15 @@ public class IssueController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/issues/{issueNumber}/files/{fileId}",
+            summary = "첨부파일 1건을 삭제(soft delete)합니다",
             description = "첨부파일 1건을 삭제(soft delete)합니다"
     )
-    @DeleteMapping("/{issueNumber}/files/{fileId}")
+    @DeleteMapping("/{issueId}/files/{fileId}")
     public ResponseEntity<Void> deleteFile(
-            @PathVariable int issueNumber,
+            @PathVariable UUID issueId,
             @PathVariable UUID fileId
     ) {
-        deleteIssueFileUseCase.execute(new DeleteIssueFileUseCase.DeleteIssueFileCommand(issueNumber, fileId));
+        deleteIssueFileUseCase.execute(new DeleteIssueFileUseCase.DeleteIssueFileCommand(issueId, fileId));
         return ResponseEntity.noContent().build();
     }
 

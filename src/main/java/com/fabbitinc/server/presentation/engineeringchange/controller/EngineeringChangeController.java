@@ -121,7 +121,7 @@ public class EngineeringChangeController {
     private final DeleteEngineeringChangeFileUseCase deleteEngineeringChangeFileUseCase;
 
     @Operation(
-            summary = "GET /api/v1/engineering-changes",
+            summary = "변경관리 목록을 조회합니다",
             description = "변경관리 목록을 조회합니다"
     )
     @GetMapping
@@ -140,7 +140,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "GET /api/v1/engineering-changes/lookup",
+            summary = "변경관리 연결 picker UI용 경량 목록을 조회합니다",
             description = "변경관리 연결 picker UI용 경량 목록을 조회합니다"
     )
     @GetMapping("/lookup")
@@ -155,21 +155,21 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "GET /api/v1/engineering-changes/{engineeringChangeNumber}",
-            description = "변경관리 번호로 상세 정보를 조회합니다"
+            summary = "변경관리 상세 정보를 조회합니다",
+            description = "변경관리 ID로 상세 정보를 조회합니다"
     )
-    @GetMapping("/{engineeringChangeNumber}")
+    @GetMapping("/{engineeringChangeId}")
     public EngineeringChangeResponse getEngineeringChange(
-            @Parameter(description = "조회할 변경관리 번호", example = "201")
-            @PathVariable int engineeringChangeNumber
+            @Parameter(description = "조회할 변경관리 ID")
+            @PathVariable UUID engineeringChangeId
     ) {
         return toEngineeringChangeResponse(
-                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeNumber))
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
         );
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes",
+            summary = "변경관리를 생성하고 연관 정보(이슈/부품 리비전/단계/파일)를 일괄 연결합니다",
             description = "변경관리를 생성하고 연관 정보(이슈/부품 리비전/단계/파일)를 일괄 연결합니다"
     )
     @PostMapping
@@ -182,12 +182,10 @@ public class EngineeringChangeController {
                 new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand(
                         request.title(),
                         request.body(),
-                        request.sourceIssueNumber(),
+                        request.sourceIssueId(),
                         request.partRevisions().stream()
                                 .map(item -> new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.PartRevisionTarget(
-                                        item.partNumber(),
-                                        item.baseRevisionCode(),
-                                        item.draftKey()
+                                        item.revisionId()
                         ))
                                 .toList(),
                         request.fileIds(),
@@ -202,24 +200,24 @@ public class EngineeringChangeController {
                 )
         );
         return toEngineeringChangeResponse(
-                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(result.engineeringChangeNumber()))
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(result.engineeringChangeId()))
         );
     }
 
     @Operation(
-            summary = "PATCH /api/v1/engineering-changes/{engineeringChangeNumber}",
+            summary = "변경관리 제목/본문을 수정합니다",
             description = "변경관리 제목/본문을 수정합니다"
     )
-    @PatchMapping("/{engineeringChangeNumber}")
+    @PatchMapping("/{engineeringChangeId}")
     public EngineeringChangeResponse updateEngineeringChange(
-            @Parameter(description = "수정할 변경관리 번호", example = "201")
-            @PathVariable int engineeringChangeNumber,
+            @Parameter(description = "수정할 변경관리 ID")
+            @PathVariable UUID engineeringChangeId,
             @Parameter(description = "변경관리 수정 요청")
             @Valid @RequestBody UpdateEngineeringChangeRequest request
     ) {
         updateEngineeringChangeUseCase.execute(
                 new UpdateEngineeringChangeUseCase.UpdateEngineeringChangeCommand(
-                        engineeringChangeNumber,
+                        engineeringChangeId,
                         request.title(),
                         request.body(),
                         request.steps() == null ? null : request.steps().stream()
@@ -233,114 +231,114 @@ public class EngineeringChangeController {
                 )
         );
         return toEngineeringChangeResponse(
-                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeNumber))
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
         );
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/submit",
+            summary = "변경관리를 검토 대기로 전환합니다 (DRAFT -> REVIEW_PENDING)",
             description = "변경관리를 검토 대기로 전환합니다 (DRAFT -> REVIEW_PENDING)"
     )
-    @PostMapping("/{engineeringChangeNumber}/submit")
+    @PostMapping("/{engineeringChangeId}/submit")
     public EngineeringChangeResponse submit(
-            @PathVariable int engineeringChangeNumber
+            @PathVariable UUID engineeringChangeId
     ) {
-        submitEngineeringChangeUseCase.execute(new SubmitEngineeringChangeUseCase.SubmitEngineeringChangeCommand(engineeringChangeNumber));
+        submitEngineeringChangeUseCase.execute(new SubmitEngineeringChangeUseCase.SubmitEngineeringChangeCommand(engineeringChangeId));
         return toEngineeringChangeResponse(
-                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeNumber))
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
         );
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/reject",
+            summary = "변경관리를 작성 단계로 되돌립니다 (*_PENDING -> DRAFT)",
             description = "변경관리를 작성 단계로 되돌립니다 (*_PENDING -> DRAFT)"
     )
-    @PostMapping("/{engineeringChangeNumber}/reject")
+    @PostMapping("/{engineeringChangeId}/reject")
     public EngineeringChangeResponse reject(
-            @PathVariable int engineeringChangeNumber
+            @PathVariable UUID engineeringChangeId
     ) {
         rejectEngineeringChangeUseCase.execute(
-                new RejectEngineeringChangeUseCase.RejectEngineeringChangeCommand(engineeringChangeNumber)
+                new RejectEngineeringChangeUseCase.RejectEngineeringChangeCommand(engineeringChangeId)
         );
         return toEngineeringChangeResponse(
-                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeNumber))
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
         );
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/approve",
+            summary = "현재 승인 단계 담당자가 변경관리를 승인해 반영 대기로 전환합니다 (APPROVAL_PENDING -> RELEASE_PENDING)",
             description = "현재 승인 단계 담당자가 변경관리를 승인해 반영 대기로 전환합니다 (APPROVAL_PENDING -> RELEASE_PENDING)"
     )
-    @PostMapping("/{engineeringChangeNumber}/approve")
+    @PostMapping("/{engineeringChangeId}/approve")
     public EngineeringChangeResponse approve(
-            @PathVariable int engineeringChangeNumber
+            @PathVariable UUID engineeringChangeId
     ) {
         approveEngineeringChangeUseCase.execute(
-                new ApproveEngineeringChangeUseCase.ApproveEngineeringChangeCommand(engineeringChangeNumber)
+                new ApproveEngineeringChangeUseCase.ApproveEngineeringChangeCommand(engineeringChangeId)
         );
         return toEngineeringChangeResponse(
-                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeNumber))
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
         );
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/release",
+            summary = "현재 반영 단계 담당자가 변경관리를 반영 완료합니다 (RELEASE_PENDING -> RELEASED)",
             description = "현재 반영 단계 담당자가 변경관리를 반영 완료합니다 (RELEASE_PENDING -> RELEASED)"
     )
-    @PostMapping("/{engineeringChangeNumber}/release")
+    @PostMapping("/{engineeringChangeId}/release")
     public EngineeringChangeResponse release(
-            @PathVariable int engineeringChangeNumber
+            @PathVariable UUID engineeringChangeId
     ) {
         releaseEngineeringChangeUseCase.execute(
-                new ReleaseEngineeringChangeUseCase.ReleaseEngineeringChangeCommand(engineeringChangeNumber)
+                new ReleaseEngineeringChangeUseCase.ReleaseEngineeringChangeCommand(engineeringChangeId)
         );
         return toEngineeringChangeResponse(
-                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeNumber))
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
         );
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/cancel",
+            summary = "변경관리를 폐기하고 미반영 리비전을 취소합니다",
             description = "변경관리를 폐기하고 미반영 리비전을 취소합니다"
     )
-    @PostMapping("/{engineeringChangeNumber}/cancel")
+    @PostMapping("/{engineeringChangeId}/cancel")
     public EngineeringChangeResponse cancel(
-            @PathVariable int engineeringChangeNumber
+            @PathVariable UUID engineeringChangeId
     ) {
         cancelEngineeringChangeUseCase.execute(
-                new CancelEngineeringChangeUseCase.CancelEngineeringChangeCommand(engineeringChangeNumber)
+                new CancelEngineeringChangeUseCase.CancelEngineeringChangeCommand(engineeringChangeId)
         );
         return toEngineeringChangeResponse(
-                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeNumber))
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
         );
     }
 
     @Operation(
-            summary = "PUT /api/v1/engineering-changes/{engineeringChangeNumber}/issues",
+            summary = "변경관리에 연결된 이슈 목록을 동기화합니다",
             description = "변경관리에 연결된 이슈 목록을 동기화합니다"
     )
-    @PutMapping("/{engineeringChangeNumber}/issues")
+    @PutMapping("/{engineeringChangeId}/issues")
     public SyncDiffResponse syncIssues(
-            @PathVariable int engineeringChangeNumber,
+            @PathVariable UUID engineeringChangeId,
             @Valid @RequestBody SyncIssuesRequest request
     ) {
         return toSyncDiffResponse(
-                syncIssuesUseCase.execute(new SyncIssuesUseCase.SyncIssuesCommand(engineeringChangeNumber, request.issueIds()))
+                syncIssuesUseCase.execute(new SyncIssuesUseCase.SyncIssuesCommand(engineeringChangeId, request.issueIds()))
         );
     }
 
     @Operation(
-            summary = "PUT /api/v1/engineering-changes/{engineeringChangeNumber}/steps",
+            summary = "변경관리 단계 목록을 동기화합니다",
             description = "변경관리 단계 목록을 동기화합니다"
     )
-    @PutMapping("/{engineeringChangeNumber}/steps")
+    @PutMapping("/{engineeringChangeId}/steps")
     public EngineeringChangeResponse replaceSteps(
-            @PathVariable int engineeringChangeNumber,
+            @PathVariable UUID engineeringChangeId,
             @Valid @RequestBody SyncEngineeringChangeStepsRequest request
     ) {
         replaceEngineeringChangeStepsUseCase.execute(
                 new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand(
-                        engineeringChangeNumber,
+                        engineeringChangeId,
                         request.steps().stream()
                                 .map(step -> new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.Item(
                                         step.stepType(),
@@ -352,44 +350,42 @@ public class EngineeringChangeController {
                 )
         );
         return toEngineeringChangeResponse(
-                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeNumber))
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
         );
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/review/approve",
+            summary = "현재 검토 단계 담당자가 자신의 검토 단계를 승인합니다",
             description = "현재 검토 단계 담당자가 자신의 검토 단계를 승인합니다"
     )
-    @PostMapping("/{engineeringChangeNumber}/review/approve")
+    @PostMapping("/{engineeringChangeId}/review/approve")
     public EngineeringChangeResponse approveReview(
-            @PathVariable int engineeringChangeNumber
+            @PathVariable UUID engineeringChangeId
     ) {
         approveEngineeringChangeReviewUseCase.execute(
-                new ApproveEngineeringChangeReviewUseCase.ApproveEngineeringChangeReviewCommand(engineeringChangeNumber)
+                new ApproveEngineeringChangeReviewUseCase.ApproveEngineeringChangeReviewCommand(engineeringChangeId)
         );
         return toEngineeringChangeResponse(
-                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeNumber))
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
         );
     }
 
     @Operation(
-            summary = "PUT /api/v1/engineering-changes/{engineeringChangeNumber}/part-revisions",
+            summary = "변경관리에 연결할 부품 초안 목록을 동기화합니다",
             description = "변경관리에 연결할 부품 초안 목록을 동기화합니다"
     )
-    @PutMapping("/{engineeringChangeNumber}/part-revisions")
+    @PutMapping("/{engineeringChangeId}/part-revisions")
     public SyncDiffResponse syncPartRevisions(
-            @PathVariable int engineeringChangeNumber,
+            @PathVariable UUID engineeringChangeId,
             @Valid @RequestBody SyncPartRevisionsRequest request
     ) {
         return toSyncDiffResponse(
                 syncEngineeringChangePartRevisionsUseCase.execute(
                         new SyncEngineeringChangePartRevisionsUseCase.SyncEngineeringChangePartRevisionsCommand(
-                                engineeringChangeNumber,
+                                engineeringChangeId,
                                 request.items().stream()
                                         .map(item -> new SyncEngineeringChangePartRevisionsUseCase.SyncEngineeringChangePartRevisionsCommand.Item(
-                                                item.partNumber(),
-                                                item.baseRevisionCode(),
-                                                item.draftKey()
+                                                item.revisionId()
                                         ))
                                         .toList()
                         )
@@ -398,30 +394,30 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "GET /api/v1/engineering-changes/{engineeringChangeNumber}/timeline",
+            summary = "댓글과 활동 이력을 시간순으로 병합 조회합니다",
             description = "댓글과 활동 이력을 시간순으로 병합 조회합니다"
     )
-    @GetMapping("/{engineeringChangeNumber}/timeline")
+    @GetMapping("/{engineeringChangeId}/timeline")
     public TimelineResponse getTimeline(
-            @PathVariable int engineeringChangeNumber
+            @PathVariable UUID engineeringChangeId
     ) {
-        return toTimelineResponse(engineeringChangeQuery.getTimeline(engineeringChangeNumber));
+        return toTimelineResponse(engineeringChangeQuery.getTimeline(engineeringChangeId));
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/comments",
+            summary = "댓글을 생성합니다",
             description = "댓글을 생성합니다"
     )
-    @PostMapping("/{engineeringChangeNumber}/comments")
+    @PostMapping("/{engineeringChangeId}/comments")
     @ResponseStatus(HttpStatus.CREATED)
     public CommentResponse createComment(
-            @PathVariable int engineeringChangeNumber,
+            @PathVariable UUID engineeringChangeId,
             @Valid @RequestBody CreateCommentRequest request
     ) {
         return toCommentResponse(
                 createEngineeringChangeCommentUseCase.execute(
                         new CreateEngineeringChangeCommentUseCase.CreateEngineeringChangeCommentCommand(
-                                engineeringChangeNumber,
+                                engineeringChangeId,
                                 request.body()
                         )
                 )
@@ -429,19 +425,19 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "PATCH /api/v1/engineering-changes/{engineeringChangeNumber}/comments/{commentId}",
+            summary = "댓글을 수정합니다",
             description = "댓글을 수정합니다"
     )
-    @PatchMapping("/{engineeringChangeNumber}/comments/{commentId}")
+    @PatchMapping("/{engineeringChangeId}/comments/{commentId}")
     public CommentResponse updateComment(
-            @PathVariable int engineeringChangeNumber,
+            @PathVariable UUID engineeringChangeId,
             @PathVariable UUID commentId,
             @Valid @RequestBody UpdateCommentRequest request
     ) {
         return toCommentResponse(
                 updateEngineeringChangeCommentUseCase.execute(
                         new UpdateEngineeringChangeCommentUseCase.UpdateEngineeringChangeCommentCommand(
-                                engineeringChangeNumber,
+                                engineeringChangeId,
                                 commentId,
                                 request.body()
                         )
@@ -450,32 +446,32 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/engineering-changes/{engineeringChangeNumber}/comments/{commentId}",
+            summary = "댓글을 삭제합니다",
             description = "댓글을 삭제합니다"
     )
-    @DeleteMapping("/{engineeringChangeNumber}/comments/{commentId}")
+    @DeleteMapping("/{engineeringChangeId}/comments/{commentId}")
     public ResponseEntity<Void> deleteComment(
-            @PathVariable int engineeringChangeNumber,
+            @PathVariable UUID engineeringChangeId,
             @PathVariable UUID commentId
     ) {
         deleteEngineeringChangeCommentUseCase.execute(
-                new DeleteEngineeringChangeCommentUseCase.DeleteEngineeringChangeCommentCommand(engineeringChangeNumber, commentId)
+                new DeleteEngineeringChangeCommentUseCase.DeleteEngineeringChangeCommentCommand(engineeringChangeId, commentId)
         );
         return ResponseEntity.noContent().build();
     }
 
     @Operation(
-            summary = "POST /api/v1/engineering-changes/{engineeringChangeNumber}/files",
+            summary = "첨부파일을 배치 연결합니다",
             description = "첨부파일을 배치 연결합니다"
     )
-    @PostMapping("/{engineeringChangeNumber}/files")
+    @PostMapping("/{engineeringChangeId}/files")
     public List<FileItemResponse> addFiles(
-            @PathVariable int engineeringChangeNumber,
+            @PathVariable UUID engineeringChangeId,
             @Valid @RequestBody AttachFilesRequest request
     ) {
         return addEngineeringChangeFilesUseCase.execute(
                         new AddEngineeringChangeFilesUseCase.AddEngineeringChangeFilesCommand(
-                                engineeringChangeNumber,
+                                engineeringChangeId,
                                 request.fileIds()
                         )
                 )
@@ -485,16 +481,16 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/engineering-changes/{engineeringChangeNumber}/files/{fileId}",
+            summary = "첨부파일 1건을 삭제(soft delete)합니다",
             description = "첨부파일 1건을 삭제(soft delete)합니다"
     )
-    @DeleteMapping("/{engineeringChangeNumber}/files/{fileId}")
+    @DeleteMapping("/{engineeringChangeId}/files/{fileId}")
     public ResponseEntity<Void> deleteFile(
-            @PathVariable int engineeringChangeNumber,
+            @PathVariable UUID engineeringChangeId,
             @PathVariable UUID fileId
     ) {
         deleteEngineeringChangeFileUseCase.execute(
-                new DeleteEngineeringChangeFileUseCase.DeleteEngineeringChangeFileCommand(engineeringChangeNumber, fileId)
+                new DeleteEngineeringChangeFileUseCase.DeleteEngineeringChangeFileCommand(engineeringChangeId, fileId)
         );
         return ResponseEntity.noContent().build();
     }
@@ -539,8 +535,8 @@ public class EngineeringChangeController {
                 result.steps().stream().map(this::toEngineeringChangeStepResponse).toList(),
                 result.files().stream().map(this::toFileItemResponse).toList(),
                 result.commentsCount(),
-                result.mergedAt(),
-                result.mergedBy()
+                result.releasedAt(),
+                toUserSummaryResponse(result.releasedBy())
         );
     }
 
@@ -569,12 +565,13 @@ public class EngineeringChangeController {
                 result.updatedAt(),
                 result.isModified(),
                 toUserSummaryResponse(result.createdBy()),
+                toLinkedIssueSummaryResponse(result.sourceIssue()),
                 result.steps().stream().map(this::toEngineeringChangeStepResponse).toList(),
                 result.partRevisions().stream().map(this::toPartRevisionResponse).toList(),
                 result.files().stream().map(this::toFileItemResponse).toList(),
                 result.commentsCount(),
-                result.mergedAt(),
-                result.mergedBy(),
+                result.releasedAt(),
+                toUserSummaryResponse(result.releasedBy()),
                 result.linkedIssues().stream().map(this::toLinkedIssueSummaryResponse).toList()
         );
     }
@@ -635,7 +632,7 @@ public class EngineeringChangeController {
                 result.partId(),
                 result.partNumber(),
                 result.baseRevisionCode(),
-                result.draftKey(),
+                result.revisionCode(),
                 result.name(),
                 result.status()
         );

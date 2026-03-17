@@ -1,7 +1,5 @@
 package com.fabbitinc.server.application.issue.usecase;
 
-import com.fabbitinc.server.application.workitem.usecase.WorkItemUseCaseSupport;
-
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.issue.service.IssueService;
@@ -20,10 +18,10 @@ public class ReopenIssueUseCase {
 
     public void execute(ReopenIssueCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        Issue issue = issueService.getIssueByNumberOrThrow(command.issueNumber());
+        Issue issue = issueService.getIssueByIdOrThrow(command.issueId());
         issueService.reopenIssue(auth.userId(), issue);
     }
 
-    public record ReopenIssueCommand(int issueNumber) {
+    public record ReopenIssueCommand(java.util.UUID issueId) {
     }
 }

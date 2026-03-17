@@ -1,5 +1,6 @@
 package com.fabbitinc.server.application.part.query.result;
 
+import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import java.util.Map;
 import java.util.UUID;
@@ -7,10 +8,12 @@ import java.util.UUID;
 public record PartDetailResult(
         UUID id,
         UUID revisionId,
+        PartRevisionStatus revisionStatus,
         String partNumber,
+        UUID baseRevisionId,
+        String baseRevisionCode,
         String name,
         String revision,
-        String draftKey,
         String material,
         String unit,
         String description,
@@ -21,7 +24,6 @@ public record PartDetailResult(
         Map<String, Object> extendedProperties,
         PartPreviewResult preview,
         long draftCount,
-        long inReviewCount,
         long childrenCount,
         long parentsCount,
         long suppliersCount,

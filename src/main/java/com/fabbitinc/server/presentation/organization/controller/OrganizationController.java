@@ -47,7 +47,7 @@ public class OrganizationController {
     private final DeleteOrganizationProfileImageUseCase deleteProfileImageUseCase;
 
     @Operation(
-            summary = "POST /api/v1/organizations",
+            summary = "스코프 토큰(scope=create_org)으로 조직을 생성하고 access/refresh 토큰을 발급합니다",
             description = "스코프 토큰(scope=create_org)으로 조직을 생성하고 access/refresh 토큰을 발급합니다"
     )
     @ApiResponses(value = {
@@ -86,7 +86,7 @@ public class OrganizationController {
     }
 
     @Operation(
-            summary = "POST /api/v1/organizations/switch",
+            summary = "대상 워크스페이스 멤버십을 확인한 뒤 새 access/refresh 토큰을 발급합니다",
             description = "대상 워크스페이스 멤버십을 확인한 뒤 새 access/refresh 토큰을 발급합니다"
     )
     @ApiResponses(value = {
@@ -119,7 +119,7 @@ public class OrganizationController {
     }
 
     @Operation(
-            summary = "PUT /api/v1/organizations/profile-image",
+            summary = "업로드 완료된 파일(file_id)을 조직 프로필 이미지로 설정합니다. ADMIN 이상 권한이 필요합니다",
             description = "업로드 완료된 파일(file_id)을 조직 프로필 이미지로 설정합니다. ADMIN 이상 권한이 필요합니다"
     )
     @ApiResponses(value = {
@@ -141,7 +141,7 @@ public class OrganizationController {
     }
 
     @Operation(
-            summary = "DELETE /api/v1/organizations/profile-image",
+            summary = "조직 프로필 이미지를 제거하고 연결된 파일을 소프트 삭제합니다. ADMIN 이상 권한이 필요합니다",
             description = "조직 프로필 이미지를 제거하고 연결된 파일을 소프트 삭제합니다. ADMIN 이상 권한이 필요합니다"
     )
     @ApiResponses(value = {

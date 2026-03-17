@@ -19,12 +19,13 @@ public record EngineeringChangeDetailResult(
         Instant updatedAt,
         boolean isModified,
         UserSummaryResult createdBy,
+        LinkedIssueSummaryResult sourceIssue,
         List<EngineeringChangeStepResult> steps,
         List<EngineeringChangePartRevisionResult> partRevisions,
         List<FileItemResult> files,
         int commentsCount,
-        Instant mergedAt,
-        UUID mergedBy,
+        Instant releasedAt,
+        UserSummaryResult releasedBy,
         List<LinkedIssueSummaryResult> linkedIssues
 ) {
 }

@@ -7,15 +7,15 @@ import com.fabbitinc.server.application.part.query.condition.PartPreviewProcessi
 import com.fabbitinc.server.application.part.query.result.PartPreviewProcessingFailureCode;
 import com.fabbitinc.server.application.part.query.result.PartPreviewProcessingResult;
 import com.fabbitinc.server.domain.drawing.model.DrawingJobStatus;
-import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartPreview;
 import com.fabbitinc.server.domain.part.model.PartPreviewProcessingJob;
 import com.fabbitinc.server.domain.part.model.PartPreviewProcessingStatus;
 import com.fabbitinc.server.domain.part.model.PartPreviewServingProjection;
+import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.repository.PartPreviewProcessingJobRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
-import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewServingProjectionRepository;
+import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,12 +33,10 @@ public class PartPreviewProcessingQuery {
 
     public PartPreviewProcessingResult get(PartPreviewProcessingCondition condition) {
         currentAuthProvider.getCurrentAuth();
-        PartRevision revision = partRevisionRepository
-                .findByPartNumberAndRevisionCode(condition.partNumber(), condition.revisionCode())
+        PartRevision revision = partRevisionRepository.findByIdAndPartId(condition.revisionId(), condition.partId())
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "PartRevision '%s/%s'을(를) 찾을 수 없습니다"
-                                .formatted(condition.partNumber(), condition.revisionCode())
+                        "PartRevision '%s/%s'을(를) 찾을 수 없습니다".formatted(condition.partId(), condition.revisionId())
                 ));
 
         PartPreview partPreview = partPreviewRepository.findByPartRevisionId(revision.getId())
@@ -52,6 +50,8 @@ public class PartPreviewProcessingQuery {
                 .orElse(null);
 
         return new PartPreviewProcessingResult(
+                partPreview.getSourceType(),
+                partPreview.getSourceId(),
                 resolveStatus(partPreview, latestJob),
                 resolveFailureCode(partPreview, latestJob),
                 resolveFailureMessage(partPreview, latestJob),

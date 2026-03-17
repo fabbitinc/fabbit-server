@@ -22,14 +22,12 @@ public class SyncLabelsUseCase {
 
     public SyncDiffResult execute(SyncLabelsCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        UUID issueId = WorkItemUseCaseSupport.resolveIssueId(issueService, command.issueNumber());
-
-        IssueService.DiffResult diff = issueService.syncLabels(auth.userId(), issueId, command.labelIds(), true);
+        IssueService.DiffResult diff = issueService.syncLabels(auth.userId(), command.issueId(), command.labelIds(), true);
         return WorkItemUseCaseSupport.toSyncDiffResult(diff);
     }
 
     public record SyncLabelsCommand(
-            int issueNumber,
+            UUID issueId,
             List<UUID> labelIds
     ) {
         public SyncLabelsCommand {

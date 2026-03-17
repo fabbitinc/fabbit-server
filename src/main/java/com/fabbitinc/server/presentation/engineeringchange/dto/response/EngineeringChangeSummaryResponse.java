@@ -21,7 +21,7 @@ public record EngineeringChangeSummaryResponse(
         List<EngineeringChangeStepResponse> steps,
         List<FileItemResponse> files,
         int commentsCount,
-        Instant mergedAt,
-        UUID mergedBy
+        Instant releasedAt,
+        UserSummaryResponse releasedBy
 ) {
 }

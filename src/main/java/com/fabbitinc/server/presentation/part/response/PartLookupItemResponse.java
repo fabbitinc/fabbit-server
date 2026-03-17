@@ -6,6 +6,7 @@ import java.util.UUID;
 @Schema(description = "응답 DTO")
 public record PartLookupItemResponse(
         UUID id,
+        UUID revisionId,
         String partNumber,
         String name
 ) {

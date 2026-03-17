@@ -70,7 +70,7 @@ public class ProjectController {
     private final UnarchiveProjectUseCase unarchiveProjectUseCase;
     private final DeleteProjectUseCase deleteProjectUseCase;
 
-    @Operation(summary = "POST /api/v1/projects", description = "프로젝트를 생성하고 상세 정보를 반환합니다")
+    @Operation(summary = "프로젝트를 생성하고 상세 정보를 반환합니다", description = "프로젝트를 생성하고 상세 정보를 반환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "생성 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -91,7 +91,7 @@ public class ProjectController {
         return toProjectDetailResponse(detailResult);
     }
 
-    @Operation(summary = "GET /api/v1/projects", description = "프로젝트 목록을 검색/페이징 조회합니다")
+    @Operation(summary = "프로젝트 목록을 검색/페이징 조회합니다", description = "프로젝트 목록을 검색/페이징 조회합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -114,7 +114,7 @@ public class ProjectController {
         return toProjectListResponse(result);
     }
 
-    @Operation(summary = "PATCH /api/v1/projects/{projectId}", description = "프로젝트 이름/설명을 수정합니다")
+    @Operation(summary = "프로젝트 이름/설명을 수정합니다", description = "프로젝트 이름/설명을 수정합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "수정 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -136,7 +136,7 @@ public class ProjectController {
         return toProjectDetailResponse(detailResult);
     }
 
-    @Operation(summary = "GET /api/v1/projects/{projectId}", description = "프로젝트 상세를 조회합니다")
+    @Operation(summary = "프로젝트 상세를 조회합니다", description = "프로젝트 상세를 조회합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -152,7 +152,7 @@ public class ProjectController {
         return toProjectDetailResponse(projectQuery.get(new ProjectDetailCondition(projectId)));
     }
 
-    @Operation(summary = "POST /api/v1/projects/{projectId}/archive", description = "프로젝트를 보관 상태로 전환합니다")
+    @Operation(summary = "프로젝트를 보관 상태로 전환합니다", description = "프로젝트를 보관 상태로 전환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "보관 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -169,7 +169,7 @@ public class ProjectController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "POST /api/v1/projects/{projectId}/unarchive", description = "프로젝트 보관을 해제합니다")
+    @Operation(summary = "프로젝트 보관을 해제합니다", description = "프로젝트 보관을 해제합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "복원 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -186,7 +186,7 @@ public class ProjectController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "DELETE /api/v1/projects/{projectId}", description = "프로젝트를 소프트 삭제합니다")
+    @Operation(summary = "프로젝트를 소프트 삭제합니다", description = "프로젝트를 소프트 삭제합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "삭제 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -203,7 +203,7 @@ public class ProjectController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "GET /api/v1/projects/{projectId}/histories", description = "프로젝트 활동 피드를 cursor 기반으로 조회합니다")
+    @Operation(summary = "프로젝트 활동 피드를 cursor 기반으로 조회합니다", description = "프로젝트 활동 피드를 cursor 기반으로 조회합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),

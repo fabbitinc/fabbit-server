@@ -25,11 +25,10 @@ public class ReleasePartDraftUseCase {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         partRevisionWorkflowPolicyService.assertDirectModeEnabled();
         PartRevision revision = partRevisionService.releaseDraft(new PartRevisionDecisionInput(
-                command.partNumber(),
-                command.baseRevisionCode(),
-                command.draftKey(),
+                command.partId(),
+                command.revisionId(),
                 command.reason()
         ), auth.userId());
-        return new ReleasePartDraftResult(revision.getPartNumber(), revision.getRevisionCode());
+        return new ReleasePartDraftResult(revision.getPartId(), revision.getId());
     }
 }

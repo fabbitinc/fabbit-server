@@ -10,8 +10,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface EngineeringChangeRepository extends JpaRepository<EngineeringChange, UUID> {
 
-    Optional<EngineeringChange> findByNumber(int number);
-
     List<EngineeringChange> findAllByOrderByNumberDesc(Pageable pageable);
 
     List<EngineeringChange> findAllByOrderByNumberDesc();
