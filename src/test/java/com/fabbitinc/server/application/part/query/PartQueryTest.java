@@ -1,6 +1,7 @@
 package com.fabbitinc.server.application.part.query;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -241,9 +242,10 @@ class PartQueryTest {
         assertEquals(2, result.items().size());
         assertEquals("1", result.items().getLast().revisionCode());
         assertEquals(2, result.items().getLast().drafts().size());
-        assertEquals(PartRevisionStatus.CANCELED, result.items().getLast().drafts().getFirst().status());
-        assertEquals("폐기", result.items().getLast().drafts().getFirst().reason());
-        assertEquals("2", result.items().getLast().drafts().getLast().releasedRevisionCode());
+        assertEquals("2", result.items().getLast().drafts().getFirst().releasedRevisionCode());
+        assertEquals(PartRevisionStatus.CANCELED, result.items().getLast().drafts().getLast().status());
+        assertNull(result.items().getLast().drafts().getLast().releasedRevisionCode());
+        assertEquals("폐기", result.items().getLast().drafts().getLast().reason());
         assertEquals(PartRevisionStatus.RELEASED, result.items().getFirst().status());
     }
 

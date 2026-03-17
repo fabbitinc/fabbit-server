@@ -615,7 +615,7 @@ public class PartQuery {
                     history == null ? toUserSummary(usersById.get(revision.getCreatedBy())) : toUserSummary(usersById.get(history.getActorId())),
                     diff == null ? null : diff.summary(),
                     draftsByBaseRevisionId.getOrDefault(revision.getId(), List.of()).stream()
-                            .sorted(Comparator.comparing(PartRevision::getCreatedAt))
+                            .sorted(Comparator.comparing(PartRevision::getCreatedAt, Comparator.reverseOrder()))
                             .map(draft -> toHistoryDraft(draft, historiesByRevisionId.getOrDefault(draft.getId(), List.of()), usersById))
                             .toList()
             ));
@@ -2035,10 +2035,10 @@ public class PartQuery {
             case RELEASED, SUPERSEDED -> findHistoryByAction(histories, PartRevisionHistoryActionType.RELEASED);
             default -> null;
         };
-        String releasedRevisionCode = revision.getStatus() == PartRevisionStatus.RELEASED
-                || revision.getStatus() == PartRevisionStatus.SUPERSEDED
-                ? revision.getRevisionCode()
-                : null;
+        String releasedRevisionCode = switch (revision.getStatus()) {
+            case RELEASED, SUPERSEDED -> revision.getRevisionCode();
+            default -> null;
+        };
 
         return new PartRevisionHistoryResult.Draft(
                 revision.getId(),
@@ -2048,7 +2048,7 @@ public class PartQuery {
                 toUserSummary(usersById.get(revision.getCreatedBy())),
                 completionHistory == null ? null : completionHistory.getOccurredAt(),
                 completionHistory == null ? null : toUserSummary(usersById.get(completionHistory.getActorId())),
-                releasedRevisionCode == null ? extractHistoryIdentifier(completionHistory == null ? null : completionHistory.getPayload()) : releasedRevisionCode,
+                releasedRevisionCode,
                 completionHistory == null ? null : extractReason(completionHistory.getPayload())
         );
     }
