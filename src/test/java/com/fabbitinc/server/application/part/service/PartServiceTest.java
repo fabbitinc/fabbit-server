@@ -12,6 +12,7 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.part.service.input.CreatePartInput;
+import com.fabbitinc.server.application.property.api.PropertyApi;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.Part;
@@ -37,6 +38,7 @@ class PartServiceTest {
   @Mock private PartRevisionRepository partRevisionRepository;
   @Mock private FileRepository fileRepository;
   @Mock private OrganizationApi organizationApi;
+  @Mock private PropertyApi propertyApi;
   @Mock private ObjectMapper objectMapper;
 
   @Test
@@ -91,6 +93,8 @@ class PartServiceTest {
     UUID actorId = UUID.randomUUID();
     Map<String, Object> extendedProperties = Map.of("weight", 1.2, "material_code", "AL6061");
     when(partRepository.findByPartNumber("P-200")).thenReturn(Optional.empty());
+    when(propertyApi.validateExtendedProperties(com.fabbitinc.server.domain.property.model.PropertyOwnerType.PART, extendedProperties))
+        .thenReturn(extendedProperties);
     when(objectMapper.writeValueAsString(extendedProperties))
         .thenReturn("{\"weight\":1.2,\"material_code\":\"AL6061\"}");
     when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -190,6 +194,7 @@ class PartServiceTest {
         partRevisionRepository,
         fileRepository,
         organizationApi,
+        propertyApi,
         objectMapper);
   }
 }

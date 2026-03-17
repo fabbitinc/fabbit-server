@@ -16,4 +16,8 @@ public interface SystemPropertyOverrideRepository extends JpaRepository<SystemPr
     List<SystemPropertyOverride> findByOwnerTypeAndActiveTrueOrderByDisplayOrderAscPropertyKeyAsc(
             PropertyOwnerType ownerType
     );
+
+    List<SystemPropertyOverride> findByOwnerTypeOrderByDisplayOrderAscPropertyKeyAsc(
+            PropertyOwnerType ownerType
+    );
 }

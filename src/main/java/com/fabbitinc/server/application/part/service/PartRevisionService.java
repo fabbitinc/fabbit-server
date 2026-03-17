@@ -2,6 +2,7 @@ package com.fabbitinc.server.application.part.service;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.property.api.PropertyApi;
 import com.fabbitinc.server.application.part.service.input.CreatePartDraftInput;
 import com.fabbitinc.server.application.part.service.input.PartRevisionDecisionInput;
 import com.fabbitinc.server.application.part.service.input.UpdatePartRevisionInput;
@@ -14,6 +15,7 @@ import com.fabbitinc.server.domain.part.model.PartRevisionDraftChanges;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
+import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -32,6 +34,7 @@ public class PartRevisionService {
 
     private final PartRepository partRepository;
     private final PartRevisionRepository partRevisionRepository;
+    private final PropertyApi propertyApi;
     private final ObjectMapper objectMapper;
 
     public PartRevision createDraft(CreatePartDraftInput input, UUID actorId) {
@@ -202,9 +205,13 @@ public class PartRevisionService {
                 input.phantomSet(),
                 input.leadTimeDays(),
                 input.leadTimeDaysSet(),
-                input.extendedPropertiesSet() ? serializeProperties(input.extendedProperties()) : null,
+                input.extendedPropertiesSet() ? serializeProperties(validateExtendedProperties(input.extendedProperties())) : null,
                 input.extendedPropertiesSet()
         );
+    }
+
+    private Map<String, Object> validateExtendedProperties(Map<String, Object> extendedProperties) {
+        return propertyApi.validateExtendedProperties(PropertyOwnerType.PART, extendedProperties);
     }
 
     private PartRevision getRequiredRevision(UUID partId, UUID revisionId) {

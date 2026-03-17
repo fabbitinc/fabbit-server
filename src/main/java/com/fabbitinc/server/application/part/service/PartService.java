@@ -3,6 +3,7 @@ package com.fabbitinc.server.application.part.service;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
+import com.fabbitinc.server.application.property.api.PropertyApi;
 import com.fabbitinc.server.application.part.service.input.CreatePartInput;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.file.model.File;
@@ -11,6 +12,7 @@ import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartRevision;
+import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import java.util.LinkedHashSet;
@@ -33,6 +35,7 @@ public class PartService {
     private final PartRevisionRepository partRevisionRepository;
     private final FileRepository fileRepository;
     private final OrganizationApi organizationApi;
+    private final PropertyApi propertyApi;
     private final ObjectMapper objectMapper;
 
     public PartRevision createPart(CreatePartInput input, UUID actorId) {
@@ -166,7 +169,12 @@ public class PartService {
             revision.changeLeadTimeDays(input.leadTimeDays());
         }
         if (!input.extendedProperties().isEmpty()) {
-            revision.changeExtendedProperties(serializeProperties(input.extendedProperties()));
+            revision.changeExtendedProperties(
+                    serializeProperties(propertyApi.validateExtendedProperties(
+                            PropertyOwnerType.PART,
+                            input.extendedProperties()
+                    ))
+            );
         }
     }
 

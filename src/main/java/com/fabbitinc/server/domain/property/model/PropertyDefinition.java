@@ -148,6 +148,19 @@ public class PropertyDefinition extends AbstractAuditableEntity {
         this.valueType = normalizedValueType;
     }
 
+    public void reconfigureValueSpec(
+            PropertyValueType valueType,
+            PropertyOptionMode optionMode,
+            List<PropertyOptionItem> options
+    ) {
+        PropertyValueType normalizedValueType = requireValueType(valueType);
+        PropertyOptionMode normalizedOptionMode = normalizeOptionMode(optionMode, normalizedValueType);
+        List<PropertyOptionItem> normalizedOptions = normalizeOptions(options, normalizedValueType);
+        this.valueType = normalizedValueType;
+        this.optionMode = normalizedOptionMode;
+        this.options = normalizedOptions;
+    }
+
     public void changeOptionMode(PropertyOptionMode optionMode) {
         this.optionMode = normalizeOptionMode(optionMode, this.valueType);
     }

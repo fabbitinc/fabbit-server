@@ -35,7 +35,10 @@ public class UpdatePartRevisionRequest {
     @Min(value = 0, message = "lead_time_days는 0 이상이어야 합니다")
     private Integer leadTimeDays;
 
-    @Schema(description = "확장 속성 JSON 객체", example = "{\"weight\":1.2,\"color\":\"silver\"}")
+    @Schema(
+            description = "확장 속성 JSON 객체. key는 property_definition.id(UUID)여야 합니다",
+            example = "{\"019d0000-0000-7000-8000-000000000001\":\"AL6061\"}"
+    )
     private Map<String, Object> extendedProperties;
 
     private boolean nameSet;
