@@ -13,10 +13,9 @@ import org.junit.jupiter.api.Test;
 class PartPreviewTest {
 
     @Test
-    void replaceSource_기존_SOURCE_ORIGINAL을_재사용하고_파생_산출물만_제거할_수_있다() {
+    void replaceSource_기존_파생_산출물을_제거하고_새_source로_교체한다() {
         PartPreview preview = PartPreview.create(UUID.randomUUID());
         preview.replaceSource(PartPreviewSourceType.DRAWING, UUID.randomUUID(), DrawingDimension.TWO_D);
-        preview.registerSourceFile(UUID.randomUUID(), "source-a.step", "application/step", 10L);
         preview.completeProcessing(null, List.of(
                 new DrawingArtifactPublication(
                         DrawingArtifactType.DERIVED_PDF,
@@ -38,12 +37,10 @@ class PartPreviewTest {
                 )
         ));
 
-        preview.removeDerivedArtifacts();
+        preview.clearArtifacts();
         preview.replaceSource(PartPreviewSourceType.PREVIEW_FILE, UUID.randomUUID(), DrawingDimension.THREE_D);
-        preview.registerSourceFile(UUID.randomUUID(), "source-b.step", "application/step", 40L);
 
-        assertEquals(1, preview.getArtifacts().size());
-        assertEquals("source-b.step", preview.getOriginalFileKey());
+        assertEquals(0, preview.getArtifacts().size());
         assertNull(preview.getPdfKey());
         assertNull(preview.getWebpKey());
         assertEquals(PartPreviewSourceType.PREVIEW_FILE, preview.getSourceType());
@@ -54,7 +51,17 @@ class PartPreviewTest {
     void clearSource_모든_산출물을_함께_비운다() {
         PartPreview preview = PartPreview.create(UUID.randomUUID());
         preview.replaceSource(PartPreviewSourceType.DRAWING, UUID.randomUUID(), DrawingDimension.TWO_D);
-        preview.registerSourceFile(UUID.randomUUID(), "source-a.step", "application/step", 10L);
+        preview.completeProcessing(null, List.of(
+                new DrawingArtifactPublication(
+                        DrawingArtifactType.DERIVED_WEBP,
+                        UUID.randomUUID(),
+                        "webp",
+                        "source-a.webp",
+                        "image/webp",
+                        10L,
+                        true
+                )
+        ));
 
         preview.clearSource();
 

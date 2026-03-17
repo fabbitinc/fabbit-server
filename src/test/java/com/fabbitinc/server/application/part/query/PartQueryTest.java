@@ -26,6 +26,7 @@ import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartPreview;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
+import com.fabbitinc.server.domain.part.repository.PartPreviewFileRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewProcessingJobRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewServingProjectionRepository;
@@ -72,6 +73,8 @@ class PartQueryTest {
     @Mock
     private PartPreviewProcessingJobRepository partPreviewProcessingJobRepository;
     @Mock
+    private PartPreviewFileRepository partPreviewFileRepository;
+    @Mock
     private PartPreviewServingProjectionRepository partPreviewServingProjectionRepository;
     @Mock
     private ProjectApi projectApi;
@@ -101,6 +104,7 @@ class PartQueryTest {
                 drawingRepository,
                 partRevisionHistoryRepository,
                 partPreviewRepository,
+                partPreviewFileRepository,
                 partPreviewProcessingJobRepository,
                 partPreviewServingProjectionRepository,
                 projectApi,
@@ -131,6 +135,8 @@ class PartQueryTest {
         when(drawingRepository.findByPartRevisionIdAndDeletedAtIsNullOrderByCreatedAtDesc(draft.getId()))
                 .thenReturn(List.of());
         when(partPreviewRepository.findByPartRevisionId(draft.getId())).thenReturn(Optional.of(partPreview));
+        when(partPreviewFileRepository.findByPartPreview_IdOrderByCreatedAtDesc(partPreview.getId()))
+                .thenReturn(List.of(secondPreviewFile, firstPreviewFile));
         when(fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(
                 firstFile.getId(), "part_preview_file", firstPreviewFile.getId()
         )).thenReturn(Optional.of(firstFile));
@@ -157,13 +163,12 @@ class PartQueryTest {
 
         Drawing danglingDrawing = Drawing.create("DRW-1", "도면");
         danglingDrawing.assignPartRevision(draft.getId());
-        danglingDrawing.registerSourceFile(
+        danglingDrawing.assignSourceFile(
                 missingSourceFileId,
-                DrawingDimension.TWO_D,
-                "tenants/org/missing.pdf",
-                "application/pdf",
-                10L
+                com.fabbitinc.server.domain.drawing.model.DrawingSourceType.PDF_DOCUMENT,
+                DrawingDimension.TWO_D
         );
+        danglingDrawing.changeOriginalFileKey("tenants/org/missing.pdf");
 
         when(partRevisionRepository.findByPartNumberAndDraftKeyAndBaseRevisionIdIsNull("P-200", "D1"))
                 .thenReturn(Optional.of(draft));

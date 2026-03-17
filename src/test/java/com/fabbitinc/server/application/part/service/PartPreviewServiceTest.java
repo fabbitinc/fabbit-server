@@ -19,6 +19,7 @@ import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartPreview;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
+import com.fabbitinc.server.domain.part.repository.PartPreviewFileRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
@@ -37,6 +38,8 @@ class PartPreviewServiceTest {
     private PartRevisionRepository partRevisionRepository;
     @Mock
     private PartPreviewRepository partPreviewRepository;
+    @Mock
+    private PartPreviewFileRepository partPreviewFileRepository;
     @Mock
     private DrawingRepository drawingRepository;
     @Mock
@@ -67,16 +70,14 @@ class PartPreviewServiceTest {
         var existingPreviewFile = partPreview.addPreviewFile(existingFile.getId());
         existingFile.assignOwner(PartPreviewService.OWNER_TYPE_PREVIEW_FILE, existingPreviewFile.getId());
         partPreview.replaceSource(PartPreviewSourceType.PREVIEW_FILE, existingPreviewFile.getId(), DrawingDimension.THREE_D);
-        partPreview.registerSourceFile(
-                existingFile.getId(),
-                existingFile.getFileKey(),
-                existingFile.getContentType(),
-                existingFile.getFileSize()
-        );
 
         when(partRevisionRepository.findById(revision.getId())).thenReturn(Optional.of(revision));
         when(partPreviewRepository.findByPartRevisionId(revision.getId())).thenReturn(Optional.of(partPreview));
         when(fileRepository.findByIdAndDeletedAtIsNull(newFile.getId())).thenReturn(Optional.of(newFile));
+        when(partPreviewFileRepository.findByIdAndPartPreview_Id(any(), any()))
+                .thenAnswer(invocation -> partPreview.getPreviewFiles().stream()
+                        .filter(file -> file.getId().equals(invocation.getArgument(0, UUID.class)))
+                        .findFirst());
         when(partPreviewRepository.save(any(PartPreview.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(drawingSourceClassifier.classify(newFile.getOriginalName())).thenReturn(
                 new DrawingSourceDescriptor(DrawingExtension.STEP, DrawingSourceType.CAD_3D, DrawingDimension.THREE_D)
@@ -116,6 +117,7 @@ class PartPreviewServiceTest {
         return new PartPreviewService(
                 partRevisionRepository,
                 partPreviewRepository,
+                partPreviewFileRepository,
                 drawingRepository,
                 fileRepository,
                 organizationApi,

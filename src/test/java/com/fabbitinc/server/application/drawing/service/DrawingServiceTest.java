@@ -68,12 +68,14 @@ class DrawingServiceTest {
   @Test
   void deleteDrawing_원본_파일_스토리지를_반환한다() {
     Drawing drawing = Drawing.create("D-100", "sample.pdf");
+    drawing.assignSourceFile(UUID.randomUUID(), com.fabbitinc.server.domain.drawing.model.DrawingSourceType.PDF_DOCUMENT, com.fabbitinc.server.domain.drawing.model.DrawingDimension.TWO_D);
     drawing.changeOriginalFileKey("tenants/org/uploaded/sample.pdf");
 
     File original =
         createOwnedFile("sample.pdf", drawing.getId(), "tenants/org/uploaded/sample.pdf", 100L);
 
     when(drawingRepository.findById(drawing.getId())).thenReturn(Optional.of(drawing));
+    when(fileRepository.findByIdAndDeletedAtIsNull(drawing.getSourceFileId())).thenReturn(Optional.of(original));
     when(fileRepository.findByFileKeyAndDeletedAtIsNull(original.getFileKey()))
         .thenReturn(Optional.of(original));
 

@@ -74,6 +74,9 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
     @Column(name = "source_file_id")
     private UUID sourceFileId;
 
+    @Column(name = "original_file_key", length = 1000)
+    private String originalFileKey;
+
     @OneToMany(mappedBy = "drawing", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DrawingArtifact> artifacts = new ArrayList<>();
 
@@ -118,24 +121,6 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
         this.partRevisionId = null;
     }
 
-    public void registerSourceFile(
-            UUID sourceFileId,
-            DrawingDimension dimension,
-            String storageKey,
-            String contentType,
-            long fileSize
-    ) {
-        this.dimension = dimension;
-        upsertArtifact(
-                DrawingArtifactType.SOURCE_ORIGINAL,
-                sourceFileId,
-                detectFormat(storageKey),
-                storageKey,
-                normalizeNullable(contentType),
-                Math.max(fileSize, 0L)
-        );
-    }
-
     public void assignSourceFile(UUID sourceFileId, DrawingSourceType sourceType, DrawingDimension dimension) {
         if (sourceFileId == null) {
             throw new DomainException("DRAWING_SOURCE_FILE_REQUIRED", "도면 원본 파일 ID는 필수입니다");
@@ -146,19 +131,7 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
     }
 
     public void changeOriginalFileKey(String originalFileKey) {
-        String normalized = normalizeNullable(originalFileKey);
-        if (normalized == null) {
-            removeArtifact(DrawingArtifactType.SOURCE_ORIGINAL);
-            return;
-        }
-        upsertArtifact(
-                DrawingArtifactType.SOURCE_ORIGINAL,
-                null,
-                detectFormat(normalized),
-                normalized,
-                defaultContentType(detectFormat(normalized)),
-                0L
-        );
+        this.originalFileKey = normalizeNullable(originalFileKey);
     }
 
     public void softDelete(UUID actorId) {
@@ -166,7 +139,7 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
     }
 
     public String getOriginalFileKey() {
-        return findArtifactKey(DrawingArtifactType.SOURCE_ORIGINAL);
+        return originalFileKey;
     }
 
     public List<DrawingArtifact> getArtifacts() {
@@ -204,23 +177,11 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
         );
     }
 
-    private void removeArtifact(DrawingArtifactType artifactType) {
-        DrawingArtifact existing = findArtifact(artifactType);
-        if (existing != null) {
-            artifacts.remove(existing);
-        }
-    }
-
     private DrawingArtifact findArtifact(DrawingArtifactType artifactType) {
         return artifacts.stream()
                 .filter(artifact -> artifact.getArtifactType() == artifactType)
                 .findFirst()
                 .orElse(null);
-    }
-
-    private String findArtifactKey(DrawingArtifactType artifactType) {
-        DrawingArtifact artifact = findArtifact(artifactType);
-        return artifact == null ? null : artifact.getStorageKey();
     }
 
     private String requireName(String value) {
@@ -237,32 +198,6 @@ public class Drawing extends AbstractCreatedEntity implements AggregateRoot {
             return normalized;
         }
         throw new DomainException("DRAWING_ARTIFACT_KEY_REQUIRED", "산출물 키는 필수입니다");
-    }
-
-    private String detectFormat(String storageKey) {
-        String normalized = normalizeNullable(storageKey);
-        if (normalized == null) {
-            return null;
-        }
-        int idx = normalized.lastIndexOf('.');
-        if (idx < 0 || idx >= normalized.length() - 1) {
-            return null;
-        }
-        return normalized.substring(idx + 1).trim().toLowerCase();
-    }
-
-    private String defaultContentType(String format) {
-        if (format == null) {
-            return "application/octet-stream";
-        }
-        return switch (format) {
-            case "pdf" -> "application/pdf";
-            case "png" -> "image/png";
-            case "jpg", "jpeg" -> "image/jpeg";
-            case "webp" -> "image/webp";
-            case "glb" -> "model/gltf-binary";
-            default -> "application/octet-stream";
-        };
     }
 
     private String normalizeNullable(String value) {

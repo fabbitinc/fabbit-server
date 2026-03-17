@@ -23,14 +23,8 @@ class DrawingTest {
         UUID sourceFileId = UUID.randomUUID();
 
         assertEquals(DrawingStatus.DRAFT, drawing.getStatus());
-        drawing.registerSourceFile(
-                sourceFileId,
-                DrawingDimension.TWO_D,
-                "  files/a.pdf  ",
-                "application/pdf",
-                123L
-        );
         drawing.assignSourceFile(sourceFileId, DrawingSourceType.PDF_DOCUMENT, DrawingDimension.TWO_D);
+        drawing.changeOriginalFileKey("  files/a.pdf  ");
 
         assertEquals(sourceFileId, drawing.getSourceFileId());
         assertEquals("files/a.pdf", drawing.getOriginalFileKey());

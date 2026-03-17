@@ -72,6 +72,7 @@ import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
 import com.fabbitinc.server.domain.part.repository.PartRevisionHistoryRepository;
+import com.fabbitinc.server.domain.part.repository.PartPreviewFileRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewProcessingJobRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewServingProjectionRepository;
@@ -132,6 +133,7 @@ public class PartQuery {
     private final DrawingRepository drawingRepository;
     private final PartRevisionHistoryRepository partRevisionHistoryRepository;
     private final PartPreviewRepository partPreviewRepository;
+    private final PartPreviewFileRepository partPreviewFileRepository;
     private final PartPreviewProcessingJobRepository partPreviewProcessingJobRepository;
     private final PartPreviewServingProjectionRepository partPreviewServingProjectionRepository;
     private final ProjectApi projectApi;
@@ -1015,7 +1017,7 @@ public class PartQuery {
         String previewKey = projection == null ? partPreview.getWebpKey() : projection.getWebpKey();
         String pdfKey = projection == null ? partPreview.getPdfKey() : projection.getPdfKey();
         String glbKey = projection == null ? partPreview.getGlbKey() : projection.getGlbKey();
-        String originalFileKey = projection == null ? partPreview.getOriginalFileKey() : projection.getOriginalKey();
+        String originalFileKey = resolvePreviewOriginalFileKey(partPreview);
         DrawingViewerType viewerType = resolvePreviewViewerType(partPreview, pdfKey, glbKey);
         String viewerKey = viewerType == DrawingViewerType.GLB ? glbKey : pdfKey;
         return new PartPreviewResult(
@@ -1116,7 +1118,27 @@ public class PartQuery {
         if (partPreview == null) {
             return List.of();
         }
-        return partPreview.getPreviewFiles();
+        return partPreviewFileRepository.findByPartPreview_IdOrderByCreatedAtDesc(partPreview.getId());
+    }
+
+    private String resolvePreviewOriginalFileKey(PartPreview partPreview) {
+        if (partPreview.getSourceType() == PartPreviewSourceType.DRAWING) {
+            Drawing drawing = drawingRepository.findById(partPreview.getSourceId())
+                    .filter(it -> it.getDeletedAt() == null)
+                    .orElse(null);
+            File sourceFile = resolveDrawingFile(drawing);
+            return sourceFile == null ? null : sourceFile.getFileKey();
+        }
+        if (partPreview.getSourceType() == PartPreviewSourceType.PREVIEW_FILE) {
+            return fileRepository.findByOwnerTypeAndOwnerIdAndDeletedAtIsNull(
+                            PartPreviewService.OWNER_TYPE_PREVIEW_FILE,
+                            partPreview.getSourceId()
+                    ).stream()
+                    .findFirst()
+                    .map(File::getFileKey)
+                    .orElse(null);
+        }
+        return null;
     }
 
     private File resolveDrawingFile(Drawing drawing) {

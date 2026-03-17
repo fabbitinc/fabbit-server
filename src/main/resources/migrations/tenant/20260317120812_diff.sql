@@ -1,539 +1,527 @@
 -- liquibase formatted sql
 
--- changeset seongha.moon:1773690139162-1 splitStatements:false
-CREATE TABLE "drawings" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "deleted_at" TIMESTAMP WITH TIME ZONE, "dimension" VARCHAR(30), "drawing_number" VARCHAR(100), "name" VARCHAR(500), "part_revision_id" UUID, "source_file_id" UUID, "source_type" VARCHAR(30), "status" VARCHAR(50), "version" VARCHAR(50), CONSTRAINT "drawings_pkey" PRIMARY KEY ("id"));
+-- changeset seongha.moon:1773716897225-1 splitStatements:false
+CREATE TABLE "drawings" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "deleted_at" TIMESTAMP WITH TIME ZONE, "dimension" VARCHAR(30), "drawing_number" VARCHAR(100), "name" VARCHAR(500), "original_file_key" VARCHAR(1000), "part_revision_id" UUID, "source_file_id" UUID, "source_type" VARCHAR(30), "status" VARCHAR(50), "version" VARCHAR(50), CONSTRAINT "drawings_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-2 splitStatements:false
+-- changeset seongha.moon:1773716897225-2 splitStatements:false
 CREATE TABLE "engineering_bom_items" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "child_part_revision_id" UUID NOT NULL, "extended_properties" JSONB NOT NULL, "line_number" VARCHAR(50) NOT NULL, "parent_part_revision_id" UUID NOT NULL, "quantity" numeric(19, 6) NOT NULL, CONSTRAINT "engineering_bom_items_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-3 splitStatements:false
+-- changeset seongha.moon:1773716897225-3 splitStatements:false
 CREATE TABLE "engineering_change_comments" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "created_by" UUID, "updated_by" UUID, "body" TEXT NOT NULL, "engineering_change_id" UUID NOT NULL, CONSTRAINT "engineering_change_comments_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-4 splitStatements:false
+-- changeset seongha.moon:1773716897225-4 splitStatements:false
 CREATE TABLE "engineering_change_issues" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "engineering_change_id" UUID NOT NULL, "issue_id" UUID NOT NULL, CONSTRAINT "engineering_change_issues_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-5 splitStatements:false
+-- changeset seongha.moon:1773716897225-5 splitStatements:false
 CREATE TABLE "engineering_change_steps" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "acted_at" TIMESTAMP WITH TIME ZONE, "acted_by" UUID, "assignee_id" UUID NOT NULL, "assignee_type" VARCHAR(20) NOT NULL, "engineering_change_id" UUID NOT NULL, "sequence" INTEGER NOT NULL, "status" VARCHAR(20) NOT NULL, "step_type" VARCHAR(30) NOT NULL, CONSTRAINT "engineering_change_steps_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-6 splitStatements:false
+-- changeset seongha.moon:1773716897225-6 splitStatements:false
 CREATE TABLE "engineering_changes" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "created_by" UUID, "updated_by" UUID, "body" TEXT, "closed_at" TIMESTAMP WITH TIME ZONE, "merged_at" TIMESTAMP WITH TIME ZONE, "merged_by" UUID, "number" INTEGER NOT NULL, "state" VARCHAR(20) NOT NULL, "title" VARCHAR(500) NOT NULL, CONSTRAINT "engineering_changes_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-7 splitStatements:false
+-- changeset seongha.moon:1773716897225-7 splitStatements:false
 CREATE TABLE "files" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "content_hash" VARCHAR(64), "content_type" VARCHAR(100) NOT NULL, "deleted_at" TIMESTAMP WITH TIME ZONE, "file_key" VARCHAR(1000) NOT NULL, "file_size" BIGINT NOT NULL, "original_name" VARCHAR(500) NOT NULL, "owner_id" UUID, "owner_type" VARCHAR(50), "status" VARCHAR(20) NOT NULL, CONSTRAINT "files_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-8 splitStatements:false
+-- changeset seongha.moon:1773716897225-8 splitStatements:false
 CREATE TABLE "histories" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "action" VARCHAR(50) NOT NULL, "actor_id" UUID NOT NULL, "detail" JSONB, "target_id" UUID NOT NULL, "target_type" VARCHAR(20) NOT NULL, CONSTRAINT "histories_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-9 splitStatements:false
+-- changeset seongha.moon:1773716897225-9 splitStatements:false
 CREATE TABLE "issue_assignees" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "issue_id" UUID NOT NULL, "user_id" UUID NOT NULL, CONSTRAINT "issue_assignees_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-10 splitStatements:false
+-- changeset seongha.moon:1773716897225-10 splitStatements:false
 CREATE TABLE "issue_comments" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "created_by" UUID, "updated_by" UUID, "body" TEXT NOT NULL, "issue_id" UUID NOT NULL, CONSTRAINT "issue_comments_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-11 splitStatements:false
+-- changeset seongha.moon:1773716897225-11 splitStatements:false
 CREATE TABLE "issue_labels" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "issue_id" UUID NOT NULL, "label_id" UUID NOT NULL, CONSTRAINT "issue_labels_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-12 splitStatements:false
+-- changeset seongha.moon:1773716897225-12 splitStatements:false
 CREATE TABLE "issue_parts" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "issue_id" UUID NOT NULL, "part_id" UUID NOT NULL, CONSTRAINT "issue_parts_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-13 splitStatements:false
+-- changeset seongha.moon:1773716897225-13 splitStatements:false
 CREATE TABLE "issue_team_assignees" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "issue_id" UUID NOT NULL, "team_id" UUID NOT NULL, CONSTRAINT "issue_team_assignees_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-14 splitStatements:false
+-- changeset seongha.moon:1773716897225-14 splitStatements:false
 CREATE TABLE "issues" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "created_by" UUID, "updated_by" UUID, "body" TEXT, "closed_at" TIMESTAMP WITH TIME ZONE, "number" INTEGER NOT NULL, "state" VARCHAR(20) NOT NULL, "title" VARCHAR(500) NOT NULL, CONSTRAINT "issues_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-15 splitStatements:false
+-- changeset seongha.moon:1773716897225-15 splitStatements:false
 CREATE TABLE "mapping_records" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "is_active" BOOLEAN NOT NULL, "name" VARCHAR(200) NOT NULL, "scope" VARCHAR(20) NOT NULL, "usage_count" INTEGER NOT NULL, CONSTRAINT "mapping_records_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-16 splitStatements:false
+-- changeset seongha.moon:1773716897225-16 splitStatements:false
 CREATE TABLE "mapping_revisions" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "file_id" UUID NOT NULL, "mapping" JSONB NOT NULL, "original_headers" JSONB NOT NULL, "record_id" UUID NOT NULL, "sheet_name" VARCHAR(200), "usage_count" INTEGER NOT NULL, "version" INTEGER NOT NULL, CONSTRAINT "mapping_revisions_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-17 splitStatements:false
+-- changeset seongha.moon:1773716897225-17 splitStatements:false
 CREATE TABLE "mapping_v2_records" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "is_active" BOOLEAN NOT NULL, "name" VARCHAR(200) NOT NULL, "usage_count" INTEGER NOT NULL, CONSTRAINT "mapping_v2_records_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-18 splitStatements:false
+-- changeset seongha.moon:1773716897225-18 splitStatements:false
 CREATE TABLE "mapping_v2_revisions" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "file_id" UUID NOT NULL, "mapping" JSONB NOT NULL, "original_headers" JSONB NOT NULL, "record_id" UUID NOT NULL, "sheet_name" VARCHAR(200), "usage_count" INTEGER NOT NULL, "version" INTEGER NOT NULL, CONSTRAINT "mapping_v2_revisions_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-19 splitStatements:false
+-- changeset seongha.moon:1773716897225-19 splitStatements:false
 CREATE TABLE "notifications" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "actor_id" UUID NOT NULL, "payload" JSONB NOT NULL, "read_at" TIMESTAMP WITH TIME ZONE, "type" VARCHAR(20) NOT NULL, "user_id" UUID NOT NULL, CONSTRAINT "notifications_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-20 splitStatements:false
+-- changeset seongha.moon:1773716897225-20 splitStatements:false
 CREATE TABLE "part_revision_histories" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "action_type" VARCHAR(30) NOT NULL, "actor_id" UUID, "occurred_at" TIMESTAMP WITH TIME ZONE NOT NULL, "part_revision_id" UUID NOT NULL, "payload" JSONB NOT NULL, "source_ref_id" UUID, "source_type" VARCHAR(30) NOT NULL, CONSTRAINT "part_revision_histories_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-21 splitStatements:false
-CREATE TABLE "part_revisions" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "created_by" UUID, "updated_by" UUID, "base_revision_id" UUID, "category" VARCHAR(100), "description" TEXT, "draft_key" VARCHAR(50), "engineering_change_id" UUID, "extended_properties" JSONB NOT NULL, "lead_time_days" INTEGER, "material" VARCHAR(200), "name" VARCHAR(500), "owner_id" UUID, "owner_team_id" UUID, "part_id" UUID NOT NULL, "part_number" VARCHAR(100) NOT NULL, "is_phantom" BOOLEAN, "revision_code" VARCHAR(50), "status" VARCHAR(30) NOT NULL, "unit" VARCHAR(20), CONSTRAINT "part_revisions_pkey" PRIMARY KEY ("id"));
+-- changeset seongha.moon:1773716897225-21 splitStatements:false
+CREATE TABLE "part_revisions" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "created_by" UUID, "updated_by" UUID, "base_revision_id" UUID, "category" VARCHAR(100), "description" TEXT, "draft_key" VARCHAR(50), "engineering_change_id" UUID, "extended_properties" JSONB NOT NULL, "lead_time_days" INTEGER, "material" VARCHAR(200), "name" VARCHAR(500), "part_id" UUID NOT NULL, "part_number" VARCHAR(100) NOT NULL, "is_phantom" BOOLEAN, "revision_code" VARCHAR(50), "status" VARCHAR(30) NOT NULL, "unit" VARCHAR(20), CONSTRAINT "part_revisions_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-22 splitStatements:false
+-- changeset seongha.moon:1773716897225-22 splitStatements:false
 CREATE TABLE "part_suppliers" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "extended_properties" JSONB NOT NULL, "part_revision_id" UUID NOT NULL, "supplier_id" UUID NOT NULL, "unit_cost" FLOAT8, CONSTRAINT "part_suppliers_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-23 splitStatements:false
+-- changeset seongha.moon:1773716897225-23 splitStatements:false
 CREATE TABLE "project_members" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "project_id" UUID NOT NULL, "role" VARCHAR(20) NOT NULL, "user_id" UUID NOT NULL, CONSTRAINT "project_members_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-24 splitStatements:false
+-- changeset seongha.moon:1773716897225-24 splitStatements:false
 CREATE TABLE "project_parts" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "part_id" UUID NOT NULL, "project_id" UUID NOT NULL, CONSTRAINT "project_parts_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-25 splitStatements:false
+-- changeset seongha.moon:1773716897225-25 splitStatements:false
 CREATE TABLE "property_definitions" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "is_active" BOOLEAN NOT NULL, "description" TEXT, "display_name" VARCHAR(200) NOT NULL, "display_order" INTEGER NOT NULL, "option_mode" VARCHAR(20), "options_json" JSONB NOT NULL, "owner_type" VARCHAR(50) NOT NULL, "is_required" BOOLEAN NOT NULL, "value_type" VARCHAR(20) NOT NULL, CONSTRAINT "property_definitions_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-26 splitStatements:false
+-- changeset seongha.moon:1773716897225-26 splitStatements:false
 CREATE TABLE "suppliers" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "code" VARCHAR(100), "company_name" VARCHAR(200) NOT NULL, "contact_info" TEXT, "country" VARCHAR(100), "extended_properties" JSONB NOT NULL, CONSTRAINT "suppliers_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-27 splitStatements:false
+-- changeset seongha.moon:1773716897225-27 splitStatements:false
 CREATE TABLE "synthesis_batches" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "accepted_count" INTEGER NOT NULL, "failed_uploads" JSONB NOT NULL, "mapping_id" UUID NOT NULL, "project_id" UUID, "requested_by" UUID NOT NULL, "requested_count" INTEGER NOT NULL, CONSTRAINT "synthesis_batches_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-28 splitStatements:false
+-- changeset seongha.moon:1773716897225-28 splitStatements:false
 CREATE TABLE "synthesis_jobs" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "batch_id" UUID NOT NULL, "completed_at" TIMESTAMP WITH TIME ZONE, "errors" JSONB NOT NULL, "file_id" UUID NOT NULL, "mapping_id" UUID NOT NULL, "nodes_created" INTEGER NOT NULL, "processed_rows" INTEGER NOT NULL, "relationships_created" INTEGER NOT NULL, "started_at" TIMESTAMP WITH TIME ZONE, "status" VARCHAR(20) NOT NULL, "total_rows" INTEGER NOT NULL, CONSTRAINT "synthesis_jobs_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-29 splitStatements:false
+-- changeset seongha.moon:1773716897225-29 splitStatements:false
 CREATE TABLE "synthesis_v2_batches" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "accepted_count" INTEGER NOT NULL, "failed_uploads" JSONB NOT NULL, "mapping_id" UUID NOT NULL, "project_id" UUID, "requested_by" UUID NOT NULL, "requested_count" INTEGER NOT NULL, CONSTRAINT "synthesis_v2_batches_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-30 splitStatements:false
+-- changeset seongha.moon:1773716897225-30 splitStatements:false
 CREATE TABLE "synthesis_v2_jobs" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "batch_id" UUID NOT NULL, "completed_at" TIMESTAMP WITH TIME ZONE, "errors" JSONB NOT NULL, "file_id" UUID NOT NULL, "mapping_id" UUID NOT NULL, "nodes_created" INTEGER NOT NULL, "processed_rows" INTEGER NOT NULL, "relationships_created" INTEGER NOT NULL, "started_at" TIMESTAMP WITH TIME ZONE, "status" VARCHAR(20) NOT NULL, "total_rows" INTEGER NOT NULL, CONSTRAINT "synthesis_v2_jobs_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-31 splitStatements:false
+-- changeset seongha.moon:1773716897225-31 splitStatements:false
 CREATE TABLE "system_property_overrides" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "is_active" BOOLEAN NOT NULL, "display_name_override" VARCHAR(200), "display_order" INTEGER, "owner_type" VARCHAR(50) NOT NULL, "property_key" VARCHAR(100) NOT NULL, CONSTRAINT "system_property_overrides_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-32 splitStatements:false
+-- changeset seongha.moon:1773716897225-32 splitStatements:false
 CREATE TABLE "team_members" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "user_id" UUID NOT NULL, "team_id" UUID NOT NULL, CONSTRAINT "team_members_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-33 splitStatements:false
+-- changeset seongha.moon:1773716897225-33 splitStatements:false
 CREATE TABLE "drawing_artifacts" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "artifact_type" VARCHAR(50) NOT NULL, "content_type" VARCHAR(100), "file_id" UUID, "file_size" BIGINT NOT NULL, "format" VARCHAR(30), "published_at" TIMESTAMP WITH TIME ZONE NOT NULL, "storage_key" VARCHAR(1000) NOT NULL, "drawing_id" UUID NOT NULL, CONSTRAINT "drawing_artifacts_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-34 splitStatements:false
+-- changeset seongha.moon:1773716897225-34 splitStatements:false
 CREATE TABLE "part_preview_artifacts" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "artifact_type" VARCHAR(50) NOT NULL, "content_type" VARCHAR(100), "file_id" UUID, "file_size" BIGINT NOT NULL, "format" VARCHAR(30), "published_at" TIMESTAMP WITH TIME ZONE NOT NULL, "storage_key" VARCHAR(1000) NOT NULL, "part_preview_id" UUID NOT NULL, CONSTRAINT "part_preview_artifacts_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-35 splitStatements:false
+-- changeset seongha.moon:1773716897225-35 splitStatements:false
 CREATE TABLE "part_preview_processing_jobs" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "attempt_count" INTEGER NOT NULL, "completed_at" TIMESTAMP WITH TIME ZONE, "failure_reason" TEXT, "part_preview_id" UUID NOT NULL, "pipeline_key" VARCHAR(100) NOT NULL, "profile_key" VARCHAR(100) NOT NULL, "started_at" TIMESTAMP WITH TIME ZONE, "status" VARCHAR(30) NOT NULL, CONSTRAINT "part_preview_processing_jobs_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-36 splitStatements:false
+-- changeset seongha.moon:1773716897225-36 splitStatements:false
 CREATE TABLE "part_previews" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "current_job_id" UUID, "dimension" VARCHAR(30), "part_revision_id" UUID NOT NULL, "conversion_status" VARCHAR(30), "source_id" UUID, "source_type" VARCHAR(20), CONSTRAINT "part_previews_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-37 splitStatements:false
+-- changeset seongha.moon:1773716897225-37 splitStatements:false
 CREATE TABLE "part_revision_workflow_policies" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "mode" VARCHAR(50) NOT NULL, "policy_key" VARCHAR(50) NOT NULL, CONSTRAINT "part_revision_workflow_policies_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-38 splitStatements:false
-CREATE TABLE "parts" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "current_released_revision_id" UUID, "lifecycle_state" VARCHAR(50), "owner_id" UUID, "owner_team_id" UUID, "part_number" VARCHAR(100) NOT NULL, CONSTRAINT "parts_pkey" PRIMARY KEY ("id"));
+-- changeset seongha.moon:1773716897225-38 splitStatements:false
+CREATE TABLE "parts" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "current_released_revision_id" UUID, "lifecycle_state" VARCHAR(50), "part_number" VARCHAR(100) NOT NULL, CONSTRAINT "parts_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-39 splitStatements:false
+-- changeset seongha.moon:1773716897225-39 splitStatements:false
 CREATE TABLE "labels" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "created_by" UUID, "updated_by" UUID, "color" VARCHAR(7) NOT NULL, "description" VARCHAR(200), "name" VARCHAR(50) NOT NULL, CONSTRAINT "labels_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-40 splitStatements:false
-CREATE TABLE "part_default_owners" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "category" VARCHAR(100), "default_owner_id" UUID, "default_owner_team_id" UUID, CONSTRAINT "part_default_owners_pkey" PRIMARY KEY ("id"));
-
--- changeset seongha.moon:1773690139162-41 splitStatements:false
+-- changeset seongha.moon:1773716897225-40 splitStatements:false
 CREATE TABLE "part_preview_files" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "file_id" UUID NOT NULL, "part_preview_id" UUID NOT NULL, CONSTRAINT "part_preview_files_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-42 splitStatements:false
-CREATE TABLE "part_preview_serving_projections" ("part_preview_id" UUID NOT NULL, "glb_key" VARCHAR(1000), "original_key" VARCHAR(1000), "pdf_key" VARCHAR(1000), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "webp_key" VARCHAR(1000), CONSTRAINT "part_preview_serving_projections_pkey" PRIMARY KEY ("part_preview_id"));
+-- changeset seongha.moon:1773716897225-41 splitStatements:false
+CREATE TABLE "part_preview_serving_projections" ("part_preview_id" UUID NOT NULL, "glb_key" VARCHAR(1000), "pdf_key" VARCHAR(1000), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "webp_key" VARCHAR(1000), CONSTRAINT "part_preview_serving_projections_pkey" PRIMARY KEY ("part_preview_id"));
 
--- changeset seongha.moon:1773690139162-43 splitStatements:false
+-- changeset seongha.moon:1773716897225-42 splitStatements:false
 CREATE TABLE "projects" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "created_by" UUID, "updated_by" UUID, "is_deleted" BOOLEAN NOT NULL, "deleted_at" TIMESTAMP WITH TIME ZONE, "deleted_by" UUID, "is_archived" BOOLEAN NOT NULL, "description" TEXT, "name" VARCHAR(200) NOT NULL, CONSTRAINT "projects_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-44 splitStatements:false
+-- changeset seongha.moon:1773716897225-43 splitStatements:false
 CREATE TABLE "teams" ("id" UUID NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL, "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL, "created_by" UUID, "updated_by" UUID, "description" TEXT, "name" VARCHAR(100) NOT NULL, CONSTRAINT "teams_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-45 splitStatements:false
+-- changeset seongha.moon:1773716897225-44 splitStatements:false
 CREATE TABLE "work_item_number_sequences" ("id" UUID NOT NULL, "next_number" INTEGER NOT NULL, CONSTRAINT "work_item_number_sequences_pkey" PRIMARY KEY ("id"));
 
--- changeset seongha.moon:1773690139162-46 splitStatements:false
+-- changeset seongha.moon:1773716897225-45 splitStatements:false
 CREATE INDEX "ix_drawings_part_revision_id" ON "drawings" USING btree("part_revision_id");
 
--- changeset seongha.moon:1773690139162-47 splitStatements:false
+-- changeset seongha.moon:1773716897225-46 splitStatements:false
 ALTER TABLE "drawings" ADD CONSTRAINT "uq_drawings_drawing_number" UNIQUE ("drawing_number");
 
--- changeset seongha.moon:1773690139162-48 splitStatements:false
+-- changeset seongha.moon:1773716897225-47 splitStatements:false
 CREATE INDEX "ix_engineering_bom_items_parent_part_revision_id" ON "engineering_bom_items" USING btree("parent_part_revision_id");
 
--- changeset seongha.moon:1773690139162-49 splitStatements:false
+-- changeset seongha.moon:1773716897225-48 splitStatements:false
 CREATE INDEX "ix_engineering_bom_items_child_part_revision_id" ON "engineering_bom_items" USING btree("child_part_revision_id");
 
--- changeset seongha.moon:1773690139162-50 splitStatements:false
+-- changeset seongha.moon:1773716897225-49 splitStatements:false
 ALTER TABLE "engineering_bom_items" ADD CONSTRAINT "uq_engineering_bom_items_parent_revision_line_number" UNIQUE ("parent_part_revision_id", "line_number");
 
--- changeset seongha.moon:1773690139162-51 splitStatements:false
+-- changeset seongha.moon:1773716897225-50 splitStatements:false
 CREATE INDEX "ix_engineering_change_comments_engineering_change_id" ON "engineering_change_comments" USING btree("engineering_change_id");
 
--- changeset seongha.moon:1773690139162-52 splitStatements:false
+-- changeset seongha.moon:1773716897225-51 splitStatements:false
 CREATE INDEX "ix_engineering_change_issues_engineering_change_id" ON "engineering_change_issues" USING btree("engineering_change_id");
 
--- changeset seongha.moon:1773690139162-53 splitStatements:false
+-- changeset seongha.moon:1773716897225-52 splitStatements:false
 CREATE INDEX "ix_engineering_change_issues_issue_id" ON "engineering_change_issues" USING btree("issue_id");
 
--- changeset seongha.moon:1773690139162-54 splitStatements:false
+-- changeset seongha.moon:1773716897225-53 splitStatements:false
 ALTER TABLE "engineering_change_issues" ADD CONSTRAINT "uq_engineering_change_issues_engineering_change_id_issue_id" UNIQUE ("engineering_change_id", "issue_id");
 
--- changeset seongha.moon:1773690139162-55 splitStatements:false
+-- changeset seongha.moon:1773716897225-54 splitStatements:false
 CREATE INDEX "ix_engineering_change_steps_engineering_change_id" ON "engineering_change_steps" USING btree("engineering_change_id");
 
--- changeset seongha.moon:1773690139162-56 splitStatements:false
+-- changeset seongha.moon:1773716897225-55 splitStatements:false
 CREATE INDEX "ix_engineering_change_steps_step_type" ON "engineering_change_steps" USING btree("step_type");
 
--- changeset seongha.moon:1773690139162-57 splitStatements:false
+-- changeset seongha.moon:1773716897225-56 splitStatements:false
 CREATE INDEX "ix_engineering_change_steps_assignee_id" ON "engineering_change_steps" USING btree("assignee_id");
 
--- changeset seongha.moon:1773690139162-58 splitStatements:false
+-- changeset seongha.moon:1773716897225-57 splitStatements:false
 CREATE INDEX "ix_engineering_changes_state" ON "engineering_changes" USING btree("state");
 
--- changeset seongha.moon:1773690139162-59 splitStatements:false
+-- changeset seongha.moon:1773716897225-58 splitStatements:false
 CREATE INDEX "ix_engineering_changes_created_by" ON "engineering_changes" USING btree("created_by");
 
--- changeset seongha.moon:1773690139162-60 splitStatements:false
+-- changeset seongha.moon:1773716897225-59 splitStatements:false
 ALTER TABLE "engineering_changes" ADD CONSTRAINT "uq_engineering_changes_number" UNIQUE ("number");
 
--- changeset seongha.moon:1773690139162-61 splitStatements:false
+-- changeset seongha.moon:1773716897225-60 splitStatements:false
 CREATE INDEX "ix_files_owner_type_owner_id" ON "files" USING btree("owner_type", "owner_id");
 
--- changeset seongha.moon:1773690139162-62 splitStatements:false
+-- changeset seongha.moon:1773716897225-61 splitStatements:false
 CREATE INDEX "ix_files_original_name_file_size_content_hash" ON "files" USING btree("original_name", "file_size", "content_hash");
 
--- changeset seongha.moon:1773690139162-63 splitStatements:false
+-- changeset seongha.moon:1773716897225-62 splitStatements:false
 ALTER TABLE "files" ADD CONSTRAINT "uq_files_file_key" UNIQUE ("file_key");
 
--- changeset seongha.moon:1773690139162-64 splitStatements:false
+-- changeset seongha.moon:1773716897225-63 splitStatements:false
 CREATE INDEX "ix_activities_target" ON "histories" USING btree("target_type", "target_id");
 
--- changeset seongha.moon:1773690139162-65 splitStatements:false
+-- changeset seongha.moon:1773716897225-64 splitStatements:false
 CREATE INDEX "ix_issue_assignees_issue_id" ON "issue_assignees" USING btree("issue_id");
 
--- changeset seongha.moon:1773690139162-66 splitStatements:false
+-- changeset seongha.moon:1773716897225-65 splitStatements:false
 CREATE INDEX "ix_issue_assignees_user_id" ON "issue_assignees" USING btree("user_id");
 
--- changeset seongha.moon:1773690139162-67 splitStatements:false
+-- changeset seongha.moon:1773716897225-66 splitStatements:false
 ALTER TABLE "issue_assignees" ADD CONSTRAINT "uq_issue_assignees_issue_id_user_id" UNIQUE ("issue_id", "user_id");
 
--- changeset seongha.moon:1773690139162-68 splitStatements:false
+-- changeset seongha.moon:1773716897225-67 splitStatements:false
 CREATE INDEX "ix_issue_comments_issue_id" ON "issue_comments" USING btree("issue_id");
 
--- changeset seongha.moon:1773690139162-69 splitStatements:false
+-- changeset seongha.moon:1773716897225-68 splitStatements:false
 CREATE INDEX "ix_issue_labels_issue_id" ON "issue_labels" USING btree("issue_id");
 
--- changeset seongha.moon:1773690139162-70 splitStatements:false
+-- changeset seongha.moon:1773716897225-69 splitStatements:false
 CREATE INDEX "ix_issue_labels_label_id" ON "issue_labels" USING btree("label_id");
 
--- changeset seongha.moon:1773690139162-71 splitStatements:false
+-- changeset seongha.moon:1773716897225-70 splitStatements:false
 ALTER TABLE "issue_labels" ADD CONSTRAINT "uq_issue_labels_issue_id_label_id" UNIQUE ("issue_id", "label_id");
 
--- changeset seongha.moon:1773690139162-72 splitStatements:false
+-- changeset seongha.moon:1773716897225-71 splitStatements:false
 CREATE INDEX "ix_issue_parts_issue_id" ON "issue_parts" USING btree("issue_id");
 
--- changeset seongha.moon:1773690139162-73 splitStatements:false
+-- changeset seongha.moon:1773716897225-72 splitStatements:false
 CREATE INDEX "ix_issue_parts_part_id" ON "issue_parts" USING btree("part_id");
 
--- changeset seongha.moon:1773690139162-74 splitStatements:false
+-- changeset seongha.moon:1773716897225-73 splitStatements:false
 ALTER TABLE "issue_parts" ADD CONSTRAINT "uq_issue_parts_issue_id_part_id" UNIQUE ("issue_id", "part_id");
 
--- changeset seongha.moon:1773690139162-75 splitStatements:false
+-- changeset seongha.moon:1773716897225-74 splitStatements:false
 CREATE INDEX "ix_issue_team_assignees_issue_id" ON "issue_team_assignees" USING btree("issue_id");
 
--- changeset seongha.moon:1773690139162-76 splitStatements:false
+-- changeset seongha.moon:1773716897225-75 splitStatements:false
 CREATE INDEX "ix_issue_team_assignees_team_id" ON "issue_team_assignees" USING btree("team_id");
 
--- changeset seongha.moon:1773690139162-77 splitStatements:false
+-- changeset seongha.moon:1773716897225-76 splitStatements:false
 ALTER TABLE "issue_team_assignees" ADD CONSTRAINT "uq_issue_team_assignees_issue_id_team_id" UNIQUE ("issue_id", "team_id");
 
--- changeset seongha.moon:1773690139162-78 splitStatements:false
+-- changeset seongha.moon:1773716897225-77 splitStatements:false
 CREATE INDEX "ix_issues_state" ON "issues" USING btree("state");
 
--- changeset seongha.moon:1773690139162-79 splitStatements:false
+-- changeset seongha.moon:1773716897225-78 splitStatements:false
 CREATE INDEX "ix_issues_created_by" ON "issues" USING btree("created_by");
 
--- changeset seongha.moon:1773690139162-80 splitStatements:false
+-- changeset seongha.moon:1773716897225-79 splitStatements:false
 ALTER TABLE "issues" ADD CONSTRAINT "uq_issues_number" UNIQUE ("number");
 
--- changeset seongha.moon:1773690139162-81 splitStatements:false
+-- changeset seongha.moon:1773716897225-80 splitStatements:false
 CREATE INDEX "ix_mapping_records_scope_is_active" ON "mapping_records" USING btree("scope", "is_active");
 
--- changeset seongha.moon:1773690139162-82 splitStatements:false
+-- changeset seongha.moon:1773716897225-81 splitStatements:false
 ALTER TABLE "mapping_records" ADD CONSTRAINT "uq_mapping_records_name" UNIQUE ("name");
 
--- changeset seongha.moon:1773690139162-83 splitStatements:false
+-- changeset seongha.moon:1773716897225-82 splitStatements:false
 CREATE INDEX "ix_mapping_revisions_record_id" ON "mapping_revisions" USING btree("record_id");
 
--- changeset seongha.moon:1773690139162-84 splitStatements:false
+-- changeset seongha.moon:1773716897225-83 splitStatements:false
 CREATE INDEX "ix_mapping_revisions_file_id" ON "mapping_revisions" USING btree("file_id");
 
--- changeset seongha.moon:1773690139162-85 splitStatements:false
+-- changeset seongha.moon:1773716897225-84 splitStatements:false
 ALTER TABLE "mapping_revisions" ADD CONSTRAINT "uq_mapping_revisions_record_version" UNIQUE ("record_id", "version");
 
--- changeset seongha.moon:1773690139162-86 splitStatements:false
+-- changeset seongha.moon:1773716897225-85 splitStatements:false
 CREATE INDEX "ix_mapping_v2_records_is_active" ON "mapping_v2_records" USING btree("is_active");
 
--- changeset seongha.moon:1773690139162-87 splitStatements:false
+-- changeset seongha.moon:1773716897225-86 splitStatements:false
 ALTER TABLE "mapping_v2_records" ADD CONSTRAINT "uq_mapping_v2_records_name" UNIQUE ("name");
 
--- changeset seongha.moon:1773690139162-88 splitStatements:false
+-- changeset seongha.moon:1773716897225-87 splitStatements:false
 CREATE INDEX "ix_mapping_v2_revisions_record_id" ON "mapping_v2_revisions" USING btree("record_id");
 
--- changeset seongha.moon:1773690139162-89 splitStatements:false
+-- changeset seongha.moon:1773716897225-88 splitStatements:false
 CREATE INDEX "ix_mapping_v2_revisions_file_id" ON "mapping_v2_revisions" USING btree("file_id");
 
--- changeset seongha.moon:1773690139162-90 splitStatements:false
+-- changeset seongha.moon:1773716897225-89 splitStatements:false
 ALTER TABLE "mapping_v2_revisions" ADD CONSTRAINT "uq_mapping_v2_revisions_record_version" UNIQUE ("record_id", "version");
 
--- changeset seongha.moon:1773690139162-91 splitStatements:false
+-- changeset seongha.moon:1773716897225-90 splitStatements:false
 CREATE INDEX "ix_notifications_user_unread" ON "notifications" USING btree("user_id", "read_at");
 
--- changeset seongha.moon:1773690139162-92 splitStatements:false
+-- changeset seongha.moon:1773716897225-91 splitStatements:false
 CREATE INDEX "ix_part_revision_histories_revision_created" ON "part_revision_histories" USING btree("part_revision_id", "created_at");
 
--- changeset seongha.moon:1773690139162-93 splitStatements:false
+-- changeset seongha.moon:1773716897225-92 splitStatements:false
 CREATE INDEX "ix_part_revision_histories_actor_id" ON "part_revision_histories" USING btree("actor_id");
 
--- changeset seongha.moon:1773690139162-94 splitStatements:false
+-- changeset seongha.moon:1773716897225-93 splitStatements:false
 CREATE INDEX "ix_part_revision_histories_source_ref_id" ON "part_revision_histories" USING btree("source_ref_id");
 
--- changeset seongha.moon:1773690139162-95 splitStatements:false
+-- changeset seongha.moon:1773716897225-94 splitStatements:false
 CREATE INDEX "ix_part_revisions_part_id" ON "part_revisions" USING btree("part_id");
 
--- changeset seongha.moon:1773690139162-96 splitStatements:false
+-- changeset seongha.moon:1773716897225-95 splitStatements:false
 CREATE INDEX "ix_part_revisions_part_number" ON "part_revisions" USING btree("part_number");
 
--- changeset seongha.moon:1773690139162-97 splitStatements:false
+-- changeset seongha.moon:1773716897225-96 splitStatements:false
 CREATE INDEX "ix_part_revisions_base_revision_id" ON "part_revisions" USING btree("base_revision_id");
 
--- changeset seongha.moon:1773690139162-98 splitStatements:false
+-- changeset seongha.moon:1773716897225-97 splitStatements:false
 CREATE INDEX "ix_part_revisions_created_by" ON "part_revisions" USING btree("created_by");
 
--- changeset seongha.moon:1773690139162-99 splitStatements:false
+-- changeset seongha.moon:1773716897225-98 splitStatements:false
 ALTER TABLE "part_revisions" ADD CONSTRAINT "uq_part_revisions_part_number_revision_code" UNIQUE ("part_number", "revision_code");
 
--- changeset seongha.moon:1773690139162-100 splitStatements:false
+-- changeset seongha.moon:1773716897225-99 splitStatements:false
 CREATE INDEX "ix_part_suppliers_part_revision_id" ON "part_suppliers" USING btree("part_revision_id");
 
--- changeset seongha.moon:1773690139162-101 splitStatements:false
+-- changeset seongha.moon:1773716897225-100 splitStatements:false
 CREATE INDEX "ix_part_suppliers_supplier_id" ON "part_suppliers" USING btree("supplier_id");
 
--- changeset seongha.moon:1773690139162-102 splitStatements:false
+-- changeset seongha.moon:1773716897225-101 splitStatements:false
 ALTER TABLE "part_suppliers" ADD CONSTRAINT "uq_part_suppliers_part_revision_id_supplier_id" UNIQUE ("part_revision_id", "supplier_id");
 
--- changeset seongha.moon:1773690139162-103 splitStatements:false
+-- changeset seongha.moon:1773716897225-102 splitStatements:false
 CREATE INDEX "ix_project_members_project_id" ON "project_members" USING btree("project_id");
 
--- changeset seongha.moon:1773690139162-104 splitStatements:false
+-- changeset seongha.moon:1773716897225-103 splitStatements:false
 CREATE INDEX "ix_project_members_user_id" ON "project_members" USING btree("user_id");
 
--- changeset seongha.moon:1773690139162-105 splitStatements:false
+-- changeset seongha.moon:1773716897225-104 splitStatements:false
 ALTER TABLE "project_members" ADD CONSTRAINT "uq_project_members_project_id_user_id" UNIQUE ("project_id", "user_id");
 
--- changeset seongha.moon:1773690139162-106 splitStatements:false
+-- changeset seongha.moon:1773716897225-105 splitStatements:false
 CREATE INDEX "ix_project_parts_project_id" ON "project_parts" USING btree("project_id");
 
--- changeset seongha.moon:1773690139162-107 splitStatements:false
+-- changeset seongha.moon:1773716897225-106 splitStatements:false
 CREATE INDEX "ix_project_parts_part_id" ON "project_parts" USING btree("part_id");
 
--- changeset seongha.moon:1773690139162-108 splitStatements:false
+-- changeset seongha.moon:1773716897225-107 splitStatements:false
 ALTER TABLE "project_parts" ADD CONSTRAINT "uq_project_parts_project_id_part_id" UNIQUE ("project_id", "part_id");
 
--- changeset seongha.moon:1773690139162-109 splitStatements:false
+-- changeset seongha.moon:1773716897225-108 splitStatements:false
 CREATE INDEX "ix_property_definitions_owner_type_is_active_display_order" ON "property_definitions" USING btree("owner_type", "is_active", "display_order");
 
--- changeset seongha.moon:1773690139162-110 splitStatements:false
+-- changeset seongha.moon:1773716897225-109 splitStatements:false
 ALTER TABLE "property_definitions" ADD CONSTRAINT "uq_property_definitions_owner_type_display_name" UNIQUE ("owner_type", "display_name");
 
--- changeset seongha.moon:1773690139162-111 splitStatements:false
+-- changeset seongha.moon:1773716897225-110 splitStatements:false
 CREATE INDEX "ix_suppliers_code" ON "suppliers" USING btree("code");
 
--- changeset seongha.moon:1773690139162-112 splitStatements:false
+-- changeset seongha.moon:1773716897225-111 splitStatements:false
 ALTER TABLE "suppliers" ADD CONSTRAINT "uq_suppliers_company_name" UNIQUE ("company_name");
 
--- changeset seongha.moon:1773690139162-113 splitStatements:false
+-- changeset seongha.moon:1773716897225-112 splitStatements:false
 CREATE INDEX "ix_synthesis_batches_project_id" ON "synthesis_batches" USING btree("project_id");
 
--- changeset seongha.moon:1773690139162-114 splitStatements:false
+-- changeset seongha.moon:1773716897225-113 splitStatements:false
 CREATE INDEX "ix_synthesis_batches_mapping_id" ON "synthesis_batches" USING btree("mapping_id");
 
--- changeset seongha.moon:1773690139162-115 splitStatements:false
+-- changeset seongha.moon:1773716897225-114 splitStatements:false
 CREATE INDEX "ix_synthesis_batches_requested_by" ON "synthesis_batches" USING btree("requested_by");
 
--- changeset seongha.moon:1773690139162-116 splitStatements:false
+-- changeset seongha.moon:1773716897225-115 splitStatements:false
 CREATE INDEX "ix_synthesis_jobs_batch_id" ON "synthesis_jobs" USING btree("batch_id");
 
--- changeset seongha.moon:1773690139162-117 splitStatements:false
+-- changeset seongha.moon:1773716897225-116 splitStatements:false
 CREATE INDEX "ix_synthesis_jobs_mapping_id" ON "synthesis_jobs" USING btree("mapping_id");
 
--- changeset seongha.moon:1773690139162-118 splitStatements:false
+-- changeset seongha.moon:1773716897225-117 splitStatements:false
 CREATE INDEX "ix_synthesis_jobs_file_id" ON "synthesis_jobs" USING btree("file_id");
 
--- changeset seongha.moon:1773690139162-119 splitStatements:false
+-- changeset seongha.moon:1773716897225-118 splitStatements:false
 CREATE INDEX "ix_synthesis_v2_batches_project_id" ON "synthesis_v2_batches" USING btree("project_id");
 
--- changeset seongha.moon:1773690139162-120 splitStatements:false
+-- changeset seongha.moon:1773716897225-119 splitStatements:false
 CREATE INDEX "ix_synthesis_v2_batches_mapping_id" ON "synthesis_v2_batches" USING btree("mapping_id");
 
--- changeset seongha.moon:1773690139162-121 splitStatements:false
+-- changeset seongha.moon:1773716897225-120 splitStatements:false
 CREATE INDEX "ix_synthesis_v2_batches_requested_by" ON "synthesis_v2_batches" USING btree("requested_by");
 
--- changeset seongha.moon:1773690139162-122 splitStatements:false
+-- changeset seongha.moon:1773716897225-121 splitStatements:false
 CREATE INDEX "ix_synthesis_v2_jobs_batch_id" ON "synthesis_v2_jobs" USING btree("batch_id");
 
--- changeset seongha.moon:1773690139162-123 splitStatements:false
+-- changeset seongha.moon:1773716897225-122 splitStatements:false
 CREATE INDEX "ix_synthesis_v2_jobs_mapping_id" ON "synthesis_v2_jobs" USING btree("mapping_id");
 
--- changeset seongha.moon:1773690139162-124 splitStatements:false
+-- changeset seongha.moon:1773716897225-123 splitStatements:false
 CREATE INDEX "ix_synthesis_v2_jobs_file_id" ON "synthesis_v2_jobs" USING btree("file_id");
 
--- changeset seongha.moon:1773690139162-125 splitStatements:false
+-- changeset seongha.moon:1773716897225-124 splitStatements:false
 CREATE INDEX "ix_system_property_overrides_owner_type_is_active_display_order" ON "system_property_overrides" USING btree("owner_type", "is_active", "display_order");
 
--- changeset seongha.moon:1773690139162-126 splitStatements:false
+-- changeset seongha.moon:1773716897225-125 splitStatements:false
 ALTER TABLE "system_property_overrides" ADD CONSTRAINT "uq_system_property_overrides_owner_type_property_key" UNIQUE ("owner_type", "property_key");
 
--- changeset seongha.moon:1773690139162-127 splitStatements:false
+-- changeset seongha.moon:1773716897225-126 splitStatements:false
 CREATE INDEX "ix_team_members_team_id" ON "team_members" USING btree("team_id");
 
--- changeset seongha.moon:1773690139162-128 splitStatements:false
+-- changeset seongha.moon:1773716897225-127 splitStatements:false
 CREATE INDEX "ix_team_members_user_id" ON "team_members" USING btree("user_id");
 
--- changeset seongha.moon:1773690139162-129 splitStatements:false
+-- changeset seongha.moon:1773716897225-128 splitStatements:false
 ALTER TABLE "team_members" ADD CONSTRAINT "uq_team_members_team_id_user_id" UNIQUE ("team_id", "user_id");
 
--- changeset seongha.moon:1773690139162-130 splitStatements:false
+-- changeset seongha.moon:1773716897225-129 splitStatements:false
 ALTER TABLE "drawing_artifacts" ADD CONSTRAINT "uq_drawing_artifacts_drawing_type" UNIQUE ("drawing_id", "artifact_type");
 
--- changeset seongha.moon:1773690139162-131 splitStatements:false
+-- changeset seongha.moon:1773716897225-130 splitStatements:false
 ALTER TABLE "part_preview_artifacts" ADD CONSTRAINT "uq_part_preview_artifacts_preview_type" UNIQUE ("part_preview_id", "artifact_type");
 
--- changeset seongha.moon:1773690139162-132 splitStatements:false
+-- changeset seongha.moon:1773716897225-131 splitStatements:false
 ALTER TABLE "part_previews" ADD CONSTRAINT "uq_part_previews_part_revision_id" UNIQUE ("part_revision_id");
 
--- changeset seongha.moon:1773690139162-133 splitStatements:false
+-- changeset seongha.moon:1773716897225-132 splitStatements:false
 ALTER TABLE "part_revision_workflow_policies" ADD CONSTRAINT "uq_part_revision_workflow_policies_policy_key" UNIQUE ("policy_key");
 
--- changeset seongha.moon:1773690139162-134 splitStatements:false
+-- changeset seongha.moon:1773716897225-133 splitStatements:false
 ALTER TABLE "parts" ADD CONSTRAINT "uq_parts_part_number" UNIQUE ("part_number");
 
--- changeset seongha.moon:1773690139162-135 splitStatements:false
+-- changeset seongha.moon:1773716897225-134 splitStatements:false
 ALTER TABLE "labels" ADD CONSTRAINT "uq_labels_name" UNIQUE ("name");
 
--- changeset seongha.moon:1773690139162-136 splitStatements:false
+-- changeset seongha.moon:1773716897225-135 splitStatements:false
 ALTER TABLE "part_preview_files" ADD CONSTRAINT "uq_part_preview_files_file_id" UNIQUE ("file_id");
 
--- changeset seongha.moon:1773690139162-137 splitStatements:false
+-- changeset seongha.moon:1773716897225-136 splitStatements:false
 ALTER TABLE "teams" ADD CONSTRAINT "uq_teams_name" UNIQUE ("name");
 
--- changeset seongha.moon:1773690139162-138 splitStatements:false
+-- changeset seongha.moon:1773716897225-137 splitStatements:false
 ALTER TABLE "engineering_change_comments" ADD CONSTRAINT "fk1g95iugo186w07u6gawmanhdr" FOREIGN KEY ("engineering_change_id") REFERENCES "engineering_changes" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-139 splitStatements:false
+-- changeset seongha.moon:1773716897225-138 splitStatements:false
 ALTER TABLE "project_parts" ADD CONSTRAINT "fk2w9t9pm4a18rihij6xcup7kun" FOREIGN KEY ("part_id") REFERENCES "parts" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-140 splitStatements:false
+-- changeset seongha.moon:1773716897225-139 splitStatements:false
 ALTER TABLE "part_suppliers" ADD CONSTRAINT "fk4brv9b343p36yict83fyfixdy" FOREIGN KEY ("part_revision_id") REFERENCES "part_revisions" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-141 splitStatements:false
+-- changeset seongha.moon:1773716897225-140 splitStatements:false
 ALTER TABLE "issue_team_assignees" ADD CONSTRAINT "fk56bv9knlohikvliauqx0s6x35" FOREIGN KEY ("issue_id") REFERENCES "issues" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-142 splitStatements:false
+-- changeset seongha.moon:1773716897225-141 splitStatements:false
 ALTER TABLE "project_parts" ADD CONSTRAINT "fk5ddsht7he9hab9xu47wnook3f" FOREIGN KEY ("project_id") REFERENCES "projects" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-143 splitStatements:false
+-- changeset seongha.moon:1773716897225-142 splitStatements:false
 ALTER TABLE "engineering_change_issues" ADD CONSTRAINT "fk5i2rg8agkl18atn0jbjaxr8ol" FOREIGN KEY ("engineering_change_id") REFERENCES "engineering_changes" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-144 splitStatements:false
+-- changeset seongha.moon:1773716897225-143 splitStatements:false
 ALTER TABLE "mapping_revisions" ADD CONSTRAINT "fk6gym46gcwslhqmyr9e2ih59lr" FOREIGN KEY ("record_id") REFERENCES "mapping_records" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-145 splitStatements:false
+-- changeset seongha.moon:1773716897225-144 splitStatements:false
 ALTER TABLE "issue_assignees" ADD CONSTRAINT "fk81q8jhewj6k8k5s1y4cw1wdyo" FOREIGN KEY ("issue_id") REFERENCES "issues" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-146 splitStatements:false
+-- changeset seongha.moon:1773716897225-145 splitStatements:false
 ALTER TABLE "mapping_revisions" ADD CONSTRAINT "fk_mapping_revisions_file_id" FOREIGN KEY ("file_id") REFERENCES "files" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-147 splitStatements:false
+-- changeset seongha.moon:1773716897225-146 splitStatements:false
 ALTER TABLE "mapping_v2_revisions" ADD CONSTRAINT "fk_mapping_v2_revisions_file_id" FOREIGN KEY ("file_id") REFERENCES "files" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-148 splitStatements:false
+-- changeset seongha.moon:1773716897225-147 splitStatements:false
 ALTER TABLE "mapping_v2_revisions" ADD CONSTRAINT "fk_mapping_v2_revisions_record_id" FOREIGN KEY ("record_id") REFERENCES "mapping_v2_records" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-149 splitStatements:false
+-- changeset seongha.moon:1773716897225-148 splitStatements:false
 ALTER TABLE "part_revision_histories" ADD CONSTRAINT "fk_part_revision_histories_part_revision_id" FOREIGN KEY ("part_revision_id") REFERENCES "part_revisions" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-150 splitStatements:false
+-- changeset seongha.moon:1773716897225-149 splitStatements:false
 ALTER TABLE "synthesis_batches" ADD CONSTRAINT "fk_synthesis_batches_mapping_id" FOREIGN KEY ("mapping_id") REFERENCES "mapping_records" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-151 splitStatements:false
+-- changeset seongha.moon:1773716897225-150 splitStatements:false
 ALTER TABLE "synthesis_batches" ADD CONSTRAINT "fk_synthesis_batches_project_id" FOREIGN KEY ("project_id") REFERENCES "projects" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-152 splitStatements:false
+-- changeset seongha.moon:1773716897225-151 splitStatements:false
 ALTER TABLE "synthesis_jobs" ADD CONSTRAINT "fk_synthesis_jobs_file_id" FOREIGN KEY ("file_id") REFERENCES "files" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-153 splitStatements:false
+-- changeset seongha.moon:1773716897225-152 splitStatements:false
 ALTER TABLE "synthesis_jobs" ADD CONSTRAINT "fk_synthesis_jobs_mapping_id" FOREIGN KEY ("mapping_id") REFERENCES "mapping_records" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-154 splitStatements:false
+-- changeset seongha.moon:1773716897225-153 splitStatements:false
 ALTER TABLE "synthesis_v2_batches" ADD CONSTRAINT "fk_synthesis_v2_batches_mapping_id" FOREIGN KEY ("mapping_id") REFERENCES "mapping_v2_records" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-155 splitStatements:false
+-- changeset seongha.moon:1773716897225-154 splitStatements:false
 ALTER TABLE "synthesis_v2_batches" ADD CONSTRAINT "fk_synthesis_v2_batches_project_id" FOREIGN KEY ("project_id") REFERENCES "projects" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-156 splitStatements:false
+-- changeset seongha.moon:1773716897225-155 splitStatements:false
 ALTER TABLE "synthesis_v2_jobs" ADD CONSTRAINT "fk_synthesis_v2_jobs_file_id" FOREIGN KEY ("file_id") REFERENCES "files" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-157 splitStatements:false
+-- changeset seongha.moon:1773716897225-156 splitStatements:false
 ALTER TABLE "synthesis_v2_jobs" ADD CONSTRAINT "fk_synthesis_v2_jobs_mapping_id" FOREIGN KEY ("mapping_id") REFERENCES "mapping_v2_records" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-158 splitStatements:false
+-- changeset seongha.moon:1773716897225-157 splitStatements:false
 ALTER TABLE "team_members" ADD CONSTRAINT "fk_team_members_team_id" FOREIGN KEY ("team_id") REFERENCES "teams" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-159 splitStatements:false
+-- changeset seongha.moon:1773716897225-158 splitStatements:false
 ALTER TABLE "engineering_bom_items" ADD CONSTRAINT "fkayul0e21mxb13ncdi8kae6obr" FOREIGN KEY ("child_part_revision_id") REFERENCES "part_revisions" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-160 splitStatements:false
+-- changeset seongha.moon:1773716897225-159 splitStatements:false
 ALTER TABLE "part_previews" ADD CONSTRAINT "fkbvtyw5qsiaevxfqwdonbc242x" FOREIGN KEY ("part_revision_id") REFERENCES "part_revisions" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-161 splitStatements:false
+-- changeset seongha.moon:1773716897225-160 splitStatements:false
 ALTER TABLE "drawing_artifacts" ADD CONSTRAINT "fkcvt2rdwm199odunwkj17i1k8n" FOREIGN KEY ("drawing_id") REFERENCES "drawings" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-162 splitStatements:false
+-- changeset seongha.moon:1773716897225-161 splitStatements:false
 ALTER TABLE "part_suppliers" ADD CONSTRAINT "fkd47ukwxcpdb87h3b6kd017k9n" FOREIGN KEY ("supplier_id") REFERENCES "suppliers" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-163 splitStatements:false
+-- changeset seongha.moon:1773716897225-162 splitStatements:false
 ALTER TABLE "project_members" ADD CONSTRAINT "fkdki1sp2homqsdcvqm9yrix31g" FOREIGN KEY ("project_id") REFERENCES "projects" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-164 splitStatements:false
+-- changeset seongha.moon:1773716897225-163 splitStatements:false
 ALTER TABLE "issue_parts" ADD CONSTRAINT "fkeee47ncsdhj0917jfcjnrbrvv" FOREIGN KEY ("issue_id") REFERENCES "issues" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-165 splitStatements:false
+-- changeset seongha.moon:1773716897225-164 splitStatements:false
 ALTER TABLE "engineering_bom_items" ADD CONSTRAINT "fkelfms0mcqge2jlvp4podgjunj" FOREIGN KEY ("parent_part_revision_id") REFERENCES "part_revisions" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-166 splitStatements:false
+-- changeset seongha.moon:1773716897225-165 splitStatements:false
 ALTER TABLE "synthesis_jobs" ADD CONSTRAINT "fkf4vylyr6m7ofb2jd28fla6ry7" FOREIGN KEY ("batch_id") REFERENCES "synthesis_batches" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-167 splitStatements:false
+-- changeset seongha.moon:1773716897225-166 splitStatements:false
 ALTER TABLE "issue_labels" ADD CONSTRAINT "fkfskpaxuixega1rlf9hrhnhngs" FOREIGN KEY ("issue_id") REFERENCES "issues" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-168 splitStatements:false
+-- changeset seongha.moon:1773716897225-167 splitStatements:false
 ALTER TABLE "synthesis_v2_jobs" ADD CONSTRAINT "fkfurd4j94784o9yta63twy7idy" FOREIGN KEY ("batch_id") REFERENCES "synthesis_v2_batches" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-169 splitStatements:false
-ALTER TABLE "part_default_owners" ADD CONSTRAINT "fkhl5q7rnao75wlh8lvv20uq0in" FOREIGN KEY ("default_owner_team_id") REFERENCES "teams" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
-
--- changeset seongha.moon:1773690139162-170 splitStatements:false
+-- changeset seongha.moon:1773716897225-168 splitStatements:false
 ALTER TABLE "part_preview_files" ADD CONSTRAINT "fkhovn2awghkyvs82v0jblam02p" FOREIGN KEY ("part_preview_id") REFERENCES "part_previews" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-171 splitStatements:false
+-- changeset seongha.moon:1773716897225-169 splitStatements:false
 ALTER TABLE "part_revisions" ADD CONSTRAINT "fki6fs3anwh4t24809xn23xilu4" FOREIGN KEY ("base_revision_id") REFERENCES "part_revisions" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-172 splitStatements:false
+-- changeset seongha.moon:1773716897225-170 splitStatements:false
 ALTER TABLE "part_revisions" ADD CONSTRAINT "fkl1cfng9egr5y8m0chwm32y9di" FOREIGN KEY ("part_id") REFERENCES "parts" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-173 splitStatements:false
-ALTER TABLE "parts" ADD CONSTRAINT "fkl3syou2tg9nvbt8xij66s8tbw" FOREIGN KEY ("owner_team_id") REFERENCES "teams" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
-
--- changeset seongha.moon:1773690139162-174 splitStatements:false
+-- changeset seongha.moon:1773716897225-171 splitStatements:false
 ALTER TABLE "part_preview_artifacts" ADD CONSTRAINT "fklauu1wqvbrynnfd8v9r0hquj9" FOREIGN KEY ("part_preview_id") REFERENCES "part_previews" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-175 splitStatements:false
+-- changeset seongha.moon:1773716897225-172 splitStatements:false
 ALTER TABLE "engineering_change_steps" ADD CONSTRAINT "fkm9g6yiohm3rlx0qv3gr1y0040" FOREIGN KEY ("engineering_change_id") REFERENCES "engineering_changes" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-176 splitStatements:false
+-- changeset seongha.moon:1773716897225-173 splitStatements:false
 ALTER TABLE "issue_comments" ADD CONSTRAINT "fknvnj0204928o0w1th5jsx4f28" FOREIGN KEY ("issue_id") REFERENCES "issues" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-177 splitStatements:false
+-- changeset seongha.moon:1773716897225-174 splitStatements:false
 ALTER TABLE "drawings" ADD CONSTRAINT "fkovfe3bykl1mphod4f8odh26oc" FOREIGN KEY ("part_revision_id") REFERENCES "part_revisions" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset seongha.moon:1773690139162-178 splitStatements:false
-ALTER TABLE "part_revisions" ADD CONSTRAINT "fkp2g5jsttplh6h8b7cq1i5j3xl" FOREIGN KEY ("owner_team_id") REFERENCES "teams" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
-
--- changeset seongha.moon:1773690139162-179 splitStatements:false
+-- changeset seongha.moon:1773716897225-175 splitStatements:false
 ALTER TABLE "parts" ADD CONSTRAINT "fkqewjubof3sw38w93c20x4j4xf" FOREIGN KEY ("current_released_revision_id") REFERENCES "part_revisions" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION;
 

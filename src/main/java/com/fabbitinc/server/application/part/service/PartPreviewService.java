@@ -14,6 +14,7 @@ import com.fabbitinc.server.domain.part.model.PartPreview;
 import com.fabbitinc.server.domain.part.model.PartPreviewFile;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
+import com.fabbitinc.server.domain.part.repository.PartPreviewFileRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
@@ -36,6 +37,7 @@ public class PartPreviewService {
 
     private final PartRevisionRepository partRevisionRepository;
     private final PartPreviewRepository partPreviewRepository;
+    private final PartPreviewFileRepository partPreviewFileRepository;
     private final DrawingRepository drawingRepository;
     private final FileRepository fileRepository;
     private final OrganizationApi organizationApi;
@@ -79,14 +81,8 @@ public class PartPreviewService {
     ) {
         ResolvedSource resolvedSource = resolveSource(partPreview, revision, sourceType, sourceId);
         List<String> generatedArtifactKeys = collectGeneratedArtifactKeys(partPreview);
-        partPreview.removeDerivedArtifacts();
+        partPreview.clearArtifacts();
         partPreview.replaceSource(sourceType, sourceId, resolvedSource.sourceDescriptor().dimension());
-        partPreview.registerSourceFile(
-                resolvedSource.file().getId(),
-                resolvedSource.file().getFileKey(),
-                resolvedSource.file().getContentType(),
-                resolvedSource.file().getFileSize()
-        );
         partPreviewRepository.save(partPreview);
         partPreviewServingProjectionService.upsert(partPreview);
         dispatchAfterCommit(partPreview.getId(), generatedArtifactKeys);
@@ -114,9 +110,7 @@ public class PartPreviewService {
         PartPreview partPreview = partPreviewRepository.findByPartRevisionId(partRevisionId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "대표 미리보기를 찾을 수 없습니다"));
 
-        PartPreviewFile previewFile = partPreview.getPreviewFiles().stream()
-                .filter(it -> it.getId().equals(previewFileId))
-                .findFirst()
+        PartPreviewFile previewFile = partPreviewFileRepository.findByIdAndPartPreview_Id(previewFileId, partPreview.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "미리보기 전용 파일을 찾을 수 없습니다"));
         File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(
                         previewFile.getFileId(),
@@ -185,9 +179,7 @@ public class PartPreviewService {
         }
 
         if (sourceType == PartPreviewSourceType.PREVIEW_FILE) {
-            PartPreviewFile previewFile = partPreview.getPreviewFiles().stream()
-                    .filter(it -> it.getId().equals(sourceId))
-                    .findFirst()
+            PartPreviewFile previewFile = partPreviewFileRepository.findByIdAndPartPreview_Id(sourceId, partPreview.getId())
                     .orElseThrow(() -> new AppException(
                             ErrorCode.NOT_FOUND,
                             "대표 미리보기 전용 파일 '" + sourceId + "'을(를) 찾을 수 없습니다"
@@ -231,7 +223,6 @@ public class PartPreviewService {
 
     private List<String> collectGeneratedArtifactKeys(PartPreview partPreview) {
         List<UUID> artifactFileIds = partPreview.getArtifacts().stream()
-                .filter(artifact -> artifact.getArtifactType() != DrawingArtifactType.SOURCE_ORIGINAL)
                 .map(artifact -> artifact.getFileId())
                 .filter(fileId -> fileId != null)
                 .distinct()
