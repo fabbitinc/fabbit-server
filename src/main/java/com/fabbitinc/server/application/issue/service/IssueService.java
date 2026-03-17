@@ -49,7 +49,6 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -424,17 +423,12 @@ public class IssueService {
         int nextEngineeringChangeNumber = engineeringChangeApi.getNextEngineeringChangeNumberSeed();
         int nextNumber = Math.max(nextIssueNumber, nextEngineeringChangeNumber);
 
-        try {
-            return workItemNumberSequenceRepository.saveAndFlush(
-                    WorkItemNumberSequence.initialize(WORK_ITEM_NUMBER_SEQUENCE_ID, nextNumber)
-            );
-        } catch (DataIntegrityViolationException ex) {
-            return workItemNumberSequenceRepository.findByIdForUpdate(WORK_ITEM_NUMBER_SEQUENCE_ID)
-                    .orElseThrow(() -> new AppException(
-                            ErrorCode.INTERNAL_SERVER_ERROR,
-                            "워크아이템 번호 시퀀스를 초기화할 수 없습니다"
-                    ));
-        }
+        workItemNumberSequenceRepository.insertIfAbsent(WORK_ITEM_NUMBER_SEQUENCE_ID, nextNumber);
+        return workItemNumberSequenceRepository.findByIdForUpdate(WORK_ITEM_NUMBER_SEQUENCE_ID)
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.INTERNAL_SERVER_ERROR,
+                        "워크아이템 번호 시퀀스를 초기화할 수 없습니다"
+                ));
     }
 
     private void validateLabels(Iterable<UUID> labelIds) {

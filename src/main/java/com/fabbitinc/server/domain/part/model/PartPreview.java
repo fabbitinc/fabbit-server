@@ -83,7 +83,10 @@ public class PartPreview extends AbstractCreatedEntity implements AggregateRoot 
         this.dimension = requireDimension(dimension);
         this.currentJobId = null;
         this.processingStatus = PartPreviewProcessingStatus.PENDING;
-        artifacts.clear();
+    }
+
+    public void removeDerivedArtifacts() {
+        artifacts.removeIf(artifact -> artifact.getArtifactType() != DrawingArtifactType.SOURCE_ORIGINAL);
     }
 
     public void registerSourceFile(

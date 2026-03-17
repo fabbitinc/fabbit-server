@@ -11,13 +11,16 @@ import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.PartPreview;
+import com.fabbitinc.server.domain.part.model.PartPreviewArtifact;
 import com.fabbitinc.server.domain.part.model.PartPreviewFile;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
+import com.fabbitinc.server.domain.drawing.model.DrawingArtifactType;
 import java.util.UUID;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -58,11 +61,11 @@ public class PartPreviewService {
 
         PartPreviewFile previewFile = partPreview.addPreviewFile(file.getId());
         file.assignOwner(OWNER_TYPE_PREVIEW_FILE, previewFile.getId());
+        PartPreview updatedPreview = changeSource(partPreview, revision, PartPreviewSourceType.PREVIEW_FILE, previewFile.getId());
         if (file.getFileSize() > 0L) {
             organizationApi.consumeStorageForCurrentTenant(file.getFileSize());
         }
-
-        return changeSource(partPreview, revision, PartPreviewSourceType.PREVIEW_FILE, previewFile.getId());
+        return updatedPreview;
     }
 
     private PartPreview changeSource(
@@ -72,11 +75,8 @@ public class PartPreviewService {
             UUID sourceId
     ) {
         ResolvedSource resolvedSource = resolveSource(partPreview, revision, sourceType, sourceId);
-        partPreviewArtifactCleanupService.cleanupPreviewArtifacts(partPreview);
-        if (partPreview.hasSource() || !partPreview.getArtifacts().isEmpty()) {
-            partPreview.clearSource();
-            partPreviewRepository.saveAndFlush(partPreview);
-        }
+        List<String> generatedArtifactKeys = collectGeneratedArtifactKeys(partPreview);
+        partPreview.removeDerivedArtifacts();
         partPreview.replaceSource(sourceType, sourceId, resolvedSource.sourceDescriptor().dimension());
         partPreview.registerSourceFile(
                 resolvedSource.file().getId(),
@@ -85,7 +85,7 @@ public class PartPreviewService {
                 resolvedSource.file().getFileSize()
         );
         partPreviewRepository.save(partPreview);
-        dispatchAfterCommit(partPreview.getId());
+        dispatchAfterCommit(partPreview.getId(), generatedArtifactKeys);
         return partPreview;
     }
 
@@ -94,9 +94,10 @@ public class PartPreviewService {
         if (partPreview == null || !partPreview.hasSource()) {
             return;
         }
-        partPreviewArtifactCleanupService.cleanupPreviewArtifacts(partPreview);
+        List<String> generatedArtifactKeys = collectGeneratedArtifactKeys(partPreview);
         partPreview.clearSource();
         partPreviewRepository.save(partPreview);
+        dispatchCleanupAfterCommit(generatedArtifactKeys);
     }
 
     public void clearByDrawing(UUID drawingId) {
@@ -136,9 +137,10 @@ public class PartPreviewService {
         if (!partPreview.hasSource()) {
             return;
         }
-        partPreviewArtifactCleanupService.cleanupPreviewArtifacts(partPreview);
+        List<String> generatedArtifactKeys = collectGeneratedArtifactKeys(partPreview);
         partPreview.clearSource();
         partPreviewRepository.save(partPreview);
+        dispatchCleanupAfterCommit(generatedArtifactKeys);
     }
 
     private PartRevision getRequiredRevision(UUID partRevisionId) {
@@ -221,9 +223,37 @@ public class PartPreviewService {
         return sourceDescriptor;
     }
 
-    private void dispatchAfterCommit(UUID partPreviewId) {
+    private List<String> collectGeneratedArtifactKeys(PartPreview partPreview) {
+        return partPreview.getArtifacts().stream()
+                .filter(artifact -> artifact.getArtifactType() != DrawingArtifactType.SOURCE_ORIGINAL)
+                .map(PartPreviewArtifact::getStorageKey)
+                .filter(storageKey -> storageKey != null && !storageKey.isBlank())
+                .distinct()
+                .toList();
+    }
+
+    private void dispatchAfterCommit(UUID partPreviewId, List<String> generatedArtifactKeys) {
         String schemaName = TenantContextHolder.getCurrentSchema();
-        Runnable dispatch = () -> partPreviewAsyncConversionService.convertPartPreviewAsync(partPreviewId, schemaName);
+        Runnable dispatch = () -> {
+            partPreviewArtifactCleanupService.cleanupArtifactFiles(generatedArtifactKeys);
+            partPreviewAsyncConversionService.convertPartPreviewAsync(partPreviewId, schemaName);
+        };
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    dispatch.run();
+                }
+            });
+            return;
+        }
+
+        dispatch.run();
+    }
+
+    private void dispatchCleanupAfterCommit(List<String> generatedArtifactKeys) {
+        Runnable dispatch = () -> partPreviewArtifactCleanupService.cleanupArtifactFiles(generatedArtifactKeys);
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
