@@ -13,6 +13,7 @@ import com.fabbitinc.server.domain.property.model.PropertyOptionMode;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
 import com.fabbitinc.server.domain.property.model.PropertyValueType;
 import com.fabbitinc.server.domain.property.model.SystemPropertyOverride;
+import com.fabbitinc.server.domain.property.support.PartSystemPropertyKind;
 import com.fabbitinc.server.domain.property.repository.PropertyDefinitionRepository;
 import com.fabbitinc.server.domain.property.repository.SystemPropertyOverrideRepository;
 import java.util.List;
@@ -85,6 +86,11 @@ class PropertyQueryTest {
                 .findFirst()
                 .orElseThrow()
                 .propertyKey());
+        assertEquals(PartSystemPropertyKind.CATEGORY, result.items().stream()
+                .filter(item -> item.propertyKey().equals("category"))
+                .findFirst()
+                .orElseThrow()
+                .partSystemPropertyKind());
     }
 
     @Test

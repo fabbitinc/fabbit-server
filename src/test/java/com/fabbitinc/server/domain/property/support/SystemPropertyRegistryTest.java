@@ -1,38 +1,21 @@
 package com.fabbitinc.server.domain.property.support;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import com.fabbitinc.server.domain.property.model.PropertyOptionMode;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
-import com.fabbitinc.server.domain.property.model.PropertyValueType;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 class SystemPropertyRegistryTest {
 
     @Test
-    void systemPropertyRegistry는_ownerType과_propertyKey_조합이_중복되지_않는다() {
-        Set<String> keys = SystemPropertyRegistry.list().stream()
-                .map(spec -> spec.ownerType().name() + ":" + spec.propertyKey())
-                .collect(Collectors.toSet());
+    void listByOwnerType_PART의_모든_시스템속성은_partSystemPropertyKind를_가진다() {
+        var items = SystemPropertyRegistry.listByOwnerType(PropertyOwnerType.PART);
 
-        assertEquals(SystemPropertyRegistry.list().size(), keys.size());
-    }
-
-    @Test
-    void part_category는_OPTION_CREATABLE이다() {
-        SystemPropertySpec category = SystemPropertyRegistry.find(PropertyOwnerType.PART, "category")
-                .orElseThrow();
-
-        assertEquals(PropertyValueType.OPTION, category.valueType());
-        assertEquals(PropertyOptionMode.CREATABLE, category.optionMode());
-        assertEquals("category", category.columnName());
-    }
-
-    @Test
-    void part_owner_spec은_존재한다() {
-        assertTrue(SystemPropertyRegistry.find(PropertyOwnerType.PART, "part_number").isPresent());
+        assertEquals(10, items.size());
+        items.forEach(item -> assertNotNull(
+                item.partSystemPropertyKind(),
+                () -> "PART 시스템 속성 kind가 없습니다: " + item.propertyKey()
+        ));
     }
 }

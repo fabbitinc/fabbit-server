@@ -12,6 +12,7 @@ import java.util.Set;
 public record SystemPropertySpec(
         PropertyOwnerType ownerType,
         String propertyKey,
+        PartSystemPropertyKind partSystemPropertyKind,
         String displayName,
         String description,
         PropertyValueType valueType,
@@ -61,6 +62,7 @@ public record SystemPropertySpec(
                 CODE_SYSTEM_PROPERTY_SPEC_COLUMN_NAME_REQUIRED,
                 "시스템 속성 column_name은 필수입니다"
         );
+        partSystemPropertyKind = normalizePartSystemPropertyKind(ownerType, partSystemPropertyKind);
         displayOrder = requireDisplayOrder(displayOrder);
     }
 
@@ -146,5 +148,21 @@ public record SystemPropertySpec(
             );
         }
         return displayOrder;
+    }
+
+    private static PartSystemPropertyKind normalizePartSystemPropertyKind(
+            PropertyOwnerType ownerType,
+            PartSystemPropertyKind partSystemPropertyKind
+    ) {
+        if (ownerType == PropertyOwnerType.PART && partSystemPropertyKind == null) {
+            throw new DomainException(
+                    CODE_SYSTEM_PROPERTY_SPEC_OWNER_TYPE_REQUIRED,
+                    "PART 시스템 속성은 partSystemPropertyKind가 필수입니다"
+            );
+        }
+        if (ownerType != PropertyOwnerType.PART) {
+            return null;
+        }
+        return partSystemPropertyKind;
     }
 }

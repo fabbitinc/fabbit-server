@@ -3,6 +3,7 @@ package com.fabbitinc.server.presentation.property.response;
 import com.fabbitinc.server.domain.property.model.PropertyOptionMode;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
 import com.fabbitinc.server.domain.property.model.PropertyValueType;
+import com.fabbitinc.server.domain.property.support.PartSystemPropertyKind;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +21,9 @@ public record PropertyMetaResponse(
 
         @Schema(description = "시스템 속성 여부", example = "true")
         boolean system,
+
+        @Schema(description = "PART 시스템 속성 종류. PART 시스템 속성이 아니면 null", example = "CATEGORY")
+        PartSystemPropertyKind partSystemPropertyKind,
 
         @Schema(description = "시스템 컬럼명. 커스텀 속성이면 null", example = "category")
         String columnName,

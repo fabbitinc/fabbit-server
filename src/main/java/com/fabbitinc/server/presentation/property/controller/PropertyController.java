@@ -176,6 +176,7 @@ public class PropertyController {
                 result.ownerType(),
                 result.propertyKey(),
                 result.system(),
+                result.partSystemPropertyKind(),
                 result.columnName(),
                 result.displayName(),
                 result.description(),

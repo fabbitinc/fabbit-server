@@ -12,6 +12,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
                     "part_number",
+                    PartSystemPropertyKind.PART_NUMBER,
                     "품번",
                     "부품의 고유 식별자",
                     PropertyValueType.STRING,
@@ -24,6 +25,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
                     "name",
+                    PartSystemPropertyKind.NAME,
                     "품명",
                     "사람이 읽을 수 있는 부품 이름",
                     PropertyValueType.STRING,
@@ -36,6 +38,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
                     "revision",
+                    PartSystemPropertyKind.REVISION,
                     "리비전",
                     "부품 리비전",
                     PropertyValueType.STRING,
@@ -48,6 +51,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
                     "material",
+                    PartSystemPropertyKind.MATERIAL,
                     "재질",
                     "부품 재질",
                     PropertyValueType.STRING,
@@ -60,6 +64,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
                     "unit",
+                    PartSystemPropertyKind.UNIT,
                     "단위",
                     "부품 수량 단위",
                     PropertyValueType.STRING,
@@ -72,6 +77,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
                     "description",
+                    PartSystemPropertyKind.DESCRIPTION,
                     "설명",
                     "부품 설명",
                     PropertyValueType.STRING,
@@ -84,6 +90,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
                     "category",
+                    PartSystemPropertyKind.CATEGORY,
                     "카테고리",
                     "부품 분류",
                     PropertyValueType.OPTION,
@@ -96,6 +103,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
                     "is_phantom",
+                    PartSystemPropertyKind.PHANTOM,
                     "팬텀 여부",
                     "팬텀 조립품 여부",
                     PropertyValueType.BOOLEAN,
@@ -108,6 +116,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
                     "lifecycle_state",
+                    PartSystemPropertyKind.LIFECYCLE_STATE,
                     "수명주기 상태",
                     "부품 수명주기 상태",
                     PropertyValueType.STRING,
@@ -120,6 +129,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
                     "lead_time_days",
+                    PartSystemPropertyKind.LEAD_TIME_DAYS,
                     "리드타임(일)",
                     "부품 리드타임(일)",
                     PropertyValueType.INTEGER,
@@ -132,6 +142,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.SUPPLIER,
                     "company_name",
+                    null,
                     "공급사명",
                     "공급사 회사명",
                     PropertyValueType.STRING,
@@ -144,6 +155,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.SUPPLIER,
                     "code",
+                    null,
                     "공급사 코드",
                     "내부 식별용 공급사 코드",
                     PropertyValueType.STRING,
@@ -156,6 +168,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.SUPPLIER,
                     "country",
+                    null,
                     "국가",
                     "공급사 국가",
                     PropertyValueType.STRING,
@@ -168,6 +181,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.SUPPLIER,
                     "contact_info",
+                    null,
                     "연락처",
                     "공급사 연락처 정보",
                     PropertyValueType.STRING,
@@ -180,6 +194,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.DRAWING,
                     "drawing_number",
+                    null,
                     "도면번호",
                     "도면의 식별 번호",
                     PropertyValueType.STRING,
@@ -192,6 +207,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.DRAWING,
                     "name",
+                    null,
                     "도면명",
                     "사람이 읽을 수 있는 도면 이름",
                     PropertyValueType.STRING,
@@ -204,6 +220,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.DRAWING,
                     "version",
+                    null,
                     "버전",
                     "도면 버전",
                     PropertyValueType.STRING,
@@ -216,6 +233,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.DRAWING,
                     "status",
+                    null,
                     "상태",
                     "도면 상태",
                     PropertyValueType.STRING,
@@ -228,6 +246,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.DRAWING,
                     "conversion_status",
+                    null,
                     "변환 상태",
                     "도면 변환 상태",
                     PropertyValueType.STRING,
@@ -240,6 +259,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.DRAWING,
                     "source_type",
+                    null,
                     "소스 타입",
                     "도면 소스 타입",
                     PropertyValueType.STRING,
@@ -252,6 +272,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.DRAWING,
                     "dimension",
+                    null,
                     "차원",
                     "도면 차원 정보",
                     PropertyValueType.STRING,
@@ -264,6 +285,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.BOM_LINK,
                     "quantity",
+                    null,
                     "수량",
                     "BOM 관계 수량",
                     PropertyValueType.FLOAT,
@@ -276,6 +298,7 @@ public final class SystemPropertyRegistry {
             new SystemPropertySpec(
                     PropertyOwnerType.PART_SUPPLIER,
                     "unit_cost",
+                    null,
                     "단가",
                     "공급사별 부품 단가",
                     PropertyValueType.FLOAT,
