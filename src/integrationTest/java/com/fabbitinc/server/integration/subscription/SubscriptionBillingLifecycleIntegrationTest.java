@@ -2,14 +2,21 @@ package com.fabbitinc.server.integration.subscription;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fabbitinc.server.application.aiusage.service.AiUsageService;
+import com.fabbitinc.server.application.auth.service.AuthInvitationService;
+import com.fabbitinc.server.application.auth.usecase.AcceptInvitationUseCase;
+import com.fabbitinc.server.application.member.usecase.ChangeMemberSeatUseCase;
+import com.fabbitinc.server.application.organization.usecase.CreateInvitationUseCase;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
 import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.application.subscription.usecase.ProcessPendingSubscriptionPaymentsUseCase;
 import com.fabbitinc.server.application.subscription.usecase.RecordStorageUsageSnapshotsUseCase;
 import com.fabbitinc.server.application.subscription.usecase.RenewSubscriptionsUseCase;
+import com.fabbitinc.server.application.subscription.usecase.UpgradeStarterSubscriptionUseCase;
+import com.fabbitinc.server.application.subscription.usecase.UpdateSubscriptionSeatQuotasUseCase;
 import com.fabbitinc.server.application.tenant.support.TenantSchemaPolicy;
 import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;
 import com.fabbitinc.server.domain.aiusage.model.AiUsageEvent;
@@ -23,6 +30,7 @@ import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 import com.fabbitinc.server.domain.subscription.repository.StorageOverageLedgerRepository;
 import com.fabbitinc.server.domain.subscription.repository.SubscriptionBillingLedgerRepository;
 import com.fabbitinc.server.domain.subscription.repository.SubscriptionRepository;
+import com.fabbitinc.server.domain.subscription.repository.SubscriptionSeatQuotaRepository;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import com.fabbitinc.server.integration.fixture.SubscriptionIntegrationFixture;
 import com.fabbitinc.server.integration.support.PostgresIntegrationTestSupport;
@@ -44,9 +52,23 @@ class SubscriptionBillingLifecycleIntegrationTest extends PostgresIntegrationTes
     @Autowired
     private SubscriptionApi subscriptionApi;
     @Autowired
+    private AuthInvitationService authInvitationService;
+    @Autowired
+    private CreateInvitationUseCase createInvitationUseCase;
+    @Autowired
+    private AcceptInvitationUseCase acceptInvitationUseCase;
+    @Autowired
     private AiUsageService aiUsageService;
     @Autowired
+    private ChangeMemberSeatUseCase changeMemberSeatUseCase;
+    @Autowired
+    private UpgradeStarterSubscriptionUseCase upgradeStarterSubscriptionUseCase;
+    @Autowired
+    private UpdateSubscriptionSeatQuotasUseCase updateSubscriptionSeatQuotasUseCase;
+    @Autowired
     private SubscriptionRepository subscriptionRepository;
+    @Autowired
+    private SubscriptionSeatQuotaRepository subscriptionSeatQuotaRepository;
     @Autowired
     private SubscriptionBillingLedgerRepository subscriptionBillingLedgerRepository;
     @Autowired
@@ -71,6 +93,14 @@ class SubscriptionBillingLifecycleIntegrationTest extends PostgresIntegrationTes
                 organizationService,
                 subscriptionApi,
                 aiUsageService,
+                authInvitationService,
+                createInvitationUseCase,
+                acceptInvitationUseCase,
+                subscriptionRepository,
+                subscriptionSeatQuotaRepository,
+                changeMemberSeatUseCase,
+                upgradeStarterSubscriptionUseCase,
+                updateSubscriptionSeatQuotasUseCase,
                 testCurrentAuthProvider
         );
     }
@@ -80,6 +110,7 @@ class SubscriptionBillingLifecycleIntegrationTest extends PostgresIntegrationTes
         var owner = fixture.createUser("team-owner@example.com");
         var member = fixture.createUser("team-member@example.com");
         var organization = fixture.createWorkspace(owner, WorkspacePlanType.TEAM);
+        fixture.updateSeatQuota(organization, SeatType.FULL, 2, owner, MembershipRole.OWNER);
         fixture.addMember(member, organization, MembershipRole.MEMBER);
         fixture.assignSeat(organization, member, SeatType.FULL, owner, MembershipRole.OWNER);
 
@@ -132,5 +163,103 @@ class SubscriptionBillingLifecycleIntegrationTest extends PostgresIntegrationTes
                 organization.getId(),
                 SubscriptionBillingLedgerStatus.SETTLED
         ).stream().findAny().isPresent());
+    }
+
+    @Test
+    void 같은_청구기간에_viewer를_full로_전환하면_좌석차액_adjustment만_추가되고_다음갱신에는_full만_청구된다() {
+        var owner = fixture.createUser("seat-upgrade-owner@example.com");
+        var organization = fixture.createWorkspace(owner, WorkspacePlanType.TEAM, SeatType.VIEWER);
+        var subscription = subscriptionRepository.findByOrgIdAndStatus(organization.getId(), SubscriptionStatus.ACTIVE).orElseThrow();
+
+        fixture.updateSeatQuota(organization, SeatType.FULL, 1, owner, MembershipRole.OWNER);
+        fixture.assignSeat(organization, owner, SeatType.FULL, owner, MembershipRole.OWNER);
+        fixture.updateSeatQuota(organization, SeatType.VIEWER, 0, owner, MembershipRole.OWNER);
+
+        var pendingLedgers = subscriptionBillingLedgerRepository.findByOrgIdAndStatus(
+                organization.getId(),
+                SubscriptionBillingLedgerStatus.PENDING
+        );
+        assertTrue(pendingLedgers.stream().anyMatch(ledger ->
+                ledger.getLedgerType() == SubscriptionBillingLedgerType.ADJUSTMENT
+                        && ledger.getTotalAmount().signum() > 0
+                        && "seat_proration_full".equals(ledger.getReferenceType())
+        ));
+        assertTrue(pendingLedgers.stream().anyMatch(ledger ->
+                ledger.getLedgerType() == SubscriptionBillingLedgerType.ADJUSTMENT
+                        && ledger.getTotalAmount().signum() < 0
+                        && "seat_proration_viewer".equals(ledger.getReferenceType())
+        ));
+
+        ReflectionTestUtils.setField(subscription, "currentPeriodStart", Instant.now().minus(31, ChronoUnit.DAYS));
+        ReflectionTestUtils.setField(subscription, "currentPeriodEnd", Instant.now().minus(1, ChronoUnit.MINUTES));
+        subscriptionRepository.save(subscription);
+
+        renewSubscriptionsUseCase.execute();
+
+        var renewedSubscription = subscriptionRepository.findByOrgIdAndStatus(organization.getId(), SubscriptionStatus.ACTIVE).orElseThrow();
+        var seatLedgers = subscriptionBillingLedgerRepository.findBySubscriptionIdAndLedgerType(
+                renewedSubscription.getId(),
+                SubscriptionBillingLedgerType.SEAT
+        );
+        Instant renewedPeriodStart = renewedSubscription.getCurrentPeriodStart();
+        assertTrue(seatLedgers.stream().anyMatch(ledger ->
+                "seat_full".equals(ledger.getReferenceType())
+                        && renewedPeriodStart.equals(ledger.getPeriodStart())
+        ));
+        assertFalse(seatLedgers.stream().anyMatch(ledger ->
+                "seat_viewer".equals(ledger.getReferenceType())
+                        && renewedPeriodStart.equals(ledger.getPeriodStart())
+        ));
+        assertEquals(SeatType.FULL, subscriptionApi.getCurrentSeatType(organization.getId(), owner.getId()));
+        assertTrue(renewedSubscription.getCurrentPeriodEnd().isAfter(renewedPeriodStart));
+    }
+
+    @Test
+    void 같은_청구기간에_full을_viewer로_전환하면_좌석차액_adjustment가_반영되고_다음갱신에는_viewer만_청구된다() {
+        var owner = fixture.createUser("seat-downgrade-owner@example.com");
+        var organization = fixture.createWorkspace(owner, WorkspacePlanType.TEAM, SeatType.FULL);
+        var subscription = subscriptionRepository.findByOrgIdAndStatus(organization.getId(), SubscriptionStatus.ACTIVE).orElseThrow();
+
+        fixture.updateSeatQuota(organization, SeatType.VIEWER, 1, owner, MembershipRole.OWNER);
+        fixture.assignSeat(organization, owner, SeatType.VIEWER, owner, MembershipRole.OWNER);
+        fixture.updateSeatQuota(organization, SeatType.FULL, 0, owner, MembershipRole.OWNER);
+
+        var pendingLedgers = subscriptionBillingLedgerRepository.findByOrgIdAndStatus(
+                organization.getId(),
+                SubscriptionBillingLedgerStatus.PENDING
+        );
+        assertTrue(pendingLedgers.stream().anyMatch(ledger ->
+                ledger.getLedgerType() == SubscriptionBillingLedgerType.ADJUSTMENT
+                        && ledger.getTotalAmount().signum() > 0
+                        && "seat_proration_viewer".equals(ledger.getReferenceType())
+        ));
+        assertTrue(pendingLedgers.stream().anyMatch(ledger ->
+                ledger.getLedgerType() == SubscriptionBillingLedgerType.ADJUSTMENT
+                        && ledger.getTotalAmount().signum() < 0
+                        && "seat_proration_full".equals(ledger.getReferenceType())
+        ));
+
+        ReflectionTestUtils.setField(subscription, "currentPeriodStart", Instant.now().minus(31, ChronoUnit.DAYS));
+        ReflectionTestUtils.setField(subscription, "currentPeriodEnd", Instant.now().minus(1, ChronoUnit.MINUTES));
+        subscriptionRepository.save(subscription);
+
+        renewSubscriptionsUseCase.execute();
+
+        var renewedSubscription = subscriptionRepository.findByOrgIdAndStatus(organization.getId(), SubscriptionStatus.ACTIVE).orElseThrow();
+        var seatLedgers = subscriptionBillingLedgerRepository.findBySubscriptionIdAndLedgerType(
+                renewedSubscription.getId(),
+                SubscriptionBillingLedgerType.SEAT
+        );
+        Instant renewedPeriodStart = renewedSubscription.getCurrentPeriodStart();
+        assertTrue(seatLedgers.stream().anyMatch(ledger ->
+                "seat_viewer".equals(ledger.getReferenceType())
+                        && renewedPeriodStart.equals(ledger.getPeriodStart())
+        ));
+        assertFalse(seatLedgers.stream().anyMatch(ledger ->
+                "seat_full".equals(ledger.getReferenceType())
+                        && renewedPeriodStart.equals(ledger.getPeriodStart())
+        ));
+        assertEquals(SeatType.VIEWER, subscriptionApi.getCurrentSeatType(organization.getId(), owner.getId()));
+        assertTrue(renewedSubscription.getCurrentPeriodEnd().isAfter(renewedPeriodStart));
     }
 }

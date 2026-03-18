@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fabbitinc.server.domain.common.exception.DomainException;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -150,6 +151,35 @@ class SubscriptionRelationTest {
         ));
 
         assertEquals(Subscription.CODE_SUBSCRIPTION_INVALID_STATE, ex.getDomainCode());
+    }
+
+    @Test
+    void subscription_현재기간_중간시점의_남은_청구비율을_계산할수있다() {
+        Subscription subscription = createActiveSubscription();
+
+        BigDecimal ratio = subscription.calculateRemainingBillingRatio(Instant.parse("2026-03-16T12:00:00Z"));
+
+        assertTrue(ratio.compareTo(BigDecimal.ZERO) > 0);
+        assertTrue(ratio.compareTo(BigDecimal.ONE) < 0);
+        assertEquals(6, ratio.scale());
+    }
+
+    @Test
+    void subscription_현재기간_시작시점의_남은_청구비율은_1이다() {
+        Subscription subscription = createActiveSubscription();
+
+        BigDecimal ratio = subscription.calculateRemainingBillingRatio(Instant.parse("2026-03-01T00:00:00Z"));
+
+        assertEquals(BigDecimal.ONE.setScale(6), ratio);
+    }
+
+    @Test
+    void subscription_현재기간이_끝난_시점의_남은_청구비율은_0이다() {
+        Subscription subscription = createActiveSubscription();
+
+        BigDecimal ratio = subscription.calculateRemainingBillingRatio(Instant.parse("2026-04-01T00:00:00Z"));
+
+        assertEquals(BigDecimal.ZERO.setScale(6), ratio);
     }
 
     private Subscription createActiveSubscription() {

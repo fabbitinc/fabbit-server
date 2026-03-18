@@ -1,51 +1,6 @@
 -- liquibase formatted sql
 
 -- changeset codex:20260317130000-1 splitStatements:false
-DROP TABLE IF EXISTS "storage_overage_ledgers" CASCADE;
-
--- changeset codex:20260317130000-2 splitStatements:false
-DROP TABLE IF EXISTS "storage_usage_snapshots" CASCADE;
-
--- changeset codex:20260317130000-3 splitStatements:false
-DROP TABLE IF EXISTS "subscription_billing_ledgers" CASCADE;
-
--- changeset codex:20260317130000-4 splitStatements:false
-DROP TABLE IF EXISTS "subscription_credit_purchases" CASCADE;
-
--- changeset codex:20260317130000-5 splitStatements:false
-DROP TABLE IF EXISTS "subscription_usage_policies" CASCADE;
-
--- changeset codex:20260317130000-6 splitStatements:false
-DROP TABLE IF EXISTS "subscription_seat_assignments" CASCADE;
-
--- changeset codex:20260317130000-7 splitStatements:false
-DROP TABLE IF EXISTS "subscription_seat_quotas" CASCADE;
-
--- changeset codex:20260317130000-8 splitStatements:false
-DROP TABLE IF EXISTS "subscription_change_requests" CASCADE;
-
--- changeset codex:20260317130000-9 splitStatements:false
-DROP TABLE IF EXISTS "subscriptions" CASCADE;
-
--- changeset codex:20260317130000-9a splitStatements:false
-ALTER TABLE "organizations" DROP COLUMN IF EXISTS "allow_storage_overage";
-
--- changeset codex:20260317130000-9b splitStatements:false
-ALTER TABLE "organizations" DROP COLUMN IF EXISTS "bonus_credits_remaining";
-
--- changeset codex:20260317130000-9c splitStatements:false
-ALTER TABLE "organizations" DROP COLUMN IF EXISTS "max_members";
-
--- changeset codex:20260317130000-9d splitStatements:false
-ALTER TABLE "organizations" DROP COLUMN IF EXISTS "plan_credits_remaining";
-
--- changeset codex:20260317130000-9e splitStatements:false
-ALTER TABLE "organizations" DROP COLUMN IF EXISTS "plan_type";
-
--- changeset codex:20260317130000-9f splitStatements:false
-ALTER TABLE "organizations" DROP COLUMN IF EXISTS "storage_bytes_limit";
-
--- changeset codex:20260317130000-10 splitStatements:false
 CREATE TABLE "subscriptions" (
     "id" UUID NOT NULL,
     "created_at" TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -69,10 +24,13 @@ CREATE TABLE "subscriptions" (
     CONSTRAINT "fk_subscriptions_org_id" FOREIGN KEY ("org_id") REFERENCES "organizations" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
--- changeset codex:20260317130000-11 splitStatements:false
+-- changeset codex:20260317130000-2 splitStatements:false
+CREATE INDEX "ix_subscriptions_org_id" ON "subscriptions" USING btree("org_id");
+
+-- changeset codex:20260317130000-3 splitStatements:false
 CREATE INDEX "ix_subscriptions_plan_type_status" ON "subscriptions" USING btree("plan_type", "status");
 
--- changeset codex:20260317130000-12 splitStatements:false
+-- changeset codex:20260317130000-4 splitStatements:false
 CREATE TABLE "subscription_seat_quotas" (
     "id" UUID NOT NULL,
     "created_at" TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -90,10 +48,10 @@ CREATE TABLE "subscription_seat_quotas" (
     CONSTRAINT "fk_subscription_seat_quotas_subscription_id" FOREIGN KEY ("subscription_id") REFERENCES "subscriptions" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
--- changeset codex:20260317130000-13 splitStatements:false
+-- changeset codex:20260317130000-5 splitStatements:false
 CREATE INDEX "ix_subscription_seat_quotas_subscription_id" ON "subscription_seat_quotas" USING btree("subscription_id");
 
--- changeset codex:20260317130000-14 splitStatements:false
+-- changeset codex:20260317130000-6 splitStatements:false
 CREATE TABLE "subscription_seat_assignments" (
     "id" UUID NOT NULL,
     "created_at" TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -116,13 +74,13 @@ CREATE TABLE "subscription_seat_assignments" (
     CONSTRAINT "fk_subscription_seat_assignments_assigned_by" FOREIGN KEY ("assigned_by") REFERENCES "users" ("id") ON UPDATE NO ACTION ON DELETE SET NULL
 );
 
--- changeset codex:20260317130000-15 splitStatements:false
-CREATE INDEX "ix_subscription_seat_assignments_org_id_seat_type" ON "subscription_seat_assignments" USING btree("org_id", "seat_type");
-
--- changeset codex:20260317130000-16 splitStatements:false
+-- changeset codex:20260317130000-7 splitStatements:false
 CREATE INDEX "ix_subscription_seat_assignments_subscription_id" ON "subscription_seat_assignments" USING btree("subscription_id");
 
--- changeset codex:20260317130000-17 splitStatements:false
+-- changeset codex:20260317130000-8 splitStatements:false
+CREATE INDEX "ix_subscription_seat_assignments_org_id_seat_type" ON "subscription_seat_assignments" USING btree("org_id", "seat_type");
+
+-- changeset codex:20260317130000-9 splitStatements:false
 CREATE TABLE "subscription_usage_policies" (
     "id" UUID NOT NULL,
     "created_at" TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -148,34 +106,34 @@ CREATE TABLE "subscription_usage_policies" (
     CONSTRAINT "fk_subscription_usage_policies_subscription_id" FOREIGN KEY ("subscription_id") REFERENCES "subscriptions" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
--- changeset codex:20260317130000-18 splitStatements:false
+-- changeset codex:20260317130000-10 splitStatements:false
 CREATE TABLE "subscription_credit_purchases" (
     "id" UUID NOT NULL,
     "created_at" TIMESTAMP WITH TIME ZONE NOT NULL,
     "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL,
     "subscription_id" UUID NOT NULL,
     "org_id" UUID NOT NULL,
+    "status" VARCHAR(20) NOT NULL,
     "credits_purchased" NUMERIC(12, 4) NOT NULL,
     "credits_remaining" NUMERIC(12, 4) NOT NULL,
     "unit_price" NUMERIC(12, 4) NOT NULL,
     "total_amount" NUMERIC(12, 2) NOT NULL,
     "currency" VARCHAR(3) NOT NULL,
-    "status" VARCHAR(20) NOT NULL,
     "expires_at" TIMESTAMP WITH TIME ZONE,
     CONSTRAINT "subscription_credit_purchases_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "ck_subscription_credit_purchases_status" CHECK ("status" IN ('ACTIVE', 'EXHAUSTED', 'EXPIRED', 'CANCELED')),
     CONSTRAINT "ck_subscription_credit_purchases_credits_purchased" CHECK ("credits_purchased" > 0),
     CONSTRAINT "ck_subscription_credit_purchases_credits_remaining" CHECK ("credits_remaining" >= 0),
     CONSTRAINT "ck_subscription_credit_purchases_unit_price" CHECK ("unit_price" >= 0),
     CONSTRAINT "ck_subscription_credit_purchases_total_amount" CHECK ("total_amount" >= 0),
-    CONSTRAINT "ck_subscription_credit_purchases_status" CHECK ("status" IN ('ACTIVE', 'EXHAUSTED', 'EXPIRED', 'CANCELED')),
     CONSTRAINT "fk_subscription_credit_purchases_subscription_id" FOREIGN KEY ("subscription_id") REFERENCES "subscriptions" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
     CONSTRAINT "fk_subscription_credit_purchases_org_id" FOREIGN KEY ("org_id") REFERENCES "organizations" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
--- changeset codex:20260317130000-19 splitStatements:false
+-- changeset codex:20260317130000-11 splitStatements:false
 CREATE INDEX "ix_subscription_credit_purchases_org_id_status" ON "subscription_credit_purchases" USING btree("org_id", "status");
 
--- changeset codex:20260317130000-20 splitStatements:false
+-- changeset codex:20260317130000-12 splitStatements:false
 CREATE TABLE "subscription_billing_ledgers" (
     "id" UUID NOT NULL,
     "created_at" TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -193,22 +151,21 @@ CREATE TABLE "subscription_billing_ledgers" (
     "reference_id" UUID,
     "metadata" JSONB NOT NULL DEFAULT '{}'::jsonb,
     CONSTRAINT "subscription_billing_ledgers_pkey" PRIMARY KEY ("id"),
-    CONSTRAINT "ck_subscription_billing_ledgers_quantity" CHECK ("quantity" >= 0),
-    CONSTRAINT "ck_subscription_billing_ledgers_unit_amount" CHECK ("unit_amount" >= 0),
-    CONSTRAINT "ck_subscription_billing_ledgers_total_amount" CHECK ("total_amount" >= 0),
     CONSTRAINT "ck_subscription_billing_ledgers_ledger_type" CHECK ("ledger_type" IN ('BASE_SUBSCRIPTION', 'SEAT', 'AI_USAGE', 'AI_CREDIT_PURCHASE', 'STORAGE_OVERAGE', 'ADJUSTMENT')),
     CONSTRAINT "ck_subscription_billing_ledgers_status" CHECK ("status" IN ('PENDING', 'INVOICED', 'SETTLED', 'VOIDED')),
+    CONSTRAINT "ck_subscription_billing_ledgers_quantity" CHECK ("quantity" >= 0),
+    CONSTRAINT "ck_subscription_billing_ledgers_unit_amount" CHECK ("unit_amount" >= 0),
     CONSTRAINT "fk_subscription_billing_ledgers_subscription_id" FOREIGN KEY ("subscription_id") REFERENCES "subscriptions" ("id") ON UPDATE NO ACTION ON DELETE CASCADE,
     CONSTRAINT "fk_subscription_billing_ledgers_org_id" FOREIGN KEY ("org_id") REFERENCES "organizations" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
--- changeset codex:20260317130000-21 splitStatements:false
+-- changeset codex:20260317130000-13 splitStatements:false
 CREATE INDEX "ix_subscription_billing_ledgers_org_id_period_start" ON "subscription_billing_ledgers" USING btree("org_id", "period_start");
 
--- changeset codex:20260317130000-22 splitStatements:false
+-- changeset codex:20260317130000-14 splitStatements:false
 CREATE INDEX "ix_subscription_billing_ledgers_subscription_id_status" ON "subscription_billing_ledgers" USING btree("subscription_id", "status");
 
--- changeset codex:20260317130000-23 splitStatements:false
+-- changeset codex:20260317130000-15 splitStatements:false
 CREATE TABLE "storage_usage_snapshots" (
     "id" UUID NOT NULL,
     "created_at" TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -228,10 +185,10 @@ CREATE TABLE "storage_usage_snapshots" (
     CONSTRAINT "fk_storage_usage_snapshots_org_id" FOREIGN KEY ("org_id") REFERENCES "organizations" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
--- changeset codex:20260317130000-24 splitStatements:false
+-- changeset codex:20260317130000-16 splitStatements:false
 CREATE INDEX "ix_storage_usage_snapshots_org_id_created_at" ON "storage_usage_snapshots" USING btree("org_id", "created_at");
 
--- changeset codex:20260317130000-25 splitStatements:false
+-- changeset codex:20260317130000-17 splitStatements:false
 CREATE TABLE "storage_overage_ledgers" (
     "id" UUID NOT NULL,
     "created_at" TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -258,10 +215,10 @@ CREATE TABLE "storage_overage_ledgers" (
     CONSTRAINT "fk_storage_overage_ledgers_snapshot_id" FOREIGN KEY ("snapshot_id") REFERENCES "storage_usage_snapshots" ("id") ON UPDATE NO ACTION ON DELETE SET NULL
 );
 
--- changeset codex:20260317130000-26 splitStatements:false
+-- changeset codex:20260317130000-18 splitStatements:false
 CREATE INDEX "ix_storage_overage_ledgers_org_id_period_start" ON "storage_overage_ledgers" USING btree("org_id", "period_start");
 
--- changeset codex:20260317130000-27 splitStatements:false
+-- changeset codex:20260317130000-19 splitStatements:false
 CREATE TABLE "subscription_change_requests" (
     "id" UUID NOT NULL,
     "created_at" TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -277,16 +234,5 @@ CREATE TABLE "subscription_change_requests" (
     CONSTRAINT "fk_subscription_change_requests_subscription_id" FOREIGN KEY ("subscription_id") REFERENCES "subscriptions" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
--- changeset codex:20260317130000-28 splitStatements:false
+-- changeset codex:20260317130000-20 splitStatements:false
 CREATE INDEX "ix_subscription_change_requests_subscription_id_status" ON "subscription_change_requests" USING btree("subscription_id", "status");
-
--- changeset codex:20260317130000-29 splitStatements:false
-ALTER TABLE "organizations"
-    DROP COLUMN IF EXISTS "plan_type",
-    DROP COLUMN IF EXISTS "max_members",
-    DROP COLUMN IF EXISTS "plan_credits_remaining",
-    DROP COLUMN IF EXISTS "bonus_credits_remaining",
-    DROP COLUMN IF EXISTS "storage_bytes_limit",
-    DROP COLUMN IF EXISTS "storage_bytes_used",
-    DROP COLUMN IF EXISTS "allow_storage_overage",
-    DROP COLUMN IF EXISTS "used_members";

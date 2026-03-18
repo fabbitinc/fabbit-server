@@ -109,7 +109,7 @@ public class SubscriptionBillingLedger extends AbstractCreatedEntity implements 
         this.periodEnd = periodEnd;
         this.quantity = requireNonNegative(quantity);
         this.unitAmount = requireNonNegative(unitAmount);
-        this.totalAmount = requireNonNegative(totalAmount);
+        this.totalAmount = requireAmount(totalAmount);
         this.currency = currency == null ? "KRW" : currency.trim();
         this.referenceType = referenceType;
         this.referenceId = referenceId;
@@ -175,6 +175,13 @@ public class SubscriptionBillingLedger extends AbstractCreatedEntity implements 
     private BigDecimal requireNonNegative(BigDecimal value) {
         if (value == null || value.signum() < 0) {
             throw new DomainException(CODE_SUBSCRIPTION_BILLING_LEDGER_AMOUNT_INVALID, "수량과 금액은 0 이상이어야 합니다");
+        }
+        return value;
+    }
+
+    private BigDecimal requireAmount(BigDecimal value) {
+        if (value == null) {
+            throw new DomainException(CODE_SUBSCRIPTION_BILLING_LEDGER_AMOUNT_INVALID, "청구 금액은 필수입니다");
         }
         return value;
     }

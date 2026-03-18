@@ -1,6 +1,7 @@
 package com.fabbitinc.server.presentation.auth.dto.response;
 
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
+import com.fabbitinc.server.domain.subscription.model.SeatType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
@@ -13,6 +14,8 @@ public record VerifyInvitationResponse(
         String inviterName,
         @Schema(description = "초대 역할", example = "MEMBER")
         MembershipRole role,
+        @Schema(description = "예약된 좌석 타입", example = "VIEWER")
+        SeatType seatType,
         @Schema(description = "기존 가입 사용자 여부", example = "false")
         boolean isExistingUser,
         @Schema(description = "초대 만료 시각")

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fabbitinc.server.ServerApplication;
+import com.fabbitinc.server.application.auth.api.AuthInvitationApi;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.config.JpaAuditingConfig;
@@ -50,6 +51,7 @@ import org.springframework.test.context.TestPropertySource;
 })
 @Import({
         JpaAuditingConfig.class,
+        AuthInvitationApi.class,
         OrganizationService.class,
         SubscriptionApi.class,
         SubscriptionService.class,
@@ -85,7 +87,8 @@ class OrganizationServicePersistenceTest {
                         "acme",
                         "manufacturing",
                         "11-50",
-                        WorkspacePlanType.STARTER
+                        WorkspacePlanType.STARTER,
+                        null
                 )
         );
 
@@ -116,7 +119,8 @@ class OrganizationServicePersistenceTest {
                         "acme-existing",
                         "manufacturing",
                         "11-50",
-                        WorkspacePlanType.STARTER
+                        WorkspacePlanType.STARTER,
+                        null
                 )
         );
 
@@ -127,7 +131,8 @@ class OrganizationServicePersistenceTest {
                         "beta-existing",
                         "manufacturing",
                         "11-50",
-                        WorkspacePlanType.ORG
+                        WorkspacePlanType.ORG,
+                        SeatType.FULL
                 )
         ));
 
@@ -163,7 +168,8 @@ class OrganizationServicePersistenceTest {
                         "acme-limit",
                         null,
                         null,
-                        WorkspacePlanType.STARTER
+                        WorkspacePlanType.STARTER,
+                        null
                 )
         );
 

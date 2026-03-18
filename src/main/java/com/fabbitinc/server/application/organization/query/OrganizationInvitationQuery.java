@@ -29,6 +29,7 @@ public class OrganizationInvitationQuery {
                                 invitation.getOrgId(),
                                 invitation.getEmail(),
                                 invitation.getRole(),
+                                invitation.getSeatType(),
                                 invitation.getStatus(),
                                 invitation.getInvitedBy(),
                                 invitation.getExpiresAt(),

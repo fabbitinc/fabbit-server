@@ -30,7 +30,10 @@ public record CurrentSubscriptionResult(
     public record SeatAllocationResult(
             SeatType seatType,
             int assignedCount,
-            int purchasedQuantity
+            long reservedCount,
+            int purchasedQuantity,
+            int availableQuantity,
+            int unitPrice
     ) {
     }
 }

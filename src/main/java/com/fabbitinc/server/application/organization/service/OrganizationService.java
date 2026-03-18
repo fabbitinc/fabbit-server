@@ -16,6 +16,7 @@ import com.fabbitinc.server.domain.organization.model.WorkspaceSlugPolicy;
 import com.fabbitinc.server.domain.organization.repository.MembershipRepository;
 import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
 import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
+import com.fabbitinc.server.domain.subscription.model.SeatType;
 import java.text.Normalizer;
 import java.util.Comparator;
 import java.util.List;
@@ -62,7 +63,13 @@ public class OrganizationService {
 
         tenantProvisioningPort.provisionTenant(organization.getId());
 
-        subscriptionApi.createInitialSubscription(organization.getId(), planType, ownerMembership, userId);
+        subscriptionApi.createInitialSubscription(
+                organization.getId(),
+                planType,
+                ownerMembership,
+                input.ownerSeatType(),
+                userId
+        );
         return organization;
     }
 
@@ -124,9 +131,7 @@ public class OrganizationService {
             throw new AppException(ErrorCode.MEMBER_LIMIT_EXCEEDED, "멤버 수 한도를 초과했습니다. 플랜을 업그레이드해주세요.");
         }
 
-        Membership membership = membershipRepository.save(organization.addMember(userId, role, null));
-        subscriptionApi.assignSeatForMembership(orgId, membership, organization.getOwnerId());
-        return membership;
+        return membershipRepository.save(organization.addMember(userId, role, null));
     }
 
     public void checkCreditQuota(UUID orgId, AiUsageCategory category) {

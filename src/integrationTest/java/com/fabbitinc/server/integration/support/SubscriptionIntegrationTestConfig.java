@@ -1,5 +1,6 @@
 package com.fabbitinc.server.integration.support;
 
+import com.fabbitinc.server.application.auth.port.AuthEmailPort;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.organization.port.TenantProvisioningPort;
 import javax.sql.DataSource;
@@ -19,6 +20,12 @@ public class SubscriptionIntegrationTestConfig {
     @Primary
     public CurrentAuthProvider currentAuthProvider(TestCurrentAuthProvider provider) {
         return provider;
+    }
+
+    @Bean
+    @Primary
+    public AuthEmailPort authEmailPort() {
+        return new TestAuthEmailPort();
     }
 
     @Bean

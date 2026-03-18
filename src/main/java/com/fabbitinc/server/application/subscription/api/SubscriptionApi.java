@@ -1,17 +1,20 @@
 package com.fabbitinc.server.application.subscription.api;
 
 import com.fabbitinc.server.application.subscription.service.SubscriptionService;
+import com.fabbitinc.server.application.subscription.service.input.UpgradeStarterSubscriptionInput;
 import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.subscription.model.SeatType;
 import com.fabbitinc.server.domain.subscription.model.Subscription;
 import com.fabbitinc.server.domain.subscription.model.SubscriptionChangeRequest;
 import com.fabbitinc.server.domain.subscription.model.SubscriptionCreditPurchase;
+import com.fabbitinc.server.domain.subscription.model.SubscriptionSeatQuota;
 import com.fabbitinc.server.domain.subscription.model.SubscriptionUsagePolicy;
 import com.fabbitinc.server.domain.subscription.model.StorageUsageSnapshot;
 import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -23,8 +26,14 @@ public class SubscriptionApi {
 
     private final SubscriptionService subscriptionService;
 
-    public Subscription createInitialSubscription(UUID orgId, WorkspacePlanType planType, Membership ownerMembership, UUID assignedBy) {
-        return subscriptionService.createInitialSubscription(orgId, planType, ownerMembership, assignedBy);
+    public Subscription createInitialSubscription(
+            UUID orgId,
+            WorkspacePlanType planType,
+            Membership ownerMembership,
+            SeatType ownerSeatType,
+            UUID assignedBy
+    ) {
+        return subscriptionService.createInitialSubscription(orgId, planType, ownerMembership, ownerSeatType, assignedBy);
     }
 
     public WorkspacePlanType getCurrentPlanType(UUID orgId) {
@@ -55,16 +64,28 @@ public class SubscriptionApi {
         subscriptionService.assertCanAddMember(orgId, currentUsedMembers);
     }
 
-    public void assignSeatForMembership(UUID orgId, Membership membership, UUID assignedBy) {
-        subscriptionService.assignSeatForMembership(orgId, membership, assignedBy);
+    public void assignSeatToMembership(UUID orgId, Membership membership, SeatType seatType, UUID assignedBy) {
+        subscriptionService.assignSeatToMembership(orgId, membership, seatType, assignedBy);
     }
 
     public SeatType changeSeatType(UUID orgId, Membership membership, SeatType requestedSeatType, UUID assignedBy) {
         return subscriptionService.changeSeatType(orgId, membership, requestedSeatType, assignedBy);
     }
 
+    public SeatType resolveInvitationSeatType(UUID orgId, SeatType requestedSeatType) {
+        return subscriptionService.resolveInvitationSeatType(orgId, requestedSeatType);
+    }
+
     public void removeSeatAssignment(UUID membershipId) {
         subscriptionService.removeSeatAssignment(membershipId);
+    }
+
+    public List<SubscriptionSeatQuota> updateSeatQuotas(UUID orgId, Map<SeatType, Integer> requestedSeatQuantities) {
+        return subscriptionService.updateSeatQuotas(orgId, requestedSeatQuantities);
+    }
+
+    public void upgradeStarterSubscription(UpgradeStarterSubscriptionInput input) {
+        subscriptionService.upgradeStarterSubscription(input);
     }
 
     public void checkAiUsageAllowance(UUID orgId, AiUsageCategory category) {

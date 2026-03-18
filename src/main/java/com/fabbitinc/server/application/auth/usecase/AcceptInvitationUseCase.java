@@ -12,6 +12,7 @@ import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.domain.auth.model.Invitation;
+import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.Organization;
 import com.fabbitinc.server.domain.user.model.User;
 import java.time.Instant;
@@ -43,7 +44,13 @@ public class AcceptInvitationUseCase {
         );
 
         User user = userWithNewFlag.user();
-        organizationApi.addMember(user.getId(), invitation.getOrgId(), invitation.getRole());
+        Membership membership = organizationApi.addMember(user.getId(), invitation.getOrgId(), invitation.getRole());
+        subscriptionApi.assignSeatToMembership(
+                invitation.getOrgId(),
+                membership,
+                invitation.getSeatType(),
+                invitation.getInvitedBy()
+        );
 
         invitation.accept(Instant.now());
 

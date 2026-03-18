@@ -48,7 +48,8 @@ public class RegisterUseCase {
                         command.slug(),
                         command.industry(),
                         command.teamSize(),
-                        command.planType()
+                        command.planType(),
+                        command.ownerSeatType()
                 )
         );
 

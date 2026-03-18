@@ -1,7 +1,9 @@
 package com.fabbitinc.server.application.subscription.service;
 
+import com.fabbitinc.server.application.auth.api.AuthInvitationApi;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.subscription.service.input.UpgradeStarterSubscriptionInput;
 import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
 import com.fabbitinc.server.application.tenant.support.TenantSchemaPolicy;
 import com.fabbitinc.server.domain.common.exception.DomainException;
@@ -62,6 +64,7 @@ public class SubscriptionService {
     private final SubscriptionSeatQuotaRepository subscriptionSeatQuotaRepository;
     private final SubscriptionSeatAssignmentRepository subscriptionSeatAssignmentRepository;
     private final SubscriptionUsagePolicyRepository subscriptionUsagePolicyRepository;
+    private final AuthInvitationApi authInvitationApi;
     private final AiUsageEventRepository aiUsageEventRepository;
     private final SubscriptionChangeRequestRepository subscriptionChangeRequestRepository;
     private final SubscriptionCreditPurchaseRepository subscriptionCreditPurchaseRepository;
@@ -73,10 +76,11 @@ public class SubscriptionService {
             UUID orgId,
             WorkspacePlanType planType,
             Membership ownerMembership,
+            SeatType ownerSeatType,
             UUID assignedBy
     ) {
         return subscriptionRepository.findByOrgIdAndStatus(orgId, SubscriptionStatus.ACTIVE)
-                .orElseGet(() -> createActiveSubscription(orgId, planType, ownerMembership, assignedBy));
+                .orElseGet(() -> createActiveSubscription(orgId, planType, ownerMembership, ownerSeatType, assignedBy));
     }
 
     public WorkspacePlanType getCurrentPlanType(UUID orgId) {
@@ -86,7 +90,7 @@ public class SubscriptionService {
     public SeatType getCurrentSeatType(UUID orgId, UUID userId) {
         return subscriptionSeatAssignmentRepository.findByOrgIdAndUserId(orgId, userId)
                 .map(SubscriptionSeatAssignment::getSeatType)
-                .orElseGet(() -> getCurrentPlanType(orgId).defaultMemberSeatType());
+                .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND, "좌석 배정 정보를 찾을 수 없습니다"));
     }
 
     public SubscriptionUsagePolicy getUsagePolicy(UUID orgId) {
@@ -118,10 +122,9 @@ public class SubscriptionService {
         }
     }
 
-    public void assignSeatForMembership(UUID orgId, Membership membership, UUID assignedBy) {
+    public void assignSeatToMembership(UUID orgId, Membership membership, SeatType requestedSeatType, UUID assignedBy) {
         Subscription subscription = getActiveSubscription(orgId);
-        SeatType seatType = resolveSeatTypeForMembership(subscription.getPlanType(), membership);
-        upsertSeatQuota(subscription.getId(), seatType, 1, subscription.getPlanType().seatPrice(seatType));
+        SeatType seatType = resolveAcceptedInvitationSeatType(subscription.getPlanType(), requestedSeatType);
         subscriptionSeatAssignmentRepository.findByMembershipId(membership.getId())
                 .ifPresentOrElse(
                         assignment -> assignment.changeSeatType(seatType, assignedBy, Instant.now()),
@@ -147,6 +150,7 @@ public class SubscriptionService {
                 .orElse(null);
 
         if (assignment == null) {
+            assertSeatQuotaAvailable(subscription, seatType, null);
             subscriptionSeatAssignmentRepository.save(SubscriptionSeatAssignment.create(
                     subscription.getId(),
                     orgId,
@@ -156,7 +160,6 @@ public class SubscriptionService {
                     assignedBy,
                     now
             ));
-            upsertSeatQuota(subscription.getId(), seatType, 1, planType.seatPrice(seatType));
             return seatType;
         }
 
@@ -165,20 +168,125 @@ public class SubscriptionService {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "이미 해당 좌석 타입이 배정되어 있습니다");
         }
 
+        assertSeatQuotaAvailable(subscription, seatType, assignment.getId());
         assignment.changeSeatType(seatType, assignedBy, now);
-        upsertSeatQuota(subscription.getId(), seatType, 1, planType.seatPrice(seatType));
-        subscriptionSeatQuotaRepository.findBySubscriptionIdAndSeatType(subscription.getId(), previousSeatType)
-                .ifPresent(quota -> quota.decreasePurchasedQuantity(1));
         return seatType;
     }
 
     public void removeSeatAssignment(UUID membershipId) {
         subscriptionSeatAssignmentRepository.findByMembershipId(membershipId)
-                .ifPresent(assignment -> {
-                    subscriptionSeatAssignmentRepository.delete(assignment);
-                    subscriptionSeatQuotaRepository.findBySubscriptionIdAndSeatType(assignment.getSubscriptionId(), assignment.getSeatType())
-                            .ifPresent(quota -> quota.decreasePurchasedQuantity(1));
-                });
+                .ifPresent(subscriptionSeatAssignmentRepository::delete);
+    }
+
+    public SeatType resolveInvitationSeatType(UUID orgId, SeatType requestedSeatType) {
+        Subscription subscription = getActiveSubscription(orgId);
+        WorkspacePlanType planType = subscription.getPlanType();
+        if (planType.isStarter()) {
+            return SeatType.STARTER;
+        }
+        if (requestedSeatType == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "유료 플랜 초대에는 좌석 타입을 선택해야 합니다");
+        }
+        if (requestedSeatType == SeatType.STARTER) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "유료 플랜에서는 STARTER 좌석으로 초대할 수 없습니다");
+        }
+        assertSeatQuotaAvailable(subscription, requestedSeatType, null);
+        return requestedSeatType;
+    }
+
+    public List<SubscriptionSeatQuota> updateSeatQuotas(UUID orgId, Map<SeatType, Integer> requestedSeatQuantities) {
+        Subscription subscription = getActiveSubscription(orgId);
+        WorkspacePlanType planType = subscription.getPlanType();
+        if (planType.isStarter()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Starter 플랜에서는 좌석 수량을 변경할 수 없습니다");
+        }
+
+        Map<SeatType, Integer> normalizedQuantities = normalizeRequestedSeatQuantities(requestedSeatQuantities);
+        for (SeatType seatType : purchasableSeatTypes()) {
+            int assignedCount = Math.toIntExact(subscriptionSeatAssignmentRepository.countByOrgIdAndSeatType(orgId, seatType));
+            int reservedCount = Math.toIntExact(authInvitationApi.countPendingInvitations(orgId, seatType));
+            int minimumRequired = assignedCount + reservedCount;
+            int requestedQuantity = normalizedQuantities.getOrDefault(seatType, 0);
+            if (requestedQuantity < minimumRequired) {
+                throw new AppException(
+                        ErrorCode.QUOTA_EXCEEDED,
+                        "이미 배정되었거나 예약된 좌석보다 적게 설정할 수 없습니다: " + seatType.name()
+                );
+            }
+        }
+
+        Map<SeatType, Integer> currentQuantities = purchasableSeatTypes().stream()
+                .collect(Collectors.toMap(
+                        seatType -> seatType,
+                        seatType -> subscriptionSeatQuotaRepository.findBySubscriptionIdAndSeatType(subscription.getId(), seatType)
+                                .map(SubscriptionSeatQuota::getPurchasedQuantity)
+                                .orElse(0)
+                ));
+        Instant now = Instant.now();
+        for (SeatType seatType : purchasableSeatTypes()) {
+            int requestedQuantity = normalizedQuantities.getOrDefault(seatType, 0);
+            SubscriptionSeatQuota quota = subscriptionSeatQuotaRepository.findBySubscriptionIdAndSeatTypeForUpdate(subscription.getId(), seatType)
+                    .orElse(null);
+
+            if (quota == null) {
+                subscriptionSeatQuotaRepository.save(SubscriptionSeatQuota.create(
+                        subscription.getId(),
+                        seatType,
+                        requestedQuantity,
+                        planType.seatPrice(seatType),
+                        CURRENCY_KRW
+                ));
+            } else {
+                quota.changePurchasedQuantity(requestedQuantity);
+            }
+        }
+
+        createSeatQuotaAdjustmentLedgers(subscription, planType, currentQuantities, normalizedQuantities, now);
+
+        return subscriptionSeatQuotaRepository.findBySubscriptionId(subscription.getId());
+    }
+
+    public void upgradeStarterSubscription(UpgradeStarterSubscriptionInput input) {
+        Subscription subscription = getActiveSubscription(input.orgId());
+        if (!subscription.getPlanType().isStarter()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Starter 플랜에서만 즉시 업그레이드할 수 있습니다");
+        }
+
+        WorkspacePlanType targetPlanType = requireStarterUpgradeTargetPlanType(input.targetPlanType());
+        List<UpgradeStarterSubscriptionInput.MemberSeatSelection> memberSeatSelections = requireStarterUpgradeSelections(
+                input.memberSeatSelections()
+        );
+        validatePendingInvitationsAbsent(input.orgId());
+
+        SubscriptionUsagePolicy usagePolicy = subscriptionUsagePolicyRepository.findBySubscriptionId(subscription.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND, "구독 사용량 정책을 찾을 수 없습니다"));
+
+        Instant now = Instant.now();
+        subscription.changePlan(targetPlanType);
+        usagePolicy.applyPlanDefaults(targetPlanType);
+
+        Map<SeatType, Integer> seatCounts = new HashMap<>();
+        for (UpgradeStarterSubscriptionInput.MemberSeatSelection selection : memberSeatSelections) {
+            Membership membership = selection.membership();
+            SeatType seatType = requirePaidSeatType(selection.seatType());
+            subscriptionSeatAssignmentRepository.findByMembershipId(membership.getId())
+                    .ifPresentOrElse(
+                            assignment -> assignment.changeSeatType(seatType, input.actorUserId(), now),
+                            () -> subscriptionSeatAssignmentRepository.save(SubscriptionSeatAssignment.create(
+                                    subscription.getId(),
+                                    input.orgId(),
+                                    membership.getId(),
+                                    membership.getUserId(),
+                                    seatType,
+                                    input.actorUserId(),
+                                    now
+                            ))
+                    );
+            seatCounts.merge(seatType, 1, Integer::sum);
+        }
+
+        replaceSeatQuotas(subscription, targetPlanType, seatCounts);
+        createSeatQuotaAdjustmentLedgers(subscription, targetPlanType, Map.of(), seatCounts, now);
     }
 
     public void checkAiUsageAllowance(UUID orgId, AiUsageCategory category) {
@@ -213,6 +321,9 @@ public class SubscriptionService {
             Map<String, Object> metadata
     ) {
         Subscription subscription = getActiveSubscription(orgId);
+        if (subscription.getPlanType().isStarter()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Starter 플랜 업그레이드는 전용 업그레이드 API를 사용해야 합니다");
+        }
         if (subscription.getPlanType() == requestedPlanType) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "현재 플랜과 동일한 플랜으로 변경할 수 없습니다");
         }
@@ -441,9 +552,10 @@ public class SubscriptionService {
             UUID orgId,
             WorkspacePlanType planType,
             Membership ownerMembership,
+            SeatType ownerSeatType,
             UUID assignedBy
     ) {
-        WorkspacePlanType resolvedPlanType = planType == null ? WorkspacePlanType.STARTER : planType;
+        WorkspacePlanType resolvedPlanType = requireWorkspacePlanType(planType);
         Instant now = Instant.now();
         Instant periodEnd = ZonedDateTime.ofInstant(now, ZoneOffset.UTC)
                 .plusMonths(1)
@@ -470,13 +582,13 @@ public class SubscriptionService {
                 resolvedPlanType.aiBillingMode() == AiBillingMode.INCLUDED_ONLY
         ));
 
-        SeatType ownerSeatType = resolvedPlanType.initialOwnerSeatType();
+        SeatType resolvedOwnerSeatType = resolveInitialOwnerSeatType(resolvedPlanType, ownerSeatType);
         int initialQuantity = resolvedPlanType.isStarter() ? resolvedPlanType.maxMembers() : 1;
         subscriptionSeatQuotaRepository.save(SubscriptionSeatQuota.create(
                 subscription.getId(),
-                ownerSeatType,
+                resolvedOwnerSeatType,
                 initialQuantity,
-                resolvedPlanType.seatPrice(ownerSeatType),
+                resolvedPlanType.seatPrice(resolvedOwnerSeatType),
                 CURRENCY_KRW
         ));
         subscriptionSeatAssignmentRepository.save(SubscriptionSeatAssignment.create(
@@ -484,10 +596,11 @@ public class SubscriptionService {
                 orgId,
                 ownerMembership.getId(),
                 ownerMembership.getUserId(),
-                ownerSeatType,
+                resolvedOwnerSeatType,
                 assignedBy,
                 now
         ));
+        createSeatBillingLedgers(subscription, subscription.getCurrentPeriodStart(), subscription.getCurrentPeriodEnd());
         return subscription;
     }
 
@@ -500,15 +613,6 @@ public class SubscriptionService {
     private Subscription getActiveSubscription(UUID orgId) {
         return subscriptionRepository.findByOrgIdAndStatus(orgId, SubscriptionStatus.ACTIVE)
                 .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND, "활성 구독 정보를 찾을 수 없습니다"));
-    }
-
-    private SeatType resolveSeatTypeForMembership(WorkspacePlanType planType, Membership membership) {
-        if (planType.isStarter()) {
-            return SeatType.STARTER;
-        }
-        return membership.getRole() == MembershipRole.OWNER
-                ? SeatType.FULL
-                : planType.defaultMemberSeatType();
     }
 
     private SeatType requireAssignableSeatType(WorkspacePlanType planType, Membership membership, SeatType requestedSeatType) {
@@ -527,63 +631,86 @@ public class SubscriptionService {
         return requestedSeatType;
     }
 
-    private void upsertSeatQuota(UUID subscriptionId, SeatType seatType, int quantity, int unitPrice) {
-        subscriptionSeatQuotaRepository.findBySubscriptionIdAndSeatType(subscriptionId, seatType)
-                .ifPresentOrElse(
-                        quota -> quota.increasePurchasedQuantity(quantity),
-                        () -> subscriptionSeatQuotaRepository.save(SubscriptionSeatQuota.create(
-                                subscriptionId,
-                                seatType,
-                                quantity,
-                                unitPrice,
-                                CURRENCY_KRW
-                        ))
-                );
-    }
-
     private void applyScheduledPlanChange(Subscription subscription, WorkspacePlanType requestedPlanType, Instant appliedAt) {
         List<SubscriptionSeatAssignment> assignments = subscriptionSeatAssignmentRepository.findBySubscriptionId(subscription.getId());
-        validatePlanChange(assignments, requestedPlanType);
+        validatePlanChange(subscription, assignments, requestedPlanType);
 
         SubscriptionUsagePolicy usagePolicy = subscriptionUsagePolicyRepository.findBySubscriptionId(subscription.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND, "구독 사용량 정책을 찾을 수 없습니다"));
 
         if (requestedPlanType.isStarter()) {
             assignments.forEach(assignment -> assignment.changeSeatType(SeatType.STARTER, null, appliedAt));
-        } else if (subscription.getPlanType().isStarter()) {
-            assignments.forEach(assignment -> assignment.changeSeatType(resolvePaidSeatType(assignment), null, appliedAt));
         }
 
         subscription.changePlan(requestedPlanType);
         usagePolicy.applyPlanDefaults(requestedPlanType);
-        rebuildSeatQuotas(subscription, requestedPlanType, assignments);
+        rebuildSeatQuotas(subscription, requestedPlanType);
     }
 
-    private void validatePlanChange(List<SubscriptionSeatAssignment> assignments, WorkspacePlanType requestedPlanType) {
+    private void validatePlanChange(
+            Subscription subscription,
+            List<SubscriptionSeatAssignment> assignments,
+            WorkspacePlanType requestedPlanType
+    ) {
         if (!requestedPlanType.isStarter()) {
             return;
         }
         if (assignments.size() > WorkspacePlanType.STARTER.maxMembers()) {
             throw new AppException(ErrorCode.MEMBER_LIMIT_EXCEEDED, "Starter 플랜은 최대 5명까지만 사용할 수 있습니다");
         }
+        int pendingInvitationCount = authInvitationApi.countPendingInvitationsBySeatType(subscription.getOrgId()).values().stream()
+                .mapToInt(Integer::intValue)
+                .sum();
+        if (pendingInvitationCount > 0) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "대기 중인 초대가 있으면 Starter 플랜으로 변경할 수 없습니다");
+        }
     }
 
-    private SeatType resolvePaidSeatType(SubscriptionSeatAssignment assignment) {
-        Membership membership = assignment.getMembership();
-        if (membership != null && membership.getRole() == MembershipRole.OWNER) {
-            return SeatType.FULL;
+    private WorkspacePlanType requireStarterUpgradeTargetPlanType(WorkspacePlanType targetPlanType) {
+        if (targetPlanType == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "업그레이드 대상 플랜은 필수입니다");
         }
-        return SeatType.VIEWER;
+        if (targetPlanType != WorkspacePlanType.TEAM && targetPlanType != WorkspacePlanType.ORG) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Starter 업그레이드는 Team 또는 Org 플랜만 지원합니다");
+        }
+        return targetPlanType;
+    }
+
+    private List<UpgradeStarterSubscriptionInput.MemberSeatSelection> requireStarterUpgradeSelections(
+            List<UpgradeStarterSubscriptionInput.MemberSeatSelection> memberSeatSelections
+    ) {
+        if (memberSeatSelections == null || memberSeatSelections.isEmpty()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "업그레이드할 멤버 좌석 정보는 필수입니다");
+        }
+        return memberSeatSelections;
+    }
+
+    private void validatePendingInvitationsAbsent(UUID orgId) {
+        int pendingInvitationCount = authInvitationApi.countPendingInvitationsBySeatType(orgId).values().stream()
+                .mapToInt(Integer::intValue)
+                .sum();
+        if (pendingInvitationCount > 0) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "대기 중인 초대가 있으면 Starter 업그레이드를 진행할 수 없습니다");
+        }
+    }
+
+    private SeatType requirePaidSeatType(SeatType seatType) {
+        if (seatType == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "유료 플랜 좌석 타입은 필수입니다");
+        }
+        if (seatType == SeatType.STARTER) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Starter 업그레이드에서는 STARTER 좌석을 사용할 수 없습니다");
+        }
+        return seatType;
     }
 
     private void rebuildSeatQuotas(
             Subscription subscription,
-            WorkspacePlanType planType,
-            List<SubscriptionSeatAssignment> assignments
+            WorkspacePlanType planType
     ) {
-        List<SubscriptionSeatQuota> quotas = subscriptionSeatQuotaRepository.findBySubscriptionId(subscription.getId());
-        if (!quotas.isEmpty()) {
-            subscriptionSeatQuotaRepository.deleteAll(quotas);
+        List<SubscriptionSeatQuota> existingQuotas = subscriptionSeatQuotaRepository.findBySubscriptionId(subscription.getId());
+        if (!existingQuotas.isEmpty()) {
+            subscriptionSeatQuotaRepository.deleteAll(existingQuotas);
         }
 
         if (planType.isStarter()) {
@@ -598,10 +725,9 @@ public class SubscriptionService {
         }
 
         Map<SeatType, Integer> countsBySeatType = new HashMap<>();
-        assignments.stream()
-                .map(SubscriptionSeatAssignment::getSeatType)
-                .filter(seatType -> seatType != SeatType.STARTER)
-                .forEach(seatType -> countsBySeatType.merge(seatType, 1, Integer::sum));
+        existingQuotas.stream()
+                .filter(quota -> quota.getSeatType() != SeatType.STARTER)
+                .forEach(quota -> countsBySeatType.put(quota.getSeatType(), quota.getPurchasedQuantity()));
 
         Arrays.stream(SeatType.values())
                 .filter(seatType -> seatType != SeatType.STARTER)
@@ -613,6 +739,112 @@ public class SubscriptionService {
                         planType.seatPrice(seatType),
                         CURRENCY_KRW
                 )));
+    }
+
+    private void replaceSeatQuotas(
+            Subscription subscription,
+            WorkspacePlanType planType,
+            Map<SeatType, Integer> seatCounts
+    ) {
+        List<SubscriptionSeatQuota> existingQuotas = subscriptionSeatQuotaRepository.findBySubscriptionId(subscription.getId());
+        if (!existingQuotas.isEmpty()) {
+            subscriptionSeatQuotaRepository.deleteAll(existingQuotas);
+        }
+
+        for (SeatType seatType : purchasableSeatTypes()) {
+            int purchasedQuantity = seatCounts.getOrDefault(seatType, 0);
+            if (purchasedQuantity <= 0) {
+                continue;
+            }
+            subscriptionSeatQuotaRepository.save(SubscriptionSeatQuota.create(
+                    subscription.getId(),
+                    seatType,
+                    purchasedQuantity,
+                    planType.seatPrice(seatType),
+                    CURRENCY_KRW
+            ));
+        }
+    }
+
+    private SeatType resolveInitialOwnerSeatType(WorkspacePlanType planType, SeatType requestedSeatType) {
+        if (planType.isStarter()) {
+            return SeatType.STARTER;
+        }
+        if (requestedSeatType == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "유료 플랜에서는 생성자의 좌석 타입을 선택해야 합니다");
+        }
+        if (requestedSeatType == SeatType.STARTER) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "유료 플랜에서는 STARTER 좌석을 사용할 수 없습니다");
+        }
+        return requestedSeatType;
+    }
+
+    private SeatType resolveAcceptedInvitationSeatType(
+            WorkspacePlanType planType,
+            SeatType invitationSeatType
+    ) {
+        if (planType.isStarter()) {
+            return SeatType.STARTER;
+        }
+        if (invitationSeatType == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "초대 좌석 타입은 필수입니다");
+        }
+        if (invitationSeatType == SeatType.STARTER) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "유료 플랜에서는 STARTER 좌석을 배정할 수 없습니다");
+        }
+        return invitationSeatType;
+    }
+
+    private void assertSeatQuotaAvailable(Subscription subscription, SeatType seatType, UUID assignmentIdToExclude) {
+        if (subscription.getPlanType().isStarter()) {
+            return;
+        }
+
+        SubscriptionSeatQuota quota = subscriptionSeatQuotaRepository.findBySubscriptionIdAndSeatTypeForUpdate(subscription.getId(), seatType)
+                .orElseThrow(() -> new AppException(ErrorCode.QUOTA_EXCEEDED, "구매한 좌석이 없습니다: " + seatType.name()));
+        int assignedCount = Math.toIntExact(subscriptionSeatAssignmentRepository.countByOrgIdAndSeatType(subscription.getOrgId(), seatType));
+        int reservedCount = Math.toIntExact(authInvitationApi.countPendingInvitations(subscription.getOrgId(), seatType));
+
+        if (assignmentIdToExclude != null) {
+            SubscriptionSeatAssignment assignment = subscriptionSeatAssignmentRepository.findById(assignmentIdToExclude).orElse(null);
+            if (assignment != null && assignment.getSeatType() == seatType) {
+                assignedCount = Math.max(0, assignedCount - 1);
+            }
+        }
+
+        if (quota.getPurchasedQuantity() <= assignedCount + reservedCount) {
+            throw new AppException(ErrorCode.QUOTA_EXCEEDED, "가용 좌석이 없습니다: " + seatType.name());
+        }
+    }
+
+    private Map<SeatType, Integer> normalizeRequestedSeatQuantities(Map<SeatType, Integer> requestedSeatQuantities) {
+        Map<SeatType, Integer> normalized = new HashMap<>();
+        if (requestedSeatQuantities == null) {
+            return normalized;
+        }
+        for (Map.Entry<SeatType, Integer> entry : requestedSeatQuantities.entrySet()) {
+            SeatType seatType = entry.getKey();
+            Integer quantity = entry.getValue();
+            if (seatType == null || seatType == SeatType.STARTER) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 좌석 타입입니다");
+            }
+            if (quantity == null || quantity < 0) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR, "좌석 수량은 0 이상이어야 합니다");
+            }
+            normalized.put(seatType, quantity);
+        }
+        return normalized;
+    }
+
+    private List<SeatType> purchasableSeatTypes() {
+        return List.of(SeatType.VIEWER, SeatType.COLLABORATOR, SeatType.FULL);
+    }
+
+    private WorkspacePlanType requireWorkspacePlanType(WorkspacePlanType planType) {
+        if (planType == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 플랜입니다");
+        }
+        return planType;
     }
 
     private void billMeteredAiUsage(Subscription subscription, Instant periodStart, Instant periodEnd) {
@@ -738,6 +970,61 @@ public class SubscriptionService {
                             referenceType,
                             null,
                             Map.of("seatType", quota.getSeatType().name())
+                    )
+            );
+        }
+    }
+
+    private void createSeatQuotaAdjustmentLedgers(
+            Subscription subscription,
+            WorkspacePlanType planType,
+            Map<SeatType, Integer> previousQuantities,
+            Map<SeatType, Integer> updatedQuantities,
+            Instant changedAt
+    ) {
+        BigDecimal remainingRatio = subscription.calculateRemainingBillingRatio(changedAt);
+        if (remainingRatio.signum() == 0) {
+            return;
+        }
+
+        for (SeatType seatType : purchasableSeatTypes()) {
+            int previousQuantity = previousQuantities.getOrDefault(seatType, 0);
+            int updatedQuantity = updatedQuantities.getOrDefault(seatType, 0);
+            int delta = updatedQuantity - previousQuantity;
+            if (delta == 0) {
+                continue;
+            }
+
+            BigDecimal quantity = BigDecimal.valueOf(Math.abs(delta)).setScale(6, RoundingMode.HALF_UP);
+            BigDecimal unitAmount = BigDecimal.valueOf(planType.seatPrice(seatType)).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal proratedAmount = unitAmount.multiply(quantity)
+                    .multiply(remainingRatio)
+                    .setScale(2, RoundingMode.HALF_UP);
+            if (proratedAmount.signum() == 0) {
+                continue;
+            }
+            BigDecimal signedAmount = delta > 0 ? proratedAmount : proratedAmount.negate();
+
+            subscriptionBillingLedgerRepository.save(
+                    SubscriptionBillingLedger.create(
+                            subscription.getId(),
+                            subscription.getOrgId(),
+                            SubscriptionBillingLedgerType.ADJUSTMENT,
+                            subscription.getCurrentPeriodStart(),
+                            subscription.getCurrentPeriodEnd(),
+                            quantity,
+                            unitAmount,
+                            signedAmount,
+                            CURRENCY_KRW,
+                            "seat_proration_" + seatType.name().toLowerCase(),
+                            null,
+                            Map.of(
+                                    "seatType", seatType.name(),
+                                    "changeType", delta > 0 ? "UPGRADE_OR_ADD" : "DOWNGRADE_OR_REMOVE",
+                                    "delta", delta,
+                                    "remainingRatio", remainingRatio,
+                                    "changedAt", changedAt.toString()
+                            )
                     )
             );
         }

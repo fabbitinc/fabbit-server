@@ -15,6 +15,8 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -177,6 +179,24 @@ public class Subscription extends AbstractAuditableEntity implements AggregateRo
         this.status = SubscriptionStatus.EXPIRED;
         this.cancelAtPeriodEnd = false;
         clearScheduledPlanChange();
+    }
+
+    public BigDecimal calculateRemainingBillingRatio(Instant occurredAt) {
+        Instant effectiveAt = requirePeriodStart(occurredAt);
+        if (!currentPeriodEnd.isAfter(currentPeriodStart)) {
+            throw new DomainException(CODE_SUBSCRIPTION_PERIOD_INVALID, "유효한 청구 기간이 아닙니다");
+        }
+        if (!effectiveAt.isBefore(currentPeriodEnd)) {
+            return BigDecimal.ZERO.setScale(6, RoundingMode.HALF_UP);
+        }
+        Instant ratioStart = effectiveAt.isAfter(currentPeriodStart) ? effectiveAt : currentPeriodStart;
+        long totalMillis = currentPeriodEnd.toEpochMilli() - currentPeriodStart.toEpochMilli();
+        long remainingMillis = currentPeriodEnd.toEpochMilli() - ratioStart.toEpochMilli();
+        if (totalMillis <= 0 || remainingMillis <= 0) {
+            return BigDecimal.ZERO.setScale(6, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.valueOf(remainingMillis)
+                .divide(BigDecimal.valueOf(totalMillis), 6, RoundingMode.HALF_UP);
     }
 
     private UUID requireOrgId(UUID value) {

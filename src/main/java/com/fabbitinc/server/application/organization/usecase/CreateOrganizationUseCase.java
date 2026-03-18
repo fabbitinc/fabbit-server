@@ -40,7 +40,8 @@ public class CreateOrganizationUseCase {
                         command.slug(),
                         command.industry(),
                         command.teamSize(),
-                        command.planType()
+                        command.planType(),
+                        command.ownerSeatType()
                 )
         );
 

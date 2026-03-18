@@ -103,6 +103,10 @@ public class SubscriptionSeatQuota extends AbstractAuditableEntity implements Ag
         this.purchasedQuantity = Math.max(0, this.purchasedQuantity - delta);
     }
 
+    public void changePurchasedQuantity(int quantity) {
+        this.purchasedQuantity = requireNonNegative(quantity, CODE_SUBSCRIPTION_SEAT_QUOTA_PURCHASED_QUANTITY_INVALID, "구매 좌석 수는 0 이상이어야 합니다");
+    }
+
     private UUID requireSubscriptionId(UUID value) {
         if (value == null) {
             throw new DomainException(CODE_SUBSCRIPTION_SEAT_QUOTA_SUBSCRIPTION_REQUIRED, "구독 ID는 필수입니다");

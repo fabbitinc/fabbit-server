@@ -110,7 +110,7 @@ tasks.register<Test>("archTest") {
     testClassesDirs = sourceSets["test"].output.classesDirs
     classpath = sourceSets["test"].runtimeClasspath
     filter {
-        includeTestsMatching("com.fabbitinc.server.architecture.*")
+        includeTestsMatching("com.fabbitinc.server.architecture.*Test")
     }
 }
 

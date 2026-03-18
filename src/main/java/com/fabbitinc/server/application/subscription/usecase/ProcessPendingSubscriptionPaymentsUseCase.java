@@ -45,6 +45,24 @@ public class ProcessPendingSubscriptionPaymentsUseCase {
         for (Map.Entry<UUID, List<SubscriptionBillingLedger>> entry : ledgersByOrgId.entrySet()) {
             UUID orgId = entry.getKey();
             List<SubscriptionBillingLedger> orgLedgers = entry.getValue();
+            BigDecimal totalAmount = orgLedgers.stream()
+                    .map(SubscriptionBillingLedger::getTotalAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            if (totalAmount.signum() <= 0) {
+                orgLedgers.forEach(SubscriptionBillingLedger::markSettled);
+                settleStorageOverageLedgers(orgId, orgLedgers);
+                successCount++;
+                settledLedgerCount += orgLedgers.size();
+                log.info(
+                        "event=subscription_payment_settled_without_charge org_id={} ledger_count={} total_amount={} outcome=success",
+                        orgId,
+                        orgLedgers.size(),
+                        totalAmount
+                );
+                continue;
+            }
+
             PaymentResult result = billingPaymentPort.pay(toPaymentInput(orgId, orgLedgers));
 
             if (!result.success()) {

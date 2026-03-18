@@ -6,6 +6,7 @@ import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
+import com.fabbitinc.server.domain.subscription.model.SeatType;
 import com.fabbitinc.server.domain.organization.repository.MembershipRepository;
 import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
 import com.fabbitinc.server.domain.subscription.model.SubscriptionStatus;
@@ -61,7 +62,8 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
                             TEST_ORG_SLUG,
                             null,
                             null,
-                            WorkspacePlanType.STARTER
+                            WorkspacePlanType.STARTER,
+                            null
                     )
             );
         } else {
@@ -88,6 +90,7 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
                         organization.getId(),
                         WorkspacePlanType.STARTER,
                         membership,
+                        null,
                         organization.getOwnerId()
                 ));
     }
@@ -101,6 +104,6 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
                 .orElseThrow(() -> new IllegalStateException("조직을 찾을 수 없습니다: " + orgId));
         var membership = membershipRepository.save(organization.addMember(userId, MembershipRole.OWNER, null));
         organizationRepository.reserveMemberSeat(orgId);
-        subscriptionApi.createInitialSubscription(orgId, WorkspacePlanType.STARTER, membership, userId);
+        subscriptionApi.createInitialSubscription(orgId, WorkspacePlanType.STARTER, membership, null, userId);
     }
 }

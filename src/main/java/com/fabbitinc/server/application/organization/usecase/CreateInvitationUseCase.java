@@ -6,8 +6,10 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
 import com.fabbitinc.server.application.organization.usecase.command.CreateInvitationCommand;
 import com.fabbitinc.server.application.organization.usecase.result.CreateInvitationResult;
+import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.domain.auth.model.Invitation;
+import com.fabbitinc.server.domain.subscription.model.SeatType;
 import com.fabbitinc.server.domain.organization.model.Organization;
 import com.fabbitinc.server.domain.user.model.User;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class CreateInvitationUseCase {
     private final UserService userService;
     private final OrganizationService organizationService;
     private final AuthInvitationService authInvitationService;
+    private final SubscriptionApi subscriptionApi;
 
     @PreAuthorize("hasRole('ADMIN')")
     public CreateInvitationResult execute(CreateInvitationCommand command) {
@@ -32,11 +35,14 @@ public class CreateInvitationUseCase {
         userService.getUserByEmail(command.email())
                 .ifPresent(existingUser -> organizationService.checkNotMember(auth.orgId(), existingUser.getId()));
 
+        SeatType seatType = subscriptionApi.resolveInvitationSeatType(auth.orgId(), command.seatType());
+
         AuthInvitationService.CreatedInvitation created = authInvitationService.createInvitationRecord(
                 auth.orgId(),
                 command.email(),
                 auth.userId(),
                 command.role(),
+                seatType,
                 auth.role()
         );
 
@@ -54,6 +60,7 @@ public class CreateInvitationUseCase {
                 invitation.getOrgId(),
                 invitation.getEmail(),
                 invitation.getRole(),
+                invitation.getSeatType(),
                 invitation.getStatus(),
                 invitation.getInvitedBy(),
                 invitation.getExpiresAt(),

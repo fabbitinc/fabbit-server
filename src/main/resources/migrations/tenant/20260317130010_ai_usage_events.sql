@@ -1,9 +1,6 @@
 -- liquibase formatted sql
 
 -- changeset codex:20260317130010-1 splitStatements:false
-DROP TABLE IF EXISTS "ai_usage_events" CASCADE;
-
--- changeset codex:20260317130010-2 splitStatements:false
 CREATE TABLE "ai_usage_events" (
     "id" UUID NOT NULL,
     "created_at" TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -32,14 +29,11 @@ CREATE TABLE "ai_usage_events" (
     CONSTRAINT "fk_ai_usage_events_user_id" FOREIGN KEY ("user_id") REFERENCES public."users" ("id") ON UPDATE NO ACTION ON DELETE CASCADE
 );
 
--- changeset codex:20260317130010-3 splitStatements:false
+-- changeset codex:20260317130010-2 splitStatements:false
 CREATE INDEX "ix_ai_usage_events_org_id" ON "ai_usage_events" USING btree("org_id");
 
--- changeset codex:20260317130010-4 splitStatements:false
+-- changeset codex:20260317130010-3 splitStatements:false
 CREATE INDEX "ix_ai_usage_events_user_id" ON "ai_usage_events" USING btree("user_id");
 
--- changeset codex:20260317130010-5 splitStatements:false
+-- changeset codex:20260317130010-4 splitStatements:false
 CREATE INDEX "ix_ai_usage_events_org_id_created_at" ON "ai_usage_events" USING btree("org_id", "created_at");
-
--- changeset codex:20260317130010-6 splitStatements:false
-DROP TABLE IF EXISTS public."ai_usage_logs" CASCADE;

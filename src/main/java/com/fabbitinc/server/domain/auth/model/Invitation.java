@@ -5,6 +5,7 @@ import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
+import com.fabbitinc.server.domain.subscription.model.SeatType;
 import com.fabbitinc.server.domain.user.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -42,6 +43,7 @@ public class Invitation extends AbstractCreatedEntity {
     public static final String CODE_INVITATION_ORG_REQUIRED = "INVITATION_ORG_REQUIRED";
     public static final String CODE_INVITATION_EMAIL_REQUIRED = "INVITATION_EMAIL_REQUIRED";
     public static final String CODE_INVITATION_ROLE_REQUIRED = "INVITATION_ROLE_REQUIRED";
+    public static final String CODE_INVITATION_SEAT_TYPE_REQUIRED = "INVITATION_SEAT_TYPE_REQUIRED";
     public static final String CODE_INVITATION_TOKEN_REQUIRED = "INVITATION_TOKEN_REQUIRED";
     public static final String CODE_INVITATION_INVITER_REQUIRED = "INVITATION_INVITER_REQUIRED";
     public static final String CODE_INVITATION_EXPIRES_AT_REQUIRED = "INVITATION_EXPIRES_AT_REQUIRED";
@@ -62,6 +64,10 @@ public class Invitation extends AbstractCreatedEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 20)
     private MembershipRole role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "seat_type", nullable = false, length = 20)
+    private SeatType seatType;
 
     @Column(name = "token_hash", nullable = false, length = 64)
     private String tokenHash;
@@ -88,6 +94,7 @@ public class Invitation extends AbstractCreatedEntity {
             UUID orgId,
             String email,
             MembershipRole role,
+            SeatType seatType,
             String tokenHash,
             UUID invitedBy,
             Instant expiresAt
@@ -96,6 +103,7 @@ public class Invitation extends AbstractCreatedEntity {
         this.orgId = requireOrgId(orgId);
         this.email = requireEmail(email);
         this.role = requireRole(role);
+        this.seatType = requireSeatType(seatType);
         this.tokenHash = requireTokenHash(tokenHash);
         this.status = InvitationStatus.PENDING;
         this.invitedBy = requireInvitedBy(invitedBy);
@@ -106,11 +114,12 @@ public class Invitation extends AbstractCreatedEntity {
             UUID orgId,
             String email,
             MembershipRole role,
+            SeatType seatType,
             String tokenHash,
             UUID invitedBy,
             Instant expiresAt
     ) {
-        return new Invitation(orgId, email, role, tokenHash, invitedBy, expiresAt);
+        return new Invitation(orgId, email, role, seatType, tokenHash, invitedBy, expiresAt);
     }
 
     public boolean isExpired(Instant now) {
@@ -154,6 +163,13 @@ public class Invitation extends AbstractCreatedEntity {
     private MembershipRole requireRole(MembershipRole value) {
         if (value == null) {
             throw new DomainException(CODE_INVITATION_ROLE_REQUIRED, "역할은 필수입니다");
+        }
+        return value;
+    }
+
+    private SeatType requireSeatType(SeatType value) {
+        if (value == null) {
+            throw new DomainException(CODE_INVITATION_SEAT_TYPE_REQUIRED, "좌석 타입은 필수입니다");
         }
         return value;
     }

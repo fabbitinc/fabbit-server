@@ -68,7 +68,8 @@ public class OrganizationController {
                         request.slug(),
                         request.industry(),
                         request.teamSize(),
-                        request.planType()
+                        request.planType(),
+                        request.ownerSeatType()
                 )
         );
         return new CreateOrganizationResponse(

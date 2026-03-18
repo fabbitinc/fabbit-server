@@ -130,14 +130,6 @@ public enum WorkspacePlanType {
         return fullSeatMonthlyPrice;
     }
 
-    public SeatType initialOwnerSeatType() {
-        return this == STARTER ? SeatType.STARTER : SeatType.FULL;
-    }
-
-    public SeatType defaultMemberSeatType() {
-        return this == STARTER ? SeatType.STARTER : SeatType.VIEWER;
-    }
-
     public boolean isStarter() {
         return this == STARTER;
     }

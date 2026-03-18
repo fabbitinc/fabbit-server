@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
+import com.fabbitinc.server.domain.subscription.model.SeatType;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
@@ -22,6 +23,7 @@ class InvitationRelationTest {
                 orgId,
                 " invited@example.com ",
                 MembershipRole.ADMIN,
+                SeatType.FULL,
                 "token-hash",
                 inviterId,
                 Instant.now().plusSeconds(3600)
@@ -39,6 +41,7 @@ class InvitationRelationTest {
                 null,
                 "invited@example.com",
                 MembershipRole.ADMIN,
+                SeatType.FULL,
                 "token-hash",
                 java.util.UUID.randomUUID(),
                 Instant.now().plusSeconds(3600)
@@ -53,6 +56,7 @@ class InvitationRelationTest {
                 java.util.UUID.randomUUID(),
                 "  ",
                 MembershipRole.ADMIN,
+                SeatType.FULL,
                 "token-hash",
                 java.util.UUID.randomUUID(),
                 Instant.now().plusSeconds(3600)
@@ -67,6 +71,7 @@ class InvitationRelationTest {
                 java.util.UUID.randomUUID(),
                 "invited@example.com",
                 MembershipRole.ADMIN,
+                SeatType.FULL,
                 "token-hash",
                 java.util.UUID.randomUUID(),
                 Instant.now().plusSeconds(3600)
@@ -85,6 +90,7 @@ class InvitationRelationTest {
                 java.util.UUID.randomUUID(),
                 "invited@example.com",
                 MembershipRole.ADMIN,
+                SeatType.FULL,
                 "token-hash",
                 java.util.UUID.randomUUID(),
                 Instant.now().plusSeconds(3600)
@@ -103,6 +109,7 @@ class InvitationRelationTest {
                 java.util.UUID.randomUUID(),
                 "invited@example.com",
                 MembershipRole.ADMIN,
+                SeatType.FULL,
                 "token-hash",
                 java.util.UUID.randomUUID(),
                 Instant.now().plusSeconds(1)
@@ -121,6 +128,7 @@ class InvitationRelationTest {
                 java.util.UUID.randomUUID(),
                 "invited@example.com",
                 MembershipRole.ADMIN,
+                SeatType.FULL,
                 "token-hash",
                 java.util.UUID.randomUUID(),
                 Instant.now().plusSeconds(3600)
@@ -139,6 +147,7 @@ class InvitationRelationTest {
                 java.util.UUID.randomUUID(),
                 "invited@example.com",
                 MembershipRole.ADMIN,
+                SeatType.FULL,
                 "token-hash",
                 java.util.UUID.randomUUID(),
                 Instant.now().plusSeconds(3600)
@@ -155,6 +164,7 @@ class InvitationRelationTest {
                 java.util.UUID.randomUUID(),
                 "invited@example.com",
                 MembershipRole.ADMIN,
+                SeatType.FULL,
                 "token-hash",
                 java.util.UUID.randomUUID(),
                 Instant.now().plusSeconds(10)

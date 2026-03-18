@@ -9,6 +9,7 @@ import com.fabbitinc.server.domain.auth.model.InvitationStatus;
 import com.fabbitinc.server.domain.auth.repository.InvitationRepository;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
+import com.fabbitinc.server.domain.subscription.model.SeatType;
 import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
@@ -35,6 +36,7 @@ public class AuthInvitationService {
             String email,
             UUID invitedBy,
             MembershipRole role,
+            SeatType seatType,
             MembershipRole actorRole
     ) {
         if (role == null) {
@@ -60,6 +62,7 @@ public class AuthInvitationService {
                 orgId,
                 normalizedEmail,
                 invitedRole,
+                seatType,
                 TokenHashingUtils.sha256(rawToken),
                 invitedBy,
                 Instant.now().plus(appProperties.invitationExpireDays(), ChronoUnit.DAYS)

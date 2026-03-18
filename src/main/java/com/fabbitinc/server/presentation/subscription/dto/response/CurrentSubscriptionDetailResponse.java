@@ -51,8 +51,14 @@ public record CurrentSubscriptionDetailResponse(
             SeatType seatType,
             @Schema(description = "현재 배정된 좌석 수", example = "3")
             int assignedCount,
+            @Schema(description = "대기 중 초대로 예약된 좌석 수", example = "1")
+            long reservedCount,
             @Schema(description = "현재 구매 좌석 수", example = "5")
-            int purchasedQuantity
+            int purchasedQuantity,
+            @Schema(description = "즉시 배정 가능한 좌석 수", example = "1")
+            int availableQuantity,
+            @Schema(description = "좌석 월 단가", example = "29000")
+            int unitPrice
     ) {
     }
 }

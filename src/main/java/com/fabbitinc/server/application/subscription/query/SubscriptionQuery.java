@@ -1,5 +1,6 @@
 package com.fabbitinc.server.application.subscription.query;
 
+import com.fabbitinc.server.application.auth.api.AuthInvitationApi;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
@@ -26,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SubscriptionQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
+    private final AuthInvitationApi authInvitationApi;
     private final OrganizationApi organizationApi;
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionSeatAssignmentRepository subscriptionSeatAssignmentRepository;
@@ -65,9 +67,19 @@ public class SubscriptionQuery {
                         .map(seatType -> new CurrentSubscriptionResult.SeatAllocationResult(
                                 seatType,
                                 (int) subscriptionSeatAssignmentRepository.countByOrgIdAndSeatType(auth.orgId(), seatType),
+                                authInvitationApi.countPendingInvitations(auth.orgId(), seatType),
                                 subscriptionSeatQuotaRepository.findBySubscriptionIdAndSeatType(subscription.getId(), seatType)
                                         .map(quota -> quota.getPurchasedQuantity())
-                                        .orElse(0)
+                                        .orElse(0),
+                                Math.max(
+                                        subscriptionSeatQuotaRepository.findBySubscriptionIdAndSeatType(subscription.getId(), seatType)
+                                                .map(quota -> quota.getPurchasedQuantity())
+                                                .orElse(0)
+                                                - (int) subscriptionSeatAssignmentRepository.countByOrgIdAndSeatType(auth.orgId(), seatType)
+                                                - Math.toIntExact(authInvitationApi.countPendingInvitations(auth.orgId(), seatType)),
+                                        0
+                                ),
+                                subscription.getPlanType().seatPrice(seatType)
                         ))
                         .toList()
         );

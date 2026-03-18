@@ -226,7 +226,8 @@ public class AuthController {
                         request.slug(),
                         request.industry(),
                         request.teamSize(),
-                        request.planType()
+                        request.planType(),
+                        request.ownerSeatType()
                 )
         );
         return new RegisterResponse(
@@ -326,6 +327,7 @@ public class AuthController {
                 result.organizationName(),
                 result.inviterName(),
                 result.role(),
+                result.seatType(),
                 result.existingUser(),
                 result.expiresAt()
         );
