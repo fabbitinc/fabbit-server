@@ -13,6 +13,7 @@ public record PropertyMetaResult(
         String propertyKey,
         boolean system,
         PartSystemPropertyKind partSystemPropertyKind,
+        boolean activeConfigurable,
         String columnName,
         String displayName,
         String description,

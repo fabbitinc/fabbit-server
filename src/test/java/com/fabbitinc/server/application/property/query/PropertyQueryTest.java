@@ -76,6 +76,7 @@ class PropertyQueryTest {
         PropertyMetaListResult result = query.list(new PropertyMetaListCondition(PropertyOwnerType.PART.name(), false));
 
         assertEquals("part_number", result.items().get(0).propertyKey());
+        assertEquals(false, result.items().get(0).activeConfigurable());
         assertEquals("품목군", result.items().stream()
                 .filter(item -> item.propertyKey().equals("category"))
                 .findFirst()
@@ -91,6 +92,11 @@ class PropertyQueryTest {
                 .findFirst()
                 .orElseThrow()
                 .partSystemPropertyKind());
+        assertEquals(true, result.items().stream()
+                .filter(item -> item.propertyKey().equals("category"))
+                .findFirst()
+                .orElseThrow()
+                .activeConfigurable());
     }
 
     @Test

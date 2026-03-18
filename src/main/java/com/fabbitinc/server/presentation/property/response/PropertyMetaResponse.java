@@ -25,6 +25,9 @@ public record PropertyMetaResponse(
         @Schema(description = "PART 시스템 속성 종류. PART 시스템 속성이 아니면 null", example = "CATEGORY")
         PartSystemPropertyKind partSystemPropertyKind,
 
+        @Schema(description = "활성 여부를 조직 설정에서 변경할 수 있는지 여부", example = "true")
+        boolean activeConfigurable,
+
         @Schema(description = "시스템 컬럼명. 커스텀 속성이면 null", example = "category")
         String columnName,
 

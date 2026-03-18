@@ -20,7 +20,8 @@ public record SystemPropertySpec(
         List<PropertyOptionItem> options,
         String columnName,
         int displayOrder,
-        boolean required
+        boolean required,
+        boolean activeConfigurable
 ) {
 
     public static final String CODE_SYSTEM_PROPERTY_SPEC_OWNER_TYPE_REQUIRED =
@@ -41,6 +42,8 @@ public record SystemPropertySpec(
             "SYSTEM_PROPERTY_SPEC_DUPLICATE_OPTION_VALUE";
     public static final String CODE_SYSTEM_PROPERTY_SPEC_DISPLAY_ORDER_INVALID =
             "SYSTEM_PROPERTY_SPEC_DISPLAY_ORDER_INVALID";
+    public static final String CODE_SYSTEM_PROPERTY_SPEC_ACTIVE_CONFIGURABLE_NOT_ALLOWED =
+            "SYSTEM_PROPERTY_SPEC_ACTIVE_CONFIGURABLE_NOT_ALLOWED";
 
     public SystemPropertySpec {
         ownerType = requireOwnerType(ownerType);
@@ -64,6 +67,7 @@ public record SystemPropertySpec(
         );
         partSystemPropertyKind = normalizePartSystemPropertyKind(ownerType, partSystemPropertyKind);
         displayOrder = requireDisplayOrder(displayOrder);
+        activeConfigurable = normalizeActiveConfigurable(ownerType, activeConfigurable);
     }
 
     private static PropertyOwnerType requireOwnerType(PropertyOwnerType ownerType) {
@@ -164,5 +168,18 @@ public record SystemPropertySpec(
             return null;
         }
         return partSystemPropertyKind;
+    }
+
+    private static boolean normalizeActiveConfigurable(
+            PropertyOwnerType ownerType,
+            boolean activeConfigurable
+    ) {
+        if (ownerType == PropertyOwnerType.PART && !activeConfigurable) {
+            return false;
+        }
+        if (ownerType != PropertyOwnerType.PART && !activeConfigurable) {
+            return false;
+        }
+        return true;
     }
 }

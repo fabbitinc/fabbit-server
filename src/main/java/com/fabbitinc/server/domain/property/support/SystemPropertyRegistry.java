@@ -20,7 +20,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "part_number",
                     10,
-                    true
+                    true,
+                    false
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
@@ -33,6 +34,7 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "name",
                     20,
+                    false,
                     false
             ),
             new SystemPropertySpec(
@@ -46,6 +48,7 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "revision",
                     30,
+                    false,
                     false
             ),
             new SystemPropertySpec(
@@ -59,7 +62,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "material",
                     40,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
@@ -72,7 +76,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "unit",
                     50,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
@@ -85,7 +90,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "description",
                     60,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
@@ -98,7 +104,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "category",
                     70,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
@@ -111,7 +118,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "is_phantom",
                     80,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
@@ -124,7 +132,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "lifecycle_state",
                     90,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.PART,
@@ -137,7 +146,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "lead_time_days",
                     100,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.SUPPLIER,
@@ -150,7 +160,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "company_name",
                     10,
-                    true
+                    true,
+                    false
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.SUPPLIER,
@@ -163,7 +174,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "code",
                     20,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.SUPPLIER,
@@ -176,7 +188,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "country",
                     30,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.SUPPLIER,
@@ -189,7 +202,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "contact_info",
                     40,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.DRAWING,
@@ -202,6 +216,7 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "drawing_number",
                     10,
+                    false,
                     false
             ),
             new SystemPropertySpec(
@@ -215,7 +230,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "name",
                     20,
-                    true
+                    true,
+                    false
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.DRAWING,
@@ -228,7 +244,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "version",
                     30,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.DRAWING,
@@ -241,7 +258,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "status",
                     40,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.DRAWING,
@@ -254,7 +272,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "conversion_status",
                     50,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.DRAWING,
@@ -267,7 +286,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "source_type",
                     60,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.DRAWING,
@@ -280,7 +300,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "dimension",
                     70,
-                    false
+                    false,
+                    true
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.BOM_LINK,
@@ -293,7 +314,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "quantity",
                     10,
-                    true
+                    true,
+                    false
             ),
             new SystemPropertySpec(
                     PropertyOwnerType.PART_SUPPLIER,
@@ -306,7 +328,8 @@ public final class SystemPropertyRegistry {
                     List.of(),
                     "unit_cost",
                     10,
-                    false
+                    false,
+                    true
             )
     );
 

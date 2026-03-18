@@ -119,4 +119,22 @@ class PropertyServiceTest {
         assertEquals(false, override.isActive());
         verify(systemPropertyOverrideRepository).save(override);
     }
+
+    @Test
+    void upsertSystemPropertyOverride_비활성화불가_시스템속성은_비활성화할수없다() {
+        PropertyService service = new PropertyService(propertyDefinitionRepository, systemPropertyOverrideRepository);
+
+        AppException ex = assertThrows(
+                AppException.class,
+                () -> service.upsertSystemPropertyOverride(
+                        PropertyOwnerType.PART,
+                        "part_number",
+                        null,
+                        null,
+                        false
+                )
+        );
+
+        assertEquals(ErrorCode.VALIDATION_ERROR, ex.getErrorCode());
+    }
 }

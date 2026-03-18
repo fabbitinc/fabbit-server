@@ -13,6 +13,7 @@ import com.fabbitinc.server.domain.property.model.SystemPropertyOverride;
 import com.fabbitinc.server.domain.property.repository.PropertyDefinitionRepository;
 import com.fabbitinc.server.domain.property.repository.SystemPropertyOverrideRepository;
 import com.fabbitinc.server.domain.property.support.SystemPropertyRegistry;
+import com.fabbitinc.server.domain.property.support.SystemPropertySpec;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -131,10 +132,18 @@ public class PropertyService {
             Boolean active
     ) {
         try {
-            if (SystemPropertyRegistry.find(ownerType, propertyKey).isEmpty()) {
+            SystemPropertySpec spec = SystemPropertyRegistry.find(ownerType, propertyKey)
+                    .orElse(null);
+            if (spec == null) {
                 throw new AppException(
                         ErrorCode.BAD_REQUEST,
                         "시스템 속성 '%s/%s'은(는) 존재하지 않습니다".formatted(ownerType, propertyKey)
+                );
+            }
+            if (Boolean.FALSE.equals(active) && !spec.activeConfigurable()) {
+                throw new AppException(
+                        ErrorCode.VALIDATION_ERROR,
+                        "시스템 속성 '%s/%s'은(는) 비활성화할 수 없습니다".formatted(ownerType, propertyKey)
                 );
             }
 

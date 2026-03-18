@@ -177,6 +177,7 @@ public class PropertyController {
                 result.propertyKey(),
                 result.system(),
                 result.partSystemPropertyKind(),
+                result.activeConfigurable(),
                 result.columnName(),
                 result.displayName(),
                 result.description(),
