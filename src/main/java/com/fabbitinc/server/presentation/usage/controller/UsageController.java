@@ -112,11 +112,11 @@ public class UsageController {
                 result.currentPeriodStart(),
                 result.currentPeriodEnd(),
                 result.totalCreditsUsed(),
-                result.planCreditsUsed(),
-                result.planCreditsLimit(),
-                result.planCreditsRemaining(),
-                result.bonusCreditsUsed(),
-                result.bonusCreditsRemaining(),
+                result.includedCreditsLimit(),
+                result.includedCreditsUsed(),
+                result.includedCreditsRemaining(),
+                result.meteredCreditsLimit(),
+                result.hardLimitEnabled(),
                 result.categories().stream()
                         .map(item -> new CreditUsageResponse.CreditCategoryItemResponse(
                                 item.category(),

@@ -10,10 +10,11 @@ import com.fabbitinc.server.application.member.query.result.MemberLookupItemResu
 import com.fabbitinc.server.application.member.query.result.MemberLookupResult;
 import com.fabbitinc.server.application.member.query.result.MemberSummaryResult;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
+import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
-import com.fabbitinc.server.domain.organization.model.Organization;
+import com.fabbitinc.server.domain.subscription.model.SeatType;
 import com.fabbitinc.server.domain.user.model.User;
 import java.util.Comparator;
 import java.util.List;
@@ -33,6 +34,7 @@ public class MemberQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final OrganizationApi organizationApi;
+    private final SubscriptionApi subscriptionApi;
     private final UserApi userApi;
     private final FileUrlResolver fileUrlResolver;
 
@@ -61,22 +63,21 @@ public class MemberQuery {
     public MemberListResult list(MemberListCondition condition) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
 
-        Organization organization = organizationApi.getOrganizationOrThrow(auth.orgId());
-
         List<Membership> memberships = organizationApi.getMembershipsOrdered(auth.orgId());
         List<UUID> userIds = memberships.stream().map(Membership::getUserId).toList();
         Map<UUID, User> users = userApi.getUsersByIdsOrdered(userIds).stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
+        Map<UUID, SeatType> seatTypes = subscriptionApi.getSeatTypesByOrgId(auth.orgId());
 
         List<MemberSummaryResult> items = memberships.stream()
-                .map(membership -> toMemberSummary(membership, users.get(membership.getUserId())))
+                .map(membership -> toMemberSummary(membership, users.get(membership.getUserId()), seatTypes.get(membership.getUserId())))
                 .filter(item -> item != null)
                 .sorted(Comparator
                         .comparing((MemberSummaryResult item) -> roleOrder(item.role()))
                         .thenComparing(MemberSummaryResult::fullName))
                 .toList();
 
-        return new MemberListResult(items, organization.getMaxMembers());
+        return new MemberListResult(items, subscriptionApi.getCurrentPlanType(auth.orgId()).maxMembers());
     }
 
     private int roleOrder(MembershipRole role) {
@@ -99,7 +100,7 @@ public class MemberQuery {
         );
     }
 
-    private MemberSummaryResult toMemberSummary(Membership membership, User user) {
+    private MemberSummaryResult toMemberSummary(Membership membership, User user, SeatType seatType) {
         if (user == null) {
             return null;
         }
@@ -111,7 +112,8 @@ public class MemberQuery {
                 user.getPhone(),
                 fileUrlResolver.resolve(user.getProfileImageFileKey()),
                 membership.getRole(),
-                membership.getJobRole()
+                membership.getJobRole(),
+                seatType == null ? subscriptionApi.getCurrentSeatType(membership.getOrgId(), membership.getUserId()) : seatType
         );
     }
 }

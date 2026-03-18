@@ -62,6 +62,8 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok")
     testCompileOnly("org.projectlombok:lombok")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.testcontainers:junit-jupiter:1.20.6")
+    testImplementation("org.testcontainers:postgresql:1.20.6")
     testImplementation("com.tngtech.archunit:archunit-junit5:1.4.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -72,9 +74,32 @@ sourceSets {
             srcDir("migrations")
         }
     }
+    create("integrationTest") {
+        java.srcDir("src/integrationTest/java")
+        resources.srcDir("src/integrationTest/resources")
+        compileClasspath += sourceSets["main"].output + configurations["testRuntimeClasspath"]
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+configurations.named("integrationTestImplementation") {
+    extendsFrom(configurations.testImplementation.get())
+}
+
+configurations.named("integrationTestRuntimeOnly") {
+    extendsFrom(configurations.testRuntimeOnly.get())
 }
 
 tasks.withType<Test> {
+    useJUnitPlatform()
+}
+
+tasks.register<Test>("integrationTest") {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Runs integration tests."
+    testClassesDirs = sourceSets["integrationTest"].output.classesDirs
+    classpath = sourceSets["integrationTest"].runtimeClasspath
+    shouldRunAfter(tasks.test)
     useJUnitPlatform()
 }
 
@@ -85,7 +110,7 @@ tasks.register<Test>("archTest") {
     testClassesDirs = sourceSets["test"].output.classesDirs
     classpath = sourceSets["test"].runtimeClasspath
     filter {
-        includeTestsMatching("com.fabbitinc.server.architecture.*")
+        includeTestsMatching("com.fabbitinc.server.architecture.*Test")
     }
 }
 

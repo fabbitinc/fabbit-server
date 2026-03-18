@@ -2,6 +2,7 @@ package com.fabbitinc.server.presentation.auth.dto.response;
 
 import com.fabbitinc.server.domain.auth.model.InvitationStatus;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
+import com.fabbitinc.server.domain.subscription.model.SeatType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.UUID;
@@ -15,6 +16,8 @@ public record InvitationResponse(
         String email,
         @Schema(description = "초대 역할")
         MembershipRole role,
+        @Schema(description = "예약된 좌석 타입")
+        SeatType seatType,
         @Schema(description = "초대 상태")
         InvitationStatus status,
         @Schema(description = "초대한 사용자 ID")

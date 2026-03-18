@@ -1,14 +1,20 @@
 package com.fabbitinc.server.application.auth.query.result;
 
-import com.fabbitinc.server.domain.organization.model.PlanType;
+import com.fabbitinc.server.domain.subscription.model.AiBillingMode;
+import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 
 public record PlanResult(
-        PlanType planType,
+        WorkspacePlanType planType,
         String displayName,
         String description,
         int maxMembers,
-        int storageGb,
-        int aiCredits,
-        int priceMonthly
+        long baseStorageBytes,
+        long extraStorageBytesPerFullSeat,
+        int starterMonthlyAiCredits,
+        AiBillingMode aiBillingMode,
+        int viewerMonthlyPrice,
+        int collaboratorMonthlyPrice,
+        int fullSeatMonthlyPrice,
+        int storageOveragePricePerGb
 ) {
 }

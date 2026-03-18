@@ -54,6 +54,7 @@ public class AuthInvitationQuery {
                 organization.getName(),
                 inviter.getFullName(),
                 invitation.getRole(),
+                invitation.getSeatType(),
                 existingUser,
                 invitation.getExpiresAt()
         );

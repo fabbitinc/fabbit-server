@@ -16,13 +16,9 @@ class OrganizationRelationTest {
         Organization organization = Organization.create(
                 " acme ",
                 " ACME ",
-                java.util.UUID.randomUUID(),
+                UUID.randomUUID(),
                 " manufacturing ",
-                " 11-50 ",
-                PlanType.STARTER,
-                10,
-                1000,
-                1_000_000L
+                " 11-50 "
         );
 
         assertEquals("acme", organization.getSlug());
@@ -36,17 +32,7 @@ class OrganizationRelationTest {
     void organization_addMember_사용자_ID로_멤버를_추가한다() {
         UUID ownerId = UUID.randomUUID();
         UUID memberId = UUID.randomUUID();
-        Organization organization = Organization.create(
-                "acme",
-                "ACME",
-                ownerId,
-                "manufacturing",
-                "11-50",
-                PlanType.STARTER,
-                10,
-                1000,
-                1_000_000L
-        );
+        Organization organization = Organization.create("acme", "ACME", ownerId, "manufacturing", "11-50");
 
         Membership membership = organization.addMember(memberId, MembershipRole.ADMIN, "QA");
 
@@ -59,23 +45,8 @@ class OrganizationRelationTest {
 
     @Test
     void membership_changeRole_null이면_예외를_던진다() {
-        Organization organization = Organization.create(
-                "acme",
-                "ACME",
-                UUID.randomUUID(),
-                "manufacturing",
-                "11-50",
-                PlanType.STARTER,
-                10,
-                1000,
-                1_000_000L
-        );
-        Membership membership = Membership.create(
-                organization,
-                UUID.randomUUID(),
-                MembershipRole.MEMBER,
-                null
-        );
+        Organization organization = Organization.create("acme", "ACME", UUID.randomUUID(), "manufacturing", "11-50");
+        Membership membership = Membership.create(organization, UUID.randomUUID(), MembershipRole.MEMBER, null);
 
         DomainException ex = assertThrows(DomainException.class, () -> organization.changeMemberRole(membership, null, 2));
 
@@ -85,17 +56,7 @@ class OrganizationRelationTest {
     @Test
     void membership_jobRole은_trim_정규화한다() {
         Membership membership = Membership.create(
-                Organization.create(
-                        "acme",
-                        "ACME",
-                        UUID.randomUUID(),
-                        "manufacturing",
-                        "11-50",
-                        PlanType.STARTER,
-                        10,
-                        1000,
-                        1_000_000L
-                ),
+                Organization.create("acme", "ACME", UUID.randomUUID(), "manufacturing", "11-50"),
                 UUID.randomUUID(),
                 MembershipRole.MEMBER,
                 "  QA Engineer  "
@@ -107,17 +68,7 @@ class OrganizationRelationTest {
     @Test
     void membership_jobRole이_blank면_null로_정규화한다() {
         Membership membership = Membership.create(
-                Organization.create(
-                        "acme",
-                        "ACME",
-                        UUID.randomUUID(),
-                        "manufacturing",
-                        "11-50",
-                        PlanType.STARTER,
-                        10,
-                        1000,
-                        1_000_000L
-                ),
+                Organization.create("acme", "ACME", UUID.randomUUID(), "manufacturing", "11-50"),
                 UUID.randomUUID(),
                 MembershipRole.MEMBER,
                 "   "
@@ -131,17 +82,7 @@ class OrganizationRelationTest {
         String tooLong = "a".repeat(51);
 
         DomainException ex = assertThrows(DomainException.class, () -> Membership.create(
-                Organization.create(
-                        "acme",
-                        "ACME",
-                        UUID.randomUUID(),
-                        "manufacturing",
-                        "11-50",
-                        PlanType.STARTER,
-                        10,
-                        1000,
-                        1_000_000L
-                ),
+                Organization.create("acme", "ACME", UUID.randomUUID(), "manufacturing", "11-50"),
                 UUID.randomUUID(),
                 MembershipRole.MEMBER,
                 tooLong
@@ -155,13 +96,9 @@ class OrganizationRelationTest {
         DomainException ex = assertThrows(DomainException.class, () -> Organization.create(
                 "   ",
                 "ACME",
-                java.util.UUID.randomUUID(),
+                UUID.randomUUID(),
                 "manufacturing",
-                "11-50",
-                PlanType.STARTER,
-                10,
-                1000,
-                1_000_000L
+                "11-50"
         ));
 
         assertEquals(Organization.CODE_ORGANIZATION_SLUG_REQUIRED, ex.getDomainCode());
@@ -169,17 +106,7 @@ class OrganizationRelationTest {
 
     @Test
     void organization_rename_blank면_예외를_던진다() {
-        Organization organization = Organization.create(
-                "acme",
-                "ACME",
-                java.util.UUID.randomUUID(),
-                "manufacturing",
-                "11-50",
-                PlanType.STARTER,
-                10,
-                1000,
-                1_000_000L
-        );
+        Organization organization = Organization.create("acme", "ACME", UUID.randomUUID(), "manufacturing", "11-50");
 
         DomainException ex = assertThrows(DomainException.class, () -> organization.rename("   "));
 
@@ -189,17 +116,7 @@ class OrganizationRelationTest {
 
     @Test
     void organization_changeProfileImage_blank면_null로_정규화한다() {
-        Organization organization = Organization.create(
-                "acme",
-                "ACME",
-                java.util.UUID.randomUUID(),
-                "manufacturing",
-                "11-50",
-                PlanType.STARTER,
-                10,
-                1000,
-                1_000_000L
-        );
+        Organization organization = Organization.create("acme", "ACME", UUID.randomUUID(), "manufacturing", "11-50");
 
         organization.changeProfileImage("   ");
 
@@ -207,78 +124,29 @@ class OrganizationRelationTest {
     }
 
     @Test
-    void organization_reserveMemberSeat_한도초과면_예외를_던진다() {
-        Organization organization = Organization.create(
-                "acme",
-                "ACME",
-                UUID.randomUUID(),
-                "manufacturing",
-                "11-50",
-                PlanType.STARTER,
-                1,
-                1000,
-                1_000_000L
-        );
+    void organization_reserveMemberSeat와_releaseMemberSeat는_현재사용량을_조정한다() {
+        Organization organization = Organization.create("acme", "ACME", UUID.randomUUID(), "manufacturing", "11-50");
+
         organization.reserveMemberSeat();
+        organization.reserveMemberSeat();
+        organization.releaseMemberSeat();
 
-        DomainException ex = assertThrows(DomainException.class, organization::reserveMemberSeat);
-
-        assertEquals(Organization.CODE_ORGANIZATION_MEMBER_LIMIT_EXCEEDED, ex.getDomainCode());
+        assertEquals(1, organization.getUsedMembers());
     }
 
     @Test
-    void organization_useCredits는_plan부터_차감하고_부족분은_bonus에서_차감한다() {
-        Organization organization = Organization.create(
-                "acme",
-                "ACME",
-                UUID.randomUUID(),
-                "manufacturing",
-                "11-50",
-                PlanType.STARTER,
-                10,
-                1000,
-                1_000_000L
-        );
-        organization.grantBonusCredits(500);
+    void organization_storageUsage는_증가와감소를_반영한다() {
+        Organization organization = Organization.create("acme", "ACME", UUID.randomUUID(), "manufacturing", "11-50");
 
-        organization.useCredits(1200);
+        organization.addStorageUsage(200L);
+        organization.reduceStorageUsage(50L);
 
-        assertEquals(0, organization.getPlanCreditsRemaining());
-        assertEquals(300, organization.getBonusCreditsRemaining());
-    }
-
-    @Test
-    void organization_addStorageUsage_한도초과면_예외를_던진다() {
-        Organization organization = Organization.create(
-                "acme",
-                "ACME",
-                UUID.randomUUID(),
-                "manufacturing",
-                "11-50",
-                PlanType.STARTER,
-                10,
-                1000,
-                100L
-        );
-
-        DomainException ex = assertThrows(DomainException.class, () -> organization.addStorageUsage(101L));
-
-        assertEquals(Organization.CODE_ORGANIZATION_STORAGE_LIMIT_EXCEEDED, ex.getDomainCode());
+        assertEquals(150L, organization.getStorageBytesUsed());
     }
 
     @Test
     void organization_changeMemberRole_마지막_owner는_강등할수없다() {
-        Organization organization = Organization.create(
-                "acme",
-                "ACME",
-                UUID.randomUUID(),
-                "manufacturing",
-                "11-50",
-                PlanType.STARTER,
-                10,
-                1000,
-                1_000_000L
-        );
+        Organization organization = Organization.create("acme", "ACME", UUID.randomUUID(), "manufacturing", "11-50");
         Membership owner = organization.addMember(UUID.randomUUID(), MembershipRole.OWNER, null);
 
         DomainException ex = assertThrows(

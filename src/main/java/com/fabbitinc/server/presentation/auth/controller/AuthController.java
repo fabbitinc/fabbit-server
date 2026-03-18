@@ -226,7 +226,8 @@ public class AuthController {
                         request.slug(),
                         request.industry(),
                         request.teamSize(),
-                        request.planType()
+                        request.planType(),
+                        request.ownerSeatType()
                 )
         );
         return new RegisterResponse(
@@ -326,6 +327,7 @@ public class AuthController {
                 result.organizationName(),
                 result.inviterName(),
                 result.role(),
+                result.seatType(),
                 result.existingUser(),
                 result.expiresAt()
         );
@@ -393,9 +395,14 @@ public class AuthController {
                 result.displayName(),
                 result.description(),
                 result.maxMembers(),
-                result.storageGb(),
-                result.aiCredits(),
-                result.priceMonthly()
+                result.baseStorageBytes(),
+                result.extraStorageBytesPerFullSeat(),
+                result.starterMonthlyAiCredits(),
+                result.aiBillingMode(),
+                result.viewerMonthlyPrice(),
+                result.collaboratorMonthlyPrice(),
+                result.fullSeatMonthlyPrice(),
+                result.storageOveragePricePerGb()
         );
     }
 

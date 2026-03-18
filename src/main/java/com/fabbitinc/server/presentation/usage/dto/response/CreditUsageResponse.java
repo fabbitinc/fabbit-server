@@ -12,16 +12,16 @@ public record CreditUsageResponse(
         Instant currentPeriodEnd,
         @Schema(description = "총 사용 크레딧", example = "120")
         int totalCreditsUsed,
-        @Schema(description = "플랜 크레딧 사용량", example = "100")
-        int planCreditsUsed,
-        @Schema(description = "플랜 크레딧 한도", example = "1000")
-        int planCreditsLimit,
-        @Schema(description = "플랜 잔여 크레딧", example = "900")
-        int planCreditsRemaining,
-        @Schema(description = "보너스 크레딧 사용량", example = "20")
-        int bonusCreditsUsed,
-        @Schema(description = "보너스 잔여 크레딧", example = "80")
-        int bonusCreditsRemaining,
+        @Schema(description = "포함 크레딧 한도", example = "100")
+        int includedCreditsLimit,
+        @Schema(description = "포함 크레딧 사용량", example = "20")
+        int includedCreditsUsed,
+        @Schema(description = "포함 크레딧 잔여량", example = "80")
+        int includedCreditsRemaining,
+        @Schema(description = "월간 AI 한도(없으면 null)", example = "2000")
+        Integer meteredCreditsLimit,
+        @Schema(description = "월간 AI 한도 초과 시 차단 여부", example = "true")
+        boolean hardLimitEnabled,
         @Schema(description = "카테고리별 사용량 목록")
         List<CreditCategoryItemResponse> categories
 ) {

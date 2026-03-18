@@ -1,6 +1,7 @@
 package com.fabbitinc.server.presentation.member.controller;
 
 import com.fabbitinc.server.presentation.member.dto.request.ChangeRoleRequest;
+import com.fabbitinc.server.presentation.member.dto.request.ChangeSeatRequest;
 import com.fabbitinc.server.presentation.member.dto.response.MemberListResponse;
 import com.fabbitinc.server.presentation.member.dto.response.MemberLookupItemResponse;
 import com.fabbitinc.server.presentation.member.dto.response.MemberLookupResponse;
@@ -13,8 +14,10 @@ import com.fabbitinc.server.application.member.query.result.MemberLookupItemResu
 import com.fabbitinc.server.application.member.query.result.MemberLookupResult;
 import com.fabbitinc.server.application.member.query.result.MemberSummaryResult;
 import com.fabbitinc.server.application.member.usecase.ChangeMemberRoleUseCase;
+import com.fabbitinc.server.application.member.usecase.ChangeMemberSeatUseCase;
 import com.fabbitinc.server.application.member.usecase.RemoveMemberUseCase;
 import com.fabbitinc.server.application.member.usecase.command.ChangeMemberRoleCommand;
+import com.fabbitinc.server.application.member.usecase.command.ChangeMemberSeatCommand;
 import com.fabbitinc.server.application.member.usecase.command.RemoveMemberCommand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -46,6 +49,7 @@ public class MemberController {
 
     private final MemberQuery memberQuery;
     private final ChangeMemberRoleUseCase changeMemberRoleUseCase;
+    private final ChangeMemberSeatUseCase changeMemberSeatUseCase;
     private final RemoveMemberUseCase removeMemberUseCase;
 
     @Operation(
@@ -112,6 +116,28 @@ public class MemberController {
     }
 
     @Operation(
+            summary = "멤버 좌석 변경",
+            description = "관리자(ADMIN 이상) 권한으로 멤버 좌석 타입을 변경합니다"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "변경 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "권한 없음"),
+            @ApiResponse(responseCode = "404", description = "리소스를 찾을 수 없음")
+    })
+    @PatchMapping("/{userId}/seat")
+    public ResponseEntity<Void> changeMemberSeat(
+            @Parameter(description = "좌석을 변경할 사용자 ID")
+            @PathVariable UUID userId,
+            @Parameter(description = "멤버 좌석 변경 요청")
+            @Valid @RequestBody ChangeSeatRequest request
+    ) {
+        changeMemberSeatUseCase.execute(new ChangeMemberSeatCommand(userId, request.seatType()));
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(
             summary = "관리자(ADMIN 이상) 권한으로 조직 멤버를 제거합니다",
             description = "관리자(ADMIN 이상) 권한으로 조직 멤버를 제거합니다"
     )
@@ -148,7 +174,8 @@ public class MemberController {
                 result.phone(),
                 result.profileImageUrl(),
                 result.role(),
-                result.jobRole()
+                result.jobRole(),
+                result.seatType()
         );
     }
 }

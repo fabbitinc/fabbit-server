@@ -1,6 +1,6 @@
 package com.fabbitinc.server.presentation.auth.dto.response;
 
-import com.fabbitinc.server.domain.organization.model.PlanType;
+import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.UUID;
 
@@ -16,7 +16,7 @@ public record OrganizationResponse(
         @Schema(description = "팀 규모", example = "11-50")
         String teamSize,
         @Schema(description = "요금제 타입", example = "STARTER")
-        PlanType planType,
+        WorkspacePlanType planType,
         @Schema(description = "조직 프로필 이미지 URL", example = "https://cdn.example.com/org.png")
         String profileImageUrl
 ) {

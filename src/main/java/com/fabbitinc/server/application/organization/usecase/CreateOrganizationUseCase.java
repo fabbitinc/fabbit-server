@@ -6,6 +6,7 @@ import com.fabbitinc.server.application.auth.support.CurrentCreateOrgProvider;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.organization.service.OrganizationService;
 import com.fabbitinc.server.application.organization.service.input.CreateOrganizationInput;
+import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.application.organization.usecase.command.CreateOrganizationCommand;
 import com.fabbitinc.server.application.organization.usecase.result.CreateOrganizationResult;
 import com.fabbitinc.server.application.user.service.UserService;
@@ -24,6 +25,7 @@ public class CreateOrganizationUseCase {
     private final CurrentCreateOrgProvider currentCreateOrgProvider;
     private final UserService userService;
     private final OrganizationService organizationService;
+    private final SubscriptionApi subscriptionApi;
     private final JwtTokenService jwtTokenService;
     private final FileUrlResolver fileUrlResolver;
 
@@ -38,7 +40,8 @@ public class CreateOrganizationUseCase {
                         command.slug(),
                         command.industry(),
                         command.teamSize(),
-                        command.planType()
+                        command.planType(),
+                        command.ownerSeatType()
                 )
         );
 
@@ -55,7 +58,7 @@ public class CreateOrganizationUseCase {
                 organization.getName(),
                 organization.getIndustry(),
                 organization.getTeamSize(),
-                organization.getPlanType(),
+                subscriptionApi.getCurrentPlanType(organization.getId()),
                 fileUrlResolver.resolve(organization.getProfileImageFileKey()),
                 tokens.accessToken(),
                 tokens.refreshToken(),

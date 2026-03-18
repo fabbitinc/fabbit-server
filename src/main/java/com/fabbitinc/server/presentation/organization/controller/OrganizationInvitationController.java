@@ -55,13 +55,14 @@ public class OrganizationInvitationController {
             @Valid @RequestBody CreateInvitationRequest request
     ) {
         CreateInvitationResult result = createInvitationUseCase.execute(
-                new CreateInvitationCommand(request.email(), request.role())
+                new CreateInvitationCommand(request.email(), request.role(), request.seatType())
         );
         InvitationResponse response = new InvitationResponse(
                 result.id(),
                 result.orgId(),
                 result.email(),
                 result.role(),
+                result.seatType(),
                 result.status(),
                 result.invitedBy(),
                 result.expiresAt(),
@@ -92,6 +93,7 @@ public class OrganizationInvitationController {
                                 invitation.orgId(),
                                 invitation.email(),
                                 invitation.role(),
+                                invitation.seatType(),
                                 invitation.status(),
                                 invitation.invitedBy(),
                                 invitation.expiresAt(),

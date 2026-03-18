@@ -12,10 +12,11 @@ import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
-import com.fabbitinc.server.domain.organization.model.PlanType;
 import com.fabbitinc.server.domain.organization.model.WorkspaceSlugPolicy;
 import com.fabbitinc.server.domain.organization.repository.MembershipRepository;
 import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
+import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
+import com.fabbitinc.server.domain.subscription.model.SeatType;
 import java.text.Normalizer;
 import java.util.Comparator;
 import java.util.List;
@@ -28,7 +29,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class OrganizationService {
 
-    private static final long GB_TO_BYTES = 1_000_000_000L;
     private static final String STORAGE_QUOTA_EXCEEDED_MESSAGE = "스토리지 한도를 초과했습니다. 플랜을 업그레이드해주세요.";
 
     private final OrganizationRepository organizationRepository;
@@ -41,7 +41,7 @@ public class OrganizationService {
             throw new AppException(ErrorCode.ALREADY_EXISTS, "이미 생성한 워크스페이스가 있어 새 조직을 생성할 수 없습니다");
         }
 
-        PlanType planType = input.planType();
+        WorkspacePlanType planType = input.planType();
         if (planType == null) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 플랜입니다");
         }
@@ -53,11 +53,7 @@ public class OrganizationService {
                 input.orgName(),
                 userId,
                 input.industry(),
-                input.teamSize(),
-                planType,
-                planType.maxMembers(),
-                planType.aiCredits(),
-                planType.storageGb() * GB_TO_BYTES
+                input.teamSize()
         );
         Membership ownerMembership = organization.addMember(userId, MembershipRole.OWNER, null);
         organization.reserveMemberSeat();
@@ -67,7 +63,13 @@ public class OrganizationService {
 
         tenantProvisioningPort.provisionTenant(organization.getId());
 
-        subscriptionApi.createInitialSubscription(organization.getId(), organization.getPlanType());
+        subscriptionApi.createInitialSubscription(
+                organization.getId(),
+                planType,
+                ownerMembership,
+                input.ownerSeatType(),
+                userId
+        );
         return organization;
     }
 
@@ -123,29 +125,21 @@ public class OrganizationService {
             throw new AppException(ErrorCode.ALREADY_EXISTS, "이미 조직에 소속된 멤버입니다");
         }
 
+        Organization organization = getOrgOrThrow(orgId);
+        subscriptionApi.assertCanAddMember(orgId, organization.getUsedMembers());
         if (organizationRepository.reserveMemberSeat(orgId) < 1) {
             throw new AppException(ErrorCode.MEMBER_LIMIT_EXCEEDED, "멤버 수 한도를 초과했습니다. 플랜을 업그레이드해주세요.");
         }
 
-        Organization organization = getOrgOrThrow(orgId);
         return membershipRepository.save(organization.addMember(userId, role, null));
     }
 
     public void checkCreditQuota(UUID orgId, AiUsageCategory category) {
-        Organization organization = getOrgOrThrow(orgId);
-        if (organization.getPlanCreditsRemaining() + organization.getBonusCreditsRemaining() < category.creditCost()) {
-            throw new AppException(ErrorCode.QUOTA_EXCEEDED, "AI 크레딧이 부족합니다. 플랜을 업그레이드해주세요.");
-        }
+        subscriptionApi.checkAiUsageAllowance(orgId, category);
     }
 
     public void consumeCredits(UUID orgId, AiUsageCategory category) {
-        Organization organization = organizationRepository.findByIdForUpdate(orgId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "조직을 찾을 수 없습니다"));
-        try {
-            organization.useCredits(category.creditCost());
-        } catch (DomainException ex) {
-            throw new AppException(ErrorCode.QUOTA_EXCEEDED, "AI 크레딧이 부족합니다. 플랜을 업그레이드해주세요.");
-        }
+        subscriptionApi.checkAiUsageAllowance(orgId, category);
     }
 
     public void checkStorageQuota(UUID orgId, long additionalBytes) {
@@ -155,8 +149,8 @@ public class OrganizationService {
         }
 
         Organization organization = getOrgOrThrow(orgId);
-        if (!organization.isAllowStorageOverage()
-                && organization.getStorageBytesUsed() + bytes > organization.getStorageBytesLimit()) {
+        if (!subscriptionApi.allowsStorageOverage(orgId)
+                && organization.getStorageBytesUsed() + bytes > subscriptionApi.calculateIncludedStorageBytes(orgId)) {
             throw new AppException(ErrorCode.QUOTA_EXCEEDED, STORAGE_QUOTA_EXCEEDED_MESSAGE);
         }
     }
@@ -197,6 +191,7 @@ public class OrganizationService {
         }
 
         membershipRepository.deleteByOrgIdAndUserId(auth.orgId(), userId);
+        subscriptionApi.removeSeatAssignment(target.getId());
         organizationRepository.releaseMemberSeat(auth.orgId());
     }
 

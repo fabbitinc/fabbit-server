@@ -1,6 +1,7 @@
 package com.fabbitinc.server.presentation.member.dto.response;
 
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
+import com.fabbitinc.server.domain.subscription.model.SeatType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.UUID;
 
@@ -19,6 +20,8 @@ public record MemberSummaryResponse(
         @Schema(description = "조직 역할", example = "ADMIN")
         MembershipRole role,
         @Schema(description = "직무 역할", example = "백엔드 엔지니어")
-        String jobRole
+        String jobRole,
+        @Schema(description = "현재 좌석 타입", example = "FULL")
+        SeatType seatType
 ) {
 }
