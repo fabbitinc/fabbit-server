@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-03-14T16:17:48.950Z",
+  "generated_at": "2026-03-19T06:53:58.163Z",
   "source_openapi": "../openapi.json",
-  "total_operations": 181,
+  "total_operations": 172,
   "excluded_operations": [
     {
       "method": "POST",
@@ -24,7 +24,7 @@
       "reason": "활성화 하위 제외"
     }
   ],
-  "target_operations": 177,
+  "target_operations": 168,
   "operations": [
     {
       "key": "POST /api/v1/auth/accept-invitation",
@@ -354,702 +354,6 @@
       }
     },
     {
-      "key": "GET /api/v1/changes",
-      "method": "GET",
-      "path": "/api/v1/changes",
-      "operationId": "listChangeRequests",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": false,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
-      "key": "POST /api/v1/changes",
-      "method": "POST",
-      "path": "/api/v1/changes",
-      "operationId": "createChangeRequest",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": false,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "GET /api/v1/changes/{issueNumber}",
-      "method": "GET",
-      "path": "/api/v1/changes/{issueNumber}",
-      "operationId": "getChangeRequest",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
-      "key": "PATCH /api/v1/changes/{issueNumber}",
-      "method": "PATCH",
-      "path": "/api/v1/changes/{issueNumber}",
-      "operationId": "updateChangeRequest",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "PUT /api/v1/changes/{issueNumber}/assigned-teams",
-      "method": "PUT",
-      "path": "/api/v1/changes/{issueNumber}/assigned-teams",
-      "operationId": "syncTeamAssignees_1",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "PUT /api/v1/changes/{issueNumber}/assignees",
-      "method": "PUT",
-      "path": "/api/v1/changes/{issueNumber}/assignees",
-      "operationId": "syncAssignees_1",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "POST /api/v1/changes/{issueNumber}/close",
-      "method": "POST",
-      "path": "/api/v1/changes/{issueNumber}/close",
-      "operationId": "close",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "POST /api/v1/changes/{issueNumber}/comments",
-      "method": "POST",
-      "path": "/api/v1/changes/{issueNumber}/comments",
-      "operationId": "createComment_1",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "DELETE /api/v1/changes/{issueNumber}/comments/{commentId}",
-      "method": "DELETE",
-      "path": "/api/v1/changes/{issueNumber}/comments/{commentId}",
-      "operationId": "deleteComment_1",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "PATCH /api/v1/changes/{issueNumber}/comments/{commentId}",
-      "method": "PATCH",
-      "path": "/api/v1/changes/{issueNumber}/comments/{commentId}",
-      "operationId": "updateComment_1",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "POST /api/v1/changes/{issueNumber}/files",
-      "method": "POST",
-      "path": "/api/v1/changes/{issueNumber}/files",
-      "operationId": "addFiles_1",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "DELETE /api/v1/changes/{issueNumber}/files/{fileId}",
-      "method": "DELETE",
-      "path": "/api/v1/changes/{issueNumber}/files/{fileId}",
-      "operationId": "deleteFile_1",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "PUT /api/v1/changes/{issueNumber}/issues",
-      "method": "PUT",
-      "path": "/api/v1/changes/{issueNumber}/issues",
-      "operationId": "syncIssues",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "PUT /api/v1/changes/{issueNumber}/labels",
-      "method": "PUT",
-      "path": "/api/v1/changes/{issueNumber}/labels",
-      "operationId": "syncLabels_1",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "POST /api/v1/changes/{issueNumber}/merge",
-      "method": "POST",
-      "path": "/api/v1/changes/{issueNumber}/merge",
-      "operationId": "merge",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "PUT /api/v1/changes/{issueNumber}/part-revisions",
-      "method": "PUT",
-      "path": "/api/v1/changes/{issueNumber}/part-revisions",
-      "operationId": "syncPartRevisions",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "PUT /api/v1/changes/{issueNumber}/parts",
-      "method": "PUT",
-      "path": "/api/v1/changes/{issueNumber}/parts",
-      "operationId": "syncParts_1",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "POST /api/v1/changes/{issueNumber}/reopen",
-      "method": "POST",
-      "path": "/api/v1/changes/{issueNumber}/reopen",
-      "operationId": "reopen",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "POST /api/v1/changes/{issueNumber}/review",
-      "method": "POST",
-      "path": "/api/v1/changes/{issueNumber}/review",
-      "operationId": "submitReview",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "PUT /api/v1/changes/{issueNumber}/reviewer-teams",
-      "method": "PUT",
-      "path": "/api/v1/changes/{issueNumber}/reviewer-teams",
-      "operationId": "syncTeamReviewers",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "PUT /api/v1/changes/{issueNumber}/reviewers",
-      "method": "PUT",
-      "path": "/api/v1/changes/{issueNumber}/reviewers",
-      "operationId": "syncReviewers",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "POST /api/v1/changes/{issueNumber}/submit",
-      "method": "POST",
-      "path": "/api/v1/changes/{issueNumber}/submit",
-      "operationId": "submit",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "GET /api/v1/changes/{issueNumber}/timeline",
-      "method": "GET",
-      "path": "/api/v1/changes/{issueNumber}/timeline",
-      "operationId": "getTimeline_1",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
-      "key": "GET /api/v1/changes/lookup",
-      "method": "GET",
-      "path": "/api/v1/changes/lookup",
-      "operationId": "lookupChangeRequests",
-      "tags": [
-        "changes"
-      ],
-      "protected": false,
-      "hasPathParams": false,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
       "key": "GET /api/v1/dashboard/stats",
       "method": "GET",
       "path": "/api/v1/dashboard/stats",
@@ -1063,6 +367,586 @@
       "stateChanging": false,
       "responseCodes": [
         "200",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": false
+      }
+    },
+    {
+      "key": "GET /api/v1/engineering-changes",
+      "method": "GET",
+      "path": "/api/v1/engineering-changes",
+      "operationId": "listEngineeringChanges",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": false,
+      "hasRequestBody": false,
+      "stateChanging": false,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": false
+      }
+    },
+    {
+      "key": "POST /api/v1/engineering-changes",
+      "method": "POST",
+      "path": "/api/v1/engineering-changes",
+      "operationId": "createEngineeringChange",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": false,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "GET /api/v1/engineering-changes/{engineeringChangeId}",
+      "method": "GET",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}",
+      "operationId": "getEngineeringChange",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": false,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": false
+      }
+    },
+    {
+      "key": "PATCH /api/v1/engineering-changes/{engineeringChangeId}",
+      "method": "PATCH",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}",
+      "operationId": "updateEngineeringChange",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "POST /api/v1/engineering-changes/{engineeringChangeId}/approve",
+      "method": "POST",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/approve",
+      "operationId": "approve",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "POST /api/v1/engineering-changes/{engineeringChangeId}/cancel",
+      "method": "POST",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/cancel",
+      "operationId": "cancel_1",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "POST /api/v1/engineering-changes/{engineeringChangeId}/comments",
+      "method": "POST",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/comments",
+      "operationId": "createComment_1",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "DELETE /api/v1/engineering-changes/{engineeringChangeId}/comments/{commentId}",
+      "method": "DELETE",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/comments/{commentId}",
+      "operationId": "deleteComment_1",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "PATCH /api/v1/engineering-changes/{engineeringChangeId}/comments/{commentId}",
+      "method": "PATCH",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/comments/{commentId}",
+      "operationId": "updateComment_1",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "POST /api/v1/engineering-changes/{engineeringChangeId}/files",
+      "method": "POST",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/files",
+      "operationId": "addFiles_1",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "DELETE /api/v1/engineering-changes/{engineeringChangeId}/files/{fileId}",
+      "method": "DELETE",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/files/{fileId}",
+      "operationId": "deleteFile_2",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "PUT /api/v1/engineering-changes/{engineeringChangeId}/issues",
+      "method": "PUT",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/issues",
+      "operationId": "syncIssues",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "PUT /api/v1/engineering-changes/{engineeringChangeId}/part-revisions",
+      "method": "PUT",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/part-revisions",
+      "operationId": "syncPartRevisions",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "POST /api/v1/engineering-changes/{engineeringChangeId}/reject",
+      "method": "POST",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/reject",
+      "operationId": "reject",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "POST /api/v1/engineering-changes/{engineeringChangeId}/release",
+      "method": "POST",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/release",
+      "operationId": "release_1",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "POST /api/v1/engineering-changes/{engineeringChangeId}/review/approve",
+      "method": "POST",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/review/approve",
+      "operationId": "approveReview",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "PUT /api/v1/engineering-changes/{engineeringChangeId}/steps",
+      "method": "PUT",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/steps",
+      "operationId": "replaceSteps",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "POST /api/v1/engineering-changes/{engineeringChangeId}/submit",
+      "method": "POST",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/submit",
+      "operationId": "submit",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "GET /api/v1/engineering-changes/{engineeringChangeId}/timeline",
+      "method": "GET",
+      "path": "/api/v1/engineering-changes/{engineeringChangeId}/timeline",
+      "operationId": "getTimeline_1",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": false,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": false
+      }
+    },
+    {
+      "key": "GET /api/v1/engineering-changes/lookup",
+      "method": "GET",
+      "path": "/api/v1/engineering-changes/lookup",
+      "operationId": "lookupEngineeringChanges",
+      "tags": [
+        "engineering-changes"
+      ],
+      "protected": false,
+      "hasPathParams": false,
+      "hasRequestBody": false,
+      "stateChanging": false,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
         "400",
         "401",
         "403",
@@ -1251,9 +1135,9 @@
       }
     },
     {
-      "key": "GET /api/v1/issues/{issueNumber}",
+      "key": "GET /api/v1/issues/{issueId}",
       "method": "GET",
-      "path": "/api/v1/issues/{issueNumber}",
+      "path": "/api/v1/issues/{issueId}",
       "operationId": "getIssue",
       "tags": [
         "issues"
@@ -1280,9 +1164,9 @@
       }
     },
     {
-      "key": "PATCH /api/v1/issues/{issueNumber}",
+      "key": "PATCH /api/v1/issues/{issueId}",
       "method": "PATCH",
-      "path": "/api/v1/issues/{issueNumber}",
+      "path": "/api/v1/issues/{issueId}",
       "operationId": "updateIssue",
       "tags": [
         "issues"
@@ -1309,9 +1193,9 @@
       }
     },
     {
-      "key": "PUT /api/v1/issues/{issueNumber}/assigned-teams",
+      "key": "PUT /api/v1/issues/{issueId}/assigned-teams",
       "method": "PUT",
-      "path": "/api/v1/issues/{issueNumber}/assigned-teams",
+      "path": "/api/v1/issues/{issueId}/assigned-teams",
       "operationId": "syncTeamAssignees",
       "tags": [
         "issues"
@@ -1338,9 +1222,9 @@
       }
     },
     {
-      "key": "PUT /api/v1/issues/{issueNumber}/assignees",
+      "key": "PUT /api/v1/issues/{issueId}/assignees",
       "method": "PUT",
-      "path": "/api/v1/issues/{issueNumber}/assignees",
+      "path": "/api/v1/issues/{issueId}/assignees",
       "operationId": "syncAssignees",
       "tags": [
         "issues"
@@ -1367,38 +1251,9 @@
       }
     },
     {
-      "key": "PUT /api/v1/issues/{issueNumber}/changes",
-      "method": "PUT",
-      "path": "/api/v1/issues/{issueNumber}/changes",
-      "operationId": "syncChanges",
-      "tags": [
-        "issues"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "POST /api/v1/issues/{issueNumber}/close",
+      "key": "POST /api/v1/issues/{issueId}/close",
       "method": "POST",
-      "path": "/api/v1/issues/{issueNumber}/close",
+      "path": "/api/v1/issues/{issueId}/close",
       "operationId": "closeIssue",
       "tags": [
         "issues"
@@ -1425,9 +1280,9 @@
       }
     },
     {
-      "key": "POST /api/v1/issues/{issueNumber}/comments",
+      "key": "POST /api/v1/issues/{issueId}/comments",
       "method": "POST",
-      "path": "/api/v1/issues/{issueNumber}/comments",
+      "path": "/api/v1/issues/{issueId}/comments",
       "operationId": "createComment",
       "tags": [
         "issues"
@@ -1454,9 +1309,9 @@
       }
     },
     {
-      "key": "DELETE /api/v1/issues/{issueNumber}/comments/{commentId}",
+      "key": "DELETE /api/v1/issues/{issueId}/comments/{commentId}",
       "method": "DELETE",
-      "path": "/api/v1/issues/{issueNumber}/comments/{commentId}",
+      "path": "/api/v1/issues/{issueId}/comments/{commentId}",
       "operationId": "deleteComment",
       "tags": [
         "issues"
@@ -1483,9 +1338,9 @@
       }
     },
     {
-      "key": "PATCH /api/v1/issues/{issueNumber}/comments/{commentId}",
+      "key": "PATCH /api/v1/issues/{issueId}/comments/{commentId}",
       "method": "PATCH",
-      "path": "/api/v1/issues/{issueNumber}/comments/{commentId}",
+      "path": "/api/v1/issues/{issueId}/comments/{commentId}",
       "operationId": "updateComment",
       "tags": [
         "issues"
@@ -1512,9 +1367,38 @@
       }
     },
     {
-      "key": "POST /api/v1/issues/{issueNumber}/files",
+      "key": "PUT /api/v1/issues/{issueId}/engineering-changes",
+      "method": "PUT",
+      "path": "/api/v1/issues/{issueId}/engineering-changes",
+      "operationId": "syncLinkedEngineeringChanges",
+      "tags": [
+        "issues"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "POST /api/v1/issues/{issueId}/files",
       "method": "POST",
-      "path": "/api/v1/issues/{issueNumber}/files",
+      "path": "/api/v1/issues/{issueId}/files",
       "operationId": "addFiles",
       "tags": [
         "issues"
@@ -1541,10 +1425,10 @@
       }
     },
     {
-      "key": "DELETE /api/v1/issues/{issueNumber}/files/{fileId}",
+      "key": "DELETE /api/v1/issues/{issueId}/files/{fileId}",
       "method": "DELETE",
-      "path": "/api/v1/issues/{issueNumber}/files/{fileId}",
-      "operationId": "deleteFile",
+      "path": "/api/v1/issues/{issueId}/files/{fileId}",
+      "operationId": "deleteFile_1",
       "tags": [
         "issues"
       ],
@@ -1570,9 +1454,9 @@
       }
     },
     {
-      "key": "PUT /api/v1/issues/{issueNumber}/labels",
+      "key": "PUT /api/v1/issues/{issueId}/labels",
       "method": "PUT",
-      "path": "/api/v1/issues/{issueNumber}/labels",
+      "path": "/api/v1/issues/{issueId}/labels",
       "operationId": "syncLabels",
       "tags": [
         "issues"
@@ -1599,9 +1483,9 @@
       }
     },
     {
-      "key": "PUT /api/v1/issues/{issueNumber}/parts",
+      "key": "PUT /api/v1/issues/{issueId}/parts",
       "method": "PUT",
-      "path": "/api/v1/issues/{issueNumber}/parts",
+      "path": "/api/v1/issues/{issueId}/parts",
       "operationId": "syncParts",
       "tags": [
         "issues"
@@ -1628,9 +1512,9 @@
       }
     },
     {
-      "key": "POST /api/v1/issues/{issueNumber}/reopen",
+      "key": "POST /api/v1/issues/{issueId}/reopen",
       "method": "POST",
-      "path": "/api/v1/issues/{issueNumber}/reopen",
+      "path": "/api/v1/issues/{issueId}/reopen",
       "operationId": "reopenIssue",
       "tags": [
         "issues"
@@ -1657,9 +1541,9 @@
       }
     },
     {
-      "key": "GET /api/v1/issues/{issueNumber}/timeline",
+      "key": "GET /api/v1/issues/{issueId}/timeline",
       "method": "GET",
-      "path": "/api/v1/issues/{issueNumber}/timeline",
+      "path": "/api/v1/issues/{issueId}/timeline",
       "operationId": "getTimeline",
       "tags": [
         "issues"
@@ -1863,7 +1747,7 @@
       "key": "GET /api/v1/mappings",
       "method": "GET",
       "path": "/api/v1/mappings",
-      "operationId": "list_1",
+      "operationId": "list",
       "tags": [
         "mappings"
       ],
@@ -1890,7 +1774,7 @@
       "key": "DELETE /api/v1/mappings/{mappingId}",
       "method": "DELETE",
       "path": "/api/v1/mappings/{mappingId}",
-      "operationId": "delete_1",
+      "operationId": "delete",
       "tags": [
         "mappings"
       ],
@@ -1917,7 +1801,7 @@
       "key": "GET /api/v1/mappings/{mappingId}",
       "method": "GET",
       "path": "/api/v1/mappings/{mappingId}",
-      "operationId": "get_1",
+      "operationId": "get",
       "tags": [
         "mappings"
       ],
@@ -1944,7 +1828,7 @@
       "key": "PUT /api/v1/mappings/{mappingId}",
       "method": "PUT",
       "path": "/api/v1/mappings/{mappingId}",
-      "operationId": "update_1",
+      "operationId": "update",
       "tags": [
         "mappings"
       ],
@@ -1971,7 +1855,7 @@
       "key": "POST /api/v1/mappings/confirm",
       "method": "POST",
       "path": "/api/v1/mappings/confirm",
-      "operationId": "confirm_1",
+      "operationId": "confirm",
       "tags": [
         "mappings"
       ],
@@ -1998,7 +1882,7 @@
       "key": "POST /api/v1/mappings/validate",
       "method": "POST",
       "path": "/api/v1/mappings/validate",
-      "operationId": "validate_1",
+      "operationId": "validate",
       "tags": [
         "mappings"
       ],
@@ -2078,6 +1962,33 @@
       "method": "PATCH",
       "path": "/api/v1/members/{userId}/role",
       "operationId": "changeMemberRole",
+      "tags": [
+        "members"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "PATCH /api/v1/members/{userId}/seat",
+      "method": "PATCH",
+      "path": "/api/v1/members/{userId}/seat",
+      "operationId": "changeMemberSeat",
       "tags": [
         "members"
       ],
@@ -2571,10 +2482,10 @@
       }
     },
     {
-      "key": "GET /api/v1/parts/{partNumber}/drafts/{draftKey}",
+      "key": "GET /api/v1/parts/{partId}/history",
       "method": "GET",
-      "path": "/api/v1/parts/{partNumber}/drafts/{draftKey}",
-      "operationId": "getDraft",
+      "path": "/api/v1/parts/{partId}/history",
+      "operationId": "getHistory",
       "tags": [
         "part-revisions"
       ],
@@ -2584,8 +2495,6 @@
       "stateChanging": false,
       "responseCodes": [
         "200",
-        "201",
-        "204",
         "400",
         "401",
         "403",
@@ -2600,12 +2509,39 @@
       }
     },
     {
-      "key": "PATCH /api/v1/parts/{partNumber}/drafts/{draftKey}",
+      "key": "GET /api/v1/parts/{partId}/revisions/{revisionId}",
+      "method": "GET",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}",
+      "operationId": "get_1",
+      "tags": [
+        "part-revisions"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": false,
+      "responseCodes": [
+        "200",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": false
+      }
+    },
+    {
+      "key": "PATCH /api/v1/parts/{partId}/revisions/{revisionId}",
       "method": "PATCH",
-      "path": "/api/v1/parts/{partNumber}/drafts/{draftKey}",
-      "operationId": "updateDraft",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}",
+      "operationId": "update_1",
       "tags": [
-        "part-revisions"
+        "part-revision-commands"
       ],
       "protected": false,
       "hasPathParams": true,
@@ -2614,7 +2550,6 @@
       "responseCodes": [
         "200",
         "201",
-        "204",
         "400",
         "401",
         "403",
@@ -2629,72 +2564,10 @@
       }
     },
     {
-      "key": "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/approve",
-      "method": "POST",
-      "path": "/api/v1/parts/{partNumber}/drafts/{draftKey}/approve",
-      "operationId": "approveDraft",
-      "tags": [
-        "part-revisions"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404",
-        "409",
-        "422"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "POST /api/v1/parts/{partNumber}/drafts/{draftKey}/release",
-      "method": "POST",
-      "path": "/api/v1/parts/{partNumber}/drafts/{draftKey}/release",
-      "operationId": "releaseDraft",
-      "tags": [
-        "part-revisions"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404",
-        "409",
-        "422"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}",
+      "key": "GET /api/v1/parts/{partId}/revisions/{revisionId}/bom",
       "method": "GET",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}",
-      "operationId": "getPart",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/bom",
+      "operationId": "getBom",
       "tags": [
         "part-revisions"
       ],
@@ -2704,8 +2577,6 @@
       "stateChanging": false,
       "responseCodes": [
         "200",
-        "201",
-        "204",
         "400",
         "401",
         "403",
@@ -2720,38 +2591,9 @@
       }
     },
     {
-      "key": "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/bom",
+      "key": "GET /api/v1/parts/{partId}/revisions/{revisionId}/bom/tree",
       "method": "GET",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/bom",
-      "operationId": "getPartBom",
-      "tags": [
-        "part-revisions"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
-      "key": "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/bom/tree",
-      "method": "GET",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/bom/tree",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/bom/tree",
       "operationId": "getBomTree",
       "tags": [
         "part-revisions"
@@ -2762,8 +2604,6 @@
       "stateChanging": false,
       "responseCodes": [
         "200",
-        "201",
-        "204",
         "400",
         "401",
         "403",
@@ -2778,9 +2618,9 @@
       }
     },
     {
-      "key": "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/bom/tree/export",
+      "key": "GET /api/v1/parts/{partId}/revisions/{revisionId}/bom/tree/export",
       "method": "GET",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/bom/tree/export",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/bom/tree/export",
       "operationId": "exportBomTree",
       "tags": [
         "part-revisions"
@@ -2791,8 +2631,6 @@
       "stateChanging": false,
       "responseCodes": [
         "200",
-        "201",
-        "204",
         "400",
         "401",
         "403",
@@ -2807,12 +2645,67 @@
       }
     },
     {
-      "key": "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts",
+      "key": "POST /api/v1/parts/{partId}/revisions/{revisionId}/cancel",
       "method": "POST",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/cancel",
+      "operationId": "cancel",
+      "tags": [
+        "part-revision-commands"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "GET /api/v1/parts/{partId}/revisions/{revisionId}/diff",
+      "method": "GET",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/diff",
+      "operationId": "getDiff",
+      "tags": [
+        "part-revisions"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": false,
+      "responseCodes": [
+        "200",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": false
+      }
+    },
+    {
+      "key": "POST /api/v1/parts/{partId}/revisions/{revisionId}/draft",
+      "method": "POST",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/draft",
       "operationId": "createDraft",
       "tags": [
-        "part-revisions"
+        "part-revision-commands"
       ],
       "protected": false,
       "hasPathParams": true,
@@ -2821,13 +2714,11 @@
       "responseCodes": [
         "200",
         "201",
-        "204",
         "400",
         "401",
         "403",
         "404",
-        "409",
-        "422"
+        "409"
       ],
       "primarySuccessCode": "200",
       "requiredCases": {
@@ -2838,41 +2729,12 @@
       }
     },
     {
-      "key": "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}",
-      "method": "GET",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}",
-      "operationId": "getRevisionDraft",
+      "key": "POST /api/v1/parts/{partId}/revisions/{revisionId}/drawings",
+      "method": "POST",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/drawings",
+      "operationId": "createDrawing",
       "tags": [
-        "part-revisions"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
-      "key": "PATCH /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}",
-      "method": "PATCH",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}",
-      "operationId": "updateRevisionDraft",
-      "tags": [
-        "part-revisions"
+        "part-revision-assets"
       ],
       "protected": false,
       "hasPathParams": true,
@@ -2896,103 +2758,12 @@
       }
     },
     {
-      "key": "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/approve",
-      "method": "POST",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/approve",
-      "operationId": "approveRevisionDraft",
-      "tags": [
-        "part-revisions"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404",
-        "409",
-        "422"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/release",
-      "method": "POST",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/drafts/{draftKey}/release",
-      "operationId": "releaseRevisionDraft",
-      "tags": [
-        "part-revisions"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404",
-        "409",
-        "422"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/drawings",
-      "method": "POST",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/drawings",
-      "operationId": "registerDrawingForPart",
-      "tags": [
-        "part-revisions"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/drawings/{drawingId}",
+      "key": "DELETE /api/v1/parts/{partId}/revisions/{revisionId}/drawings/{drawingId}",
       "method": "DELETE",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/drawings/{drawingId}",
-      "operationId": "deleteDrawingFromPart",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/drawings/{drawingId}",
+      "operationId": "deleteDrawing",
       "tags": [
-        "part-revisions"
+        "part-revision-assets"
       ],
       "protected": false,
       "hasPathParams": true,
@@ -3016,12 +2787,12 @@
       }
     },
     {
-      "key": "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/files",
+      "key": "GET /api/v1/parts/{partId}/revisions/{revisionId}/files",
       "method": "GET",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/files",
-      "operationId": "getPartFiles",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/files",
+      "operationId": "getFiles",
       "tags": [
-        "part-revisions"
+        "part-revision-assets"
       ],
       "protected": false,
       "hasPathParams": true,
@@ -3045,12 +2816,12 @@
       }
     },
     {
-      "key": "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/files",
+      "key": "POST /api/v1/parts/{partId}/revisions/{revisionId}/files",
       "method": "POST",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/files",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/files",
       "operationId": "attachFiles",
       "tags": [
-        "part-revisions"
+        "part-revision-assets"
       ],
       "protected": false,
       "hasPathParams": true,
@@ -3074,12 +2845,12 @@
       }
     },
     {
-      "key": "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/files/{fileId}",
+      "key": "DELETE /api/v1/parts/{partId}/revisions/{revisionId}/files/{fileId}",
       "method": "DELETE",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/files/{fileId}",
-      "operationId": "detachFile",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/files/{fileId}",
+      "operationId": "deleteFile",
       "tags": [
-        "part-revisions"
+        "part-revision-assets"
       ],
       "protected": false,
       "hasPathParams": true,
@@ -3103,70 +2874,12 @@
       }
     },
     {
-      "key": "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/owner",
-      "method": "GET",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/owner",
-      "operationId": "getPartOwner",
-      "tags": [
-        "part-revisions"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
-      "key": "PATCH /api/v1/parts/{partNumber}/revisions/{revisionCode}/owner",
-      "method": "PATCH",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/owner",
-      "operationId": "updatePartOwner",
-      "tags": [
-        "part-revisions"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "DELETE /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview",
+      "key": "DELETE /api/v1/parts/{partId}/revisions/{revisionId}/preview",
       "method": "DELETE",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/preview",
-      "operationId": "deletePreview",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/preview",
+      "operationId": "delete_1",
       "tags": [
-        "part-revisions"
+        "part-revision-previews"
       ],
       "protected": false,
       "hasPathParams": true,
@@ -3190,12 +2903,12 @@
       }
     },
     {
-      "key": "PATCH /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview",
+      "key": "PATCH /api/v1/parts/{partId}/revisions/{revisionId}/preview",
       "method": "PATCH",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/preview",
-      "operationId": "updatePreview",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/preview",
+      "operationId": "update_2",
       "tags": [
-        "part-revisions"
+        "part-revision-previews"
       ],
       "protected": false,
       "hasPathParams": true,
@@ -3219,70 +2932,12 @@
       }
     },
     {
-      "key": "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/preview/processing",
-      "method": "GET",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/preview/processing",
-      "operationId": "getPreviewProcessing",
-      "tags": [
-        "part-revisions"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
-      "key": "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/projects",
-      "method": "GET",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/projects",
-      "operationId": "getPartProjects",
-      "tags": [
-        "part-revisions"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "201",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
-      "key": "POST /api/v1/parts/{partNumber}/revisions/{revisionCode}/release",
+      "key": "POST /api/v1/parts/{partId}/revisions/{revisionId}/preview/files",
       "method": "POST",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/release",
-      "operationId": "releaseRevision",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/preview/files",
+      "operationId": "createPreviewFile",
       "tags": [
-        "part-revisions"
+        "part-revision-previews"
       ],
       "protected": false,
       "hasPathParams": true,
@@ -3295,9 +2950,7 @@
         "400",
         "401",
         "403",
-        "404",
-        "409",
-        "422"
+        "404"
       ],
       "primarySuccessCode": "200",
       "requiredCases": {
@@ -3308,12 +2961,41 @@
       }
     },
     {
-      "key": "GET /api/v1/parts/{partNumber}/revisions/{revisionCode}/suppliers",
-      "method": "GET",
-      "path": "/api/v1/parts/{partNumber}/revisions/{revisionCode}/suppliers",
-      "operationId": "getPartSuppliers",
+      "key": "DELETE /api/v1/parts/{partId}/revisions/{revisionId}/preview/files/{previewFileId}",
+      "method": "DELETE",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/preview/files/{previewFileId}",
+      "operationId": "deletePreviewFile",
       "tags": [
-        "part-revisions"
+        "part-revision-previews"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "GET /api/v1/parts/{partId}/revisions/{revisionId}/preview/processing",
+      "method": "GET",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/preview/processing",
+      "operationId": "getProcessing",
+      "tags": [
+        "part-revision-previews"
       ],
       "protected": false,
       "hasPathParams": true,
@@ -3323,6 +3005,117 @@
         "200",
         "201",
         "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": false
+      }
+    },
+    {
+      "key": "GET /api/v1/parts/{partId}/revisions/{revisionId}/preview/sources",
+      "method": "GET",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/preview/sources",
+      "operationId": "getSources",
+      "tags": [
+        "part-revision-previews"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": false,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": false
+      }
+    },
+    {
+      "key": "GET /api/v1/parts/{partId}/revisions/{revisionId}/projects",
+      "method": "GET",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/projects",
+      "operationId": "getProjects",
+      "tags": [
+        "part-revisions"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": false,
+      "responseCodes": [
+        "200",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": false
+      }
+    },
+    {
+      "key": "POST /api/v1/parts/{partId}/revisions/{revisionId}/release",
+      "method": "POST",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/release",
+      "operationId": "release",
+      "tags": [
+        "part-revision-commands"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "GET /api/v1/parts/{partId}/revisions/{revisionId}/suppliers",
+      "method": "GET",
+      "path": "/api/v1/parts/{partId}/revisions/{revisionId}/suppliers",
+      "operationId": "getSuppliers",
+      "tags": [
+        "part-revisions"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": false,
+      "responseCodes": [
+        "200",
         "400",
         "401",
         "403",
@@ -3482,6 +3275,35 @@
       }
     },
     {
+      "key": "GET /api/v1/parts/in-progress",
+      "method": "GET",
+      "path": "/api/v1/parts/in-progress",
+      "operationId": "listInProgressParts",
+      "tags": [
+        "parts"
+      ],
+      "protected": false,
+      "hasPathParams": false,
+      "hasRequestBody": false,
+      "stateChanging": false,
+      "responseCodes": [
+        "200",
+        "201",
+        "204",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": false
+      }
+    },
+    {
       "key": "GET /api/v1/parts/lookup",
       "method": "GET",
       "path": "/api/v1/parts/lookup",
@@ -3511,40 +3333,12 @@
       }
     },
     {
-      "key": "DELETE /api/v1/parts/owner/defaults",
-      "method": "DELETE",
-      "path": "/api/v1/parts/owner/defaults",
-      "operationId": "deleteDefaultOwner",
-      "tags": [
-        "part-default-owners"
-      ],
-      "protected": false,
-      "hasPathParams": false,
-      "hasRequestBody": false,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "GET /api/v1/parts/owner/defaults",
+      "key": "GET /api/v1/parts/revisions/lookup",
       "method": "GET",
-      "path": "/api/v1/parts/owner/defaults",
-      "operationId": "listDefaultOwners",
+      "path": "/api/v1/parts/revisions/lookup",
+      "operationId": "lookupRevisions",
       "tags": [
-        "part-default-owners"
+        "parts"
       ],
       "protected": false,
       "hasPathParams": false,
@@ -3552,6 +3346,7 @@
       "stateChanging": false,
       "responseCodes": [
         "200",
+        "201",
         "204",
         "400",
         "401",
@@ -3564,88 +3359,6 @@
         "failure": true,
         "auth": false,
         "idempotency": false
-      }
-    },
-    {
-      "key": "PUT /api/v1/parts/owner/defaults",
-      "method": "PUT",
-      "path": "/api/v1/parts/owner/defaults",
-      "operationId": "upsertDefaultOwner",
-      "tags": [
-        "part-default-owners"
-      ],
-      "protected": false,
-      "hasPathParams": false,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "GET /api/v1/parts/workflow-policy",
-      "method": "GET",
-      "path": "/api/v1/parts/workflow-policy",
-      "operationId": "getWorkflowPolicy",
-      "tags": [
-        "part-workflow-policy"
-      ],
-      "protected": false,
-      "hasPathParams": false,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
-      "key": "PUT /api/v1/parts/workflow-policy",
-      "method": "PUT",
-      "path": "/api/v1/parts/workflow-policy",
-      "operationId": "updateWorkflowPolicy",
-      "tags": [
-        "part-workflow-policy"
-      ],
-      "protected": false,
-      "hasPathParams": false,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
       }
     },
     {
@@ -3784,33 +3497,6 @@
       }
     },
     {
-      "key": "GET /api/v1/projects/{projectId}/activities",
-      "method": "GET",
-      "path": "/api/v1/projects/{projectId}/activities",
-      "operationId": "getProjectActivities",
-      "tags": [
-        "projects"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
       "key": "POST /api/v1/projects/{projectId}/archive",
       "method": "POST",
       "path": "/api/v1/projects/{projectId}/archive",
@@ -3835,6 +3521,33 @@
         "failure": true,
         "auth": false,
         "idempotency": true
+      }
+    },
+    {
+      "key": "GET /api/v1/projects/{projectId}/histories",
+      "method": "GET",
+      "path": "/api/v1/projects/{projectId}/histories",
+      "operationId": "getProjectActivities",
+      "tags": [
+        "projects"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": false,
+      "stateChanging": false,
+      "responseCodes": [
+        "200",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": false
       }
     },
     {
@@ -4081,6 +3794,309 @@
       }
     },
     {
+      "key": "POST /api/v1/properties/definitions",
+      "method": "POST",
+      "path": "/api/v1/properties/definitions",
+      "operationId": "createPropertyDefinition",
+      "tags": [
+        "properties"
+      ],
+      "protected": false,
+      "hasPathParams": false,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "400",
+        "401",
+        "403",
+        "404",
+        "409",
+        "422"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "PATCH /api/v1/properties/definitions/{propertyDefinitionId}",
+      "method": "PATCH",
+      "path": "/api/v1/properties/definitions/{propertyDefinitionId}",
+      "operationId": "updatePropertyDefinition",
+      "tags": [
+        "properties"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "GET /api/v1/properties/meta",
+      "method": "GET",
+      "path": "/api/v1/properties/meta",
+      "operationId": "listMeta",
+      "tags": [
+        "properties"
+      ],
+      "protected": false,
+      "hasPathParams": false,
+      "hasRequestBody": false,
+      "stateChanging": false,
+      "responseCodes": [
+        "200",
+        "201",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": false
+      }
+    },
+    {
+      "key": "PATCH /api/v1/properties/system-overrides/{ownerType}/{propertyKey}",
+      "method": "PATCH",
+      "path": "/api/v1/properties/system-overrides/{ownerType}/{propertyKey}",
+      "operationId": "upsertSystemPropertyOverride",
+      "tags": [
+        "properties"
+      ],
+      "protected": false,
+      "hasPathParams": true,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "201",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "GET /api/v1/settings",
+      "method": "GET",
+      "path": "/api/v1/settings",
+      "operationId": "getSettings",
+      "tags": [
+        "settings"
+      ],
+      "protected": false,
+      "hasPathParams": false,
+      "hasRequestBody": false,
+      "stateChanging": false,
+      "responseCodes": [
+        "200",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": false
+      }
+    },
+    {
+      "key": "PUT /api/v1/settings/parts/workflow-policy",
+      "method": "PUT",
+      "path": "/api/v1/settings/parts/workflow-policy",
+      "operationId": "updatePartWorkflowPolicy",
+      "tags": [
+        "settings"
+      ],
+      "protected": false,
+      "hasPathParams": false,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "GET /api/v1/subscription",
+      "method": "GET",
+      "path": "/api/v1/subscription",
+      "operationId": "get_2",
+      "tags": [
+        "subscription"
+      ],
+      "protected": false,
+      "hasPathParams": false,
+      "hasRequestBody": false,
+      "stateChanging": false,
+      "responseCodes": [
+        "200",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": false
+      }
+    },
+    {
+      "key": "PATCH /api/v1/subscription/ai-limit",
+      "method": "PATCH",
+      "path": "/api/v1/subscription/ai-limit",
+      "operationId": "updateAiLimit",
+      "tags": [
+        "subscription"
+      ],
+      "protected": false,
+      "hasPathParams": false,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "PATCH /api/v1/subscription/plan",
+      "method": "PATCH",
+      "path": "/api/v1/subscription/plan",
+      "operationId": "updatePlan",
+      "tags": [
+        "subscription"
+      ],
+      "protected": false,
+      "hasPathParams": false,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "PATCH /api/v1/subscription/seat-quotas",
+      "method": "PATCH",
+      "path": "/api/v1/subscription/seat-quotas",
+      "operationId": "updateSeatQuotas",
+      "tags": [
+        "subscription"
+      ],
+      "protected": false,
+      "hasPathParams": false,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
+      "key": "POST /api/v1/subscription/starter-upgrade",
+      "method": "POST",
+      "path": "/api/v1/subscription/starter-upgrade",
+      "operationId": "upgradeStarter",
+      "tags": [
+        "subscription"
+      ],
+      "protected": false,
+      "hasPathParams": false,
+      "hasRequestBody": true,
+      "stateChanging": true,
+      "responseCodes": [
+        "200",
+        "400",
+        "401",
+        "403",
+        "404"
+      ],
+      "primarySuccessCode": "200",
+      "requiredCases": {
+        "contract": true,
+        "failure": true,
+        "auth": false,
+        "idempotency": true
+      }
+    },
+    {
       "key": "GET /api/v1/suppliers",
       "method": "GET",
       "path": "/api/v1/suppliers",
@@ -4111,7 +4127,7 @@
       "key": "GET /api/v1/synthesis",
       "method": "GET",
       "path": "/api/v1/synthesis",
-      "operationId": "listSynthesisJobs_1",
+      "operationId": "listSynthesisJobs",
       "tags": [
         "synthesis"
       ],
@@ -4138,7 +4154,7 @@
       "key": "POST /api/v1/synthesis",
       "method": "POST",
       "path": "/api/v1/synthesis",
-      "operationId": "startSynthesis_1",
+      "operationId": "startSynthesis",
       "tags": [
         "synthesis"
       ],
@@ -4165,7 +4181,7 @@
       "key": "GET /api/v1/synthesis/{jobId}",
       "method": "GET",
       "path": "/api/v1/synthesis/{jobId}",
-      "operationId": "getSynthesisJob_1",
+      "operationId": "getSynthesisJob",
       "tags": [
         "synthesis"
       ],
@@ -4192,7 +4208,7 @@
       "key": "GET /api/v1/synthesis/batches/{batchId}",
       "method": "GET",
       "path": "/api/v1/synthesis/batches/{batchId}",
-      "operationId": "getSynthesisBatch_1",
+      "operationId": "getSynthesisBatch",
       "tags": [
         "synthesis"
       ],
@@ -4688,303 +4704,6 @@
         "failure": true,
         "auth": false,
         "idempotency": true
-      }
-    },
-    {
-      "key": "GET /api/v2/mappings",
-      "method": "GET",
-      "path": "/api/v2/mappings",
-      "operationId": "list",
-      "tags": [
-        "mappings-v2"
-      ],
-      "protected": false,
-      "hasPathParams": false,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
-      "key": "DELETE /api/v2/mappings/{mappingId}",
-      "method": "DELETE",
-      "path": "/api/v2/mappings/{mappingId}",
-      "operationId": "delete",
-      "tags": [
-        "mappings-v2"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": true,
-      "responseCodes": [
-        "204",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "204",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "GET /api/v2/mappings/{mappingId}",
-      "method": "GET",
-      "path": "/api/v2/mappings/{mappingId}",
-      "operationId": "get",
-      "tags": [
-        "mappings-v2"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
-      "key": "PUT /api/v2/mappings/{mappingId}",
-      "method": "PUT",
-      "path": "/api/v2/mappings/{mappingId}",
-      "operationId": "update",
-      "tags": [
-        "mappings-v2"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "POST /api/v2/mappings/confirm",
-      "method": "POST",
-      "path": "/api/v2/mappings/confirm",
-      "operationId": "confirm",
-      "tags": [
-        "mappings-v2"
-      ],
-      "protected": false,
-      "hasPathParams": false,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "POST /api/v2/mappings/preview",
-      "method": "POST",
-      "path": "/api/v2/mappings/preview",
-      "operationId": "preview",
-      "tags": [
-        "mappings-v2"
-      ],
-      "protected": false,
-      "hasPathParams": false,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "POST /api/v2/mappings/validate",
-      "method": "POST",
-      "path": "/api/v2/mappings/validate",
-      "operationId": "validate",
-      "tags": [
-        "mappings-v2"
-      ],
-      "protected": false,
-      "hasPathParams": false,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "GET /api/v2/synthesis",
-      "method": "GET",
-      "path": "/api/v2/synthesis",
-      "operationId": "listSynthesisJobs",
-      "tags": [
-        "synthesis-v2"
-      ],
-      "protected": false,
-      "hasPathParams": false,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
-      "key": "POST /api/v2/synthesis",
-      "method": "POST",
-      "path": "/api/v2/synthesis",
-      "operationId": "startSynthesis",
-      "tags": [
-        "synthesis-v2"
-      ],
-      "protected": false,
-      "hasPathParams": false,
-      "hasRequestBody": true,
-      "stateChanging": true,
-      "responseCodes": [
-        "200",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": true
-      }
-    },
-    {
-      "key": "GET /api/v2/synthesis/{jobId}",
-      "method": "GET",
-      "path": "/api/v2/synthesis/{jobId}",
-      "operationId": "getSynthesisJob",
-      "tags": [
-        "synthesis-v2"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
-      }
-    },
-    {
-      "key": "GET /api/v2/synthesis/batches/{batchId}",
-      "method": "GET",
-      "path": "/api/v2/synthesis/batches/{batchId}",
-      "operationId": "getSynthesisBatch",
-      "tags": [
-        "synthesis-v2"
-      ],
-      "protected": false,
-      "hasPathParams": true,
-      "hasRequestBody": false,
-      "stateChanging": false,
-      "responseCodes": [
-        "200",
-        "400",
-        "401",
-        "403",
-        "404"
-      ],
-      "primarySuccessCode": "200",
-      "requiredCases": {
-        "contract": true,
-        "failure": true,
-        "auth": false,
-        "idempotency": false
       }
     },
     {

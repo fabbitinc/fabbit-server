@@ -34,6 +34,8 @@ import org.springframework.util.StringUtils;
 @Configuration
 public class OpenApiModelResolverConfig {
 
+    private static final String API_ERROR_RESPONSE_SCHEMA_NAME = "ApiErrorResponse";
+
     @Bean
     public ModelResolver modelResolver(
             JacksonProperties jacksonProperties,
@@ -49,6 +51,7 @@ public class OpenApiModelResolverConfig {
         ObjectMapper objectMapper = createOpenApiObjectMapper(jacksonProperties, springDocConfigProperties);
         return openApi -> {
             normalizeSwaggerAccessorPrefixBug(openApi, objectMapper);
+            normalizeErrorResponseSchema(openApi);
             normalizeWildcardJsonResponseContentType(openApi);
         };
     }
@@ -240,6 +243,78 @@ public class OpenApiModelResolverConfig {
                 && Character.isLowerCase(value.charAt(prefix.length()));
     }
 
+    private void normalizeErrorResponseSchema(OpenAPI openApi) {
+        if (openApi == null || openApi.getPaths() == null) {
+            return;
+        }
+
+        registerApiErrorResponseSchema(openApi);
+        openApi.getPaths().values().forEach(this::normalizeErrorResponseSchema);
+    }
+
+    private void normalizeErrorResponseSchema(PathItem pathItem) {
+        if (pathItem == null) {
+            return;
+        }
+
+        pathItem.readOperations().forEach(this::normalizeErrorResponseSchema);
+    }
+
+    private void normalizeErrorResponseSchema(Operation operation) {
+        if (operation == null || operation.getResponses() == null) {
+            return;
+        }
+
+        operation.getResponses().forEach(this::normalizeErrorResponseSchema);
+    }
+
+    private void normalizeErrorResponseSchema(String responseCode, ApiResponse response) {
+        if (response == null) {
+            return;
+        }
+
+        if (isNoContentResponse(responseCode)) {
+            response.setContent(null);
+            return;
+        }
+
+        if (!isErrorResponse(responseCode)) {
+            return;
+        }
+
+        response.setContent(new Content().addMediaType(
+                org.springframework.http.MediaType.APPLICATION_JSON_VALUE,
+                new MediaType().schema(new Schema<>().$ref("#/components/schemas/" + API_ERROR_RESPONSE_SCHEMA_NAME))
+        ));
+    }
+
+    private void registerApiErrorResponseSchema(OpenAPI openApi) {
+        if (openApi.getComponents() == null) {
+            openApi.setComponents(new io.swagger.v3.oas.models.Components());
+        }
+        if (openApi.getComponents().getSchemas() == null) {
+            openApi.getComponents().setSchemas(new LinkedHashMap<>());
+        }
+        if (openApi.getComponents().getSchemas().containsKey(API_ERROR_RESPONSE_SCHEMA_NAME)) {
+            return;
+        }
+
+        Schema<?> apiErrorResponseSchema = new Schema<>()
+                .type("object")
+                .description("공통 API 오류 응답")
+                .addProperty("code", new Schema<String>()
+                        .type("string")
+                        .description("오류 코드")
+                        .example("BAD_REQUEST"))
+                .addProperty("message", new Schema<String>()
+                        .type("string")
+                        .description("오류 메시지")
+                        .example("잘못된 요청입니다"))
+                .required(List.of("code", "message"));
+
+        openApi.getComponents().getSchemas().put(API_ERROR_RESPONSE_SCHEMA_NAME, apiErrorResponseSchema);
+    }
+
     private void normalizeWildcardJsonResponseContentType(OpenAPI openApi) {
         if (openApi == null || openApi.getPaths() == null) {
             return;
@@ -286,6 +361,15 @@ public class OpenApiModelResolverConfig {
 
     private boolean isNoContentResponse(String responseCode) {
         return "204".equals(responseCode) || "205".equals(responseCode) || "304".equals(responseCode);
+    }
+
+    private boolean isErrorResponse(String responseCode) {
+        return StringUtils.hasText(responseCode)
+                && responseCode.length() == 3
+                && Character.isDigit(responseCode.charAt(0))
+                && Character.isDigit(responseCode.charAt(1))
+                && Character.isDigit(responseCode.charAt(2))
+                && responseCode.charAt(0) >= '4';
     }
 
     private boolean hasJsonCompatibleSchema(Schema<?> schema) {

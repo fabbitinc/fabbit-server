@@ -139,7 +139,57 @@ class OpenApiModelResolverConfigTest {
         config.openApiPropertyNamingCustomizer(jacksonProperties, springDocConfigProperties).customise(openApi);
 
         Content content = openApi.getPaths().get("/api/v1/delete").getDelete().getResponses().get("204").getContent();
-        assertThat(content).containsOnlyKeys("*/*");
+        assertThat(content).isNull();
+    }
+
+    @Test
+    void openApiCustomizerNormalizesErrorResponsesToApiErrorResponse() {
+        JacksonProperties jacksonProperties = new JacksonProperties();
+        jacksonProperties.setPropertyNamingStrategy("SNAKE_CASE");
+        SpringDocConfigProperties springDocConfigProperties = new SpringDocConfigProperties();
+
+        OpenAPI openApi = new OpenAPI().path(
+                "/api/v1/test",
+                new PathItem().get(new Operation().responses(new ApiResponses()
+                        .addApiResponse("200", new ApiResponse().content(new Content().addMediaType(
+                                org.springframework.http.MediaType.APPLICATION_JSON_VALUE,
+                                new MediaType().schema(new Schema<>().$ref("#/components/schemas/TestResponse"))
+                        )))
+                        .addApiResponse("400", new ApiResponse().content(new Content().addMediaType(
+                                org.springframework.http.MediaType.APPLICATION_JSON_VALUE,
+                                new MediaType().schema(new Schema<>().$ref("#/components/schemas/TestResponse"))
+                        )))
+                        .addApiResponse("401", new ApiResponse().content(new Content().addMediaType(
+                                org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE,
+                                new MediaType().schema(new Schema<>().$ref("#/components/schemas/TestResponse"))
+                        )))))
+        );
+
+        config.openApiPropertyNamingCustomizer(jacksonProperties, springDocConfigProperties).customise(openApi);
+
+        Schema<?> successSchema = openApi.getPaths().get("/api/v1/test").getGet().getResponses()
+                .get("200")
+                .getContent()
+                .get(org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+                .getSchema();
+        Schema<?> badRequestSchema = openApi.getPaths().get("/api/v1/test").getGet().getResponses()
+                .get("400")
+                .getContent()
+                .get(org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+                .getSchema();
+        Schema<?> unauthorizedSchema = openApi.getPaths().get("/api/v1/test").getGet().getResponses()
+                .get("401")
+                .getContent()
+                .get(org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+                .getSchema();
+
+        assertThat(successSchema.get$ref()).isEqualTo("#/components/schemas/TestResponse");
+        assertThat(badRequestSchema.get$ref()).isEqualTo("#/components/schemas/ApiErrorResponse");
+        assertThat(unauthorizedSchema.get$ref()).isEqualTo("#/components/schemas/ApiErrorResponse");
+        assertThat(openApi.getComponents()).isNotNull();
+        assertThat(openApi.getComponents().getSchemas()).containsKey("ApiErrorResponse");
+        assertThat(openApi.getComponents().getSchemas().get("ApiErrorResponse").getProperties())
+                .containsKeys("code", "message");
     }
 
     private static final class SampleResponse {
