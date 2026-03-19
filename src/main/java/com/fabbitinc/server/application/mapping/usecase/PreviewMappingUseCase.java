@@ -70,7 +70,10 @@ public class PreviewMappingUseCase {
                 continue;
             }
 
-            MappingLlmGenerationSupport.GenerationOutput generation = mappingLlmGenerationSupport.generate(parsed.headers(), parsed.rows());
+            MappingLlmGenerationSupport.GenerationOutput generation = mappingLlmGenerationSupport.generate(
+                    parsed.headers(),
+                    parsed.rows()
+            );
             organizationApi.consumeCredits(auth.orgId(), AiUsageCategory.BOM_ANALYSIS);
             aiUsageService.record(new RecordAiUsageInput(
                     auth.orgId(),
@@ -83,9 +86,9 @@ public class PreviewMappingUseCase {
             ));
 
             MappingResultDto normalized = generation.mapping();
-            if (normalized.propertyMappings().isEmpty()) {
+            if (normalized.nodes().isEmpty()) {
                 if (sheet != null) {
-                    skipped.add(new SkippedSheetResult(sheet, "온톨로지에 매핑 가능한 컬럼이 없습니다"));
+                    skipped.add(new SkippedSheetResult(sheet, "온톨로지에 매핑 가능한 노드가 없습니다"));
                 }
                 continue;
             }

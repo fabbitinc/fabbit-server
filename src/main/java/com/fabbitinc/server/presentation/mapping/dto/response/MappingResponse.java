@@ -1,13 +1,12 @@
 package com.fabbitinc.server.presentation.mapping.dto.response;
 
 import com.fabbitinc.server.application.mapping.model.MappingResultDto;
-import com.fabbitinc.server.domain.mapping.model.MappingScope;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-@Schema(description = "매핑 상세 응답")
+@Schema(description = "매핑 응답")
 public record MappingResponse(
         @Schema(description = "매핑 ID")
         UUID id,
@@ -19,15 +18,13 @@ public record MappingResponse(
         String sheetName,
         @Schema(description = "원본 헤더 목록")
         List<String> originalHeaders,
-        @Schema(description = "실사용 컬럼 목록")
+        @Schema(description = "매핑에 사용된 헤더 목록")
         List<String> mappedHeaders,
-        @Schema(description = "매핑 본문")
+        @Schema(description = "저장된 매핑")
         MappingResultDto mapping,
-        @Schema(description = "매핑 스코프", example = "FULL_BOM")
-        MappingScope scope,
         @Schema(description = "활성 여부")
-        boolean isActive,
-        @Schema(description = "누적 사용 횟수")
+        boolean active,
+        @Schema(description = "사용 횟수")
         int usageCount,
         @Schema(description = "리비전 버전")
         int version,

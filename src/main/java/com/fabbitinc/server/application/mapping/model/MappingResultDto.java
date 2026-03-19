@@ -8,31 +8,34 @@ import java.util.Set;
 
 @Schema(description = "매핑 결과")
 public record MappingResultDto(
-        @Schema(description = "Part 속성 매핑 목록")
-        List<PropertyMappingDto> propertyMappings,
-        @Schema(description = "관계 매핑 목록")
-        List<RelationMappingDto> relationMappings
+        @Schema(description = "행 안의 노드 목록")
+        List<NodeMappingDto> nodes,
+        @Schema(description = "노드 간 관계 목록")
+        List<RelationMappingDto> relations
 ) {
     public MappingResultDto {
-        propertyMappings = propertyMappings == null ? List.of() : List.copyOf(propertyMappings);
-        relationMappings = relationMappings == null ? List.of() : List.copyOf(relationMappings);
+        nodes = nodes == null ? List.of() : List.copyOf(nodes);
+        relations = relations == null ? List.of() : List.copyOf(relations);
     }
 
     public List<String> requiredColumns() {
         Set<String> seen = new LinkedHashSet<>();
 
-        for (PropertyMappingDto propertyMapping : propertyMappings) {
-            if (propertyMapping.sourceColumn() == null || propertyMapping.sourceColumn().isBlank()) {
-                continue;
-            }
-            seen.add(propertyMapping.sourceColumn());
+        for (NodeMappingDto node : nodes) {
+            seen.addAll(node.propertyColumns().values());
+            node.extendedProperties().stream()
+                    .map(ExtendedPropertyMappingDto::sourceColumn)
+                    .forEach(seen::add);
         }
 
-        for (RelationMappingDto relationMapping : relationMappings) {
-            seen.addAll(relationMapping.nodeColumns().values());
-            seen.addAll(relationMapping.relColumns().values());
+        for (RelationMappingDto relation : relations) {
+            seen.addAll(relation.propertyColumns().values());
+            relation.extendedProperties().stream()
+                    .map(ExtendedPropertyMappingDto::sourceColumn)
+                    .forEach(seen::add);
         }
 
+        seen.removeIf(column -> column == null || column.isBlank());
         return new ArrayList<>(seen);
     }
 }

@@ -46,9 +46,13 @@ public class ConfirmMappingUseCase {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "매핑 검증에 실패했습니다: " + detail);
         }
 
-        SavedMappingOutput output = mappingService.createMapping(
-                new CreateMappingInput(command.name(), command.fileId(), command.sheetName(), normalized)
-        );
+        SavedMappingOutput output = mappingService.createMapping(new CreateMappingInput(
+                command.name(),
+                command.fileId(),
+                command.sheetName(),
+                parsed.headers(),
+                normalized
+        ));
         return savedMappingResultMapper.toResult(output.record(), output.revision());
     }
 }

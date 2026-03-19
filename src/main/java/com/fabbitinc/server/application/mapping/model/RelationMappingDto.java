@@ -3,29 +3,34 @@ package com.fabbitinc.server.application.mapping.model;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.ontology.support.RelationshipType;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 import java.util.Map;
 
-@Schema(description = "관계 매핑")
+@Schema(description = "노드 간 관계 매핑")
 public record RelationMappingDto(
+        @Schema(description = "시작 노드 식별자", example = "part_parent")
+        String fromNodeId,
         @Schema(description = "관계 타입", example = "CONSISTS_OF")
         RelationshipType relType,
-        @Schema(description = "대상 노드 라벨", example = "Part")
-        String targetLabel,
-        @Schema(description = "대상 노드 속성 매핑")
-        Map<String, String> nodeColumns,
-        @Schema(description = "관계 속성 매핑")
-        Map<String, String> relColumns,
-        @Schema(description = "관계 속성 타입")
-        Map<String, PropertyDataType> relColumnTypes,
+        @Schema(description = "도착 노드 식별자", example = "part_child")
+        String toNodeId,
+        @Schema(description = "표준 관계 속성 매핑")
+        Map<String, String> propertyColumns,
+        @Schema(description = "표준 관계 속성 타입")
+        Map<String, PropertyDataType> propertyColumnTypes,
+        @Schema(description = "관계 확장 속성 매핑")
+        List<ExtendedPropertyMappingDto> extendedProperties,
         @Schema(description = "매핑 신뢰도(0-100)", example = "88")
         Integer confidence,
-        @Schema(description = "매핑 근거", example = "quantity + parent part headers")
+        @Schema(description = "매핑 근거", example = "parent child relationship")
         String reason
 ) {
     public RelationMappingDto {
-        nodeColumns = nodeColumns == null ? Map.of() : Map.copyOf(nodeColumns);
-        relColumns = relColumns == null ? Map.of() : Map.copyOf(relColumns);
-        relColumnTypes = relColumnTypes == null ? Map.of() : Map.copyOf(relColumnTypes);
+        fromNodeId = fromNodeId == null ? null : fromNodeId.trim();
+        toNodeId = toNodeId == null ? null : toNodeId.trim();
+        propertyColumns = propertyColumns == null ? Map.of() : Map.copyOf(propertyColumns);
+        propertyColumnTypes = propertyColumnTypes == null ? Map.of() : Map.copyOf(propertyColumnTypes);
+        extendedProperties = extendedProperties == null ? List.of() : List.copyOf(extendedProperties);
         confidence = confidence == null ? 0 : confidence;
         reason = reason == null ? "" : reason;
     }

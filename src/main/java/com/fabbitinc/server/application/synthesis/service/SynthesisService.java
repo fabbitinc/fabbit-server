@@ -13,7 +13,6 @@ import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.mapping.model.MappingRecord;
 import com.fabbitinc.server.domain.mapping.model.MappingRevision;
-import com.fabbitinc.server.domain.mapping.model.MappingScope;
 import com.fabbitinc.server.domain.mapping.repository.MappingRecordRepository;
 import com.fabbitinc.server.domain.mapping.repository.MappingRevisionRepository;
 import com.fabbitinc.server.domain.synthesis.model.SynthesisBatch;
@@ -40,7 +39,7 @@ public class SynthesisService {
     private final FileRepository fileRepository;
     private final SynthesisBatchRepository synthesisBatchRepository;
     private final SynthesisJobRepository synthesisJobRepository;
-    private final SynthesisAsyncExecutionService synthesisAsyncExecutionService;
+    private final SynthesisAsyncExecutionService synthesisV2AsyncExecutionService;
     private final ObjectMapper objectMapper;
 
     public SynthesisBatchStartOutput startSynthesis(StartSynthesisInput input) {
@@ -54,8 +53,6 @@ public class SynthesisService {
         List<AcceptedUpload> acceptedUploads = new ArrayList<>();
 
         for (SynthesisUploadInput item : input.uploads()) {
-            validateRootContext(record.getScope(), item.rootContext());
-
             File file = fileRepository.findByIdAndDeletedAtIsNull(item.fileId()).orElse(null);
             if (file == null) {
                 failed.add(new SynthesisBatchFailureOutput(item.fileId(), "파일을 찾을 수 없습니다"));
@@ -69,7 +66,6 @@ public class SynthesisService {
                 failed.add(new SynthesisBatchFailureOutput(item.fileId(), "해당 프로젝트에 속하지 않은 파일입니다"));
                 continue;
             }
-
             Map<String, String> rootContext = item.rootContext() == null ? Map.of() : item.rootContext();
             acceptedUploads.add(new AcceptedUpload(file.getId(), rootContext));
         }
@@ -114,7 +110,7 @@ public class SynthesisService {
         String schemaName = TenantContextHolder.getCurrentSchema();
         Runnable dispatch = () -> {
             for (AcceptedSynthesisJob acceptedJob : acceptedJobs) {
-                synthesisAsyncExecutionService.runJobAsync(
+                synthesisV2AsyncExecutionService.runJobAsync(
                         acceptedJob.job().getId(),
                         schemaName,
                         acceptedJob.rootContext(),
@@ -134,22 +130,6 @@ public class SynthesisService {
         }
 
         dispatch.run();
-    }
-
-    private void validateRootContext(MappingScope scope, Map<String, String> rootContext) {
-        boolean hasRootContext = rootContext != null && !rootContext.isEmpty();
-        if (scope == MappingScope.ROOT_BOM && !hasRootContext) {
-            throw new AppException(
-                    ErrorCode.VALIDATION_ERROR,
-                    "이 매핑은 ROOT_BOM입니다. root_context를 지정해주세요."
-            );
-        }
-        if ((scope == MappingScope.PART_LIST || scope == MappingScope.FULL_BOM) && hasRootContext) {
-            throw new AppException(
-                    ErrorCode.VALIDATION_ERROR,
-                    "이 매핑은 root_context가 필요하지 않습니다."
-            );
-        }
     }
 
     private boolean isProjectOwnedFile(File file, UUID projectId) {
@@ -182,24 +162,12 @@ public class SynthesisService {
                     raw,
                     objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)
             );
-            if (parsed == null) {
-                return List.of();
-            }
-            return parsed.stream()
+            return parsed == null ? List.of() : parsed.stream()
                     .filter(value -> value != null && !value.isBlank())
                     .toList();
         } catch (JacksonException ignored) {
         }
-
-        List<String> errors = new ArrayList<>();
-        String[] lines = raw.split("\\R");
-        for (String line : lines) {
-            String trimmed = line.trim();
-            if (!trimmed.isEmpty()) {
-                errors.add(trimmed);
-            }
-        }
-        return errors;
+        return List.of();
     }
 
     private String serializeFailures(List<SynthesisBatchFailureOutput> failures) {

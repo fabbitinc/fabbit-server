@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SynthesisAsyncExecutionService {
 
-    private final SynthesisExecutionService synthesisExecutionService;
+    private final SynthesisExecutionService synthesisV2ExecutionService;
 
     @Async("synthesisTaskExecutor")
     public void runJobAsync(
@@ -24,7 +24,7 @@ public class SynthesisAsyncExecutionService {
     ) {
         TenantContextHolder.setCurrentSchema(schemaName);
         try {
-            synthesisExecutionService.runJob(jobId, rootContext, overwrite);
+            synthesisV2ExecutionService.runJob(jobId, rootContext, overwrite);
         } catch (Exception ex) {
             log.error("합성 비동기 실행 실패: jobId={}, schema={}", jobId, schemaName, ex);
         } finally {

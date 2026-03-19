@@ -19,11 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class StartSynthesisUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
-    private final SynthesisService synthesisService;
+    private final SynthesisService synthesisV2Service;
 
     public StartedSynthesisBatchResult execute(StartSynthesisCommand command) {
         var auth = currentAuthProvider.getCurrentAuth();
-        SynthesisBatchStartOutput output = synthesisService.startSynthesis(
+        SynthesisBatchStartOutput output = synthesisV2Service.startSynthesis(
                 new StartSynthesisInput(
                         command.mappingId(),
                         command.projectId(),

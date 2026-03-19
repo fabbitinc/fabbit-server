@@ -13,7 +13,7 @@ public record SheetPreviewResponse(
         List<String> headers,
         @Schema(description = "샘플 행 목록")
         List<JsonNode> sampleRows,
-        @Schema(description = "시트 매핑 결과")
+        @Schema(description = "매핑 결과")
         MappingResultDto mapping
 ) {
 }

@@ -5,6 +5,7 @@ import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.mapping.model.MappingRecord;
+import com.fabbitinc.server.domain.synthesis.model.SynthesisJobStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -140,7 +141,11 @@ public class SynthesisJob extends AbstractCreatedEntity {
         }
         this.processedRows = requireProgress(processedRows);
         this.nodesCreated = requireNonNegative(nodesCreated, CODE_SYNTHESIS_JOB_PROGRESS_INVALID, "생성 노드 수는 0 이상이어야 합니다");
-        this.relationshipsCreated = requireNonNegative(relationshipsCreated, CODE_SYNTHESIS_JOB_PROGRESS_INVALID, "생성 관계 수는 0 이상이어야 합니다");
+        this.relationshipsCreated = requireNonNegative(
+                relationshipsCreated,
+                CODE_SYNTHESIS_JOB_PROGRESS_INVALID,
+                "생성 관계 수는 0 이상이어야 합니다"
+        );
         this.errors = normalizeErrors(errors);
         this.status = SynthesisJobStatus.COMPLETED;
         this.completedAt = Instant.now();

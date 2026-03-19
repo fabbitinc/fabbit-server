@@ -3,10 +3,11 @@ package com.fabbitinc.server.application.synthesis.service;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.file.port.StoragePort;
-import com.fabbitinc.server.application.mapping.model.MappingResultDto;
-import com.fabbitinc.server.application.mapping.model.PropertyMappingDto;
-import com.fabbitinc.server.application.mapping.model.RelationMappingDto;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
+import com.fabbitinc.server.application.mapping.model.ExtendedPropertyMappingDto;
+import com.fabbitinc.server.application.mapping.model.MappingResultDto;
+import com.fabbitinc.server.application.mapping.model.NodeMappingDto;
+import com.fabbitinc.server.application.mapping.model.RelationMappingDto;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.ontology.support.RelationshipType;
 import com.fabbitinc.server.domain.bom.model.EngineeringBomItem;
@@ -19,6 +20,7 @@ import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.mapping.model.MappingRevision;
 import com.fabbitinc.server.domain.mapping.repository.MappingRevisionRepository;
 import com.fabbitinc.server.domain.part.model.Part;
+import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType;
 import com.fabbitinc.server.domain.part.model.PartRevisionHistorySourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
@@ -32,8 +34,8 @@ import com.fabbitinc.server.domain.project.repository.ProjectPartRepository;
 import com.fabbitinc.server.domain.project.repository.ProjectRepository;
 import com.fabbitinc.server.domain.supplier.model.Supplier;
 import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
-import com.fabbitinc.server.domain.synthesis.model.SynthesisJob;
 import com.fabbitinc.server.domain.synthesis.model.SynthesisJobStatus;
+import com.fabbitinc.server.domain.synthesis.model.SynthesisJob;
 import com.fabbitinc.server.domain.synthesis.repository.SynthesisJobRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -74,11 +76,7 @@ public class SynthesisExecutionService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void runJob(UUID jobId, Map<String, String> rootContext, boolean overwrite) {
         SynthesisJob job = synthesisJobRepository.findById(jobId).orElse(null);
-        if (job == null) {
-            return;
-        }
-
-        if (job.getStatus() != SynthesisJobStatus.PENDING) {
+        if (job == null || job.getStatus() != SynthesisJobStatus.PENDING) {
             return;
         }
 
@@ -148,38 +146,32 @@ public class SynthesisExecutionService {
     ) {
         int nodesCreated = 0;
         int relationshipsCreated = 0;
+        Map<String, ResolvedNode> resolvedNodes = new LinkedHashMap<>();
 
-        PartRowValues childValues = resolveChildPartValues(row, mapping.propertyMappings());
-        if (childValues.partNumber() == null) {
-            return new RowProcessResult(0, 0);
+        for (NodeMappingDto node : mapping.nodes()) {
+            ResolvedNode resolved = resolveNode(row, node, rootContext, overwrite, sourceFile, jobId, requestedBy);
+            if (resolved == null) {
+                continue;
+            }
+            resolvedNodes.put(node.nodeId(), resolved);
+            if (resolved.created()) {
+                nodesCreated++;
+            }
         }
 
-        UpsertPartResult childResult = upsertPart(childValues, overwrite, jobId, requestedBy);
-        if (childResult.created()) {
-            nodesCreated++;
-        }
+        for (RelationMappingDto relation : mapping.relations()) {
+            ResolvedNode fromNode = resolvedNodes.get(relation.fromNodeId());
+            ResolvedNode toNode = resolvedNodes.get(relation.toNodeId());
+            if (fromNode == null || toNode == null) {
+                continue;
+            }
 
-        for (RelationMappingDto relation : mapping.relationMappings()) {
-            if (isConsistsOfPartRelation(relation)) {
-                String parentPartNumber = resolveParentPartNumber(row, relation, rootContext);
-                if (parentPartNumber == null || parentPartNumber.equals(childValues.partNumber())) {
-                    continue;
-                }
-
-                String parentName = resolveMappedText(row, relation.nodeColumns().get("name"), PropertyDataType.STRING);
-                UpsertPartResult parentResult = upsertPart(
-                        new PartRowValues(parentPartNumber, parentName, null, null, null, null),
-                        overwrite,
-                        jobId,
-                        requestedBy
-                );
-                if (parentResult.created()) {
-                    nodesCreated++;
-                }
-
-                BigDecimal quantity = resolveQuantity(row, relation);
+            if (relation.relType() == RelationshipType.CONSISTS_OF
+                    && "Part".equals(fromNode.label())
+                    && "Part".equals(toNode.label())) {
+                BigDecimal quantity = resolveRelationDecimalProperty(row, relation, "quantity", BigDecimal.ONE);
                 String lineNumber = resolveBomLineNumber(row, relation);
-                Map<String, Object> extendedProperties = resolveRelationExtendedProperties(
+                Map<String, Object> extendedProperties = resolveRelationProperties(
                         row,
                         relation,
                         "quantity",
@@ -188,8 +180,8 @@ public class SynthesisExecutionService {
                         "sequence"
                 );
                 if (upsertEngineeringBomItem(
-                        parentResult.revision(),
-                        childResult.revision(),
+                        fromNode.partRevision(),
+                        toNode.partRevision(),
                         lineNumber,
                         quantity,
                         extendedProperties,
@@ -200,54 +192,30 @@ public class SynthesisExecutionService {
                 continue;
             }
 
-            if (isDefinedByDrawingRelation(relation)) {
-                DrawingRowValues drawingValues = resolveDrawingValues(row, relation, rootContext);
-                if (drawingValues == null || drawingValues.drawingNumber() == null) {
-                    continue;
-                }
-
-                UpsertDrawingResult drawingResult = upsertDrawing(drawingValues, overwrite);
-                if (drawingResult.created()) {
-                    nodesCreated++;
-                }
-
-                if (linkPartRevisionToDrawing(childResult.revision(), drawingResult.drawing())) {
+            if (relation.relType() == RelationshipType.SUPPLIED_BY
+                    && "Part".equals(fromNode.label())
+                    && "Supplier".equals(toNode.label())) {
+                Double unitCost = resolveRelationDoubleProperty(row, relation, "unit_cost");
+                Map<String, Object> extendedProperties = resolveRelationProperties(row, relation, "unit_cost");
+                if (upsertPartSupplier(fromNode.partRevision(), toNode.supplier(), unitCost, extendedProperties, overwrite)) {
                     relationshipsCreated++;
                 }
                 continue;
             }
 
-            if (isSuppliedBySupplierRelation(relation)) {
-                String companyName = resolveSupplierName(row, relation, rootContext);
-                if (companyName == null) {
-                    continue;
-                }
-
-                UpsertSupplierResult supplierResult = upsertSupplier(companyName);
-                if (supplierResult.created()) {
-                    nodesCreated++;
-                }
-
-                Double unitCost = resolveUnitCost(row, relation);
-                Map<String, Object> extendedProperties = resolveRelationExtendedProperties(row, relation, "unit_cost");
-                if (upsertPartSupplier(childResult.revision(), supplierResult.supplier(), unitCost, extendedProperties, overwrite)) {
+            if (relation.relType() == RelationshipType.DEFINED_BY
+                    && "Part".equals(fromNode.label())
+                    && "Drawing".equals(toNode.label())) {
+                if (linkPartRevisionToDrawing(fromNode.partRevision(), toNode.drawing())) {
                     relationshipsCreated++;
                 }
                 continue;
             }
 
-            if (isHasItemProjectRelation(relation)) {
-                ProjectRowValues projectValues = resolveProjectValues(row, relation, rootContext, sourceFile);
-                if (projectValues == null) {
-                    continue;
-                }
-
-                UpsertProjectResult projectResult = upsertProject(projectValues, requestedBy);
-                if (projectResult.created()) {
-                    nodesCreated++;
-                }
-
-                if (linkProjectPart(projectResult.project(), childResult.part())) {
+            if (relation.relType() == RelationshipType.HAS_ITEM
+                    && "Project".equals(fromNode.label())
+                    && "Part".equals(toNode.label())) {
+                if (linkProjectPart(fromNode.project(), toNode.part())) {
                     relationshipsCreated++;
                 }
             }
@@ -256,148 +224,148 @@ public class SynthesisExecutionService {
         return new RowProcessResult(nodesCreated, relationshipsCreated);
     }
 
-    private boolean isConsistsOfPartRelation(RelationMappingDto relation) {
-        return relation.relType() == RelationshipType.CONSISTS_OF && "Part".equals(relation.targetLabel());
-    }
-
-    private boolean isSuppliedBySupplierRelation(RelationMappingDto relation) {
-        return relation.relType() == RelationshipType.SUPPLIED_BY && "Supplier".equals(relation.targetLabel());
-    }
-
-    private boolean isDefinedByDrawingRelation(RelationMappingDto relation) {
-        return relation.relType() == RelationshipType.DEFINED_BY && "Drawing".equals(relation.targetLabel());
-    }
-
-    private boolean isHasItemProjectRelation(RelationMappingDto relation) {
-        return relation.relType() == RelationshipType.HAS_ITEM && "Project".equals(relation.targetLabel());
-    }
-
-    private PartRowValues resolveChildPartValues(Map<String, Object> row, List<PropertyMappingDto> properties) {
-        String partNumber = null;
-        String name = null;
-        String category = null;
-        String material = null;
-        String unit = null;
-        String description = null;
-
-        for (PropertyMappingDto property : properties) {
-            String targetProperty = property.targetProperty();
-            if (targetProperty == null || targetProperty.isBlank()) {
-                continue;
+    private ResolvedNode resolveNode(
+            Map<String, Object> row,
+            NodeMappingDto node,
+            Map<String, String> rootContext,
+            boolean overwrite,
+            File sourceFile,
+            UUID jobId,
+            UUID requestedBy
+    ) {
+        if ("Part".equals(node.label())) {
+            PartNodeValues values = resolvePartNodeValues(row, node, rootContext);
+            if (values.partNumber() == null) {
+                return null;
             }
-
-            String value = resolveMappedText(row, property.sourceColumn(), property.dataType());
-            if (value == null) {
-                continue;
-            }
-
-            switch (targetProperty) {
-                case "part_number" -> partNumber = value;
-                case "name" -> name = value;
-                case "category" -> category = value;
-                case "material" -> material = value;
-                case "unit" -> unit = value;
-                case "description" -> description = value;
-                default -> {
-                }
-            }
+            UpsertPartResult result = upsertPart(values, overwrite, jobId, requestedBy);
+            return ResolvedNode.part(result.part(), result.revision(), result.created());
         }
 
-        return new PartRowValues(partNumber, name, category, material, unit, description);
+        if ("Supplier".equals(node.label())) {
+            SupplierNodeValues values = resolveSupplierNodeValues(row, node, rootContext);
+            if (values.companyName() == null) {
+                return null;
+            }
+            UpsertSupplierResult result = upsertSupplier(values, overwrite);
+            return ResolvedNode.supplier(result.supplier(), result.created());
+        }
+
+        if ("Drawing".equals(node.label())) {
+            DrawingNodeValues values = resolveDrawingNodeValues(row, node, rootContext);
+            if (values.drawingNumber() == null) {
+                return null;
+            }
+            UpsertDrawingResult result = upsertDrawing(values, overwrite);
+            return ResolvedNode.drawing(result.drawing(), result.created());
+        }
+
+        if ("Project".equals(node.label())) {
+            ProjectNodeValues values = resolveProjectNodeValues(row, node, rootContext, sourceFile);
+            if (values == null || values.name() == null) {
+                return null;
+            }
+            UpsertProjectResult result = upsertProject(values, overwrite, requestedBy);
+            return ResolvedNode.project(result.project(), result.created());
+        }
+
+        return null;
     }
 
-    private String resolveParentPartNumber(
+    private PartNodeValues resolvePartNodeValues(
             Map<String, Object> row,
-            RelationMappingDto relation,
+            NodeMappingDto node,
             Map<String, String> rootContext
     ) {
-        String value = resolveMappedText(row, relation.nodeColumns().get("part_number"), PropertyDataType.STRING);
-        if (value != null) {
-            return value;
+        String partNumber = resolveNodeTextProperty(row, node, "part_number");
+        if (partNumber == null) {
+            partNumber = resolveRootContextValue(rootContext, "Part");
         }
 
-        if (!relation.nodeColumns().isEmpty()) {
-            return null;
-        }
-
-        if (rootContext == null || rootContext.isEmpty()) {
-            return null;
-        }
-
-        return normalizeText(rootContext.get("Part"));
+        return new PartNodeValues(
+                partNumber,
+                resolveNodeTextProperty(row, node, "name"),
+                resolveNodeTextProperty(row, node, "category"),
+                resolveNodeTextProperty(row, node, "material"),
+                resolveNodeTextProperty(row, node, "unit"),
+                resolveNodeTextProperty(row, node, "description"),
+                resolveNodeBooleanProperty(row, node, "is_phantom"),
+                parseLifecycleState(resolveNodeTextProperty(row, node, "lifecycle_state")),
+                resolveNodeIntegerProperty(row, node, "lead_time_days"),
+                resolveNodeExtendedProperties(row, node)
+        );
     }
 
-    private String resolveSupplierName(
+    private PartLifecycleState parseLifecycleState(String rawLifecycleState) {
+        if (rawLifecycleState == null || rawLifecycleState.isBlank()) {
+            return null;
+        }
+        try {
+            return PartLifecycleState.valueOf(rawLifecycleState.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "유효하지 않은 lifecycle_state입니다: " + rawLifecycleState
+            );
+        }
+    }
+
+    private SupplierNodeValues resolveSupplierNodeValues(
             Map<String, Object> row,
-            RelationMappingDto relation,
+            NodeMappingDto node,
             Map<String, String> rootContext
     ) {
-        String value = resolveMappedText(row, relation.nodeColumns().get("company_name"), PropertyDataType.STRING);
-        if (value != null) {
-            return value;
+        String companyName = resolveNodeTextProperty(row, node, "company_name");
+        if (companyName == null) {
+            companyName = resolveRootContextValue(rootContext, "Supplier");
         }
 
-        if (!relation.nodeColumns().isEmpty()) {
-            return null;
-        }
-
-        if (rootContext == null || rootContext.isEmpty()) {
-            return null;
-        }
-
-        return normalizeText(rootContext.get("Supplier"));
+        return new SupplierNodeValues(
+                companyName,
+                resolveNodeTextProperty(row, node, "code"),
+                resolveNodeTextProperty(row, node, "country"),
+                resolveNodeTextProperty(row, node, "contact_info"),
+                resolveNodeExtendedProperties(row, node)
+        );
     }
 
-    private DrawingRowValues resolveDrawingValues(
+    private DrawingNodeValues resolveDrawingNodeValues(
             Map<String, Object> row,
-            RelationMappingDto relation,
+            NodeMappingDto node,
             Map<String, String> rootContext
     ) {
-        String drawingNumber = resolveMappedText(row, relation.nodeColumns().get("drawing_number"), PropertyDataType.STRING);
-        String name = resolveMappedText(row, relation.nodeColumns().get("name"), PropertyDataType.STRING);
-        String version = resolveMappedText(row, relation.nodeColumns().get("version"), PropertyDataType.STRING);
-        DrawingStatus status = resolveDrawingStatus(row, relation.nodeColumns().get("status"));
-
-        if (drawingNumber != null) {
-            return new DrawingRowValues(drawingNumber, name, version, status);
+        String drawingNumber = resolveNodeTextProperty(row, node, "drawing_number");
+        if (drawingNumber == null) {
+            drawingNumber = resolveRootContextValue(rootContext, "Drawing");
+        }
+        String name = resolveNodeTextProperty(row, node, "name");
+        if (name == null) {
+            name = drawingNumber;
         }
 
-        if (!relation.nodeColumns().isEmpty()) {
-            return null;
-        }
-
-        if (rootContext == null || rootContext.isEmpty()) {
-            return null;
-        }
-
-        String rootDrawingNumber = normalizeText(rootContext.get("Drawing"));
-        if (rootDrawingNumber == null) {
-            return null;
-        }
-
-        return new DrawingRowValues(rootDrawingNumber, rootDrawingNumber, null, null);
+        return new DrawingNodeValues(
+                drawingNumber,
+                name,
+                resolveNodeTextProperty(row, node, "version"),
+                resolveDrawingStatus(resolveNodeTextProperty(row, node, "status")),
+                resolveNodeTextProperty(row, node, "file_path")
+        );
     }
 
-    private ProjectRowValues resolveProjectValues(
+    private ProjectNodeValues resolveProjectNodeValues(
             Map<String, Object> row,
-            RelationMappingDto relation,
+            NodeMappingDto node,
             Map<String, String> rootContext,
             File sourceFile
     ) {
-        String name = resolveMappedText(row, relation.nodeColumns().get("name"), PropertyDataType.STRING);
+        String name = resolveNodeTextProperty(row, node, "name");
         if (name != null) {
-            return new ProjectRowValues(name, null);
+            return new ProjectNodeValues(name, null, null);
         }
 
-        if (!relation.nodeColumns().isEmpty()) {
-            return null;
-        }
-
-        if (rootContext != null && !rootContext.isEmpty()) {
-            String rootProjectName = normalizeText(rootContext.get("Project"));
-            if (rootProjectName != null) {
-                return new ProjectRowValues(rootProjectName, null);
-            }
+        String rootProjectName = resolveRootContextValue(rootContext, "Project");
+        if (rootProjectName != null) {
+            return new ProjectNodeValues(rootProjectName, null, null);
         }
 
         if (sourceFile == null || !"project".equals(sourceFile.getOwnerType()) || sourceFile.getOwnerId() == null) {
@@ -409,93 +377,110 @@ public class SynthesisExecutionService {
             return null;
         }
 
-        return new ProjectRowValues(ownerProject.getName(), ownerProject);
+        return new ProjectNodeValues(ownerProject.getName(), ownerProject.getDescription(), ownerProject);
     }
 
-    private BigDecimal resolveQuantity(Map<String, Object> row, RelationMappingDto relation) {
-        String column = relation.relColumns().get("quantity");
-        if (column == null || column.isBlank()) {
-            return BigDecimal.ONE;
+    private Map<String, Object> resolveNodeExtendedProperties(
+            Map<String, Object> row,
+            NodeMappingDto node
+    ) {
+        Map<String, Object> properties = new LinkedHashMap<>();
+        for (ExtendedPropertyMappingDto property : node.extendedProperties()) {
+            if (property.generatedKey() == null || property.generatedKey().isBlank()) {
+                continue;
+            }
+            Object value = castValue(row.get(property.sourceColumn()), property.dataType());
+            if (value == null) {
+                continue;
+            }
+            properties.put(property.generatedKey(), value);
         }
+        return properties;
+    }
 
-        PropertyDataType dataType = relation.relColumnTypes().getOrDefault("quantity", PropertyDataType.INTEGER);
-        Object value = castValue(row.get(column), dataType);
-        BigDecimal quantity = toBigDecimal(value);
-        if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
-            return BigDecimal.ONE;
+    private BigDecimal resolveRelationDecimalProperty(
+            Map<String, Object> row,
+            RelationMappingDto relation,
+            String propertyName,
+            BigDecimal defaultValue
+    ) {
+        String column = relation.propertyColumns().get(propertyName);
+        if (column == null || column.isBlank()) {
+            return defaultValue;
         }
-        return quantity;
+        PropertyDataType dataType = relation.propertyColumnTypes().getOrDefault(propertyName, PropertyDataType.INTEGER);
+        BigDecimal value = toBigDecimal(castValue(row.get(column), dataType));
+        if (value == null || value.compareTo(BigDecimal.ZERO) <= 0) {
+            return defaultValue;
+        }
+        return value;
     }
 
     private String resolveBomLineNumber(Map<String, Object> row, RelationMappingDto relation) {
         for (String propertyName : List.of("line_number", "find_number", "sequence")) {
-            String column = relation.relColumns().get(propertyName);
+            String column = relation.propertyColumns().get(propertyName);
             if (column == null || column.isBlank()) {
                 continue;
             }
-            PropertyDataType dataType = relation.relColumnTypes().getOrDefault(propertyName, PropertyDataType.STRING);
-            Object value = castValue(row.get(column), dataType);
-            String normalized = normalizeText(value);
-            if (normalized != null) {
-                return normalized;
+            PropertyDataType dataType = relation.propertyColumnTypes().getOrDefault(propertyName, PropertyDataType.STRING);
+            String value = normalizeText(castValue(row.get(column), dataType));
+            if (value != null) {
+                return value;
             }
         }
         return null;
     }
 
-    private Double resolveUnitCost(Map<String, Object> row, RelationMappingDto relation) {
-        String column = relation.relColumns().get("unit_cost");
+    private Double resolveRelationDoubleProperty(
+            Map<String, Object> row,
+            RelationMappingDto relation,
+            String propertyName
+    ) {
+        String column = relation.propertyColumns().get(propertyName);
         if (column == null || column.isBlank()) {
             return null;
         }
-
-        PropertyDataType dataType = relation.relColumnTypes().getOrDefault("unit_cost", PropertyDataType.FLOAT);
-        Object value = castValue(row.get(column), dataType);
-        return toDouble(value);
+        PropertyDataType dataType = relation.propertyColumnTypes().getOrDefault(propertyName, PropertyDataType.FLOAT);
+        return toDouble(castValue(row.get(column), dataType));
     }
 
-    private DrawingStatus resolveDrawingStatus(Map<String, Object> row, String columnName) {
-        String raw = resolveMappedText(row, columnName, PropertyDataType.STRING);
-        if (raw == null) {
-            return null;
-        }
-
-        String normalized = raw.trim()
-                .replace('-', '_')
-                .replace(' ', '_')
-                .toUpperCase(Locale.ROOT);
-        try {
-            return DrawingStatus.valueOf(normalized);
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
-    }
-
-    private Map<String, Object> resolveRelationExtendedProperties(
+    private Map<String, Object> resolveRelationProperties(
             Map<String, Object> row,
             RelationMappingDto relation,
             String... ignoredPropertyNames
     ) {
         Map<String, Object> properties = new LinkedHashMap<>();
         Set<String> ignored = new HashSet<>(List.of(ignoredPropertyNames));
-        for (Map.Entry<String, String> entry : relation.relColumns().entrySet()) {
+
+        for (Map.Entry<String, String> entry : relation.propertyColumns().entrySet()) {
             String propertyName = entry.getKey();
             if (propertyName == null || propertyName.isBlank() || ignored.contains(propertyName)) {
                 continue;
             }
 
-            PropertyDataType dataType = relation.relColumnTypes().getOrDefault(propertyName, PropertyDataType.STRING);
+            PropertyDataType dataType = relation.propertyColumnTypes().getOrDefault(propertyName, PropertyDataType.STRING);
             Object value = castValue(row.get(entry.getValue()), dataType);
             if (value == null) {
                 continue;
             }
-
             properties.put(propertyName, value);
         }
+
+        for (ExtendedPropertyMappingDto property : relation.extendedProperties()) {
+            if (property.generatedKey() == null || property.generatedKey().isBlank()) {
+                continue;
+            }
+            Object value = castValue(row.get(property.sourceColumn()), property.dataType());
+            if (value == null) {
+                continue;
+            }
+            properties.put(property.generatedKey(), value);
+        }
+
         return properties;
     }
 
-    private UpsertPartResult upsertPart(PartRowValues values, boolean overwrite, UUID jobId, UUID requestedBy) {
+    private UpsertPartResult upsertPart(PartNodeValues values, boolean overwrite, UUID jobId, UUID requestedBy) {
         Part existing = partRepository.findByPartNumber(values.partNumber()).orElse(null);
         if (existing != null) {
             PartRevision revision = findOrCreateWorkingRevision(existing, values.name(), requestedBy);
@@ -520,6 +505,29 @@ public class SynthesisExecutionService {
                 revision.changeDescription(values.description());
                 changed = true;
             }
+            if (shouldApplyObject(values.phantom(), revision.getPhantom(), overwrite)) {
+                applyPhantom(revision, values.phantom());
+                changed = true;
+            }
+            if (shouldApplyObject(values.lifecycleState(), existing.getLifecycleState(), overwrite)) {
+                applyLifecycleState(existing, values.lifecycleState());
+                changed = true;
+            }
+            if (shouldApplyObject(values.leadTimeDays(), revision.getLeadTimeDays(), overwrite)) {
+                revision.changeLeadTimeDays(values.leadTimeDays());
+                changed = true;
+            }
+
+            MergedPropertiesResult mergedProperties = mergeExtendedProperties(
+                    revision.getExtendedProperties(),
+                    values.extendedProperties(),
+                    overwrite
+            );
+            if (mergedProperties.changed()) {
+                revision.changeExtendedProperties(mergedProperties.serialized());
+                changed = true;
+            }
+
             if (changed) {
                 recordSynthesisImport(revision, jobId, requestedBy);
                 partRevisionRepository.save(revision);
@@ -528,6 +536,9 @@ public class SynthesisExecutionService {
         }
 
         Part created = Part.create(values.partNumber());
+        if (values.lifecycleState() != null) {
+            created.changeLifecycleState(values.lifecycleState());
+        }
         partRepository.save(created);
         PartRevision revision = PartRevision.createInitialDraft(created, values.name(), requestedBy);
         if (values.category() != null) {
@@ -541,6 +552,15 @@ public class SynthesisExecutionService {
         }
         if (values.description() != null) {
             revision.changeDescription(values.description());
+        }
+        if (values.phantom() != null) {
+            applyPhantom(revision, values.phantom());
+        }
+        if (values.leadTimeDays() != null) {
+            revision.changeLeadTimeDays(values.leadTimeDays());
+        }
+        if (!values.extendedProperties().isEmpty()) {
+            revision.changeExtendedProperties(serializeProperties(values.extendedProperties()));
         }
         recordSynthesisImport(revision, jobId, requestedBy);
         partRevisionRepository.save(revision);
@@ -581,7 +601,47 @@ public class SynthesisExecutionService {
         );
     }
 
-    private UpsertDrawingResult upsertDrawing(DrawingRowValues values, boolean overwrite) {
+    private UpsertSupplierResult upsertSupplier(SupplierNodeValues values, boolean overwrite) {
+        Supplier existing = supplierRepository.findByCompanyName(values.companyName()).orElse(null);
+        if (existing != null) {
+            boolean changed = false;
+            if (shouldApplyString(values.code(), existing.getCode(), overwrite)) {
+                existing.changeCode(values.code());
+                changed = true;
+            }
+            if (shouldApplyString(values.country(), existing.getCountry(), overwrite)) {
+                existing.changeCountry(values.country());
+                changed = true;
+            }
+            if (shouldApplyString(values.contactInfo(), existing.getContactInfo(), overwrite)) {
+                existing.changeContactInfo(values.contactInfo());
+                changed = true;
+            }
+
+            MergedPropertiesResult mergedProperties = mergeExtendedProperties(
+                    existing.getExtendedProperties(),
+                    values.extendedProperties(),
+                    overwrite
+            );
+            if (mergedProperties.changed()) {
+                existing.changeExtendedProperties(mergedProperties.serialized());
+                changed = true;
+            }
+            return new UpsertSupplierResult(existing, false, changed);
+        }
+
+        Supplier created = Supplier.create(
+                values.companyName(),
+                values.code(),
+                values.country(),
+                values.contactInfo(),
+                serializeProperties(values.extendedProperties())
+        );
+        supplierRepository.save(created);
+        return new UpsertSupplierResult(created, true, true);
+    }
+
+    private UpsertDrawingResult upsertDrawing(DrawingNodeValues values, boolean overwrite) {
         Drawing existing = drawingRepository.findByDrawingNumberAndDeletedAtIsNull(values.drawingNumber()).orElse(null);
         if (existing != null) {
             if (shouldApplyString(values.name(), existing.getName(), overwrite)) {
@@ -593,49 +653,49 @@ public class SynthesisExecutionService {
             if (shouldApplyDrawingStatus(values.status(), existing.getStatus(), overwrite)) {
                 existing.changeStatus(values.status());
             }
+            if (shouldApplyString(values.originalFileKey(), existing.getOriginalFileKey(), overwrite)) {
+                existing.changeOriginalFileKey(values.originalFileKey());
+            }
             return new UpsertDrawingResult(existing, false);
         }
 
-        String drawingName = values.name() != null ? values.name() : values.drawingNumber();
-        Drawing created = Drawing.create(values.drawingNumber(), drawingName);
+        Drawing created = Drawing.create(values.drawingNumber(), values.name());
         if (values.version() != null) {
             created.changeVersion(values.version());
         }
         if (values.status() != null) {
             created.changeStatus(values.status());
         }
+        if (values.originalFileKey() != null) {
+            created.changeOriginalFileKey(values.originalFileKey());
+        }
         drawingRepository.save(created);
         return new UpsertDrawingResult(created, true);
     }
 
-    private boolean shouldApplyString(String incoming, String current, boolean overwrite) {
-        if (incoming == null) {
-            return false;
+    private UpsertProjectResult upsertProject(ProjectNodeValues values, boolean overwrite, UUID requestedBy) {
+        if (values.existingProject() != null) {
+            return new UpsertProjectResult(values.existingProject(), false);
         }
-        if (!overwrite && current != null && !current.isBlank()) {
-            return false;
+
+        Project existing = projectRepository.findByNameAndDeletedFalse(values.name()).orElse(null);
+        if (existing != null) {
+            if (shouldApplyString(values.description(), existing.getDescription(), overwrite)) {
+                existing.changeDescription(values.description(), requestedBy);
+            }
+            return new UpsertProjectResult(existing, false);
         }
-        return !incoming.equals(current);
+
+        Project created = Project.create(values.name(), values.description(), requestedBy);
+        projectRepository.save(created);
+        return new UpsertProjectResult(created, true);
     }
 
-    private boolean shouldApplyDrawingStatus(DrawingStatus incoming, DrawingStatus current, boolean overwrite) {
-        if (incoming == null) {
-            return false;
+    private UUID resolveRequestedBy(SynthesisJob job) {
+        if (job.getBatch() == null) {
+            return null;
         }
-        if (!overwrite && current != null) {
-            return false;
-        }
-        return incoming != current;
-    }
-
-    private boolean shouldApplyDouble(Double incoming, Double current, boolean overwrite) {
-        if (incoming == null) {
-            return false;
-        }
-        if (!overwrite && current != null) {
-            return false;
-        }
-        return !incoming.equals(current);
+        return job.getBatch().getRequestedBy();
     }
 
     private boolean upsertEngineeringBomItem(
@@ -665,7 +725,6 @@ public class SynthesisExecutionService {
                 existing.changeQuantity(quantity);
                 changed = true;
             }
-
             MergedPropertiesResult mergedProperties = mergeExtendedProperties(
                     existing.getExtendedProperties(),
                     extendedProperties,
@@ -735,17 +794,6 @@ public class SynthesisExecutionService {
         }
     }
 
-    private UpsertSupplierResult upsertSupplier(String companyName) {
-        Supplier existing = supplierRepository.findByCompanyName(companyName).orElse(null);
-        if (existing != null) {
-            return new UpsertSupplierResult(existing, false);
-        }
-
-        Supplier created = Supplier.create(companyName, null, null, null, "{}");
-        supplierRepository.save(created);
-        return new UpsertSupplierResult(created, true);
-    }
-
     private boolean upsertPartSupplier(
             PartRevision partRevision,
             Supplier supplier,
@@ -762,7 +810,6 @@ public class SynthesisExecutionService {
                 existing.changeUnitCost(unitCost);
                 changed = true;
             }
-
             MergedPropertiesResult mergedProperties = mergeExtendedProperties(
                     existing.getExtendedProperties(),
                     extendedProperties,
@@ -784,28 +831,6 @@ public class SynthesisExecutionService {
         return true;
     }
 
-    private UpsertProjectResult upsertProject(ProjectRowValues values, UUID requestedBy) {
-        if (values.existingProject() != null) {
-            return new UpsertProjectResult(values.existingProject(), false);
-        }
-
-        Project existing = projectRepository.findByNameAndDeletedFalse(values.name()).orElse(null);
-        if (existing != null) {
-            return new UpsertProjectResult(existing, false);
-        }
-
-        Project created = Project.create(values.name(), null, requestedBy);
-        projectRepository.save(created);
-        return new UpsertProjectResult(created, true);
-    }
-
-    private UUID resolveRequestedBy(SynthesisJob job) {
-        if (job.getBatch() == null) {
-            return null;
-        }
-        return job.getBatch().getRequestedBy();
-    }
-
     private boolean linkPartRevisionToDrawing(PartRevision partRevision, Drawing drawing) {
         if (partRevision == null) {
             return false;
@@ -813,7 +838,6 @@ public class SynthesisExecutionService {
         if (partRevision.getId().equals(drawing.getPartRevisionId())) {
             return false;
         }
-
         drawing.assignPartRevision(partRevision.getId());
         return true;
     }
@@ -823,7 +847,6 @@ public class SynthesisExecutionService {
         if (existing != null) {
             return false;
         }
-
         projectPartRepository.save(project.linkPart(part.getId()));
         return true;
     }
@@ -832,12 +855,118 @@ public class SynthesisExecutionService {
         if (rawMapping == null || rawMapping.isBlank()) {
             return new MappingResultDto(List.of(), List.of());
         }
-
         try {
             return objectMapper.readValue(rawMapping, MappingResultDto.class);
         } catch (JacksonException ex) {
             return new MappingResultDto(List.of(), List.of());
         }
+    }
+
+    private String resolveNodeTextProperty(Map<String, Object> row, NodeMappingDto node, String propertyName) {
+        String column = node.propertyColumns().get(propertyName);
+        if (column == null || column.isBlank()) {
+            return null;
+        }
+        return normalizeText(castValue(row.get(column), PropertyDataType.STRING));
+    }
+
+    private Integer resolveNodeIntegerProperty(Map<String, Object> row, NodeMappingDto node, String propertyName) {
+        String column = node.propertyColumns().get(propertyName);
+        if (column == null || column.isBlank()) {
+            return null;
+        }
+        return toInteger(castValue(row.get(column), PropertyDataType.INTEGER));
+    }
+
+    private Boolean resolveNodeBooleanProperty(Map<String, Object> row, NodeMappingDto node, String propertyName) {
+        String column = node.propertyColumns().get(propertyName);
+        if (column == null || column.isBlank()) {
+            return null;
+        }
+        Object value = castValue(row.get(column), PropertyDataType.BOOLEAN);
+        return value instanceof Boolean bool ? bool : null;
+    }
+
+    private DrawingStatus resolveDrawingStatus(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String normalized = raw.trim()
+                .replace('-', '_')
+                .replace(' ', '_')
+                .toUpperCase(Locale.ROOT);
+        try {
+            return DrawingStatus.valueOf(normalized);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    private String resolveRootContextValue(Map<String, String> rootContext, String label) {
+        if (rootContext == null || rootContext.isEmpty()) {
+            return null;
+        }
+        return normalizeText(rootContext.get(label));
+    }
+
+    private void applyPhantom(PartRevision revision, Boolean phantom) {
+        if (phantom == null) {
+            revision.clearPhantomFlag();
+            return;
+        }
+        if (phantom) {
+            revision.markPhantom();
+            return;
+        }
+        revision.markReal();
+    }
+
+    private void applyLifecycleState(Part part, PartLifecycleState lifecycleState) {
+        if (lifecycleState == null) {
+            part.clearLifecycleState();
+            return;
+        }
+        part.changeLifecycleState(lifecycleState);
+    }
+
+    private boolean shouldApplyString(String incoming, String current, boolean overwrite) {
+        if (incoming == null) {
+            return false;
+        }
+        if (!overwrite && current != null && !current.isBlank()) {
+            return false;
+        }
+        return !incoming.equals(current);
+    }
+
+    private boolean shouldApplyObject(Object incoming, Object current, boolean overwrite) {
+        if (incoming == null) {
+            return false;
+        }
+        if (!overwrite && current != null) {
+            return false;
+        }
+        return !Objects.equals(incoming, current);
+    }
+
+    private boolean shouldApplyDrawingStatus(DrawingStatus incoming, DrawingStatus current, boolean overwrite) {
+        if (incoming == null) {
+            return false;
+        }
+        if (!overwrite && current != null) {
+            return false;
+        }
+        return incoming != current;
+    }
+
+    private boolean shouldApplyDouble(Double incoming, Double current, boolean overwrite) {
+        if (incoming == null) {
+            return false;
+        }
+        if (!overwrite && current != null) {
+            return false;
+        }
+        return !incoming.equals(current);
     }
 
     private String serializeErrors(List<String> errors) {
@@ -872,7 +1001,6 @@ public class SynthesisExecutionService {
             if (parsed == null || parsed.isEmpty()) {
                 return new LinkedHashMap<>();
             }
-
             Map<String, Object> normalized = new LinkedHashMap<>();
             for (Map.Entry<String, Object> entry : parsed.entrySet()) {
                 if (entry.getKey() == null || entry.getValue() == null) {
@@ -905,20 +1033,10 @@ public class SynthesisExecutionService {
             if (Objects.equals(currentValue, entry.getValue())) {
                 continue;
             }
-
             merged.put(entry.getKey(), entry.getValue());
             changed = true;
         }
-
         return new MergedPropertiesResult(serializeProperties(merged), changed);
-    }
-
-    private String resolveMappedText(Map<String, Object> row, String columnName, PropertyDataType dataType) {
-        if (columnName == null || columnName.isBlank()) {
-            return null;
-        }
-        Object value = castValue(row.get(columnName), dataType);
-        return normalizeText(value);
     }
 
     private String normalizeText(Object value) {
@@ -933,12 +1051,10 @@ public class SynthesisExecutionService {
         if (raw == null) {
             return null;
         }
-
         String text = raw.toString().trim();
         if (text.isBlank()) {
             return null;
         }
-
         PropertyDataType normalizedType = dataType == null ? PropertyDataType.STRING : dataType;
         return switch (normalizedType) {
             case INTEGER -> toInteger(text);
@@ -1025,7 +1141,8 @@ public class SynthesisExecutionService {
 
     private record UpsertSupplierResult(
             Supplier supplier,
-            boolean created
+            boolean created,
+            boolean changed
     ) {
     }
 
@@ -1041,26 +1158,41 @@ public class SynthesisExecutionService {
     ) {
     }
 
-    private record PartRowValues(
+    private record PartNodeValues(
             String partNumber,
             String name,
             String category,
             String material,
             String unit,
-            String description
+            String description,
+            Boolean phantom,
+            PartLifecycleState lifecycleState,
+            Integer leadTimeDays,
+            Map<String, Object> extendedProperties
     ) {
     }
 
-    private record DrawingRowValues(
+    private record SupplierNodeValues(
+            String companyName,
+            String code,
+            String country,
+            String contactInfo,
+            Map<String, Object> extendedProperties
+    ) {
+    }
+
+    private record DrawingNodeValues(
             String drawingNumber,
             String name,
             String version,
-            DrawingStatus status
+            DrawingStatus status,
+            String originalFileKey
     ) {
     }
 
-    private record ProjectRowValues(
+    private record ProjectNodeValues(
             String name,
+            String description,
             Project existingProject
     ) {
     }
@@ -1069,5 +1201,31 @@ public class SynthesisExecutionService {
             String serialized,
             boolean changed
     ) {
+    }
+
+    private record ResolvedNode(
+            String label,
+            Part part,
+            PartRevision partRevision,
+            Supplier supplier,
+            Drawing drawing,
+            Project project,
+            boolean created
+    ) {
+        private static ResolvedNode part(Part part, PartRevision partRevision, boolean created) {
+            return new ResolvedNode("Part", part, partRevision, null, null, null, created);
+        }
+
+        private static ResolvedNode supplier(Supplier supplier, boolean created) {
+            return new ResolvedNode("Supplier", null, null, supplier, null, null, created);
+        }
+
+        private static ResolvedNode drawing(Drawing drawing, boolean created) {
+            return new ResolvedNode("Drawing", null, null, null, drawing, null, created);
+        }
+
+        private static ResolvedNode project(Project project, boolean created) {
+            return new ResolvedNode("Project", null, null, null, null, project, created);
+        }
     }
 }

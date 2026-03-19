@@ -8,25 +8,33 @@ import com.fabbitinc.server.application.synthesis.query.condition.SynthesisListC
 import com.fabbitinc.server.application.synthesis.query.result.SynthesisBatchStatusResult;
 import com.fabbitinc.server.application.synthesis.query.result.SynthesisJobResult;
 import com.fabbitinc.server.application.synthesis.query.result.SynthesisListResult;
-import com.fabbitinc.server.application.synthesis.support.SynthesisResponseMapper;
 import com.fabbitinc.server.domain.synthesis.model.SynthesisBatch;
 import com.fabbitinc.server.domain.synthesis.model.SynthesisJob;
 import com.fabbitinc.server.domain.synthesis.repository.SynthesisBatchRepository;
 import com.fabbitinc.server.domain.synthesis.repository.SynthesisJobRepository;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class SynthesisQuery {
 
+    private static final TypeReference<List<String>> STRING_LIST_TYPE = new TypeReference<>() {
+    };
+    private static final TypeReference<List<BatchFailurePayload>> FAILURE_LIST_TYPE = new TypeReference<>() {
+    };
+
     private final SynthesisBatchRepository synthesisBatchRepository;
     private final SynthesisJobRepository synthesisJobRepository;
-    private final SynthesisResponseMapper synthesisResponseMapper;
+    private final ObjectMapper objectMapper;
 
     public SynthesisBatchStatusResult getBatch(SynthesisBatchCondition condition) {
         UUID batchId = condition.batchId();
@@ -54,13 +62,13 @@ public class SynthesisQuery {
                     job.getProcessedRows(),
                     job.getNodesCreated(),
                     job.getRelationshipsCreated(),
-                    synthesisResponseMapper.parseErrors(job.getErrors()).size(),
+                    parseErrors(job.getErrors()).size(),
                     job.getStartedAt(),
                     job.getCompletedAt()
             ));
         }
 
-        List<SynthesisBatchStatusResult.SynthesisBatchFailureResult> failed = synthesisResponseMapper.parseFailures(
+        List<SynthesisBatchStatusResult.SynthesisBatchFailureResult> failed = parseFailures(
                         batch.getFailedUploads()
                 ).stream()
                 .map(item -> new SynthesisBatchStatusResult.SynthesisBatchFailureResult(
@@ -127,10 +135,68 @@ public class SynthesisQuery {
                 job.getProcessedRows(),
                 job.getNodesCreated(),
                 job.getRelationshipsCreated(),
-                synthesisResponseMapper.parseErrors(job.getErrors()),
+                parseErrors(job.getErrors()),
                 job.getStartedAt(),
                 job.getCompletedAt(),
                 job.getCreatedAt()
         );
+    }
+
+    private List<String> parseErrors(String raw) {
+        if (raw == null || raw.isBlank() || "[]".equals(raw.trim())) {
+            return List.of();
+        }
+        try {
+            List<String> parsed = objectMapper.readValue(raw, STRING_LIST_TYPE);
+            if (parsed == null || parsed.isEmpty()) {
+                return List.of();
+            }
+            return parsed.stream()
+                    .filter(value -> value != null && !value.isBlank())
+                    .toList();
+        } catch (JacksonException ignored) {
+            // 기존 개행 문자열 포맷과의 호환을 위해 fallback 처리
+        }
+        String[] lines = raw.split("\\R");
+        List<String> errors = new ArrayList<>();
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (!trimmed.isEmpty()) {
+                errors.add(trimmed);
+            }
+        }
+        return errors;
+    }
+
+    private List<BatchFailurePayload> parseFailures(String raw) {
+        if (raw == null || raw.isBlank() || "[]".equals(raw.trim())) {
+            return List.of();
+        }
+        try {
+            List<BatchFailurePayload> parsed = objectMapper.readValue(raw, FAILURE_LIST_TYPE);
+            return parsed == null ? List.of() : parsed;
+        } catch (JacksonException ignored) {
+            // 기존 탭 구분 문자열 포맷과의 호환을 위해 fallback 처리
+        }
+        List<BatchFailurePayload> failures = new ArrayList<>();
+        String[] lines = raw.split("\\R");
+        for (String line : lines) {
+            String[] tokens = line.split("\\t", 2);
+            if (tokens.length != 2) {
+                continue;
+            }
+            try {
+                failures.add(new BatchFailurePayload(UUID.fromString(tokens[0]), tokens[1]));
+            } catch (Exception ignored) {
+                // 형식 불일치 항목은 무시
+            }
+        }
+        return failures;
+    }
+
+    private record BatchFailurePayload(
+            UUID fileId,
+            String reason
+    ) {
     }
 }
