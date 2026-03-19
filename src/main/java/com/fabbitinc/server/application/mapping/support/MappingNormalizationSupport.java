@@ -1,7 +1,9 @@
 package com.fabbitinc.server.application.mapping.support;
 
+import com.fabbitinc.server.application.mapping.support.ExtendedPropertySupport;
+import com.fabbitinc.server.application.mapping.model.ExtendedPropertyMappingDto;
 import com.fabbitinc.server.application.mapping.model.MappingResultDto;
-import com.fabbitinc.server.application.mapping.model.PropertyMappingDto;
+import com.fabbitinc.server.application.mapping.model.NodeMappingDto;
 import com.fabbitinc.server.application.mapping.model.RelationMappingDto;
 import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
@@ -18,170 +20,193 @@ import org.springframework.stereotype.Component;
 public class MappingNormalizationSupport {
 
     public MappingResultDto normalize(MappingResultDto raw) {
-        Set<String> validLabels = new LinkedHashSet<>();
-        Set<RelationshipType> validRelTypes = new LinkedHashSet<>();
-        Map<String, Set<String>> mergeKeysByLabel = new LinkedHashMap<>();
-        Map<RelationshipType, Map<String, PropertyDataType>> relPropertyTypes = new LinkedHashMap<>();
+        Map<String, ManufacturingOntology.NodeLabelDef> nodeDefsByLabel = new LinkedHashMap<>();
+        Map<RelationshipType, ManufacturingOntology.RelationshipTypeDef> relationDefsByType = new LinkedHashMap<>();
 
-        for (ManufacturingOntology.NodeLabelDef nodeLabel : ManufacturingOntology.ONTOLOGY.nodeLabels()) {
-            validLabels.add(nodeLabel.label());
-            mergeKeysByLabel.put(nodeLabel.label(), new LinkedHashSet<>(nodeLabel.mergeKeys()));
-        }
-        for (ManufacturingOntology.RelationshipTypeDef relationshipType : ManufacturingOntology.ONTOLOGY.relationshipTypes()) {
-            validRelTypes.add(relationshipType.relType());
-            Map<String, PropertyDataType> propertyTypeMap = new LinkedHashMap<>();
-            relationshipType.properties().forEach(property -> propertyTypeMap.put(property.name(), property.dataType()));
-            relPropertyTypes.put(relationshipType.relType(), propertyTypeMap);
-        }
+        ManufacturingOntology.ONTOLOGY.nodeLabels().forEach(node -> nodeDefsByLabel.put(node.label(), node));
+        ManufacturingOntology.ONTOLOGY.relationshipTypes().forEach(relation -> relationDefsByType.put(relation.relType(), relation));
 
-        Set<String> partProperties = new LinkedHashSet<>();
-        ManufacturingOntology.ONTOLOGY.nodeLabels().stream()
-                .filter(node -> "Part".equals(node.label()))
-                .findFirst()
-                .ifPresent(node -> node.properties().forEach(property -> partProperties.add(property.name())));
+        List<NodeMappingDto> normalizedNodes = normalizeNodes(raw.nodes(), nodeDefsByLabel);
+        Map<String, NodeMappingDto> nodesById = new LinkedHashMap<>();
+        normalizedNodes.forEach(node -> nodesById.put(node.nodeId(), node));
 
-        List<PropertyMappingDto> normalizedProperties = normalizeProperties(raw.propertyMappings(), partProperties);
-        List<RelationMappingDto> normalizedRelations = normalizeRelations(
-                raw.relationMappings(),
-                validRelTypes,
-                validLabels,
-                mergeKeysByLabel,
-                relPropertyTypes
-        );
-
-        return new MappingResultDto(normalizedProperties, normalizedRelations);
+        List<RelationMappingDto> normalizedRelations = normalizeRelations(raw.relations(), nodesById, relationDefsByType);
+        return new MappingResultDto(normalizedNodes, normalizedRelations);
     }
 
-    private List<PropertyMappingDto> normalizeProperties(
-            List<PropertyMappingDto> properties,
-            Set<String> partProperties
+    private List<NodeMappingDto> normalizeNodes(
+            List<NodeMappingDto> nodes,
+            Map<String, ManufacturingOntology.NodeLabelDef> nodeDefsByLabel
     ) {
-        List<PropertyMappingDto> verified = new ArrayList<>();
+        List<NodeMappingDto> normalized = new ArrayList<>();
+        Set<String> seenNodeIds = new LinkedHashSet<>();
 
-        for (PropertyMappingDto property : properties) {
-            String target = property.targetProperty() == null ? "" : property.targetProperty();
-            if (target.startsWith("_ext_")) {
-                String normalized = ExtendedPropertySupport.normalizeExtendedProperty(target);
-                verified.add(new PropertyMappingDto(
-                        property.sourceColumn(),
-                        normalized,
-                        property.suggestedExtendedProperty(),
-                        property.dataType(),
-                        property.confidence(),
-                        property.reason(),
-                        true
-                ));
+        for (NodeMappingDto node : nodes) {
+            String nodeId = trimToNull(node.nodeId());
+            String label = trimToNull(node.label());
+            if (nodeId == null || label == null || !seenNodeIds.add(nodeId)) {
                 continue;
             }
 
-            if (partProperties.contains(target)) {
-                verified.add(new PropertyMappingDto(
-                        property.sourceColumn(),
-                        target,
-                        property.suggestedExtendedProperty(),
-                        property.dataType(),
-                        property.confidence(),
-                        property.reason(),
-                        false
-                ));
+            ManufacturingOntology.NodeLabelDef nodeDef = nodeDefsByLabel.get(label);
+            if (nodeDef == null) {
                 continue;
             }
 
-            verified.add(new PropertyMappingDto(
-                    property.sourceColumn(),
-                    ExtendedPropertySupport.normalizeExtendedProperty("_ext_" + target),
-                    property.suggestedExtendedProperty(),
-                    property.dataType(),
-                    property.confidence(),
-                    property.reason(),
-                    true
+            Set<String> validProperties = new LinkedHashSet<>();
+            Map<String, PropertyDataType> propertyTypes = new LinkedHashMap<>();
+            nodeDef.properties().forEach(property -> {
+                validProperties.add(property.name());
+                propertyTypes.put(property.name(), property.dataType());
+            });
+
+            Map<String, String> propertyColumns = new LinkedHashMap<>();
+            List<ExtendedPropertyMappingDto> promoted = new ArrayList<>();
+            for (Map.Entry<String, String> entry : node.propertyColumns().entrySet()) {
+                String propertyName = trimToNull(entry.getKey());
+                if (propertyName == null) {
+                    continue;
+                }
+                if (validProperties.contains(propertyName) && !ExtendedPropertySupport.isExtendedProperty(propertyName)) {
+                    propertyColumns.putIfAbsent(propertyName, entry.getValue());
+                    continue;
+                }
+
+                promoted.add(new ExtendedPropertyMappingDto(
+                        entry.getValue(),
+                        propertyName,
+                        propertyTypes.getOrDefault(propertyName, PropertyDataType.STRING)
+                ));
+            }
+
+            normalized.add(new NodeMappingDto(
+                    nodeId,
+                    label,
+                    propertyColumns,
+                    normalizeExtendedProperties(promoted, node.extendedProperties()),
+                    node.confidence(),
+                    node.reason()
             ));
         }
 
-        List<PropertyMappingDto> deduplicated = new ArrayList<>();
-        Set<String> seen = new LinkedHashSet<>();
-        for (PropertyMappingDto property : verified) {
-            String key = (property.sourceColumn() == null ? "" : property.sourceColumn())
-                    + "::"
-                    + property.targetProperty();
-            if (seen.add(key)) {
-                deduplicated.add(property);
-            }
-        }
-        return deduplicated;
+        return normalized;
     }
 
     private List<RelationMappingDto> normalizeRelations(
             List<RelationMappingDto> relations,
-            Set<RelationshipType> validRelTypes,
-            Set<String> validLabels,
-            Map<String, Set<String>> mergeKeysByLabel,
-            Map<RelationshipType, Map<String, PropertyDataType>> relPropertyTypes
+            Map<String, NodeMappingDto> nodesById,
+            Map<RelationshipType, ManufacturingOntology.RelationshipTypeDef> relationDefsByType
     ) {
-        List<RelationMappingDto> verified = new ArrayList<>();
+        List<RelationMappingDto> normalized = new ArrayList<>();
 
         for (RelationMappingDto relation : relations) {
-            if (relation.relType() == null || relation.targetLabel() == null) {
-                continue;
-            }
-            if (!validRelTypes.contains(relation.relType())) {
-                continue;
-            }
-            if (!validLabels.contains(relation.targetLabel())) {
+            String fromNodeId = trimToNull(relation.fromNodeId());
+            String toNodeId = trimToNull(relation.toNodeId());
+            if (fromNodeId == null || toNodeId == null || relation.relType() == null) {
                 continue;
             }
 
-            Map<String, String> nodeColumns = relation.nodeColumns();
-            Map<String, String> relColumns = relation.relColumns();
-            boolean rootless = nodeColumns.isEmpty() && !relColumns.isEmpty();
-
-            RelationMappingDto fixedTypes = fixRelationColumnTypes(relation, relPropertyTypes);
-            if (rootless) {
-                verified.add(fixedTypes);
+            NodeMappingDto fromNode = nodesById.get(fromNodeId);
+            NodeMappingDto toNode = nodesById.get(toNodeId);
+            ManufacturingOntology.RelationshipTypeDef relationDef = relationDefsByType.get(relation.relType());
+            if (fromNode == null || toNode == null || relationDef == null) {
                 continue;
             }
 
-            if (nodeColumns.isEmpty()) {
+            if (!relationDef.fromLabel().equals(fromNode.label()) || !relationDef.toLabel().equals(toNode.label())) {
                 continue;
             }
 
-            Set<String> mergeKeys = mergeKeysByLabel.getOrDefault(relation.targetLabel(), Set.of());
-            boolean hasMergeKey = mergeKeys.stream().anyMatch(nodeColumns::containsKey);
-            if (!hasMergeKey) {
-                continue;
+            Map<String, PropertyDataType> validProperties = new LinkedHashMap<>();
+            relationDef.properties().forEach(property -> validProperties.put(property.name(), property.dataType()));
+
+            Map<String, String> propertyColumns = new LinkedHashMap<>();
+            Map<String, PropertyDataType> propertyColumnTypes = new LinkedHashMap<>();
+            List<ExtendedPropertyMappingDto> promoted = new ArrayList<>();
+            for (Map.Entry<String, String> entry : relation.propertyColumns().entrySet()) {
+                String propertyName = trimToNull(entry.getKey());
+                if (propertyName == null) {
+                    continue;
+                }
+                if (validProperties.containsKey(propertyName) && !ExtendedPropertySupport.isExtendedProperty(propertyName)) {
+                    propertyColumns.putIfAbsent(propertyName, entry.getValue());
+                    propertyColumnTypes.putIfAbsent(
+                            propertyName,
+                            relation.propertyColumnTypes().getOrDefault(propertyName, validProperties.get(propertyName))
+                    );
+                    continue;
+                }
+
+                promoted.add(new ExtendedPropertyMappingDto(
+                        entry.getValue(),
+                        propertyName,
+                        relation.propertyColumnTypes().getOrDefault(propertyName, PropertyDataType.STRING)
+                ));
             }
 
-            verified.add(fixedTypes);
+            normalized.add(new RelationMappingDto(
+                    fromNodeId,
+                    relation.relType(),
+                    toNodeId,
+                    propertyColumns,
+                    propertyColumnTypes,
+                    normalizeExtendedProperties(promoted, relation.extendedProperties()),
+                    relation.confidence(),
+                    relation.reason()
+            ));
         }
 
-        return verified;
+        return normalized;
     }
 
-    private RelationMappingDto fixRelationColumnTypes(
-            RelationMappingDto relation,
-            Map<RelationshipType, Map<String, PropertyDataType>> relPropertyTypes
+    private List<ExtendedPropertyMappingDto> normalizeExtendedProperties(
+            List<ExtendedPropertyMappingDto> promoted,
+            List<ExtendedPropertyMappingDto> explicit
     ) {
-        if (relation.relColumns().isEmpty()) {
-            return relation;
-        }
+        List<ExtendedPropertyMappingDto> normalized = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
 
-        Map<String, PropertyDataType> ontologyTypes = relPropertyTypes.getOrDefault(relation.relType(), Map.of());
-        Map<String, PropertyDataType> fixed = new LinkedHashMap<>(relation.relColumnTypes());
+        List<ExtendedPropertyMappingDto> combined = new ArrayList<>(promoted);
+        combined.addAll(explicit);
 
-        for (String relProperty : relation.relColumns().keySet()) {
-            if (!fixed.containsKey(relProperty) && ontologyTypes.containsKey(relProperty)) {
-                fixed.put(relProperty, ontologyTypes.get(relProperty));
+        for (ExtendedPropertyMappingDto property : combined) {
+            String sourceColumn = trimToNull(property.sourceColumn());
+            if (sourceColumn == null) {
+                continue;
             }
+
+            String generatedKey = resolveGeneratedKey(property.generatedKey(), sourceColumn);
+            String dedupeKey = sourceColumn + "::" + generatedKey;
+            if (!seen.add(dedupeKey)) {
+                continue;
+            }
+
+            normalized.add(new ExtendedPropertyMappingDto(
+                    sourceColumn,
+                    generatedKey,
+                    property.dataType()
+            ));
         }
 
-        return new RelationMappingDto(
-                relation.relType(),
-                relation.targetLabel(),
-                relation.nodeColumns(),
-                relation.relColumns(),
-                fixed,
-                relation.confidence(),
-                relation.reason()
-        );
+        return normalized;
+    }
+
+    private String resolveGeneratedKey(String rawKey, String sourceColumn) {
+        String candidate = trimToNull(rawKey);
+        if (candidate == null) {
+            candidate = sourceColumn;
+        }
+        if (!ExtendedPropertySupport.isExtendedProperty(candidate)) {
+            candidate = "_ext_" + candidate;
+        }
+        return ExtendedPropertySupport.normalizeExtendedProperty(candidate);
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isBlank() ? null : trimmed;
     }
 }

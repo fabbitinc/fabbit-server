@@ -3,25 +3,19 @@ package com.fabbitinc.server.application.mapping.service;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.file.port.StoragePort;
-import com.fabbitinc.server.application.mapping.model.MappingResultDto;
 import com.fabbitinc.server.application.mapping.service.input.CreateMappingInput;
 import com.fabbitinc.server.application.mapping.service.input.UpdateMappingInput;
 import com.fabbitinc.server.application.mapping.service.output.SavedMappingOutput;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
-import com.fabbitinc.server.application.ontology.support.ManufacturingOntology;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.mapping.model.MappingRecord;
 import com.fabbitinc.server.domain.mapping.model.MappingRevision;
-import com.fabbitinc.server.domain.mapping.model.MappingScope;
 import com.fabbitinc.server.domain.mapping.repository.MappingRecordRepository;
 import com.fabbitinc.server.domain.mapping.repository.MappingRevisionRepository;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -77,17 +71,13 @@ public class MappingService {
     }
 
     public SavedMappingOutput createMapping(CreateMappingInput input) {
-        ensureNameNotExists(input.name(), null);
+        ensureNameNotExists(input.name());
 
-        File file = getUploadedFileOrThrow(input.fileId());
-        SpreadsheetParserSupport.ParsedSheet parsed = loadHeadersAndRows(file, input.sheetName(), 0);
-        MappingScope scope = determineScope(input.mapping());
-
-        MappingRecord record = MappingRecord.create(input.name(), scope);
+        MappingRecord record = MappingRecord.create(input.name());
         MappingRevision revision = record.createRevision(
-                file.getId(),
+                input.fileId(),
                 input.sheetName(),
-                writeHeaders(parsed.headers()),
+                writeHeaders(input.originalHeaders()),
                 writeMapping(input.mapping())
         );
 
@@ -97,7 +87,7 @@ public class MappingService {
         return new SavedMappingOutput(record, revision);
     }
 
-    public SavedMappingOutput updateMapping(UUID mappingId, UpdateMappingInput input) {
+    public SavedMappingOutput updateMapping(java.util.UUID mappingId, UpdateMappingInput input) {
         MappingRecord record = mappingRecordRepository.findById(mappingId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "매핑을 찾을 수 없습니다"));
 
@@ -110,15 +100,10 @@ public class MappingService {
             record.rename(input.name());
         }
 
-        File file = getUploadedFileOrThrow(input.fileId());
-        SpreadsheetParserSupport.ParsedSheet parsed = loadHeadersAndRows(file, input.sheetName(), 0);
-
-        record.changeScope(determineScope(input.mapping()));
-
         MappingRevision revision = record.createRevision(
-                file.getId(),
+                input.fileId(),
                 input.sheetName(),
-                writeHeaders(parsed.headers()),
+                writeHeaders(input.originalHeaders()),
                 writeMapping(input.mapping())
         );
         mappingRevisionRepository.save(revision);
@@ -126,17 +111,25 @@ public class MappingService {
         return new SavedMappingOutput(record, revision);
     }
 
-    public void deactivateMapping(UUID mappingId) {
+    public void deactivateMapping(java.util.UUID mappingId) {
         MappingRecord record = mappingRecordRepository.findById(mappingId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "매핑을 찾을 수 없습니다"));
         record.deactivate();
     }
 
-    private void ensureNameNotExists(String name, UUID excludeId) {
+    private void ensureNameNotExists(String name) {
+        if (mappingRecordRepository.existsByName(name)) {
+            throw new AppException(
+                    ErrorCode.CONFLICT,
+                    "이미 동일한 이름의 매핑이 존재합니다: '" + name + "'"
+            );
+        }
+    }
+
+    private void ensureNameNotExists(String name, java.util.UUID excludeId) {
         boolean duplicated = excludeId == null
                 ? mappingRecordRepository.existsByName(name)
                 : mappingRecordRepository.existsByNameAndIdNot(name, excludeId);
-
         if (duplicated) {
             throw new AppException(
                     ErrorCode.CONFLICT,
@@ -145,30 +138,7 @@ public class MappingService {
         }
     }
 
-    private MappingScope determineScope(MappingResultDto mapping) {
-        if (mapping.relationMappings().isEmpty()) {
-            return MappingScope.PART_LIST;
-        }
-
-        Map<String, Set<String>> mergeKeysByLabel = ManufacturingOntology.ONTOLOGY.nodeLabels().stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        ManufacturingOntology.NodeLabelDef::label,
-                        nodeLabel -> new LinkedHashSet<>(nodeLabel.mergeKeys())
-                ));
-
-        for (var relation : mapping.relationMappings()) {
-            Set<String> requiredKeys = mergeKeysByLabel.getOrDefault(relation.targetLabel(), Set.of());
-            for (String mergeKey : requiredKeys) {
-                String value = relation.nodeColumns().get(mergeKey);
-                if (value == null || value.isBlank()) {
-                    return MappingScope.ROOT_BOM;
-                }
-            }
-        }
-        return MappingScope.FULL_BOM;
-    }
-
-    private String writeMapping(MappingResultDto mapping) {
+    private String writeMapping(Object mapping) {
         try {
             return objectMapper.writeValueAsString(mapping);
         } catch (JacksonException ex) {
@@ -176,7 +146,7 @@ public class MappingService {
         }
     }
 
-    private String writeHeaders(List<String> headers) {
+    private String writeHeaders(Object headers) {
         try {
             return objectMapper.writeValueAsString(headers);
         } catch (JacksonException ex) {

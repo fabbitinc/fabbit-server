@@ -34,7 +34,7 @@ public class MappingLlmGenerationSupport {
 
     private static final String SYSTEM_PROMPT_TEMPLATE = "classpath:prompts/mapping/system.st";
     private static final String USER_PROMPT_TEMPLATE = "classpath:prompts/mapping/user.st";
-    private static final int MAX_TOKENS = 2000;
+    private static final int MAX_TOKENS = 2500;
     private static final String GPT_5_MINI_MODEL = "openai/gpt-5-mini";
     private static final String MINIMAX_M2_5_MODEL = "minimax/minimax-m2.5";
     private static final String GROK_4_1_FAST_MODEL = "x-ai/grok-4.1-fast";
@@ -78,15 +78,7 @@ public class MappingLlmGenerationSupport {
             throw new IllegalStateException("llm content is empty");
         }
 
-        String compactJson = stripCodeFence(content);
-        JsonNode generatedJson = objectMapper.readTree(compactJson);
-        if (generatedJson.isArray()) {
-            if (generatedJson.size() == 1 && generatedJson.get(0).isObject()) {
-                generatedJson = generatedJson.get(0);
-            } else {
-                throw new IllegalStateException("llm response array format is invalid");
-            }
-        }
+        JsonNode generatedJson = objectMapper.readTree(stripCodeFence(content));
         if (!generatedJson.isObject()) {
             throw new IllegalStateException("llm response is not json object");
         }
@@ -167,6 +159,26 @@ public class MappingLlmGenerationSupport {
         return objectMapper.writeValueAsString(requestBody);
     }
 
+    String buildSystemPrompt() {
+        return readPromptTemplate(SYSTEM_PROMPT_TEMPLATE)
+                .replace("<ontology_text>", OntologyMappingPromptRenderer.render(ManufacturingOntology.ONTOLOGY));
+    }
+
+    String buildUserPrompt(List<String> headers, List<Map<String, Object>> sampleRows) throws JacksonException {
+        return readPromptTemplate(USER_PROMPT_TEMPLATE)
+                .replace("<headers_json>", formatCompactLikePythonJson(headers))
+                .replace("<sample_rows_json>", formatLikePythonJson(sampleRows));
+    }
+
+    private String readPromptTemplate(String resourceLocation) {
+        Resource resource = resourceLoader.getResource(resourceLocation);
+        try {
+            return StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
+        } catch (IOException ex) {
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "매핑 프롬프트를 읽을 수 없습니다");
+        }
+    }
+
     private String extractContent(JsonNode responseJson) {
         JsonNode choices = responseJson.path("choices");
         if (!choices.isArray() || choices.isEmpty()) {
@@ -218,31 +230,6 @@ public class MappingLlmGenerationSupport {
         return baseUrl;
     }
 
-    String buildSystemPrompt() {
-        return readPromptTemplate(SYSTEM_PROMPT_TEMPLATE)
-                .replace("<ontology_text>", toOntologyPromptText());
-    }
-
-    String buildUserPrompt(List<String> headers, List<Map<String, Object>> sampleRows)
-            throws JacksonException {
-        return readPromptTemplate(USER_PROMPT_TEMPLATE)
-                .replace("<headers_json>", formatCompactLikePythonJson(headers))
-                .replace("<sample_rows_json>", formatLikePythonJson(sampleRows));
-    }
-
-    private String toOntologyPromptText() {
-        return OntologyMappingPromptRenderer.render(ManufacturingOntology.ONTOLOGY);
-    }
-
-    private String readPromptTemplate(String resourceLocation) {
-        Resource resource = resourceLoader.getResource(resourceLocation);
-        try {
-            return StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
-        } catch (IOException ex) {
-            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "매핑 프롬프트를 읽을 수 없습니다");
-        }
-    }
-
     private String formatLikePythonJson(Object value) throws JacksonException {
         JsonNode node = objectMapper.valueToTree(value);
         return formatJsonNode(node, 0);
@@ -257,48 +244,36 @@ public class MappingLlmGenerationSupport {
         if (node == null || node.isNull() || node.isValueNode()) {
             return objectMapper.writeValueAsString(node);
         }
-
         if (node.isArray()) {
-            if (node.isEmpty()) {
-                return "[]";
-            }
-
-            String indent = " ".repeat(indentLevel);
-            String childIndent = " ".repeat(indentLevel + 2);
-            StringBuilder builder = new StringBuilder();
-            builder.append("[\n");
+            StringBuilder builder = new StringBuilder("[\n");
             for (int index = 0; index < node.size(); index++) {
-                builder.append(childIndent)
-                        .append(formatJsonNode(node.get(index), indentLevel + 2));
+                builder.append("  ".repeat(indentLevel + 1))
+                        .append(formatJsonNode(node.get(index), indentLevel + 1));
                 if (index < node.size() - 1) {
-                    builder.append(',');
+                    builder.append(",");
                 }
-                builder.append('\n');
+                builder.append("\n");
             }
-            builder.append(indent).append(']');
+            builder.append("  ".repeat(indentLevel)).append("]");
             return builder.toString();
         }
 
-        String indent = " ".repeat(indentLevel);
-        String childIndent = " ".repeat(indentLevel + 2);
-        StringBuilder builder = new StringBuilder();
-        builder.append("{\n");
+        StringBuilder builder = new StringBuilder("{\n");
         int index = 0;
-        int size = node.size();
         var fields = node.properties().iterator();
         while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
-            builder.append(childIndent)
-                    .append(objectMapper.writeValueAsString(entry.getKey()))
+            Map.Entry<String, JsonNode> field = fields.next();
+            builder.append("  ".repeat(indentLevel + 1))
+                    .append(objectMapper.writeValueAsString(field.getKey()))
                     .append(": ")
-                    .append(formatJsonNode(entry.getValue(), indentLevel + 2));
-            if (index < size - 1) {
-                builder.append(',');
+                    .append(formatJsonNode(field.getValue(), indentLevel + 1));
+            if (index < node.size() - 1) {
+                builder.append(",");
             }
-            builder.append('\n');
+            builder.append("\n");
             index++;
         }
-        builder.append(indent).append('}');
+        builder.append("  ".repeat(indentLevel)).append("}");
         return builder.toString();
     }
 
@@ -306,70 +281,51 @@ public class MappingLlmGenerationSupport {
         if (node == null || node.isNull() || node.isValueNode()) {
             return objectMapper.writeValueAsString(node);
         }
-
         if (node.isArray()) {
-            if (node.isEmpty()) {
-                return "[]";
-            }
-
-            StringBuilder builder = new StringBuilder();
-            builder.append('[');
+            StringBuilder builder = new StringBuilder("[");
             for (int index = 0; index < node.size(); index++) {
-                builder.append(formatCompactJsonNode(node.get(index)));
-                if (index < node.size() - 1) {
+                if (index > 0) {
                     builder.append(", ");
                 }
+                builder.append(formatCompactJsonNode(node.get(index)));
             }
-            builder.append(']');
+            builder.append("]");
             return builder.toString();
         }
 
-        StringBuilder builder = new StringBuilder();
-        builder.append('{');
+        StringBuilder builder = new StringBuilder("{");
         int index = 0;
-        int size = node.size();
         var fields = node.properties().iterator();
         while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
-            builder.append(objectMapper.writeValueAsString(entry.getKey()))
-                    .append(": ")
-                    .append(formatCompactJsonNode(entry.getValue()));
-            if (index < size - 1) {
+            Map.Entry<String, JsonNode> field = fields.next();
+            if (index > 0) {
                 builder.append(", ");
             }
+            builder.append(objectMapper.writeValueAsString(field.getKey()))
+                    .append(": ")
+                    .append(formatCompactJsonNode(field.getValue()));
             index++;
         }
-        builder.append('}');
+        builder.append("}");
         return builder.toString();
     }
 
-    private String stripCodeFence(String raw) {
-        String trimmed = raw == null ? "" : raw.trim();
-        if (!trimmed.startsWith("```")) {
-            return trimmed;
+    private String stripCodeFence(String content) {
+        String trimmed = content.trim();
+        if (trimmed.startsWith("```")) {
+            int firstLineEnd = trimmed.indexOf('\n');
+            if (firstLineEnd >= 0) {
+                trimmed = trimmed.substring(firstLineEnd + 1);
+            }
+            if (trimmed.endsWith("```")) {
+                trimmed = trimmed.substring(0, trimmed.length() - 3).trim();
+            }
         }
-
-        int firstNewline = trimmed.indexOf('\n');
-        if (firstNewline < 0) {
-            return trimmed;
-        }
-
-        String body = trimmed.substring(firstNewline + 1);
-        int lastFence = body.lastIndexOf("```");
-        if (lastFence >= 0) {
-            body = body.substring(0, lastFence);
-        }
-        return body.trim();
+        return trimmed;
     }
 
-    private int tokenOrZero(Integer value) {
-        return value == null || value < 0 ? 0 : value;
-    }
-
-    private record ModelConfig(
-            List<String> providers,
-            String reasoningEffort
-    ) {
+    private int tokenOrZero(int value) {
+        return Math.max(value, 0);
     }
 
     public record GenerationOutput(
@@ -377,6 +333,12 @@ public class MappingLlmGenerationSupport {
             String model,
             int inputTokens,
             int outputTokens
+    ) {
+    }
+
+    private record ModelConfig(
+            List<String> providers,
+            String reasoningEffort
     ) {
     }
 }

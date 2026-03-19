@@ -39,8 +39,10 @@ public class SynthesisBatch extends AbstractCreatedEntity implements AggregateRo
 
     public static final String CODE_SYNTHESIS_BATCH_MAPPING_REQUIRED = "SYNTHESIS_BATCH_MAPPING_REQUIRED";
     public static final String CODE_SYNTHESIS_BATCH_REQUESTED_BY_REQUIRED = "SYNTHESIS_BATCH_REQUESTED_BY_REQUIRED";
-    public static final String CODE_SYNTHESIS_BATCH_REQUESTED_COUNT_INVALID = "SYNTHESIS_BATCH_REQUESTED_COUNT_INVALID";
-    public static final String CODE_SYNTHESIS_BATCH_ACCEPTED_COUNT_INVALID = "SYNTHESIS_BATCH_ACCEPTED_COUNT_INVALID";
+    public static final String CODE_SYNTHESIS_BATCH_REQUESTED_COUNT_INVALID =
+            "SYNTHESIS_BATCH_REQUESTED_COUNT_INVALID";
+    public static final String CODE_SYNTHESIS_BATCH_ACCEPTED_COUNT_INVALID =
+            "SYNTHESIS_BATCH_ACCEPTED_COUNT_INVALID";
 
     @Column(name = "project_id")
     private UUID projectId;
@@ -84,13 +86,7 @@ public class SynthesisBatch extends AbstractCreatedEntity implements AggregateRo
     @OneToMany(mappedBy = "batch", fetch = FetchType.LAZY)
     private List<SynthesisJob> jobs = new ArrayList<>();
 
-    private SynthesisBatch(
-            UUID projectId,
-            UUID mappingId,
-            UUID requestedBy,
-            int requestedCount,
-            String failedUploads
-    ) {
+    private SynthesisBatch(UUID projectId, UUID mappingId, UUID requestedBy, int requestedCount, String failedUploads) {
         super(UuidV7Generator.next());
         this.projectId = projectId;
         this.mappingId = requireMappingId(mappingId);
@@ -143,19 +139,12 @@ public class SynthesisBatch extends AbstractCreatedEntity implements AggregateRo
 
     private int requireRequestedCount(int value) {
         if (value < 0) {
-            throw new DomainException(CODE_SYNTHESIS_BATCH_REQUESTED_COUNT_INVALID, "요청 건수는 0 이상이어야 합니다");
-        }
-        return value;
-    }
-
-    private int requireAcceptedCount(int acceptedCount, int requestedCount) {
-        if (acceptedCount < 0 || acceptedCount > requestedCount) {
             throw new DomainException(
-                    CODE_SYNTHESIS_BATCH_ACCEPTED_COUNT_INVALID,
-                    "수락 건수는 0 이상이며 요청 건수 이하여야 합니다"
+                    CODE_SYNTHESIS_BATCH_REQUESTED_COUNT_INVALID,
+                    "요청 건수는 0 이상이어야 합니다"
             );
         }
-        return acceptedCount;
+        return value;
     }
 
     private String normalizeFailedUploads(String value) {

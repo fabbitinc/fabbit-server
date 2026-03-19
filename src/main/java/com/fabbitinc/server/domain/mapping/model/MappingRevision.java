@@ -41,8 +41,10 @@ public class MappingRevision extends AbstractCreatedEntity {
     public static final String CODE_MAPPING_REVISION_RECORD_REQUIRED = "MAPPING_REVISION_RECORD_REQUIRED";
     public static final String CODE_MAPPING_REVISION_FILE_REQUIRED = "MAPPING_REVISION_FILE_REQUIRED";
     public static final String CODE_MAPPING_REVISION_VERSION_INVALID = "MAPPING_REVISION_VERSION_INVALID";
-    public static final String CODE_MAPPING_REVISION_SHEET_NAME_TOO_LONG = "MAPPING_REVISION_SHEET_NAME_TOO_LONG";
-    public static final String CODE_MAPPING_REVISION_USAGE_INCREMENT_INVALID = "MAPPING_REVISION_USAGE_INCREMENT_INVALID";
+    public static final String CODE_MAPPING_REVISION_SHEET_NAME_TOO_LONG =
+            "MAPPING_REVISION_SHEET_NAME_TOO_LONG";
+    public static final String CODE_MAPPING_REVISION_USAGE_INCREMENT_INVALID =
+            "MAPPING_REVISION_USAGE_INCREMENT_INVALID";
 
     private static final int MAX_SHEET_NAME_LENGTH = 200;
 
@@ -50,7 +52,12 @@ public class MappingRevision extends AbstractCreatedEntity {
     private UUID recordId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "record_id", insertable = false, updatable = false)
+    @JoinColumn(
+            name = "record_id",
+            insertable = false,
+            updatable = false,
+            foreignKey = @ForeignKey(name = "fk_mapping_revisions_record_id")
+    )
     private MappingRecord record;
 
     @Column(name = "file_id", nullable = false)
@@ -110,7 +117,10 @@ public class MappingRevision extends AbstractCreatedEntity {
             String mapping
     ) {
         if (record == null) {
-            throw new DomainException(CODE_MAPPING_REVISION_RECORD_REQUIRED, "매핑 레코드 ID는 필수입니다");
+            throw new DomainException(
+                    CODE_MAPPING_REVISION_RECORD_REQUIRED,
+                    "매핑 레코드 ID는 필수입니다"
+            );
         }
         if (fileId == null) {
             throw new DomainException(CODE_MAPPING_REVISION_FILE_REQUIRED, "파일 ID는 필수입니다");
@@ -129,7 +139,10 @@ public class MappingRevision extends AbstractCreatedEntity {
 
     public void incrementUsage(int amount) {
         if (amount <= 0) {
-            throw new DomainException(CODE_MAPPING_REVISION_USAGE_INCREMENT_INVALID, "사용량 증가는 1 이상이어야 합니다");
+            throw new DomainException(
+                    CODE_MAPPING_REVISION_USAGE_INCREMENT_INVALID,
+                    "사용량 증가는 1 이상이어야 합니다"
+            );
         }
         this.usageCount += amount;
     }
@@ -157,7 +170,10 @@ public class MappingRevision extends AbstractCreatedEntity {
             return null;
         }
         if (trimmed.length() > MAX_SHEET_NAME_LENGTH) {
-            throw new DomainException(CODE_MAPPING_REVISION_SHEET_NAME_TOO_LONG, "시트명은 200자 이하여야 합니다");
+            throw new DomainException(
+                    CODE_MAPPING_REVISION_SHEET_NAME_TOO_LONG,
+                    "시트명은 200자 이하여야 합니다"
+            );
         }
         return trimmed;
     }

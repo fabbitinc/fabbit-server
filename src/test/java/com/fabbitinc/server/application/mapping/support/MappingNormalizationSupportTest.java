@@ -2,10 +2,14 @@ package com.fabbitinc.server.application.mapping.support;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.fabbitinc.server.application.mapping.model.ExtendedPropertyMappingDto;
 import com.fabbitinc.server.application.mapping.model.MappingResultDto;
-import com.fabbitinc.server.application.mapping.model.PropertyMappingDto;
+import com.fabbitinc.server.application.mapping.model.NodeMappingDto;
+import com.fabbitinc.server.application.mapping.model.RelationMappingDto;
 import com.fabbitinc.server.application.ontology.support.PropertyDataType;
+import com.fabbitinc.server.application.ontology.support.RelationshipType;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class MappingNormalizationSupportTest {
@@ -13,40 +17,47 @@ class MappingNormalizationSupportTest {
     private final MappingNormalizationSupport support = new MappingNormalizationSupport();
 
     @Test
-    void normalize_확장속성명을_python원본처럼_보정한다() {
+    void normalize_노드의_비표준속성을_확장속성으로_이동한다() {
+        MappingResultDto normalized = support.normalize(new MappingResultDto(
+                List.of(new NodeMappingDto(
+                        "part_child",
+                        "Part",
+                        Map.of("part_number", "품번", "remark", "비고"),
+                        List.of(new ExtendedPropertyMappingDto("탄소배출량", null, PropertyDataType.FLOAT)),
+                        95,
+                        "raw"
+                )),
+                List.of()
+        ));
+
+        NodeMappingDto node = normalized.nodes().get(0);
+        assertEquals(Map.of("part_number", "품번"), node.propertyColumns());
+        assertEquals(2, node.extendedProperties().size());
+        assertEquals("_ext_remark", node.extendedProperties().get(0).generatedKey());
+        assertEquals("_ext_탄소배출량", node.extendedProperties().get(1).generatedKey());
+    }
+
+    @Test
+    void normalize_관계방향이_온톨로지와_다르면_제외한다() {
         MappingResultDto normalized = support.normalize(new MappingResultDto(
                 List.of(
-                        new PropertyMappingDto("탄소배출량", "탄소배출량", "_ext_carbon_emission", PropertyDataType.STRING, 90, "raw", false),
-                        new PropertyMappingDto("비고", "_ext__ext_custom_value__", null, PropertyDataType.STRING, 80, "raw", false)
+                        new NodeMappingDto("supplier_1", "Supplier", Map.of("company_name", "업체명"), List.of(), 90, "raw"),
+                        new NodeMappingDto("part_1", "Part", Map.of("part_number", "품번"), List.of(), 90, "raw")
                 ),
-                List.of()
+                List.of(
+                        new RelationMappingDto(
+                                "supplier_1",
+                                RelationshipType.SUPPLIED_BY,
+                                "part_1",
+                                Map.of("remark", "비고"),
+                                Map.of("remark", PropertyDataType.STRING),
+                                List.of(),
+                                80,
+                                "raw"
+                        )
+                )
         ));
 
-        assertEquals("_ext_탄소배출량", normalized.propertyMappings().get(0).targetProperty());
-        assertEquals("_ext_carbon_emission", normalized.propertyMappings().get(0).suggestedExtendedProperty());
-        assertEquals("_ext_custom_value", normalized.propertyMappings().get(1).targetProperty());
-        assertEquals("_ext_custom_value", normalized.propertyMappings().get(1).suggestedExtendedProperty());
-    }
-
-    @Test
-    void normalize_빈확장속성은_unknown으로_보정한다() {
-        MappingResultDto normalized = support.normalize(new MappingResultDto(
-                List.of(new PropertyMappingDto("임의컬럼", "", null, PropertyDataType.STRING, 50, "raw", false)),
-                List.of()
-        ));
-
-        assertEquals("_ext_unknown", normalized.propertyMappings().get(0).targetProperty());
-        assertEquals("_ext_unknown", normalized.propertyMappings().get(0).suggestedExtendedProperty());
-    }
-
-    @Test
-    void normalize_표준속성에도_확장속성_대안을_채운다() {
-        MappingResultDto normalized = support.normalize(new MappingResultDto(
-                List.of(new PropertyMappingDto("품번", "part_number", null, PropertyDataType.STRING, 95, "raw", false)),
-                List.of()
-        ));
-
-        assertEquals("part_number", normalized.propertyMappings().get(0).targetProperty());
-        assertEquals("_ext_part_number", normalized.propertyMappings().get(0).suggestedExtendedProperty());
+        assertEquals(0, normalized.relations().size());
     }
 }

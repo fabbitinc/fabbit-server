@@ -2,9 +2,9 @@ package com.fabbitinc.server.application.mapping.query;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.mapping.model.MappingResultDto;
 import com.fabbitinc.server.application.mapping.query.condition.MappingDetailCondition;
 import com.fabbitinc.server.application.mapping.query.condition.MappingListCondition;
-import com.fabbitinc.server.application.mapping.query.result.MappingBodyResult;
 import com.fabbitinc.server.application.mapping.query.result.MappingListResult;
 import com.fabbitinc.server.application.mapping.query.result.MappingResult;
 import com.fabbitinc.server.domain.mapping.model.MappingRecord;
@@ -46,16 +46,14 @@ public class MappingQuery {
     public MappingResult get(MappingDetailCondition condition) {
         MappingRecord record = mappingRecordRepository.findById(condition.mappingId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "매핑을 찾을 수 없습니다"));
-
         MappingRevision revision = mappingRevisionRepository.findFirstByRecordIdOrderByVersionDesc(record.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "매핑 리비전을 찾을 수 없습니다"));
-
         return toMappingResult(record, revision);
     }
 
     private MappingResult toMappingResult(MappingRecord record, MappingRevision revision) {
         List<String> originalHeaders = parseOriginalHeaders(revision.getOriginalHeaders());
-        MappingBodyResult mapping = parseMapping(revision.getMapping());
+        MappingResultDto mapping = parseMapping(revision.getMapping());
 
         List<String> mappedHeaders = new ArrayList<>(mapping.requiredColumns());
         mappedHeaders.sort(Comparator.comparingInt(header -> {
@@ -71,7 +69,6 @@ public class MappingQuery {
                 originalHeaders,
                 mappedHeaders,
                 mapping,
-                record.getScope(),
                 record.isActive(),
                 record.getUsageCount(),
                 revision.getVersion(),
@@ -91,14 +88,14 @@ public class MappingQuery {
         }
     }
 
-    private MappingBodyResult parseMapping(String rawMapping) {
+    private MappingResultDto parseMapping(String rawMapping) {
         if (rawMapping == null || rawMapping.isBlank()) {
-            return new MappingBodyResult(List.of(), List.of());
+            return new MappingResultDto(List.of(), List.of());
         }
         try {
-            return objectMapper.readValue(rawMapping, MappingBodyResult.class);
+            return objectMapper.readValue(rawMapping, MappingResultDto.class);
         } catch (JacksonException ex) {
-            return new MappingBodyResult(List.of(), List.of());
+            return new MappingResultDto(List.of(), List.of());
         }
     }
 }

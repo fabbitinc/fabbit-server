@@ -37,7 +37,6 @@ public class SavedMappingResultMapper {
                 originalHeaders,
                 mappedHeaders,
                 mapping,
-                record.getScope(),
                 record.isActive(),
                 record.getUsageCount(),
                 revision.getVersion(),

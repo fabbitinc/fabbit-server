@@ -46,10 +46,13 @@ public class UpdateMappingUseCase {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "매핑 검증에 실패했습니다: " + detail);
         }
 
-        SavedMappingOutput output = mappingService.updateMapping(
-                command.mappingId(),
-                new UpdateMappingInput(command.name(), command.fileId(), command.sheetName(), normalized)
-        );
+        SavedMappingOutput output = mappingService.updateMapping(command.mappingId(), new UpdateMappingInput(
+                command.name(),
+                command.fileId(),
+                command.sheetName(),
+                parsed.headers(),
+                normalized
+        ));
         return savedMappingResultMapper.toResult(output.record(), output.revision());
     }
 }

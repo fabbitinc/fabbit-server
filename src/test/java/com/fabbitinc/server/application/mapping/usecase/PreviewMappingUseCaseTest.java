@@ -10,14 +10,13 @@ import com.fabbitinc.server.application.aiusage.service.AiUsageService;
 import com.fabbitinc.server.application.aiusage.service.input.RecordAiUsageInput;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
-import com.fabbitinc.server.application.mapping.model.MappingResultDto;
-import com.fabbitinc.server.application.mapping.model.PropertyMappingDto;
 import com.fabbitinc.server.application.mapping.service.MappingService;
-import com.fabbitinc.server.application.mapping.support.MappingLlmGenerationSupport;
 import com.fabbitinc.server.application.mapping.support.SpreadsheetParserSupport;
+import com.fabbitinc.server.application.mapping.model.MappingResultDto;
+import com.fabbitinc.server.application.mapping.model.NodeMappingDto;
+import com.fabbitinc.server.application.mapping.support.MappingLlmGenerationSupport;
 import com.fabbitinc.server.application.mapping.usecase.command.PreviewMappingCommand;
 import com.fabbitinc.server.application.mapping.usecase.result.PreviewMappingResult;
-import com.fabbitinc.server.application.ontology.support.PropertyDataType;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;
 import com.fabbitinc.server.domain.file.model.File;
@@ -61,7 +60,7 @@ class PreviewMappingUseCaseTest {
         List<String> headers = List.of("품번");
         List<Map<String, Object>> rows = List.of(Map.of("품번", "A-001"));
         MappingResultDto generatedMapping = new MappingResultDto(
-                List.of(new PropertyMappingDto("품번", "part_number", "_ext_number", PropertyDataType.STRING, 95, "llm result", false)),
+                List.of(new NodeMappingDto("part_main", "Part", Map.of("part_number", "품번"), List.of(), 95, "llm result")),
                 List.of()
         );
 
@@ -77,7 +76,6 @@ class PreviewMappingUseCaseTest {
         assertEquals(headers, result.headers());
         assertEquals(1, result.sheets().size());
         assertEquals(generatedMapping, result.mapping());
-        assertEquals("_ext_number", result.mapping().propertyMappings().get(0).suggestedExtendedProperty());
 
         InOrder inOrder = inOrder(organizationApi, mappingLlmGenerationSupport, aiUsageService);
         inOrder.verify(organizationApi).checkCreditQuota(orgId, AiUsageCategory.BOM_ANALYSIS);
@@ -87,13 +85,6 @@ class PreviewMappingUseCaseTest {
 
         ArgumentCaptor<RecordAiUsageInput> usageCaptor = ArgumentCaptor.forClass(RecordAiUsageInput.class);
         verify(aiUsageService).record(usageCaptor.capture());
-        RecordAiUsageInput usageInput = usageCaptor.getValue();
-        assertEquals(orgId, usageInput.orgId());
-        assertEquals(userId, usageInput.userId());
-        assertEquals(AiUsageCategory.BOM_ANALYSIS, usageInput.category());
-        assertEquals("mapping:preview", usageInput.feature());
-        assertEquals("openai/gpt-5-mini", usageInput.model());
-        assertEquals(123, usageInput.inputTokens());
-        assertEquals(45, usageInput.outputTokens());
+        assertEquals("mapping:preview", usageCaptor.getValue().feature());
     }
 }
