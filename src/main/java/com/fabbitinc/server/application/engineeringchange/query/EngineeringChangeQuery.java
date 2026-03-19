@@ -9,6 +9,7 @@ import com.fabbitinc.server.application.engineeringchange.query.condition.Engine
 import com.fabbitinc.server.application.engineeringchange.query.condition.EngineeringChangeListCondition;
 import com.fabbitinc.server.application.engineeringchange.query.condition.EngineeringChangeLookupCondition;
 import com.fabbitinc.server.application.engineeringchange.query.condition.EngineeringChangeTimelineCondition;
+import com.fabbitinc.server.application.engineeringchange.query.condition.ProjectChangeListCondition;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeDetailResult;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeListResult;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeLookupResult;
@@ -19,6 +20,7 @@ import com.fabbitinc.server.application.issue.api.IssueApi;
 import com.fabbitinc.server.application.issue.api.IssueSnapshot;
 import com.fabbitinc.server.application.part.api.EngineeringChangePartRevisionSnapshot;
 import com.fabbitinc.server.application.part.api.PartRevisionWorkflowApi;
+import com.fabbitinc.server.application.project.api.ProjectApi;
 import com.fabbitinc.server.application.workitem.query.TimelineDetailParser;
 import com.fabbitinc.server.application.workitem.query.result.FileItemResult;
 import com.fabbitinc.server.application.workitem.query.result.TeamBadgeResult;
@@ -84,6 +86,7 @@ public class EngineeringChangeQuery {
     private final EngineeringChangeStepRepository engineeringChangeStepRepository;
     private final EngineeringChangeIssueLinkRepository engineeringChangeIssueLinkRepository;
     private final IssueApi issueApi;
+    private final ProjectApi projectApi;
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
     private final PartRevisionWorkflowApi partRevisionWorkflowApi;
@@ -159,6 +162,52 @@ public class EngineeringChangeQuery {
                 totalCount == null ? 0L : totalCount,
                 condition.offset(),
                 condition.limit(),
+                items
+        );
+    }
+
+    public EngineeringChangeListResult listProjectChanges(ProjectChangeListCondition condition) {
+        currentAuthProvider.getCurrentAuth();
+        projectApi.validateProjectId(condition.projectId());
+
+        Set<UUID> projectPartIds = projectApi.getProjectPartIds(condition.projectId());
+        if (projectPartIds.isEmpty()) {
+            return new EngineeringChangeListResult(0, 0, 0, 0, 0, List.of());
+        }
+
+        Set<UUID> issueIds = issueApi.getIssueIdsByPartIds(projectPartIds);
+        if (issueIds.isEmpty()) {
+            return new EngineeringChangeListResult(0, 0, 0, 0, 0, List.of());
+        }
+
+        Set<UUID> engineeringChangeIds = engineeringChangeIssueLinkRepository.findByIssueIdIn(issueIds).stream()
+                .map(EngineeringChangeIssueLink::getEngineeringChangeId)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        if (engineeringChangeIds.isEmpty()) {
+            return new EngineeringChangeListResult(0, 0, 0, 0, 0, List.of());
+        }
+
+        PathBuilder<EngineeringChange> engineeringChange = new PathBuilder<>(EngineeringChange.class, "engineeringChange");
+        List<EngineeringChange> engineeringChanges = queryFactory()
+                .selectFrom(engineeringChange)
+                .where(engineeringChange.get("id", UUID.class).in(engineeringChangeIds))
+                .orderBy(engineeringChange.getDateTime("createdAt", Instant.class).desc())
+                .fetch();
+
+        Enrichment enrichment = enrichEngineeringChanges(engineeringChanges);
+        List<EngineeringChangeListResult.Item> items = engineeringChanges.stream()
+                .map(item -> toEngineeringChangeSummary(item, enrichment))
+                .toList();
+
+        long openCount = engineeringChanges.stream().filter(item -> isOpenState(item.getState())).count();
+        long closedCount = engineeringChanges.stream().filter(item -> isClosedState(item.getState())).count();
+
+        return new EngineeringChangeListResult(
+                openCount,
+                closedCount,
+                items.size(),
+                0,
+                items.size(),
                 items
         );
     }
@@ -583,6 +632,18 @@ public class EngineeringChangeQuery {
 
     private EngineeringChangeState parseEngineeringChangeState(String rawEngineeringChangeState) {
         return parseEnum(rawEngineeringChangeState, EngineeringChangeState.class, "state");
+    }
+
+    private boolean isOpenState(EngineeringChangeState state) {
+        return state == EngineeringChangeState.DRAFT
+                || state == EngineeringChangeState.REVIEW_PENDING
+                || state == EngineeringChangeState.APPROVAL_PENDING
+                || state == EngineeringChangeState.RELEASE_PENDING;
+    }
+
+    private boolean isClosedState(EngineeringChangeState state) {
+        return state == EngineeringChangeState.RELEASED
+                || state == EngineeringChangeState.CANCELED;
     }
 
     private <T extends Enum<T>> T parseEnum(String rawValue, Class<T> enumType, String fieldName) {

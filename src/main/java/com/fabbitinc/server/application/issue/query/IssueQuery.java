@@ -7,10 +7,12 @@ import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeApi;
 import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeSnapshot;
+import com.fabbitinc.server.application.project.api.ProjectApi;
 import com.fabbitinc.server.application.issue.query.condition.IssueDetailCondition;
 import com.fabbitinc.server.application.issue.query.condition.IssueListCondition;
 import com.fabbitinc.server.application.issue.query.condition.IssueLookupCondition;
 import com.fabbitinc.server.application.issue.query.condition.IssueTimelineCondition;
+import com.fabbitinc.server.application.issue.query.condition.ProjectIssueListCondition;
 import com.fabbitinc.server.application.issue.query.result.IssueDetailResult;
 import com.fabbitinc.server.application.issue.query.result.LinkedEngineeringChangeSummaryResult;
 import com.fabbitinc.server.application.workitem.query.result.FileItemResult;
@@ -83,6 +85,7 @@ public class IssueQuery {
     private final CurrentAuthProvider currentAuthProvider;
     private final IssueRepository issueRepository;
     private final EngineeringChangeApi engineeringChangeApi;
+    private final ProjectApi projectApi;
     private final IssueAssigneeRepository issueAssigneeRepository;
     private final IssueTeamAssigneeRepository issueTeamAssigneeRepository;
     private final IssuePartRepository issuePartRepository;
@@ -148,6 +151,47 @@ public class IssueQuery {
                 totalCount == null ? 0L : totalCount,
                 condition.offset(),
                 condition.limit(),
+                items
+        );
+    }
+
+    public IssueListResult listProjectIssues(ProjectIssueListCondition condition) {
+        currentAuthProvider.getCurrentAuth();
+        projectApi.validateProjectId(condition.projectId());
+
+        Set<UUID> projectPartIds = projectApi.getProjectPartIds(condition.projectId());
+        if (projectPartIds.isEmpty()) {
+            return new IssueListResult(0, 0, 0, 0, 0, List.of());
+        }
+
+        Set<UUID> issueIds = issuePartRepository.findByPartIdIn(projectPartIds).stream()
+                .map(IssuePart::getIssueId)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        if (issueIds.isEmpty()) {
+            return new IssueListResult(0, 0, 0, 0, 0, List.of());
+        }
+
+        PathBuilder<Issue> issue = new PathBuilder<>(Issue.class, "issue");
+        List<Issue> issues = queryFactory()
+                .selectFrom(issue)
+                .where(issue.get("id", UUID.class).in(issueIds))
+                .orderBy(issue.getDateTime("createdAt", Instant.class).desc())
+                .fetch();
+
+        Enrichment enrichment = enrichIssues(issues);
+        List<IssueListResult.Item> items = issues.stream()
+                .map(item -> toIssueSummary(item, enrichment))
+                .toList();
+
+        long openCount = issues.stream().filter(item -> item.getState() == IssueState.OPEN).count();
+        long closedCount = issues.stream().filter(item -> item.getState() == IssueState.CLOSED).count();
+
+        return new IssueListResult(
+                openCount,
+                closedCount,
+                items.size(),
+                0,
+                items.size(),
                 items
         );
     }

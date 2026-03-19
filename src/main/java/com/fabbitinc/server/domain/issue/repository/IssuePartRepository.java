@@ -12,5 +12,7 @@ public interface IssuePartRepository extends JpaRepository<IssuePart, UUID> {
 
     List<IssuePart> findByIssueIdIn(Collection<UUID> issueIds);
 
+    List<IssuePart> findByPartIdIn(Collection<UUID> partIds);
+
     int deleteByIssueIdAndPartIdIn(UUID issueId, Collection<UUID> partIds);
 }

@@ -3,9 +3,12 @@ package com.fabbitinc.server.application.issue.api;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.domain.issue.model.Issue;
+import com.fabbitinc.server.domain.issue.model.IssuePart;
+import com.fabbitinc.server.domain.issue.repository.IssuePartRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueRepository;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Component;
 public class IssueApi {
 
     private final IssueRepository issueRepository;
+    private final IssuePartRepository issuePartRepository;
 
     public boolean existsIssue(UUID issueId) {
         return issueRepository.existsById(issueId);
@@ -50,5 +54,15 @@ public class IssueApi {
                 new IssueSnapshot(issue.getId(), issue.getNumber(), issue.getTitle(), issue.getState())
         ));
         return result;
+    }
+
+    public Set<UUID> getIssueIdsByPartIds(Set<UUID> partIds) {
+        if (partIds == null || partIds.isEmpty()) {
+            return Set.of();
+        }
+
+        return issuePartRepository.findByPartIdIn(partIds).stream()
+                .map(IssuePart::getIssueId)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
     }
 }
