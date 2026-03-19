@@ -105,7 +105,9 @@ public class Organization extends AbstractIdEntity implements AggregateRoot {
     }
 
     public Membership addMember(UUID userId, MembershipRole role, String jobRole) {
-        return Membership.create(this, userId, role, jobRole);
+        Membership membership = Membership.create(this, userId, role, jobRole);
+        memberships.add(membership);
+        return membership;
     }
 
     public void reserveMemberSeat() {
@@ -130,12 +132,11 @@ public class Organization extends AbstractIdEntity implements AggregateRoot {
 
     public void changeMemberRole(Membership membership, MembershipRole newRole, long ownerCount) {
         Membership target = requireMembership(membership);
-        MembershipRole role = requireMembershipRole(newRole);
         if (getId().equals(target.getOrgId())) {
-            if (target.getRole() == MembershipRole.OWNER && role != MembershipRole.OWNER && ownerCount <= 1) {
+            if (target.getRole() == MembershipRole.OWNER && newRole != MembershipRole.OWNER && ownerCount <= 1) {
                 throw new DomainException(CODE_ORGANIZATION_LAST_OWNER_ROLE_CHANGE_FORBIDDEN, "마지막 소유자의 역할은 변경할 수 없습니다");
             }
-            target.changeRole(role);
+            target.changeRole(newRole);
             return;
         }
         throw new DomainException(CODE_ORGANIZATION_MEMBERSHIP_MISMATCH, "다른 조직의 멤버 역할은 변경할 수 없습니다");
@@ -179,13 +180,6 @@ public class Organization extends AbstractIdEntity implements AggregateRoot {
             throw new DomainException(CODE_ORGANIZATION_MEMBERSHIP_REQUIRED, "조직 멤버십은 필수입니다");
         }
         return membership;
-    }
-
-    private MembershipRole requireMembershipRole(MembershipRole role) {
-        if (role == null) {
-            throw new DomainException(CODE_ORGANIZATION_MEMBERSHIP_REQUIRED, "조직 멤버 역할은 필수입니다");
-        }
-        return role;
     }
 
     private long requireNonNegative(long value, String code, String message) {
