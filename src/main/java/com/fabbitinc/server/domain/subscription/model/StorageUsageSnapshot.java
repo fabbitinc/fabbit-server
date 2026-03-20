@@ -22,7 +22,7 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class StorageUsageSnapshot extends AbstractCreatedEntity implements AggregateRoot {
 
-    public static final String CODE_STORAGE_USAGE_SNAPSHOT_ORG_REQUIRED = "STORAGE_USAGE_SNAPSHOT_ORG_REQUIRED";
+    public static final String CODE_STORAGE_USAGE_SNAPSHOT_ORGANIZATION_REQUIRED = "STORAGE_USAGE_SNAPSHOT_ORGANIZATION_REQUIRED";
     public static final String CODE_STORAGE_USAGE_SNAPSHOT_AT_REQUIRED = "STORAGE_USAGE_SNAPSHOT_AT_REQUIRED";
     public static final String CODE_STORAGE_USAGE_SNAPSHOT_BYTES_INVALID = "STORAGE_USAGE_SNAPSHOT_BYTES_INVALID";
 
@@ -81,7 +81,7 @@ public class StorageUsageSnapshot extends AbstractCreatedEntity implements Aggre
 
     private UUID requireOrgId(UUID value) {
         if (value == null) {
-            throw new DomainException(CODE_STORAGE_USAGE_SNAPSHOT_ORG_REQUIRED, "조직 ID는 필수입니다");
+            throw new DomainException(CODE_STORAGE_USAGE_SNAPSHOT_ORGANIZATION_REQUIRED, "조직 ID는 필수입니다");
         }
         return value;
     }

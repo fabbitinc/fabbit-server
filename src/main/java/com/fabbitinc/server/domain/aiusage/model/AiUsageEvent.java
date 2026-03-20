@@ -36,7 +36,7 @@ public class AiUsageEvent extends AbstractCreatedEntity {
     public static final String BILLING_STATUS_PENDING = "PENDING";
     public static final String BILLING_STATUS_BILLED = "BILLED";
 
-    public static final String CODE_AI_USAGE_ORG_REQUIRED = "AI_USAGE_ORG_REQUIRED";
+    public static final String CODE_AI_USAGE_ORGANIZATION_REQUIRED = "AI_USAGE_ORGANIZATION_REQUIRED";
     public static final String CODE_AI_USAGE_USER_REQUIRED = "AI_USAGE_USER_REQUIRED";
     public static final String CODE_AI_USAGE_PLAN_TYPE_REQUIRED = "AI_USAGE_PLAN_TYPE_REQUIRED";
     public static final String CODE_AI_USAGE_SEAT_TYPE_REQUIRED = "AI_USAGE_SEAT_TYPE_REQUIRED";
@@ -155,7 +155,7 @@ public class AiUsageEvent extends AbstractCreatedEntity {
 
     private UUID requireOrgId(UUID value) {
         if (value == null) {
-            throw new DomainException(CODE_AI_USAGE_ORG_REQUIRED, "조직 ID는 필수입니다");
+            throw new DomainException(CODE_AI_USAGE_ORGANIZATION_REQUIRED, "조직 ID는 필수입니다");
         }
         return value;
     }

@@ -29,8 +29,8 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
     private static final String TEST_EMAIL = "test@gmail.com";
     private static final String TEST_PASSWORD = "qwer1234";
     private static final String TEST_FULL_NAME = "Test User";
-    private static final String TEST_ORG_SLUG = "test";
-    private static final String TEST_ORG_NAME = "Test Org";
+    private static final String TEST_ORGANIZATION_SLUG = "test";
+    private static final String TEST_ORGANIZATION_NAME = "Test Org";
 
     private final UserService userService;
     private final OrganizationApi organizationApi;
@@ -53,13 +53,13 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
         User user = ensureUser();
 
         Organization organization;
-        Organization existingOrganization = organizationRepository.findBySlug(TEST_ORG_SLUG).orElse(null);
+        Organization existingOrganization = organizationRepository.findBySlug(TEST_ORGANIZATION_SLUG).orElse(null);
         if (existingOrganization == null) {
             organization = organizationApi.createWorkspace(
                     user.getId(),
                     new CreateOrganizationInput(
-                            TEST_ORG_NAME,
-                            TEST_ORG_SLUG,
+                            TEST_ORGANIZATION_NAME,
+                            TEST_ORGANIZATION_SLUG,
                             null,
                             null,
                             WorkspacePlanType.STARTER,
@@ -73,7 +73,7 @@ public class DevTestAccountBootstrap implements CommandLineRunner {
         ensureActiveSubscription(organization);
         ensureOwnerMembership(user.getId(), organization.getId());
 
-        log.info("테스트 계정 보장 완료: email={}, slug={}", TEST_EMAIL, TEST_ORG_SLUG);
+        log.info("테스트 계정 보장 완료: email={}, slug={}", TEST_EMAIL, TEST_ORGANIZATION_SLUG);
     }
 
     private User ensureUser() {

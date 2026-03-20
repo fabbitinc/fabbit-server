@@ -95,16 +95,16 @@ class SubscriptionRelationTest {
         Subscription subscription = createActiveSubscription();
         Instant effectiveAt = Instant.parse("2026-04-01T00:00:00Z");
 
-        subscription.schedulePlanChange(WorkspacePlanType.ORG, effectiveAt);
+        subscription.schedulePlanChange(WorkspacePlanType.ORGANIZATION, effectiveAt);
 
-        assertEquals(WorkspacePlanType.ORG, subscription.getScheduledPlanType());
+        assertEquals(WorkspacePlanType.ORGANIZATION, subscription.getScheduledPlanType());
         assertEquals(effectiveAt, subscription.getScheduledChangeEffectiveAt());
     }
 
     @Test
     void subscription_즉시플랜변경은_예약정보를_초기화한다() {
         Subscription subscription = createActiveSubscription();
-        subscription.schedulePlanChange(WorkspacePlanType.ORG, Instant.parse("2026-04-01T00:00:00Z"));
+        subscription.schedulePlanChange(WorkspacePlanType.ORGANIZATION, Instant.parse("2026-04-01T00:00:00Z"));
 
         subscription.changePlan(WorkspacePlanType.TEAM);
 

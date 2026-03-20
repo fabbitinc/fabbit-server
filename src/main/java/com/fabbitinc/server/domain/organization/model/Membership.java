@@ -35,7 +35,7 @@ import lombok.NoArgsConstructor;
 public class Membership extends AbstractCreatedEntity {
 
     public static final String CODE_MEMBERSHIP_USER_REQUIRED = "MEMBERSHIP_USER_REQUIRED";
-    public static final String CODE_MEMBERSHIP_ORG_REQUIRED = "MEMBERSHIP_ORG_REQUIRED";
+    public static final String CODE_MEMBERSHIP_ORGANIZATION_REQUIRED = "MEMBERSHIP_ORGANIZATION_REQUIRED";
     public static final String CODE_MEMBERSHIP_ROLE_REQUIRED = "MEMBERSHIP_ROLE_REQUIRED";
     public static final String CODE_MEMBERSHIP_JOB_ROLE_TOO_LONG = "MEMBERSHIP_JOB_ROLE_TOO_LONG";
 
@@ -73,7 +73,7 @@ public class Membership extends AbstractCreatedEntity {
 
     static Membership create(Organization organization, UUID userId, MembershipRole role, String jobRole) {
         if (organization == null) {
-            throw new DomainException(CODE_MEMBERSHIP_ORG_REQUIRED, "조직 ID는 필수입니다");
+            throw new DomainException(CODE_MEMBERSHIP_ORGANIZATION_REQUIRED, "조직 ID는 필수입니다");
         }
         if (userId == null) {
             throw new DomainException(CODE_MEMBERSHIP_USER_REQUIRED, "사용자 ID는 필수입니다");
@@ -96,7 +96,7 @@ public class Membership extends AbstractCreatedEntity {
 
     private UUID requireOrgId(UUID value) {
         if (value == null) {
-            throw new DomainException(CODE_MEMBERSHIP_ORG_REQUIRED, "조직 ID는 필수입니다");
+            throw new DomainException(CODE_MEMBERSHIP_ORGANIZATION_REQUIRED, "조직 ID는 필수입니다");
         }
         return value;
     }

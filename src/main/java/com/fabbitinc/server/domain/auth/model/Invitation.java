@@ -40,7 +40,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Invitation extends AbstractCreatedEntity {
 
-    public static final String CODE_INVITATION_ORG_REQUIRED = "INVITATION_ORG_REQUIRED";
+    public static final String CODE_INVITATION_ORGANIZATION_REQUIRED = "INVITATION_ORGANIZATION_REQUIRED";
     public static final String CODE_INVITATION_EMAIL_REQUIRED = "INVITATION_EMAIL_REQUIRED";
     public static final String CODE_INVITATION_ROLE_REQUIRED = "INVITATION_ROLE_REQUIRED";
     public static final String CODE_INVITATION_SEAT_TYPE_REQUIRED = "INVITATION_SEAT_TYPE_REQUIRED";
@@ -148,7 +148,7 @@ public class Invitation extends AbstractCreatedEntity {
 
     private UUID requireOrgId(UUID value) {
         if (value == null) {
-            throw new DomainException(CODE_INVITATION_ORG_REQUIRED, "조직 ID는 필수입니다");
+            throw new DomainException(CODE_INVITATION_ORGANIZATION_REQUIRED, "조직 ID는 필수입니다");
         }
         return value;
     }

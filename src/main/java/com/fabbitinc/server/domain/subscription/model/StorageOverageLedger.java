@@ -27,7 +27,7 @@ import lombok.NoArgsConstructor;
 public class StorageOverageLedger extends AbstractCreatedEntity implements AggregateRoot {
 
     public static final String CODE_STORAGE_OVERAGE_LEDGER_SUBSCRIPTION_REQUIRED = "STORAGE_OVERAGE_LEDGER_SUBSCRIPTION_REQUIRED";
-    public static final String CODE_STORAGE_OVERAGE_LEDGER_ORG_REQUIRED = "STORAGE_OVERAGE_LEDGER_ORG_REQUIRED";
+    public static final String CODE_STORAGE_OVERAGE_LEDGER_ORGANIZATION_REQUIRED = "STORAGE_OVERAGE_LEDGER_ORGANIZATION_REQUIRED";
     public static final String CODE_STORAGE_OVERAGE_LEDGER_PERIOD_REQUIRED = "STORAGE_OVERAGE_LEDGER_PERIOD_REQUIRED";
     public static final String CODE_STORAGE_OVERAGE_LEDGER_AMOUNT_INVALID = "STORAGE_OVERAGE_LEDGER_AMOUNT_INVALID";
 
@@ -88,7 +88,7 @@ public class StorageOverageLedger extends AbstractCreatedEntity implements Aggre
     ) {
         super(UuidV7Generator.next());
         this.subscriptionId = requireId(subscriptionId, CODE_STORAGE_OVERAGE_LEDGER_SUBSCRIPTION_REQUIRED, "구독 ID는 필수입니다");
-        this.orgId = requireId(orgId, CODE_STORAGE_OVERAGE_LEDGER_ORG_REQUIRED, "조직 ID는 필수입니다");
+        this.orgId = requireId(orgId, CODE_STORAGE_OVERAGE_LEDGER_ORGANIZATION_REQUIRED, "조직 ID는 필수입니다");
         this.snapshotId = snapshotId;
         this.periodStart = requireInstant(periodStart);
         this.periodEnd = requireInstant(periodEnd);

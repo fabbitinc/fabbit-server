@@ -131,7 +131,7 @@ class OrganizationServicePersistenceTest {
                         "beta-existing",
                         "manufacturing",
                         "11-50",
-                        WorkspacePlanType.ORG,
+                        WorkspacePlanType.ORGANIZATION,
                         SeatType.FULL
                 )
         ));

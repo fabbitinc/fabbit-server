@@ -27,7 +27,7 @@ import lombok.NoArgsConstructor;
 public class SubscriptionCreditPurchase extends AbstractAuditableEntity implements AggregateRoot {
 
     public static final String CODE_SUBSCRIPTION_CREDIT_PURCHASE_SUBSCRIPTION_REQUIRED = "SUBSCRIPTION_CREDIT_PURCHASE_SUBSCRIPTION_REQUIRED";
-    public static final String CODE_SUBSCRIPTION_CREDIT_PURCHASE_ORG_REQUIRED = "SUBSCRIPTION_CREDIT_PURCHASE_ORG_REQUIRED";
+    public static final String CODE_SUBSCRIPTION_CREDIT_PURCHASE_ORGANIZATION_REQUIRED = "SUBSCRIPTION_CREDIT_PURCHASE_ORGANIZATION_REQUIRED";
     public static final String CODE_SUBSCRIPTION_CREDIT_PURCHASE_CREDITS_INVALID = "SUBSCRIPTION_CREDIT_PURCHASE_CREDITS_INVALID";
     public static final String CODE_SUBSCRIPTION_CREDIT_PURCHASE_PRICE_INVALID = "SUBSCRIPTION_CREDIT_PURCHASE_PRICE_INVALID";
     public static final String CODE_SUBSCRIPTION_CREDIT_PURCHASE_STATUS_REQUIRED = "SUBSCRIPTION_CREDIT_PURCHASE_STATUS_REQUIRED";
@@ -80,7 +80,7 @@ public class SubscriptionCreditPurchase extends AbstractAuditableEntity implemen
     ) {
         super(UuidV7Generator.next());
         this.subscriptionId = requireId(subscriptionId, CODE_SUBSCRIPTION_CREDIT_PURCHASE_SUBSCRIPTION_REQUIRED, "구독 ID는 필수입니다");
-        this.orgId = requireId(orgId, CODE_SUBSCRIPTION_CREDIT_PURCHASE_ORG_REQUIRED, "조직 ID는 필수입니다");
+        this.orgId = requireId(orgId, CODE_SUBSCRIPTION_CREDIT_PURCHASE_ORGANIZATION_REQUIRED, "조직 ID는 필수입니다");
         this.creditsPurchased = requirePositive(creditsPurchased, CODE_SUBSCRIPTION_CREDIT_PURCHASE_CREDITS_INVALID, "구매 크레딧은 0보다 커야 합니다");
         this.creditsRemaining = this.creditsPurchased;
         this.unitPrice = requireNonNegative(unitPrice, CODE_SUBSCRIPTION_CREDIT_PURCHASE_PRICE_INVALID, "단가는 0 이상이어야 합니다");

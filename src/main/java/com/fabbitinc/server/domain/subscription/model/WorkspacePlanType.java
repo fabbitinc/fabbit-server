@@ -27,8 +27,8 @@ public enum WorkspacePlanType {
             15_000,
             29_000
     ),
-    ORG(
-            "Org",
+    ORGANIZATION(
+            "Organization",
             "조직 단위 운영과 확장에 맞춘 플랜",
             -1,
             100_000_000_000L,

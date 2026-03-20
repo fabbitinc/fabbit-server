@@ -21,7 +21,7 @@ public record CurrentSubscriptionDetailResponse(
         Instant currentPeriodStart,
         @Schema(description = "현재 청구 종료 시각")
         Instant currentPeriodEnd,
-        @Schema(description = "예약된 플랜 변경", example = "ORG")
+        @Schema(description = "예약된 플랜 변경", example = "ORGANIZATION")
         WorkspacePlanType scheduledPlanType,
         @Schema(description = "예약된 플랜 변경 적용 시각")
         Instant scheduledChangeEffectiveAt,

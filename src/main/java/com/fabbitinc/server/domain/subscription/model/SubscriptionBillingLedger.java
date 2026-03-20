@@ -30,7 +30,7 @@ import org.hibernate.type.SqlTypes;
 public class SubscriptionBillingLedger extends AbstractCreatedEntity implements AggregateRoot {
 
     public static final String CODE_SUBSCRIPTION_BILLING_LEDGER_SUBSCRIPTION_REQUIRED = "SUBSCRIPTION_BILLING_LEDGER_SUBSCRIPTION_REQUIRED";
-    public static final String CODE_SUBSCRIPTION_BILLING_LEDGER_ORG_REQUIRED = "SUBSCRIPTION_BILLING_LEDGER_ORG_REQUIRED";
+    public static final String CODE_SUBSCRIPTION_BILLING_LEDGER_ORGANIZATION_REQUIRED = "SUBSCRIPTION_BILLING_LEDGER_ORGANIZATION_REQUIRED";
     public static final String CODE_SUBSCRIPTION_BILLING_LEDGER_LEDGER_TYPE_REQUIRED = "SUBSCRIPTION_BILLING_LEDGER_LEDGER_TYPE_REQUIRED";
     public static final String CODE_SUBSCRIPTION_BILLING_LEDGER_STATUS_REQUIRED = "SUBSCRIPTION_BILLING_LEDGER_STATUS_REQUIRED";
     public static final String CODE_SUBSCRIPTION_BILLING_LEDGER_AMOUNT_INVALID = "SUBSCRIPTION_BILLING_LEDGER_AMOUNT_INVALID";
@@ -102,7 +102,7 @@ public class SubscriptionBillingLedger extends AbstractCreatedEntity implements 
     ) {
         super(UuidV7Generator.next());
         this.subscriptionId = requireId(subscriptionId, CODE_SUBSCRIPTION_BILLING_LEDGER_SUBSCRIPTION_REQUIRED, "구독 ID는 필수입니다");
-        this.orgId = requireId(orgId, CODE_SUBSCRIPTION_BILLING_LEDGER_ORG_REQUIRED, "조직 ID는 필수입니다");
+        this.orgId = requireId(orgId, CODE_SUBSCRIPTION_BILLING_LEDGER_ORGANIZATION_REQUIRED, "조직 ID는 필수입니다");
         this.ledgerType = requireLedgerType(ledgerType);
         this.status = SubscriptionBillingLedgerStatus.PENDING;
         this.periodStart = periodStart;

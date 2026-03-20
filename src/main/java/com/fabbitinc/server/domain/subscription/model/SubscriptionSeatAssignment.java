@@ -37,7 +37,7 @@ import lombok.NoArgsConstructor;
 public class SubscriptionSeatAssignment extends AbstractAuditableEntity implements AggregateRoot {
 
     public static final String CODE_SUBSCRIPTION_SEAT_ASSIGNMENT_SUBSCRIPTION_REQUIRED = "SUBSCRIPTION_SEAT_ASSIGNMENT_SUBSCRIPTION_REQUIRED";
-    public static final String CODE_SUBSCRIPTION_SEAT_ASSIGNMENT_ORG_REQUIRED = "SUBSCRIPTION_SEAT_ASSIGNMENT_ORG_REQUIRED";
+    public static final String CODE_SUBSCRIPTION_SEAT_ASSIGNMENT_ORGANIZATION_REQUIRED = "SUBSCRIPTION_SEAT_ASSIGNMENT_ORGANIZATION_REQUIRED";
     public static final String CODE_SUBSCRIPTION_SEAT_ASSIGNMENT_MEMBERSHIP_REQUIRED = "SUBSCRIPTION_SEAT_ASSIGNMENT_MEMBERSHIP_REQUIRED";
     public static final String CODE_SUBSCRIPTION_SEAT_ASSIGNMENT_USER_REQUIRED = "SUBSCRIPTION_SEAT_ASSIGNMENT_USER_REQUIRED";
     public static final String CODE_SUBSCRIPTION_SEAT_ASSIGNMENT_SEAT_TYPE_REQUIRED = "SUBSCRIPTION_SEAT_ASSIGNMENT_SEAT_TYPE_REQUIRED";
@@ -112,7 +112,7 @@ public class SubscriptionSeatAssignment extends AbstractAuditableEntity implemen
     ) {
         super(UuidV7Generator.next());
         this.subscriptionId = requireRequiredId(subscriptionId, CODE_SUBSCRIPTION_SEAT_ASSIGNMENT_SUBSCRIPTION_REQUIRED, "구독 ID는 필수입니다");
-        this.orgId = requireRequiredId(orgId, CODE_SUBSCRIPTION_SEAT_ASSIGNMENT_ORG_REQUIRED, "조직 ID는 필수입니다");
+        this.orgId = requireRequiredId(orgId, CODE_SUBSCRIPTION_SEAT_ASSIGNMENT_ORGANIZATION_REQUIRED, "조직 ID는 필수입니다");
         this.membershipId = requireRequiredId(membershipId, CODE_SUBSCRIPTION_SEAT_ASSIGNMENT_MEMBERSHIP_REQUIRED, "멤버십 ID는 필수입니다");
         this.userId = requireRequiredId(userId, CODE_SUBSCRIPTION_SEAT_ASSIGNMENT_USER_REQUIRED, "사용자 ID는 필수입니다");
         this.seatType = requireSeatType(seatType);

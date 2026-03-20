@@ -36,7 +36,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Subscription extends AbstractAuditableEntity implements AggregateRoot {
 
-    public static final String CODE_SUBSCRIPTION_ORG_REQUIRED = "SUBSCRIPTION_ORG_REQUIRED";
+    public static final String CODE_SUBSCRIPTION_ORGANIZATION_REQUIRED = "SUBSCRIPTION_ORGANIZATION_REQUIRED";
     public static final String CODE_SUBSCRIPTION_PLAN_TYPE_REQUIRED = "SUBSCRIPTION_PLAN_TYPE_REQUIRED";
     public static final String CODE_SUBSCRIPTION_STATUS_REQUIRED = "SUBSCRIPTION_STATUS_REQUIRED";
     public static final String CODE_SUBSCRIPTION_BILLING_CYCLE_REQUIRED = "SUBSCRIPTION_BILLING_CYCLE_REQUIRED";
@@ -201,7 +201,7 @@ public class Subscription extends AbstractAuditableEntity implements AggregateRo
 
     private UUID requireOrgId(UUID value) {
         if (value == null) {
-            throw new DomainException(CODE_SUBSCRIPTION_ORG_REQUIRED, "조직 ID는 필수입니다");
+            throw new DomainException(CODE_SUBSCRIPTION_ORGANIZATION_REQUIRED, "조직 ID는 필수입니다");
         }
         return value;
     }

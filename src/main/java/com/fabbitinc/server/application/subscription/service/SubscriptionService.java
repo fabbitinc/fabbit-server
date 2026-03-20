@@ -46,7 +46,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.UUID;
@@ -670,7 +669,7 @@ public class SubscriptionService {
         if (targetPlanType == null) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "업그레이드 대상 플랜은 필수입니다");
         }
-        if (targetPlanType != WorkspacePlanType.TEAM && targetPlanType != WorkspacePlanType.ORG) {
+        if (targetPlanType != WorkspacePlanType.TEAM && targetPlanType != WorkspacePlanType.ORGANIZATION) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "Starter 업그레이드는 Team 또는 Org 플랜만 지원합니다");
         }
         return targetPlanType;
