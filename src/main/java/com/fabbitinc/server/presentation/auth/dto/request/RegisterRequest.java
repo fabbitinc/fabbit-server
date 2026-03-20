@@ -32,10 +32,18 @@ public record RegisterRequest(
         @Schema(description = "팀 규모", example = "11-50")
         String teamSize,
 
-        @Schema(description = "요금제 타입", example = "STARTER")
+        @Schema(
+                description = "워크스페이스 시작 플랜 타입, 현재 가입 흐름에서는 Starter와 Team만 선택 가능",
+                example = "STARTER",
+                allowableValues = {"STARTER", "TEAM"}
+        )
         @NotNull(message = "plan_type은 필수입니다") WorkspacePlanType planType,
 
-        @Schema(description = "유료 플랜 선택 시 생성자에게 즉시 배정할 좌석 타입", example = "FULL")
+        @Schema(
+                description = "유료 플랜 선택 시 생성자에게 즉시 배정할 좌석 타입",
+                example = "FULL",
+                allowableValues = {"VIEWER", "COLLABORATOR", "FULL"}
+        )
         SeatType ownerSeatType,
 
         @Schema(description = "봇 방지 토큰(선택)", example = "turnstile-token")

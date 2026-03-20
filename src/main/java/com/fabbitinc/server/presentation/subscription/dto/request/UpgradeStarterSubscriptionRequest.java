@@ -11,7 +11,11 @@ import java.util.UUID;
 
 @Schema(description = "Starter 플랜 즉시 업그레이드 요청")
 public record UpgradeStarterSubscriptionRequest(
-        @Schema(description = "즉시 업그레이드할 대상 플랜", example = "TEAM")
+        @Schema(
+                description = "즉시 업그레이드할 대상 플랜, 현재 Team 또는 Organization만 지원",
+                example = "TEAM",
+                allowableValues = {"TEAM", "ORGANIZATION"}
+        )
         @NotNull
         WorkspacePlanType targetPlanType,
 
@@ -26,7 +30,11 @@ public record UpgradeStarterSubscriptionRequest(
             @NotNull
             UUID membershipId,
 
-            @Schema(description = "업그레이드 후 적용할 좌석 타입", example = "FULL")
+            @Schema(
+                    description = "업그레이드 후 적용할 좌석 타입, 유료 플랜에서는 STARTER 좌석을 사용할 수 없음",
+                    example = "FULL",
+                    allowableValues = {"VIEWER", "COLLABORATOR", "FULL"}
+            )
             @NotNull
             SeatType seatType
     ) {

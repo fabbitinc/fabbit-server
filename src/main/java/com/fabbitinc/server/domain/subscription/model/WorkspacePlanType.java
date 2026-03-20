@@ -134,6 +134,18 @@ public enum WorkspacePlanType {
         return this == STARTER;
     }
 
+    public boolean isAvailableForSignup() {
+        return this == STARTER || this == TEAM;
+    }
+
+    public boolean isAvailableForStarterUpgrade() {
+        return this == TEAM || this == ORGANIZATION;
+    }
+
+    public boolean isContactRequired() {
+        return this == ENTERPRISE;
+    }
+
     public boolean allowsStorageOverage() {
         return this != STARTER;
     }

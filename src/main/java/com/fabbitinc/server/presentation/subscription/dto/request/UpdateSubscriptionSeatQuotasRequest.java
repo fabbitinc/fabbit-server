@@ -15,7 +15,11 @@ public record UpdateSubscriptionSeatQuotasRequest(
         List<@Valid SeatQuantityRequest> seatQuotas
 ) {
     public record SeatQuantityRequest(
-            @Schema(description = "좌석 타입", example = "FULL")
+            @Schema(
+                    description = "좌석 타입, 유료 플랜 좌석만 수량 변경 가능",
+                    example = "FULL",
+                    allowableValues = {"VIEWER", "COLLABORATOR", "FULL"}
+            )
             @NotNull(message = "seat_type은 필수입니다")
             SeatType seatType,
             @Schema(description = "구매 좌석 수량", example = "3")

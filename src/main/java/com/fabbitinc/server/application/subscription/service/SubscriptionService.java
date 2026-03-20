@@ -554,7 +554,7 @@ public class SubscriptionService {
             SeatType ownerSeatType,
             UUID assignedBy
     ) {
-        WorkspacePlanType resolvedPlanType = requireWorkspacePlanType(planType);
+        WorkspacePlanType resolvedPlanType = requireInitialSignupPlanType(planType);
         Instant now = Instant.now();
         Instant periodEnd = ZonedDateTime.ofInstant(now, ZoneOffset.UTC)
                 .plusMonths(1)
@@ -669,8 +669,8 @@ public class SubscriptionService {
         if (targetPlanType == null) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "업그레이드 대상 플랜은 필수입니다");
         }
-        if (targetPlanType != WorkspacePlanType.TEAM && targetPlanType != WorkspacePlanType.ORGANIZATION) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "Starter 업그레이드는 Team 또는 Org 플랜만 지원합니다");
+        if (!targetPlanType.isAvailableForStarterUpgrade()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Starter 업그레이드는 Team 또는 Organization 플랜만 지원합니다");
         }
         return targetPlanType;
     }
@@ -844,6 +844,14 @@ public class SubscriptionService {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 플랜입니다");
         }
         return planType;
+    }
+
+    private WorkspacePlanType requireInitialSignupPlanType(WorkspacePlanType planType) {
+        WorkspacePlanType resolvedPlanType = requireWorkspacePlanType(planType);
+        if (!resolvedPlanType.isAvailableForSignup()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "현재 가입으로 시작할 수 있는 플랜은 Starter와 Team뿐입니다");
+        }
+        return resolvedPlanType;
     }
 
     private void billMeteredAiUsage(Subscription subscription, Instant periodStart, Instant periodEnd) {

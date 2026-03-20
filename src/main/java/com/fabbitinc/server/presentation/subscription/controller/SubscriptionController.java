@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/subscription")
-@Tag(name = "subscription", description = "현재 구독 조회 API")
+@Tag(name = "subscription", description = "현재 구독 조회/업그레이드/변경 API")
 public class SubscriptionController {
 
     private final SubscriptionQuery subscriptionQuery;
@@ -59,7 +59,7 @@ public class SubscriptionController {
 
     @Operation(
             summary = "현재 구독 플랜 변경 예약",
-            description = "관리자 권한으로 다음 갱신일부터 적용할 워크스페이스 플랜 변경을 예약합니다"
+            description = "관리자 권한으로 이미 유료 플랜인 워크스페이스의 다음 갱신 시점 플랜 변경을 예약합니다. Starter에서 유료 플랜으로의 즉시 전환은 starter-upgrade API를 사용합니다"
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "변경 예약 성공"),
@@ -79,7 +79,7 @@ public class SubscriptionController {
 
     @Operation(
             summary = "현재 구독 AI 한도 정책 변경",
-            description = "관리자 권한으로 월간 AI 한도와 초과 즉시 차단 여부를 변경합니다"
+            description = "관리자 권한으로 유료 플랜의 월간 AI 한도와 하드 리밋 여부를 변경합니다"
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "정책 변경 성공"),
@@ -101,7 +101,7 @@ public class SubscriptionController {
 
     @Operation(
             summary = "Starter 플랜 즉시 업그레이드",
-            description = "현재 Starter 워크스페이스를 Team 또는 Org로 즉시 전환하고, 기존 멤버 전원의 좌석 타입을 한 번에 확정합니다"
+            description = "현재 Starter 워크스페이스를 Team 또는 Organization으로 즉시 전환하고, 기존 멤버 전원의 좌석 타입을 한 번에 확정합니다"
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "업그레이드 성공"),
@@ -160,7 +160,7 @@ public class SubscriptionController {
 
     @Operation(
             summary = "현재 구독 좌석 수량 변경",
-            description = "관리자 권한으로 워크스페이스에서 구매한 좌석 수량을 변경합니다"
+            description = "관리자 권한으로 유료 플랜 워크스페이스에서 구매한 좌석 수량을 변경합니다"
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "좌석 수량 변경 성공"),
