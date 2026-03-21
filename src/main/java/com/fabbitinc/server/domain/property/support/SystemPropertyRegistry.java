@@ -19,7 +19,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "part_number",
-                    10,
+                    1,
                     true,
                     false
             ),
@@ -33,7 +33,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "name",
-                    20,
+                    2,
                     false,
                     false
             ),
@@ -47,7 +47,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "revision",
-                    30,
+                    3,
                     false,
                     false
             ),
@@ -61,7 +61,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "material",
-                    40,
+                    4,
                     false,
                     true
             ),
@@ -75,7 +75,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "unit",
-                    50,
+                    5,
                     false,
                     true
             ),
@@ -89,7 +89,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "description",
-                    60,
+                    6,
                     false,
                     true
             ),
@@ -103,7 +103,7 @@ public final class SystemPropertyRegistry {
                     PropertyOptionMode.CREATABLE,
                     List.of(),
                     "category",
-                    70,
+                    7,
                     false,
                     true
             ),
@@ -117,7 +117,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "is_phantom",
-                    80,
+                    8,
                     false,
                     true
             ),
@@ -131,7 +131,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "lifecycle_state",
-                    90,
+                    9,
                     false,
                     true
             ),
@@ -145,7 +145,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "lead_time_days",
-                    100,
+                    10,
                     false,
                     true
             ),
@@ -159,7 +159,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "company_name",
-                    10,
+                    1,
                     true,
                     false
             ),
@@ -173,7 +173,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "code",
-                    20,
+                    2,
                     false,
                     true
             ),
@@ -187,7 +187,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "country",
-                    30,
+                    3,
                     false,
                     true
             ),
@@ -201,7 +201,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "contact_info",
-                    40,
+                    4,
                     false,
                     true
             ),
@@ -215,7 +215,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "drawing_number",
-                    10,
+                    1,
                     false,
                     false
             ),
@@ -229,7 +229,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "name",
-                    20,
+                    2,
                     true,
                     false
             ),
@@ -243,7 +243,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "version",
-                    30,
+                    3,
                     false,
                     true
             ),
@@ -257,7 +257,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "status",
-                    40,
+                    4,
                     false,
                     true
             ),
@@ -271,7 +271,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "conversion_status",
-                    50,
+                    5,
                     false,
                     true
             ),
@@ -285,7 +285,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "source_type",
-                    60,
+                    6,
                     false,
                     true
             ),
@@ -299,7 +299,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "dimension",
-                    70,
+                    7,
                     false,
                     true
             ),
@@ -313,7 +313,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "quantity",
-                    10,
+                    1,
                     true,
                     false
             ),
@@ -327,7 +327,7 @@ public final class SystemPropertyRegistry {
                     null,
                     List.of(),
                     "unit_cost",
-                    10,
+                    1,
                     false,
                     true
             )
