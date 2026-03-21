@@ -147,15 +147,3 @@ tasks.register<JavaExec>("schemaExportTenant") {
     mainClass.set("com.fabbitinc.server.tools.SchemaExporter")
     args = listOf("tenant")
 }
-
-// build.gradle.kts
-tasks.named<BootRun>("bootRun") {
-    val envFile = file(".env")
-    if (envFile.exists()) {
-        envFile.readLines()
-            .filter { it.isNotBlank() && !it.startsWith("#") }
-            .map { it.split("=", limit = 2) }
-            .filter { it.size == 2 }
-            .forEach { (key, value) -> environment(key, value) }
-    }
-}
