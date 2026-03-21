@@ -9,17 +9,19 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ChatSseManager {
+public class InMemoryChatSsePublisher implements ChatSsePublisher {
 
     private final ConcurrentHashMap<UUID, CopyOnWriteArrayList<BlockingQueue<String>>> connections =
             new ConcurrentHashMap<>();
 
+    @Override
     public BlockingQueue<String> connect(UUID runId) {
         BlockingQueue<String> queue = new LinkedBlockingQueue<>();
         connections.computeIfAbsent(runId, ignored -> new CopyOnWriteArrayList<>()).add(queue);
         return queue;
     }
 
+    @Override
     public void disconnect(UUID runId, BlockingQueue<String> queue) {
         List<BlockingQueue<String>> queues = connections.get(runId);
         if (queues == null) {
@@ -31,6 +33,7 @@ public class ChatSseManager {
         }
     }
 
+    @Override
     public void push(UUID runId, String data) {
         List<BlockingQueue<String>> queues = connections.get(runId);
         if (queues == null) {

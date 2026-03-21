@@ -109,6 +109,7 @@ class CloudflareTurnstileAdapterTest {
                 "fabbit",
                 "",
                 "",
+                true,
                 "https://openrouter.ai/api/v1",
                 "openai/gpt-5-mini",
                 30

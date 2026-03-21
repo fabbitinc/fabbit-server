@@ -6,7 +6,9 @@ import com.fabbitinc.server.application.chat.service.ChatAgentService;
 import com.fabbitinc.server.application.chat.service.ChatAsyncExecutionService;
 import com.fabbitinc.server.application.chat.service.ChatService;
 import com.fabbitinc.server.application.chat.support.ChatMessageComposer;
+import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
+import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;
 import com.fabbitinc.server.domain.chat.model.ChatIntent;
 import com.fabbitinc.server.domain.chat.model.ChatThread;
 import java.util.UUID;
@@ -21,9 +23,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @RequiredArgsConstructor
 public class SendChatMessageUseCase {
 
-    private static final String DEFAULT_MODEL = "chat-scaffold-v1";
-
     private final CurrentAuthProvider currentAuthProvider;
+    private final OrganizationApi organizationApi;
     private final ChatService chatService;
     private final ChatMessageComposer chatMessageComposer;
     private final ChatAgentService chatAgentService;
@@ -31,10 +32,17 @@ public class SendChatMessageUseCase {
 
     public SendChatMessageResult execute(SendChatMessageCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
-        ChatThread thread = chatService.getThreadOrThrow(command.threadId(), auth.orgId(), auth.userId());
+        chatAgentService.ensureAvailable();
+        organizationApi.checkCreditQuota(auth.orgId(), AiUsageCategory.CHAT);
+        ChatThread thread = chatService.getThreadForUpdateOrThrow(command.threadId(), auth.orgId(), auth.userId());
         String userContent = chatMessageComposer.userText(command.text());
-        ChatIntent intent = chatAgentService.detectIntent(command.text());
-        ChatService.PreparedRun prepared = chatService.prepareRun(thread, userContent, DEFAULT_MODEL, intent, "{}");
+        ChatService.PreparedRun prepared = chatService.prepareRun(
+                thread,
+                userContent,
+                chatAgentService.getModelName(),
+                ChatIntent.GENERAL_CHAT,
+                "{}"
+        );
         dispatchAfterCommit(prepared.run().getId());
         return new SendChatMessageResult(prepared.userMessage().getId(), prepared.run().getId(), prepared.run().getStatus().name());
     }

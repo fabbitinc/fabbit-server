@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.chat.service;
 
-import com.fabbitinc.server.application.chat.support.ChatSseManager;
+import com.fabbitinc.server.application.chat.support.ChatSsePublisher;
 import com.fabbitinc.server.application.chat.support.ChatSseEventWriter;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +34,7 @@ public class ChatService {
     private final ChatRunRepository chatRunRepository;
     private final ChatRunEventRepository chatRunEventRepository;
     private final ChatActionRequestRepository chatActionRequestRepository;
-    private final ChatSseManager chatSseManager;
+    private final ChatSsePublisher chatSsePublisher;
     private final ChatSseEventWriter chatSseEventWriter;
 
     public ChatThread createThread(
@@ -53,8 +54,23 @@ public class ChatService {
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "챗 스레드를 찾을 수 없습니다"));
     }
 
+    public ChatThread getThreadByIdOrThrow(UUID threadId) {
+        return chatThreadRepository.findById(threadId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "챗 스레드를 찾을 수 없습니다"));
+    }
+
+    public ChatThread getThreadForUpdateOrThrow(UUID threadId, UUID orgId, UUID userId) {
+        return chatThreadRepository.findByIdAndOrgIdAndUserIdForUpdate(threadId, orgId, userId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "챗 스레드를 찾을 수 없습니다"));
+    }
+
     public ChatRun getRunOrThrow(UUID runId) {
         return chatRunRepository.findById(runId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "챗 실행 정보를 찾을 수 없습니다"));
+    }
+
+    public ChatRun getRunForUpdateOrThrow(UUID runId) {
+        return chatRunRepository.findByIdForUpdate(runId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "챗 실행 정보를 찾을 수 없습니다"));
     }
 
@@ -65,6 +81,11 @@ public class ChatService {
 
     public ChatActionRequest getActionRequestOrThrow(UUID actionRequestId) {
         return chatActionRequestRepository.findById(actionRequestId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "액션 요청을 찾을 수 없습니다"));
+    }
+
+    public ChatActionRequest getActionRequestForUpdateOrThrow(UUID actionRequestId) {
+        return chatActionRequestRepository.findByIdForUpdate(actionRequestId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "액션 요청을 찾을 수 없습니다"));
     }
 
@@ -136,6 +157,8 @@ public class ChatService {
     }
 
     public ChatMessage appendAssistantNotice(UUID threadId, String content) {
+        chatThreadRepository.findByIdForUpdate(threadId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "챗 스레드를 찾을 수 없습니다"));
         ChatMessage message = ChatMessage.createAssistantNotice(threadId, content, nextMessageSequence(threadId));
         ChatMessage saved = chatMessageRepository.save(message);
         touchThreadLastMessageAt(threadId);
@@ -146,16 +169,23 @@ public class ChatService {
         return chatRunEventRepository.findByRunIdOrderBySequenceAsc(runId);
     }
 
+    public List<ChatRunEvent> getRunEventsAfter(UUID runId, long lastSequence) {
+        return chatRunEventRepository.findByRunIdAndSequenceGreaterThanOrderBySequenceAsc(runId, lastSequence);
+    }
+
+    @Transactional
     public void publishEvent(UUID runId, String eventType, Map<String, Object> payload) {
         publishEvent(runId, eventType, payload, ChatRunEventVisibility.USER_VISIBLE);
     }
 
+    @Transactional
     public void publishEvent(UUID runId, String eventType, Map<String, Object> payload, ChatRunEventVisibility visibility) {
+        getRunForUpdateOrThrow(runId);
         long sequence = chatRunEventRepository.countByRunId(runId) + 1;
         String payloadJson = chatSseEventWriter.serialize(payload);
         ChatRunEvent event = ChatRunEvent.create(runId, sequence, eventType, visibility, payloadJson);
         chatRunEventRepository.save(event);
-        chatSseManager.push(runId, chatSseEventWriter.write(eventType, payload));
+        chatSsePublisher.push(runId, chatSseEventWriter.write(event.getSequence(), eventType, payload));
     }
 
     private void touchThreadLastMessageAt(UUID threadId) {

@@ -1,8 +1,6 @@
 package com.fabbitinc.server.application.chat.support;
 
-import com.fabbitinc.server.application.issue.api.IssueSnapshot;
-import com.fabbitinc.server.application.part.api.PartSnapshot;
-import com.fabbitinc.server.domain.chat.model.ChatActionRequest;
+import com.fabbitinc.server.application.chat.model.ChatUiArtifact;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,80 +25,34 @@ public class ChatMessageComposer {
     }
 
     public String assistantText(String text) {
-        ObjectNode root = objectMapper.createObjectNode();
-        root.put("text", normalizeText(text));
-        ArrayNode blocks = root.putArray("blocks");
-        blocks.addObject()
-                .put("type", "text")
-                .put("text", normalizeText(text));
-        return write(root);
+        return assistantStructured(text, List.of());
     }
 
-    public String partLookupResult(String text, List<PartSnapshot> partSnapshots, List<IssueSnapshot> issueSnapshots) {
+    public String assistantStructured(String text, List<ChatUiArtifact> uiArtifacts) {
         ObjectNode root = objectMapper.createObjectNode();
         root.put("text", normalizeText(text));
+
         ArrayNode blocks = root.putArray("blocks");
         blocks.addObject()
                 .put("type", "text")
                 .put("text", normalizeText(text));
 
-        ArrayNode partItems = objectMapper.createArrayNode();
-        for (PartSnapshot snapshot : partSnapshots) {
-            partItems.addObject()
-                    .put("id", stringValue(snapshot.id()))
-                    .put("revisionId", stringValue(snapshot.revisionId()))
-                    .put("partNumber", snapshot.partNumber())
-                    .put("name", snapshot.name())
-                    .put("revisionCode", snapshot.revisionCode());
-        }
-        blocks.addObject()
-                .put("type", "part_lookup_result")
-                .set("items", partItems);
-
-        if (!issueSnapshots.isEmpty()) {
-            ArrayNode issueItems = objectMapper.createArrayNode();
-            for (IssueSnapshot snapshot : issueSnapshots) {
-                issueItems.addObject()
-                        .put("id", stringValue(snapshot.id()))
-                        .put("number", snapshot.number())
-                        .put("title", snapshot.title())
-                        .put("state", snapshot.state().name());
+        for (ChatUiArtifact uiArtifact : uiArtifacts) {
+            if (uiArtifact == null) {
+                continue;
             }
             blocks.addObject()
-                    .put("type", "issue_lookup_result")
-                    .set("items", issueItems);
+                    .put("type", uiArtifact.type())
+                    .set("payload", uiArtifact.payload());
         }
-
-        return write(root);
-    }
-
-    public String issueDraftResult(String text, ChatActionRequest actionRequest, JsonNode previewPayload) {
-        ObjectNode root = objectMapper.createObjectNode();
-        root.put("text", normalizeText(text));
-        ArrayNode blocks = root.putArray("blocks");
-        blocks.addObject()
-                .put("type", "text")
-                .put("text", normalizeText(text));
-        blocks.addObject()
-                .put("type", "action_request")
-                .put("actionRequestId", actionRequest.getId().toString())
-                .put("actionType", actionRequest.getActionType().name())
-                .set("preview", previewPayload);
         return write(root);
     }
 
     public String actionExecutionResult(String text, UUID resourceId, String resourceType) {
-        ObjectNode root = objectMapper.createObjectNode();
-        root.put("text", normalizeText(text));
-        ArrayNode blocks = root.putArray("blocks");
-        blocks.addObject()
-                .put("type", "text")
-                .put("text", normalizeText(text));
-        blocks.addObject()
-                .put("type", "action_result")
-                .put("resourceType", resourceType)
-                .put("resourceId", stringValue(resourceId));
-        return write(root);
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("resourceType", resourceType);
+        payload.put("resourceId", stringValue(resourceId));
+        return assistantStructured(text, List.of(ChatUiArtifact.of("action_result", payload)));
     }
 
     public String errorText(String text) {
@@ -130,15 +82,19 @@ public class ChatMessageComposer {
         }
     }
 
+    public JsonNode toJsonNode(Object payload) {
+        return objectMapper.valueToTree(payload);
+    }
+
     public String writeMap(Map<String, Object> payload) {
         return write(objectMapper.valueToTree(payload));
     }
 
-    private String normalizeText(String value) {
+    public String normalizeText(String value) {
         return value == null ? "" : value;
     }
 
-    private String stringValue(UUID value) {
+    public String stringValue(UUID value) {
         return value == null ? null : value.toString();
     }
 

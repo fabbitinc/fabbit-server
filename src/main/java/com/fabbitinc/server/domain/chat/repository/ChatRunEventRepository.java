@@ -9,5 +9,7 @@ public interface ChatRunEventRepository extends JpaRepository<ChatRunEvent, UUID
 
     List<ChatRunEvent> findByRunIdOrderBySequenceAsc(UUID runId);
 
+    List<ChatRunEvent> findByRunIdAndSequenceGreaterThanOrderBySequenceAsc(UUID runId, long sequence);
+
     long countByRunId(UUID runId);
 }

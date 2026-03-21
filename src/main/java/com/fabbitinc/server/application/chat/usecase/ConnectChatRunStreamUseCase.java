@@ -4,7 +4,7 @@ import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.chat.service.ChatService;
 import com.fabbitinc.server.application.chat.support.ChatSseEventWriter;
-import com.fabbitinc.server.application.chat.support.ChatSseManager;
+import com.fabbitinc.server.application.chat.support.ChatSsePublisher;
 import com.fabbitinc.server.application.chat.usecase.result.ChatRunStreamResult;
 import com.fabbitinc.server.domain.chat.model.ChatRun;
 import com.fabbitinc.server.domain.chat.model.ChatRunEvent;
@@ -23,24 +23,25 @@ public class ConnectChatRunStreamUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final ChatService chatService;
-    private final ChatSseManager chatSseManager;
+    private final ChatSsePublisher chatSsePublisher;
     private final ChatSseEventWriter chatSseEventWriter;
     private final ObjectMapper objectMapper;
 
-    public ChatRunStreamResult execute(UUID runId) {
+    public ChatRunStreamResult execute(UUID runId, Long lastEventSequence) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         ChatRun run = chatService.getRunOrThrow(runId);
         chatService.getThreadOrThrow(run.getThreadId(), auth.orgId(), auth.userId());
 
-        BlockingQueue<String> queue = chatSseManager.connect(runId);
-        for (ChatRunEvent event : chatService.getRunEvents(runId)) {
-            queue.offer(chatSseEventWriter.write(event.getEventType(), parsePayload(event.getPayload())));
+        BlockingQueue<String> queue = chatSsePublisher.connect(runId);
+        long resolvedLastEventSequence = lastEventSequence == null ? 0L : Math.max(lastEventSequence, 0L);
+        for (ChatRunEvent event : chatService.getRunEventsAfter(runId, resolvedLastEventSequence)) {
+            queue.offer(chatSseEventWriter.write(event.getSequence(), event.getEventType(), parsePayload(event.getPayload())));
         }
         return new ChatRunStreamResult(runId, queue);
     }
 
     public void disconnect(ChatRunStreamResult result) {
-        chatSseManager.disconnect(result.runId(), result.queue());
+        chatSsePublisher.disconnect(result.runId(), result.queue());
     }
 
     private Object parsePayload(String raw) {

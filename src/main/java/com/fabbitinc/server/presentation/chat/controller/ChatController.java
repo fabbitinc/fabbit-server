@@ -45,7 +45,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
@@ -135,9 +137,16 @@ public class ChatController {
     @GetMapping(value = "/runs/{runId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<StreamingResponseBody> streamRun(
             @Parameter(description = "스트림으로 구독할 실행 ID")
-            @PathVariable UUID runId
+            @PathVariable UUID runId,
+            @Parameter(description = "이 sequence 이후 이벤트만 재생합니다")
+            @RequestParam(value = "last_event_sequence", required = false) Long lastEventSequence,
+            @Parameter(description = "SSE 재연결 시 마지막으로 수신한 이벤트 ID입니다")
+            @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId
     ) {
-        ChatRunStreamResult result = connectChatRunStreamUseCase.execute(runId);
+        ChatRunStreamResult result = connectChatRunStreamUseCase.execute(
+                runId,
+                resolveReplayCursor(lastEventSequence, lastEventId)
+        );
         StreamingResponseBody body = outputStream -> {
             Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
             try {
@@ -236,5 +245,19 @@ public class ChatController {
                         ))
                         .toList()
         );
+    }
+
+    private Long resolveReplayCursor(Long lastEventSequence, String lastEventId) {
+        if (lastEventSequence != null) {
+            return lastEventSequence;
+        }
+        if (lastEventId == null || lastEventId.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(lastEventId.trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }
