@@ -32,7 +32,7 @@ springBoot {
 }
 
 dependencies {
-    implementation(platform("org.springframework.ai:spring-ai-bom:1.0.3"))
+    implementation(platform("org.springframework.ai:spring-ai-bom:2.0.0-M2"))
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")

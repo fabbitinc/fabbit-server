@@ -15,8 +15,9 @@ import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.retry.RetryPolicy;
+import org.springframework.core.retry.RetryTemplate;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.retry.support.RetryTemplate;
 import org.springframework.web.client.RestClient;
 
 @Configuration
@@ -60,9 +61,7 @@ public class ChatAiConfig {
         return OpenAiChatModel.builder()
                 .openAiApi(openAiApi)
                 .defaultOptions(defaultOptions)
-                .retryTemplate(RetryTemplate.builder()
-                        .maxAttempts(1)
-                        .build())
+                .retryTemplate(new RetryTemplate(RetryPolicy.withMaxRetries(0)))
                 .observationRegistry(observationRegistry)
                 .build();
     }
@@ -75,7 +74,7 @@ public class ChatAiConfig {
     ) {
         ObservationRegistry observationRegistry = observationRegistryProvider.getIfAvailable(() -> ObservationRegistry.NOOP);
 
-        return ChatClient.builder(openAiChatModel, observationRegistry, null)
+        return ChatClient.builder(openAiChatModel, observationRegistry, null, null)
                 .defaultToolCallbacks(chatToolCallbackProvider)
                 .build();
     }
