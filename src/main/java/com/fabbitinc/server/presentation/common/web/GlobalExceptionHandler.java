@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -69,6 +71,16 @@ public class GlobalExceptionHandler {
             HttpMessageNotReadableException ex
     ) {
         return validationError("요청 본문 형식이 올바르지 않습니다");
+    }
+
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleAsyncRequestNotUsable(AsyncRequestNotUsableException ex) {
+        log.debug("event=async_request_not_usable reason=client_disconnected message={}", ex.getMessage());
+    }
+
+    @ExceptionHandler(AsyncRequestTimeoutException.class)
+    public void handleAsyncRequestTimeout(AsyncRequestTimeoutException ex) {
+        log.debug("event=async_request_timeout message={}", ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

@@ -154,7 +154,7 @@ public class ChatController {
                 writer.flush();
 
                 while (!Thread.currentThread().isInterrupted()) {
-                    String data = result.queue().poll(30, TimeUnit.SECONDS);
+                    String data = result.queue().poll(15, TimeUnit.SECONDS);
                     if (data == null) {
                         writer.write(": keepalive\n\n");
                     } else {

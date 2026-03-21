@@ -18,7 +18,11 @@ public class ApplyScheduledSubscriptionChangesUseCase {
 
     public ApplyScheduledSubscriptionChangesResult execute() {
         SubscriptionService.PlanChangeExecutionResult result = subscriptionService.applyDueScheduledPlanChanges(Instant.now());
-        log.atInfo()
+        var logEvent = log.atInfo();
+        if (result.appliedCount() == 0 && result.failedCount() == 0) {
+            logEvent = log.atDebug();
+        }
+        logEvent
                 .addKeyValue("event.name", "subscription.plan.change.batch.completed")
                 .addKeyValue("subscription.appliedCount", result.appliedCount())
                 .addKeyValue("subscription.failedCount", result.failedCount())

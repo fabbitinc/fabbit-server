@@ -1,6 +1,8 @@
 package com.fabbitinc.server.domain.chat.repository;
 
 import com.fabbitinc.server.domain.chat.model.ChatActionRequest;
+import com.fabbitinc.server.domain.chat.model.ChatActionRequestStatus;
+import com.fabbitinc.server.domain.chat.model.ChatActionRequestType;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.QueryHint;
 import java.util.List;
@@ -16,6 +18,12 @@ public interface ChatActionRequestRepository extends JpaRepository<ChatActionReq
     List<ChatActionRequest> findByThreadIdOrderByCreatedAtDesc(UUID threadId);
 
     Optional<ChatActionRequest> findTopByRunIdOrderByCreatedAtDesc(UUID runId);
+
+    Optional<ChatActionRequest> findTopByThreadIdAndActionTypeAndStatusOrderByCreatedAtDesc(
+            UUID threadId,
+            ChatActionRequestType actionType,
+            ChatActionRequestStatus status
+    );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "3000"))

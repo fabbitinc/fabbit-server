@@ -27,13 +27,13 @@ public class ChatExecutionAccumulator {
         this.toolNames.add(toolName.trim());
     }
 
-    public void recordPendingAction(ChatActionRequest actionRequest, JsonNode previewPayload) {
-        if (actionRequest == null || previewPayload == null) {
+    public void recordPendingAction(ChatActionRequest actionRequest, JsonNode actionRequestPayload) {
+        if (actionRequest == null || actionRequestPayload == null) {
             return;
         }
         this.pendingAction = new ChatPendingAction(
                 actionRequest,
-                ChatUiArtifact.of("action_request", previewPayload)
+                ChatUiArtifact.of("action_request", actionRequestPayload)
         );
         addUiArtifact(this.pendingAction.uiArtifact());
         addToolName("issue_create_draft");

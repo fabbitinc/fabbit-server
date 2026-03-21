@@ -5,6 +5,7 @@ import com.fabbitinc.server.application.chat.support.ChatVisibleTraceFormatter;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.issue.usecase.CreateIssueUseCase;
+import com.fabbitinc.server.application.part.api.PartSnapshot;
 import com.fabbitinc.server.domain.chat.model.ChatActionRequest;
 import com.fabbitinc.server.domain.chat.model.ChatActionRequestStatus;
 import com.fabbitinc.server.domain.chat.model.ChatActionRequestType;
@@ -33,25 +34,23 @@ public class ChatActionService {
     private final ChatVisibleTraceFormatter chatVisibleTraceFormatter;
     private final ObjectMapper objectMapper;
 
-    public ChatActionRequest createIssueDraft(ChatRun run, UUID partId, String title, String bodySummary) {
-        ObjectNode preview = objectMapper.createObjectNode();
-        preview.put("title", normalizeTitle(title));
-        preview.putArray("partIds").add(partId.toString());
-        preview.put("bodySummary", normalizeBodyText(bodySummary));
+    public ChatActionRequest createIssueDraft(ChatRun run, PartSnapshot part, String title, String bodySummary) {
+        String normalizedTitle = normalizeTitle(title);
+        String normalizedBodyText = normalizeBodyText(bodySummary);
 
-        ObjectNode request = objectMapper.createObjectNode();
-        request.put("title", normalizeTitle(title));
-        request.put("bodyText", normalizeBodyText(bodySummary));
-        ArrayNode partIds = request.putArray("partIds");
-        partIds.add(partId.toString());
+        ObjectNode preview = createIssueDraftPreview(part, normalizedTitle, normalizedBodyText);
+        ObjectNode request = createIssueDraftRequest(part.id(), normalizedTitle, normalizedBodyText);
+        String requestPayload = write(request);
 
-        return chatService.createActionRequest(
-                run,
-                ChatActionRequestType.CREATE_ISSUE,
-                write(preview),
-                write(request),
-                Instant.now().plus(30, ChronoUnit.MINUTES)
-        );
+        return chatService.findLatestPendingActionRequest(run.getThreadId(), ChatActionRequestType.CREATE_ISSUE)
+                .filter(existing -> existing.getRequestPayload().equals(requestPayload))
+                .orElseGet(() -> chatService.createActionRequest(
+                        run,
+                        ChatActionRequestType.CREATE_ISSUE,
+                        write(preview),
+                        requestPayload,
+                        Instant.now().plus(30, ChronoUnit.MINUTES)
+                ));
     }
 
     public ConfirmedActionResult confirm(UUID actionRequestId, UUID orgId, UUID userId) {
@@ -177,6 +176,43 @@ public class ChatActionService {
             return null;
         }
         return UUID.fromString(raw);
+    }
+
+    public ObjectNode toActionRequestPayload(ChatActionRequest actionRequest) {
+        JsonNode preview = chatMessageComposer.parse(actionRequest.getPreviewPayload());
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("actionRequestId", actionRequest.getId().toString());
+        payload.put("actionType", actionRequest.getActionType().name());
+        payload.put("status", actionRequest.getStatus().name());
+        payload.set("preview", preview);
+        return payload;
+    }
+
+    private ObjectNode createIssueDraftPreview(PartSnapshot part, String title, String bodySummary) {
+        ObjectNode preview = objectMapper.createObjectNode();
+        preview.put("title", title);
+        preview.put("bodySummary", bodySummary);
+
+        ObjectNode partNode = preview.putObject("part");
+        partNode.put("number", normalizeDisplayValue(part.partNumber(), "알 수 없는 부품"));
+        partNode.put("name", normalizeDisplayValue(part.name(), ""));
+        return preview;
+    }
+
+    private ObjectNode createIssueDraftRequest(UUID partId, String title, String bodyText) {
+        ObjectNode request = objectMapper.createObjectNode();
+        request.put("title", title);
+        request.put("bodyText", bodyText);
+        ArrayNode partIds = request.putArray("partIds");
+        partIds.add(partId.toString());
+        return request;
+    }
+
+    private String normalizeDisplayValue(String value, String fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        return value.trim();
     }
 
     public record ConfirmedActionResult(

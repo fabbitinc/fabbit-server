@@ -55,7 +55,11 @@ public class RenewSubscriptionsUseCase {
             }
         }
 
-        log.atInfo()
+        var logEvent = log.atInfo();
+        if (renewedCount == 0 && canceledCount == 0 && failedCount == 0) {
+            logEvent = log.atDebug();
+        }
+        logEvent
                 .addKeyValue("event.name", "subscription.renewal.batch.completed")
                 .addKeyValue("subscription.renewedCount", renewedCount)
                 .addKeyValue("subscription.canceledCount", canceledCount)

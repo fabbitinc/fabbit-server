@@ -5,6 +5,7 @@ import com.fabbitinc.server.application.chat.support.ChatSseEventWriter;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.domain.chat.model.ChatActionRequest;
+import com.fabbitinc.server.domain.chat.model.ChatActionRequestStatus;
 import com.fabbitinc.server.domain.chat.model.ChatActionRequestType;
 import com.fabbitinc.server.domain.chat.model.ChatIntent;
 import com.fabbitinc.server.domain.chat.model.ChatMessage;
@@ -20,6 +21,7 @@ import com.fabbitinc.server.domain.chat.repository.ChatThreadRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -155,6 +157,14 @@ public class ChatService {
                 expiresAt
         );
         return chatActionRequestRepository.save(actionRequest);
+    }
+
+    public Optional<ChatActionRequest> findLatestPendingActionRequest(UUID threadId, ChatActionRequestType actionType) {
+        return chatActionRequestRepository.findTopByThreadIdAndActionTypeAndStatusOrderByCreatedAtDesc(
+                threadId,
+                actionType,
+                ChatActionRequestStatus.PENDING
+        );
     }
 
     public ChatMessage appendAssistantNotice(UUID threadId, String content) {

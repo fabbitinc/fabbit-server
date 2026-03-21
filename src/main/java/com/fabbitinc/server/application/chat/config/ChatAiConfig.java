@@ -48,6 +48,8 @@ public class ChatAiConfig {
         OpenAiApi openAiApi = OpenAiApi.builder()
                 .baseUrl(appProperties.llmBaseUrl())
                 .apiKey(appProperties.llmApiKey())
+                .completionsPath("/chat/completions")
+                .embeddingsPath("/embeddings")
                 .restClientBuilder(RestClient.builder().requestFactory(requestFactory))
                 .build();
 

@@ -3,7 +3,6 @@ package com.fabbitinc.server.application.chat.tool;
 import com.fabbitinc.server.application.chat.service.ChatActionService;
 import com.fabbitinc.server.application.chat.service.ChatService;
 import com.fabbitinc.server.application.chat.service.ChatToolExecutionService;
-import com.fabbitinc.server.application.chat.support.ChatMessageComposer;
 import com.fabbitinc.server.application.part.api.PartApi;
 import com.fabbitinc.server.application.part.api.PartSnapshot;
 import com.fabbitinc.server.domain.chat.model.ChatActionRequest;
@@ -23,20 +22,17 @@ public class IssueCreateDraftTool {
     private final ChatService chatService;
     private final ChatActionService chatActionService;
     private final ChatToolExecutionService chatToolExecutionService;
-    private final ChatMessageComposer chatMessageComposer;
 
     public IssueCreateDraftTool(
             PartApi partApi,
             ChatService chatService,
             ChatActionService chatActionService,
-            ChatToolExecutionService chatToolExecutionService,
-            ChatMessageComposer chatMessageComposer
+            ChatToolExecutionService chatToolExecutionService
     ) {
         this.partApi = partApi;
         this.chatService = chatService;
         this.chatActionService = chatActionService;
         this.chatToolExecutionService = chatToolExecutionService;
-        this.chatMessageComposer = chatMessageComposer;
     }
 
     @Tool(
@@ -72,6 +68,7 @@ public class IssueCreateDraftTool {
             chatService.publishEvent(runId, "action.required", Map.of(
                     "actionRequestId", result.actionRequestId(),
                     "actionType", ChatActionRequestType.CREATE_ISSUE.name(),
+                    "status", "PENDING",
                     "preview", result.preview()
             ));
         }
@@ -108,17 +105,17 @@ public class IssueCreateDraftTool {
 
         ChatActionRequest actionRequest = chatActionService.createIssueDraft(
                 chatService.getRunOrThrow(runId),
-                part.id(),
+                part,
                 resolveTitle(title, part.partNumber()),
                 resolveBodySummary(bodySummary, ChatToolContextSupport.getQuestion(toolContext))
         );
-        var previewPayload = chatMessageComposer.parse(actionRequest.getPreviewPayload());
-        ChatToolContextSupport.getAccumulator(toolContext).recordPendingAction(actionRequest, previewPayload);
+        var actionRequestPayload = chatActionService.toActionRequestPayload(actionRequest);
+        ChatToolContextSupport.getAccumulator(toolContext).recordPendingAction(actionRequest, actionRequestPayload);
         return new IssueCreateDraftToolResult(
                 "이슈 초안을 만들었습니다. 사용자가 확인하면 실제 생성됩니다.",
                 true,
                 actionRequest.getId().toString(),
-                previewPayload
+                actionRequestPayload.path("preview")
         );
     }
 
