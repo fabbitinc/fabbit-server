@@ -1,3 +1,5 @@
+import org.springframework.boot.gradle.tasks.run.BootRun
+
 plugins {
     java
     id("org.springframework.boot") version "4.0.3"
@@ -144,4 +146,16 @@ tasks.register<JavaExec>("schemaExportTenant") {
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("com.fabbitinc.server.tools.SchemaExporter")
     args = listOf("tenant")
+}
+
+// build.gradle.kts
+tasks.named<BootRun>("bootRun") {
+    val envFile = file(".env")
+    if (envFile.exists()) {
+        envFile.readLines()
+            .filter { it.isNotBlank() && !it.startsWith("#") }
+            .map { it.split("=", limit = 2) }
+            .filter { it.size == 2 }
+            .forEach { (key, value) -> environment(key, value) }
+    }
 }
