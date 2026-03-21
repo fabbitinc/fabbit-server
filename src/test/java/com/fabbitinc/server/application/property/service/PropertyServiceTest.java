@@ -3,12 +3,16 @@ package com.fabbitinc.server.application.property.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.property.api.PropertyApi;
+import com.fabbitinc.server.application.property.api.PropertyDefinitionUsageSummary;
 import com.fabbitinc.server.application.property.usecase.command.PropertyOptionCommandItem;
+import com.fabbitinc.server.application.property.usecase.command.ReorderPropertyCommandItem;
 import com.fabbitinc.server.domain.property.model.PropertyDefinition;
 import com.fabbitinc.server.domain.property.model.PropertyOptionMode;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
@@ -33,12 +37,19 @@ class PropertyServiceTest {
     @Mock
     private SystemPropertyOverrideRepository systemPropertyOverrideRepository;
 
+    @Mock
+    private PropertyApi propertyApi;
+
     @Test
     void createCustomProperty_중복된_표시명이면_conflict를_던진다() {
         when(propertyDefinitionRepository.existsByOwnerTypeAndDisplayName(PropertyOwnerType.PART, "표면처리"))
                 .thenReturn(true);
 
-        PropertyService service = new PropertyService(propertyDefinitionRepository, systemPropertyOverrideRepository);
+        PropertyService service = new PropertyService(
+                propertyDefinitionRepository,
+                systemPropertyOverrideRepository,
+                propertyApi
+        );
 
         AppException ex = assertThrows(
                 AppException.class,
@@ -70,7 +81,11 @@ class PropertyServiceTest {
                 false
         );
         when(propertyDefinitionRepository.findById(definition.getId())).thenReturn(Optional.of(definition));
-        PropertyService service = new PropertyService(propertyDefinitionRepository, systemPropertyOverrideRepository);
+        PropertyService service = new PropertyService(
+                propertyDefinitionRepository,
+                systemPropertyOverrideRepository,
+                propertyApi
+        );
 
         PropertyDefinition updated = service.updateCustomProperty(
                 definition.getId(),
@@ -98,13 +113,235 @@ class PropertyServiceTest {
     }
 
     @Test
+    void deleteCustomProperty_정의가_있으면_삭제한다() {
+        PropertyDefinition definition = PropertyDefinition.defineCustomProperty(
+                PropertyOwnerType.PART,
+                "표면처리",
+                null,
+                PropertyValueType.STRING,
+                null,
+                List.of(),
+                10,
+                false
+        );
+        when(propertyDefinitionRepository.findById(definition.getId())).thenReturn(Optional.of(definition));
+        when(propertyApi.getPropertyDefinitionUsage(definition.getId()))
+                .thenReturn(new PropertyDefinitionUsageSummary(0, 0, 0, 0));
+        doNothing().when(propertyDefinitionRepository).delete(definition);
+
+        PropertyService service = new PropertyService(
+                propertyDefinitionRepository,
+                systemPropertyOverrideRepository,
+                propertyApi
+        );
+
+        service.deleteCustomProperty(definition.getId());
+
+        verify(propertyDefinitionRepository).delete(definition);
+    }
+
+    @Test
+    void deleteCustomProperty_이미_사용중이면_conflict를_던진다() {
+        PropertyDefinition definition = PropertyDefinition.defineCustomProperty(
+                PropertyOwnerType.PART,
+                "표면처리",
+                null,
+                PropertyValueType.STRING,
+                null,
+                List.of(),
+                10,
+                false
+        );
+        when(propertyDefinitionRepository.findById(definition.getId())).thenReturn(Optional.of(definition));
+        when(propertyApi.getPropertyDefinitionUsage(definition.getId()))
+                .thenReturn(new PropertyDefinitionUsageSummary(3, 0, 0, 0));
+
+        PropertyService service = new PropertyService(
+                propertyDefinitionRepository,
+                systemPropertyOverrideRepository,
+                propertyApi
+        );
+
+        AppException ex = assertThrows(
+                AppException.class,
+                () -> service.deleteCustomProperty(definition.getId())
+        );
+
+        assertEquals(ErrorCode.CONFLICT, ex.getErrorCode());
+    }
+
+    @Test
+    void deleteCustomProperty_정의가_없으면_notFound를_던진다() {
+        UUID propertyDefinitionId = UUID.randomUUID();
+        when(propertyDefinitionRepository.findById(propertyDefinitionId)).thenReturn(Optional.empty());
+
+        PropertyService service = new PropertyService(
+                propertyDefinitionRepository,
+                systemPropertyOverrideRepository,
+                propertyApi
+        );
+
+        AppException ex = assertThrows(
+                AppException.class,
+                () -> service.deleteCustomProperty(propertyDefinitionId)
+        );
+
+        assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
+    }
+
+    @Test
+    void reorderProperties_커스텀속성순서를_한번에_재정렬한다() {
+        PropertyDefinition definition1 = PropertyDefinition.defineCustomProperty(
+                PropertyOwnerType.PART,
+                "속성1",
+                null,
+                PropertyValueType.STRING,
+                null,
+                List.of(),
+                1,
+                false
+        );
+        PropertyDefinition definition2 = PropertyDefinition.defineCustomProperty(
+                PropertyOwnerType.PART,
+                "속성2",
+                null,
+                PropertyValueType.STRING,
+                null,
+                List.of(),
+                2,
+                false
+        );
+        PropertyDefinition definition3 = PropertyDefinition.defineCustomProperty(
+                PropertyOwnerType.PART,
+                "속성3",
+                null,
+                PropertyValueType.STRING,
+                null,
+                List.of(),
+                3,
+                false
+        );
+        PropertyDefinition definition4 = PropertyDefinition.defineCustomProperty(
+                PropertyOwnerType.PART,
+                "속성4",
+                null,
+                PropertyValueType.STRING,
+                null,
+                List.of(),
+                4,
+                false
+        );
+        when(propertyDefinitionRepository.findByIdInAndOwnerType(
+                List.of(definition1.getId(), definition4.getId(), definition2.getId(), definition3.getId()),
+                PropertyOwnerType.PART
+        )).thenReturn(List.of(definition1, definition2, definition3, definition4));
+        when(systemPropertyOverrideRepository.findByOwnerTypeOrderByDisplayOrderAscPropertyKeyAsc(PropertyOwnerType.PART))
+                .thenReturn(List.of());
+
+        PropertyService service = new PropertyService(
+                propertyDefinitionRepository,
+                systemPropertyOverrideRepository,
+                propertyApi
+        );
+
+        service.reorderProperties(
+                PropertyOwnerType.PART,
+                List.of(
+                        new ReorderPropertyCommandItem(definition1.getId().toString(), false),
+                        new ReorderPropertyCommandItem(definition4.getId().toString(), false),
+                        new ReorderPropertyCommandItem(definition2.getId().toString(), false),
+                        new ReorderPropertyCommandItem(definition3.getId().toString(), false)
+                )
+        );
+
+        assertEquals(1, definition1.getDisplayOrder());
+        assertEquals(2, definition4.getDisplayOrder());
+        assertEquals(3, definition2.getDisplayOrder());
+        assertEquals(4, definition3.getDisplayOrder());
+    }
+
+    @Test
+    void reorderProperties_시스템속성을_포함하면_override를_생성한다() {
+        PropertyDefinition definition1 = PropertyDefinition.defineCustomProperty(
+                PropertyOwnerType.PART,
+                "속성1",
+                null,
+                PropertyValueType.STRING,
+                null,
+                List.of(),
+                20,
+                false
+        );
+        PropertyDefinition definition2 = PropertyDefinition.defineCustomProperty(
+                PropertyOwnerType.PART,
+                "속성2",
+                null,
+                PropertyValueType.STRING,
+                null,
+                List.of(),
+                30,
+                false
+        );
+        when(propertyDefinitionRepository.findByIdInAndOwnerType(
+                List.of(definition1.getId(), definition2.getId()),
+                PropertyOwnerType.PART
+        )).thenReturn(List.of(definition1, definition2));
+        when(systemPropertyOverrideRepository.findByOwnerTypeOrderByDisplayOrderAscPropertyKeyAsc(PropertyOwnerType.PART))
+                .thenReturn(List.of());
+        when(systemPropertyOverrideRepository.save(any(SystemPropertyOverride.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        PropertyService service = new PropertyService(
+                propertyDefinitionRepository,
+                systemPropertyOverrideRepository,
+                propertyApi
+        );
+
+        service.reorderProperties(
+                PropertyOwnerType.PART,
+                List.of(
+                        new ReorderPropertyCommandItem(definition1.getId().toString(), false),
+                        new ReorderPropertyCommandItem("material", true),
+                        new ReorderPropertyCommandItem(definition2.getId().toString(), false)
+                )
+        );
+
+        assertEquals(4, definition1.getDisplayOrder());
+        assertEquals(30, definition2.getDisplayOrder());
+        verify(systemPropertyOverrideRepository).save(any(SystemPropertyOverride.class));
+    }
+
+    @Test
+    void reorderProperties_system플래그가_실제속성타입과_다르면_badRequest를_던진다() {
+        PropertyService service = new PropertyService(
+                propertyDefinitionRepository,
+                systemPropertyOverrideRepository,
+                propertyApi
+        );
+
+        AppException ex = assertThrows(
+                AppException.class,
+                () -> service.reorderProperties(
+                        PropertyOwnerType.PART,
+                        List.of(new ReorderPropertyCommandItem("material", false))
+                )
+        );
+
+        assertEquals(ErrorCode.BAD_REQUEST, ex.getErrorCode());
+    }
+
+    @Test
     void upsertSystemPropertyOverride_없는_override면_생성해서_저장한다() {
         when(systemPropertyOverrideRepository.findByOwnerTypeAndPropertyKey(PropertyOwnerType.PART, "category"))
                 .thenReturn(Optional.empty());
         when(systemPropertyOverrideRepository.save(any(SystemPropertyOverride.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        PropertyService service = new PropertyService(propertyDefinitionRepository, systemPropertyOverrideRepository);
+        PropertyService service = new PropertyService(
+                propertyDefinitionRepository,
+                systemPropertyOverrideRepository,
+                propertyApi
+        );
 
         SystemPropertyOverride override = service.upsertSystemPropertyOverride(
                 PropertyOwnerType.PART,
@@ -122,7 +359,11 @@ class PropertyServiceTest {
 
     @Test
     void upsertSystemPropertyOverride_비활성화불가_시스템속성은_비활성화할수없다() {
-        PropertyService service = new PropertyService(propertyDefinitionRepository, systemPropertyOverrideRepository);
+        PropertyService service = new PropertyService(
+                propertyDefinitionRepository,
+                systemPropertyOverrideRepository,
+                propertyApi
+        );
 
         AppException ex = assertThrows(
                 AppException.class,

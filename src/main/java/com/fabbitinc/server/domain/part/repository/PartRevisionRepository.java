@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.Query;
 
 public interface PartRevisionRepository extends JpaRepository<PartRevision, UUID> {
@@ -25,6 +26,12 @@ public interface PartRevisionRepository extends JpaRepository<PartRevision, UUID
     boolean existsByCategory(String category);
 
     long countByCategory(String category);
+
+    @Query(
+            value = "select count(*) from part_revisions where jsonb_exists(extended_properties, :propertyDefinitionId)",
+            nativeQuery = true
+    )
+    long countByExtendedPropertiesContainingPropertyDefinitionId(@Param("propertyDefinitionId") String propertyDefinitionId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update PartRevision pr set pr.category = ?2 where pr.category = ?1")

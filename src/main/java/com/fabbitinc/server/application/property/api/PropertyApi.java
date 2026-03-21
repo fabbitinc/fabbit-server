@@ -2,11 +2,15 @@ package com.fabbitinc.server.application.property.api;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.domain.bom.repository.EngineeringBomItemRepository;
+import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
+import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
 import com.fabbitinc.server.domain.property.model.PropertyDefinition;
 import com.fabbitinc.server.domain.property.model.PropertyOptionMode;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
 import com.fabbitinc.server.domain.property.model.PropertyValueType;
 import com.fabbitinc.server.domain.property.repository.PropertyDefinitionRepository;
+import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -23,6 +27,10 @@ import org.springframework.stereotype.Component;
 public class PropertyApi {
 
     private final PropertyDefinitionRepository propertyDefinitionRepository;
+    private final PartRevisionRepository partRevisionRepository;
+    private final SupplierRepository supplierRepository;
+    private final EngineeringBomItemRepository engineeringBomItemRepository;
+    private final PartSupplierRepository partSupplierRepository;
 
     public Map<String, Object> validateExtendedProperties(
             PropertyOwnerType ownerType,
@@ -55,6 +63,16 @@ public class PropertyApi {
             normalized.put(entry.getKey(), normalizeValue(definition, entry.getValue()));
         }
         return normalized;
+    }
+
+    public PropertyDefinitionUsageSummary getPropertyDefinitionUsage(UUID propertyDefinitionId) {
+        String definitionId = propertyDefinitionId.toString();
+        return new PropertyDefinitionUsageSummary(
+                partRevisionRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId),
+                supplierRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId),
+                engineeringBomItemRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId),
+                partSupplierRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId)
+        );
     }
 
     private List<UUID> parseDefinitionIds(Collection<String> propertyKeys) {

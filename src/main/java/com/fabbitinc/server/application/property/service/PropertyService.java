@@ -2,7 +2,10 @@ package com.fabbitinc.server.application.property.service;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.property.api.PropertyApi;
+import com.fabbitinc.server.application.property.api.PropertyDefinitionUsageSummary;
 import com.fabbitinc.server.application.property.usecase.command.PropertyOptionCommandItem;
+import com.fabbitinc.server.application.property.usecase.command.ReorderPropertyCommandItem;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.property.model.PropertyDefinition;
 import com.fabbitinc.server.domain.property.model.PropertyOptionItem;
@@ -14,7 +17,11 @@ import com.fabbitinc.server.domain.property.repository.PropertyDefinitionReposit
 import com.fabbitinc.server.domain.property.repository.SystemPropertyOverrideRepository;
 import com.fabbitinc.server.domain.property.support.SystemPropertyRegistry;
 import com.fabbitinc.server.domain.property.support.SystemPropertySpec;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -25,6 +32,7 @@ public class PropertyService {
 
     private final PropertyDefinitionRepository propertyDefinitionRepository;
     private final SystemPropertyOverrideRepository systemPropertyOverrideRepository;
+    private final PropertyApi propertyApi;
 
     public PropertyDefinition createCustomProperty(
             PropertyOwnerType ownerType,
@@ -124,6 +132,105 @@ public class PropertyService {
         }
     }
 
+    public void deleteCustomProperty(UUID propertyDefinitionId) {
+        PropertyDefinition definition = getRequiredDefinition(propertyDefinitionId);
+        PropertyDefinitionUsageSummary usageSummary = propertyApi.getPropertyDefinitionUsage(definition.getId());
+        if (usageSummary.inUse()) {
+            throw new AppException(
+                    ErrorCode.CONFLICT,
+                    "이미 사용 중인 속성은 삭제할 수 없습니다: %s (%s)".formatted(
+                            definition.getDisplayName(),
+                            usageSummary.describe()
+                    )
+            );
+        }
+        propertyDefinitionRepository.delete(definition);
+    }
+
+    public void reorderProperties(PropertyOwnerType ownerType, List<ReorderPropertyCommandItem> properties) {
+        List<ReorderPropertyCommandItem> normalizedProperties = normalizeReorderProperties(properties);
+        Map<String, SystemPropertySpec> systemSpecsByKey = new LinkedHashMap<>();
+        List<UUID> customPropertyDefinitionIds = new java.util.ArrayList<>();
+
+        for (ReorderPropertyCommandItem property : normalizedProperties) {
+            String propertyKey = property.propertyKey();
+            SystemPropertySpec spec = SystemPropertyRegistry.find(ownerType, propertyKey).orElse(null);
+            if (spec != null) {
+                if (!property.system()) {
+                    throw new AppException(
+                            ErrorCode.BAD_REQUEST,
+                            "시스템 속성은 system=true로 보내야 합니다: " + propertyKey
+                    );
+                }
+                systemSpecsByKey.put(propertyKey, spec);
+                continue;
+            }
+            if (property.system()) {
+                throw new AppException(
+                        ErrorCode.BAD_REQUEST,
+                        "커스텀 속성은 system=false로 보내야 합니다: " + propertyKey
+                );
+            }
+            customPropertyDefinitionIds.add(parsePropertyDefinitionId(propertyKey));
+        }
+
+        Map<UUID, PropertyDefinition> customDefinitionsById = propertyDefinitionRepository
+                .findByIdInAndOwnerType(customPropertyDefinitionIds, ownerType)
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(PropertyDefinition::getId, definition -> definition));
+
+        if (customDefinitionsById.size() != customPropertyDefinitionIds.size()) {
+            Set<UUID> missingIds = customPropertyDefinitionIds.stream()
+                    .filter(id -> !customDefinitionsById.containsKey(id))
+                    .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+            throw new AppException(
+                    ErrorCode.BAD_REQUEST,
+                    "재정렬할 커스텀 속성 정의를 찾을 수 없습니다: " + missingIds
+            );
+        }
+
+        Map<String, SystemPropertyOverride> overridesByKey = systemPropertyOverrideRepository
+                .findByOwnerTypeOrderByDisplayOrderAscPropertyKeyAsc(ownerType)
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        SystemPropertyOverride::getPropertyKey,
+                        override -> override,
+                        (left, right) -> right,
+                        LinkedHashMap::new
+                ));
+
+        List<Integer> reorderedDisplayOrders = normalizedProperties.stream()
+                .map(property -> resolveCurrentDisplayOrder(
+                        property.propertyKey(),
+                        systemSpecsByKey,
+                        customDefinitionsById,
+                        overridesByKey
+                ))
+                .sorted()
+                .toList();
+
+        for (int index = 0; index < normalizedProperties.size(); index++) {
+            String propertyKey = normalizedProperties.get(index).propertyKey();
+            int nextDisplayOrder = reorderedDisplayOrders.get(index);
+            SystemPropertySpec systemSpec = systemSpecsByKey.get(propertyKey);
+            if (systemSpec != null) {
+                applySystemPropertyDisplayOrder(
+                        ownerType,
+                        propertyKey,
+                        systemSpec,
+                        overridesByKey,
+                        nextDisplayOrder
+                );
+                continue;
+            }
+
+            PropertyDefinition definition = customDefinitionsById.get(parsePropertyDefinitionId(propertyKey));
+            if (definition.getDisplayOrder() != nextDisplayOrder) {
+                definition.reorder(nextDisplayOrder);
+            }
+        }
+    }
+
     public SystemPropertyOverride upsertSystemPropertyOverride(
             PropertyOwnerType ownerType,
             String propertyKey,
@@ -180,6 +287,90 @@ public class PropertyService {
 
     private AppException toValidationException(DomainException ex) {
         return new AppException(ErrorCode.VALIDATION_ERROR, ex.getMessage());
+    }
+
+    private List<ReorderPropertyCommandItem> normalizeReorderProperties(List<ReorderPropertyCommandItem> properties) {
+        if (properties == null || properties.isEmpty()) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "properties는 최소 1개 이상이어야 합니다");
+        }
+
+        List<ReorderPropertyCommandItem> normalized = new java.util.ArrayList<>(properties.size());
+        Set<String> seen = new LinkedHashSet<>();
+        for (ReorderPropertyCommandItem property : properties) {
+            if (property == null) {
+                throw new AppException(ErrorCode.BAD_REQUEST, "properties에 null 값이 포함될 수 없습니다");
+            }
+            String propertyKey = property.propertyKey();
+            if (propertyKey == null) {
+                throw new AppException(ErrorCode.BAD_REQUEST, "property_key는 비어 있을 수 없습니다");
+            }
+            String trimmed = propertyKey.trim();
+            if (trimmed.isBlank()) {
+                throw new AppException(ErrorCode.BAD_REQUEST, "property_key는 비어 있을 수 없습니다");
+            }
+            if (!seen.add(trimmed)) {
+                throw new AppException(ErrorCode.BAD_REQUEST, "properties에 중복된 property_key가 포함될 수 없습니다: " + trimmed);
+            }
+            normalized.add(new ReorderPropertyCommandItem(trimmed, property.system()));
+        }
+        return normalized;
+    }
+
+    private UUID parsePropertyDefinitionId(String propertyKey) {
+        try {
+            return UUID.fromString(propertyKey);
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(
+                    ErrorCode.BAD_REQUEST,
+                    "재정렬할 속성 key가 올바르지 않습니다: " + propertyKey
+            );
+        }
+    }
+
+    private int resolveCurrentDisplayOrder(
+            String propertyKey,
+            Map<String, SystemPropertySpec> systemSpecsByKey,
+            Map<UUID, PropertyDefinition> customDefinitionsById,
+            Map<String, SystemPropertyOverride> overridesByKey
+    ) {
+        SystemPropertySpec spec = systemSpecsByKey.get(propertyKey);
+        if (spec != null) {
+            SystemPropertyOverride override = overridesByKey.get(propertyKey);
+            if (override != null && override.getDisplayOrder() != null) {
+                return override.getDisplayOrder();
+            }
+            return spec.displayOrder();
+        }
+
+        PropertyDefinition definition = customDefinitionsById.get(parsePropertyDefinitionId(propertyKey));
+        return definition.getDisplayOrder();
+    }
+
+    private void applySystemPropertyDisplayOrder(
+            PropertyOwnerType ownerType,
+            String propertyKey,
+            SystemPropertySpec spec,
+            Map<String, SystemPropertyOverride> overridesByKey,
+            int nextDisplayOrder
+    ) {
+        SystemPropertyOverride override = overridesByKey.get(propertyKey);
+        int currentDisplayOrder = override != null && override.getDisplayOrder() != null
+                ? override.getDisplayOrder()
+                : spec.displayOrder();
+
+        if (currentDisplayOrder == nextDisplayOrder) {
+            return;
+        }
+
+        if (override == null) {
+            SystemPropertyOverride created = systemPropertyOverrideRepository.save(
+                    SystemPropertyOverride.create(ownerType, propertyKey, null, nextDisplayOrder, true)
+            );
+            overridesByKey.put(propertyKey, created);
+            return;
+        }
+
+        override.changeDisplayOrder(nextDisplayOrder);
     }
 
     private List<PropertyOptionItem> toOptionItems(List<PropertyOptionCommandItem> options) {

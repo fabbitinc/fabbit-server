@@ -8,6 +8,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.springframework.stereotype.Component;
 
+// TODO 멀티 인스턴스일 경우 교체해야함 Redis 등
 @Component
 public class SseManager {
 

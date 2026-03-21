@@ -25,6 +25,11 @@ public interface PropertyDefinitionRepository extends JpaRepository<PropertyDefi
             PropertyOwnerType ownerType
     );
 
+    List<PropertyDefinition> findByIdInAndOwnerType(
+            Collection<UUID> ids,
+            PropertyOwnerType ownerType
+    );
+
     List<PropertyDefinition> findByIdInAndOwnerTypeAndActiveTrue(
             Collection<UUID> ids,
             PropertyOwnerType ownerType

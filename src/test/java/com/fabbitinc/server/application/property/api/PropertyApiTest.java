@@ -6,12 +6,16 @@ import static org.mockito.Mockito.when;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.domain.bom.repository.EngineeringBomItemRepository;
+import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
+import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
 import com.fabbitinc.server.domain.property.model.PropertyDefinition;
 import com.fabbitinc.server.domain.property.model.PropertyOptionItem;
 import com.fabbitinc.server.domain.property.model.PropertyOptionMode;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
 import com.fabbitinc.server.domain.property.model.PropertyValueType;
 import com.fabbitinc.server.domain.property.repository.PropertyDefinitionRepository;
+import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -25,6 +29,18 @@ class PropertyApiTest {
 
     @Mock
     private PropertyDefinitionRepository propertyDefinitionRepository;
+
+    @Mock
+    private PartRevisionRepository partRevisionRepository;
+
+    @Mock
+    private SupplierRepository supplierRepository;
+
+    @Mock
+    private EngineeringBomItemRepository engineeringBomItemRepository;
+
+    @Mock
+    private PartSupplierRepository partSupplierRepository;
 
     @Test
     void validateExtendedProperties_활성_정의와_타입에_맞으면_통과한다() {
@@ -44,7 +60,13 @@ class PropertyApiTest {
                 PropertyOwnerType.PART
         )).thenReturn(List.of(definition));
 
-        PropertyApi propertyApi = new PropertyApi(propertyDefinitionRepository);
+        PropertyApi propertyApi = new PropertyApi(
+                propertyDefinitionRepository,
+                partRevisionRepository,
+                supplierRepository,
+                engineeringBomItemRepository,
+                partSupplierRepository
+        );
 
         Map<String, Object> validated = propertyApi.validateExtendedProperties(PropertyOwnerType.PART, properties);
 
@@ -53,7 +75,13 @@ class PropertyApiTest {
 
     @Test
     void validateExtendedProperties_key가_uuid가_아니면_예외를_던진다() {
-        PropertyApi propertyApi = new PropertyApi(propertyDefinitionRepository);
+        PropertyApi propertyApi = new PropertyApi(
+                propertyDefinitionRepository,
+                partRevisionRepository,
+                supplierRepository,
+                engineeringBomItemRepository,
+                partSupplierRepository
+        );
 
         AppException ex = assertThrows(
                 AppException.class,
@@ -81,7 +109,13 @@ class PropertyApiTest {
                 PropertyOwnerType.PART
         )).thenReturn(List.of(definition));
 
-        PropertyApi propertyApi = new PropertyApi(propertyDefinitionRepository);
+        PropertyApi propertyApi = new PropertyApi(
+                propertyDefinitionRepository,
+                partRevisionRepository,
+                supplierRepository,
+                engineeringBomItemRepository,
+                partSupplierRepository
+        );
 
         AppException ex = assertThrows(
                 AppException.class,
@@ -92,5 +126,31 @@ class PropertyApiTest {
         );
 
         assertEquals(ErrorCode.VALIDATION_ERROR, ex.getErrorCode());
+    }
+
+    @Test
+    void getPropertyDefinitionUsage_사용처별_건수를_집계한다() {
+        UUID definitionId = UUID.randomUUID();
+        when(partRevisionRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId.toString()))
+                .thenReturn(2L);
+        when(supplierRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId.toString()))
+                .thenReturn(1L);
+        when(engineeringBomItemRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId.toString()))
+                .thenReturn(4L);
+        when(partSupplierRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId.toString()))
+                .thenReturn(3L);
+
+        PropertyApi propertyApi = new PropertyApi(
+                propertyDefinitionRepository,
+                partRevisionRepository,
+                supplierRepository,
+                engineeringBomItemRepository,
+                partSupplierRepository
+        );
+
+        PropertyDefinitionUsageSummary usage = propertyApi.getPropertyDefinitionUsage(definitionId);
+
+        assertEquals(10L, usage.totalCount());
+        assertEquals(true, usage.inUse());
     }
 }

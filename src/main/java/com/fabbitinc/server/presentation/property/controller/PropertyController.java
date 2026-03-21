@@ -7,10 +7,15 @@ import com.fabbitinc.server.application.property.query.result.PropertyMetaListRe
 import com.fabbitinc.server.application.property.query.result.PropertyMetaResult;
 import com.fabbitinc.server.application.property.query.result.PropertyOptionResult;
 import com.fabbitinc.server.application.property.usecase.CreatePropertyDefinitionUseCase;
+import com.fabbitinc.server.application.property.usecase.DeletePropertyDefinitionUseCase;
+import com.fabbitinc.server.application.property.usecase.ReorderPropertyUseCase;
 import com.fabbitinc.server.application.property.usecase.UpdatePropertyDefinitionUseCase;
 import com.fabbitinc.server.application.property.usecase.UpsertSystemPropertyOverrideUseCase;
 import com.fabbitinc.server.application.property.usecase.command.CreatePropertyDefinitionCommand;
+import com.fabbitinc.server.application.property.usecase.command.DeletePropertyDefinitionCommand;
 import com.fabbitinc.server.application.property.usecase.command.PropertyOptionCommandItem;
+import com.fabbitinc.server.application.property.usecase.command.ReorderPropertyCommand;
+import com.fabbitinc.server.application.property.usecase.command.ReorderPropertyCommandItem;
 import com.fabbitinc.server.application.property.usecase.command.UpdatePropertyDefinitionCommand;
 import com.fabbitinc.server.application.property.usecase.command.UpsertSystemPropertyOverrideCommand;
 import com.fabbitinc.server.application.property.usecase.result.CreatePropertyDefinitionResult;
@@ -18,6 +23,7 @@ import com.fabbitinc.server.application.property.usecase.result.UpdatePropertyDe
 import com.fabbitinc.server.application.property.usecase.result.UpsertSystemPropertyOverrideResult;
 import com.fabbitinc.server.presentation.property.request.CreatePropertyDefinitionRequest;
 import com.fabbitinc.server.presentation.property.request.PropertyOptionRequest;
+import com.fabbitinc.server.presentation.property.request.ReorderPropertyRequest;
 import com.fabbitinc.server.presentation.property.request.UpdatePropertyDefinitionRequest;
 import com.fabbitinc.server.presentation.property.request.UpsertSystemPropertyOverrideRequest;
 import com.fabbitinc.server.presentation.property.response.PropertyMetaListResponse;
@@ -33,7 +39,9 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -52,6 +60,7 @@ import org.springframework.web.bind.annotation.RestController;
 @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "요청 성공"),
         @ApiResponse(responseCode = "201", description = "생성 성공"),
+        @ApiResponse(responseCode = "204", description = "삭제 성공"),
         @ApiResponse(responseCode = "400", description = "잘못된 요청"),
         @ApiResponse(responseCode = "401", description = "인증 필요"),
         @ApiResponse(responseCode = "403", description = "권한 없음"),
@@ -61,6 +70,8 @@ public class PropertyController {
 
     private final PropertyQuery propertyQuery;
     private final CreatePropertyDefinitionUseCase createPropertyDefinitionUseCase;
+    private final DeletePropertyDefinitionUseCase deletePropertyDefinitionUseCase;
+    private final ReorderPropertyUseCase reorderPropertyUseCase;
     private final UpdatePropertyDefinitionUseCase updatePropertyDefinitionUseCase;
     private final UpsertSystemPropertyOverrideUseCase upsertSystemPropertyOverrideUseCase;
 
@@ -136,6 +147,41 @@ public class PropertyController {
                 result.propertyDefinitionId().toString(),
                 true
         )));
+    }
+
+    @Operation(summary = "커스텀 속성을 삭제합니다", description = "조직 관리자 권한으로 커스텀 속성 정의를 삭제합니다")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "삭제 성공"),
+            @ApiResponse(responseCode = "409", description = "사용 중인 속성이라 삭제 불가")
+    })
+    @DeleteMapping("/definitions/{propertyDefinitionId}")
+    public ResponseEntity<Void> deletePropertyDefinition(
+            @Parameter(description = "삭제할 커스텀 속성 정의 ID")
+            @PathVariable UUID propertyDefinitionId
+    ) {
+        deletePropertyDefinitionUseCase.execute(new DeletePropertyDefinitionCommand(propertyDefinitionId));
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "속성 순서를 변경합니다", description = "조직 관리자 권한으로 속성의 최종 순서를 한 번에 변경합니다")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "순서 변경 성공")
+    })
+    @PatchMapping("/order")
+    public ResponseEntity<Void> reorder(
+            @Parameter(description = "속성 순서 변경 요청")
+            @Valid @RequestBody ReorderPropertyRequest request
+    ) {
+        reorderPropertyUseCase.execute(new ReorderPropertyCommand(
+                request.ownerType(),
+                request.properties().stream()
+                        .map(property -> new ReorderPropertyCommandItem(
+                                property.propertyKey(),
+                                Boolean.TRUE.equals(property.system())
+                        ))
+                        .toList()
+        ));
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "시스템 속성 override를 수정합니다", description = "조직 관리자 권한으로 시스템 속성의 표시명/순서/활성 여부를 조정합니다")
