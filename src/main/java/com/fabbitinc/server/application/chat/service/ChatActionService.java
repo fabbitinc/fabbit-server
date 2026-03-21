@@ -33,15 +33,15 @@ public class ChatActionService {
     private final ChatVisibleTraceFormatter chatVisibleTraceFormatter;
     private final ObjectMapper objectMapper;
 
-    public ChatActionRequest createIssueDraft(ChatRun run, UUID partId, String partNumber, String originalQuestion) {
+    public ChatActionRequest createIssueDraft(ChatRun run, UUID partId, String title, String bodySummary) {
         ObjectNode preview = objectMapper.createObjectNode();
-        preview.put("title", partNumber + " 관련 이슈");
+        preview.put("title", normalizeTitle(title));
         preview.putArray("partIds").add(partId.toString());
-        preview.put("bodySummary", trimBody(originalQuestion));
+        preview.put("bodySummary", normalizeBodyText(bodySummary));
 
         ObjectNode request = objectMapper.createObjectNode();
-        request.put("title", partNumber + " 관련 이슈");
-        request.put("bodyText", trimBody(originalQuestion));
+        request.put("title", normalizeTitle(title));
+        request.put("bodyText", normalizeBodyText(bodySummary));
         ArrayNode partIds = request.putArray("partIds");
         partIds.add(partId.toString());
 
@@ -55,7 +55,7 @@ public class ChatActionService {
     }
 
     public ConfirmedActionResult confirm(UUID actionRequestId, UUID orgId, UUID userId) {
-        ChatActionRequest actionRequest = chatService.getActionRequestOrThrow(actionRequestId);
+        ChatActionRequest actionRequest = chatService.getActionRequestForUpdateOrThrow(actionRequestId);
         ChatRun run = chatService.getRunOrThrow(actionRequest.getRunId());
         chatService.getThreadOrThrow(actionRequest.getThreadId(), orgId, userId);
 
@@ -149,11 +149,19 @@ public class ChatActionService {
         return root;
     }
 
-    private String trimBody(String originalQuestion) {
-        if (originalQuestion == null || originalQuestion.isBlank()) {
+    private String normalizeTitle(String title) {
+        if (title == null || title.isBlank()) {
+            return "챗 이슈 초안";
+        }
+        return title.trim();
+    }
+
+    private String normalizeBodyText(String bodyText) {
+        if (bodyText == null || bodyText.isBlank()) {
             return "챗에서 생성한 이슈입니다.";
         }
-        return originalQuestion.length() > 200 ? originalQuestion.substring(0, 200) : originalQuestion;
+        String trimmed = bodyText.trim();
+        return trimmed.length() > 200 ? trimmed.substring(0, 200) : trimmed;
     }
 
     private String write(JsonNode node) {

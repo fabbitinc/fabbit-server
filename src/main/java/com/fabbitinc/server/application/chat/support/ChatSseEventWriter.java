@@ -11,8 +11,9 @@ public class ChatSseEventWriter {
 
     private final ObjectMapper objectMapper;
 
-    public String write(String eventType, Object payload) {
-        return "event: " + eventType + "\n" +
+    public String write(long sequence, String eventType, Object payload) {
+        return "id: " + sequence + "\n" +
+                "event: " + eventType + "\n" +
                 "data: " + serialize(payload) + "\n\n";
     }
 

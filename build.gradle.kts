@@ -96,6 +96,10 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.add("-parameters")
+}
+
 tasks.register<Test>("integrationTest") {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
     description = "Runs integration tests."
@@ -146,4 +150,15 @@ tasks.register<JavaExec>("schemaExportTenant") {
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("com.fabbitinc.server.tools.SchemaExporter")
     args = listOf("tenant")
+}
+
+tasks.named<BootRun>("bootRun") {
+    val envFile = file(".env")
+    if (envFile.exists()) {
+        envFile.readLines()
+            .filter { it.isNotBlank() && !it.startsWith("#") }
+            .map { it.split("=", limit = 2) }
+            .filter { it.size == 2 }
+            .forEach { (key, value) -> environment(key, value) }
+    }
 }
