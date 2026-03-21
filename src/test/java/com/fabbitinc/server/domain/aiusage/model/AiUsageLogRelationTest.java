@@ -53,7 +53,7 @@ class AiUsageLogRelationTest {
                 new BigDecimal("0.00")
         ));
 
-        assertEquals(AiUsageEvent.CODE_AI_USAGE_ORG_REQUIRED, ex.getDomainCode());
+        assertEquals(AiUsageEvent.CODE_AI_USAGE_ORGANIZATION_REQUIRED, ex.getDomainCode());
     }
 
     @Test

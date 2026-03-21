@@ -3,10 +3,10 @@ package com.fabbitinc.server.application.property.usecase.command;
 import com.fabbitinc.server.domain.property.model.PropertyOptionMode;
 import com.fabbitinc.server.domain.property.model.PropertyValueType;
 import java.util.List;
-import java.util.UUID;
 
 public record UpdatePropertyDefinitionCommand(
-        UUID propertyDefinitionId,
+        String ownerType,
+        String propertyKey,
         String displayName,
         boolean displayNameSet,
         String description,

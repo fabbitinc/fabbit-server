@@ -9,13 +9,10 @@ import com.fabbitinc.server.application.property.query.condition.PropertyMetaLis
 import com.fabbitinc.server.application.property.query.result.PropertyMetaListResult;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.property.model.PropertyDefinition;
-import com.fabbitinc.server.domain.property.model.PropertyOptionMode;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
 import com.fabbitinc.server.domain.property.model.PropertyValueType;
-import com.fabbitinc.server.domain.property.model.SystemPropertyOverride;
-import com.fabbitinc.server.domain.property.support.PartSystemPropertyKind;
 import com.fabbitinc.server.domain.property.repository.PropertyDefinitionRepository;
-import com.fabbitinc.server.domain.property.repository.SystemPropertyOverrideRepository;
+import com.fabbitinc.server.domain.property.support.PartSystemPropertyKind;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -32,11 +29,22 @@ class PropertyQueryTest {
     @Mock
     private PropertyDefinitionRepository propertyDefinitionRepository;
 
-    @Mock
-    private SystemPropertyOverrideRepository systemPropertyOverrideRepository;
-
     @Test
-    void list_시스템속성과_커스텀속성을_합쳐서_정렬한다() {
+    void list_통합_catalog_row를_정렬해서_반환한다() {
+        PropertyDefinition system = PropertyDefinition.defineSystemProperty(
+                PropertyOwnerType.PART,
+                "category",
+                PartSystemPropertyKind.CATEGORY,
+                "품목군",
+                "부품 분류",
+                PropertyValueType.STRING,
+                null,
+                List.of(),
+                "category",
+                65,
+                false,
+                true
+        );
         PropertyDefinition custom = PropertyDefinition.defineCustomProperty(
                 PropertyOwnerType.PART,
                 "표면처리",
@@ -47,81 +55,25 @@ class PropertyQueryTest {
                 75,
                 false
         );
-        SystemPropertyOverride override = SystemPropertyOverride.create(
-                PropertyOwnerType.PART,
-                "category",
-                "품목군",
-                65,
-                true
-        );
         when(currentAuthProvider.getCurrentAuth()).thenReturn(new AuthContext(
                 UUID.randomUUID(),
                 "test@gmail.com",
                 UUID.randomUUID(),
                 MembershipRole.ADMIN
         ));
-        when(systemPropertyOverrideRepository.findByOwnerTypeOrderByDisplayOrderAscPropertyKeyAsc(
-                PropertyOwnerType.PART
-        )).thenReturn(List.of(override));
         when(propertyDefinitionRepository.findByOwnerTypeAndActiveTrueOrderByDisplayOrderAscDisplayNameAsc(
                 PropertyOwnerType.PART
-        )).thenReturn(List.of(custom));
+        )).thenReturn(List.of(system, custom));
 
-        PropertyQuery query = new PropertyQuery(
-                currentAuthProvider,
-                propertyDefinitionRepository,
-                systemPropertyOverrideRepository
-        );
+        PropertyQuery query = new PropertyQuery(currentAuthProvider, propertyDefinitionRepository);
 
         PropertyMetaListResult result = query.list(new PropertyMetaListCondition(PropertyOwnerType.PART.name(), false));
 
-        assertEquals("part_number", result.items().get(0).propertyKey());
-        assertEquals(false, result.items().get(0).activeConfigurable());
-        assertEquals("품목군", result.items().stream()
-                .filter(item -> item.propertyKey().equals("category"))
-                .findFirst()
-                .orElseThrow()
-                .displayName());
-        assertEquals(custom.getId().toString(), result.items().stream()
-                .filter(item -> !item.system())
-                .findFirst()
-                .orElseThrow()
-                .propertyKey());
-        assertEquals(PartSystemPropertyKind.CATEGORY, result.items().stream()
-                .filter(item -> item.propertyKey().equals("category"))
-                .findFirst()
-                .orElseThrow()
-                .partSystemPropertyKind());
-        assertEquals(true, result.items().stream()
-                .filter(item -> item.propertyKey().equals("category"))
-                .findFirst()
-                .orElseThrow()
-                .activeConfigurable());
-    }
-
-    @Test
-    void list_includeInactive가_false면_비활성_커스텀속성을_제외한다() {
-        when(currentAuthProvider.getCurrentAuth()).thenReturn(new AuthContext(
-                UUID.randomUUID(),
-                "test@gmail.com",
-                UUID.randomUUID(),
-                MembershipRole.ADMIN
-        ));
-        when(systemPropertyOverrideRepository.findByOwnerTypeOrderByDisplayOrderAscPropertyKeyAsc(
-                PropertyOwnerType.PART
-        )).thenReturn(List.of());
-        when(propertyDefinitionRepository.findByOwnerTypeAndActiveTrueOrderByDisplayOrderAscDisplayNameAsc(
-                PropertyOwnerType.PART
-        )).thenReturn(List.of());
-
-        PropertyQuery query = new PropertyQuery(
-                currentAuthProvider,
-                propertyDefinitionRepository,
-                systemPropertyOverrideRepository
-        );
-
-        PropertyMetaListResult result = query.list(new PropertyMetaListCondition(PropertyOwnerType.PART.name(), false));
-
-        assertEquals(true, result.items().stream().noneMatch(item -> "내부코드".equals(item.displayName())));
+        assertEquals("category", result.items().get(0).propertyKey());
+        assertEquals(true, result.items().get(0).system());
+        assertEquals("category", result.items().get(0).columnName());
+        assertEquals(custom.getPropertyKey(), result.items().get(1).propertyKey());
+        assertEquals(false, result.items().get(1).system());
+        assertEquals(PartSystemPropertyKind.CATEGORY, result.items().get(0).partSystemPropertyKind());
     }
 }

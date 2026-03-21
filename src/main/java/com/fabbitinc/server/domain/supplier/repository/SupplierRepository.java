@@ -7,7 +7,6 @@ import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface SupplierRepository extends JpaRepository<Supplier, UUID> {
 
@@ -22,10 +21,10 @@ public interface SupplierRepository extends JpaRepository<Supplier, UUID> {
     long countByCompanyNameContainingIgnoreCaseOrCodeContainingIgnoreCase(String companyName, String code);
 
     @Query(
-            value = "select count(*) from suppliers where jsonb_exists(extended_properties, :propertyDefinitionId)",
+            value = "select count(*) from suppliers where jsonb_exists(extended_properties, ?1)",
             nativeQuery = true
     )
-    long countByExtendedPropertiesContainingPropertyDefinitionId(@Param("propertyDefinitionId") String propertyDefinitionId);
+    long countByExtendedPropertiesContainingPropertyDefinitionId(String propertyDefinitionId);
 
     Optional<Supplier> findByCompanyName(String companyName);
 }

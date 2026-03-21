@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -173,12 +174,12 @@ public class ChatService {
         return chatRunEventRepository.findByRunIdAndSequenceGreaterThanOrderBySequenceAsc(runId, lastSequence);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void publishEvent(UUID runId, String eventType, Map<String, Object> payload) {
         publishEvent(runId, eventType, payload, ChatRunEventVisibility.USER_VISIBLE);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void publishEvent(UUID runId, String eventType, Map<String, Object> payload, ChatRunEventVisibility visibility) {
         getRunForUpdateOrThrow(runId);
         long sequence = chatRunEventRepository.countByRunId(runId) + 1;
