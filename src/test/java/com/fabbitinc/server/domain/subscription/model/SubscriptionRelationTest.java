@@ -47,7 +47,7 @@ class SubscriptionRelationTest {
                 end
         ));
 
-        assertEquals(Subscription.CODE_SUBSCRIPTION_ORG_REQUIRED, ex.getDomainCode());
+        assertEquals(Subscription.CODE_SUBSCRIPTION_ORGANIZATION_REQUIRED, ex.getDomainCode());
     }
 
     @Test

@@ -6,7 +6,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface EngineeringBomItemRepository extends JpaRepository<EngineeringBomItem, UUID> {
 
@@ -15,10 +14,10 @@ public interface EngineeringBomItemRepository extends JpaRepository<EngineeringB
     long countByChildPartRevisionId(UUID childPartRevisionId);
 
     @Query(
-            value = "select count(*) from engineering_bom_items where jsonb_exists(extended_properties, :propertyDefinitionId)",
+            value = "select count(*) from engineering_bom_items where jsonb_exists(extended_properties, ?1)",
             nativeQuery = true
     )
-    long countByExtendedPropertiesContainingPropertyDefinitionId(@Param("propertyDefinitionId") String propertyDefinitionId);
+    long countByExtendedPropertiesContainingPropertyDefinitionId(String propertyDefinitionId);
 
     boolean existsByParentPartRevisionId(UUID parentPartRevisionId);
 

@@ -4,12 +4,11 @@ import com.fabbitinc.server.domain.property.model.PropertyOptionMode;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
 import com.fabbitinc.server.domain.property.model.PropertyValueType;
 import java.util.List;
-import java.util.Optional;
 
-public final class SystemPropertyRegistry {
+public final class DefaultSystemPropertyCatalog {
 
-    private static final List<SystemPropertySpec> SPECS = List.of(
-            new SystemPropertySpec(
+    private static final List<SystemPropertyCatalogSeed> ITEMS = List.of(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.PART,
                     "part_number",
                     PartSystemPropertyKind.PART_NUMBER,
@@ -23,7 +22,7 @@ public final class SystemPropertyRegistry {
                     true,
                     false
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.PART,
                     "name",
                     PartSystemPropertyKind.NAME,
@@ -37,7 +36,7 @@ public final class SystemPropertyRegistry {
                     false,
                     false
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.PART,
                     "revision",
                     PartSystemPropertyKind.REVISION,
@@ -46,12 +45,12 @@ public final class SystemPropertyRegistry {
                     PropertyValueType.STRING,
                     null,
                     List.of(),
-                    "revision",
+                    "revision_code",
                     3,
                     false,
                     false
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.PART,
                     "material",
                     PartSystemPropertyKind.MATERIAL,
@@ -65,7 +64,7 @@ public final class SystemPropertyRegistry {
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.PART,
                     "unit",
                     PartSystemPropertyKind.UNIT,
@@ -79,7 +78,7 @@ public final class SystemPropertyRegistry {
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.PART,
                     "description",
                     PartSystemPropertyKind.DESCRIPTION,
@@ -93,7 +92,7 @@ public final class SystemPropertyRegistry {
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.PART,
                     "category",
                     PartSystemPropertyKind.CATEGORY,
@@ -107,7 +106,7 @@ public final class SystemPropertyRegistry {
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.PART,
                     "is_phantom",
                     PartSystemPropertyKind.PHANTOM,
@@ -121,7 +120,7 @@ public final class SystemPropertyRegistry {
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.PART,
                     "lifecycle_state",
                     PartSystemPropertyKind.LIFECYCLE_STATE,
@@ -135,7 +134,7 @@ public final class SystemPropertyRegistry {
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.PART,
                     "lead_time_days",
                     PartSystemPropertyKind.LEAD_TIME_DAYS,
@@ -149,7 +148,7 @@ public final class SystemPropertyRegistry {
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.SUPPLIER,
                     "company_name",
                     null,
@@ -163,7 +162,7 @@ public final class SystemPropertyRegistry {
                     true,
                     false
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.SUPPLIER,
                     "code",
                     null,
@@ -177,7 +176,7 @@ public final class SystemPropertyRegistry {
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.SUPPLIER,
                     "country",
                     null,
@@ -191,7 +190,7 @@ public final class SystemPropertyRegistry {
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.SUPPLIER,
                     "contact_info",
                     null,
@@ -205,7 +204,7 @@ public final class SystemPropertyRegistry {
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.DRAWING,
                     "drawing_number",
                     null,
@@ -219,7 +218,7 @@ public final class SystemPropertyRegistry {
                     false,
                     false
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.DRAWING,
                     "name",
                     null,
@@ -233,7 +232,7 @@ public final class SystemPropertyRegistry {
                     true,
                     false
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.DRAWING,
                     "version",
                     null,
@@ -247,7 +246,7 @@ public final class SystemPropertyRegistry {
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.DRAWING,
                     "status",
                     null,
@@ -261,26 +260,26 @@ public final class SystemPropertyRegistry {
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.DRAWING,
-                    "conversion_status",
+                    "dimension",
                     null,
-                    "변환 상태",
-                    "도면 변환 상태",
+                    "규격",
+                    "도면 규격",
                     PropertyValueType.STRING,
                     null,
                     List.of(),
-                    "conversion_status",
+                    "dimension",
                     5,
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.DRAWING,
                     "source_type",
                     null,
-                    "소스 타입",
-                    "도면 소스 타입",
+                    "원본 유형",
+                    "도면 원본 유형",
                     PropertyValueType.STRING,
                     null,
                     List.of(),
@@ -289,26 +288,26 @@ public final class SystemPropertyRegistry {
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.DRAWING,
-                    "dimension",
+                    "original_file_key",
                     null,
-                    "차원",
-                    "도면 차원 정보",
+                    "원본 파일 키",
+                    "원본 파일 저장 키",
                     PropertyValueType.STRING,
                     null,
                     List.of(),
-                    "dimension",
+                    "original_file_key",
                     7,
                     false,
                     true
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.BOM_LINK,
                     "quantity",
                     null,
                     "수량",
-                    "BOM 관계 수량",
+                    "BOM 링크 수량",
                     PropertyValueType.FLOAT,
                     null,
                     List.of(),
@@ -317,12 +316,12 @@ public final class SystemPropertyRegistry {
                     true,
                     false
             ),
-            new SystemPropertySpec(
+            new SystemPropertyCatalogSeed(
                     PropertyOwnerType.PART_SUPPLIER,
                     "unit_cost",
                     null,
                     "단가",
-                    "공급사별 부품 단가",
+                    "부품-공급사 단가",
                     PropertyValueType.FLOAT,
                     null,
                     List.of(),
@@ -333,22 +332,16 @@ public final class SystemPropertyRegistry {
             )
     );
 
-    private SystemPropertyRegistry() {
+    private DefaultSystemPropertyCatalog() {
     }
 
-    public static List<SystemPropertySpec> list() {
-        return SPECS;
+    public static List<SystemPropertyCatalogSeed> items() {
+        return ITEMS;
     }
 
-    public static List<SystemPropertySpec> listByOwnerType(PropertyOwnerType ownerType) {
-        return SPECS.stream()
-                .filter(spec -> spec.ownerType() == ownerType)
+    public static List<SystemPropertyCatalogSeed> itemsOf(PropertyOwnerType ownerType) {
+        return ITEMS.stream()
+                .filter(item -> item.ownerType() == ownerType)
                 .toList();
-    }
-
-    public static Optional<SystemPropertySpec> find(PropertyOwnerType ownerType, String propertyKey) {
-        return SPECS.stream()
-                .filter(spec -> spec.ownerType() == ownerType && spec.propertyKey().equals(propertyKey))
-                .findFirst();
     }
 }

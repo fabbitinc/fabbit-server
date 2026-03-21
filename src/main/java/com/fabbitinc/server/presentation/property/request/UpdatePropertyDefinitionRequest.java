@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
-@Schema(description = "커스텀 속성 정의 수정 요청")
+@Schema(description = "속성 정의 수정 요청")
 public class UpdatePropertyDefinitionRequest {
 
     @Schema(description = "속성 표시명", example = "표면처리")

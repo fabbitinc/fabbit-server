@@ -2,56 +2,27 @@
 
 ## 목적
 
-`property` 도메인은 사용자 정의 속성과 시스템 속성의 운영 오버라이드를 관리한다.
+`property` 도메인은 시스템 속성과 커스텀 속성을 하나의 property catalog로 관리한다.
 
-현재 방향은 아래처럼 나눈다.
+핵심 원칙:
 
-1. 시스템 속성의 기본 구조는 코드에서 관리한다.
-2. 시스템 속성의 이름 변경/비활성화/표시 순서는 DB override로 관리한다.
-3. 커스텀 속성 정의는 `property_definitions`에서 관리한다.
+1. 메타데이터의 단일 source of truth는 `property_definitions`다.
+2. 시스템 속성도 `property_definitions` row로 프로비저닝한다.
+3. 시스템/커스텀 차이는 `source_type`, `storage_kind`, `storage_binding`으로 표현한다.
+4. 조회/정렬/활성화/표시명 변경은 모두 같은 catalog row를 기준으로 처리한다.
 
 ## 현재 구조
 
-### 1. 시스템 속성
+### 1. 통합 property catalog
 
-시스템 속성의 기본 목록은 코드의 `SystemPropertyRegistry`가 관리한다.
-
-- 파일: `support/SystemPropertyRegistry`
-- 각 항목은 `SystemPropertySpec`
-- 포함 정보
-  - `owner_type`
-  - `property_key`
-  - `display_name`
-  - `description`
-  - `value_type`
-  - `option_mode`
-  - `options`
-  - `column_name`
-  - `display_order`
-  - `required`
-
-즉 시스템 속성의 본체는 더 이상 `property_definitions` row가 아니다.
-
-### 2. 시스템 속성 오버라이드
-
-시스템 속성의 가변 운영 정보는 `system_property_overrides` 테이블에서 관리한다.
-
-현재 오버라이드 대상:
-
-- `display_name_override`
-- `display_order`
-- `is_active`
-
-이 테이블은 기본 시스템 속성을 다시 정의하지 않는다.
-기본 정의는 registry에서 읽고, 운영 오버라이드만 DB에서 덮어쓴다.
-
-`property_key`가 존재하지 않는 override row는 조회 시 무시하는 방향을 전제로 한다.
-
-### 3. 커스텀 속성 정의
-
-커스텀 속성은 `property_definitions` 테이블에서 관리한다.
+모든 속성 메타는 `property_definitions` 테이블에서 관리한다.
 
 - `owner_type`
+- `property_key`
+- `source_type`
+- `storage_kind`
+- `storage_binding`
+- `part_system_property_kind`
 - `display_name`
 - `description`
 - `value_type`
@@ -60,104 +31,83 @@
 - `display_order`
 - `is_required`
 - `is_active`
-
-커스텀 속성은 시스템 속성과 달리 별도 `property_key`를 가지지 않는다.
-실제 값 저장 식별자는 계속 `property_definition.id`를 사용한다.
-
-### 4. 옵션형 속성
-
-옵션형 속성은 다음 두 필드로 표현한다.
-
-- `value_type = OPTION`
-- `option_mode = FIXED | CREATABLE`
-
-옵션 목록은 `options_json`에 저장하고, 도메인에서는 `PropertyOptionItem`으로 다룬다.
-
-```java
-public record PropertyOptionItem(
-        String value,
-        String label,
-        Integer displayOrder,
-        Boolean active
-) {
-}
-```
+- `is_active_configurable`
 
 의미:
 
-- `FIXED`
-  - 미리 정의된 옵션만 선택 가능
-- `CREATABLE`
-  - 기존 옵션 선택 가능
-  - 새 옵션도 추가 가능
+- `source_type = SYSTEM | CUSTOM`
+- `storage_kind = COLUMN | EXTENDED_PROPERTY`
+- `storage_binding`
+  - 시스템 속성: 실제 엔티티 컬럼명
+  - 커스텀 속성: `extended_properties` key
 
-예를 들어 `PART.category`는 registry에서 `OPTION + CREATABLE`로 정의한다.
+### 2. 시스템 속성
 
-## 왜 이렇게 나누는가
+시스템 속성은 더 이상 runtime registry + override merge로 읽지 않는다.
 
-초기에는 시스템 속성까지 `property_definitions` row로 넣는 방향을 검토했다.
-하지만 이 방식은 아래 문제가 있었다.
+- 코드에는 provisioning seed만 남긴다.
+- 테넌트 초기화 시 seed를 기반으로 시스템 속성 row를 보장한다.
+- 조회/수정/정렬은 항상 DB row만 읽는다.
 
-- 시스템 컬럼 migration과 `property_definitions` seed를 항상 같이 맞춰야 함
-- 엔티티 annotation/consistency test 같은 보조 장치가 추가로 필요함
-- 시스템 속성과 커스텀 속성이 실제로는 다른 수명주기를 가지는데 모델이 과하게 통합됨
+따라서 시스템 속성의 최종 메타는 DB에서 바로 확인할 수 있다.
 
-현재 구조는 그 복잡도를 줄이기 위한 타협이다.
+### 3. 커스텀 속성
 
-- 시스템 기본 구조: 코드
-- 시스템 운영 변경: override table
-- 커스텀 속성 정의: property_definitions
+커스텀 속성도 같은 `property_definitions` row를 사용한다.
 
-## 현재 저장 모델
+- `source_type = CUSTOM`
+- `storage_kind = EXTENDED_PROPERTY`
+- `property_key`는 UUID 문자열
+- `storage_binding`도 동일한 UUID 문자열
+
+기존 `extended_properties` JSONB key는 계속 이 UUID 문자열을 사용한다.
+
+### 4. 값 저장 모델
 
 현재 값 저장 모델은 하이브리드다.
 
-- 시스템 속성 값: 각 엔티티의 실제 컬럼에 저장
-- 커스텀 속성 값: 각 엔티티의 `extended_properties` JSONB에 저장
+- 시스템 속성 값: 각 엔티티의 실제 컬럼
+- 커스텀 속성 값: 각 엔티티의 `extended_properties` JSONB
 
-예시:
+중요한 점은 메타데이터와 값 저장 모델을 분리해서 본다는 것이다.
 
-```json
-{
-  "550e8400-e29b-41d4-a716-446655440000": "도금"
-}
-```
+- 메타는 통합
+- 값 저장은 `COLUMN` / `EXTENDED_PROPERTY`로 공존
 
-위 key는 커스텀 속성의 표시명이 아니라 `property_definition.id`다.
+## 운영 규칙
 
-## 추후 확장 구조
+### 시스템 속성
 
-조회/필터/분석 요구가 커지면 커스텀 속성 값 저장만 EAV로 분리한다.
+- 삭제 불가
+- 타입/옵션/필수 여부 변경 불가
+- 표시명/설명/표시 순서/활성 여부만 변경 가능
+- `is_active_configurable=false`인 항목은 비활성화 불가
 
-예시 스키마:
+### 커스텀 속성
 
-```sql
-property_values
-- id uuid pk
-- owner_type varchar not null
-- owner_id uuid not null
-- property_definition_id uuid not null
-- string_value text null
-- number_value numeric null
-- boolean_value boolean null
-- option_value varchar null
-- created_at timestamptz not null
-- updated_at timestamptz not null
+- 생성 가능
+- 부분 수정 가능
+- 사용 중이면 삭제 불가
+- 미사용이면 삭제 가능
 
-unique(owner_type, owner_id, property_definition_id)
-```
+## API 원칙
 
-핵심 원칙:
+- 목록: `GET /api/v1/properties/meta`
+- 생성: `POST /api/v1/properties/definitions`
+- 수정: `PATCH /api/v1/properties/definitions/{ownerType}/{propertyKey}`
+- 삭제: `DELETE /api/v1/properties/definitions/{ownerType}/{propertyKey}`
+- 순서 변경: `PATCH /api/v1/properties/order`
 
-- 시스템 속성은 계속 컬럼에 남길 수 있다
-- 커스텀 속성만 EAV로 분리한다
-- 커스텀 속성의 식별자는 계속 `property_definition.id`다
+`/system-overrides` 같은 별도 시스템 속성 API는 두지 않는다.
 
-## 구현 원칙 요약
+## 장기 확장
 
-- 시스템 속성의 기본 구조는 registry에서 관리한다.
-- 시스템 속성의 rename/deactivate/order는 `system_property_overrides`에서 관리한다.
-- 커스텀 속성 정의는 `property_definitions`에서 관리한다.
-- 커스텀 속성 값의 실제 식별자는 `property_definition.id`다.
-- 옵션은 `value/label`로 분리한다.
-- 옵션 생성 가능 여부는 `option_mode`로 표현한다.
+이 구조는 향후 분석/LLM read model의 기반으로 사용한다.
+
+- 메타데이터 질의는 `property_definitions`
+- 값 질의는 `COLUMN`/`EXTENDED_PROPERTY`를 해석하는 별도 read layer
+
+즉 장기 방향은:
+
+- write model: 통합 property catalog
+- read model: 분석/LLM 전용 unified property view

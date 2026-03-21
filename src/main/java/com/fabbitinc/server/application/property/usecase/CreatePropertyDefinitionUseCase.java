@@ -34,7 +34,7 @@ public class CreatePropertyDefinitionUseCase {
                 command.displayOrder(),
                 command.required()
         );
-        return new CreatePropertyDefinitionResult(definition.getId(), definition.getOwnerType().name());
+        return new CreatePropertyDefinitionResult(definition.getOwnerType().name(), definition.getPropertyKey());
     }
 
     private PropertyOwnerType resolveOwnerType(String rawOwnerType) {

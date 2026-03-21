@@ -10,22 +10,18 @@ import com.fabbitinc.server.application.property.usecase.CreatePropertyDefinitio
 import com.fabbitinc.server.application.property.usecase.DeletePropertyDefinitionUseCase;
 import com.fabbitinc.server.application.property.usecase.ReorderPropertyUseCase;
 import com.fabbitinc.server.application.property.usecase.UpdatePropertyDefinitionUseCase;
-import com.fabbitinc.server.application.property.usecase.UpsertSystemPropertyOverrideUseCase;
 import com.fabbitinc.server.application.property.usecase.command.CreatePropertyDefinitionCommand;
 import com.fabbitinc.server.application.property.usecase.command.DeletePropertyDefinitionCommand;
 import com.fabbitinc.server.application.property.usecase.command.PropertyOptionCommandItem;
 import com.fabbitinc.server.application.property.usecase.command.ReorderPropertyCommand;
 import com.fabbitinc.server.application.property.usecase.command.ReorderPropertyCommandItem;
 import com.fabbitinc.server.application.property.usecase.command.UpdatePropertyDefinitionCommand;
-import com.fabbitinc.server.application.property.usecase.command.UpsertSystemPropertyOverrideCommand;
 import com.fabbitinc.server.application.property.usecase.result.CreatePropertyDefinitionResult;
 import com.fabbitinc.server.application.property.usecase.result.UpdatePropertyDefinitionResult;
-import com.fabbitinc.server.application.property.usecase.result.UpsertSystemPropertyOverrideResult;
 import com.fabbitinc.server.presentation.property.request.CreatePropertyDefinitionRequest;
 import com.fabbitinc.server.presentation.property.request.PropertyOptionRequest;
 import com.fabbitinc.server.presentation.property.request.ReorderPropertyRequest;
 import com.fabbitinc.server.presentation.property.request.UpdatePropertyDefinitionRequest;
-import com.fabbitinc.server.presentation.property.request.UpsertSystemPropertyOverrideRequest;
 import com.fabbitinc.server.presentation.property.response.PropertyMetaListResponse;
 import com.fabbitinc.server.presentation.property.response.PropertyMetaResponse;
 import com.fabbitinc.server.presentation.property.response.PropertyOptionResponse;
@@ -36,7 +32,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -56,7 +51,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/properties")
-@Tag(name = "properties", description = "속성 메타/관리 API")
+@Tag(name = "properties", description = "통합 property catalog 관리 API")
 @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "요청 성공"),
         @ApiResponse(responseCode = "201", description = "생성 성공"),
@@ -73,9 +68,8 @@ public class PropertyController {
     private final DeletePropertyDefinitionUseCase deletePropertyDefinitionUseCase;
     private final ReorderPropertyUseCase reorderPropertyUseCase;
     private final UpdatePropertyDefinitionUseCase updatePropertyDefinitionUseCase;
-    private final UpsertSystemPropertyOverrideUseCase upsertSystemPropertyOverrideUseCase;
 
-    @Operation(summary = "속성 메타 목록을 조회합니다", description = "시스템 속성과 커스텀 속성을 합친 최종 메타 목록을 조회합니다")
+    @Operation(summary = "속성 메타 목록을 조회합니다", description = "시스템 속성과 커스텀 속성을 통합한 최종 property catalog 목록을 조회합니다")
     @GetMapping("/meta")
     public PropertyMetaListResponse listMeta(
             @Parameter(description = "속성 소유 타입", example = "PART")
@@ -109,21 +103,24 @@ public class PropertyController {
         );
         return toPropertyMetaResponse(propertyQuery.get(new PropertyMetaCondition(
                 result.ownerType(),
-                result.propertyDefinitionId().toString(),
+                result.propertyKey(),
                 true
         )));
     }
 
-    @Operation(summary = "커스텀 속성을 수정합니다", description = "조직 관리자 권한으로 커스텀 속성 정의를 부분 수정합니다")
-    @PatchMapping("/definitions/{propertyDefinitionId}")
+    @Operation(summary = "속성을 수정합니다", description = "조직 관리자 권한으로 시스템/커스텀 속성 정의를 부분 수정합니다")
+    @PatchMapping("/definitions/{ownerType}/{propertyKey}")
     public PropertyMetaResponse updatePropertyDefinition(
-            @Parameter(description = "수정할 커스텀 속성 정의 ID")
-            @PathVariable UUID propertyDefinitionId,
+            @Parameter(description = "속성 소유 타입", example = "PART")
+            @PathVariable String ownerType,
+            @Parameter(description = "수정할 속성 key", example = "material")
+            @PathVariable String propertyKey,
             @Valid @RequestBody UpdatePropertyDefinitionRequest request
     ) {
         UpdatePropertyDefinitionResult result = updatePropertyDefinitionUseCase.execute(
                 new UpdatePropertyDefinitionCommand(
-                        propertyDefinitionId,
+                        ownerType,
+                        propertyKey,
                         request.getDisplayName(),
                         request.isDisplayNameSet(),
                         request.getDescription(),
@@ -144,22 +141,24 @@ public class PropertyController {
         );
         return toPropertyMetaResponse(propertyQuery.get(new PropertyMetaCondition(
                 result.ownerType(),
-                result.propertyDefinitionId().toString(),
+                result.propertyKey(),
                 true
         )));
     }
 
-    @Operation(summary = "커스텀 속성을 삭제합니다", description = "조직 관리자 권한으로 커스텀 속성 정의를 삭제합니다")
+    @Operation(summary = "속성을 삭제합니다", description = "조직 관리자 권한으로 커스텀 속성 정의를 삭제합니다. 시스템 속성은 삭제할 수 없습니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "삭제 성공"),
             @ApiResponse(responseCode = "409", description = "사용 중인 속성이라 삭제 불가")
     })
-    @DeleteMapping("/definitions/{propertyDefinitionId}")
+    @DeleteMapping("/definitions/{ownerType}/{propertyKey}")
     public ResponseEntity<Void> deletePropertyDefinition(
-            @Parameter(description = "삭제할 커스텀 속성 정의 ID")
-            @PathVariable UUID propertyDefinitionId
+            @Parameter(description = "속성 소유 타입", example = "PART")
+            @PathVariable String ownerType,
+            @Parameter(description = "삭제할 속성 key", example = "019d0000-0000-7000-8000-000000000001")
+            @PathVariable String propertyKey
     ) {
-        deletePropertyDefinitionUseCase.execute(new DeletePropertyDefinitionCommand(propertyDefinitionId));
+        deletePropertyDefinitionUseCase.execute(new DeletePropertyDefinitionCommand(ownerType, propertyKey));
         return ResponseEntity.noContent().build();
     }
 
@@ -182,31 +181,6 @@ public class PropertyController {
                         .toList()
         ));
         return ResponseEntity.noContent().build();
-    }
-
-    @Operation(summary = "시스템 속성 override를 수정합니다", description = "조직 관리자 권한으로 시스템 속성의 표시명/순서/활성 여부를 조정합니다")
-    @PatchMapping("/system-overrides/{ownerType}/{propertyKey}")
-    public PropertyMetaResponse upsertSystemPropertyOverride(
-            @Parameter(description = "속성 소유 타입", example = "PART")
-            @PathVariable String ownerType,
-            @Parameter(description = "시스템 속성 key", example = "category")
-            @PathVariable String propertyKey,
-            @Valid @RequestBody UpsertSystemPropertyOverrideRequest request
-    ) {
-        UpsertSystemPropertyOverrideResult result = upsertSystemPropertyOverrideUseCase.execute(
-                new UpsertSystemPropertyOverrideCommand(
-                        ownerType,
-                        propertyKey,
-                        request.displayNameOverride(),
-                        request.displayOrder(),
-                        request.active()
-                )
-        );
-        return toPropertyMetaResponse(propertyQuery.get(new PropertyMetaCondition(
-                result.ownerType(),
-                result.propertyKey(),
-                true
-        )));
     }
 
     private PropertyMetaListResponse toPropertyMetaListResponse(PropertyMetaListResult result) {
@@ -245,16 +219,16 @@ public class PropertyController {
         );
     }
 
-    private List<PropertyOptionCommandItem> toOptionItems(List<PropertyOptionRequest> options) {
-        if (options == null) {
+    private List<PropertyOptionCommandItem> toOptionItems(List<PropertyOptionRequest> requests) {
+        if (requests == null) {
             return null;
         }
-        return options.stream()
-                .map(option -> new PropertyOptionCommandItem(
-                        option.value(),
-                        option.label(),
-                        option.displayOrder(),
-                        option.active()
+        return requests.stream()
+                .map(request -> new PropertyOptionCommandItem(
+                        request.value(),
+                        request.label(),
+                        request.displayOrder(),
+                        request.active()
                 ))
                 .toList();
     }

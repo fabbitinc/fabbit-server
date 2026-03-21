@@ -2,8 +2,11 @@ package com.fabbitinc.server.domain.property.repository;
 
 import com.fabbitinc.server.domain.property.model.PropertyDefinition;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
+import com.fabbitinc.server.domain.property.model.PropertySourceType;
+import com.fabbitinc.server.domain.property.model.PropertyStorageKind;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -17,6 +20,13 @@ public interface PropertyDefinitionRepository extends JpaRepository<PropertyDefi
             UUID id
     );
 
+    boolean existsByOwnerTypeAndPropertyKey(PropertyOwnerType ownerType, String propertyKey);
+
+    Optional<PropertyDefinition> findByOwnerTypeAndPropertyKey(
+            PropertyOwnerType ownerType,
+            String propertyKey
+    );
+
     List<PropertyDefinition> findByOwnerTypeAndActiveTrueOrderByDisplayOrderAscDisplayNameAsc(
             PropertyOwnerType ownerType
     );
@@ -25,13 +35,21 @@ public interface PropertyDefinitionRepository extends JpaRepository<PropertyDefi
             PropertyOwnerType ownerType
     );
 
-    List<PropertyDefinition> findByIdInAndOwnerType(
-            Collection<UUID> ids,
-            PropertyOwnerType ownerType
+    List<PropertyDefinition> findByOwnerTypeAndPropertyKeyIn(
+            PropertyOwnerType ownerType,
+            Collection<String> propertyKeys
     );
 
-    List<PropertyDefinition> findByIdInAndOwnerTypeAndActiveTrue(
-            Collection<UUID> ids,
-            PropertyOwnerType ownerType
+    List<PropertyDefinition> findByOwnerTypeAndPropertyKeyInAndActiveTrueAndStorageKind(
+            PropertyOwnerType ownerType,
+            Collection<String> propertyKeys,
+            PropertyStorageKind storageKind
     );
+
+    List<PropertyDefinition> findByOwnerTypeAndSourceType(
+            PropertyOwnerType ownerType,
+            PropertySourceType sourceType
+    );
+
+    List<PropertyDefinition> findBySourceType(PropertySourceType sourceType);
 }

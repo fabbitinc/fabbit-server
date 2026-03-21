@@ -3,6 +3,7 @@ package com.fabbitinc.server.domain.property.model;
 import com.fabbitinc.server.domain.common.entity.AbstractAuditableEntity;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
+import com.fabbitinc.server.domain.property.support.PartSystemPropertyKind;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,6 +14,7 @@ import jakarta.persistence.UniqueConstraint;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,8 +27,8 @@ import org.hibernate.type.SqlTypes;
         name = "property_definitions",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uq_property_definitions_owner_type_display_name",
-                        columnNames = {"owner_type", "display_name"}
+                        name = "uq_property_definitions_owner_type_property_key",
+                        columnNames = {"owner_type", "property_key"}
                 )
         },
         indexes = {
@@ -41,6 +43,18 @@ public class PropertyDefinition extends AbstractAuditableEntity {
 
     public static final String CODE_PROPERTY_DEFINITION_OWNER_TYPE_REQUIRED =
             "PROPERTY_DEFINITION_OWNER_TYPE_REQUIRED";
+    public static final String CODE_PROPERTY_DEFINITION_PROPERTY_KEY_REQUIRED =
+            "PROPERTY_DEFINITION_PROPERTY_KEY_REQUIRED";
+    public static final String CODE_PROPERTY_DEFINITION_PROPERTY_KEY_TOO_LONG =
+            "PROPERTY_DEFINITION_PROPERTY_KEY_TOO_LONG";
+    public static final String CODE_PROPERTY_DEFINITION_SOURCE_TYPE_REQUIRED =
+            "PROPERTY_DEFINITION_SOURCE_TYPE_REQUIRED";
+    public static final String CODE_PROPERTY_DEFINITION_STORAGE_KIND_REQUIRED =
+            "PROPERTY_DEFINITION_STORAGE_KIND_REQUIRED";
+    public static final String CODE_PROPERTY_DEFINITION_STORAGE_BINDING_REQUIRED =
+            "PROPERTY_DEFINITION_STORAGE_BINDING_REQUIRED";
+    public static final String CODE_PROPERTY_DEFINITION_STORAGE_BINDING_TOO_LONG =
+            "PROPERTY_DEFINITION_STORAGE_BINDING_TOO_LONG";
     public static final String CODE_PROPERTY_DEFINITION_DISPLAY_NAME_REQUIRED =
             "PROPERTY_DEFINITION_DISPLAY_NAME_REQUIRED";
     public static final String CODE_PROPERTY_DEFINITION_DISPLAY_NAME_TOO_LONG =
@@ -55,12 +69,36 @@ public class PropertyDefinition extends AbstractAuditableEntity {
             "PROPERTY_DEFINITION_DUPLICATE_OPTION_VALUE";
     public static final String CODE_PROPERTY_DEFINITION_DISPLAY_ORDER_INVALID =
             "PROPERTY_DEFINITION_DISPLAY_ORDER_INVALID";
+    public static final String CODE_PROPERTY_DEFINITION_SYSTEM_ACTIVE_NOT_CONFIGURABLE =
+            "PROPERTY_DEFINITION_SYSTEM_ACTIVE_NOT_CONFIGURABLE";
+    public static final String CODE_PROPERTY_DEFINITION_SYSTEM_SHAPE_IMMUTABLE =
+            "PROPERTY_DEFINITION_SYSTEM_SHAPE_IMMUTABLE";
 
+    private static final int MAX_PROPERTY_KEY_LENGTH = 100;
+    private static final int MAX_STORAGE_BINDING_LENGTH = 200;
     private static final int MAX_DISPLAY_NAME_LENGTH = 200;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "owner_type", nullable = false, length = 50)
     private PropertyOwnerType ownerType;
+
+    @Column(name = "property_key", nullable = false, length = 100)
+    private String propertyKey;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_type", nullable = false, length = 20)
+    private PropertySourceType sourceType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "storage_kind", nullable = false, length = 30)
+    private PropertyStorageKind storageKind;
+
+    @Column(name = "storage_binding", nullable = false, length = 200)
+    private String storageBinding;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "part_system_property_kind", length = 50)
+    private PartSystemPropertyKind partSystemPropertyKind;
 
     @Column(name = "display_name", nullable = false, length = 200)
     private String displayName;
@@ -89,18 +127,38 @@ public class PropertyDefinition extends AbstractAuditableEntity {
     @Column(name = "is_active", nullable = false)
     private boolean active;
 
+    @Column(name = "is_active_configurable", nullable = false)
+    private boolean activeConfigurable;
+
     private PropertyDefinition(
+            UUID id,
             PropertyOwnerType ownerType,
+            String propertyKey,
+            PropertySourceType sourceType,
+            PropertyStorageKind storageKind,
+            String storageBinding,
+            PartSystemPropertyKind partSystemPropertyKind,
             String displayName,
             String description,
             PropertyValueType valueType,
             PropertyOptionMode optionMode,
             List<PropertyOptionItem> options,
             int displayOrder,
-            boolean required
+            boolean required,
+            boolean active,
+            boolean activeConfigurable
     ) {
-        super(UuidV7Generator.next());
+        super(id);
         this.ownerType = requireOwnerType(ownerType);
+        this.propertyKey = requirePropertyKey(propertyKey);
+        this.sourceType = requireSourceType(sourceType);
+        this.storageKind = requireStorageKind(storageKind);
+        this.storageBinding = requireStorageBinding(storageBinding);
+        this.partSystemPropertyKind = normalizePartSystemPropertyKind(
+                partSystemPropertyKind,
+                this.ownerType,
+                this.sourceType
+        );
         this.displayName = requireDisplayName(displayName);
         this.description = normalizeDescription(description);
         this.valueType = requireValueType(valueType);
@@ -108,7 +166,8 @@ public class PropertyDefinition extends AbstractAuditableEntity {
         this.options = normalizeOptions(options, this.valueType);
         this.displayOrder = requireDisplayOrder(displayOrder);
         this.required = required;
-        this.active = true;
+        this.active = active;
+        this.activeConfigurable = activeConfigurable;
     }
 
     public static PropertyDefinition defineCustomProperty(
@@ -121,16 +180,63 @@ public class PropertyDefinition extends AbstractAuditableEntity {
             int displayOrder,
             boolean required
     ) {
+        UUID id = UuidV7Generator.next();
         return new PropertyDefinition(
+                id,
                 ownerType,
+                id.toString(),
+                PropertySourceType.CUSTOM,
+                PropertyStorageKind.EXTENDED_PROPERTY,
+                id.toString(),
+                null,
                 displayName,
                 description,
                 valueType,
                 optionMode,
                 options,
                 displayOrder,
-                required
+                required,
+                true,
+                true
         );
+    }
+
+    public static PropertyDefinition defineSystemProperty(
+            PropertyOwnerType ownerType,
+            String propertyKey,
+            PartSystemPropertyKind partSystemPropertyKind,
+            String displayName,
+            String description,
+            PropertyValueType valueType,
+            PropertyOptionMode optionMode,
+            List<PropertyOptionItem> options,
+            String storageBinding,
+            int displayOrder,
+            boolean required,
+            boolean activeConfigurable
+    ) {
+        return new PropertyDefinition(
+                UuidV7Generator.next(),
+                ownerType,
+                propertyKey,
+                PropertySourceType.SYSTEM,
+                PropertyStorageKind.COLUMN,
+                storageBinding,
+                partSystemPropertyKind,
+                displayName,
+                description,
+                valueType,
+                optionMode,
+                options,
+                displayOrder,
+                required,
+                true,
+                activeConfigurable
+        );
+    }
+
+    public boolean isSystemProperty() {
+        return sourceType.isSystem();
     }
 
     public void renameDisplayName(String displayName) {
@@ -142,6 +248,7 @@ public class PropertyDefinition extends AbstractAuditableEntity {
     }
 
     public void changeValueType(PropertyValueType valueType) {
+        validateShapeMutable();
         PropertyValueType normalizedValueType = requireValueType(valueType);
         normalizeOptionMode(this.optionMode, normalizedValueType);
         validateOptions(this.options, normalizedValueType);
@@ -153,6 +260,7 @@ public class PropertyDefinition extends AbstractAuditableEntity {
             PropertyOptionMode optionMode,
             List<PropertyOptionItem> options
     ) {
+        validateShapeMutable();
         PropertyValueType normalizedValueType = requireValueType(valueType);
         PropertyOptionMode normalizedOptionMode = normalizeOptionMode(optionMode, normalizedValueType);
         List<PropertyOptionItem> normalizedOptions = normalizeOptions(options, normalizedValueType);
@@ -162,10 +270,12 @@ public class PropertyDefinition extends AbstractAuditableEntity {
     }
 
     public void changeOptionMode(PropertyOptionMode optionMode) {
+        validateShapeMutable();
         this.optionMode = normalizeOptionMode(optionMode, this.valueType);
     }
 
     public void changeOptions(List<PropertyOptionItem> options) {
+        validateShapeMutable();
         this.options = normalizeOptions(options, this.valueType);
     }
 
@@ -174,10 +284,12 @@ public class PropertyDefinition extends AbstractAuditableEntity {
     }
 
     public void markRequired() {
+        validateShapeMutable();
         this.required = true;
     }
 
     public void markOptional() {
+        validateShapeMutable();
         this.required = false;
     }
 
@@ -186,7 +298,41 @@ public class PropertyDefinition extends AbstractAuditableEntity {
     }
 
     public void deactivate() {
+        if (sourceType.isSystem() && !activeConfigurable) {
+            throw new DomainException(
+                    CODE_PROPERTY_DEFINITION_SYSTEM_ACTIVE_NOT_CONFIGURABLE,
+                    "비활성화할 수 없는 시스템 속성입니다"
+            );
+        }
         this.active = false;
+    }
+
+    public void applySystemProvisioning(
+            PartSystemPropertyKind partSystemPropertyKind,
+            String description,
+            PropertyValueType valueType,
+            PropertyOptionMode optionMode,
+            List<PropertyOptionItem> options,
+            String storageBinding,
+            boolean required,
+            boolean activeConfigurable
+    ) {
+        if (!sourceType.isSystem()) {
+            throw new DomainException(
+                    CODE_PROPERTY_DEFINITION_SYSTEM_SHAPE_IMMUTABLE,
+                    "시스템 속성에만 provisioning을 적용할 수 있습니다"
+            );
+        }
+
+        this.partSystemPropertyKind = normalizePartSystemPropertyKind(partSystemPropertyKind, ownerType, sourceType);
+        this.description = normalizeDescription(description);
+        this.valueType = requireValueType(valueType);
+        this.optionMode = normalizeOptionMode(optionMode, this.valueType);
+        this.options = normalizeOptions(options, this.valueType);
+        this.storageKind = PropertyStorageKind.COLUMN;
+        this.storageBinding = requireStorageBinding(storageBinding);
+        this.required = required;
+        this.activeConfigurable = activeConfigurable;
     }
 
     private PropertyOwnerType requireOwnerType(PropertyOwnerType value) {
@@ -197,6 +343,60 @@ public class PropertyDefinition extends AbstractAuditableEntity {
             );
         }
         return value;
+    }
+
+    private String requirePropertyKey(String value) {
+        if (value == null || value.isBlank()) {
+            throw new DomainException(
+                    CODE_PROPERTY_DEFINITION_PROPERTY_KEY_REQUIRED,
+                    "속성 key는 필수입니다"
+            );
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() > MAX_PROPERTY_KEY_LENGTH) {
+            throw new DomainException(
+                    CODE_PROPERTY_DEFINITION_PROPERTY_KEY_TOO_LONG,
+                    "속성 key는 100자 이하여야 합니다"
+            );
+        }
+        return trimmed;
+    }
+
+    private PropertySourceType requireSourceType(PropertySourceType value) {
+        if (value == null) {
+            throw new DomainException(
+                    CODE_PROPERTY_DEFINITION_SOURCE_TYPE_REQUIRED,
+                    "속성 source_type은 필수입니다"
+            );
+        }
+        return value;
+    }
+
+    private PropertyStorageKind requireStorageKind(PropertyStorageKind value) {
+        if (value == null) {
+            throw new DomainException(
+                    CODE_PROPERTY_DEFINITION_STORAGE_KIND_REQUIRED,
+                    "속성 storage_kind는 필수입니다"
+            );
+        }
+        return value;
+    }
+
+    private String requireStorageBinding(String value) {
+        if (value == null || value.isBlank()) {
+            throw new DomainException(
+                    CODE_PROPERTY_DEFINITION_STORAGE_BINDING_REQUIRED,
+                    "속성 storage_binding은 필수입니다"
+            );
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() > MAX_STORAGE_BINDING_LENGTH) {
+            throw new DomainException(
+                    CODE_PROPERTY_DEFINITION_STORAGE_BINDING_TOO_LONG,
+                    "속성 storage_binding은 200자 이하여야 합니다"
+            );
+        }
+        return trimmed;
     }
 
     private PropertyValueType requireValueType(PropertyValueType value) {
@@ -294,5 +494,25 @@ public class PropertyDefinition extends AbstractAuditableEntity {
             );
         }
         return value;
+    }
+
+    private PartSystemPropertyKind normalizePartSystemPropertyKind(
+            PartSystemPropertyKind value,
+            PropertyOwnerType ownerType,
+            PropertySourceType sourceType
+    ) {
+        if (!sourceType.isSystem() || ownerType != PropertyOwnerType.PART) {
+            return null;
+        }
+        return value;
+    }
+
+    private void validateShapeMutable() {
+        if (sourceType.isSystem()) {
+            throw new DomainException(
+                    CODE_PROPERTY_DEFINITION_SYSTEM_SHAPE_IMMUTABLE,
+                    "시스템 속성의 타입/옵션/필수 여부는 변경할 수 없습니다"
+            );
+        }
     }
 }

@@ -23,7 +23,7 @@ public record ReorderPropertyRequest(
 
     @Schema(description = "순서 변경 대상 속성")
     public record ReorderPropertyItemRequest(
-            @Schema(description = "속성 key. 시스템 속성은 property_key, 커스텀 속성은 property_definition.id(UUID)", example = "material")
+            @Schema(description = "속성 key. 시스템 속성은 property_key, 커스텀 속성은 property catalog key(UUID 문자열)", example = "material")
             @NotBlank(message = "property_key는 비어 있을 수 없습니다")
             @JsonProperty("property_key")
             String propertyKey,

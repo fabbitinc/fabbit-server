@@ -2,6 +2,8 @@ package com.fabbitinc.server.application.property.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import com.fabbitinc.server.application.common.exception.AppException;
@@ -13,12 +15,12 @@ import com.fabbitinc.server.domain.property.model.PropertyDefinition;
 import com.fabbitinc.server.domain.property.model.PropertyOptionItem;
 import com.fabbitinc.server.domain.property.model.PropertyOptionMode;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
+import com.fabbitinc.server.domain.property.model.PropertyStorageKind;
 import com.fabbitinc.server.domain.property.model.PropertyValueType;
 import com.fabbitinc.server.domain.property.repository.PropertyDefinitionRepository;
 import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -43,7 +45,7 @@ class PropertyApiTest {
     private PartSupplierRepository partSupplierRepository;
 
     @Test
-    void validateExtendedProperties_활성_정의와_타입에_맞으면_통과한다() {
+    void validateExtendedProperties_활성_catalog_key와_타입에_맞으면_통과한다() {
         PropertyDefinition definition = PropertyDefinition.defineCustomProperty(
                 PropertyOwnerType.PART,
                 "표면처리",
@@ -54,10 +56,11 @@ class PropertyApiTest {
                 10,
                 false
         );
-        Map<String, Object> properties = Map.of(definition.getId().toString(), "AL6061");
-        when(propertyDefinitionRepository.findByIdInAndOwnerTypeAndActiveTrue(
-                List.of(definition.getId()),
-                PropertyOwnerType.PART
+        Map<String, Object> properties = Map.of(definition.getPropertyKey(), "AL6061");
+        when(propertyDefinitionRepository.findByOwnerTypeAndPropertyKeyInAndActiveTrueAndStorageKind(
+                PropertyOwnerType.PART,
+                properties.keySet(),
+                PropertyStorageKind.EXTENDED_PROPERTY
         )).thenReturn(List.of(definition));
 
         PropertyApi propertyApi = new PropertyApi(
@@ -70,11 +73,17 @@ class PropertyApiTest {
 
         Map<String, Object> validated = propertyApi.validateExtendedProperties(PropertyOwnerType.PART, properties);
 
-        assertEquals("AL6061", validated.get(definition.getId().toString()));
+        assertEquals("AL6061", validated.get(definition.getPropertyKey()));
     }
 
     @Test
-    void validateExtendedProperties_key가_uuid가_아니면_예외를_던진다() {
+    void validateExtendedProperties_없는_key면_예외를_던진다() {
+        when(propertyDefinitionRepository.findByOwnerTypeAndPropertyKeyInAndActiveTrueAndStorageKind(
+                eq(PropertyOwnerType.PART),
+                anyCollection(),
+                eq(PropertyStorageKind.EXTENDED_PROPERTY)
+        )).thenReturn(List.of());
+
         PropertyApi propertyApi = new PropertyApi(
                 propertyDefinitionRepository,
                 partRevisionRepository,
@@ -92,52 +101,15 @@ class PropertyApiTest {
     }
 
     @Test
-    void validateExtendedProperties_fixedOption에_없는_값이면_예외를_던진다() {
-        PropertyDefinition definition = PropertyDefinition.defineCustomProperty(
-                PropertyOwnerType.PART,
-                "표면처리",
-                null,
-                PropertyValueType.OPTION,
-                PropertyOptionMode.FIXED,
-                List.of(new PropertyOptionItem("AL6061", "AL6061", 0, true)),
-                10,
-                false
-        );
-        UUID definitionId = definition.getId();
-        when(propertyDefinitionRepository.findByIdInAndOwnerTypeAndActiveTrue(
-                List.of(definitionId),
-                PropertyOwnerType.PART
-        )).thenReturn(List.of(definition));
-
-        PropertyApi propertyApi = new PropertyApi(
-                propertyDefinitionRepository,
-                partRevisionRepository,
-                supplierRepository,
-                engineeringBomItemRepository,
-                partSupplierRepository
-        );
-
-        AppException ex = assertThrows(
-                AppException.class,
-                () -> propertyApi.validateExtendedProperties(
-                        PropertyOwnerType.PART,
-                        Map.of(definitionId.toString(), "UNKNOWN")
-                )
-        );
-
-        assertEquals(ErrorCode.VALIDATION_ERROR, ex.getErrorCode());
-    }
-
-    @Test
     void getPropertyDefinitionUsage_사용처별_건수를_집계한다() {
-        UUID definitionId = UUID.randomUUID();
-        when(partRevisionRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId.toString()))
+        String propertyKey = "019d0000-0000-7000-8000-000000000001";
+        when(partRevisionRepository.countByExtendedPropertiesContainingPropertyDefinitionId(propertyKey))
                 .thenReturn(2L);
-        when(supplierRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId.toString()))
+        when(supplierRepository.countByExtendedPropertiesContainingPropertyDefinitionId(propertyKey))
                 .thenReturn(1L);
-        when(engineeringBomItemRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId.toString()))
+        when(engineeringBomItemRepository.countByExtendedPropertiesContainingPropertyDefinitionId(propertyKey))
                 .thenReturn(4L);
-        when(partSupplierRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId.toString()))
+        when(partSupplierRepository.countByExtendedPropertiesContainingPropertyDefinitionId(propertyKey))
                 .thenReturn(3L);
 
         PropertyApi propertyApi = new PropertyApi(
@@ -148,7 +120,7 @@ class PropertyApiTest {
                 partSupplierRepository
         );
 
-        PropertyDefinitionUsageSummary usage = propertyApi.getPropertyDefinitionUsage(definitionId);
+        PropertyDefinitionUsageSummary usage = propertyApi.getPropertyDefinitionUsage(propertyKey);
 
         assertEquals(10L, usage.totalCount());
         assertEquals(true, usage.inUse());

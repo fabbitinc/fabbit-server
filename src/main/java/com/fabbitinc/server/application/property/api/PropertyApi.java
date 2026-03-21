@@ -8,17 +8,13 @@ import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
 import com.fabbitinc.server.domain.property.model.PropertyDefinition;
 import com.fabbitinc.server.domain.property.model.PropertyOptionMode;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
-import com.fabbitinc.server.domain.property.model.PropertyValueType;
+import com.fabbitinc.server.domain.property.model.PropertyStorageKind;
 import com.fabbitinc.server.domain.property.repository.PropertyDefinitionRepository;
 import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
 import java.math.BigDecimal;
-import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -41,55 +37,42 @@ public class PropertyApi {
         }
 
         Map<String, Object> normalized = new LinkedHashMap<>();
-        List<UUID> definitionIds = parseDefinitionIds(extendedProperties.keySet());
-        Map<UUID, PropertyDefinition> definitionsById = propertyDefinitionRepository
-                .findByIdInAndOwnerTypeAndActiveTrue(definitionIds, ownerType)
+        Map<String, PropertyDefinition> definitionsByKey = propertyDefinitionRepository
+                .findByOwnerTypeAndPropertyKeyInAndActiveTrueAndStorageKind(
+                        ownerType,
+                        extendedProperties.keySet(),
+                        PropertyStorageKind.EXTENDED_PROPERTY
+                )
                 .stream()
-                .collect(Collectors.toMap(PropertyDefinition::getId, definition -> definition));
+                .collect(java.util.stream.Collectors.toMap(
+                        PropertyDefinition::getPropertyKey,
+                        definition -> definition
+                ));
 
-        Set<UUID> missingIds = definitionIds.stream()
-                .filter(id -> !definitionsById.containsKey(id))
-                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
-        if (!missingIds.isEmpty()) {
+        Set<String> missingKeys = extendedProperties.keySet().stream()
+                .filter(propertyKey -> !definitionsByKey.containsKey(propertyKey))
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+        if (!missingKeys.isEmpty()) {
             throw new AppException(
                     ErrorCode.VALIDATION_ERROR,
-                    "유효하지 않은 확장 속성 정의 ID가 있습니다: " + missingIds
+                    "유효하지 않은 확장 속성 key가 있습니다: " + missingKeys
             );
         }
 
         for (Map.Entry<String, Object> entry : extendedProperties.entrySet()) {
-            UUID definitionId = UUID.fromString(entry.getKey());
-            PropertyDefinition definition = definitionsById.get(definitionId);
+            PropertyDefinition definition = definitionsByKey.get(entry.getKey());
             normalized.put(entry.getKey(), normalizeValue(definition, entry.getValue()));
         }
         return normalized;
     }
 
-    public PropertyDefinitionUsageSummary getPropertyDefinitionUsage(UUID propertyDefinitionId) {
-        String definitionId = propertyDefinitionId.toString();
+    public PropertyDefinitionUsageSummary getPropertyDefinitionUsage(String propertyKey) {
         return new PropertyDefinitionUsageSummary(
-                partRevisionRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId),
-                supplierRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId),
-                engineeringBomItemRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId),
-                partSupplierRepository.countByExtendedPropertiesContainingPropertyDefinitionId(definitionId)
+                partRevisionRepository.countByExtendedPropertiesContainingPropertyDefinitionId(propertyKey),
+                supplierRepository.countByExtendedPropertiesContainingPropertyDefinitionId(propertyKey),
+                engineeringBomItemRepository.countByExtendedPropertiesContainingPropertyDefinitionId(propertyKey),
+                partSupplierRepository.countByExtendedPropertiesContainingPropertyDefinitionId(propertyKey)
         );
-    }
-
-    private List<UUID> parseDefinitionIds(Collection<String> propertyKeys) {
-        return propertyKeys.stream()
-                .map(this::parseDefinitionId)
-                .toList();
-    }
-
-    private UUID parseDefinitionId(String propertyKey) {
-        try {
-            return UUID.fromString(propertyKey);
-        } catch (IllegalArgumentException ex) {
-            throw new AppException(
-                    ErrorCode.VALIDATION_ERROR,
-                    "확장 속성 key는 property_definition.id(UUID)여야 합니다: " + propertyKey
-            );
-        }
     }
 
     private Object normalizeValue(PropertyDefinition definition, Object rawValue) {

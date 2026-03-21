@@ -10,13 +10,13 @@ import java.util.UUID;
 
 @Schema(description = "속성 메타 응답")
 public record PropertyMetaResponse(
-        @Schema(description = "커스텀 속성 정의 ID. 시스템 속성이면 null", example = "019d0000-0000-7000-8000-000000000001")
+        @Schema(description = "property catalog row ID", example = "019d0000-0000-7000-8000-000000000001")
         UUID definitionId,
 
         @Schema(description = "속성 소유 타입", example = "PART")
         PropertyOwnerType ownerType,
 
-        @Schema(description = "속성 key. 시스템 속성은 property_key, 커스텀 속성은 property_definition.id", example = "category")
+        @Schema(description = "속성 key. 시스템 속성은 property_key, 커스텀 속성은 UUID 문자열", example = "category")
         String propertyKey,
 
         @Schema(description = "시스템 속성 여부", example = "true")

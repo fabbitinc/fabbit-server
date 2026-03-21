@@ -6,17 +6,16 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface PartSupplierRepository extends JpaRepository<PartSupplier, UUID> {
 
     long countByPartRevisionId(UUID partRevisionId);
 
     @Query(
-            value = "select count(*) from part_suppliers where jsonb_exists(extended_properties, :propertyDefinitionId)",
+            value = "select count(*) from part_suppliers where jsonb_exists(extended_properties, ?1)",
             nativeQuery = true
     )
-    long countByExtendedPropertiesContainingPropertyDefinitionId(@Param("propertyDefinitionId") String propertyDefinitionId);
+    long countByExtendedPropertiesContainingPropertyDefinitionId(String propertyDefinitionId);
 
     List<PartSupplier> findByPartRevisionId(UUID partRevisionId);
 

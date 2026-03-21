@@ -47,7 +47,7 @@ class InvitationRelationTest {
                 Instant.now().plusSeconds(3600)
         ));
 
-        assertEquals(Invitation.CODE_INVITATION_ORG_REQUIRED, ex.getDomainCode());
+        assertEquals(Invitation.CODE_INVITATION_ORGANIZATION_REQUIRED, ex.getDomainCode());
     }
 
     @Test
