@@ -30,7 +30,7 @@ dev-db-restart:
 
 # OpenAPI 스펙 파일 생성
 openapi:
-	@curl -s http://localhost:8080/openapi.json | python3 -m json.tool > openapi.json
+	@curl -s http://localhost:10010/openapi.json | python3 -m json.tool > openapi.json
 	@echo "openapi.json 생성 완료"
 	@cp ./openapi.json ../web/openapi.json
 	@echo "openapi.json 복사 완료"
