@@ -272,10 +272,8 @@ class PropertyServiceTest {
                 30,
                 false
         );
-        when(propertyDefinitionRepository.findByOwnerTypeAndPropertyKeyIn(
-                PropertyOwnerType.PART,
-                List.of(custom1.getPropertyKey(), "material", custom2.getPropertyKey())
-        )).thenReturn(List.of(custom1, material, custom2));
+        when(propertyDefinitionRepository.findByOwnerTypeOrderByDisplayOrderAscDisplayNameAsc(PropertyOwnerType.PART))
+                .thenReturn(List.of(material, custom1, custom2));
 
         PropertyService service = new PropertyService(propertyDefinitionRepository, propertyApi);
 
@@ -288,8 +286,67 @@ class PropertyServiceTest {
                 )
         );
 
-        assertEquals(4, custom1.getDisplayOrder());
-        assertEquals(20, material.getDisplayOrder());
-        assertEquals(30, custom2.getDisplayOrder());
+        assertEquals(1, custom1.getDisplayOrder());
+        assertEquals(2, material.getDisplayOrder());
+        assertEquals(3, custom2.getDisplayOrder());
+    }
+
+    @Test
+    void reorderProperties_기존_displayOrder가_중복이어도_최종순서를_유일한값으로_재부여한다() {
+        PropertyDefinition revision = PropertyDefinition.defineSystemProperty(
+                PropertyOwnerType.PART,
+                "revision",
+                PartSystemPropertyKind.REVISION,
+                "리비전",
+                "부품 리비전",
+                PropertyValueType.STRING,
+                null,
+                List.of(),
+                "revision_code",
+                1,
+                false,
+                false
+        );
+        PropertyDefinition custom = PropertyDefinition.defineCustomProperty(
+                PropertyOwnerType.PART,
+                "커스텀",
+                null,
+                PropertyValueType.STRING,
+                null,
+                List.of(),
+                1,
+                false
+        );
+        PropertyDefinition material = PropertyDefinition.defineSystemProperty(
+                PropertyOwnerType.PART,
+                "material",
+                PartSystemPropertyKind.MATERIAL,
+                "재질",
+                "부품 재질",
+                PropertyValueType.STRING,
+                null,
+                List.of(),
+                "material",
+                1,
+                false,
+                true
+        );
+        when(propertyDefinitionRepository.findByOwnerTypeOrderByDisplayOrderAscDisplayNameAsc(PropertyOwnerType.PART))
+                .thenReturn(List.of(custom, material, revision));
+
+        PropertyService service = new PropertyService(propertyDefinitionRepository, propertyApi);
+
+        service.reorderProperties(
+                PropertyOwnerType.PART,
+                List.of(
+                        new ReorderPropertyCommandItem("revision", true),
+                        new ReorderPropertyCommandItem(custom.getPropertyKey(), false),
+                        new ReorderPropertyCommandItem("material", true)
+                )
+        );
+
+        assertEquals(1, revision.getDisplayOrder());
+        assertEquals(2, custom.getDisplayOrder());
+        assertEquals(3, material.getDisplayOrder());
     }
 }

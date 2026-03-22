@@ -155,11 +155,9 @@ public class PropertyService {
 
     public void reorderProperties(PropertyOwnerType ownerType, List<ReorderPropertyCommandItem> properties) {
         List<ReorderPropertyCommandItem> normalizedProperties = normalizeReorderProperties(properties);
-        Map<String, PropertyDefinition> definitionsByKey = propertyDefinitionRepository
-                .findByOwnerTypeAndPropertyKeyIn(
-                        ownerType,
-                        normalizedProperties.stream().map(ReorderPropertyCommandItem::propertyKey).toList()
-                )
+        List<PropertyDefinition> allDefinitions = propertyDefinitionRepository
+                .findByOwnerTypeOrderByDisplayOrderAscDisplayNameAsc(ownerType);
+        Map<String, PropertyDefinition> definitionsByKey = allDefinitions
                 .stream()
                 .collect(java.util.stream.Collectors.toMap(
                         PropertyDefinition::getPropertyKey,
@@ -187,14 +185,21 @@ public class PropertyService {
             }
         }
 
-        List<Integer> reorderedDisplayOrders = normalizedProperties.stream()
-                .map(property -> definitionsByKey.get(property.propertyKey()).getDisplayOrder())
-                .sorted()
-                .toList();
+        java.util.List<PropertyDefinition> reorderedDefinitions = new java.util.ArrayList<>(allDefinitions.size());
+        Set<String> submittedKeys = normalizedProperties.stream()
+                .map(ReorderPropertyCommandItem::propertyKey)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
 
-        for (int index = 0; index < normalizedProperties.size(); index++) {
-            PropertyDefinition definition = definitionsByKey.get(normalizedProperties.get(index).propertyKey());
-            int nextDisplayOrder = reorderedDisplayOrders.get(index);
+        for (ReorderPropertyCommandItem property : normalizedProperties) {
+            reorderedDefinitions.add(definitionsByKey.get(property.propertyKey()));
+        }
+        allDefinitions.stream()
+                .filter(definition -> !submittedKeys.contains(definition.getPropertyKey()))
+                .forEach(reorderedDefinitions::add);
+
+        for (int index = 0; index < reorderedDefinitions.size(); index++) {
+            PropertyDefinition definition = reorderedDefinitions.get(index);
+            int nextDisplayOrder = index + 1;
             if (definition.getDisplayOrder() != nextDisplayOrder) {
                 definition.reorder(nextDisplayOrder);
             }
