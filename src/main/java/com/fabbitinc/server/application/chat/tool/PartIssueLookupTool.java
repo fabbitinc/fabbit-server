@@ -55,7 +55,11 @@ public class PartIssueLookupTool {
 
     @Tool(
             name = TOOL_NAME,
-            description = "특정 부품과 연결된 이슈 목록을 조회합니다. 먼저 부품을 찾은 뒤 대상 부품 ID를 전달해 사용합니다."
+            description = """
+                    특정 부품과 연결된 기존 이슈 목록을 조회할 때 사용합니다.
+                    이미 확인된 부품 ID가 있을 때만 사용하며, 새 이슈 생성 전 중복 여부나 기존 이슈 맥락을 확인하는 용도입니다.
+                    이 도구는 이슈를 수정하거나 상태를 변경하지 않고, 참고용 조회 결과만 제공합니다.
+                    """
     )
     public PartIssueLookupToolResult partIssueLookup(
             @ToolParam(description = "조회할 부품 ID") String partId,

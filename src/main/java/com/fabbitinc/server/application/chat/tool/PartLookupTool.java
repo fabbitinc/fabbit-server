@@ -46,7 +46,11 @@ public class PartLookupTool {
 
     @Tool(
             name = TOOL_NAME,
-            description = "품번 또는 부품명으로 부품 후보를 검색합니다. 부품 관련 조회를 시작할 때 먼저 사용합니다."
+            description = """
+                    품번 또는 부품명으로 부품 후보를 찾을 때 사용합니다.
+                    정확한 부품 ID가 아직 없고, 후속 조회나 액션에 사용할 대상을 특정해야 할 때 먼저 호출합니다.
+                    결과는 확정된 단일 부품이 아니라 후보 목록입니다.
+                    """
     )
     public PartLookupToolResult partLookup(
             @ToolParam(description = "검색할 품번 또는 부품명") String keyword,
