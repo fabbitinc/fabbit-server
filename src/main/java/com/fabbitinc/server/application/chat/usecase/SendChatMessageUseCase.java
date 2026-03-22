@@ -5,7 +5,10 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.chat.service.ChatAgentService;
 import com.fabbitinc.server.application.chat.service.ChatAsyncExecutionService;
 import com.fabbitinc.server.application.chat.service.ChatService;
+import com.fabbitinc.server.application.chat.support.ChatInputGuard;
 import com.fabbitinc.server.application.chat.support.ChatMessageComposer;
+import com.fabbitinc.server.application.common.exception.AppException;
+import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
 import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;
@@ -29,10 +32,15 @@ public class SendChatMessageUseCase {
     private final ChatMessageComposer chatMessageComposer;
     private final ChatAgentService chatAgentService;
     private final ChatAsyncExecutionService chatAsyncExecutionService;
+    private final ChatInputGuard chatInputGuard;
 
     public SendChatMessageResult execute(SendChatMessageCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         chatAgentService.ensureAvailable();
+        ChatInputGuard.GuardResult guardResult = chatInputGuard.check(command.text());
+        if (guardResult.blocked()) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "요청을 처리할 수 없습니다");
+        }
         organizationApi.checkCreditQuota(auth.orgId(), AiUsageCategory.CHAT);
         ChatThread thread = chatService.getThreadForUpdateOrThrow(command.threadId(), auth.orgId(), auth.userId());
         String userContent = chatMessageComposer.userText(command.text());
