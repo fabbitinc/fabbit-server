@@ -2,7 +2,10 @@ package com.fabbitinc.server.application.chat.tool;
 
 import com.fabbitinc.server.application.chat.model.ChatUiArtifact;
 import com.fabbitinc.server.application.chat.service.ChatToolExecutionService;
+import com.fabbitinc.server.application.chat.service.ChatToolExecutionService.ToolProgressPayload;
 import com.fabbitinc.server.application.chat.service.ChatService;
+import com.fabbitinc.server.application.chat.support.ChatArtifactTypes;
+import com.fabbitinc.server.application.chat.support.ChatMessageCatalog;
 import com.fabbitinc.server.application.chat.support.ChatMessageComposer;
 import com.fabbitinc.server.application.part.api.PartApi;
 import com.fabbitinc.server.application.part.api.PartSnapshot;
@@ -17,25 +20,32 @@ import org.springframework.stereotype.Component;
 @Component
 public class PartLookupTool {
 
+    private static final String TOOL_NAME = "part_lookup";
+    private static final String TOOL_DISPLAY_NAME = "품번 검색";
+    private static final String TRACE_STEP = "part_lookup";
+
     private final PartApi partApi;
     private final ChatService chatService;
     private final ChatToolExecutionService chatToolExecutionService;
+    private final ChatMessageCatalog chatMessageCatalog;
     private final ChatMessageComposer chatMessageComposer;
 
     public PartLookupTool(
             PartApi partApi,
             ChatService chatService,
             ChatToolExecutionService chatToolExecutionService,
+            ChatMessageCatalog chatMessageCatalog,
             ChatMessageComposer chatMessageComposer
     ) {
         this.partApi = partApi;
         this.chatService = chatService;
         this.chatToolExecutionService = chatToolExecutionService;
+        this.chatMessageCatalog = chatMessageCatalog;
         this.chatMessageComposer = chatMessageComposer;
     }
 
     @Tool(
-            name = "part_lookup",
+            name = TOOL_NAME,
             description = "품번 또는 부품명으로 부품 후보를 검색합니다. 부품 관련 조회를 시작할 때 먼저 사용합니다."
     )
     public PartLookupToolResult partLookup(
@@ -55,20 +65,25 @@ public class PartLookupTool {
         List<PartSnapshot> parts = chatToolExecutionService.execute(
                 runId,
                 run.getThreadId(),
-                "part_lookup",
-                "품번 검색",
+                TOOL_NAME,
+                TOOL_DISPLAY_NAME,
                 inputPayload,
                 () -> partApi.searchPartSnapshots(resolvedKeyword, resolvedLimit),
                 result -> result,
-                result -> "후보 " + result.size() + "건을 찾았습니다",
-                "품번 후보를 조회했습니다",
-                "part_lookup"
+                result -> chatMessageCatalog.partLookupSummary(result.size()),
+                chatMessageCatalog.partLookupStarted(),
+                result -> new ToolProgressPayload(
+                        chatMessageCatalog.partLookupProgress(result.size()),
+                        List.of(toPartListArtifact(result))
+                ),
+                chatMessageCatalog.partLookupTraceCompleted(),
+                TRACE_STEP
         );
-        ChatToolContextSupport.getAccumulator(toolContext).addToolName("part_lookup");
+        ChatToolContextSupport.getAccumulator(toolContext).addToolName(TOOL_NAME);
         ChatToolContextSupport.getAccumulator(toolContext).addUiArtifact(toPartListArtifact(parts));
 
         return new PartLookupToolResult(
-                "품번 후보 " + parts.size() + "건을 찾았습니다.",
+                chatMessageCatalog.partLookupResponseSummary(parts.size()),
                 parts.stream()
                         .map(part -> new PartCandidate(
                                 part.id().toString(),
@@ -107,9 +122,9 @@ public class PartLookupTool {
     }
 
     private ChatUiArtifact toPartListArtifact(List<PartSnapshot> parts) {
-        return ChatUiArtifact.of("entity_list", chatMessageComposer.toJsonNode(Map.of(
+        return ChatUiArtifact.of(ChatArtifactTypes.ENTITY_LIST, chatMessageComposer.toJsonNode(Map.of(
                 "entityType", "PART",
-                "title", "부품 후보",
+                "title", chatMessageCatalog.partListTitle(),
                 "items", parts.stream()
                         .map(this::toPartItem)
                         .toList()

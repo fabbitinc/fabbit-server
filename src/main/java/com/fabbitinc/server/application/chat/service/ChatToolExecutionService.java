@@ -1,10 +1,13 @@
 package com.fabbitinc.server.application.chat.service;
 
+import com.fabbitinc.server.application.chat.model.ChatUiArtifact;
+import com.fabbitinc.server.application.chat.support.ChatEventTypes;
 import com.fabbitinc.server.application.chat.support.ChatVisibleTraceFormatter;
 import com.fabbitinc.server.domain.chat.model.ChatToolCall;
 import com.fabbitinc.server.domain.chat.repository.ChatToolCallRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -33,6 +36,8 @@ public class ChatToolExecutionService {
             Supplier<T> action,
             Function<T, Object> resultPayloadMapper,
             Function<T, String> summaryMapper,
+            String startedMessage,
+            Function<T, ToolProgressPayload> progressPayloadMapper,
             String traceMessage,
             String traceStep
     ) {
@@ -41,10 +46,12 @@ public class ChatToolExecutionService {
                 ChatToolCall.create(runId, threadId, toolName, writeJson(inputPayload))
         );
 
-        chatService.publishEvent(runId, "tool.started", Map.of(
+        chatService.publishEvent(runId, ChatEventTypes.TOOL_STARTED, Map.of(
+                "toolCallId", toolCall.getId().toString(),
                 "toolName", toolName,
                 "displayName", displayName,
-                "input", inputPayload == null ? Map.of() : inputPayload
+                "input", inputPayload == null ? Map.of() : inputPayload,
+                "message", startedMessage == null ? displayName + " 중입니다" : startedMessage
         ));
 
         try {
@@ -52,14 +59,20 @@ public class ChatToolExecutionService {
             Object resultPayload = resultPayloadMapper == null ? result : resultPayloadMapper.apply(result);
             toolCall.complete(writeJson(resultPayload));
             chatToolCallRepository.save(toolCall);
+            ToolProgressPayload progressPayload = progressPayloadMapper == null
+                    ? ToolProgressPayload.empty(summaryMapper == null ? "완료" : summaryMapper.apply(result))
+                    : progressPayloadMapper.apply(result);
 
-            chatService.publishEvent(runId, "tool.completed", Map.of(
+            chatService.publishEvent(runId, ChatEventTypes.TOOL_COMPLETED, Map.of(
+                    "toolCallId", toolCall.getId().toString(),
                     "toolName", toolName,
                     "displayName", displayName,
-                    "summary", summaryMapper == null ? "완료" : summaryMapper.apply(result)
+                    "summary", summaryMapper == null ? "완료" : summaryMapper.apply(result),
+                    "message", progressPayload.message(),
+                    "blocks", toBlockPayload(progressPayload.blocks())
             ));
             if (traceMessage != null && !traceMessage.isBlank()) {
-                chatService.publishEvent(runId, "trace.updated", chatVisibleTraceFormatter.format(
+                chatService.publishEvent(runId, ChatEventTypes.TRACE_UPDATED, chatVisibleTraceFormatter.format(
                         traceMessage,
                         traceStep,
                         "COMPLETED"
@@ -73,7 +86,8 @@ public class ChatToolExecutionService {
                     "exception", ex.getClass().getSimpleName()
             )));
             chatToolCallRepository.save(toolCall);
-            chatService.publishEvent(runId, "tool.failed", Map.of(
+            chatService.publishEvent(runId, ChatEventTypes.TOOL_FAILED, Map.of(
+                    "toolCallId", toolCall.getId().toString(),
                     "toolName", toolName,
                     "displayName", displayName,
                     "errorCode", ex.getClass().getSimpleName()
@@ -93,6 +107,28 @@ public class ChatToolExecutionService {
             return objectMapper.writeValueAsString(payload == null ? Map.of() : payload);
         } catch (JacksonException ex) {
             throw new IllegalStateException("tool payload 직렬화에 실패했습니다", ex);
+        }
+    }
+
+    private Object toBlockPayload(List<ChatUiArtifact> blocks) {
+        if (blocks == null || blocks.isEmpty()) {
+            return List.of();
+        }
+        return blocks.stream()
+                .filter(block -> block != null)
+                .map(block -> Map.of(
+                        "type", block.type(),
+                        "payload", block.payload()
+                ))
+                .toList();
+    }
+
+    public record ToolProgressPayload(
+            String message,
+            List<ChatUiArtifact> blocks
+    ) {
+        public static ToolProgressPayload empty(String message) {
+            return new ToolProgressPayload(message, List.of());
         }
     }
 }

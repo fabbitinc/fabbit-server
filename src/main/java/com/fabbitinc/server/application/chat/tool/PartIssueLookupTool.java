@@ -3,6 +3,9 @@ package com.fabbitinc.server.application.chat.tool;
 import com.fabbitinc.server.application.chat.model.ChatUiArtifact;
 import com.fabbitinc.server.application.chat.service.ChatService;
 import com.fabbitinc.server.application.chat.service.ChatToolExecutionService;
+import com.fabbitinc.server.application.chat.service.ChatToolExecutionService.ToolProgressPayload;
+import com.fabbitinc.server.application.chat.support.ChatArtifactTypes;
+import com.fabbitinc.server.application.chat.support.ChatMessageCatalog;
 import com.fabbitinc.server.application.chat.support.ChatMessageComposer;
 import com.fabbitinc.server.application.issue.api.IssueApi;
 import com.fabbitinc.server.application.issue.api.IssueSnapshot;
@@ -23,10 +26,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class PartIssueLookupTool {
 
+    private static final String TOOL_NAME = "part_issue_lookup";
+    private static final String TOOL_DISPLAY_NAME = "연결 이슈 조회";
+    private static final String TRACE_STEP = "issue_lookup";
+
     private final PartApi partApi;
     private final IssueApi issueApi;
     private final ChatService chatService;
     private final ChatToolExecutionService chatToolExecutionService;
+    private final ChatMessageCatalog chatMessageCatalog;
     private final ChatMessageComposer chatMessageComposer;
 
     public PartIssueLookupTool(
@@ -34,18 +42,20 @@ public class PartIssueLookupTool {
             IssueApi issueApi,
             ChatService chatService,
             ChatToolExecutionService chatToolExecutionService,
+            ChatMessageCatalog chatMessageCatalog,
             ChatMessageComposer chatMessageComposer
     ) {
         this.partApi = partApi;
         this.issueApi = issueApi;
         this.chatService = chatService;
         this.chatToolExecutionService = chatToolExecutionService;
+        this.chatMessageCatalog = chatMessageCatalog;
         this.chatMessageComposer = chatMessageComposer;
     }
 
     @Tool(
-            name = "part_issue_lookup",
-            description = "특정 부품과 연결된 이슈 목록을 조회합니다. part_lookup으로 부품을 먼저 찾은 뒤 partId를 전달해 사용합니다."
+            name = TOOL_NAME,
+            description = "특정 부품과 연결된 이슈 목록을 조회합니다. 먼저 부품을 찾은 뒤 대상 부품 ID를 전달해 사용합니다."
     )
     public PartIssueLookupToolResult partIssueLookup(
             @ToolParam(description = "조회할 부품 ID") String partId,
@@ -58,8 +68,8 @@ public class PartIssueLookupTool {
         PartIssueLookupPayload payload = chatToolExecutionService.execute(
                 runId,
                 run.getThreadId(),
-                "part_issue_lookup",
-                "연결 이슈 조회",
+                TOOL_NAME,
+                TOOL_DISPLAY_NAME,
                 Map.of("partId", resolvedPartId.toString()),
                 () -> {
                     PartSnapshot part = partApi.getPartSnapshotMap(Set.of(resolvedPartId)).get(resolvedPartId);
@@ -67,21 +77,28 @@ public class PartIssueLookupTool {
                     return new PartIssueLookupPayload(part, issues);
                 },
                 result -> result,
-                result -> "연결 이슈 " + result.issues().size() + "건을 찾았습니다",
-                "부품과 연결된 이슈를 조회했습니다",
-                "issue_lookup"
+                result -> chatMessageCatalog.partIssueLookupSummary(result.issues().size()),
+                chatMessageCatalog.partIssueLookupStarted(),
+                result -> new ToolProgressPayload(
+                        result.part() == null
+                                ? chatMessageCatalog.partIssueLookupNotFound()
+                                : chatMessageCatalog.partIssueLookupProgress(result.issues().size()),
+                        List.of(toIssueListArtifact(result.issues()))
+                ),
+                chatMessageCatalog.partIssueLookupTraceCompleted(),
+                TRACE_STEP
         );
 
         PartSnapshot part = payload.part();
         List<IssueSnapshot> issues = payload.issues();
-        ChatToolContextSupport.getAccumulator(toolContext).addToolName("part_issue_lookup");
+        ChatToolContextSupport.getAccumulator(toolContext).addToolName(TOOL_NAME);
         if (part != null) {
             ChatToolContextSupport.getAccumulator(toolContext).addUiArtifact(toPartDetailArtifact(part));
         }
         ChatToolContextSupport.getAccumulator(toolContext).addUiArtifact(toIssueListArtifact(issues));
 
         return new PartIssueLookupToolResult(
-                part == null ? "대상 부품을 찾지 못했습니다." : "연결 이슈 " + issues.size() + "건을 찾았습니다.",
+                part == null ? chatMessageCatalog.partIssueLookupNotFound() : chatMessageCatalog.partIssueLookupResponseSummary(issues.size()),
                 part == null ? null : new PartCandidate(
                         part.id().toString(),
                         part.revisionId() == null ? null : part.revisionId().toString(),
@@ -151,17 +168,17 @@ public class PartIssueLookupTool {
     }
 
     private ChatUiArtifact toPartDetailArtifact(PartSnapshot part) {
-        return ChatUiArtifact.of("entity_detail", chatMessageComposer.toJsonNode(Map.of(
+        return ChatUiArtifact.of(ChatArtifactTypes.ENTITY_DETAIL, chatMessageComposer.toJsonNode(Map.of(
                 "entityType", "PART",
-                "title", "대상 부품",
+                "title", chatMessageCatalog.partDetailTitle(),
                 "item", toPartItem(part)
         )));
     }
 
     private ChatUiArtifact toIssueListArtifact(List<IssueSnapshot> issues) {
-        return ChatUiArtifact.of("entity_list", chatMessageComposer.toJsonNode(Map.of(
+        return ChatUiArtifact.of(ChatArtifactTypes.ENTITY_LIST, chatMessageComposer.toJsonNode(Map.of(
                 "entityType", "ISSUE",
-                "title", "연결 이슈",
+                "title", chatMessageCatalog.issueListTitle(),
                 "items", issues.stream()
                         .map(this::toIssueItem)
                         .toList()

@@ -24,7 +24,7 @@ public final class ChatToolContextSupport {
 
     public static String getQuestion(ToolContext toolContext) {
         Object rawValue = getRequired(toolContext, QUESTION);
-        return rawValue == null ? "" : rawValue.toString();
+        return rawValue.toString();
     }
 
     public static ChatExecutionAccumulator getAccumulator(ToolContext toolContext) {

@@ -34,7 +34,7 @@ public class ChatMessageComposer {
 
         ArrayNode blocks = root.putArray("blocks");
         blocks.addObject()
-                .put("type", "text")
+                .put("type", ChatArtifactTypes.TEXT)
                 .put("text", normalizeText(text));
 
         for (ChatUiArtifact uiArtifact : uiArtifacts) {
@@ -52,7 +52,7 @@ public class ChatMessageComposer {
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("resourceType", resourceType);
         payload.put("resourceId", stringValue(resourceId));
-        return assistantStructured(text, List.of(ChatUiArtifact.of("action_result", payload)));
+        return assistantStructured(text, List.of(ChatUiArtifact.of(ChatArtifactTypes.ACTION_RESULT, payload)));
     }
 
     public String errorText(String text) {

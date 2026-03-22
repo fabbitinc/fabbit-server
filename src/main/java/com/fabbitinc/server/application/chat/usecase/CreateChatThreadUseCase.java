@@ -3,6 +3,7 @@ package com.fabbitinc.server.application.chat.usecase;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.chat.service.ChatService;
+import com.fabbitinc.server.application.chat.support.ChatMessageCatalog;
 import com.fabbitinc.server.domain.chat.model.ChatThread;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ public class CreateChatThreadUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final ChatService chatService;
+    private final ChatMessageCatalog chatMessageCatalog;
 
     public CreateChatThreadResult execute(CreateChatThreadCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
@@ -23,7 +25,7 @@ public class CreateChatThreadUseCase {
                 ? "GLOBAL"
                 : command.contextType().trim();
         String resolvedTitle = command.title() == null || command.title().isBlank()
-                ? "새 챗"
+                ? chatMessageCatalog.defaultThreadTitle()
                 : command.title().trim();
         ChatThread thread = chatService.createThread(
                 auth.orgId(),

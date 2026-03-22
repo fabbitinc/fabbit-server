@@ -2,9 +2,11 @@ package com.fabbitinc.server.presentation.chat.controller;
 
 import com.fabbitinc.server.application.chat.query.ChatQuery;
 import com.fabbitinc.server.application.chat.query.condition.ChatMessageListCondition;
+import com.fabbitinc.server.application.chat.query.condition.ChatRunEventListCondition;
 import com.fabbitinc.server.application.chat.query.condition.ChatThreadDetailCondition;
 import com.fabbitinc.server.application.chat.query.condition.ChatThreadListCondition;
 import com.fabbitinc.server.application.chat.query.result.ChatMessageListResult;
+import com.fabbitinc.server.application.chat.query.result.ChatRunEventListResult;
 import com.fabbitinc.server.application.chat.query.result.ChatThreadDetailResult;
 import com.fabbitinc.server.application.chat.query.result.ChatThreadListResult;
 import com.fabbitinc.server.application.chat.support.ChatMessageComposer;
@@ -17,6 +19,7 @@ import com.fabbitinc.server.application.chat.usecase.result.ChatRunStreamResult;
 import com.fabbitinc.server.presentation.chat.dto.request.CreateChatThreadRequest;
 import com.fabbitinc.server.presentation.chat.dto.request.SendChatMessageRequest;
 import com.fabbitinc.server.presentation.chat.dto.response.ChatMessageListResponse;
+import com.fabbitinc.server.presentation.chat.dto.response.ChatRunEventListResponse;
 import com.fabbitinc.server.presentation.chat.dto.response.ChatThreadDetailResponse;
 import com.fabbitinc.server.presentation.chat.dto.response.ChatThreadListResponse;
 import com.fabbitinc.server.presentation.chat.dto.response.ConfirmChatActionResponse;
@@ -117,6 +120,15 @@ public class ChatController {
             @PathVariable UUID threadId
     ) {
         return toChatMessageListResponse(chatQuery.list(new ChatMessageListCondition(threadId)));
+    }
+
+    @Operation(summary = "챗 실행 이벤트 목록을 조회합니다", description = "실행에 속한 단계 이벤트 목록을 조회합니다")
+    @GetMapping("/runs/{runId}/events")
+    public ChatRunEventListResponse listRunEvents(
+            @Parameter(description = "조회할 실행 ID")
+            @PathVariable UUID runId
+    ) {
+        return toChatRunEventListResponse(chatQuery.list(new ChatRunEventListCondition(runId)));
     }
 
     @Operation(summary = "챗 메시지를 전송합니다", description = "사용자 메시지를 저장하고 비동기 챗 실행을 시작합니다")
@@ -241,6 +253,22 @@ public class ChatController {
                                 item.status(),
                                 item.sequence(),
                                 chatMessageComposer.parse(item.content()),
+                                item.createdAt()
+                        ))
+                        .toList()
+        );
+    }
+
+    private ChatRunEventListResponse toChatRunEventListResponse(ChatRunEventListResult result) {
+        return new ChatRunEventListResponse(
+                result.items().stream()
+                        .map(item -> new ChatRunEventListResponse.ChatRunEventResponse(
+                                item.eventId(),
+                                item.runId(),
+                                item.sequence(),
+                                item.eventType(),
+                                item.visibility(),
+                                chatMessageComposer.parse(item.payload()),
                                 item.createdAt()
                         ))
                         .toList()

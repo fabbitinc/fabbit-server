@@ -1,6 +1,7 @@
 package com.fabbitinc.server.application.chat.model;
 
 import com.fabbitinc.server.domain.chat.model.ChatActionRequest;
+import com.fabbitinc.server.application.chat.support.ChatArtifactTypes;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -31,12 +32,30 @@ public class ChatExecutionAccumulator {
         if (actionRequest == null || actionRequestPayload == null) {
             return;
         }
+        removeRedundantPartListArtifacts();
         this.pendingAction = new ChatPendingAction(
                 actionRequest,
-                ChatUiArtifact.of("action_request", actionRequestPayload)
+                ChatUiArtifact.of(ChatArtifactTypes.ACTION_REQUEST, actionRequestPayload)
         );
         addUiArtifact(this.pendingAction.uiArtifact());
-        addToolName("issue_create_draft");
+    }
+
+    private void removeRedundantPartListArtifacts() {
+        uiArtifacts.removeIf(this::isSinglePartEntityListArtifact);
+    }
+
+    private boolean isSinglePartEntityListArtifact(ChatUiArtifact uiArtifact) {
+        if (uiArtifact == null || !ChatArtifactTypes.ENTITY_LIST.equals(uiArtifact.type()) || uiArtifact.payload() == null) {
+            return false;
+        }
+        JsonNode payload = uiArtifact.payload();
+        JsonNode entityType = payload.get("entityType");
+        JsonNode items = payload.get("items");
+        return entityType != null
+                && "PART".equalsIgnoreCase(entityType.asText())
+                && items != null
+                && items.isArray()
+                && items.size() == 1;
     }
 
     public List<ChatUiArtifact> getUiArtifacts() {

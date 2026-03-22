@@ -1,6 +1,8 @@
 package com.fabbitinc.server.application.chat.service;
 
 import com.fabbitinc.server.application.chat.support.ChatMessageComposer;
+import com.fabbitinc.server.application.chat.support.ChatMessageCatalog;
+import com.fabbitinc.server.application.chat.support.ChatEventTypes;
 import com.fabbitinc.server.application.chat.support.ChatVisibleTraceFormatter;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
@@ -28,9 +30,12 @@ import tools.jackson.databind.node.ObjectNode;
 @RequiredArgsConstructor
 public class ChatActionService {
 
+    private static final String ISSUE_CREATE_CONFIRM_TRACE_STEP = "issue_create_confirm";
+
     private final ChatService chatService;
     private final CreateIssueUseCase createIssueUseCase;
     private final ChatMessageComposer chatMessageComposer;
+    private final ChatMessageCatalog chatMessageCatalog;
     private final ChatVisibleTraceFormatter chatVisibleTraceFormatter;
     private final ObjectMapper objectMapper;
 
@@ -66,7 +71,7 @@ public class ChatActionService {
 
         actionRequest.confirm(userId);
         if (actionRequest.getActionType() != ChatActionRequestType.CREATE_ISSUE) {
-            throw new AppException(ErrorCode.BAD_REQUEST, "지원하지 않는 챗 액션 타입입니다");
+            throw new AppException(ErrorCode.BAD_REQUEST, chatMessageCatalog.unsupportedChatActionType());
         }
 
         CreateIssueDraftRequest request = parseRequest(actionRequest.getRequestPayload());
@@ -84,19 +89,19 @@ public class ChatActionService {
 
         String resultPayload = chatMessageComposer.writeMap(Map.of("issueId", result.issueId().toString()));
         actionRequest.execute(resultPayload);
-        chatService.publishEvent(run.getId(), "trace.updated", chatVisibleTraceFormatter.format(
-                "이슈 생성 요청을 실행했습니다",
-                "issue_create_confirm",
+        chatService.publishEvent(run.getId(), ChatEventTypes.TRACE_UPDATED, chatVisibleTraceFormatter.format(
+                chatMessageCatalog.issueCreateConfirmedTrace(),
+                ISSUE_CREATE_CONFIRM_TRACE_STEP,
                 "COMPLETED"
         ));
-        chatService.publishEvent(run.getId(), "action.completed", Map.of(
+        chatService.publishEvent(run.getId(), ChatEventTypes.ACTION_COMPLETED, Map.of(
                 "actionRequestId", actionRequest.getId().toString(),
                 "resourceType", "ISSUE",
                 "resourceId", result.issueId().toString()
         ), ChatRunEventVisibility.USER_VISIBLE);
         chatService.appendAssistantNotice(
                 actionRequest.getThreadId(),
-                chatMessageComposer.actionExecutionResult("이슈를 생성했습니다.", result.issueId(), "ISSUE")
+                chatMessageComposer.actionExecutionResult(chatMessageCatalog.issueCreated(), result.issueId(), "ISSUE")
         );
         return new ConfirmedActionResult(actionRequest.getId(), actionRequest.getStatus(), result.issueId());
     }
@@ -106,13 +111,13 @@ public class ChatActionService {
         ChatRun run = chatService.getRunOrThrow(actionRequest.getRunId());
         chatService.getThreadOrThrow(actionRequest.getThreadId(), orgId, userId);
         actionRequest.reject();
-        chatService.publishEvent(run.getId(), "action.rejected", Map.of(
+        chatService.publishEvent(run.getId(), ChatEventTypes.ACTION_REJECTED, Map.of(
                 "actionRequestId", actionRequest.getId().toString(),
                 "status", actionRequest.getStatus().name()
         ), ChatRunEventVisibility.USER_VISIBLE);
         chatService.appendAssistantNotice(
                 actionRequest.getThreadId(),
-                chatMessageComposer.assistantText("초안 실행을 취소했습니다.")
+                chatMessageComposer.assistantText(chatMessageCatalog.actionCancelled())
         );
     }
 
@@ -131,7 +136,7 @@ public class ChatActionService {
                     partIds
             );
         } catch (JacksonException ex) {
-            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "액션 요청 payload를 읽을 수 없습니다");
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, chatMessageCatalog.actionRequestPayloadReadFailed());
         }
     }
 
@@ -144,20 +149,20 @@ public class ChatActionService {
         ArrayNode paragraphContent = paragraph.putArray("content");
         paragraphContent.addObject()
                 .put("type", "text")
-                .put("text", bodyText == null || bodyText.isBlank() ? "챗에서 생성한 이슈입니다." : bodyText);
+                .put("text", bodyText == null || bodyText.isBlank() ? chatMessageCatalog.issueDraftDefaultBody() : bodyText);
         return root;
     }
 
     private String normalizeTitle(String title) {
         if (title == null || title.isBlank()) {
-            return "챗 이슈 초안";
+            return chatMessageCatalog.issueDraftDefaultTitle();
         }
         return title.trim();
     }
 
     private String normalizeBodyText(String bodyText) {
         if (bodyText == null || bodyText.isBlank()) {
-            return "챗에서 생성한 이슈입니다.";
+            return chatMessageCatalog.issueDraftDefaultBody();
         }
         String trimmed = bodyText.trim();
         return trimmed.length() > 200 ? trimmed.substring(0, 200) : trimmed;
@@ -167,7 +172,7 @@ public class ChatActionService {
         try {
             return objectMapper.writeValueAsString(node);
         } catch (JacksonException ex) {
-            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "액션 payload 직렬화에 실패했습니다");
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, chatMessageCatalog.actionPayloadSerializationFailed());
         }
     }
 
@@ -194,7 +199,7 @@ public class ChatActionService {
         preview.put("bodySummary", bodySummary);
 
         ObjectNode partNode = preview.putObject("part");
-        partNode.put("number", normalizeDisplayValue(part.partNumber(), "알 수 없는 부품"));
+        partNode.put("number", normalizeDisplayValue(part.partNumber(), chatMessageCatalog.unknownPartDisplayName()));
         partNode.put("name", normalizeDisplayValue(part.name(), ""));
         return preview;
     }
