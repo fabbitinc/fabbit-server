@@ -1,22 +1,23 @@
 package com.fabbitinc.server.application.chat.service;
 
-import com.fabbitinc.server.application.aiusage.service.AiUsageService;
-import com.fabbitinc.server.application.aiusage.service.input.RecordAiUsageInput;
 import com.fabbitinc.server.application.chat.model.ChatExecutionAccumulator;
 import com.fabbitinc.server.application.chat.model.ChatPendingAction;
 import com.fabbitinc.server.application.chat.tool.ChatToolContextSupport;
 import com.fabbitinc.server.application.chat.support.ChatEventTypes;
+import com.fabbitinc.server.application.chat.support.ChatInputGuard;
 import com.fabbitinc.server.application.chat.support.ChatMessageCatalog;
 import com.fabbitinc.server.application.chat.support.ChatMessageComposer;
 import com.fabbitinc.server.application.chat.support.ChatSystemPromptFactory;
+import com.fabbitinc.server.application.chat.support.ChatUsageContextHolder;
 import com.fabbitinc.server.application.chat.support.ChatVisibleTraceFormatter;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.config.AppProperties;
-import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;
 import com.fabbitinc.server.domain.chat.model.ChatThread;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -25,9 +26,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StreamUtils;
 import com.fabbitinc.server.domain.chat.model.ChatMessage;
 import com.fabbitinc.server.domain.chat.model.ChatRun;
 
@@ -51,8 +57,9 @@ public class ChatAgentService {
     private final ChatMessageComposer chatMessageComposer;
     private final ChatSystemPromptFactory chatSystemPromptFactory;
     private final ChatVisibleTraceFormatter chatVisibleTraceFormatter;
-    private final OrganizationApi organizationApi;
-    private final AiUsageService aiUsageService;
+    private final ChatInputGuard chatInputGuard;
+    private final OpenAiChatModel openAiChatModel;
+    private final ResourceLoader resourceLoader;
     private final MeterRegistry meterRegistry;
 
     public String getModelName() {
@@ -89,10 +96,17 @@ public class ChatAgentService {
 
         try {
             ensureAvailable();
+            ChatUsageContextHolder.set(thread.getOrgId(), thread.getUserId(), AiUsageCategory.CHAT, "chat:run");
+            ChatInputGuard.GuardResult guardResult = chatInputGuard.check(question);
             ChatExecutionAccumulator accumulator = new ChatExecutionAccumulator();
-            ChatExecutionResult result = executeChat(run, question, accumulator);
+            ChatExecutionResult result;
+            if (guardResult.blocked()) {
+                log.info("event=chat_run_guard_blocked run_id={} reason={}", runId, guardResult.reasonCode());
+                result = executeGuardedChat(run, question, guardResult);
+            } else {
+                result = executeChat(run, question, accumulator);
+            }
             String assistantContent = composeAssistantContent(result.text(), accumulator);
-            consumeCreditsAndRecordUsage(thread, result);
 
             chatService.publishEvent(run.getId(), ChatEventTypes.MESSAGE_COMPLETED, Map.of(
                     "messageId", assistantMessage.getId().toString()
@@ -148,6 +162,8 @@ public class ChatAgentService {
                     ))
             );
             recordRunMetric(sample, "failed");
+        } finally {
+            ChatUsageContextHolder.clear();
         }
     }
 
@@ -179,6 +195,53 @@ public class ChatAgentService {
         );
     }
 
+    private static final String GUARD_REJECT_TEMPLATE = "classpath:prompts/chat/guard-reject.st";
+
+    private ChatExecutionResult executeGuardedChat(ChatRun run, String question, ChatInputGuard.GuardResult guardResult) {
+        String rejectSystemPrompt = readPromptTemplate(GUARD_REJECT_TEMPLATE)
+                .replace("{{reason_code}}", guardResult.reasonCode());
+
+        OpenAiChatOptions options = OpenAiChatOptions.builder()
+                .model(appProperties.llmGuardModel())
+                .temperature(0.2)
+                .maxTokens(200)
+                .build();
+
+        ChatResponse response = openAiChatModel.call(
+                new org.springframework.ai.chat.prompt.Prompt(List.of(
+                        new org.springframework.ai.chat.messages.SystemMessage(rejectSystemPrompt),
+                        new UserMessage(question)
+                ), options)
+        );
+
+        String text = response.getResult() == null
+                ? chatMessageCatalog.chatGuardBlocked()
+                : response.getResult().getOutput().getText();
+        Usage usage = response == null ? null : response.getMetadata().getUsage();
+        String responseId = response == null ? "" : response.getMetadata().getId();
+        return new ChatExecutionResult(
+                text == null ? chatMessageCatalog.chatGuardBlocked() : text,
+                usage == null || usage.getPromptTokens() == null ? 0 : usage.getPromptTokens(),
+                usage == null || usage.getCompletionTokens() == null ? 0 : usage.getCompletionTokens(),
+                response == null || response.getMetadata() == null || response.getMetadata().getModel() == null
+                        ? appProperties.llmModel()
+                        : response.getMetadata().getModel(),
+                responseId == null ? "" : responseId,
+                List.of()
+        );
+    }
+
+    private String readPromptTemplate(String resourceLocation) {
+        try {
+            return StreamUtils.copyToString(
+                    resourceLoader.getResource(resourceLocation).getInputStream(),
+                    StandardCharsets.UTF_8
+            );
+        } catch (IOException ex) {
+            return "";
+        }
+    }
+
     private String composeAssistantContent(String text, ChatExecutionAccumulator accumulator) {
         String resolvedText = normalizeAssistantText(text, accumulator);
         return chatMessageComposer.assistantStructured(resolvedText, resolveFinalArtifacts(accumulator));
@@ -200,19 +263,6 @@ public class ChatAgentService {
     private void recordRunMetric(Timer.Sample sample, String status) {
         meterRegistry.counter("chat.run.calls", "status", status).increment();
         sample.stop(meterRegistry.timer("chat.run.duration", "status", status));
-    }
-
-    private void consumeCreditsAndRecordUsage(ChatThread thread, ChatExecutionResult result) {
-        organizationApi.consumeCredits(thread.getOrgId(), AiUsageCategory.CHAT);
-        aiUsageService.record(new RecordAiUsageInput(
-                thread.getOrgId(),
-                thread.getUserId(),
-                AiUsageCategory.CHAT,
-                "chat:run",
-                result.model(),
-                result.inputTokens(),
-                result.outputTokens()
-        ));
     }
 
     private String sanitizeAssistantText(String text) {

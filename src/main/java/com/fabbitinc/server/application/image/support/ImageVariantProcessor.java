@@ -1,4 +1,4 @@
-package com.fabbitinc.server.application.image.service;
+package com.fabbitinc.server.application.image.support;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
@@ -11,14 +11,14 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import javax.imageio.ImageIO;
 
-public class ImageVariantService {
+public class ImageVariantProcessor {
 
     private static final int PROFILE_THUMBNAIL_SIZE = 256;
     private static final String WEBP_CONTENT_TYPE = "image/webp";
 
     private final StoragePort storagePort;
 
-    public ImageVariantService(StoragePort storagePort) {
+    public ImageVariantProcessor(StoragePort storagePort) {
         this.storagePort = storagePort;
     }
 

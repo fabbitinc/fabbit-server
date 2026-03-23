@@ -6,7 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fabbitinc.server.application.aiusage.service.AiUsageService;
+import com.fabbitinc.server.application.aiusage.api.AiUsageApi;
 import com.fabbitinc.server.application.aiusage.service.input.RecordAiUsageInput;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
@@ -37,7 +37,7 @@ class PreviewMappingUseCaseTest {
         MappingService mappingService = mock(MappingService.class);
         MappingLlmGenerationSupport mappingLlmGenerationSupport = mock(MappingLlmGenerationSupport.class);
         OrganizationApi organizationApi = mock(OrganizationApi.class);
-        AiUsageService aiUsageService = mock(AiUsageService.class);
+        AiUsageApi aiUsageService = mock(AiUsageApi.class);
 
         PreviewMappingUseCase useCase = new PreviewMappingUseCase(
                 currentAuthProvider,

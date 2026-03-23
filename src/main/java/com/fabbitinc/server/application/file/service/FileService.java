@@ -10,7 +10,7 @@ import com.fabbitinc.server.application.file.service.output.BatchCompleteFilesOu
 import com.fabbitinc.server.application.file.service.output.BatchCreateFilesOutput;
 import com.fabbitinc.server.application.file.service.output.CreateFileOutput;
 import com.fabbitinc.server.application.file.service.output.FileCompleteOutput;
-import com.fabbitinc.server.application.image.service.ImageVariantService;
+import com.fabbitinc.server.application.image.support.ImageVariantProcessor;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.file.model.File;
@@ -44,7 +44,7 @@ public class FileService {
     private final FileRepository fileRepository;
     private final StoragePort storagePort;
     private final OrganizationApi organizationApi;
-    private final ImageVariantService imageVariantService;
+    private final ImageVariantProcessor imageVariantService;
 
     public FileService(
             FileRepository fileRepository,
@@ -54,7 +54,7 @@ public class FileService {
         this.fileRepository = fileRepository;
         this.storagePort = storagePort;
         this.organizationApi = organizationApi;
-        this.imageVariantService = new ImageVariantService(storagePort);
+        this.imageVariantService = new ImageVariantProcessor(storagePort);
     }
 
     public CreateFileOutput createFile(AuthContext auth, CreateFileInput input) {

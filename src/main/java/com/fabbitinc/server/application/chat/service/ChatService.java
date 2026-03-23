@@ -176,6 +176,13 @@ public class ChatService {
         return saved;
     }
 
+    public ChatMessage appendSystemNotice(UUID threadId, String content) {
+        chatThreadRepository.findByIdForUpdate(threadId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "챗 스레드를 찾을 수 없습니다"));
+        ChatMessage message = ChatMessage.createSystemNotice(threadId, content, nextMessageSequence(threadId));
+        return chatMessageRepository.save(message);
+    }
+
     public List<ChatRunEvent> getRunEvents(UUID runId) {
         return chatRunEventRepository.findByRunIdOrderBySequenceAsc(runId);
     }

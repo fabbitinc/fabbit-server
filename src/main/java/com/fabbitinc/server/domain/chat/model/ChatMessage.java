@@ -115,6 +115,18 @@ public class ChatMessage extends AbstractCreatedEntity {
         );
     }
 
+    public static ChatMessage createSystemNotice(UUID threadId, String content, long sequence) {
+        return new ChatMessage(
+                threadId,
+                null,
+                ChatMessageRole.SYSTEM,
+                ChatMessageType.TEXT,
+                content,
+                ChatMessageStatus.COMPLETED,
+                sequence
+        );
+    }
+
     public void startStreaming() {
         if (this.role != ChatMessageRole.ASSISTANT || this.status != ChatMessageStatus.CREATED) {
             throw new DomainException(CODE_CHAT_MESSAGE_INVALID_STATE, "ASSISTANT CREATED 상태에서만 스트리밍을 시작할 수 있습니다");

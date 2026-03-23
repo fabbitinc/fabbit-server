@@ -4,7 +4,7 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.file.port.StoragePort;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
-import com.fabbitinc.server.application.part.service.PartPreviewService;
+import com.fabbitinc.server.application.part.api.PartApi;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.repository.DrawingRepository;
 import com.fabbitinc.server.domain.file.model.File;
@@ -22,7 +22,7 @@ public class DrawingService {
     private final FileRepository fileRepository;
     private final StoragePort storagePort;
     private final OrganizationApi organizationApi;
-    private final PartPreviewService partPreviewService;
+    private final PartApi partApi;
     private final DrawingSourceClassifier drawingSourceClassifier;
 
     public DrawingService(
@@ -30,13 +30,13 @@ public class DrawingService {
             FileRepository fileRepository,
             StoragePort storagePort,
             OrganizationApi organizationApi,
-            PartPreviewService partPreviewService
+            PartApi partApi
     ) {
         this.drawingRepository = drawingRepository;
         this.fileRepository = fileRepository;
         this.storagePort = storagePort;
         this.organizationApi = organizationApi;
-        this.partPreviewService = partPreviewService;
+        this.partApi = partApi;
         this.drawingSourceClassifier = new DrawingSourceClassifier();
     }
 
@@ -71,7 +71,7 @@ public class DrawingService {
         drawing.getArtifacts().forEach(artifact -> keys.add(artifact.getStorageKey()));
         keys.forEach(this::softDeleteFileByKey);
         drawing.softDelete(actorId);
-        partPreviewService.clearByDrawing(drawingId);
+        partApi.clearPreviewByDrawing(drawingId);
     }
 
     public void deleteDrawing(UUID partRevisionId, UUID drawingId, UUID actorId) {

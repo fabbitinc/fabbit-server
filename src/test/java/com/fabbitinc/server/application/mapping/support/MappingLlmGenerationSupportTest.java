@@ -149,7 +149,8 @@ class MappingLlmGenerationSupportTest {
                 true,
                 "https://openrouter.ai/api/v1",
                 "openai/gpt-5-mini",
-                30
+                30,
+                "openai/gpt-5.4-nano"
         );
     }
 }

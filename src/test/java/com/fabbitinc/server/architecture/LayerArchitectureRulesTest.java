@@ -5,6 +5,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.JavaField;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -73,6 +74,14 @@ class LayerArchitectureRulesTest {
             noClasses()
                     .that().resideInAPackage("..usecase..")
                     .should().dependOnClassesThat().resideInAPackage("..query..")
+                    .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule serviceMustNotDependOnOtherDomainService =
+            classes()
+                    .that().resideInAPackage("..application..service..")
+                    .and().haveSimpleNameEndingWith("Service")
+                    .should(notDependOnOtherDomainService())
                     .allowEmptyShould(true);
 
     @ArchTest
@@ -169,6 +178,49 @@ class LayerArchitectureRulesTest {
                         clazz.getName()
                 );
                 events.add(SimpleConditionEvent.violated(clazz, message));
+            }
+        };
+    }
+
+    private static ArchCondition<JavaClass> notDependOnOtherDomainService() {
+        return new ArchCondition<>("타 도메인 Service를 직접 참조하지 않는다 (Api/Policy 경계를 사용하라)") {
+            @Override
+            public void check(JavaClass clazz, ConditionEvents events) {
+                String ownDomain = extractDomain(clazz);
+                if (ownDomain == null) {
+                    return;
+                }
+                for (JavaField field : clazz.getFields()) {
+                    JavaClass target = field.getRawType();
+                    String targetDomain = extractDomain(target);
+                    if (targetDomain == null || ownDomain.equals(targetDomain)) {
+                        continue;
+                    }
+                    if (!target.getPackageName().contains(".service")) {
+                        continue;
+                    }
+                    if (!target.getSimpleName().endsWith("Service")) {
+                        continue;
+                    }
+                    String message = String.format(
+                            "%s (domain: %s) → %s (domain: %s): 타 도메인 Service 직접 참조. *Api/*Policy 경계를 사용하세요",
+                            clazz.getName(), ownDomain,
+                            target.getName(), targetDomain
+                    );
+                    events.add(SimpleConditionEvent.violated(clazz, message));
+                }
+            }
+
+            private String extractDomain(JavaClass javaClass) {
+                String pkg = javaClass.getPackageName();
+                String marker = ".application.";
+                int start = pkg.indexOf(marker);
+                if (start < 0) {
+                    return null;
+                }
+                String afterApp = pkg.substring(start + marker.length());
+                int dot = afterApp.indexOf('.');
+                return dot > 0 ? afterApp.substring(0, dot) : afterApp;
             }
         };
     }

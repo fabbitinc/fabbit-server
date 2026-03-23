@@ -1,5 +1,6 @@
 package com.fabbitinc.server.application.part.api;
 
+import com.fabbitinc.server.application.part.service.PartPreviewService;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
@@ -24,6 +25,7 @@ public class PartApi {
 
     private final PartRepository partRepository;
     private final PartRevisionRepository partRevisionRepository;
+    private final PartPreviewService partPreviewService;
     private final EntityManager entityManager;
 
     public boolean existsPart(UUID partId) {
@@ -77,6 +79,10 @@ public class PartApi {
                 .filter(Objects::nonNull)
                 .map(part -> toSnapshot(part, revisionsByPartId.get(part.getId())))
                 .toList();
+    }
+
+    public void clearPreviewByDrawing(UUID drawingId) {
+        partPreviewService.clearByDrawing(drawingId);
     }
 
     public Map<UUID, PartSnapshot> getPartSnapshotMap(Set<UUID> partIds) {

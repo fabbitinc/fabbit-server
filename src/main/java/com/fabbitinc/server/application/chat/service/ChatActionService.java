@@ -99,9 +99,17 @@ public class ChatActionService {
                 "resourceType", "ISSUE",
                 "resourceId", result.issueId().toString()
         ), ChatRunEventVisibility.USER_VISIBLE);
+        chatService.appendSystemNotice(
+                actionRequest.getThreadId(),
+                chatMessageComposer.userText(chatMessageCatalog.actionConfirmedNotice(request.title()))
+        );
         chatService.appendAssistantNotice(
                 actionRequest.getThreadId(),
-                chatMessageComposer.actionExecutionResult(chatMessageCatalog.issueCreated(), result.issueId(), "ISSUE")
+                chatMessageComposer.actionExecutionResult(
+                        chatMessageCatalog.issueCreatedWithTitle(request.title()),
+                        result.issueId(),
+                        "ISSUE"
+                )
         );
         return new ConfirmedActionResult(actionRequest.getId(), actionRequest.getStatus(), result.issueId());
     }
@@ -115,9 +123,14 @@ public class ChatActionService {
                 "actionRequestId", actionRequest.getId().toString(),
                 "status", actionRequest.getStatus().name()
         ), ChatRunEventVisibility.USER_VISIBLE);
+        CreateIssueDraftRequest request = parseRequest(actionRequest.getRequestPayload());
+        chatService.appendSystemNotice(
+                actionRequest.getThreadId(),
+                chatMessageComposer.userText(chatMessageCatalog.actionRejectedNotice(request.title()))
+        );
         chatService.appendAssistantNotice(
                 actionRequest.getThreadId(),
-                chatMessageComposer.assistantText(chatMessageCatalog.actionCancelled())
+                chatMessageComposer.assistantText(chatMessageCatalog.actionCancelledWithTitle(request.title()))
         );
     }
 

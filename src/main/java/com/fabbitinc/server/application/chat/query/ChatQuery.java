@@ -12,6 +12,7 @@ import com.fabbitinc.server.application.chat.query.result.ChatThreadDetailResult
 import com.fabbitinc.server.application.chat.query.result.ChatThreadListResult;
 import com.fabbitinc.server.application.chat.support.ChatArtifactTypes;
 import com.fabbitinc.server.application.common.exception.AppException;
+import com.fabbitinc.server.domain.chat.model.ChatMessageRole;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.domain.chat.model.ChatActionRequest;
 import com.fabbitinc.server.domain.chat.model.ChatRun;
@@ -84,6 +85,7 @@ public class ChatQuery {
     public ChatMessageListResult list(ChatMessageListCondition condition) {
         get(new ChatThreadDetailCondition(condition.threadId()));
         List<ChatMessageListResult.Item> items = chatMessageRepository.findByThreadIdOrderBySequenceAsc(condition.threadId()).stream()
+                .filter(message -> message.getRole() != ChatMessageRole.SYSTEM)
                 .map(message -> new ChatMessageListResult.Item(
                         message.getId(),
                         message.getRunId(),

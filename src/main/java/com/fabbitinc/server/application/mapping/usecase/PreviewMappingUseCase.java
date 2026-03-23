@@ -1,6 +1,6 @@
 package com.fabbitinc.server.application.mapping.usecase;
 
-import com.fabbitinc.server.application.aiusage.service.AiUsageService;
+import com.fabbitinc.server.application.aiusage.api.AiUsageApi;
 import com.fabbitinc.server.application.aiusage.service.input.RecordAiUsageInput;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
@@ -35,7 +35,7 @@ public class PreviewMappingUseCase {
     private final MappingService mappingService;
     private final MappingLlmGenerationSupport mappingLlmGenerationSupport;
     private final OrganizationApi organizationApi;
-    private final AiUsageService aiUsageService;
+    private final AiUsageApi aiUsageService;
     private final ObjectMapper objectMapper;
 
     public PreviewMappingResult execute(PreviewMappingCommand command) {

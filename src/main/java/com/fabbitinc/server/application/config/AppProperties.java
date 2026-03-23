@@ -29,7 +29,8 @@ public record AppProperties(
         @DefaultValue("") String llmApiKey,
         @DefaultValue("true") boolean llmEnabled,
         @DefaultValue("https://openrouter.ai/api/v1") String llmBaseUrl,
-        @DefaultValue("openai/gpt-5-mini") String llmModel,
-        @DefaultValue("30") int llmTimeoutSeconds
+        @DefaultValue("openai/gpt-5.4-nano") String llmModel,
+        @DefaultValue("30") int llmTimeoutSeconds,
+        @DefaultValue("openai/gpt-5.4-nano") String llmGuardModel
 ) {
 }

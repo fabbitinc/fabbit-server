@@ -1,5 +1,6 @@
 package com.fabbitinc.server.application.chat.config;
 
+import com.fabbitinc.server.application.chat.support.ChatUsageObservationHandler;
 import com.fabbitinc.server.application.chat.tool.IssueCreateDraftTool;
 import com.fabbitinc.server.application.chat.tool.PartIssueLookupTool;
 import com.fabbitinc.server.application.chat.tool.PartLookupTool;
@@ -37,9 +38,11 @@ public class ChatAiConfig {
     @Bean
     public OpenAiChatModel openAiChatModel(
             AppProperties appProperties,
-            ObjectProvider<ObservationRegistry> observationRegistryProvider
+            ObjectProvider<ObservationRegistry> observationRegistryProvider,
+            ChatUsageObservationHandler chatUsageObservationHandler
     ) {
-        ObservationRegistry observationRegistry = observationRegistryProvider.getIfAvailable(() -> ObservationRegistry.NOOP);
+        ObservationRegistry observationRegistry = observationRegistryProvider.getIfAvailable(ObservationRegistry::create);
+        observationRegistry.observationConfig().observationHandler(chatUsageObservationHandler);
 
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofSeconds(appProperties.llmTimeoutSeconds()));

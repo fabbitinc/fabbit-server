@@ -11,7 +11,7 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.file.port.StoragePort;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
-import com.fabbitinc.server.application.part.service.PartPreviewService;
+import com.fabbitinc.server.application.part.api.PartApi;
 import com.fabbitinc.server.domain.drawing.model.Drawing;
 import com.fabbitinc.server.domain.drawing.model.DrawingDimension;
 import com.fabbitinc.server.domain.drawing.model.DrawingSourceType;
@@ -33,7 +33,7 @@ class DrawingServiceTest {
   @Mock private FileRepository fileRepository;
   @Mock private StoragePort storagePort;
   @Mock private OrganizationApi organizationApi;
-  @Mock private PartPreviewService partPreviewService;
+  @Mock private PartApi partApi;
 
   @AfterEach
   void clearTenantContext() {
@@ -61,7 +61,7 @@ class DrawingServiceTest {
             fileRepository,
             storagePort,
             organizationApi,
-            partPreviewService);
+            partApi);
 
     Drawing drawing = service.createDrawing(partRevisionId, file.getId());
 
@@ -91,7 +91,7 @@ class DrawingServiceTest {
             fileRepository,
             storagePort,
             organizationApi,
-            partPreviewService);
+            partApi);
 
     Drawing drawing = service.createDrawing(partRevisionId, file.getId());
 
@@ -121,7 +121,7 @@ class DrawingServiceTest {
             fileRepository,
             storagePort,
             organizationApi,
-            partPreviewService);
+            partApi);
 
     Drawing drawing = service.createDrawing(partRevisionId, file.getId());
 
@@ -148,7 +148,7 @@ class DrawingServiceTest {
             fileRepository,
             storagePort,
             organizationApi,
-            partPreviewService);
+            partApi);
 
     AppException ex = assertThrows(AppException.class, () -> service.createDrawing(UUID.randomUUID(), file.getId()));
 
@@ -175,12 +175,12 @@ class DrawingServiceTest {
             fileRepository,
             storagePort,
             organizationApi,
-            partPreviewService);
+            partApi);
 
     service.deleteDrawing(drawing.getId(), UUID.randomUUID());
 
     assertNotNull(original.getDeletedAt());
-    verify(partPreviewService).clearByDrawing(drawing.getId());
+    verify(partApi).clearPreviewByDrawing(drawing.getId());
     verify(organizationApi).releaseStorageForCurrentTenant(100L);
   }
 
@@ -204,7 +204,7 @@ class DrawingServiceTest {
             fileRepository,
             storagePort,
             organizationApi,
-            partPreviewService);
+            partApi);
 
     service.deleteDrawing(drawing.getId(), UUID.randomUUID());
 

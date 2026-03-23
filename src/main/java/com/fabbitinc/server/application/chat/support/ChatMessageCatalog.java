@@ -17,6 +17,10 @@ public class ChatMessageCatalog {
         return "챗 응답 생성 중 오류가 발생했습니다.";
     }
 
+    public String chatGuardBlocked() {
+        return "요청을 처리할 수 없습니다. 다른 방식으로 질문해 주세요.";
+    }
+
     public String pendingIssueDraftReady() {
         return "이슈 초안을 만들었습니다. 아래 카드에서 생성 또는 취소를 선택해 주세요.";
     }
@@ -149,7 +153,23 @@ public class ChatMessageCatalog {
         return "이슈를 생성했습니다.";
     }
 
+    public String issueCreatedWithTitle(String title) {
+        return "이슈 \"" + title + "\"을(를) 생성했습니다.";
+    }
+
     public String actionCancelled() {
         return "초안 실행을 취소했습니다.";
+    }
+
+    public String actionCancelledWithTitle(String title) {
+        return "이슈 \"" + title + "\" 초안을 취소했습니다.";
+    }
+
+    public String actionConfirmedNotice(String title) {
+        return "사용자가 이슈 \"" + title + "\" 초안 생성을 승인했습니다. 이슈가 실제로 생성 완료되었습니다.";
+    }
+
+    public String actionRejectedNotice(String title) {
+        return "사용자가 이슈 \"" + title + "\" 초안 생성을 거부했습니다. 이슈는 생성되지 않았습니다.";
     }
 }
