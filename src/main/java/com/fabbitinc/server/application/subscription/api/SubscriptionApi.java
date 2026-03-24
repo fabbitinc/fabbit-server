@@ -5,12 +5,12 @@ import com.fabbitinc.server.application.subscription.service.input.UpgradeStarte
 import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import com.fabbitinc.server.domain.subscription.model.SeatType;
+import com.fabbitinc.server.domain.subscription.model.StorageUsageSnapshot;
 import com.fabbitinc.server.domain.subscription.model.Subscription;
 import com.fabbitinc.server.domain.subscription.model.SubscriptionChangeRequest;
 import com.fabbitinc.server.domain.subscription.model.SubscriptionCreditPurchase;
 import com.fabbitinc.server.domain.subscription.model.SubscriptionSeatQuota;
 import com.fabbitinc.server.domain.subscription.model.SubscriptionUsagePolicy;
-import com.fabbitinc.server.domain.subscription.model.StorageUsageSnapshot;
 import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 import java.math.BigDecimal;
 import java.time.Instant;

@@ -1,8 +1,8 @@
 package com.fabbitinc.server.application.notification.eventhandler;
 
-import com.fabbitinc.server.application.workitem.event.WorkItemUsersMentionedEvent;
 import com.fabbitinc.server.application.notification.usecase.CreateMentionNotificationsUseCase;
 import com.fabbitinc.server.application.notification.usecase.command.CreateMentionNotificationsCommand;
+import com.fabbitinc.server.application.workitem.event.WorkItemUsersMentionedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;

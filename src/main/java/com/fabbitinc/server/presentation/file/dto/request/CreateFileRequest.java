@@ -18,8 +18,6 @@ public record CreateFileRequest(
         @Positive(message = "file_size는 0보다 커야 합니다") long fileSize,
 
         @Schema(description = "클라이언트가 계산한 SHA-256 hex", example = "6d2bc3f13b59bf38368ffce5aa7498479f880c6da14961fb1bc696ff44e43173")
-        @NotBlank(message = "content_hash는 필수입니다")
-        @Pattern(regexp = "^[0-9A-Fa-f]{64}$", message = "content_hash는 SHA-256 hex 형식이어야 합니다")
-        String contentHash
+        @NotBlank(message = "content_hash는 필수입니다") @Pattern(regexp = "^[0-9A-Fa-f]{64}$", message = "content_hash는 SHA-256 hex 형식이어야 합니다") String contentHash
 ) {
 }

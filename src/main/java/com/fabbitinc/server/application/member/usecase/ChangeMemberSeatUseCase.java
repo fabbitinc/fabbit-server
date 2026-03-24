@@ -2,9 +2,9 @@ package com.fabbitinc.server.application.member.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
+import com.fabbitinc.server.application.member.usecase.command.ChangeMemberSeatCommand;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
-import com.fabbitinc.server.application.member.usecase.command.ChangeMemberSeatCommand;
 import com.fabbitinc.server.domain.organization.model.Membership;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

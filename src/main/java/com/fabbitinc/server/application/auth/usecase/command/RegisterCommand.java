@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.auth.usecase.command;
 
-import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 import com.fabbitinc.server.domain.subscription.model.SeatType;
+import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 
 public record RegisterCommand(
         String verificationToken,

@@ -1,15 +1,16 @@
 package com.fabbitinc.server.infrastructure.security;
 
 import com.fabbitinc.server.application.config.AppProperties;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
-import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.config.Customizer;
@@ -39,7 +40,10 @@ public class SecurityWebConfig {
             "/api/v1/auth/accept-invitation",
             "/api/v1/auth/site",
             "/api/v1/auth/plans",
-            "/api/v1/auth/check-slug",
+            "/api/v1/auth/check-slug"
+    };
+
+    private static final String[] SWAGGER_PATHS = {
             "/swagger-ui.html",
             "/swagger-ui/**",
             "/openapi.json",
@@ -55,6 +59,9 @@ public class SecurityWebConfig {
     private final SecurityAccessDeniedHandler securityAccessDeniedHandler;
     private final AppProperties appProperties;
 
+    @Value("${springdoc.api-docs.enabled:true}")
+    private boolean swaggerEnabled;
+
     @Bean
     public RoleHierarchy roleHierarchy() {
         return RoleHierarchyImpl.fromHierarchy("""
@@ -63,12 +70,7 @@ public class SecurityWebConfig {
                 """);
     }
 
-    @Bean
-    public MethodSecurityExpressionHandler methodSecurityExpressionHandler(RoleHierarchy roleHierarchy) {
-        DefaultMethodSecurityExpressionHandler expressionHandler = new DefaultMethodSecurityExpressionHandler();
-        expressionHandler.setRoleHierarchy(roleHierarchy);
-        return expressionHandler;
-    }
+
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -101,12 +103,16 @@ public class SecurityWebConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(PUBLIC_PATHS).permitAll()
+                .authorizeHttpRequests(authorize -> {
+                    List<String> paths = new ArrayList<>(Arrays.asList(PUBLIC_PATHS));
+                    if (swaggerEnabled) {
+                        paths.addAll(Arrays.asList(SWAGGER_PATHS));
+                    }
+                    authorize.requestMatchers(paths.toArray(String[]::new)).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/organizations").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated();
+                })
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(securityAuthenticationEntryPoint)
                         .accessDeniedHandler(securityAccessDeniedHandler)

@@ -1,11 +1,11 @@
 package com.fabbitinc.server.presentation.supplier.controller;
 
-import com.fabbitinc.server.presentation.supplier.response.SupplierListResponse;
-import com.fabbitinc.server.presentation.supplier.response.SupplierSummaryResponse;
 import com.fabbitinc.server.application.supplier.query.SupplierQuery;
 import com.fabbitinc.server.application.supplier.query.condition.SupplierListCondition;
 import com.fabbitinc.server.application.supplier.query.result.SupplierListResult;
 import com.fabbitinc.server.application.supplier.query.result.SupplierSummaryResult;
+import com.fabbitinc.server.presentation.supplier.response.SupplierListResponse;
+import com.fabbitinc.server.presentation.supplier.response.SupplierSummaryResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

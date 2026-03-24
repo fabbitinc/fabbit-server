@@ -1,11 +1,5 @@
 package com.fabbitinc.server.presentation.label.controller;
 
-import com.fabbitinc.server.presentation.label.dto.request.CreateLabelRequest;
-import com.fabbitinc.server.presentation.label.dto.request.UpdateLabelRequest;
-import com.fabbitinc.server.presentation.label.dto.response.LabelListResponse;
-import com.fabbitinc.server.presentation.label.dto.response.LabelLookupItemResponse;
-import com.fabbitinc.server.presentation.label.dto.response.LabelLookupResponse;
-import com.fabbitinc.server.presentation.label.dto.response.LabelResponse;
 import com.fabbitinc.server.application.label.query.LabelQuery;
 import com.fabbitinc.server.application.label.query.condition.LabelListCondition;
 import com.fabbitinc.server.application.label.query.condition.LabelLookupCondition;
@@ -21,6 +15,12 @@ import com.fabbitinc.server.application.label.usecase.command.DeleteLabelCommand
 import com.fabbitinc.server.application.label.usecase.command.UpdateLabelCommand;
 import com.fabbitinc.server.application.label.usecase.result.CreateLabelResult;
 import com.fabbitinc.server.application.label.usecase.result.UpdateLabelResult;
+import com.fabbitinc.server.presentation.label.dto.request.CreateLabelRequest;
+import com.fabbitinc.server.presentation.label.dto.request.UpdateLabelRequest;
+import com.fabbitinc.server.presentation.label.dto.response.LabelListResponse;
+import com.fabbitinc.server.presentation.label.dto.response.LabelLookupItemResponse;
+import com.fabbitinc.server.presentation.label.dto.response.LabelLookupResponse;
+import com.fabbitinc.server.presentation.label.dto.response.LabelResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

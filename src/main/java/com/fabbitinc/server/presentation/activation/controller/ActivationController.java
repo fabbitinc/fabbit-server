@@ -1,15 +1,5 @@
 package com.fabbitinc.server.presentation.activation.controller;
 
-import com.fabbitinc.server.presentation.activation.dto.request.QueryRequest;
-import com.fabbitinc.server.presentation.activation.dto.response.ActivationResultType;
-import com.fabbitinc.server.presentation.activation.dto.response.HealthCheckIssueResponse;
-import com.fabbitinc.server.presentation.activation.dto.response.HealthCheckResponse;
-import com.fabbitinc.server.presentation.activation.dto.response.HealthIssueCategory;
-import com.fabbitinc.server.presentation.activation.dto.response.HealthIssueSeverity;
-import com.fabbitinc.server.presentation.activation.dto.response.QueryResponse;
-import com.fabbitinc.server.presentation.activation.dto.response.QueryResultResponse;
-import com.fabbitinc.server.presentation.activation.dto.response.StarterQuestionResponse;
-import com.fabbitinc.server.presentation.activation.dto.response.StartersResponse;
 import com.fabbitinc.server.application.activation.query.ActivationQuery;
 import com.fabbitinc.server.application.activation.query.condition.ActivationStartersCondition;
 import com.fabbitinc.server.application.activation.query.result.ActivationStarterQuestionResult;
@@ -21,6 +11,16 @@ import com.fabbitinc.server.application.activation.usecase.result.HealthCheckIss
 import com.fabbitinc.server.application.activation.usecase.result.HealthCheckResult;
 import com.fabbitinc.server.application.activation.usecase.result.QueryGraphItemResult;
 import com.fabbitinc.server.application.activation.usecase.result.QueryGraphResult;
+import com.fabbitinc.server.presentation.activation.dto.request.QueryRequest;
+import com.fabbitinc.server.presentation.activation.dto.response.ActivationResultType;
+import com.fabbitinc.server.presentation.activation.dto.response.HealthCheckIssueResponse;
+import com.fabbitinc.server.presentation.activation.dto.response.HealthCheckResponse;
+import com.fabbitinc.server.presentation.activation.dto.response.HealthIssueCategory;
+import com.fabbitinc.server.presentation.activation.dto.response.HealthIssueSeverity;
+import com.fabbitinc.server.presentation.activation.dto.response.QueryResponse;
+import com.fabbitinc.server.presentation.activation.dto.response.QueryResultResponse;
+import com.fabbitinc.server.presentation.activation.dto.response.StarterQuestionResponse;
+import com.fabbitinc.server.presentation.activation.dto.response.StartersResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

@@ -1,13 +1,13 @@
 package com.fabbitinc.server.presentation.dashboard.controller;
 
-import com.fabbitinc.server.presentation.dashboard.dto.response.BomStatsResponse;
-import com.fabbitinc.server.presentation.dashboard.dto.response.DashboardStatsResponse;
-import com.fabbitinc.server.presentation.dashboard.dto.response.LastSynthesisResponse;
-import com.fabbitinc.server.presentation.dashboard.dto.response.PartStatsResponse;
 import com.fabbitinc.server.application.dashboard.query.DashboardQuery;
 import com.fabbitinc.server.application.dashboard.query.condition.DashboardStatsCondition;
 import com.fabbitinc.server.application.dashboard.query.result.DashboardLastSynthesisResult;
 import com.fabbitinc.server.application.dashboard.query.result.DashboardStatsResult;
+import com.fabbitinc.server.presentation.dashboard.dto.response.BomStatsResponse;
+import com.fabbitinc.server.presentation.dashboard.dto.response.DashboardStatsResponse;
+import com.fabbitinc.server.presentation.dashboard.dto.response.LastSynthesisResponse;
+import com.fabbitinc.server.presentation.dashboard.dto.response.PartStatsResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;

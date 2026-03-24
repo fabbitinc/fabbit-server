@@ -5,7 +5,6 @@ import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.mapping.model.MappingRecord;
-import com.fabbitinc.server.domain.synthesis.model.SynthesisJobStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

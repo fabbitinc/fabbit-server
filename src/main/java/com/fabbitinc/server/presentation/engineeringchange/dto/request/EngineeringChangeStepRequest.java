@@ -9,17 +9,13 @@ import java.util.UUID;
 
 @Schema(description = "변경관리 단계 지정 요청")
 public record EngineeringChangeStepRequest(
-        @NotNull(message = "stepType은 필수입니다")
-        @Schema(description = "단계 타입", example = "REVIEW")
+        @NotNull(message = "stepType은 필수입니다") @Schema(description = "단계 타입", example = "REVIEW")
         EngineeringChangeStepType stepType,
-        @NotNull(message = "assigneeType은 필수입니다")
-        @Schema(description = "담당자 타입", example = "USER")
+        @NotNull(message = "assigneeType은 필수입니다") @Schema(description = "담당자 타입", example = "USER")
         EngineeringChangeStepAssigneeType assigneeType,
-        @NotNull(message = "assigneeId는 필수입니다")
-        @Schema(description = "담당자 ID")
+        @NotNull(message = "assigneeId는 필수입니다") @Schema(description = "담당자 ID")
         UUID assigneeId,
-        @Min(value = 1, message = "sequence는 1 이상이어야 합니다")
-        @Schema(description = "단계 순서", example = "1")
+        @Min(value = 1, message = "sequence는 1 이상이어야 합니다") @Schema(description = "단계 순서", example = "1")
         int sequence
 ) {
 }

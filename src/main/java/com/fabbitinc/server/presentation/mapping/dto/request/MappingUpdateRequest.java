@@ -9,17 +9,13 @@ import java.util.UUID;
 
 @Schema(description = "매핑 수정 요청")
 public record MappingUpdateRequest(
-        @NotNull
-        @Schema(description = "업로드 완료된 파일 ID")
+        @NotNull @Schema(description = "업로드 완료된 파일 ID")
         UUID fileId,
-        @Size(max = 200)
-        @Schema(description = "매핑 이름(변경 시 전달)")
+        @Size(max = 200) @Schema(description = "매핑 이름(변경 시 전달)")
         String name,
         @Schema(description = "Excel 시트명")
         String sheetName,
-        @Valid
-        @NotNull
-        @Schema(description = "수정할 매핑")
+        @Valid @NotNull @Schema(description = "수정할 매핑")
         MappingResultDto mapping
 ) {
 }

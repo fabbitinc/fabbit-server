@@ -16,27 +16,23 @@ public record UpgradeStarterSubscriptionRequest(
                 example = "TEAM",
                 allowableValues = {"TEAM", "ORGANIZATION"}
         )
-        @NotNull
-        WorkspacePlanType targetPlanType,
+        @NotNull WorkspacePlanType targetPlanType,
 
         @Schema(description = "현재 워크스페이스 멤버 전원의 좌석 타입 지정")
-        @NotEmpty
-        List<@Valid MemberSeatRequest> memberSeats
+        @NotEmpty List<@Valid MemberSeatRequest> memberSeats
 ) {
 
     @Schema(description = "멤버별 좌석 타입 지정")
     public record MemberSeatRequest(
             @Schema(description = "좌석 타입을 지정할 멤버십 ID", example = "019cf746-2095-7b80-9930-c099a25a2c7b")
-            @NotNull
-            UUID membershipId,
+            @NotNull UUID membershipId,
 
             @Schema(
                     description = "업그레이드 후 적용할 좌석 타입, 유료 플랜에서는 STARTER 좌석을 사용할 수 없음",
                     example = "FULL",
                     allowableValues = {"VIEWER", "COLLABORATOR", "FULL"}
             )
-            @NotNull
-            SeatType seatType
+            @NotNull SeatType seatType
     ) {
     }
 }

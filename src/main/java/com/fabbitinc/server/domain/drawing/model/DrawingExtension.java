@@ -3,7 +3,6 @@ package com.fabbitinc.server.domain.drawing.model;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Optional;
-
 import lombok.Getter;
 
 @Getter

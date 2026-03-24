@@ -16,7 +16,6 @@ import com.fabbitinc.server.domain.organization.model.WorkspaceSlugPolicy;
 import com.fabbitinc.server.domain.organization.repository.MembershipRepository;
 import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
 import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
-import com.fabbitinc.server.domain.subscription.model.SeatType;
 import java.text.Normalizer;
 import java.util.Comparator;
 import java.util.List;

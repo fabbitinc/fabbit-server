@@ -6,7 +6,6 @@ import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;
-import com.fabbitinc.server.domain.subscription.model.SeatType;
 import com.fabbitinc.server.domain.organization.repository.MembershipRepository;
 import com.fabbitinc.server.domain.organization.repository.OrganizationRepository;
 import com.fabbitinc.server.domain.subscription.model.SubscriptionStatus;

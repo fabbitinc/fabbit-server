@@ -1,8 +1,8 @@
 package com.fabbitinc.server.presentation.property.request;
 
-import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fabbitinc.server.domain.property.model.PropertyOptionMode;
 import com.fabbitinc.server.domain.property.model.PropertyValueType;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -13,8 +13,7 @@ import java.util.List;
 public class UpdatePropertyDefinitionRequest {
 
     @Schema(description = "속성 표시명", example = "표면처리")
-    @Size(max = 200, message = "display_name은 최대 200자여야 합니다")
-    private String displayName;
+    @Size(max = 200, message = "display_name은 최대 200자여야 합니다") private String displayName;
 
     @Schema(description = "속성 설명", example = "표면처리 방식")
     private String description;
@@ -26,12 +25,10 @@ public class UpdatePropertyDefinitionRequest {
     private PropertyOptionMode optionMode;
 
     @Schema(description = "옵션 목록")
-    @Valid
-    private List<PropertyOptionRequest> options;
+    @Valid private List<PropertyOptionRequest> options;
 
     @Schema(description = "표시 순서", example = "120")
-    @Min(value = 0, message = "display_order는 0 이상이어야 합니다")
-    private Integer displayOrder;
+    @Min(value = 0, message = "display_order는 0 이상이어야 합니다") private Integer displayOrder;
 
     @Schema(description = "필수 여부", example = "false")
     private Boolean required;

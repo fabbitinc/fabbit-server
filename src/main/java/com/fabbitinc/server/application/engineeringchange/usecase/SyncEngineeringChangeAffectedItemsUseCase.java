@@ -7,7 +7,6 @@ import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.engineeringchange.service.EngineeringChangeService;
 import com.fabbitinc.server.application.part.service.PartRevisionWorkflowPolicyService;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChange;
-import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItem;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItemType;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeState;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeAffectedItemRepository;

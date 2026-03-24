@@ -10,18 +10,13 @@ import java.util.UUID;
 
 @Schema(description = "매핑 확정 요청")
 public record MappingConfirmRequest(
-        @NotNull
-        @Schema(description = "업로드 완료된 파일 ID")
+        @NotNull @Schema(description = "업로드 완료된 파일 ID")
         UUID fileId,
-        @NotBlank
-        @Size(max = 200)
-        @Schema(description = "매핑 이름", example = "공용부품 BOM 매핑")
+        @NotBlank @Size(max = 200) @Schema(description = "매핑 이름", example = "공용부품 BOM 매핑")
         String name,
         @Schema(description = "Excel 시트명")
         String sheetName,
-        @Valid
-        @NotNull
-        @Schema(description = "확정할 매핑")
+        @Valid @NotNull @Schema(description = "확정할 매핑")
         MappingResultDto mapping
 ) {
 }

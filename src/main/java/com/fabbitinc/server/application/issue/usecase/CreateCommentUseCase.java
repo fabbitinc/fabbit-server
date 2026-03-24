@@ -1,12 +1,11 @@
 package com.fabbitinc.server.application.issue.usecase;
 
-import com.fabbitinc.server.application.workitem.usecase.WorkItemUseCaseSupport;
-
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.issue.service.IssueService;
 import com.fabbitinc.server.application.user.api.UserApi;
+import com.fabbitinc.server.application.workitem.usecase.WorkItemUseCaseSupport;
 import com.fabbitinc.server.application.workitem.usecase.result.CommentResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

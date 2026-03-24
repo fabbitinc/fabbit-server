@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.organization.usecase.command;
 
-import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 import com.fabbitinc.server.domain.subscription.model.SeatType;
+import com.fabbitinc.server.domain.subscription.model.WorkspacePlanType;
 
 public record CreateOrganizationCommand(
         String orgName,

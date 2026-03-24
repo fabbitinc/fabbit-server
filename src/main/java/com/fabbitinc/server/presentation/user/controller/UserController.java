@@ -1,14 +1,5 @@
 package com.fabbitinc.server.presentation.user.controller;
 
-import com.fabbitinc.server.presentation.auth.dto.response.OrganizationResponse;
-import com.fabbitinc.server.presentation.auth.dto.response.UserResponse;
-import com.fabbitinc.server.presentation.user.dto.response.MeResponse;
-import com.fabbitinc.server.presentation.user.dto.response.UserMembershipResponse;
-import com.fabbitinc.server.presentation.user.dto.request.ChangePasswordRequest;
-import com.fabbitinc.server.presentation.user.dto.request.SetProfileImageRequest;
-import com.fabbitinc.server.presentation.user.dto.request.UpdateProfileRequest;
-import com.fabbitinc.server.presentation.user.dto.response.ProfileImageResponse;
-import com.fabbitinc.server.presentation.user.dto.response.UpdateProfileResponse;
 import com.fabbitinc.server.application.user.query.UserQuery;
 import com.fabbitinc.server.application.user.query.condition.MeCondition;
 import com.fabbitinc.server.application.user.query.result.MeResult;
@@ -25,6 +16,15 @@ import com.fabbitinc.server.application.user.usecase.command.SetUserProfileImage
 import com.fabbitinc.server.application.user.usecase.command.UpdateProfileCommand;
 import com.fabbitinc.server.application.user.usecase.result.SetUserProfileImageResult;
 import com.fabbitinc.server.application.user.usecase.result.UpdateProfileResult;
+import com.fabbitinc.server.presentation.auth.dto.response.OrganizationResponse;
+import com.fabbitinc.server.presentation.auth.dto.response.UserResponse;
+import com.fabbitinc.server.presentation.user.dto.request.ChangePasswordRequest;
+import com.fabbitinc.server.presentation.user.dto.request.SetProfileImageRequest;
+import com.fabbitinc.server.presentation.user.dto.request.UpdateProfileRequest;
+import com.fabbitinc.server.presentation.user.dto.response.MeResponse;
+import com.fabbitinc.server.presentation.user.dto.response.ProfileImageResponse;
+import com.fabbitinc.server.presentation.user.dto.response.UpdateProfileResponse;
+import com.fabbitinc.server.presentation.user.dto.response.UserMembershipResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

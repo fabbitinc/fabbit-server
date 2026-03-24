@@ -14,7 +14,6 @@ import com.fabbitinc.server.application.property.usecase.ReorderPropertyUseCase;
 import com.fabbitinc.server.application.property.usecase.UpdatePropertyDefinitionUseCase;
 import com.fabbitinc.server.application.property.usecase.command.DeletePropertyDefinitionCommand;
 import com.fabbitinc.server.application.property.usecase.result.UpdatePropertyDefinitionResult;
-import com.fabbitinc.server.domain.property.model.PropertyOptionMode;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
 import com.fabbitinc.server.domain.property.model.PropertyValueType;
 import com.fabbitinc.server.presentation.property.request.UpdatePropertyDefinitionRequest;

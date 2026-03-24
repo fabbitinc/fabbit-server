@@ -1,14 +1,5 @@
 package com.fabbitinc.server.presentation.organization.controller;
 
-import com.fabbitinc.server.presentation.auth.dto.response.CreateOrganizationResponse;
-import com.fabbitinc.server.presentation.auth.dto.response.LoginResponse;
-import com.fabbitinc.server.presentation.auth.dto.response.OrganizationResponse;
-import com.fabbitinc.server.presentation.auth.dto.response.TokenResponse;
-import com.fabbitinc.server.presentation.auth.dto.response.UserResponse;
-import com.fabbitinc.server.presentation.organization.dto.request.CreateOrganizationRequest;
-import com.fabbitinc.server.presentation.organization.dto.request.SetProfileImageRequest;
-import com.fabbitinc.server.presentation.organization.dto.request.SwitchOrgRequest;
-import com.fabbitinc.server.presentation.organization.dto.response.ProfileImageResponse;
 import com.fabbitinc.server.application.organization.usecase.CreateOrganizationUseCase;
 import com.fabbitinc.server.application.organization.usecase.DeleteOrganizationProfileImageUseCase;
 import com.fabbitinc.server.application.organization.usecase.SetOrganizationProfileImageUseCase;
@@ -20,6 +11,15 @@ import com.fabbitinc.server.application.organization.usecase.command.SwitchOrgan
 import com.fabbitinc.server.application.organization.usecase.result.CreateOrganizationResult;
 import com.fabbitinc.server.application.organization.usecase.result.SetOrganizationProfileImageResult;
 import com.fabbitinc.server.application.organization.usecase.result.SwitchOrganizationResult;
+import com.fabbitinc.server.presentation.auth.dto.response.CreateOrganizationResponse;
+import com.fabbitinc.server.presentation.auth.dto.response.LoginResponse;
+import com.fabbitinc.server.presentation.auth.dto.response.OrganizationResponse;
+import com.fabbitinc.server.presentation.auth.dto.response.TokenResponse;
+import com.fabbitinc.server.presentation.auth.dto.response.UserResponse;
+import com.fabbitinc.server.presentation.organization.dto.request.CreateOrganizationRequest;
+import com.fabbitinc.server.presentation.organization.dto.request.SetProfileImageRequest;
+import com.fabbitinc.server.presentation.organization.dto.request.SwitchOrgRequest;
+import com.fabbitinc.server.presentation.organization.dto.response.ProfileImageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

@@ -1,19 +1,19 @@
 package com.fabbitinc.server.integration.subscription;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fabbitinc.server.application.auth.service.AuthInvitationService;
 import com.fabbitinc.server.application.auth.usecase.AcceptInvitationUseCase;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
-import com.fabbitinc.server.application.organization.usecase.CreateInvitationUseCase;
-import com.fabbitinc.server.application.organization.service.OrganizationService;
-import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.application.member.usecase.ChangeMemberSeatUseCase;
-import com.fabbitinc.server.application.subscription.usecase.UpgradeStarterSubscriptionUseCase;
+import com.fabbitinc.server.application.organization.service.OrganizationService;
+import com.fabbitinc.server.application.organization.usecase.CreateInvitationUseCase;
+import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.application.subscription.usecase.UpdateSubscriptionSeatQuotasUseCase;
+import com.fabbitinc.server.application.subscription.usecase.UpgradeStarterSubscriptionUseCase;
 import com.fabbitinc.server.application.subscription.usecase.command.UpgradeStarterSubscriptionCommand;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.organization.model.Organization;

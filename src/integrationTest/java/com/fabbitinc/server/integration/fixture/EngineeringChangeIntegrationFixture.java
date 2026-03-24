@@ -9,6 +9,7 @@ import com.fabbitinc.server.application.engineeringchange.usecase.ReleaseEnginee
 import com.fabbitinc.server.application.engineeringchange.usecase.ReplaceEngineeringChangeStepsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SubmitEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangeAffectedItemsUseCase;
+import com.fabbitinc.server.application.part.service.PartRevisionWorkflowPolicyService;
 import com.fabbitinc.server.application.part.usecase.ChangePartLifecycleStateUseCase;
 import com.fabbitinc.server.application.part.usecase.CreatePartDraftUseCase;
 import com.fabbitinc.server.application.part.usecase.CreatePartUseCase;
@@ -28,7 +29,6 @@ import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartRevisionWorkflowMode;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
-import com.fabbitinc.server.application.part.service.PartRevisionWorkflowPolicyService;
 import com.fabbitinc.server.integration.support.TestCurrentAuthProvider;
 import java.util.List;
 import java.util.UUID;

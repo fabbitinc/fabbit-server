@@ -10,30 +10,25 @@ import java.util.Map;
 public class UpdatePartRevisionRequest {
 
     @Schema(description = "품명", example = "M3 볼트")
-    @Size(max = 500, message = "name은 최대 500자여야 합니다")
-    private String name;
+    @Size(max = 500, message = "name은 최대 500자여야 합니다") private String name;
 
     @Schema(description = "재질", example = "SUS304")
-    @Size(max = 200, message = "material은 최대 200자여야 합니다")
-    private String material;
+    @Size(max = 200, message = "material은 최대 200자여야 합니다") private String material;
 
     @Schema(description = "단위", example = "EA")
-    @Size(max = 20, message = "unit은 최대 20자여야 합니다")
-    private String unit;
+    @Size(max = 20, message = "unit은 최대 20자여야 합니다") private String unit;
 
     @Schema(description = "설명", example = "체결용 표준 부품")
     private String description;
 
     @Schema(description = "카테고리", example = "FASTENER")
-    @Size(max = 100, message = "category는 최대 100자여야 합니다")
-    private String category;
+    @Size(max = 100, message = "category는 최대 100자여야 합니다") private String category;
 
     @Schema(description = "팬텀 부품 여부", example = "false")
     private Boolean phantom;
 
     @Schema(description = "리드타임(일)", example = "7")
-    @Min(value = 0, message = "lead_time_days는 0 이상이어야 합니다")
-    private Integer leadTimeDays;
+    @Min(value = 0, message = "lead_time_days는 0 이상이어야 합니다") private Integer leadTimeDays;
 
     @Schema(
             description = "확장 속성 JSON 객체. key는 property_definition.id(UUID)여야 합니다",

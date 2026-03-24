@@ -1,9 +1,9 @@
 package com.fabbitinc.server.application.chat.tool;
 
 import com.fabbitinc.server.application.chat.model.ChatUiArtifact;
+import com.fabbitinc.server.application.chat.service.ChatService;
 import com.fabbitinc.server.application.chat.service.ChatToolExecutionService;
 import com.fabbitinc.server.application.chat.service.ChatToolExecutionService.ToolProgressPayload;
-import com.fabbitinc.server.application.chat.service.ChatService;
 import com.fabbitinc.server.application.chat.support.ChatArtifactTypes;
 import com.fabbitinc.server.application.chat.support.ChatMessageCatalog;
 import com.fabbitinc.server.application.chat.support.ChatMessageComposer;

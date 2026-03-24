@@ -7,9 +7,7 @@ import java.util.List;
 
 @Schema(description = "변경관리 단계 동기화 요청")
 public record SyncEngineeringChangeStepsRequest(
-        @NotNull(message = "steps는 필수입니다")
-        @Valid
-        @Schema(description = "변경관리 단계 목록")
+        @NotNull(message = "steps는 필수입니다") @Valid @Schema(description = "변경관리 단계 목록")
         List<EngineeringChangeStepRequest> steps
 ) {
     public SyncEngineeringChangeStepsRequest {

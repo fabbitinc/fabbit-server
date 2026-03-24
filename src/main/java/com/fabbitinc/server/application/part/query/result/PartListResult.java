@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.part.query.result;
 
-import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
+import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import java.util.List;
 import java.util.UUID;
 

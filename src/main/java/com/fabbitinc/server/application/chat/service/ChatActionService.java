@@ -1,8 +1,8 @@
 package com.fabbitinc.server.application.chat.service;
 
-import com.fabbitinc.server.application.chat.support.ChatMessageComposer;
-import com.fabbitinc.server.application.chat.support.ChatMessageCatalog;
 import com.fabbitinc.server.application.chat.support.ChatEventTypes;
+import com.fabbitinc.server.application.chat.support.ChatMessageCatalog;
+import com.fabbitinc.server.application.chat.support.ChatMessageComposer;
 import com.fabbitinc.server.application.chat.support.ChatVisibleTraceFormatter;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;

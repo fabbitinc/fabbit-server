@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.issue.api;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
-import com.fabbitinc.server.domain.issue.model.Issue;
 import com.fabbitinc.server.domain.issue.model.IssuePart;
 import com.fabbitinc.server.domain.issue.repository.IssuePartRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueRepository;

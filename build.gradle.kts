@@ -27,6 +27,10 @@ repositories {
     mavenCentral()
 }
 
+dependencyLocking {
+    lockAllConfigurations()
+}
+
 springBoot {
     mainClass.set("com.fabbitinc.server.ServerApplication")
 }

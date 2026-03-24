@@ -1,13 +1,5 @@
 package com.fabbitinc.server.presentation.project.controller;
 
-import com.fabbitinc.server.presentation.project.dto.request.CreateProjectRequest;
-import com.fabbitinc.server.presentation.project.dto.request.UpdateProjectRequest;
-import com.fabbitinc.server.presentation.project.dto.response.ActivityListResponse;
-import com.fabbitinc.server.presentation.project.dto.response.ActivityResponse;
-import com.fabbitinc.server.presentation.project.dto.response.ProjectDetailResponse;
-import com.fabbitinc.server.presentation.project.dto.response.ProjectListResponse;
-import com.fabbitinc.server.presentation.project.dto.response.ProjectSummaryResponse;
-import com.fabbitinc.server.presentation.workitem.dto.response.UserSummaryResponse;
 import com.fabbitinc.server.application.project.query.ProjectQuery;
 import com.fabbitinc.server.application.project.query.condition.ProjectActivitiesCondition;
 import com.fabbitinc.server.application.project.query.condition.ProjectDetailCondition;
@@ -30,6 +22,14 @@ import com.fabbitinc.server.application.project.usecase.command.UnarchiveProject
 import com.fabbitinc.server.application.project.usecase.command.UpdateProjectCommand;
 import com.fabbitinc.server.application.project.usecase.result.CreateProjectResult;
 import com.fabbitinc.server.application.project.usecase.result.UpdateProjectResult;
+import com.fabbitinc.server.presentation.project.dto.request.CreateProjectRequest;
+import com.fabbitinc.server.presentation.project.dto.request.UpdateProjectRequest;
+import com.fabbitinc.server.presentation.project.dto.response.ActivityListResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ActivityResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ProjectDetailResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ProjectListResponse;
+import com.fabbitinc.server.presentation.project.dto.response.ProjectSummaryResponse;
+import com.fabbitinc.server.presentation.workitem.dto.response.UserSummaryResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

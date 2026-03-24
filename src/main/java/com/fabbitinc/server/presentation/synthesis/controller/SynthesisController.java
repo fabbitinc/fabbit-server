@@ -1,8 +1,5 @@
 package com.fabbitinc.server.presentation.synthesis.controller;
 
-import com.fabbitinc.server.presentation.synthesis.dto.request.SynthesisStartRequest;
-import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisBatchFailure;
-import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisBatchStartResponse;
 import com.fabbitinc.server.application.synthesis.query.SynthesisQuery;
 import com.fabbitinc.server.application.synthesis.query.condition.SynthesisBatchCondition;
 import com.fabbitinc.server.application.synthesis.query.condition.SynthesisJobCondition;
@@ -16,6 +13,9 @@ import com.fabbitinc.server.application.synthesis.usecase.command.StartSynthesis
 import com.fabbitinc.server.application.synthesis.usecase.result.StartSynthesisFailureResult;
 import com.fabbitinc.server.application.synthesis.usecase.result.StartedSynthesisBatchResult;
 import com.fabbitinc.server.application.synthesis.usecase.result.StartedSynthesisJobResult;
+import com.fabbitinc.server.presentation.synthesis.dto.request.SynthesisStartRequest;
+import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisBatchFailure;
+import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisBatchStartResponse;
 import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisBatchStatusResponse;
 import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisJobResponse;
 import com.fabbitinc.server.presentation.synthesis.dto.response.SynthesisListResponse;

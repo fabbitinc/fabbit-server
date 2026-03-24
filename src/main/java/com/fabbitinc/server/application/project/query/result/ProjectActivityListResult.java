@@ -1,6 +1,4 @@
 package com.fabbitinc.server.application.project.query.result;
-import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
-
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;

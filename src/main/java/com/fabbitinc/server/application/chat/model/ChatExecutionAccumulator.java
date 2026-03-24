@@ -1,7 +1,7 @@
 package com.fabbitinc.server.application.chat.model;
 
-import com.fabbitinc.server.domain.chat.model.ChatActionRequest;
 import com.fabbitinc.server.application.chat.support.ChatArtifactTypes;
+import com.fabbitinc.server.domain.chat.model.ChatActionRequest;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;

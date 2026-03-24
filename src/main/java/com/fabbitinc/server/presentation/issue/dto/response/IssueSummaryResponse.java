@@ -1,9 +1,9 @@
 package com.fabbitinc.server.presentation.issue.dto.response;
 
+import com.fabbitinc.server.domain.issue.model.IssueState;
 import com.fabbitinc.server.presentation.file.dto.response.FileItemResponse;
 import com.fabbitinc.server.presentation.workitem.dto.response.TeamBadgeResponse;
 import com.fabbitinc.server.presentation.workitem.dto.response.UserSummaryResponse;
-import com.fabbitinc.server.domain.issue.model.IssueState;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;

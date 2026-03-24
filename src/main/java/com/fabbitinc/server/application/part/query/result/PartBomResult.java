@@ -1,10 +1,10 @@
 package com.fabbitinc.server.application.part.query.result;
 
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.math.BigDecimal;
 
 public record PartBomResult(
         List<Child> children,

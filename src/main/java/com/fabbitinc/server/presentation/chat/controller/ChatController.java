@@ -10,8 +10,8 @@ import com.fabbitinc.server.application.chat.query.result.ChatRunEventListResult
 import com.fabbitinc.server.application.chat.query.result.ChatThreadDetailResult;
 import com.fabbitinc.server.application.chat.query.result.ChatThreadListResult;
 import com.fabbitinc.server.application.chat.support.ChatMessageComposer;
-import com.fabbitinc.server.application.chat.usecase.ConnectChatRunStreamUseCase;
 import com.fabbitinc.server.application.chat.usecase.ConfirmChatActionUseCase;
+import com.fabbitinc.server.application.chat.usecase.ConnectChatRunStreamUseCase;
 import com.fabbitinc.server.application.chat.usecase.CreateChatThreadUseCase;
 import com.fabbitinc.server.application.chat.usecase.RejectChatActionUseCase;
 import com.fabbitinc.server.application.chat.usecase.SendChatMessageUseCase;

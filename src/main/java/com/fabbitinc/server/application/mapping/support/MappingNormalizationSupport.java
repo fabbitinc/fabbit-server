@@ -1,6 +1,5 @@
 package com.fabbitinc.server.application.mapping.support;
 
-import com.fabbitinc.server.application.mapping.support.ExtendedPropertySupport;
 import com.fabbitinc.server.application.mapping.model.ExtendedPropertyMappingDto;
 import com.fabbitinc.server.application.mapping.model.MappingResultDto;
 import com.fabbitinc.server.application.mapping.model.NodeMappingDto;

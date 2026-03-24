@@ -17,13 +17,11 @@ public record CreateEngineeringChangeRequest(
         @Schema(description = "연결할 원본 이슈 ID")
         UUID sourceIssueId,
         @Schema(description = "영향 항목 목록")
-        @Valid
-        List<EngineeringChangeAffectedItemTargetRequest> affectedItems,
+        @Valid List<EngineeringChangeAffectedItemTargetRequest> affectedItems,
         @Schema(description = "첨부 파일 ID 목록(최대 20)")
         @Size(max = 20) List<UUID> fileIds,
         @Schema(description = "변경관리 단계 목록")
-        @Valid
-        List<EngineeringChangeStepRequest> steps
+        @Valid List<EngineeringChangeStepRequest> steps
 ) {
     public CreateEngineeringChangeRequest {
         affectedItems = affectedItems == null ? List.of() : List.copyOf(affectedItems);

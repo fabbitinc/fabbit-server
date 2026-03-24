@@ -14,10 +14,10 @@ import com.fabbitinc.server.application.organization.usecase.CreateInvitationUse
 import com.fabbitinc.server.application.organization.usecase.command.CreateInvitationCommand;
 import com.fabbitinc.server.application.organization.usecase.result.CreateInvitationResult;
 import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
-import com.fabbitinc.server.application.subscription.usecase.UpgradeStarterSubscriptionUseCase;
 import com.fabbitinc.server.application.subscription.usecase.UpdateSubscriptionSeatQuotasUseCase;
-import com.fabbitinc.server.application.subscription.usecase.command.UpgradeStarterSubscriptionCommand;
+import com.fabbitinc.server.application.subscription.usecase.UpgradeStarterSubscriptionUseCase;
 import com.fabbitinc.server.application.subscription.usecase.command.UpdateSubscriptionSeatQuotasCommand;
+import com.fabbitinc.server.application.subscription.usecase.command.UpgradeStarterSubscriptionCommand;
 import com.fabbitinc.server.application.tenant.support.TenantContextHolder;
 import com.fabbitinc.server.application.tenant.support.TenantSchemaPolicy;
 import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;

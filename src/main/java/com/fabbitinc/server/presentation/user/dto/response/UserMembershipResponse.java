@@ -1,7 +1,7 @@
 package com.fabbitinc.server.presentation.user.dto.response;
 
-import com.fabbitinc.server.presentation.auth.dto.response.OrganizationResponse;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
+import com.fabbitinc.server.presentation.auth.dto.response.OrganizationResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.UUID;
 

@@ -1,6 +1,4 @@
 package com.fabbitinc.server.application.workitem.usecase.result;
-import com.fabbitinc.server.application.workitem.usecase.result.AttachedFileResult;
-
 import java.time.Instant;
 import java.util.UUID;
 

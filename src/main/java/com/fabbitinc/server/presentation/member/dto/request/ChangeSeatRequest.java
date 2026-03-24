@@ -6,7 +6,6 @@ import jakarta.validation.constraints.NotNull;
 
 public record ChangeSeatRequest(
         @Schema(description = "변경할 좌석 타입", example = "COLLABORATOR")
-        @NotNull(message = "seatType은 필수입니다")
-        SeatType seatType
+        @NotNull(message = "seatType은 필수입니다") SeatType seatType
 ) {
 }

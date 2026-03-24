@@ -9,8 +9,8 @@ import com.fabbitinc.server.application.organization.usecase.result.CreateInvita
 import com.fabbitinc.server.application.subscription.api.SubscriptionApi;
 import com.fabbitinc.server.application.user.service.UserService;
 import com.fabbitinc.server.domain.auth.model.Invitation;
-import com.fabbitinc.server.domain.subscription.model.SeatType;
 import com.fabbitinc.server.domain.organization.model.Organization;
+import com.fabbitinc.server.domain.subscription.model.SeatType;
 import com.fabbitinc.server.domain.user.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;

@@ -11,7 +11,6 @@ public record SettingsPartWorkflowPolicyRequest(
                 example = "DIRECT",
                 allowableValues = {"DIRECT", "CHANGE_REQUEST_REQUIRED"}
         )
-        @NotNull(message = "mode는 필수입니다")
-        PartRevisionWorkflowMode mode
+        @NotNull(message = "mode는 필수입니다") PartRevisionWorkflowMode mode
 ) {
 }

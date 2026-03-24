@@ -2,7 +2,6 @@ package com.fabbitinc.server.application.chat.service;
 
 import com.fabbitinc.server.application.chat.model.ChatExecutionAccumulator;
 import com.fabbitinc.server.application.chat.model.ChatPendingAction;
-import com.fabbitinc.server.application.chat.tool.ChatToolContextSupport;
 import com.fabbitinc.server.application.chat.support.ChatEventTypes;
 import com.fabbitinc.server.application.chat.support.ChatInputGuard;
 import com.fabbitinc.server.application.chat.support.ChatMessageCatalog;
@@ -10,9 +9,12 @@ import com.fabbitinc.server.application.chat.support.ChatMessageComposer;
 import com.fabbitinc.server.application.chat.support.ChatSystemPromptFactory;
 import com.fabbitinc.server.application.chat.support.ChatUsageContextHolder;
 import com.fabbitinc.server.application.chat.support.ChatVisibleTraceFormatter;
+import com.fabbitinc.server.application.chat.tool.ChatToolContextSupport;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.config.AppProperties;
 import com.fabbitinc.server.domain.aiusage.model.AiUsageCategory;
+import com.fabbitinc.server.domain.chat.model.ChatMessage;
+import com.fabbitinc.server.domain.chat.model.ChatRun;
 import com.fabbitinc.server.domain.chat.model.ChatThread;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -34,8 +36,6 @@ import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StreamUtils;
-import com.fabbitinc.server.domain.chat.model.ChatMessage;
-import com.fabbitinc.server.domain.chat.model.ChatRun;
 
 @Slf4j
 @Service

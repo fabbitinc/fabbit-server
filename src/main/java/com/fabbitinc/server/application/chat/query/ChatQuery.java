@@ -12,9 +12,9 @@ import com.fabbitinc.server.application.chat.query.result.ChatThreadDetailResult
 import com.fabbitinc.server.application.chat.query.result.ChatThreadListResult;
 import com.fabbitinc.server.application.chat.support.ChatArtifactTypes;
 import com.fabbitinc.server.application.common.exception.AppException;
-import com.fabbitinc.server.domain.chat.model.ChatMessageRole;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.domain.chat.model.ChatActionRequest;
+import com.fabbitinc.server.domain.chat.model.ChatMessageRole;
 import com.fabbitinc.server.domain.chat.model.ChatRun;
 import com.fabbitinc.server.domain.chat.model.ChatThread;
 import com.fabbitinc.server.domain.chat.repository.ChatActionRequestRepository;

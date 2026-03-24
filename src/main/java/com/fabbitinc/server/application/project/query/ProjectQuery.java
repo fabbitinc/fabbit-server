@@ -1,6 +1,4 @@
 package com.fabbitinc.server.application.project.query;
-import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
-
 import com.fabbitinc.server.application.activity.api.ActivityApi;
 import com.fabbitinc.server.application.activity.model.ActivityAction;
 import com.fabbitinc.server.application.activity.model.ActivityScope;

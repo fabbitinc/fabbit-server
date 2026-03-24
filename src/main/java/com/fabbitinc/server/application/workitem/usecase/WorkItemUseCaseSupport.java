@@ -1,13 +1,13 @@
 package com.fabbitinc.server.application.workitem.usecase;
 
+import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.engineeringchange.service.EngineeringChangeService;
 import com.fabbitinc.server.application.issue.service.IssueService;
-import com.fabbitinc.server.application.common.support.FileUrlResolver;
+import com.fabbitinc.server.application.workitem.usecase.result.CommentResult;
 import com.fabbitinc.server.application.workitem.usecase.result.CommentUserSummaryResult;
+import com.fabbitinc.server.application.workitem.usecase.result.SyncDiffResult;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.workitem.model.AbstractComment;
-import com.fabbitinc.server.application.workitem.usecase.result.CommentResult;
-import com.fabbitinc.server.application.workitem.usecase.result.SyncDiffResult;
 import java.time.Instant;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
