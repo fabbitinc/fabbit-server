@@ -157,7 +157,7 @@ public class PartPreviewConversionService {
 
         Path workDir = createWorkDirectory(partPreview.getId());
         try {
-            Path inputPath = workDir.resolve(sourceFile.getOriginalName());
+            Path inputPath = workDir.resolve(Path.of(sourceFile.getOriginalName()).getFileName());
             Files.createDirectories(inputPath.getParent());
             Files.write(inputPath, storagePort.getObject(sourceFile.getFileKey()));
 
