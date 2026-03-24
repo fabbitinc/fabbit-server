@@ -48,12 +48,13 @@ public class Part extends AbstractCreatedEntity implements AggregateRoot {
     private String partNumber;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "lifecycle_state", length = 50)
+    @Column(name = "lifecycle_state", nullable = false, length = 50)
     private PartLifecycleState lifecycleState;
 
     private Part(String partNumber) {
         super(UuidV7Generator.next());
         this.partNumber = validatePartNumber(partNumber);
+        this.lifecycleState = PartLifecycleState.ACTIVE;
     }
 
     public static Part create(String partNumber) {
@@ -64,8 +65,8 @@ public class Part extends AbstractCreatedEntity implements AggregateRoot {
         this.lifecycleState = lifecycleState;
     }
 
-    public void clearLifecycleState() {
-        this.lifecycleState = null;
+    public void resetLifecycleState() {
+        this.lifecycleState = PartLifecycleState.ACTIVE;
     }
 
     public void assignCurrentReleasedRevision(UUID revisionId) {

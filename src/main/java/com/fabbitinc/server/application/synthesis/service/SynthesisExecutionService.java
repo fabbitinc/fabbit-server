@@ -923,7 +923,7 @@ public class SynthesisExecutionService {
 
     private void applyLifecycleState(Part part, PartLifecycleState lifecycleState) {
         if (lifecycleState == null) {
-            part.clearLifecycleState();
+            part.resetLifecycleState();
             return;
         }
         part.changeLifecycleState(lifecycleState);

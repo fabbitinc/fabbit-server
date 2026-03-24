@@ -24,14 +24,15 @@ class PartTest {
         assertEquals(Part.CODE_PART_NUMBER_REQUIRED, ex.getDomainCode());
     }
 
-    void changeLifecycleState와_clearLifecycleState로_수명주기상태를_변경한다() {
+    void changeLifecycleState와_resetLifecycleState로_수명주기상태를_변경한다() {
         Part part = Part.create("P-001");
-
-        part.changeLifecycleState(PartLifecycleState.ACTIVE);
         assertEquals(PartLifecycleState.ACTIVE, part.getLifecycleState());
 
-        part.clearLifecycleState();
-        assertNull(part.getLifecycleState());
+        part.changeLifecycleState(PartLifecycleState.EOL);
+        assertEquals(PartLifecycleState.EOL, part.getLifecycleState());
+
+        part.resetLifecycleState();
+        assertEquals(PartLifecycleState.ACTIVE, part.getLifecycleState());
     }
 
     @Test

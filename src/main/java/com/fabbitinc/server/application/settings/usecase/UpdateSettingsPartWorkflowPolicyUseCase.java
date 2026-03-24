@@ -8,9 +8,7 @@ import com.fabbitinc.server.application.settings.usecase.command.UpdateSettingsP
 import com.fabbitinc.server.application.settings.usecase.result.UpdateSettingsPartWorkflowPolicyResult;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeState;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeRepository;
-import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartRevisionWorkflowPolicy;
-import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -23,7 +21,6 @@ public class UpdateSettingsPartWorkflowPolicyUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final PartRevisionWorkflowPolicyService partRevisionWorkflowPolicyService;
-    private final PartRevisionRepository partRevisionRepository;
     private final EngineeringChangeRepository engineeringChangeRepository;
 
     public UpdateSettingsPartWorkflowPolicyResult execute(UpdateSettingsPartWorkflowPolicyCommand command) {
@@ -37,19 +34,16 @@ public class UpdateSettingsPartWorkflowPolicyUseCase {
     }
 
     private void assertNoInProgressWorkflow() {
-        boolean hasInProgressRevisions = partRevisionRepository.existsByStatusIn(List.of(
-                PartRevisionStatus.DRAFT
-        ));
         boolean hasOpenEngineeringChanges = engineeringChangeRepository.existsByStateIn(List.of(
                 EngineeringChangeState.DRAFT,
                 EngineeringChangeState.REVIEW_PENDING,
                 EngineeringChangeState.APPROVAL_PENDING,
                 EngineeringChangeState.RELEASE_PENDING
         ));
-        if (hasInProgressRevisions || hasOpenEngineeringChanges) {
+        if (hasOpenEngineeringChanges) {
             throw new AppException(
                     ErrorCode.CONFLICT,
-                    "진행 중인 리비전 또는 EngineeringChange가 있으면 워크플로 모드를 변경할 수 없습니다"
+                    "진행 중인 EngineeringChange가 있으면 워크플로 모드를 변경할 수 없습니다"
             );
         }
     }
