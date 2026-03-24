@@ -158,17 +158,6 @@ class PartRevisionTest {
     }
 
     @Test
-    void assignEngineeringChange_DRAFT에_변경관리를_연결한다() {
-        Part part = Part.create("AES-100");
-        PartRevision revision = PartRevision.createInitialDraft(part, "본체", null);
-        UUID engineeringChangeId = UUID.randomUUID();
-
-        revision.assignEngineeringChange(engineeringChangeId);
-
-        assertEquals(engineeringChangeId, revision.getEngineeringChangeId());
-    }
-
-    @Test
     void cancel_공식전_리비전을_CANCELED로_전환한다() {
         Part part = Part.create("AES-100");
         PartRevision revision = PartRevision.createInitialDraft(part, "본체", null);

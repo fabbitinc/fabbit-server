@@ -5,12 +5,12 @@ import com.fabbitinc.server.presentation.workitem.dto.request.AttachFilesRequest
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.CreateEngineeringChangeRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncEngineeringChangeStepsRequest;
 import com.fabbitinc.server.presentation.workitem.dto.request.CreateCommentRequest;
-import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncPartRevisionsRequest;
+import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncAffectedItemsRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncIssuesRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.UpdateEngineeringChangeRequest;
 import com.fabbitinc.server.presentation.workitem.dto.request.UpdateCommentRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeListResponse;
-import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangePartRevisionResponse;
+import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeAffectedItemResponse;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeLookupItemResponse;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeLookupResponse;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeResponse;
@@ -34,7 +34,7 @@ import com.fabbitinc.server.application.engineeringchange.query.condition.Engine
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeDetailResult;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeListResult;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeLookupResult;
-import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangePartRevisionResult;
+import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeAffectedItemResult;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeStepResult;
 import com.fabbitinc.server.application.workitem.query.result.FileItemResult;
 import com.fabbitinc.server.application.workitem.query.result.TimelineDetailResult;
@@ -58,7 +58,7 @@ import com.fabbitinc.server.application.engineeringchange.usecase.ReleaseEnginee
 import com.fabbitinc.server.application.engineeringchange.usecase.ReplaceEngineeringChangeStepsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SubmitEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SyncIssuesUseCase;
-import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangePartRevisionsUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangeAffectedItemsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.UpdateEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.UpdateEngineeringChangeCommentUseCase;
 import com.fabbitinc.server.application.workitem.usecase.result.AttachedFileResult;
@@ -118,7 +118,7 @@ public class EngineeringChangeController {
     private final CancelEngineeringChangeUseCase cancelEngineeringChangeUseCase;
     private final SyncIssuesUseCase syncIssuesUseCase;
     private final ReplaceEngineeringChangeStepsUseCase replaceEngineeringChangeStepsUseCase;
-    private final SyncEngineeringChangePartRevisionsUseCase syncEngineeringChangePartRevisionsUseCase;
+    private final SyncEngineeringChangeAffectedItemsUseCase syncEngineeringChangeAffectedItemsUseCase;
     private final CreateEngineeringChangeCommentUseCase createEngineeringChangeCommentUseCase;
     private final UpdateEngineeringChangeCommentUseCase updateEngineeringChangeCommentUseCase;
     private final DeleteEngineeringChangeCommentUseCase deleteEngineeringChangeCommentUseCase;
@@ -188,9 +188,11 @@ public class EngineeringChangeController {
                         request.title(),
                         request.body(),
                         request.sourceIssueId(),
-                        request.partRevisions().stream()
-                                .map(item -> new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.PartRevisionTarget(
-                                        item.revisionId()
+                        request.affectedItems().stream()
+                                .map(item -> new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.AffectedItemTarget(
+                                        item.itemType(),
+                                        item.targetId(),
+                                        item.targetState()
                         ))
                                 .toList(),
                         request.fileIds(),
@@ -376,25 +378,28 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            summary = "변경관리에 연결할 부품 초안 목록을 동기화합니다",
-            description = "변경관리에 연결할 부품 초안 목록을 동기화합니다"
+            summary = "변경관리 영향 항목 목록을 동기화합니다",
+            description = "변경관리 영향 항목 목록을 동기화합니다"
     )
-    @PutMapping("/{engineeringChangeId}/part-revisions")
-    public SyncDiffResponse syncPartRevisions(
+    @PutMapping("/{engineeringChangeId}/affected-items")
+    public EngineeringChangeResponse syncAffectedItems(
             @PathVariable UUID engineeringChangeId,
-            @Valid @RequestBody SyncPartRevisionsRequest request
+            @Valid @RequestBody SyncAffectedItemsRequest request
     ) {
-        return toSyncDiffResponse(
-                syncEngineeringChangePartRevisionsUseCase.execute(
-                        new SyncEngineeringChangePartRevisionsUseCase.SyncEngineeringChangePartRevisionsCommand(
-                                engineeringChangeId,
-                                request.items().stream()
-                                        .map(item -> new SyncEngineeringChangePartRevisionsUseCase.SyncEngineeringChangePartRevisionsCommand.Item(
-                                                item.revisionId()
-                                        ))
-                                        .toList()
-                        )
+        syncEngineeringChangeAffectedItemsUseCase.execute(
+                new SyncEngineeringChangeAffectedItemsUseCase.SyncEngineeringChangeAffectedItemsCommand(
+                        engineeringChangeId,
+                        request.items().stream()
+                                .map(item -> new SyncEngineeringChangeAffectedItemsUseCase.Item(
+                                        item.itemType(),
+                                        item.targetId(),
+                                        item.targetState()
+                                ))
+                                .toList()
                 )
+        );
+        return toEngineeringChangeResponse(
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
         );
     }
 
@@ -572,7 +577,7 @@ public class EngineeringChangeController {
                 toUserSummaryResponse(result.createdBy()),
                 toLinkedIssueSummaryResponse(result.sourceIssue()),
                 result.steps().stream().map(this::toEngineeringChangeStepResponse).toList(),
-                result.partRevisions().stream().map(this::toPartRevisionResponse).toList(),
+                result.affectedItems().stream().map(this::toAffectedItemResponse).toList(),
                 result.files().stream().map(this::toFileItemResponse).toList(),
                 result.commentsCount(),
                 result.releasedAt(),
@@ -666,12 +671,14 @@ public class EngineeringChangeController {
         return new TeamBadgeResponse(result.id(), result.name());
     }
 
-    private EngineeringChangePartRevisionResponse toPartRevisionResponse(EngineeringChangePartRevisionResult result) {
-        return new EngineeringChangePartRevisionResponse(
-                result.revisionId(),
+    private EngineeringChangeAffectedItemResponse toAffectedItemResponse(EngineeringChangeAffectedItemResult result) {
+        return new EngineeringChangeAffectedItemResponse(
+                result.id(),
+                result.itemType(),
+                result.targetId(),
+                result.actionDetail(),
                 result.partId(),
                 result.partNumber(),
-                result.baseRevisionCode(),
                 result.revisionCode(),
                 result.name(),
                 result.status()

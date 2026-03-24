@@ -65,10 +65,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     public static final String CODE_PART_REVISION_DRAFT_CODE_FORBIDDEN = "PART_REVISION_DRAFT_CODE_FORBIDDEN";
     public static final String CODE_PART_REVISION_RELEASABLE_REQUIRED = "PART_REVISION_RELEASABLE_REQUIRED";
     public static final String CODE_PART_REVISION_SUPERSEDE_INVALID_STATE = "PART_REVISION_SUPERSEDE_INVALID_STATE";
-    public static final String CODE_PART_REVISION_ENGINEERING_CHANGE_REQUIRED =
-            "PART_REVISION_ENGINEERING_CHANGE_REQUIRED";
-    public static final String CODE_PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE =
-            "PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE";
     public static final String CODE_PART_REVISION_CANCELABLE_REQUIRED = "PART_REVISION_CANCELABLE_REQUIRED";
 
     private static final int MAX_REVISION_CODE_LENGTH = 50;
@@ -99,9 +95,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
 
     @Column(name = "revision_code", length = 50)
     private String revisionCode;
-
-    @Column(name = "engineering_change_id")
-    private UUID engineeringChangeId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
@@ -207,26 +200,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
 
     public void changeRevisionCode(String revisionCode) {
         this.revisionCode = normalizeRevisionCode(revisionCode, this.status);
-    }
-
-    public void assignEngineeringChange(UUID engineeringChangeId) {
-        if (engineeringChangeId == null) {
-            throw new DomainException(
-                    CODE_PART_REVISION_ENGINEERING_CHANGE_REQUIRED,
-                    "변경관리 ID는 필수입니다"
-            );
-        }
-        if (this.status != PartRevisionStatus.DRAFT) {
-            throw new DomainException(
-                    CODE_PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE,
-                    "DRAFT 상태의 리비전만 변경관리에 연결할 수 있습니다"
-            );
-        }
-        this.engineeringChangeId = engineeringChangeId;
-    }
-
-    public void clearEngineeringChange() {
-        this.engineeringChangeId = null;
     }
 
     public void changeStatus(PartRevisionStatus status) {

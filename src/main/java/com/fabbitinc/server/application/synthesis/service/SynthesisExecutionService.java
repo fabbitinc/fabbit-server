@@ -537,7 +537,7 @@ public class SynthesisExecutionService {
 
         Part created = Part.create(values.partNumber());
         if (values.lifecycleState() != null) {
-            created.changeLifecycleState(values.lifecycleState());
+            created.forceLifecycleState(values.lifecycleState());
         }
         partRepository.save(created);
         PartRevision revision = PartRevision.createInitialDraft(created, values.name(), requestedBy);
@@ -926,7 +926,7 @@ public class SynthesisExecutionService {
             part.resetLifecycleState();
             return;
         }
-        part.changeLifecycleState(lifecycleState);
+        part.forceLifecycleState(lifecycleState);
     }
 
     private boolean shouldApplyString(String incoming, String current, boolean overwrite) {

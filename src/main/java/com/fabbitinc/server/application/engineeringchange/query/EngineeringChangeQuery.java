@@ -13,13 +13,17 @@ import com.fabbitinc.server.application.engineeringchange.query.condition.Projec
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeDetailResult;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeListResult;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeLookupResult;
-import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangePartRevisionResult;
+
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeStepResult;
 import com.fabbitinc.server.application.engineeringchange.query.result.LinkedIssueSummaryResult;
 import com.fabbitinc.server.application.issue.api.IssueApi;
 import com.fabbitinc.server.application.issue.api.IssueSnapshot;
-import com.fabbitinc.server.application.part.api.EngineeringChangePartRevisionSnapshot;
-import com.fabbitinc.server.application.part.api.PartRevisionWorkflowApi;
+import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeAffectedItemResult;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItem;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItemType;
+import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeAffectedItemRepository;
+import com.fabbitinc.server.domain.part.model.PartRevision;
+import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.application.project.api.ProjectApi;
 import com.fabbitinc.server.application.workitem.query.TimelineDetailParser;
 import com.fabbitinc.server.application.workitem.query.result.FileItemResult;
@@ -89,7 +93,8 @@ public class EngineeringChangeQuery {
     private final ProjectApi projectApi;
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
-    private final PartRevisionWorkflowApi partRevisionWorkflowApi;
+    private final EngineeringChangeAffectedItemRepository affectedItemRepository;
+    private final PartRevisionRepository partRevisionRepository;
     private final FileRepository fileRepository;
     private final ActivityRepository activityRepository;
     private final FileUrlResolver fileUrlResolver;
@@ -362,7 +367,7 @@ public class EngineeringChangeQuery {
                 toUserSummary(enrichment.userMap().get(engineeringChange.getCreatedBy())),
                 toLinkedIssueSummary(enrichment.linkedIssues().get(engineeringChange.getSourceIssueId())),
                 stepsOf(engineeringChange.getId(), enrichment),
-                partRevisionsOf(engineeringChange.getId()),
+                affectedItemsOf(engineeringChange.getId()),
                 filesOf(engineeringChange.getId(), enrichment),
                 enrichment.commentCounts().getOrDefault(engineeringChange.getId(), 0L).intValue(),
                 engineeringChange.getReleasedAt(),
@@ -397,21 +402,38 @@ public class EngineeringChangeQuery {
                 .toList();
     }
 
-    private List<EngineeringChangePartRevisionResult> partRevisionsOf(UUID engineeringChangeId) {
-        return partRevisionWorkflowApi.listEngineeringChangePartRevisions(engineeringChangeId).stream()
-                .map(this::toEngineeringChangePartRevisionResult)
-                .toList();
+    private List<EngineeringChangeAffectedItemResult> affectedItemsOf(UUID engineeringChangeId) {
+        List<EngineeringChangeAffectedItem> items = affectedItemRepository
+                .findByEngineeringChangeIdOrderByCreatedAtAsc(engineeringChangeId);
+        return items.stream().map(this::toAffectedItemResult).toList();
     }
 
-    private EngineeringChangePartRevisionResult toEngineeringChangePartRevisionResult(EngineeringChangePartRevisionSnapshot snapshot) {
-        return new EngineeringChangePartRevisionResult(
-                snapshot.revisionId(),
-                snapshot.partId(),
-                snapshot.partNumber(),
-                snapshot.baseRevisionCode(),
-                snapshot.revisionCode(),
-                snapshot.name(),
-                snapshot.status()
+    private EngineeringChangeAffectedItemResult toAffectedItemResult(EngineeringChangeAffectedItem item) {
+        String partNumber = null;
+        String revisionCode = null;
+        String name = null;
+        String status = null;
+        UUID partId = null;
+        if (item.getItemType() == EngineeringChangeAffectedItemType.REVISION_RELEASE) {
+            PartRevision revision = partRevisionRepository.findById(item.getTargetId()).orElse(null);
+            if (revision != null) {
+                partNumber = revision.getPartNumber();
+                revisionCode = revision.getRevisionCode();
+                name = revision.getName();
+                status = revision.getStatus().name();
+                partId = revision.getPartId();
+            }
+        }
+        return new EngineeringChangeAffectedItemResult(
+                item.getId(),
+                item.getItemType(),
+                item.getTargetId(),
+                item.getActionDetail(),
+                partId,
+                partNumber,
+                revisionCode,
+                name,
+                status
         );
     }
 

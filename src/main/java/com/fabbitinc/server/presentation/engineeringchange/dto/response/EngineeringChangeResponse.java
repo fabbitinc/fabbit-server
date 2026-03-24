@@ -23,7 +23,7 @@ public record EngineeringChangeResponse(
         UserSummaryResponse createdBy,
         LinkedIssueSummaryResponse sourceIssue,
         List<EngineeringChangeStepResponse> steps,
-        List<EngineeringChangePartRevisionResponse> partRevisions,
+        List<EngineeringChangeAffectedItemResponse> affectedItems,
         List<FileItemResponse> files,
         int commentsCount,
         Instant releasedAt,

@@ -6,7 +6,7 @@ import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.issue.api.IssueApi;
 import com.fabbitinc.server.application.issue.api.IssueSnapshot;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
-import com.fabbitinc.server.application.part.api.EngineeringChangePartRevisionSnapshot;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItem;
 import com.fabbitinc.server.application.workitem.event.WorkItemUsersMentionedEvent;
 import com.fabbitinc.server.application.workitem.support.MentionExtractor;
 import com.fabbitinc.server.application.workitem.support.TipTapValidator;
@@ -391,11 +391,11 @@ public class EngineeringChangeService {
         return new DiffResult(toAdd, toRemove);
     }
 
-    public void recordEngineeringChangePartRevisionDiffActivity(
+    public void recordAffectedItemDiffActivity(
             UUID actorId,
             UUID engineeringChangeId,
-            List<EngineeringChangePartRevisionSnapshot> added,
-            List<EngineeringChangePartRevisionSnapshot> removed
+            List<EngineeringChangeAffectedItem> added,
+            List<EngineeringChangeAffectedItem> removed
     ) {
         if ((added == null || added.isEmpty()) && (removed == null || removed.isEmpty())) {
             return;
@@ -404,8 +404,8 @@ public class EngineeringChangeService {
                 engineeringChangeId,
                 actorId,
                 ACTION_ENGINEERING_CHANGE_PART_REVISION_CHANGED,
-                added == null ? List.of() : added.stream().map(this::toPartRevisionRef).toList(),
-                removed == null ? List.of() : removed.stream().map(this::toPartRevisionRef).toList()
+                added == null ? List.of() : added.stream().map(this::toAffectedItemRef).toList(),
+                removed == null ? List.of() : removed.stream().map(this::toAffectedItemRef).toList()
         );
     }
 
@@ -948,15 +948,14 @@ public class EngineeringChangeService {
         return ref;
     }
 
-    private Map<String, Object> toPartRevisionRef(EngineeringChangePartRevisionSnapshot snapshot) {
+    private Map<String, Object> toAffectedItemRef(EngineeringChangeAffectedItem item) {
         Map<String, Object> ref = new LinkedHashMap<>();
-        ref.put("id", snapshot.revisionId().toString());
-        ref.put("type", "part_revision");
-        ref.put("label", snapshot.partNumber() + " / " + snapshot.status());
+        ref.put("id", item.getTargetId().toString());
+        ref.put("type", item.getItemType().name().toLowerCase());
+        ref.put("label", item.getItemType().name() + " / " + item.getTargetId());
         Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("part_number", snapshot.partNumber());
-        meta.put("base_revision_code", snapshot.baseRevisionCode());
-        meta.put("status", snapshot.status());
+        meta.put("item_type", item.getItemType().name());
+        meta.put("action_detail", item.getActionDetail());
         ref.put("meta", meta);
         return ref;
     }

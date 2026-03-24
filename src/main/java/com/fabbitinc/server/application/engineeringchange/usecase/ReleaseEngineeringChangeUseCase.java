@@ -2,8 +2,8 @@ package com.fabbitinc.server.application.engineeringchange.usecase;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeAffectedItemApi;
 import com.fabbitinc.server.application.engineeringchange.service.EngineeringChangeService;
-import com.fabbitinc.server.application.part.api.PartRevisionWorkflowApi;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChange;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -16,7 +16,7 @@ public class ReleaseEngineeringChangeUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final EngineeringChangeService engineeringChangeService;
-    private final PartRevisionWorkflowApi partRevisionWorkflowApi;
+    private final EngineeringChangeAffectedItemApi affectedItemApi;
 
     public void execute(ReleaseEngineeringChangeCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
@@ -26,7 +26,7 @@ public class ReleaseEngineeringChangeUseCase {
         if (!readyToRelease) {
             return;
         }
-        partRevisionWorkflowApi.releaseEngineeringChange(
+        affectedItemApi.releaseAffectedItems(
                 auth.userId(),
                 engineeringChange.getId()
         );

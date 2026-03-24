@@ -4,13 +4,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import java.util.List;
 
-@Schema(description = "변경관리 부품 초안 동기화 요청")
-public record SyncPartRevisionsRequest(
-        @Schema(description = "최종 초안 목록")
+@Schema(description = "변경관리 영향 항목 동기화 요청")
+public record SyncAffectedItemsRequest(
+        @Schema(description = "최종 영향 항목 목록")
         @Valid
-        List<EngineeringChangePartRevisionTargetRequest> items
+        List<EngineeringChangeAffectedItemTargetRequest> items
 ) {
-    public SyncPartRevisionsRequest {
+    public SyncAffectedItemsRequest {
         items = items == null ? List.of() : List.copyOf(items);
     }
 }

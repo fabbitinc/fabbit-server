@@ -21,7 +21,7 @@ public record EngineeringChangeDetailResult(
         UserSummaryResult createdBy,
         LinkedIssueSummaryResult sourceIssue,
         List<EngineeringChangeStepResult> steps,
-        List<EngineeringChangePartRevisionResult> partRevisions,
+        List<EngineeringChangeAffectedItemResult> affectedItems,
         List<FileItemResult> files,
         int commentsCount,
         Instant releasedAt,

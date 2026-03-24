@@ -33,6 +33,8 @@ public class Part extends AbstractCreatedEntity implements AggregateRoot {
     public static final String CODE_PART_NUMBER_TOO_LONG = "PART_NUMBER_TOO_LONG";
     public static final String CODE_PART_NUMBER_INVALID_FORMAT = "PART_NUMBER_INVALID_FORMAT";
     public static final String CODE_PART_RELEASED_REVISION_REQUIRED = "PART_RELEASED_REVISION_REQUIRED";
+    public static final String CODE_PART_LIFECYCLE_TRANSITION_INVALID = "PART_LIFECYCLE_TRANSITION_INVALID";
+    public static final String CODE_PART_OBSOLETE = "PART_OBSOLETE";
 
     private static final int MAX_PART_NUMBER_LENGTH = 100;
 
@@ -61,12 +63,28 @@ public class Part extends AbstractCreatedEntity implements AggregateRoot {
         return new Part(partNumber);
     }
 
-    public void changeLifecycleState(PartLifecycleState lifecycleState) {
+    public void changeLifecycleState(PartLifecycleState targetState) {
+        if (!this.lifecycleState.canTransitionTo(targetState)) {
+            throw new DomainException(
+                    CODE_PART_LIFECYCLE_TRANSITION_INVALID,
+                    "%s 상태에서 %s 상태로 전환할 수 없습니다".formatted(this.lifecycleState, targetState)
+            );
+        }
+        this.lifecycleState = targetState;
+    }
+
+    public void forceLifecycleState(PartLifecycleState lifecycleState) {
         this.lifecycleState = lifecycleState;
     }
 
     public void resetLifecycleState() {
         this.lifecycleState = PartLifecycleState.ACTIVE;
+    }
+
+    public void assertNotObsolete() {
+        if (this.lifecycleState == PartLifecycleState.OBSOLETE) {
+            throw new DomainException(CODE_PART_OBSOLETE, "폐기된 부품에는 새 초안을 생성할 수 없습니다");
+        }
     }
 
     public void assignCurrentReleasedRevision(UUID revisionId) {

@@ -18,8 +18,6 @@ public interface PartRevisionRepository extends JpaRepository<PartRevision, UUID
 
     Optional<PartRevision> findByIdAndPartId(UUID id, UUID partId);
 
-    List<PartRevision> findByEngineeringChangeIdOrderByCreatedAtAsc(UUID engineeringChangeId);
-
     boolean existsByStatusIn(Collection<PartRevisionStatus> statuses);
 
     boolean existsByCategory(String category);

@@ -68,6 +68,16 @@
 - 반드시 사용할 스킬:
   - `repository-conventions`
 
+### 7) Test 작업
+
+- 트리거:
+  - `src/test/` 또는 `src/integrationTest/` 디렉터리의 테스트 추가/수정
+  - 테스트 계층 선택 (단위 vs 통합) 논의
+  - 통합 테스트 Fixture 설계
+  - 테스트 구조/패턴 논의
+- 반드시 사용할 스킬:
+  - `test-conventions`
+
 ## 다중 레이어 요청 처리 규칙
 
 - 요청이 두 개 이상 레이어를 포함하면, 해당 스킬을 모두 적용한다.

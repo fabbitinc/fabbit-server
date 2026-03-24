@@ -17,16 +17,19 @@ import com.fabbitinc.server.application.part.query.condition.PartInProgressStatu
 import com.fabbitinc.server.application.part.query.condition.PartListCondition;
 import com.fabbitinc.server.application.part.query.condition.PartLookupCondition;
 import com.fabbitinc.server.application.part.query.condition.PartRevisionLookupCondition;
+import com.fabbitinc.server.application.part.usecase.ChangePartLifecycleStateUseCase;
 import com.fabbitinc.server.application.part.usecase.CreatePartUseCase;
 import com.fabbitinc.server.application.part.usecase.RenameCategoryUseCase;
 import com.fabbitinc.server.application.part.usecase.command.CreatePartCommand;
 import com.fabbitinc.server.application.part.usecase.command.RenameCategoryCommand;
 import com.fabbitinc.server.application.part.usecase.result.CreatePartResult;
 import com.fabbitinc.server.application.part.usecase.result.RenameCategoryResult;
+import com.fabbitinc.server.presentation.part.request.ChangePartLifecycleStateRequest;
 import com.fabbitinc.server.presentation.part.request.CreatePartRequest;
 import com.fabbitinc.server.presentation.part.request.RenameCategoryRequest;
 import com.fabbitinc.server.presentation.part.response.CategoryLookupResponse;
 import com.fabbitinc.server.presentation.part.response.CategoryStatsResponse;
+import com.fabbitinc.server.presentation.part.response.ChangePartLifecycleStateResponse;
 import com.fabbitinc.server.presentation.part.response.PartDetailResponse;
 import com.fabbitinc.server.presentation.part.response.PartFilterOptionsResponse;
 import com.fabbitinc.server.presentation.part.response.PartInProgressListResponse;
@@ -82,6 +85,7 @@ public class PartController {
     private final PartQuery partQuery;
     private final CreatePartUseCase createPartUseCase;
     private final RenameCategoryUseCase renameCategoryUseCase;
+    private final ChangePartLifecycleStateUseCase changePartLifecycleStateUseCase;
 
     @Operation(summary = "부품을 생성하고 초안 상세를 반환합니다", description = "부품을 생성하고 생성된 초기 초안 상세를 반환합니다")
     @ApiResponses(value = {
@@ -244,5 +248,18 @@ public class PartController {
     ) {
         RenameCategoryResult result = renameCategoryUseCase.execute(new RenameCategoryCommand(category, request.newName()));
         return new RenameCategoryResponse(result.updatedCount());
+    }
+
+    @Operation(summary = "부품의 수명주기 상태를 변경합니다", description = "부품의 수명주기 상태를 변경합니다 (ACTIVE → EOL → OBSOLETE)")
+    @PostMapping("/{partId}/lifecycle")
+    public ChangePartLifecycleStateResponse changeLifecycleState(
+            @PathVariable UUID partId,
+            @Valid @RequestBody ChangePartLifecycleStateRequest request
+    ) {
+        ChangePartLifecycleStateUseCase.ChangePartLifecycleStateResult result =
+                changePartLifecycleStateUseCase.execute(
+                        new ChangePartLifecycleStateUseCase.ChangePartLifecycleStateCommand(partId, request.targetState())
+                );
+        return new ChangePartLifecycleStateResponse(result.partId(), result.lifecycleState());
     }
 }

@@ -45,7 +45,7 @@ public class PartService {
                 throw new AppException(ErrorCode.CONFLICT, "이미 존재하는 품번입니다: " + part.getPartNumber());
             }
             if (input.lifecycleState() != null) {
-                part.changeLifecycleState(input.lifecycleState());
+                part.forceLifecycleState(input.lifecycleState());
             }
 
             Part savedPart = partRepository.save(part);

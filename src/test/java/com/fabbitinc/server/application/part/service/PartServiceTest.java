@@ -67,7 +67,7 @@ class PartServiceTest {
     ArgumentCaptor<Part> partCaptor = ArgumentCaptor.forClass(Part.class);
     verify(partRepository).save(partCaptor.capture());
     Part savedPart = partCaptor.getValue();
-    assertNull(savedPart.getLifecycleState());
+    assertEquals(PartLifecycleState.ACTIVE, savedPart.getLifecycleState());
   }
 
   @Test

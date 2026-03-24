@@ -79,6 +79,9 @@ public class EngineeringChange extends AbstractActorAuditableEntity implements A
     @OneToMany(mappedBy = "engineeringChange", fetch = FetchType.LAZY)
     private List<EngineeringChangeComment> comments = new ArrayList<>();
 
+    @OneToMany(mappedBy = "_engineeringChangeRelation", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<EngineeringChangeAffectedItem> affectedItems = new ArrayList<>();
+
     private EngineeringChange(int number, String title, String body, UUID sourceIssueId, UUID actorId) {
         super(UuidV7Generator.next());
         this.number = number;
@@ -226,6 +229,26 @@ public class EngineeringChange extends AbstractActorAuditableEntity implements A
 
     public List<EngineeringChangeComment> getComments() {
         return List.copyOf(comments);
+    }
+
+    public EngineeringChangeAffectedItem addAffectedItem(
+            EngineeringChangeAffectedItemType itemType,
+            UUID targetId,
+            String actionDetail
+    ) {
+        EngineeringChangeAffectedItem item = EngineeringChangeAffectedItem.create(
+                this.getId(), itemType, targetId, actionDetail
+        );
+        affectedItems.add(item);
+        return item;
+    }
+
+    public void clearAffectedItems() {
+        affectedItems.clear();
+    }
+
+    public List<EngineeringChangeAffectedItem> getAffectedItems() {
+        return List.copyOf(affectedItems);
     }
 
     private UUID requireActorId(UUID actorId) {

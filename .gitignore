@@ -46,3 +46,4 @@ openapi.json
 
 .claude/worktrees
 .codex/worktrees
+.gstack/

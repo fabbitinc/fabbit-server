@@ -40,6 +40,7 @@ public class PartRevisionService {
     public PartRevision createDraft(CreatePartDraftInput input, UUID actorId) {
         try {
             Part part = getRequiredPart(input.partId());
+            part.assertNotObsolete();
             PartRevision baseRevision = getRequiredRevision(input.partId(), input.baseRevisionId());
             baseRevision.assertDraftCreationAllowed();
 
@@ -144,7 +145,6 @@ public class PartRevisionService {
             UUID engineeringChangeId
     ) {
         try {
-            requireEngineeringChangeRevision(revision);
             Part part = getRequiredPartForUpdate(revision.getPartId());
             clearCurrentApprovedIfMatches(part, revision.getId());
             revision.cancel(actorId);
@@ -353,12 +353,6 @@ public class PartRevisionService {
         return new String(chars);
     }
 
-    private void requireEngineeringChangeRevision(PartRevision revision) {
-        if (revision.getEngineeringChangeId() == null) {
-            throw new AppException(ErrorCode.CONFLICT, "EngineeringChange에 연결된 리비전만 처리할 수 있습니다");
-        }
-    }
-
     private void clearCurrentApprovedIfMatches(Part part, UUID revisionId) {
         // 승인 포인터를 사용하지 않는 구조라 no-op으로 둔다.
     }
@@ -399,12 +393,9 @@ public class PartRevisionService {
             case PartRevision.CODE_PART_REVISION_DRAFT_REQUIRED,
                     PartRevision.CODE_PART_REVISION_DRAFT_SOURCE_REQUIRED,
                     PartRevision.CODE_PART_REVISION_DRAFT_CODE_FORBIDDEN,
-                    PartRevision.CODE_PART_REVISION_ENGINEERING_CHANGE_INVALID_STATE,
                     PartRevision.CODE_PART_REVISION_RELEASABLE_REQUIRED,
                     PartRevision.CODE_PART_REVISION_SUPERSEDE_INVALID_STATE ->
                     new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
-            case PartRevision.CODE_PART_REVISION_ENGINEERING_CHANGE_REQUIRED ->
-                    new AppException(ErrorCode.VALIDATION_ERROR, ex.getMessage());
             default ->
                     new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
         };

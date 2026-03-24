@@ -4,17 +4,19 @@ import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.file.service.FileService;
 import com.fabbitinc.server.application.engineeringchange.service.EngineeringChangeService;
-import com.fabbitinc.server.application.part.api.EngineeringChangePartRevisionRef;
-import com.fabbitinc.server.application.part.api.PartRevisionWorkflowApi;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChange;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItemType;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepAssigneeType;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepType;
+import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 @Transactional
@@ -24,7 +26,8 @@ public class CreateEngineeringChangeUseCase {
     private final CurrentAuthProvider currentAuthProvider;
     private final FileService fileService;
     private final EngineeringChangeService engineeringChangeService;
-    private final PartRevisionWorkflowApi partRevisionWorkflowApi;
+    private final SyncEngineeringChangeAffectedItemsUseCase syncAffectedItemsUseCase;
+    private final ObjectMapper objectMapper;
 
     public CreateEngineeringChangeResult execute(CreateEngineeringChangeCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
@@ -40,12 +43,18 @@ public class CreateEngineeringChangeUseCase {
                     false
             );
         }
-        if (!command.partRevisions().isEmpty()) {
-            partRevisionWorkflowApi.syncEngineeringChangePartRevisions(
-                    engineeringChange.getId(),
-                    command.partRevisions().stream()
-                            .map(item -> new EngineeringChangePartRevisionRef(item.revisionId()))
-                            .toList()
+        if (!command.affectedItems().isEmpty()) {
+            syncAffectedItemsUseCase.execute(
+                    new SyncEngineeringChangeAffectedItemsUseCase.SyncEngineeringChangeAffectedItemsCommand(
+                            engineeringChange.getId(),
+                            command.affectedItems().stream()
+                                    .map(item -> new SyncEngineeringChangeAffectedItemsUseCase.Item(
+                                            item.itemType(),
+                                            item.targetId(),
+                                            item.targetState()
+                                    ))
+                                    .toList()
+                    )
             );
         }
         if (!command.fileIds().isEmpty()) {
@@ -79,18 +88,20 @@ public class CreateEngineeringChangeUseCase {
             String title,
             JsonNode body,
             UUID sourceIssueId,
-            List<PartRevisionTarget> partRevisions,
+            List<AffectedItemTarget> affectedItems,
             List<UUID> fileIds,
             List<StepTarget> steps
     ) {
         public CreateEngineeringChangeCommand {
-            partRevisions = partRevisions == null ? List.of() : List.copyOf(partRevisions);
+            affectedItems = affectedItems == null ? List.of() : List.copyOf(affectedItems);
             fileIds = fileIds == null ? List.of() : List.copyOf(fileIds);
             steps = steps == null ? List.of() : List.copyOf(steps);
         }
 
-        public record PartRevisionTarget(
-                UUID revisionId
+        public record AffectedItemTarget(
+                EngineeringChangeAffectedItemType itemType,
+                UUID targetId,
+                PartLifecycleState targetState
         ) {
         }
 

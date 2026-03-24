@@ -193,7 +193,6 @@ public class PartQuery {
 
         BooleanBuilder predicate = new BooleanBuilder()
                 .and(revision.getEnum("status", PartRevisionStatus.class).eq(PartRevisionStatus.DRAFT))
-                .and(revision.get("engineeringChangeId", UUID.class).isNull())
                 .and(revision.get("createdBy", UUID.class).eq(actorId));
 
         if (condition.search() != null && !condition.search().isBlank()) {
