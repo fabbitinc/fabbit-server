@@ -121,7 +121,7 @@ public class IssueQuery {
         currentAuthProvider.getCurrentAuth();
 
         String normalizedSearch = normalizeSearch(condition.search());
-        IssueState requestedState = parseIssueState(condition.state());
+        IssueState requestedState = parseEnum(condition.state(), IssueState.class, "state");
         PathBuilder<Issue> issue = new PathBuilder<>(Issue.class, "issue");
         BooleanBuilder predicate = buildIssueListPredicate(issue, requestedState, normalizedSearch);
 
@@ -597,6 +597,17 @@ public class IssueQuery {
         return trimmed.isBlank() ? null : trimmed;
     }
 
+    private <T extends Enum<T>> T parseEnum(String rawValue, Class<T> enumType, String fieldName) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return null;
+        }
+        try {
+            return Enum.valueOf(enumType, rawValue.trim().toUpperCase(Locale.ROOT).replace('-', '_'));
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, fieldName + " 값이 올바르지 않습니다: " + rawValue);
+        }
+    }
+
     private boolean matchesLookupSearch(int number, String title, String rawSearch) {
         String search = normalizeSearch(rawSearch);
         if (search == null) {
@@ -610,21 +621,6 @@ public class IssueQuery {
         return String.valueOf(number).contains(search);
     }
 
-    private IssueState parseIssueState(String rawState) {
-        return parseEnum(rawState, IssueState.class, "state");
-    }
-
-    private <T extends Enum<T>> T parseEnum(String rawValue, Class<T> enumType, String fieldName) {
-        String normalized = normalizeSearch(rawValue);
-        if (normalized == null) {
-            return null;
-        }
-        try {
-            return Enum.valueOf(enumType, normalized.toUpperCase(Locale.ROOT).replace('-', '_'));
-        } catch (IllegalArgumentException ex) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, fieldName + " 값이 올바르지 않습니다: " + rawValue);
-        }
-    }
 
     private JsonNode parseJson(String raw) {
         if (raw == null || raw.isBlank()) {

@@ -146,6 +146,7 @@ public class IssueController {
     @GetMapping
     public IssueListResponse listIssues(
             @RequestParam(value = "search", required = false) String search,
+            @Parameter(description = "이슈 상태 필터", example = "OPEN")
             @RequestParam(value = "state", required = false) String state,
             @RequestParam(value = "offset", defaultValue = "0")
             @Min(value = 0, message = "offset은 0 이상이어야 합니다") int offset,

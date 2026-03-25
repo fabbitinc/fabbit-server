@@ -7,6 +7,7 @@ import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
 import com.fabbitinc.server.application.engineeringchange.query.condition.EngineeringChangeDetailCondition;
 import com.fabbitinc.server.application.engineeringchange.query.condition.EngineeringChangeListCondition;
+import com.fabbitinc.server.application.engineeringchange.query.condition.EngineeringChangeStateFilter;
 import com.fabbitinc.server.application.engineeringchange.query.condition.EngineeringChangeLookupCondition;
 import com.fabbitinc.server.application.engineeringchange.query.condition.EngineeringChangeTimelineCondition;
 import com.fabbitinc.server.application.engineeringchange.query.condition.ProjectChangeListCondition;
@@ -121,12 +122,11 @@ public class EngineeringChangeQuery {
         currentAuthProvider.getCurrentAuth();
 
         String normalizedSearch = normalizeSearch(condition.search());
-        EngineeringChangeState requestedState = parseEngineeringChangeState(condition.state());
 
         PathBuilder<EngineeringChange> engineeringChange = new PathBuilder<>(EngineeringChange.class, "engineeringChange");
         BooleanBuilder predicate = buildEngineeringChangeListPredicate(
                 engineeringChange,
-                requestedState,
+                condition.state(),
                 normalizedSearch
         );
 
@@ -617,17 +617,33 @@ public class EngineeringChangeQuery {
 
     private BooleanBuilder buildEngineeringChangeListPredicate(
             PathBuilder<EngineeringChange> engineeringChange,
-            EngineeringChangeState state,
+            EngineeringChangeStateFilter stateFilter,
             String search
     ) {
         BooleanBuilder predicate = new BooleanBuilder();
-        if (state != null) {
-            predicate.and(engineeringChange.getEnum("state", EngineeringChangeState.class).eq(state));
+        if (stateFilter != null) {
+            List<EngineeringChangeState> states = mapStateFilter(stateFilter);
+            predicate.and(engineeringChange.getEnum("state", EngineeringChangeState.class).in(states));
         }
         if (search != null) {
             predicate.and(engineeringChange.getString("title").containsIgnoreCase(search));
         }
         return predicate;
+    }
+
+    private List<EngineeringChangeState> mapStateFilter(EngineeringChangeStateFilter filter) {
+        return switch (filter) {
+            case OPEN -> List.of(EngineeringChangeState.DRAFT);
+            case IN_PROGRESS -> List.of(
+                    EngineeringChangeState.REVIEW_PENDING,
+                    EngineeringChangeState.APPROVAL_PENDING,
+                    EngineeringChangeState.RELEASE_PENDING
+            );
+            case DONE -> List.of(
+                    EngineeringChangeState.RELEASED,
+                    EngineeringChangeState.CANCELED
+            );
+        };
     }
 
     private String normalizeSearch(String search) {
@@ -651,10 +667,6 @@ public class EngineeringChangeQuery {
         return String.valueOf(number).contains(search);
     }
 
-    private EngineeringChangeState parseEngineeringChangeState(String rawEngineeringChangeState) {
-        return parseEnum(rawEngineeringChangeState, EngineeringChangeState.class, "state");
-    }
-
     private boolean isOpenState(EngineeringChangeState state) {
         return state == EngineeringChangeState.DRAFT
                 || state == EngineeringChangeState.REVIEW_PENDING
@@ -665,18 +677,6 @@ public class EngineeringChangeQuery {
     private boolean isClosedState(EngineeringChangeState state) {
         return state == EngineeringChangeState.RELEASED
                 || state == EngineeringChangeState.CANCELED;
-    }
-
-    private <T extends Enum<T>> T parseEnum(String rawValue, Class<T> enumType, String fieldName) {
-        String normalized = normalizeSearch(rawValue);
-        if (normalized == null) {
-            return null;
-        }
-        try {
-            return Enum.valueOf(enumType, normalized.toUpperCase(Locale.ROOT).replace('-', '_'));
-        } catch (IllegalArgumentException ex) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, fieldName + " 값이 올바르지 않습니다: " + rawValue);
-        }
     }
 
     private JsonNode parseJson(String raw) {

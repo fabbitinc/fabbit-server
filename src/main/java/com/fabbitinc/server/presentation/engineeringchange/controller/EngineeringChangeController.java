@@ -3,6 +3,7 @@ package com.fabbitinc.server.presentation.engineeringchange.controller;
 import com.fabbitinc.server.application.engineeringchange.query.EngineeringChangeQuery;
 import com.fabbitinc.server.application.engineeringchange.query.condition.EngineeringChangeDetailCondition;
 import com.fabbitinc.server.application.engineeringchange.query.condition.EngineeringChangeListCondition;
+import com.fabbitinc.server.application.engineeringchange.query.condition.EngineeringChangeStateFilter;
 import com.fabbitinc.server.application.engineeringchange.query.condition.EngineeringChangeLookupCondition;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeAffectedItemResult;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeDetailResult;
@@ -133,7 +134,8 @@ public class EngineeringChangeController {
     public EngineeringChangeListResponse listEngineeringChanges(
             @Parameter(description = "변경관리 제목 검색어", example = "품번")
             @RequestParam(value = "search", required = false) String search,
-            @RequestParam(value = "state", required = false) String state,
+            @Parameter(description = "변경관리 상태 필터 (OPEN: 열림, IN_PROGRESS: 진행중, CLOSED: 닫힘)", example = "OPEN")
+            @RequestParam(value = "state", required = false) EngineeringChangeStateFilter state,
             @RequestParam(value = "offset", defaultValue = "0")
             @Min(value = 0, message = "offset은 0 이상이어야 합니다") int offset,
             @RequestParam(value = "limit", defaultValue = "20")
