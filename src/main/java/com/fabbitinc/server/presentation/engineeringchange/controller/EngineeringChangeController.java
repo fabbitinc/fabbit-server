@@ -668,6 +668,9 @@ public class EngineeringChangeController {
     }
 
     private TeamBadgeResponse toTeamBadgeResponse(TeamBadgeResult result) {
+        if (result == null) {
+            return null;
+        }
         return new TeamBadgeResponse(result.id(), result.name());
     }
 
@@ -722,6 +725,9 @@ public class EngineeringChangeController {
     }
 
     private LinkedIssueSummaryResponse toLinkedIssueSummaryResponse(LinkedIssueSummaryResult result) {
+        if (result == null) {
+            return null;
+        }
         return new LinkedIssueSummaryResponse(
                 result.id(),
                 result.number(),
