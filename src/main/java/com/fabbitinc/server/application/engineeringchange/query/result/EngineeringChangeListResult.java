@@ -9,7 +9,8 @@ import java.util.UUID;
 
 public record EngineeringChangeListResult(
         long openCount,
-        long closedCount,
+        long progressCount,
+        long doneCount,
         long total,
         int offset,
         int limit,

@@ -149,20 +149,15 @@ public class EngineeringChangeQuery {
                 .map(item -> toEngineeringChangeSummary(item, enrichment))
                 .toList();
 
-        long openCount = engineeringChangeRepository.findAll().stream()
-                .filter(item -> item.getState() == EngineeringChangeState.DRAFT
-                        || item.getState() == EngineeringChangeState.REVIEW_PENDING
-                        || item.getState() == EngineeringChangeState.APPROVAL_PENDING
-                        || item.getState() == EngineeringChangeState.RELEASE_PENDING)
-                .count();
-        long closedCount = engineeringChangeRepository.findAll().stream()
-                .filter(item -> item.getState() == EngineeringChangeState.RELEASED
-                        || item.getState() == EngineeringChangeState.CANCELED)
-                .count();
+        List<EngineeringChange> all = engineeringChangeRepository.findAll();
+        long openCount = all.stream().filter(item -> isOpenState(item.getState())).count();
+        long progressCount = all.stream().filter(item -> isProgressState(item.getState())).count();
+        long doneCount = all.stream().filter(item -> isClosedState(item.getState())).count();
 
         return new EngineeringChangeListResult(
                 openCount,
-                closedCount,
+                progressCount,
+                doneCount,
                 totalCount == null ? 0L : totalCount,
                 condition.offset(),
                 condition.limit(),
@@ -176,19 +171,19 @@ public class EngineeringChangeQuery {
 
         Set<UUID> projectPartIds = projectApi.getProjectPartIds(condition.projectId());
         if (projectPartIds.isEmpty()) {
-            return new EngineeringChangeListResult(0, 0, 0, 0, 0, List.of());
+            return new EngineeringChangeListResult(0, 0, 0, 0, 0, 0, List.of());
         }
 
         Set<UUID> issueIds = issueApi.getIssueIdsByPartIds(projectPartIds);
         if (issueIds.isEmpty()) {
-            return new EngineeringChangeListResult(0, 0, 0, 0, 0, List.of());
+            return new EngineeringChangeListResult(0, 0, 0, 0, 0, 0, List.of());
         }
 
         Set<UUID> engineeringChangeIds = engineeringChangeIssueLinkRepository.findByIssueIdIn(issueIds).stream()
                 .map(EngineeringChangeIssueLink::getEngineeringChangeId)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
         if (engineeringChangeIds.isEmpty()) {
-            return new EngineeringChangeListResult(0, 0, 0, 0, 0, List.of());
+            return new EngineeringChangeListResult(0, 0, 0, 0, 0, 0, List.of());
         }
 
         PathBuilder<EngineeringChange> engineeringChange = new PathBuilder<>(EngineeringChange.class, "engineeringChange");
@@ -204,11 +199,13 @@ public class EngineeringChangeQuery {
                 .toList();
 
         long openCount = engineeringChanges.stream().filter(item -> isOpenState(item.getState())).count();
-        long closedCount = engineeringChanges.stream().filter(item -> isClosedState(item.getState())).count();
+        long progressCount = engineeringChanges.stream().filter(item -> isProgressState(item.getState())).count();
+        long doneCount = engineeringChanges.stream().filter(item -> isClosedState(item.getState())).count();
 
         return new EngineeringChangeListResult(
                 openCount,
-                closedCount,
+                progressCount,
+                doneCount,
                 items.size(),
                 0,
                 items.size(),
@@ -668,8 +665,11 @@ public class EngineeringChangeQuery {
     }
 
     private boolean isOpenState(EngineeringChangeState state) {
-        return state == EngineeringChangeState.DRAFT
-                || state == EngineeringChangeState.REVIEW_PENDING
+        return state == EngineeringChangeState.DRAFT;
+    }
+
+    private boolean isProgressState(EngineeringChangeState state) {
+        return state == EngineeringChangeState.REVIEW_PENDING
                 || state == EngineeringChangeState.APPROVAL_PENDING
                 || state == EngineeringChangeState.RELEASE_PENDING;
     }

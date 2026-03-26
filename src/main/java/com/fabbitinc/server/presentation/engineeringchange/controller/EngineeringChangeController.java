@@ -526,7 +526,8 @@ public class EngineeringChangeController {
     private EngineeringChangeListResponse toEngineeringChangeListResponse(EngineeringChangeListResult result) {
         return new EngineeringChangeListResponse(
                 result.openCount(),
-                result.closedCount(),
+                result.progressCount(),
+                result.doneCount(),
                 result.total(),
                 result.offset(),
                 result.limit(),
