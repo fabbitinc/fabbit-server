@@ -2,7 +2,9 @@ package com.fabbitinc.server.application.issue.api;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.domain.issue.model.IssueAssignee;
 import com.fabbitinc.server.domain.issue.model.IssuePart;
+import com.fabbitinc.server.domain.issue.repository.IssueAssigneeRepository;
 import com.fabbitinc.server.domain.issue.repository.IssuePartRepository;
 import com.fabbitinc.server.domain.issue.repository.IssueRepository;
 import java.util.Collection;
@@ -20,6 +22,7 @@ public class IssueApi {
 
     private final IssueRepository issueRepository;
     private final IssuePartRepository issuePartRepository;
+    private final IssueAssigneeRepository issueAssigneeRepository;
 
     public boolean existsIssue(UUID issueId) {
         return issueRepository.existsById(issueId);
@@ -53,6 +56,12 @@ public class IssueApi {
                 new IssueSnapshot(issue.getId(), issue.getNumber(), issue.getTitle(), issue.getState())
         ));
         return result;
+    }
+
+    public Set<UUID> getIssueAssigneeUserIds(UUID issueId) {
+        return issueAssigneeRepository.findByIssueId(issueId).stream()
+                .map(IssueAssignee::getUserId)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
     }
 
     public Set<UUID> getIssueIdsByPartIds(Set<UUID> partIds) {

@@ -22,4 +22,6 @@ public interface ProjectPartRepository extends JpaRepository<ProjectPart, UUID> 
     long countByProjectId(UUID projectId);
 
     long countByPartId(UUID partId);
+
+    List<ProjectPart> findByPartIdIn(Collection<UUID> partIds);
 }
