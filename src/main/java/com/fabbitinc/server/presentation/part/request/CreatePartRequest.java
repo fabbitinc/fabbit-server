@@ -3,6 +3,7 @@ package com.fabbitinc.server.presentation.part.request;
 import com.fabbitinc.server.domain.part.model.PartItemType;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import java.util.Map;
@@ -50,4 +51,9 @@ public record CreatePartRequest(
         @Schema(description = "생성 사유", example = "신규 고객 프로젝트 대응을 위해 부품을 등록합니다")
         @Size(max = 2000, message = "reason은 최대 2000자여야 합니다") String reason
 ) {
+    @AssertTrue(message = "part_number 또는 numbering_category_id 중 하나는 필수입니다")
+    @Schema(hidden = true)
+    public boolean isCreateContractValid() {
+        return (partNumber != null && !partNumber.isBlank()) || numberingCategoryId != null;
+    }
 }

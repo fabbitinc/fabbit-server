@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -106,6 +107,40 @@ class PartServiceTest {
 
     verify(partNumberService).generate(categoryId);
     assertEquals("AUTO-0001", createdDraft.getPartNumber());
+  }
+
+  @Test
+  void createPart_품번과_채번카테고리가_둘다없으면_bad_request를_던진다() {
+    PartService service = createService();
+
+    AppException ex = assertThrows(
+        AppException.class,
+        () -> service.createPart(
+            new CreatePartInput(null, null, null, "Bolt", null, null, null, null, null, null, null),
+            UUID.randomUUID()
+        )
+    );
+
+    assertEquals(ErrorCode.BAD_REQUEST, ex.getErrorCode());
+  }
+
+  @Test
+  void createPart_품번과_채번카테고리가_둘다있으면_수동품번을_우선한다() {
+    UUID actorId = UUID.randomUUID();
+    UUID categoryId = UUID.randomUUID();
+    when(partRepository.findByPartNumber("P-300")).thenReturn(Optional.empty());
+    when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(partRevisionRepository.save(any(PartRevision.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+    PartService service = createService();
+
+    PartRevision createdDraft =
+        service.createPart(
+            new CreatePartInput("P-300", categoryId, null, "Manual Bolt", null, null, null, null, null, null, null),
+            actorId);
+
+    verify(partNumberService, never()).generate(categoryId);
+    assertEquals("P-300", createdDraft.getPartNumber());
   }
 
   @Test
