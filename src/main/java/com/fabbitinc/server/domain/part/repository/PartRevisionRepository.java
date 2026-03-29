@@ -25,12 +25,5 @@ public interface PartRevisionRepository extends JpaRepository<PartRevision, UUID
     )
     long countByExtendedPropertiesContainingPropertyDefinitionId(String propertyDefinitionId);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("update PartRevision pr set pr.category = ?2 where pr.category = ?1")
-    int renameCategory(String oldName, String newName);
-
-    @Query("select distinct pr.category from PartRevision pr where pr.category is not null order by pr.category asc")
-    List<String> findDistinctCategories();
-
     Optional<PartRevision> findByPartNumberAndRevisionCode(String partNumber, String revisionCode);
 }
