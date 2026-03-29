@@ -36,4 +36,6 @@ public interface PartRevisionRepository extends JpaRepository<PartRevision, UUID
 
     @Query("select distinct pr.category from PartRevision pr where pr.category is not null order by pr.category asc")
     List<String> findDistinctCategories();
+
+    Optional<PartRevision> findByPartNumberAndRevisionCode(String partNumber, String revisionCode);
 }
