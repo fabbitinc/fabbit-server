@@ -39,6 +39,7 @@ class PartServiceTest {
   @Mock private OrganizationApi organizationApi;
   @Mock private PropertyApi propertyApi;
   @Mock private ObjectMapper objectMapper;
+  @Mock private PartNumberService partNumberService;
 
   @Test
   void createPart_초기_초안을_생성한다() {
@@ -52,7 +53,7 @@ class PartServiceTest {
     PartRevision createdDraft =
         service.createPart(
             new CreatePartInput(
-                "  P-100  ", "Bolt", null, null, null, "  FASTENER  ", null, null, null, null, null),
+                "  P-100  ", null, null, "Bolt", null, null, null, null, null, null, null),
             actorId);
 
     ArgumentCaptor<PartRevision> revisionCaptor = ArgumentCaptor.forClass(PartRevision.class);
@@ -62,7 +63,6 @@ class PartServiceTest {
     assertEquals("P-100", createdDraft.getPartNumber());
     assertEquals(null, createdDraft.getRevisionCode());
     assertEquals("Bolt", savedRevision.getName());
-    assertEquals("FASTENER", savedRevision.getCategory());
     ArgumentCaptor<Part> partCaptor = ArgumentCaptor.forClass(Part.class);
     verify(partRepository).save(partCaptor.capture());
     Part savedPart = partCaptor.getValue();
@@ -81,7 +81,7 @@ class PartServiceTest {
             () ->
                 service.createPart(
                     new CreatePartInput(
-                        "P-100", "Bolt", null, null, null, null, null, null, null, null, null),
+                        "P-100", null, null, "Bolt", null, null, null, null, null, null, null),
                     UUID.randomUUID()));
 
     assertEquals(ErrorCode.CONFLICT, ex.getErrorCode());
@@ -105,12 +105,12 @@ class PartServiceTest {
         service.createPart(
             new CreatePartInput(
                 "P-200",
+                null,
+                null,
                 "Bracket",
                 "AL6061",
                 "EA",
                 "sample",
-                null,
-                false,
                 PartLifecycleState.ACTIVE,
                 7,
                 extendedProperties,
@@ -130,7 +130,6 @@ class PartServiceTest {
     assertEquals("AL6061", savedRevision.getMaterial());
     assertEquals("EA", savedRevision.getUnit());
     assertEquals("sample", savedRevision.getDescription());
-    assertEquals(Boolean.FALSE, savedRevision.getPhantom());
     assertEquals(7, savedRevision.getLeadTimeDays());
     assertEquals("{\"weight\":1.2,\"material_code\":\"AL6061\"}", savedRevision.getExtendedProperties());
   }
@@ -194,6 +193,7 @@ class PartServiceTest {
         fileRepository,
         organizationApi,
         propertyApi,
-        objectMapper);
+        objectMapper,
+        partNumberService);
   }
 }

@@ -39,6 +39,7 @@ import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType;
 import com.fabbitinc.server.domain.part.model.PartRevisionHistorySourceType;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
+import com.fabbitinc.server.domain.part.repository.PartNumberCategoryRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewFileRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewProcessingJobRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
@@ -74,6 +75,8 @@ class PartQueryTest {
     private PartRepository partRepository;
     @Mock
     private PartRevisionRepository partRevisionRepository;
+    @Mock
+    private PartNumberCategoryRepository partNumberCategoryRepository;
     @Mock
     private FileRepository fileRepository;
     @Mock
@@ -115,6 +118,7 @@ class PartQueryTest {
                 mappingApi,
                 partRepository,
                 partRevisionRepository,
+                partNumberCategoryRepository,
                 fileRepository,
                 engineeringBomItemRepository,
                 partSupplierRepository,

@@ -198,10 +198,6 @@ public class PartRevisionService {
                 input.unitSet(),
                 input.description(),
                 input.descriptionSet(),
-                input.category(),
-                input.categorySet(),
-                input.phantom(),
-                input.phantomSet(),
                 input.leadTimeDays(),
                 input.leadTimeDaysSet(),
                 input.extendedPropertiesSet() ? serializeProperties(validateExtendedProperties(input.extendedProperties())) : null,
@@ -378,7 +374,6 @@ public class PartRevisionService {
     private AppException toAppException(DomainException ex) {
         return switch (ex.getDomainCode()) {
             case PartRevision.CODE_PART_REVISION_NAME_TOO_LONG,
-                    PartRevision.CODE_PART_REVISION_CATEGORY_TOO_LONG,
                     PartRevision.CODE_PART_REVISION_MATERIAL_TOO_LONG,
                     PartRevision.CODE_PART_REVISION_UNIT_TOO_LONG,
                     PartRevision.CODE_PART_REVISION_PART_NUMBER_REQUIRED,

@@ -28,18 +28,24 @@ import tools.jackson.databind.ObjectMapper;
 @RequiredArgsConstructor
 public class PartService {
 
-    private static final int MAX_CATEGORY_LENGTH = 100;
-
     private final PartRepository partRepository;
     private final PartRevisionRepository partRevisionRepository;
     private final FileRepository fileRepository;
     private final OrganizationApi organizationApi;
     private final PropertyApi propertyApi;
     private final ObjectMapper objectMapper;
+    private final PartNumberService partNumberService;
 
     public PartRevision createPart(CreatePartInput input, UUID actorId) {
         try {
-            Part part = Part.create(input.partNumber());
+            String partNumber = input.partNumber();
+            if (partNumber == null && input.numberingCategoryId() != null) {
+                partNumber = partNumberService.generate(input.numberingCategoryId());
+            } else if (partNumber == null) {
+                throw new AppException(ErrorCode.BAD_REQUEST, "품번 또는 채번 카테고리를 지정해야 합니다");
+            }
+
+            Part part = Part.create(partNumber, input.numberingCategoryId(), input.itemType());
             if (partRepository.findByPartNumber(part.getPartNumber()).isPresent()) {
                 throw new AppException(ErrorCode.CONFLICT, "이미 존재하는 품번입니다: " + part.getPartNumber());
             }
@@ -120,25 +126,6 @@ public class PartService {
         }
     }
 
-    public int renameCategory(String oldName, String newName) {
-        String normalizedOldName = normalizeRequiredCategory(oldName, "기존");
-        String normalizedNewName = normalizeRequiredCategory(newName, "변경");
-
-        if (normalizedOldName.equals(normalizedNewName)) {
-            throw new AppException(ErrorCode.BAD_REQUEST, "변경 전후 카테고리 이름이 동일합니다");
-        }
-
-        boolean hasOldCategory = partRevisionRepository.existsByCategory(normalizedOldName);
-        if (!hasOldCategory) {
-            throw new AppException(
-                    ErrorCode.NOT_FOUND,
-                    "카테고리 '" + normalizedOldName + "'을(를) 찾을 수 없습니다"
-            );
-        }
-
-        int updatedCount = partRevisionRepository.renameCategory(normalizedOldName, normalizedNewName);
-        return updatedCount;
-    }
 
     private PartRevision getRevisionOrThrow(UUID partId, UUID revisionId) {
         return partRevisionRepository.findByIdAndPartId(revisionId, partId)
@@ -149,9 +136,6 @@ public class PartService {
     }
 
     private void applyCreateInput(PartRevision revision, CreatePartInput input) {
-        if (input.category() != null) {
-            revision.changeCategory(input.category());
-        }
         if (input.material() != null) {
             revision.changeMaterial(input.material());
         }
@@ -160,9 +144,6 @@ public class PartService {
         }
         if (input.description() != null) {
             revision.changeDescription(input.description());
-        }
-        if (input.phantom() != null) {
-            applyPhantom(revision, input.phantom());
         }
         if (input.leadTimeDays() != null) {
             revision.changeLeadTimeDays(input.leadTimeDays());
@@ -175,14 +156,6 @@ public class PartService {
                     ))
             );
         }
-    }
-
-    private void applyPhantom(PartRevision revision, Boolean phantom) {
-        if (Boolean.TRUE.equals(phantom)) {
-            revision.markPhantom();
-            return;
-        }
-        revision.markReal();
     }
 
     private String serializeProperties(Map<String, Object> properties) {
@@ -204,17 +177,6 @@ public class PartService {
         }
     }
 
-    private String normalizeRequiredCategory(String raw, String label) {
-        if (raw == null || raw.isBlank()) {
-            throw new AppException(ErrorCode.BAD_REQUEST, label + " 카테고리는 비어 있을 수 없습니다");
-        }
-
-        String trimmed = raw.trim();
-        if (trimmed.length() > MAX_CATEGORY_LENGTH) {
-            throw new AppException(ErrorCode.BAD_REQUEST, label + " 카테고리는 100자 이하여야 합니다");
-        }
-        return trimmed;
-    }
 
     private AppException toAppException(DomainException ex) {
         return switch (ex.getDomainCode()) {
@@ -222,7 +184,6 @@ public class PartService {
                     Part.CODE_PART_NUMBER_TOO_LONG,
                     Part.CODE_PART_NUMBER_INVALID_FORMAT,
                     PartRevision.CODE_PART_REVISION_NAME_TOO_LONG,
-                    PartRevision.CODE_PART_REVISION_CATEGORY_TOO_LONG,
                     PartRevision.CODE_PART_REVISION_MATERIAL_TOO_LONG,
                     PartRevision.CODE_PART_REVISION_UNIT_TOO_LONG,
                     PartRevision.CODE_PART_REVISION_PART_NUMBER_REQUIRED,

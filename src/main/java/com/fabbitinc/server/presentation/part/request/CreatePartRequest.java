@@ -1,16 +1,23 @@
 package com.fabbitinc.server.presentation.part.request;
 
+import com.fabbitinc.server.domain.part.model.PartItemType;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.Map;
+import java.util.UUID;
 
 @Schema(description = "부품 생성 요청")
 public record CreatePartRequest(
-        @Schema(description = "품번", example = "P-100")
-        @NotBlank(message = "part_number는 필수입니다") @Size(max = 100, message = "part_number는 최대 100자여야 합니다") String partNumber,
+        @Schema(description = "품번 (채번 카테고리 지정 시 생략 가능)", example = "P-100")
+        @Size(max = 100, message = "part_number는 최대 100자여야 합니다") String partNumber,
+
+        @Schema(description = "채번 카테고리 ID")
+        UUID numberingCategoryId,
+
+        @Schema(description = "부품 유형", example = "MANUFACTURED")
+        PartItemType itemType,
 
         @Schema(description = "품명", example = "M3 볼트")
         @Size(max = 500, message = "name은 최대 500자여야 합니다") String name,
@@ -23,12 +30,6 @@ public record CreatePartRequest(
 
         @Schema(description = "설명", example = "체결용 표준 부품")
         String description,
-
-        @Schema(description = "카테고리", example = "FASTENER")
-        @Size(max = 100, message = "category는 최대 100자여야 합니다") String category,
-
-        @Schema(description = "팬텀 부품 여부", example = "false")
-        Boolean isPhantom,
 
         @Schema(
                 description = "수명주기 상태",

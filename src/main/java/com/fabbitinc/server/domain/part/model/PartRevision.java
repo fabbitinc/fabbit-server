@@ -55,7 +55,7 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     public static final String CODE_PART_REVISION_CODE_TOO_LONG = "PART_REVISION_CODE_TOO_LONG";
     public static final String CODE_PART_REVISION_CODE_INVALID_FORMAT = "PART_REVISION_CODE_INVALID_FORMAT";
     public static final String CODE_PART_REVISION_NAME_TOO_LONG = "PART_REVISION_NAME_TOO_LONG";
-    public static final String CODE_PART_REVISION_CATEGORY_TOO_LONG = "PART_REVISION_CATEGORY_TOO_LONG";
+
     public static final String CODE_PART_REVISION_MATERIAL_TOO_LONG = "PART_REVISION_MATERIAL_TOO_LONG";
     public static final String CODE_PART_REVISION_UNIT_TOO_LONG = "PART_REVISION_UNIT_TOO_LONG";
     public static final String CODE_PART_REVISION_LEAD_TIME_DAYS_INVALID = "PART_REVISION_LEAD_TIME_DAYS_INVALID";
@@ -70,7 +70,7 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     private static final int MAX_REVISION_CODE_LENGTH = 50;
     private static final int MAX_PART_NUMBER_LENGTH = 100;
     private static final int MAX_NAME_LENGTH = 500;
-    private static final int MAX_CATEGORY_LENGTH = 100;
+
     private static final int MAX_MATERIAL_LENGTH = 200;
     private static final int MAX_UNIT_LENGTH = 20;
 
@@ -121,12 +121,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
 
     @Column(name = "description", columnDefinition = "text")
     private String description;
-
-    @Column(name = "category", length = 100)
-    private String category;
-
-    @Column(name = "is_phantom")
-    private Boolean phantom;
 
     @Column(name = "lead_time_days")
     private Integer leadTimeDays;
@@ -212,10 +206,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         this.name = normalizeName(name);
     }
 
-    public void changeCategory(String category) {
-        this.category = normalizeCategory(category);
-    }
-
     public void changeMaterial(String material) {
         this.material = normalizeMaterial(material);
     }
@@ -226,18 +216,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
 
     public void changeDescription(String description) {
         this.description = normalizeNullableText(description);
-    }
-
-    public void markPhantom() {
-        this.phantom = true;
-    }
-
-    public void markReal() {
-        this.phantom = false;
-    }
-
-    public void clearPhantomFlag() {
-        this.phantom = null;
     }
 
     public void changeLeadTimeDays(Integer leadTimeDays) {
@@ -272,16 +250,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             }
             if (changes.descriptionSet()) {
                 this.description = normalizeNullableText(changes.description());
-            }
-            if (changes.categorySet()) {
-                this.category = normalizeCategory(changes.category());
-            }
-            if (changes.phantomSet()) {
-                if (changes.phantom() == null) {
-                    this.phantom = null;
-                } else {
-                    this.phantom = changes.phantom();
-                }
             }
             if (changes.leadTimeDaysSet()) {
                 if (changes.leadTimeDays() == null) {
@@ -359,11 +327,9 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             throw new DomainException(CODE_PART_REVISION_DRAFT_SOURCE_REQUIRED, "복제할 원본 리비전은 필수입니다");
         }
         changeName(source.getName());
-        changeCategory(source.getCategory());
         changeMaterial(source.getMaterial());
         changeUnit(source.getUnit());
         changeDescription(source.getDescription());
-        this.phantom = source.getPhantom();
         this.leadTimeDays = source.getLeadTimeDays();
         this.extendedProperties = source.getExtendedProperties();
     }
@@ -426,7 +392,7 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
             if (trimmed.length() > MAX_REVISION_CODE_LENGTH) {
                 throw new DomainException(CODE_PART_REVISION_CODE_TOO_LONG, "리비전 코드는 50자 이하여야 합니다");
             }
-            return PartRouteSegmentPolicy.validateRevisionCode(trimmed, CODE_PART_REVISION_CODE_INVALID_FORMAT);
+            return trimmed;
         }
 
         if (rawRevisionCode == null || rawRevisionCode.isBlank()) {
@@ -436,7 +402,7 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         if (trimmed.length() > MAX_REVISION_CODE_LENGTH) {
             throw new DomainException(CODE_PART_REVISION_CODE_TOO_LONG, "리비전 코드는 50자 이하여야 합니다");
         }
-        return PartRouteSegmentPolicy.validateRevisionCode(trimmed, CODE_PART_REVISION_CODE_INVALID_FORMAT);
+        return trimmed;
     }
 
     private String normalizePartNumber(String rawPartNumber) {
@@ -447,7 +413,7 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         if (trimmed.length() > MAX_PART_NUMBER_LENGTH) {
             throw new DomainException(CODE_PART_REVISION_PART_NUMBER_TOO_LONG, "품번은 100자 이하여야 합니다");
         }
-        return PartRouteSegmentPolicy.validatePartNumber(trimmed, CODE_PART_REVISION_PART_NUMBER_INVALID_FORMAT);
+        return trimmed;
     }
 
     private PartRevisionStatus requireStatus(PartRevisionStatus value) {
@@ -467,20 +433,6 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
         }
         if (trimmed.length() > MAX_NAME_LENGTH) {
             throw new DomainException(CODE_PART_REVISION_NAME_TOO_LONG, "품명은 500자 이하여야 합니다");
-        }
-        return trimmed;
-    }
-
-    private String normalizeCategory(String rawCategory) {
-        if (rawCategory == null) {
-            return null;
-        }
-        String trimmed = rawCategory.trim();
-        if (trimmed.isBlank()) {
-            return null;
-        }
-        if (trimmed.length() > MAX_CATEGORY_LENGTH) {
-            throw new DomainException(CODE_PART_REVISION_CATEGORY_TOO_LONG, "카테고리는 100자 이하여야 합니다");
         }
         return trimmed;
     }

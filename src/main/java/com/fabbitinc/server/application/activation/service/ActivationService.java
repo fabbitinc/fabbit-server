@@ -247,7 +247,7 @@ public class ActivationService {
                         "part",
                         part.partNumber(),
                         part.name(),
-                        part.category(),
+                        part.description(),
                         null
                 ))
                 .toList();

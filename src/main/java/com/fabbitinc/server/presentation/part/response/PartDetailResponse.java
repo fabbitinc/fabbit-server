@@ -1,5 +1,6 @@
 package com.fabbitinc.server.presentation.part.response;
 
+import com.fabbitinc.server.domain.part.model.PartItemType;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -12,6 +13,7 @@ public record PartDetailResponse(
         UUID revisionId,
         PartRevisionStatus revisionStatus,
         String partNumber,
+        UUID numberingCategoryId,
         UUID baseRevisionId,
         String baseRevisionCode,
         String name,
@@ -19,9 +21,8 @@ public record PartDetailResponse(
         String material,
         String unit,
         String description,
-        String category,
         PartLifecycleState lifecycleState,
-        Boolean isPhantom,
+        PartItemType itemType,
         Integer leadTimeDays,
         Map<String, Object> extendedProperties,
         PartPreviewResponse preview,

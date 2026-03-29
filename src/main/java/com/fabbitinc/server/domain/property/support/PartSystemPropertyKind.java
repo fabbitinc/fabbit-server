@@ -8,7 +8,7 @@ public enum PartSystemPropertyKind {
     UNIT,
     DESCRIPTION,
     CATEGORY,
-    PHANTOM,
+    ITEM_TYPE,
     LIFECYCLE_STATE,
     LEAD_TIME_DAYS
 }

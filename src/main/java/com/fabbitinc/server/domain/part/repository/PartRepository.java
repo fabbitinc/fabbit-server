@@ -26,6 +26,8 @@ public interface PartRepository extends JpaRepository<Part, UUID> {
 
     Optional<Part> findByPartNumber(String partNumber);
 
+    long countByNumberingCategoryId(UUID numberingCategoryId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select part from Part part where part.id = :id")
     Optional<Part> findByIdForUpdate(UUID id);

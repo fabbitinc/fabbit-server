@@ -24,12 +24,12 @@ public class CreatePartUseCase {
 
         PartRevision draft = partService.createPart(new CreatePartInput(
                 command.partNumber(),
+                command.numberingCategoryId(),
+                command.itemType(),
                 command.name(),
                 command.material(),
                 command.unit(),
                 command.description(),
-                command.category(),
-                command.isPhantom(),
                 command.lifecycleState(),
                 command.leadTimeDays(),
                 command.extendedProperties(),

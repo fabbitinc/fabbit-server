@@ -97,12 +97,12 @@ public class PartController {
     public PartDetailResponse createPart(@Valid @RequestBody CreatePartRequest request) {
         CreatePartResult result = createPartUseCase.execute(new CreatePartCommand(
                 request.partNumber(),
+                request.numberingCategoryId(),
+                request.itemType(),
                 request.name(),
                 request.material(),
                 request.unit(),
                 request.description(),
-                request.category(),
-                request.isPhantom(),
                 request.lifecycleState(),
                 request.leadTimeDays(),
                 request.extendedProperties(),

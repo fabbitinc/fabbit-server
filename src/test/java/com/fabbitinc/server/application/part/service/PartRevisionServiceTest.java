@@ -96,10 +96,6 @@ class PartRevisionServiceTest {
                         false,
                         null,
                         false,
-                        null,
-                        false,
-                        null,
-                        false,
                         extendedProperties,
                         true
                 ), UUID.randomUUID())
