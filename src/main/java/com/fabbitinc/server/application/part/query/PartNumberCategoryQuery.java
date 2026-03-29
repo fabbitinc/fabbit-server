@@ -48,7 +48,7 @@ public class PartNumberCategoryQuery {
         currentAuthProvider.getCurrentAuth();
         PartNumberCategory category = partNumberCategoryRepository.findById(categoryId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "채번 카테고리를 찾을 수 없습니다: " + categoryId));
-        PartNumberSequence sequence = partNumberSequenceRepository.findByCategoryIdForUpdate(categoryId)
+        PartNumberSequence sequence = partNumberSequenceRepository.findByCategoryId(categoryId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "채번 시퀀스를 찾을 수 없습니다: " + categoryId));
 
         String previewPartNumber = category.formatNumber(sequence.getCurrentValue() + 1);

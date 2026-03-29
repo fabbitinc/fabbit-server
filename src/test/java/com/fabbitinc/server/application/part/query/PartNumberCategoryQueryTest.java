@@ -41,7 +41,7 @@ class PartNumberCategoryQueryTest {
         setCurrentValue(sequence, 41);
 
         when(partNumberCategoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
-        when(partNumberSequenceRepository.findByCategoryIdForUpdate(categoryId)).thenReturn(Optional.of(sequence));
+        when(partNumberSequenceRepository.findByCategoryId(categoryId)).thenReturn(Optional.of(sequence));
 
         PartNumberCategoryQuery query = createQuery();
         PartNumberPreviewResult result = query.get(categoryId);

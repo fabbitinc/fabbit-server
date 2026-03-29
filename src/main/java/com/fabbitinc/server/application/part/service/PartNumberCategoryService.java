@@ -9,6 +9,7 @@ import com.fabbitinc.server.domain.part.repository.PartNumberSequenceRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -27,11 +28,15 @@ public class PartNumberCategoryService {
             throw new AppException(ErrorCode.CONFLICT, "이미 존재하는 채번 접두어입니다: " + prefix);
         }
 
-        PartNumberCategory category = partNumberCategoryRepository.save(
-                PartNumberCategory.create(name, prefix, delimiter, digits)
-        );
-        partNumberSequenceRepository.save(PartNumberSequence.createFor(category.getId()));
-        return category;
+        try {
+            PartNumberCategory category = partNumberCategoryRepository.save(
+                    PartNumberCategory.create(name, prefix, delimiter, digits)
+            );
+            partNumberSequenceRepository.save(PartNumberSequence.createFor(category.getId()));
+            return category;
+        } catch (DataIntegrityViolationException ex) {
+            throw new AppException(ErrorCode.CONFLICT, "중복된 채번 카테고리 이름 또는 접두어입니다");
+        }
     }
 
     public PartNumberCategory update(UUID categoryId, String name, String prefix, String delimiter, int digits) {
@@ -48,11 +53,15 @@ public class PartNumberCategoryService {
             throw new AppException(ErrorCode.CONFLICT, "이미 존재하는 채번 접두어입니다: " + prefix);
         }
 
-        category.changeName(name);
-        category.changePrefix(prefix);
-        category.changeDelimiter(delimiter);
-        category.changeDigits(digits);
-        return partNumberCategoryRepository.save(category);
+        try {
+            category.changeName(name);
+            category.changePrefix(prefix);
+            category.changeDelimiter(delimiter);
+            category.changeDigits(digits);
+            return partNumberCategoryRepository.save(category);
+        } catch (DataIntegrityViolationException ex) {
+            throw new AppException(ErrorCode.CONFLICT, "중복된 채번 카테고리 이름 또는 접두어입니다");
+        }
     }
 
     public void delete(UUID categoryId) {

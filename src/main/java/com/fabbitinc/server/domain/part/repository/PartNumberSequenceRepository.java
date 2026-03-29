@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface PartNumberSequenceRepository extends JpaRepository<PartNumberSequence, UUID> {
 
+    Optional<PartNumberSequence> findByCategoryId(UUID categoryId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from PartNumberSequence s where s.categoryId = :categoryId")
     Optional<PartNumberSequence> findByCategoryIdForUpdate(UUID categoryId);
