@@ -89,13 +89,13 @@ public class ChangeStatisticsQuery {
     @SuppressWarnings("unchecked")
     private List<TopChangedPart> queryTopChangedParts() {
         String sql = """
-                SELECT pr.part_id, p.part_number, pr.name, COUNT(DISTINCT ai.engineering_change_id) AS change_count
+                SELECT pr.part_id, p.part_number, MIN(pr.name) AS part_name, COUNT(DISTINCT ai.engineering_change_id) AS change_count
                 FROM engineering_change_affected_items ai
                 JOIN engineering_changes ec ON ec.id = ai.engineering_change_id
                 JOIN part_revisions pr ON pr.id = ai.target_id
                 JOIN parts p ON p.id = pr.part_id
                 WHERE ec.state = 'RELEASED'
-                GROUP BY pr.part_id, p.part_number, pr.name
+                GROUP BY pr.part_id, p.part_number
                 ORDER BY change_count DESC
                 FETCH FIRST 5 ROWS ONLY
                 """;

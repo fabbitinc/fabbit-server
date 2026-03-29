@@ -42,9 +42,12 @@ public class PartChangeHistoryQuery {
                 SELECT ec.released_at AS timestamp, 'EC_RELEASED' AS type, ec.id AS reference_id, ec.number AS reference_number, ec.title, ec.released_by AS actor_id
                 FROM engineering_changes ec
                 JOIN engineering_change_affected_items ai ON ai.engineering_change_id = ec.id
-                JOIN part_revisions pr ON pr.id = ai.target_id
-                WHERE pr.part_id = :partId
-                  AND ec.released_at IS NOT NULL
+                LEFT JOIN part_revisions pr ON pr.id = ai.target_id AND ai.item_type = 'REVISION_RELEASE'
+                WHERE ec.released_at IS NOT NULL
+                  AND (
+                        (ai.item_type = 'REVISION_RELEASE' AND pr.part_id = :partId)
+                        OR (ai.item_type = 'LIFECYCLE_CHANGE' AND ai.target_id = :partId)
+                  )
 
                 UNION ALL
 
