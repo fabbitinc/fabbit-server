@@ -12,6 +12,7 @@ import com.fabbitinc.server.application.issue.query.condition.IssueListCondition
 import com.fabbitinc.server.application.issue.query.condition.IssueLookupCondition;
 import com.fabbitinc.server.application.issue.query.condition.IssueTimelineCondition;
 import com.fabbitinc.server.application.issue.query.condition.ProjectIssueListCondition;
+import com.fabbitinc.server.application.issue.query.result.EcPrefillResult;
 import com.fabbitinc.server.application.issue.query.result.IssueDetailResult;
 import com.fabbitinc.server.application.issue.query.result.IssueListResult;
 import com.fabbitinc.server.application.issue.query.result.IssueLookupResult;
@@ -20,6 +21,9 @@ import com.fabbitinc.server.application.issue.query.result.LinkedEngineeringChan
 import com.fabbitinc.server.application.issue.query.result.PartBadgeResult;
 import com.fabbitinc.server.application.part.api.PartApi;
 import com.fabbitinc.server.application.part.api.PartSnapshot;
+import com.fabbitinc.server.application.part.query.PartImpactAnalysisQuery;
+import com.fabbitinc.server.application.part.query.condition.PartImpactAnalysisCondition;
+import com.fabbitinc.server.application.part.query.result.PartImpactAnalysisResult;
 import com.fabbitinc.server.application.project.api.ProjectApi;
 import com.fabbitinc.server.application.workitem.query.TimelineDetailParser;
 import com.fabbitinc.server.application.workitem.query.result.FileItemResult;
@@ -34,6 +38,11 @@ import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeIssu
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.issue.model.Issue;
+import com.fabbitinc.server.domain.part.model.Part;
+import com.fabbitinc.server.domain.part.model.PartRevision;
+import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
+import com.fabbitinc.server.domain.part.repository.PartRepository;
+import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.issue.model.IssueAssignee;
 import com.fabbitinc.server.domain.issue.model.IssueComment;
 import com.fabbitinc.server.domain.issue.model.IssueLabel;
@@ -94,6 +103,9 @@ public class IssueQuery {
     private final TeamRepository teamRepository;
     private final LabelRepository labelRepository;
     private final PartApi partApi;
+    private final PartRepository partRepository;
+    private final PartRevisionRepository partRevisionRepository;
+    private final PartImpactAnalysisQuery partImpactAnalysisQuery;
     private final FileRepository fileRepository;
     private final ActivityRepository activityRepository;
     private final FileUrlResolver fileUrlResolver;
@@ -206,6 +218,74 @@ public class IssueQuery {
 
         Enrichment enrichment = enrichIssues(List.of(issue));
         return toIssueDetail(issue, enrichment);
+    }
+
+    public EcPrefillResult getEcPrefill(UUID issueId) {
+        currentAuthProvider.getCurrentAuth();
+
+        Issue issue = issueRepository.findById(issueId)
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.NOT_FOUND,
+                        "Issue '" + issueId + "'을(를) 찾을 수 없습니다"
+                ));
+
+        // 연결된 부품 ID 조회
+        List<UUID> linkedPartIds = issuePartRepository.findByIssueId(issueId).stream()
+                .map(IssuePart::getPartId)
+                .toList();
+
+        // 각 부품의 최신 리비전 및 DRAFT 리비전 → 영향 항목 후보
+        List<EcPrefillResult.AffectedItemSuggestion> affectedItems = new ArrayList<>();
+        if (!linkedPartIds.isEmpty()) {
+            List<PartRevision> revisions = partRevisionRepository.findByPartIdInOrderByCreatedAtDesc(linkedPartIds);
+            Map<UUID, Part> partsById = new HashMap<>();
+            partRepository.findAllById(linkedPartIds).forEach(p -> partsById.put(p.getId(), p));
+
+            Map<UUID, PartRevision> latestDraftByPartId = new LinkedHashMap<>();
+            for (PartRevision revision : revisions) {
+                if (revision.getStatus() == PartRevisionStatus.DRAFT
+                        && !latestDraftByPartId.containsKey(revision.getPartId())) {
+                    latestDraftByPartId.put(revision.getPartId(), revision);
+                }
+            }
+
+            for (Map.Entry<UUID, PartRevision> entry : latestDraftByPartId.entrySet()) {
+                PartRevision rev = entry.getValue();
+                Part part = partsById.get(rev.getPartId());
+                affectedItems.add(new EcPrefillResult.AffectedItemSuggestion(
+                        rev.getPartId(),
+                        part != null ? part.getPartNumber() : null,
+                        rev.getId(),
+                        rev.getRevisionCode()
+                ));
+            }
+        }
+
+        // 영향 분석 집계
+        int totalBomCount = 0;
+        int totalProjectCount = 0;
+        int totalDraftRevisionCount = 0;
+        List<UUID> suggestedReviewerIds = new ArrayList<>();
+
+        for (UUID partId : linkedPartIds) {
+            PartImpactAnalysisResult analysisResult =
+                    partImpactAnalysisQuery.analyze(new PartImpactAnalysisCondition(partId));
+            totalBomCount += analysisResult.summary().affectedBomCount();
+            totalProjectCount += analysisResult.summary().affectedProjectCount();
+            totalDraftRevisionCount += analysisResult.summary().draftRevisionCount();
+            for (UUID reviewerId : analysisResult.summary().suggestedReviewerIds()) {
+                if (!suggestedReviewerIds.contains(reviewerId)) {
+                    suggestedReviewerIds.add(reviewerId);
+                }
+            }
+        }
+
+        return new EcPrefillResult(
+                issue.getTitle(),
+                affectedItems,
+                suggestedReviewerIds,
+                new EcPrefillResult.ImpactSummary(totalBomCount, totalProjectCount, totalDraftRevisionCount)
+        );
     }
 
     public TimelineResult getTimeline(IssueTimelineCondition condition) {

@@ -16,6 +16,7 @@ import com.fabbitinc.server.application.engineeringchange.usecase.ApproveEnginee
 import com.fabbitinc.server.application.engineeringchange.usecase.ApproveEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.CancelEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.CreateEngineeringChangeCommentUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.CreateEcFromIssueUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.CreateEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.DeleteEngineeringChangeCommentUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.DeleteEngineeringChangeFileUseCase;
@@ -39,6 +40,8 @@ import com.fabbitinc.server.application.workitem.usecase.result.AttachedFileResu
 import com.fabbitinc.server.application.workitem.usecase.result.CommentResult;
 import com.fabbitinc.server.application.workitem.usecase.result.CommentUserSummaryResult;
 import com.fabbitinc.server.application.workitem.usecase.result.SyncDiffResult;
+import com.fabbitinc.server.application.engineeringchange.usecase.command.CreateEcFromIssueCommand;
+import com.fabbitinc.server.presentation.engineeringchange.dto.request.CreateEcFromIssueRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.CreateEngineeringChangeRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncAffectedItemsRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncEngineeringChangeStepsRequest;
@@ -109,6 +112,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class EngineeringChangeController {
 
     private final EngineeringChangeQuery engineeringChangeQuery;
+    private final CreateEcFromIssueUseCase createEcFromIssueUseCase;
     private final CreateEngineeringChangeUseCase createEngineeringChangeUseCase;
     private final UpdateEngineeringChangeUseCase updateEngineeringChangeUseCase;
     private final SubmitEngineeringChangeUseCase submitEngineeringChangeUseCase;
@@ -206,6 +210,32 @@ public class EngineeringChangeController {
                                         step.sequence()
                                 ))
                                 .toList()
+                )
+        );
+        return toEngineeringChangeResponse(
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(result.engineeringChangeId()))
+        );
+    }
+
+    @Operation(
+            summary = "이슈로부터 설계변경을 생성합니다",
+            description = "이슈에 연결된 부품의 DRAFT 리비전을 영향 항목으로 자동 등록하고, 영향 분석 요약을 본문에 포함하여 설계변경을 생성합니다"
+    )
+    @PostMapping("/from-issue/{issueId}")
+    @ResponseStatus(HttpStatus.CREATED)
+    public EngineeringChangeResponse createEcFromIssue(
+            @Parameter(description = "원본 이슈 ID")
+            @PathVariable UUID issueId,
+            @Parameter(description = "이슈로부터 설계변경 생성 요청")
+            @Valid @RequestBody CreateEcFromIssueRequest request
+    ) {
+        CreateEngineeringChangeUseCase.CreateEngineeringChangeResult result = createEcFromIssueUseCase.execute(
+                new CreateEcFromIssueCommand(
+                        issueId,
+                        request.title(),
+                        request.body(),
+                        request.reviewerIds(),
+                        request.approverIds()
                 )
         );
         return toEngineeringChangeResponse(

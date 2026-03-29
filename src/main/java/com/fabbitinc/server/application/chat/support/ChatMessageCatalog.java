@@ -93,6 +93,18 @@ public class ChatMessageCatalog {
         return "연결 이슈";
     }
 
+    public String partImpactAnalysisStarted() {
+        return "부품 영향을 분석하는 중입니다";
+    }
+
+    public String partImpactAnalysisTraceCompleted() {
+        return "부품 영향 분석을 조회했습니다";
+    }
+
+    public String partImpactAnalysisTitle() {
+        return "부품 영향 분석";
+    }
+
     public String issueDraftStarted() {
         return "이슈 초안을 만드는 중입니다";
     }

@@ -5,6 +5,7 @@ import com.fabbitinc.server.application.issue.query.condition.IssueDetailConditi
 import com.fabbitinc.server.application.issue.query.condition.IssueListCondition;
 import com.fabbitinc.server.application.issue.query.condition.IssueLookupCondition;
 import com.fabbitinc.server.application.issue.query.condition.IssueTimelineCondition;
+import com.fabbitinc.server.application.issue.query.result.EcPrefillResult;
 import com.fabbitinc.server.application.issue.query.result.IssueDetailResult;
 import com.fabbitinc.server.application.issue.query.result.IssueListResult;
 import com.fabbitinc.server.application.issue.query.result.IssueLookupResult;
@@ -45,6 +46,7 @@ import com.fabbitinc.server.presentation.issue.dto.request.SyncLinkedEngineering
 import com.fabbitinc.server.presentation.issue.dto.request.SyncPartsRequest;
 import com.fabbitinc.server.presentation.issue.dto.request.SyncTeamAssigneesRequest;
 import com.fabbitinc.server.presentation.issue.dto.request.UpdateIssueRequest;
+import com.fabbitinc.server.presentation.issue.dto.response.EcPrefillResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.IssueListResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.IssueLookupItemResponse;
 import com.fabbitinc.server.presentation.issue.dto.response.IssueLookupResponse;
@@ -166,6 +168,35 @@ public class IssueController {
             @PathVariable UUID issueId
     ) {
         return toIssueResponse(issueQuery.getIssue(new IssueDetailCondition(issueId)));
+    }
+
+    @Operation(
+            summary = "이슈 기반 EC 사전 입력 데이터를 조회합니다",
+            description = "이슈에 연결된 부품 정보를 기반으로 EC 생성 시 사전 입력할 제목, 영향 항목 후보, 추천 검토자, 영향 분석 요약을 반환합니다"
+    )
+    @GetMapping("/{issueId}/ec-prefill")
+    public EcPrefillResponse getEcPrefill(
+            @Parameter(description = "이슈 ID")
+            @PathVariable UUID issueId
+    ) {
+        EcPrefillResult result = issueQuery.getEcPrefill(issueId);
+        return new EcPrefillResponse(
+                result.suggestedTitle(),
+                result.affectedItems().stream()
+                        .map(item -> new EcPrefillResponse.AffectedItemSuggestionResponse(
+                                item.partId(),
+                                item.partNumber(),
+                                item.revisionId(),
+                                item.revisionCode()
+                        ))
+                        .toList(),
+                result.suggestedReviewerIds(),
+                new EcPrefillResponse.ImpactSummaryResponse(
+                        result.impactSummary().affectedBomCount(),
+                        result.impactSummary().affectedProjectCount(),
+                        result.impactSummary().draftRevisionCount()
+                )
+        );
     }
 
     @Operation(

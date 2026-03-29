@@ -13,6 +13,7 @@ import com.fabbitinc.server.application.part.query.condition.BomTreeCondition;
 import com.fabbitinc.server.application.part.query.condition.BomTreeExportCondition;
 import com.fabbitinc.server.application.part.query.condition.FileItemsCondition;
 import com.fabbitinc.server.application.part.query.condition.PartBomCondition;
+import com.fabbitinc.server.application.part.query.condition.PartChangeHistoryCondition;
 import com.fabbitinc.server.application.part.query.condition.PartDetailCondition;
 import com.fabbitinc.server.application.part.query.condition.PartExportCondition;
 import com.fabbitinc.server.application.part.query.condition.PartFilesCondition;
@@ -30,6 +31,7 @@ import com.fabbitinc.server.application.part.query.result.BomTreeResult;
 import com.fabbitinc.server.application.part.query.result.CategoryLookupResult;
 import com.fabbitinc.server.application.part.query.result.CategoryStatsResult;
 import com.fabbitinc.server.application.part.query.result.PartBomResult;
+import com.fabbitinc.server.application.part.query.result.PartChangeHistoryResult;
 import com.fabbitinc.server.application.part.query.result.PartDetailResult;
 import com.fabbitinc.server.application.part.query.result.PartFilesResult;
 import com.fabbitinc.server.application.part.query.result.PartFilterOptionsResult;
@@ -816,7 +818,7 @@ public class PartQuery {
 
         BomDirection resolvedDirection = parseBomDirection(condition.direction());
         boolean reverse = resolvedDirection == BomDirection.REVERSE;
-        List<BomEdge> edges = fetchBomEdges(requestedRevision.getId(), reverse);
+        List<BomEdge> edges = fetchBomEdges(requestedRevision.getId(), reverse, MAX_BOM_DEPTH);
 
         Set<UUID> revisionIds = collectRevisionIds(edges, requestedRevision.getId());
         Map<UUID, PartRevision> revisionsById = loadPartRevisions(revisionIds);
@@ -1179,7 +1181,7 @@ public class PartQuery {
                 .orElse(false);
     }
 
-    private List<BomEdge> fetchBomEdges(UUID rootRevisionId, boolean reverse) {
+    List<BomEdge> fetchBomEdges(UUID rootRevisionId, boolean reverse, int maxDepth) {
         String sql = reverse
                 ? """
                         with recursive bom_cte as (
@@ -1238,7 +1240,7 @@ public class PartQuery {
 
         Query query = entityManager.createNativeQuery(sql);
         query.setParameter("rootRevisionId", rootRevisionId);
-        query.setParameter("maxDepth", MAX_BOM_DEPTH);
+        query.setParameter("maxDepth", maxDepth);
 
         @SuppressWarnings("unchecked")
         List<Object[]> rows = query.getResultList();
@@ -2729,7 +2731,7 @@ public class PartQuery {
     ) {
     }
 
-    private record BomEdge(
+    record BomEdge(
             UUID parentRevisionId,
             UUID childRevisionId,
             String lineNumber,

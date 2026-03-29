@@ -2,6 +2,8 @@ package com.fabbitinc.server.presentation.part.controller;
 
 import com.fabbitinc.server.application.part.query.result.BomTreeResult;
 import com.fabbitinc.server.application.part.query.result.CategoryLookupResult;
+import com.fabbitinc.server.application.part.query.result.PartImpactAnalysisResult;
+import com.fabbitinc.server.application.part.query.result.PartChangeHistoryResult;
 import com.fabbitinc.server.application.part.query.result.CategoryStatsResult;
 import com.fabbitinc.server.application.part.query.result.PartBomResult;
 import com.fabbitinc.server.application.part.query.result.PartDetailResult;
@@ -33,6 +35,8 @@ import com.fabbitinc.server.presentation.part.response.PartAttachmentItemRespons
 import com.fabbitinc.server.presentation.part.response.PartBomResponse;
 import com.fabbitinc.server.presentation.part.response.PartDetailResponse;
 import com.fabbitinc.server.presentation.part.response.PartFilesResponse;
+import com.fabbitinc.server.presentation.part.response.PartImpactAnalysisResponse;
+import com.fabbitinc.server.presentation.part.response.PartChangeHistoryResponse;
 import com.fabbitinc.server.presentation.part.response.PartFilterOptionsResponse;
 import com.fabbitinc.server.presentation.part.response.PartInProgressItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartInProgressListResponse;
@@ -414,6 +418,49 @@ final class PartResponseMapper {
                 result.pdfReady(),
                 result.webpReady(),
                 result.glbReady()
+        );
+    }
+
+    static PartChangeHistoryResponse toPartChangeHistoryResponse(PartChangeHistoryResult result) {
+        return new PartChangeHistoryResponse(
+                result.items().stream()
+                        .map(item -> new PartChangeHistoryResponse.PartChangeHistoryItemResponse(
+                                item.timestamp(),
+                                item.type(),
+                                item.referenceId(),
+                                item.referenceNumber(),
+                                item.title(),
+                                item.actorName()
+                        ))
+                        .toList()
+        );
+    }
+
+    static PartImpactAnalysisResponse toPartImpactAnalysisResponse(PartImpactAnalysisResult result) {
+        return new PartImpactAnalysisResponse(
+                result.bomItems().stream()
+                        .map(item -> new PartImpactAnalysisResponse.AffectedBomItemResponse(
+                                item.parentPartId(),
+                                item.parentPartNumber(),
+                                item.parentPartName(),
+                                item.parentRevisionCode(),
+                                item.level()
+                        ))
+                        .toList(),
+                result.projects().stream()
+                        .map(item -> new PartImpactAnalysisResponse.AffectedProjectResponse(
+                                item.projectId(),
+                                item.projectName()
+                        ))
+                        .toList(),
+                new PartImpactAnalysisResponse.SummaryResponse(
+                        result.summary().affectedBomCount(),
+                        result.summary().affectedProjectCount(),
+                        result.summary().draftRevisionCount(),
+                        result.summary().suggestedReviewerIds(),
+                        result.summary().truncated(),
+                        result.summary().totalCount()
+                )
         );
     }
 
