@@ -208,7 +208,11 @@ public class BomCompareQuery {
         Integer leftNumber = parseLineNumber(left);
         Integer rightNumber = parseLineNumber(right);
         if (leftNumber != null && rightNumber != null) {
-            return Integer.compare(leftNumber, rightNumber);
+            int compare = Integer.compare(leftNumber, rightNumber);
+            if (compare != 0) {
+                return compare;
+            }
+            return left.compareTo(right);
         }
         return left.compareTo(right);
     }

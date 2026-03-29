@@ -49,7 +49,7 @@ public class PreviewBomImportUseCase {
     public PreviewBomImportResult execute(PreviewBomImportCommand command) {
         currentAuthProvider.getCurrentAuth();
 
-        PartRevision parentRevision = partRevisionRepository.findById(command.revisionId())
+        PartRevision parentRevision = partRevisionRepository.findByIdAndPartId(command.revisionId(), command.partId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "리비전을 찾을 수 없습니다"));
         if (parentRevision.getStatus() != PartRevisionStatus.DRAFT) {
             throw new AppException(ErrorCode.PRECONDITION_FAILED, "DRAFT 상태의 리비전만 BOM 가져오기가 가능합니다");

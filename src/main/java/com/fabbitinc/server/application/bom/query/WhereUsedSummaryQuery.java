@@ -34,10 +34,13 @@ public class WhereUsedSummaryQuery {
     public WhereUsedSummaryResult get(WhereUsedSummaryCondition condition) {
         currentAuthProvider.getCurrentAuth();
 
-        PartRevision revision = partRevisionRepository.findById(condition.revisionId())
+        PartRevision revision = partRevisionRepository.findByIdAndPartId(condition.revisionId(), condition.partId())
                 .orElseThrow(() -> new AppException(
                         ErrorCode.NOT_FOUND,
-                        "PartRevision '%s'을(를) 찾을 수 없습니다".formatted(condition.revisionId())
+                        "Part '%s'의 PartRevision '%s'을(를) 찾을 수 없습니다".formatted(
+                                condition.partId(),
+                                condition.revisionId()
+                        )
                 ));
 
         List<EngineeringBomItem> bomItems = engineeringBomItemRepository
