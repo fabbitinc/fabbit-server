@@ -35,4 +35,6 @@ public interface EngineeringBomItemRepository extends JpaRepository<EngineeringB
             UUID parentPartRevisionId,
             UUID childPartRevisionId
     );
+
+    void deleteByParentPartRevisionId(UUID parentPartRevisionId);
 }
