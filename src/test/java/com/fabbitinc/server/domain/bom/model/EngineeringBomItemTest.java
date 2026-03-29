@@ -97,6 +97,76 @@ class EngineeringBomItemTest {
     }
 
     @Test
+    void changeChildPartRevision_하위_리비전을_변경한다() {
+        UUID parentRevisionId = UUID.randomUUID();
+        UUID originalChildId = UUID.randomUUID();
+        EngineeringBomItem item = EngineeringBomItem.add(
+                parentRevisionId,
+                "10",
+                originalChildId,
+                BigDecimal.ONE,
+                "{}"
+        );
+
+        UUID newChildId = UUID.randomUUID();
+        item.changeChildPartRevision(newChildId);
+
+        assertEquals(newChildId, item.getChildPartRevisionId());
+    }
+
+    @Test
+    void changeChildPartRevision_parent와_같으면_예외를_던진다() {
+        UUID parentRevisionId = UUID.randomUUID();
+        EngineeringBomItem item = EngineeringBomItem.add(
+                parentRevisionId,
+                "10",
+                UUID.randomUUID(),
+                BigDecimal.ONE,
+                "{}"
+        );
+
+        DomainException ex = assertThrows(
+                DomainException.class,
+                () -> item.changeChildPartRevision(parentRevisionId)
+        );
+
+        assertEquals(EngineeringBomItem.CODE_ENGINEERING_BOM_SELF_LINK_NOT_ALLOWED, ex.getDomainCode());
+    }
+
+    @Test
+    void changeLineNumber_줄번호를_변경한다() {
+        EngineeringBomItem item = EngineeringBomItem.add(
+                UUID.randomUUID(),
+                "10",
+                UUID.randomUUID(),
+                BigDecimal.ONE,
+                "{}"
+        );
+
+        item.changeLineNumber("20");
+
+        assertEquals("20", item.getLineNumber());
+    }
+
+    @Test
+    void changeLineNumber_빈_문자열이면_예외를_던진다() {
+        EngineeringBomItem item = EngineeringBomItem.add(
+                UUID.randomUUID(),
+                "10",
+                UUID.randomUUID(),
+                BigDecimal.ONE,
+                "{}"
+        );
+
+        DomainException ex = assertThrows(
+                DomainException.class,
+                () -> item.changeLineNumber("")
+        );
+
+        assertEquals(EngineeringBomItem.CODE_ENGINEERING_BOM_LINE_NUMBER_REQUIRED, ex.getDomainCode());
+    }
+
+    @Test
     void changeExtendedProperties_blank면_기본_json으로_정규화한다() {
         EngineeringBomItem item = EngineeringBomItem.add(
                 UUID.randomUUID(),
