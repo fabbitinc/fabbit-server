@@ -73,8 +73,12 @@ public class PartNumberCategoryService {
             throw new AppException(ErrorCode.CONFLICT, "사용 중인 채번 카테고리는 삭제할 수 없습니다: " + category.getName());
         }
 
-        partNumberSequenceRepository.findByCategoryIdForUpdate(categoryId)
-                .ifPresent(partNumberSequenceRepository::delete);
-        partNumberCategoryRepository.delete(category);
+        try {
+            partNumberSequenceRepository.findByCategoryIdForUpdate(categoryId)
+                    .ifPresent(partNumberSequenceRepository::delete);
+            partNumberCategoryRepository.delete(category);
+        } catch (DataIntegrityViolationException ex) {
+            throw new AppException(ErrorCode.CONFLICT, "사용 중인 채번 카테고리는 삭제할 수 없습니다: " + category.getName());
+        }
     }
 }

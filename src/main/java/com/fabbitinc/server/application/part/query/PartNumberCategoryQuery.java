@@ -51,7 +51,13 @@ public class PartNumberCategoryQuery {
         PartNumberSequence sequence = partNumberSequenceRepository.findByCategoryId(categoryId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "채번 시퀀스를 찾을 수 없습니다: " + categoryId));
 
-        String previewPartNumber = category.formatNumber(sequence.getCurrentValue() + 1);
+        int nextValue = sequence.getCurrentValue() + 1;
+        if (category.isSequenceExhausted(nextValue)) {
+            throw new AppException(ErrorCode.CONFLICT,
+                    "시퀀스 최대값에 도달했습니다. 카테고리 '%s'의 자릿수를 확장해 주세요".formatted(category.getName()));
+        }
+
+        String previewPartNumber = category.formatNumber(nextValue);
         return new PartNumberPreviewResult(previewPartNumber, PREVIEW_NOTE);
     }
 

@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.springframework.dao.DataIntegrityViolationException;
+
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.domain.part.model.PartNumberCategory;
@@ -47,6 +49,24 @@ class PartNumberCategoryServiceTest {
         PartNumberCategory category = PartNumberCategory.create("PCB", "PCB", "-", 4);
         when(partNumberCategoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
         when(partRepository.countByNumberingCategoryId(categoryId)).thenReturn(1L);
+
+        PartNumberCategoryService service = createService();
+
+        AppException ex = assertThrows(AppException.class, () -> service.delete(categoryId));
+        assertEquals(ErrorCode.CONFLICT, ex.getErrorCode());
+    }
+
+    @Test
+    void delete_삭제직전_fk충돌이발생해도_conflict로매핑한다() {
+        UUID categoryId = UUID.randomUUID();
+        PartNumberCategory category = PartNumberCategory.create("PCB", "PCB", "-", 4);
+        PartNumberSequence sequence = PartNumberSequence.createFor(categoryId);
+        when(partNumberCategoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
+        when(partRepository.countByNumberingCategoryId(categoryId)).thenReturn(0L);
+        when(partNumberSequenceRepository.findByCategoryIdForUpdate(categoryId)).thenReturn(Optional.of(sequence));
+        org.mockito.Mockito.doThrow(new DataIntegrityViolationException("fk"))
+                .when(partNumberCategoryRepository)
+                .delete(category);
 
         PartNumberCategoryService service = createService();
 

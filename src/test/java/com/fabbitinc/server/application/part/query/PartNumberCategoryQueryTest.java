@@ -2,11 +2,14 @@ package com.fabbitinc.server.application.part.query;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
+import com.fabbitinc.server.application.common.exception.AppException;
+import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.part.query.result.PartNumberAvailabilityResult;
 import com.fabbitinc.server.application.part.query.result.PartNumberPreviewResult;
 import com.fabbitinc.server.domain.part.model.Part;
@@ -71,6 +74,24 @@ class PartNumberCategoryQueryTest {
         PartNumberAvailabilityResult result = query.lookup("PCB-0001");
 
         assertFalse(result.available());
+    }
+
+    @Test
+    void get_시퀀스가_소진되면_conflict를_던진다() throws Exception {
+        UUID categoryId = UUID.randomUUID();
+        when(currentAuthProvider.getCurrentAuth()).thenReturn(new AuthContext(UUID.randomUUID(), "a@b.c", UUID.randomUUID(), null));
+
+        PartNumberCategory category = PartNumberCategory.create("PCB", "PCB", "-", 4);
+        PartNumberSequence sequence = PartNumberSequence.createFor(categoryId);
+        setCurrentValue(sequence, 9999);
+
+        when(partNumberCategoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
+        when(partNumberSequenceRepository.findByCategoryId(categoryId)).thenReturn(Optional.of(sequence));
+
+        PartNumberCategoryQuery query = createQuery();
+        AppException ex = assertThrows(AppException.class, () -> query.get(categoryId));
+
+        assertEquals(ErrorCode.CONFLICT, ex.getErrorCode());
     }
 
     private PartNumberCategoryQuery createQuery() {
