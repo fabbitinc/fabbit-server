@@ -21,12 +21,6 @@ public class UpdatePartRevisionRequest {
     @Schema(description = "설명", example = "체결용 표준 부품")
     private String description;
 
-    @Schema(description = "카테고리", example = "FASTENER")
-    @Size(max = 100, message = "category는 최대 100자여야 합니다") private String category;
-
-    @Schema(description = "팬텀 부품 여부", example = "false")
-    private Boolean phantom;
-
     @Schema(description = "리드타임(일)", example = "7")
     @Min(value = 0, message = "lead_time_days는 0 이상이어야 합니다") private Integer leadTimeDays;
 
@@ -40,8 +34,6 @@ public class UpdatePartRevisionRequest {
     private boolean materialSet;
     private boolean unitSet;
     private boolean descriptionSet;
-    private boolean categorySet;
-    private boolean phantomSet;
     private boolean leadTimeDaysSet;
     private boolean extendedPropertiesSet;
 
@@ -85,26 +77,6 @@ public class UpdatePartRevisionRequest {
         this.descriptionSet = true;
     }
 
-    public String getCategory() {
-        return category;
-    }
-
-    @JsonSetter("category")
-    public void setCategory(String category) {
-        this.category = category;
-        this.categorySet = true;
-    }
-
-    public Boolean getPhantom() {
-        return phantom;
-    }
-
-    @JsonSetter("is_phantom")
-    public void setPhantom(Boolean phantom) {
-        this.phantom = phantom;
-        this.phantomSet = true;
-    }
-
     public Integer getLeadTimeDays() {
         return leadTimeDays;
     }
@@ -139,14 +111,6 @@ public class UpdatePartRevisionRequest {
 
     public boolean isDescriptionSet() {
         return descriptionSet;
-    }
-
-    public boolean isCategorySet() {
-        return categorySet;
-    }
-
-    public boolean isPhantomSet() {
-        return phantomSet;
     }
 
     public boolean isLeadTimeDaysSet() {

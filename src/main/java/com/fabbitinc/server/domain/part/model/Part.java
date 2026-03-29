@@ -53,14 +53,37 @@ public class Part extends AbstractCreatedEntity implements AggregateRoot {
     @Column(name = "lifecycle_state", nullable = false, length = 50)
     private PartLifecycleState lifecycleState;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "item_type", length = 30)
+    private PartItemType itemType;
+
+    @Column(name = "numbering_category_id")
+    private UUID numberingCategoryId;
+
     private Part(String partNumber) {
         super(UuidV7Generator.next());
         this.partNumber = validatePartNumber(partNumber);
         this.lifecycleState = PartLifecycleState.ACTIVE;
     }
 
+    private Part(String partNumber, UUID numberingCategoryId, PartItemType itemType) {
+        super(UuidV7Generator.next());
+        this.partNumber = validatePartNumber(partNumber);
+        this.lifecycleState = PartLifecycleState.ACTIVE;
+        this.numberingCategoryId = numberingCategoryId;
+        this.itemType = itemType;
+    }
+
     public static Part create(String partNumber) {
         return new Part(partNumber);
+    }
+
+    public static Part create(String partNumber, UUID numberingCategoryId, PartItemType itemType) {
+        return new Part(partNumber, numberingCategoryId, itemType);
+    }
+
+    public void changeItemType(PartItemType itemType) {
+        this.itemType = itemType;
     }
 
     public void changeLifecycleState(PartLifecycleState targetState) {
@@ -110,6 +133,6 @@ public class Part extends AbstractCreatedEntity implements AggregateRoot {
         if (trimmed.length() > MAX_PART_NUMBER_LENGTH) {
             throw new DomainException(CODE_PART_NUMBER_TOO_LONG, "품번은 100자 이하여야 합니다");
         }
-        return PartRouteSegmentPolicy.validatePartNumber(trimmed, CODE_PART_NUMBER_INVALID_FORMAT);
+        return trimmed;
     }
 }

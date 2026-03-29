@@ -1,5 +1,6 @@
 package com.fabbitinc.server.application.part.query.result;
 
+import com.fabbitinc.server.domain.part.model.PartItemType;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import java.util.Map;
@@ -10,6 +11,7 @@ public record PartDetailResult(
         UUID revisionId,
         PartRevisionStatus revisionStatus,
         String partNumber,
+        UUID numberingCategoryId,
         UUID baseRevisionId,
         String baseRevisionCode,
         String name,
@@ -17,9 +19,8 @@ public record PartDetailResult(
         String material,
         String unit,
         String description,
-        String category,
         PartLifecycleState lifecycleState,
-        Boolean isPhantom,
+        PartItemType itemType,
         Integer leadTimeDays,
         Map<String, Object> extendedProperties,
         PartPreviewResult preview,

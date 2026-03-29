@@ -91,15 +91,15 @@ public final class ManufacturingOntology {
                                             List.of("'분류'", "'유형'", "'구분'", "'Type'", "'Category'")
                                     ),
                                     property(
-                                            "is_phantom",
-                                            "팬텀 조립품 여부",
-                                            PropertyDataType.BOOLEAN,
+                                            "item_type",
+                                            "부품 유형",
+                                            PropertyDataType.STRING,
                                             false,
                                             false,
                                             false,
-                                            "실제 재고로 관리되지 않지만 BOM 구조상 필요한 논리적 조립품을 표시. Phantom이면 MRP 전개 시 이 레벨을 건너뛰고 하위 부품을 직접 소요로 계산",
-                                            List.of("true(가상 조립품)", "false(실물 부품)"),
-                                            List.of("'팬텀'", "'Phantom'", "'가상조립'")
+                                            "부품의 조달 유형을 나타냄. MANUFACTURED(자체 제조), PURCHASED(구매), SUBCONTRACTED(외주), SERVICE(서비스), PHANTOM(가상 조립품 - MRP 전개 시 이 레벨을 건너뛰고 하위 부품을 직접 소요로 계산)",
+                                            List.of("'MANUFACTURED'(자체 제조)", "'PURCHASED'(구매)", "'SUBCONTRACTED'(외주)", "'SERVICE'(서비스)", "'PHANTOM'(가상 조립품)"),
+                                            List.of("'부품유형'", "'유형'", "'Item Type'", "'조달유형'")
                                     ),
                                     property(
                                             "lifecycle_state",

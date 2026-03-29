@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 public interface PartRevisionRepository extends JpaRepository<PartRevision, UUID> {
@@ -19,10 +18,6 @@ public interface PartRevisionRepository extends JpaRepository<PartRevision, UUID
     Optional<PartRevision> findByIdAndPartId(UUID id, UUID partId);
 
     boolean existsByStatusIn(Collection<PartRevisionStatus> statuses);
-
-    boolean existsByCategory(String category);
-
-    long countByCategory(String category);
 
     @Query(
             value = "select count(*) from part_revisions where jsonb_exists(extended_properties, ?1)",

@@ -9,10 +9,6 @@ public record PartRevisionDraftChanges(
         boolean unitSet,
         String description,
         boolean descriptionSet,
-        String category,
-        boolean categorySet,
-        Boolean phantom,
-        boolean phantomSet,
         Integer leadTimeDays,
         boolean leadTimeDaysSet,
         String extendedProperties,
@@ -23,8 +19,6 @@ public record PartRevisionDraftChanges(
                 || materialSet
                 || unitSet
                 || descriptionSet
-                || categorySet
-                || phantomSet
                 || leadTimeDaysSet
                 || extendedPropertiesSet;
     }

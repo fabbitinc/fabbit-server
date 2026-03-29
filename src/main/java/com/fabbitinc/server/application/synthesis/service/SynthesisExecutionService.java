@@ -20,6 +20,7 @@ import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.mapping.model.MappingRevision;
 import com.fabbitinc.server.domain.mapping.repository.MappingRevisionRepository;
 import com.fabbitinc.server.domain.part.model.Part;
+import com.fabbitinc.server.domain.part.model.PartItemType;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType;
@@ -285,11 +286,10 @@ public class SynthesisExecutionService {
         return new PartNodeValues(
                 partNumber,
                 resolveNodeTextProperty(row, node, "name"),
-                resolveNodeTextProperty(row, node, "category"),
                 resolveNodeTextProperty(row, node, "material"),
                 resolveNodeTextProperty(row, node, "unit"),
                 resolveNodeTextProperty(row, node, "description"),
-                resolveNodeBooleanProperty(row, node, "is_phantom"),
+                parseItemType(resolveNodeTextProperty(row, node, "item_type")),
                 parseLifecycleState(resolveNodeTextProperty(row, node, "lifecycle_state")),
                 resolveNodeIntegerProperty(row, node, "lead_time_days"),
                 resolveNodeExtendedProperties(row, node)
@@ -306,6 +306,20 @@ public class SynthesisExecutionService {
             throw new AppException(
                     ErrorCode.VALIDATION_ERROR,
                     "유효하지 않은 lifecycle_state입니다: " + rawLifecycleState
+            );
+        }
+    }
+
+    private PartItemType parseItemType(String rawItemType) {
+        if (rawItemType == null || rawItemType.isBlank()) {
+            return null;
+        }
+        try {
+            return PartItemType.valueOf(rawItemType.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "유효하지 않은 item_type입니다: " + rawItemType
             );
         }
     }
@@ -489,10 +503,6 @@ public class SynthesisExecutionService {
                 revision.changeName(values.name());
                 changed = true;
             }
-            if (shouldApplyString(values.category(), revision.getCategory(), overwrite)) {
-                revision.changeCategory(values.category());
-                changed = true;
-            }
             if (shouldApplyString(values.material(), revision.getMaterial(), overwrite)) {
                 revision.changeMaterial(values.material());
                 changed = true;
@@ -505,8 +515,8 @@ public class SynthesisExecutionService {
                 revision.changeDescription(values.description());
                 changed = true;
             }
-            if (shouldApplyObject(values.phantom(), revision.getPhantom(), overwrite)) {
-                applyPhantom(revision, values.phantom());
+            if (shouldApplyObject(values.itemType(), existing.getItemType(), overwrite)) {
+                existing.changeItemType(values.itemType());
                 changed = true;
             }
             if (shouldApplyObject(values.lifecycleState(), existing.getLifecycleState(), overwrite)) {
@@ -536,14 +546,14 @@ public class SynthesisExecutionService {
         }
 
         Part created = Part.create(values.partNumber());
+        if (values.itemType() != null) {
+            created.changeItemType(values.itemType());
+        }
         if (values.lifecycleState() != null) {
             created.forceLifecycleState(values.lifecycleState());
         }
         partRepository.save(created);
         PartRevision revision = PartRevision.createInitialDraft(created, values.name(), requestedBy);
-        if (values.category() != null) {
-            revision.changeCategory(values.category());
-        }
         if (values.material() != null) {
             revision.changeMaterial(values.material());
         }
@@ -552,9 +562,6 @@ public class SynthesisExecutionService {
         }
         if (values.description() != null) {
             revision.changeDescription(values.description());
-        }
-        if (values.phantom() != null) {
-            applyPhantom(revision, values.phantom());
         }
         if (values.leadTimeDays() != null) {
             revision.changeLeadTimeDays(values.leadTimeDays());
@@ -909,18 +916,6 @@ public class SynthesisExecutionService {
         return normalizeText(rootContext.get(label));
     }
 
-    private void applyPhantom(PartRevision revision, Boolean phantom) {
-        if (phantom == null) {
-            revision.clearPhantomFlag();
-            return;
-        }
-        if (phantom) {
-            revision.markPhantom();
-            return;
-        }
-        revision.markReal();
-    }
-
     private void applyLifecycleState(Part part, PartLifecycleState lifecycleState) {
         if (lifecycleState == null) {
             part.resetLifecycleState();
@@ -1161,11 +1156,10 @@ public class SynthesisExecutionService {
     private record PartNodeValues(
             String partNumber,
             String name,
-            String category,
             String material,
             String unit,
             String description,
-            Boolean phantom,
+            PartItemType itemType,
             PartLifecycleState lifecycleState,
             Integer leadTimeDays,
             Map<String, Object> extendedProperties
