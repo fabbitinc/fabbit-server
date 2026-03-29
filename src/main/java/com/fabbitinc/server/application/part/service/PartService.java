@@ -39,6 +39,9 @@ public class PartService {
     public PartRevision createPart(CreatePartInput input, UUID actorId) {
         try {
             String partNumber = input.partNumber();
+            if (partNumber != null && partNumber.isBlank()) {
+                partNumber = null;
+            }
             if (partNumber == null && input.numberingCategoryId() != null) {
                 partNumber = partNumberService.generate(input.numberingCategoryId());
             } else if (partNumber == null) {

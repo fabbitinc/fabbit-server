@@ -88,6 +88,27 @@ class PartServiceTest {
   }
 
   @Test
+  void createPart_빈문자열_품번이면_자동채번을_수행한다() {
+    UUID actorId = UUID.randomUUID();
+    UUID categoryId = UUID.randomUUID();
+    when(partNumberService.generate(categoryId)).thenReturn("AUTO-0001");
+    when(partRepository.findByPartNumber("AUTO-0001")).thenReturn(Optional.empty());
+    when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(partRevisionRepository.save(any(PartRevision.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+    PartService service = createService();
+
+    PartRevision createdDraft =
+        service.createPart(
+            new CreatePartInput(
+                "   ", categoryId, null, "Auto Bolt", null, null, null, null, null, null, null),
+            actorId);
+
+    verify(partNumberService).generate(categoryId);
+    assertEquals("AUTO-0001", createdDraft.getPartNumber());
+  }
+
+  @Test
   void createPart_속성과_수명주기상태를_저장한다() throws Exception {
     UUID actorId = UUID.randomUUID();
     Map<String, Object> extendedProperties = Map.of("weight", 1.2, "material_code", "AL6061");
