@@ -69,7 +69,7 @@ public class PropertyController {
     private final ReorderPropertyUseCase reorderPropertyUseCase;
     private final UpdatePropertyDefinitionUseCase updatePropertyDefinitionUseCase;
 
-    @Operation(summary = "속성 메타 목록을 조회합니다", description = "시스템 속성과 커스텀 속성을 통합한 최종 property catalog 목록을 조회합니다")
+    @Operation(operationId = "propertyListMeta", summary = "속성 메타 목록을 조회합니다", description = "시스템 속성과 커스텀 속성을 통합한 최종 property catalog 목록을 조회합니다")
     @GetMapping("/meta")
     public PropertyMetaListResponse listMeta(
             @Parameter(description = "속성 소유 타입", example = "PART")
@@ -80,7 +80,7 @@ public class PropertyController {
         return toPropertyMetaListResponse(propertyQuery.list(new PropertyMetaListCondition(ownerType, includeInactive)));
     }
 
-    @Operation(summary = "커스텀 속성을 생성합니다", description = "조직 관리자 권한으로 커스텀 속성 정의를 생성합니다")
+    @Operation(operationId = "propertyCreatePropertyDefinition", summary = "커스텀 속성을 생성합니다", description = "조직 관리자 권한으로 커스텀 속성 정의를 생성합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "생성 성공"),
             @ApiResponse(responseCode = "409", description = "리소스 충돌"),
@@ -108,7 +108,7 @@ public class PropertyController {
         )));
     }
 
-    @Operation(summary = "속성을 수정합니다", description = "조직 관리자 권한으로 시스템/커스텀 속성 정의를 부분 수정합니다")
+    @Operation(operationId = "propertyUpdatePropertyDefinition", summary = "속성을 수정합니다", description = "조직 관리자 권한으로 시스템/커스텀 속성 정의를 부분 수정합니다")
     @PatchMapping("/definitions/{ownerType}/{propertyKey}")
     public PropertyMetaResponse updatePropertyDefinition(
             @Parameter(description = "속성 소유 타입", example = "PART")
@@ -146,7 +146,7 @@ public class PropertyController {
         )));
     }
 
-    @Operation(summary = "속성을 삭제합니다", description = "조직 관리자 권한으로 커스텀 속성 정의를 삭제합니다. 시스템 속성은 삭제할 수 없습니다")
+    @Operation(operationId = "propertyDeletePropertyDefinition", summary = "속성을 삭제합니다", description = "조직 관리자 권한으로 커스텀 속성 정의를 삭제합니다. 시스템 속성은 삭제할 수 없습니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "삭제 성공"),
             @ApiResponse(responseCode = "409", description = "사용 중인 속성이라 삭제 불가")
@@ -162,7 +162,7 @@ public class PropertyController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "속성 순서를 변경합니다", description = "조직 관리자 권한으로 속성의 최종 순서를 한 번에 변경합니다")
+    @Operation(operationId = "propertyReorder", summary = "속성 순서를 변경합니다", description = "조직 관리자 권한으로 속성의 최종 순서를 한 번에 변경합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "순서 변경 성공")
     })

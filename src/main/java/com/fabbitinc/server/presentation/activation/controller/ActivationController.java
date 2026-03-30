@@ -47,6 +47,7 @@ public class ActivationController {
     private final ActivationQuery activationQuery;
 
     @Operation(
+            operationId = "activationHealthCheck",
             summary = "그래프/관계 데이터 상태를 점검하여 이슈를 반환합니다",
             description = "그래프/관계 데이터 상태를 점검하여 이슈를 반환합니다"
     )
@@ -64,6 +65,7 @@ public class ActivationController {
     }
 
     @Operation(
+            operationId = "activationQueryGraph",
             summary = "자연어 질문을 실행해 탐색 결과와 요약 답변을 반환합니다",
             description = "자연어 질문을 실행해 탐색 결과와 요약 답변을 반환합니다"
     )
@@ -83,6 +85,7 @@ public class ActivationController {
     }
 
     @Operation(
+            operationId = "activationGetStarters",
             summary = "초기 탐색용 추천 질문 목록을 조회합니다",
             description = "초기 탐색용 추천 질문 목록을 조회합니다"
     )

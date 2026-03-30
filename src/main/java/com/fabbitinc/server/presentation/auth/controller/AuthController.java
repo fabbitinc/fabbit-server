@@ -95,6 +95,7 @@ public class AuthController {
     private final AppProperties appProperties;
 
     @Operation(
+            operationId = "authGetPlans",
             summary = "플랜 목록 조회",
             description = "워크스페이스 시작 플랜 목록과 좌석 단가, 멤버 정책, 스토리지 기본 정책, AI 과금 모드, 현재 가입 가능 여부를 조회합니다"
     )
@@ -112,7 +113,7 @@ public class AuthController {
                 .toList();
     }
 
-    @Operation(summary = "워크스페이스 slug 중복/형식 검사", description = "워크스페이스 slug 중복/형식 검사")
+    @Operation(operationId = "authCheckSlug", summary = "워크스페이스 slug 중복/형식 검사", description = "워크스페이스 slug 중복/형식 검사")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "검사 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -130,7 +131,7 @@ public class AuthController {
         return new CheckSlugResponse(result.available(), result.message(), result.suggestion());
     }
 
-    @Operation(summary = "이메일 중복 확인", description = "이메일 중복 확인")
+    @Operation(operationId = "authCheckEmail", summary = "이메일 중복 확인", description = "이메일 중복 확인")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "검사 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -148,7 +149,7 @@ public class AuthController {
         return new CheckEmailResponse(result.available(), result.message());
     }
 
-    @Operation(summary = "Origin 기반 워크스페이스 정보 조회", description = "Origin 기반 워크스페이스 정보 조회")
+    @Operation(operationId = "authGetSite", summary = "Origin 기반 워크스페이스 정보 조회", description = "Origin 기반 워크스페이스 정보 조회")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -165,7 +166,7 @@ public class AuthController {
         return new SiteResponse(result.slug(), result.name(), result.logoUrl());
     }
 
-    @Operation(summary = "이메일 인증 코드 발송", description = "이메일 인증 코드 발송")
+    @Operation(operationId = "authSendVerification", summary = "이메일 인증 코드 발송", description = "이메일 인증 코드 발송")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "인증코드 발송 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -186,7 +187,7 @@ public class AuthController {
         return new SendVerificationResponse(result.message());
     }
 
-    @Operation(summary = "이메일 인증 코드 검증", description = "이메일 인증 코드 검증")
+    @Operation(operationId = "authVerifyEmail", summary = "이메일 인증 코드 검증", description = "이메일 인증 코드 검증")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "이메일 인증 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -206,6 +207,7 @@ public class AuthController {
     }
 
     @Operation(
+            operationId = "authRegister",
             summary = "회원가입",
             description = "이메일 인증이 끝난 사용자가 워크스페이스를 생성하고 시작 플랜을 선택합니다. 현재 가입으로 시작할 수 있는 플랜은 Starter와 Team이며, 유료 플랜이면 ownerSeatType을 함께 지정해야 합니다"
     )
@@ -243,7 +245,7 @@ public class AuthController {
         );
     }
 
-    @Operation(summary = "로그인", description = "로그인")
+    @Operation(operationId = "authLogin", summary = "로그인", description = "로그인")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "로그인 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -276,7 +278,7 @@ public class AuthController {
         );
     }
 
-    @Operation(summary = "리프레시 토큰으로 액세스 토큰 재발급", description = "리프레시 토큰으로 액세스 토큰 재발급")
+    @Operation(operationId = "authRefresh", summary = "리프레시 토큰으로 액세스 토큰 재발급", description = "리프레시 토큰으로 액세스 토큰 재발급")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "재발급 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -295,7 +297,7 @@ public class AuthController {
         return toTokenResponse(result.tokens());
     }
 
-    @Operation(summary = "리프레시 토큰 폐기", description = "리프레시 토큰 폐기")
+    @Operation(operationId = "authLogout", summary = "리프레시 토큰 폐기", description = "리프레시 토큰 폐기")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "로그아웃 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -312,7 +314,7 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "초대 토큰 검증", description = "초대 토큰 검증")
+    @Operation(operationId = "authVerifyInvitation", summary = "초대 토큰 검증", description = "초대 토큰 검증")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "검증 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -339,7 +341,7 @@ public class AuthController {
         );
     }
 
-    @Operation(summary = "조직 초대 수락", description = "조직 초대 수락")
+    @Operation(operationId = "authAcceptInvitation", summary = "조직 초대 수락", description = "조직 초대 수락")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "수락 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),

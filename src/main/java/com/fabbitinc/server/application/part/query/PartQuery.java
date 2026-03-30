@@ -759,6 +759,7 @@ public class PartQuery {
                     PartRevision childRevision = relatedRevisions.get(item.getChildPartRevisionId());
                     Part childPart = childRevision == null ? null : relatedParts.get(childRevision.getPartId());
                     return new PartBomResult.Child(
+                            item.getId(),
                             childPart == null ? null : childPart.getId(),
                             childRevision == null ? null : childRevision.getId(),
                             childPart == null ? null : childPart.getPartNumber(),
@@ -784,6 +785,7 @@ public class PartQuery {
                     PartRevision parentRevision = relatedRevisions.get(item.getParentPartRevisionId());
                     Part parentPart = parentRevision == null ? null : relatedParts.get(parentRevision.getPartId());
                     return new PartBomResult.Parent(
+                            item.getId(),
                             parentPart == null ? null : parentPart.getId(),
                             parentRevision == null ? null : parentRevision.getId(),
                             parentPart == null ? null : parentPart.getPartNumber(),

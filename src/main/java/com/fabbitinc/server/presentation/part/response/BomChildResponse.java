@@ -8,6 +8,7 @@ import java.util.UUID;
 
 @Schema(description = "응답 DTO")
 public record BomChildResponse(
+        UUID bomItemId,
         UUID partId,
         UUID revisionId,
         String partNumber,

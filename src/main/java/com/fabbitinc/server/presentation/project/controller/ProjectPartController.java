@@ -50,7 +50,7 @@ public class ProjectPartController {
     private final LinkProjectPartsUseCase linkProjectPartsUseCase;
     private final UnlinkProjectPartsUseCase unlinkProjectPartsUseCase;
 
-    @Operation(summary = "부품 picker용 lookup 목록을 조회합니다", description = "부품 picker용 lookup 목록을 조회합니다")
+    @Operation(operationId = "projectPartLookupParts", summary = "부품 picker용 lookup 목록을 조회합니다", description = "부품 picker용 lookup 목록을 조회합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -76,7 +76,7 @@ public class ProjectPartController {
         return new ProjectPartLookupResponse(result.items().stream().map(this::toProjectPartLookupItemResponse).toList());
     }
 
-    @Operation(summary = "프로젝트에 부품을 배치 연결합니다", description = "프로젝트에 부품을 배치 연결합니다")
+    @Operation(operationId = "projectPartLinkParts", summary = "프로젝트에 부품을 배치 연결합니다", description = "프로젝트에 부품을 배치 연결합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "연결 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -97,7 +97,7 @@ public class ProjectPartController {
         return new LinkPartsResponse(result.linkedCount());
     }
 
-    @Operation(summary = "프로젝트에서 부품을 배치 해제합니다", description = "프로젝트에서 부품을 배치 해제합니다")
+    @Operation(operationId = "projectPartUnlinkParts", summary = "프로젝트에서 부품을 배치 해제합니다", description = "프로젝트에서 부품을 배치 해제합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "해제 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -116,7 +116,7 @@ public class ProjectPartController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "프로젝트에 연결된 부품 목록을 조회합니다", description = "프로젝트에 연결된 부품 목록을 조회합니다")
+    @Operation(operationId = "projectPartGet", summary = "프로젝트에 연결된 부품 목록을 조회합니다", description = "프로젝트에 연결된 부품 목록을 조회합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),

@@ -11,6 +11,7 @@ public record PartBomResult(
         List<Parent> parents
 ) {
     public record Child(
+            UUID bomItemId,
             UUID partId,
             UUID revisionId,
             String partNumber,
@@ -24,6 +25,7 @@ public record PartBomResult(
     }
 
     public record Parent(
+            UUID bomItemId,
             UUID partId,
             UUID revisionId,
             String partNumber,

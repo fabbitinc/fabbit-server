@@ -30,6 +30,7 @@ public class ChangeStatisticsController {
     private final ChangeStatisticsQuery changeStatisticsQuery;
 
     @Operation(
+            operationId = "changeStatisticsGet",
             summary = "변경 통계를 조회합니다",
             description = "조직 전체의 엔지니어링 변경 통계를 조회합니다. 전체 릴리즈 건수, 이번 달 릴리즈 건수, 평균 승인 소요일, 변경 빈도 상위 파트를 포함합니다."
     )

@@ -46,6 +46,7 @@ public class SynthesisController {
     private final SynthesisQuery synthesisQuery;
 
     @Operation(
+            operationId = "synthesisStart",
             summary = "매핑 기반 합성 배치를 시작하고 batch/job 정보를 반환합니다",
             description = "매핑 기반 합성 배치를 시작하고 batch/job 정보를 반환합니다"
     )
@@ -74,6 +75,7 @@ public class SynthesisController {
     }
 
     @Operation(
+            operationId = "synthesisGetSynthesisBatch",
             summary = "합성 배치 진행 상태를 조회합니다",
             description = "합성 배치 진행 상태를 조회합니다"
     )
@@ -92,6 +94,7 @@ public class SynthesisController {
     }
 
     @Operation(
+            operationId = "synthesisGetSynthesisJob",
             summary = "개별 합성 작업 상태를 조회합니다",
             description = "개별 합성 작업 상태를 조회합니다"
     )
@@ -110,6 +113,7 @@ public class SynthesisController {
     }
 
     @Operation(
+            operationId = "synthesisListSynthesisJobs",
             summary = "전체 합성 작업 이력을 최신순으로 조회합니다",
             description = "전체 합성 작업 이력을 최신순으로 조회합니다"
     )

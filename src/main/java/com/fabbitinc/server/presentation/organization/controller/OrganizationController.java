@@ -47,6 +47,7 @@ public class OrganizationController {
     private final DeleteOrganizationProfileImageUseCase deleteProfileImageUseCase;
 
     @Operation(
+            operationId = "organizationCreate",
             summary = "스코프 토큰으로 워크스페이스를 생성하고 access/refresh 토큰을 발급합니다",
             description = "scope=create_org 토큰으로 워크스페이스를 생성하고 시작 플랜을 선택합니다. 현재 가입으로 시작할 수 있는 플랜은 Starter와 Team이며, 유료 플랜이면 ownerSeatType을 함께 지정해야 합니다"
     )
@@ -87,6 +88,7 @@ public class OrganizationController {
     }
 
     @Operation(
+            operationId = "organizationSwitch",
             summary = "대상 워크스페이스 멤버십을 확인한 뒤 새 access/refresh 토큰을 발급합니다",
             description = "대상 워크스페이스 멤버십을 확인한 뒤 새 access/refresh 토큰을 발급합니다"
     )
@@ -120,6 +122,7 @@ public class OrganizationController {
     }
 
     @Operation(
+            operationId = "organizationSetProfileImage",
             summary = "업로드 완료된 파일(file_id)을 조직 프로필 이미지로 설정합니다. ADMIN 이상 권한이 필요합니다",
             description = "업로드 완료된 파일(file_id)을 조직 프로필 이미지로 설정합니다. ADMIN 이상 권한이 필요합니다"
     )
@@ -142,6 +145,7 @@ public class OrganizationController {
     }
 
     @Operation(
+            operationId = "organizationDeleteProfileImage",
             summary = "조직 프로필 이미지를 제거하고 연결된 파일을 소프트 삭제합니다. ADMIN 이상 권한이 필요합니다",
             description = "조직 프로필 이미지를 제거하고 연결된 파일을 소프트 삭제합니다. ADMIN 이상 권한이 필요합니다"
     )

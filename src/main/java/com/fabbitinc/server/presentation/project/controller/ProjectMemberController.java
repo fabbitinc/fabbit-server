@@ -52,7 +52,7 @@ public class ProjectMemberController {
     private final AddProjectMembersUseCase addProjectMembersUseCase;
     private final RemoveProjectMembersUseCase removeProjectMembersUseCase;
 
-    @Operation(summary = "프로젝트 멤버 picker용 lookup 목록을 조회합니다", description = "프로젝트 멤버 picker용 lookup 목록을 조회합니다")
+    @Operation(operationId = "projectMemberLookupMembers", summary = "프로젝트 멤버 picker용 lookup 목록을 조회합니다", description = "프로젝트 멤버 picker용 lookup 목록을 조회합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -76,7 +76,7 @@ public class ProjectMemberController {
         return new MemberLookupResponse(result.items().stream().map(this::toProjectUserSummaryResponse).toList());
     }
 
-    @Operation(summary = "프로젝트 멤버 목록을 조회합니다", description = "프로젝트 멤버 목록을 조회합니다")
+    @Operation(operationId = "projectMemberList", summary = "프로젝트 멤버 목록을 조회합니다", description = "프로젝트 멤버 목록을 조회합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -93,7 +93,7 @@ public class ProjectMemberController {
         return new ProjectMemberListResponse(result.items().stream().map(this::toProjectMemberSummaryResponse).toList());
     }
 
-    @Operation(summary = "프로젝트에 멤버를 배치 추가합니다", description = "프로젝트에 멤버를 배치 추가합니다")
+    @Operation(operationId = "projectMemberAdd", summary = "프로젝트에 멤버를 배치 추가합니다", description = "프로젝트에 멤버를 배치 추가합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "추가 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -115,7 +115,7 @@ public class ProjectMemberController {
         return new ManageMembersResponse(result.count());
     }
 
-    @Operation(summary = "프로젝트에서 멤버를 배치 제거합니다", description = "프로젝트에서 멤버를 배치 제거합니다")
+    @Operation(operationId = "projectMemberRemove", summary = "프로젝트에서 멤버를 배치 제거합니다", description = "프로젝트에서 멤버를 배치 제거합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "제거 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),

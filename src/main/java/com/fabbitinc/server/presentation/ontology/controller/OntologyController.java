@@ -31,6 +31,7 @@ public class OntologyController {
     private final OntologyQuery ontologyQuery;
 
     @Operation(
+            operationId = "ontologyGetOntologySchema",
             summary = "온톨로지 스키마(노드/관계 정의)를 조회합니다",
             description = "온톨로지 스키마(노드/관계 정의)를 조회합니다"
     )
@@ -47,6 +48,7 @@ public class OntologyController {
     }
 
     @Operation(
+            operationId = "ontologySearchNodes",
             summary = "라벨(Part, Drawing, Supplier, Project)별 merge key 자동완성 목록을 조회합니다",
             description = "라벨(Part, Drawing, Supplier, Project)별 merge key 자동완성 목록을 조회합니다"
     )

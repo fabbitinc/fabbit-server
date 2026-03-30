@@ -53,6 +53,7 @@ public class MemberController {
     private final RemoveMemberUseCase removeMemberUseCase;
 
     @Operation(
+            operationId = "memberLookup",
             summary = "조직 멤버 lookup 목록을 조회합니다 (autocomplete/picker 용도)",
             description = "조직 멤버 lookup 목록을 조회합니다 (autocomplete/picker 용도)"
     )
@@ -75,6 +76,7 @@ public class MemberController {
     }
 
     @Operation(
+            operationId = "memberList",
             summary = "현재 조직의 전체 멤버 목록을 조회합니다",
             description = "현재 조직의 전체 멤버 목록을 조회합니다"
     )
@@ -94,6 +96,7 @@ public class MemberController {
     }
 
     @Operation(
+            operationId = "memberChangeMemberRole",
             summary = "소유자(OWNER) 권한으로 멤버 역할을 변경합니다",
             description = "소유자(OWNER) 권한으로 멤버 역할을 변경합니다"
     )
@@ -116,6 +119,7 @@ public class MemberController {
     }
 
     @Operation(
+            operationId = "memberChangeMemberSeat",
             summary = "멤버 좌석 변경",
             description = "관리자(ADMIN 이상) 권한으로 멤버 좌석 타입을 변경합니다"
     )
@@ -138,6 +142,7 @@ public class MemberController {
     }
 
     @Operation(
+            operationId = "memberRemove",
             summary = "관리자(ADMIN 이상) 권한으로 조직 멤버를 제거합니다",
             description = "관리자(ADMIN 이상) 권한으로 조직 멤버를 제거합니다"
     )

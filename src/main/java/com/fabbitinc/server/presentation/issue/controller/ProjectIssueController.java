@@ -38,6 +38,7 @@ public class ProjectIssueController {
     private final IssueQuery issueQuery;
 
     @Operation(
+            operationId = "projectIssueList",
             summary = "프로젝트에 연결된 이슈 목록을 조회합니다",
             description = "프로젝트에 연결된 부품을 기준으로 연관 이슈 목록을 조회합니다"
     )

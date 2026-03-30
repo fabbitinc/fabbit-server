@@ -251,6 +251,7 @@ final class PartResponseMapper {
         return new PartBomResponse(
                 result.children().stream()
                         .map(item -> new BomChildResponse(
+                                item.bomItemId(),
                                 item.partId(),
                                 item.revisionId(),
                                 item.partNumber(),
@@ -264,6 +265,7 @@ final class PartResponseMapper {
                         .toList(),
                 result.parents().stream()
                         .map(item -> new BomParentResponse(
+                                item.bomItemId(),
                                 item.partId(),
                                 item.revisionId(),
                                 item.partNumber(),

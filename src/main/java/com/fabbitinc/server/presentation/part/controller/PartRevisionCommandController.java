@@ -54,7 +54,7 @@ public class PartRevisionCommandController {
     private final ReleasePartDraftUseCase releasePartDraftUseCase;
     private final CancelPartDraftUseCase cancelPartDraftUseCase;
 
-    @Operation(summary = "기준 리비전에서 새 DRAFT 리비전을 생성합니다", description = "기준 리비전에서 새 DRAFT 리비전을 생성합니다")
+    @Operation(operationId = "partRevisionCommandCreateDraft", summary = "기준 리비전에서 새 DRAFT 리비전을 생성합니다", description = "기준 리비전에서 새 DRAFT 리비전을 생성합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "생성 성공"),
             @ApiResponse(responseCode = "409", description = "리소스 충돌")
@@ -71,7 +71,7 @@ public class PartRevisionCommandController {
         return toPartDetailResponse(partQuery.get(new PartDetailCondition(result.partId(), result.revisionId())));
     }
 
-    @Operation(summary = "리비전을 수정합니다", description = "DRAFT 상태의 리비전을 수정합니다")
+    @Operation(operationId = "partRevisionCommandUpdate", summary = "리비전을 수정합니다", description = "DRAFT 상태의 리비전을 수정합니다")
     @PatchMapping("/{partId}/revisions/{revisionId}")
     public PartDetailResponse update(
             @PathVariable UUID partId,
@@ -97,7 +97,7 @@ public class PartRevisionCommandController {
         return toPartDetailResponse(partQuery.get(new PartDetailCondition(partId, revisionId)));
     }
 
-    @Operation(summary = "리비전을 직접 반영합니다", description = "DRAFT 상태 리비전을 직접 반영해 공식 리비전으로 전환합니다")
+    @Operation(operationId = "partRevisionCommandRelease", summary = "리비전을 직접 반영합니다", description = "DRAFT 상태 리비전을 직접 반영해 공식 리비전으로 전환합니다")
     @PostMapping("/{partId}/revisions/{revisionId}/release")
     public PartDetailResponse release(
             @PathVariable UUID partId,
@@ -110,7 +110,7 @@ public class PartRevisionCommandController {
         return toPartDetailResponse(partQuery.get(new PartDetailCondition(result.partId(), result.revisionId())));
     }
 
-    @Operation(summary = "리비전을 폐기합니다", description = "DRAFT 상태 리비전을 폐기합니다")
+    @Operation(operationId = "partRevisionCommandCancel", summary = "리비전을 폐기합니다", description = "DRAFT 상태 리비전을 폐기합니다")
     @PostMapping("/{partId}/revisions/{revisionId}/cancel")
     public PartDetailResponse cancel(
             @PathVariable UUID partId,

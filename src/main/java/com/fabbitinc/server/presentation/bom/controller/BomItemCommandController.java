@@ -57,7 +57,7 @@ public class BomItemCommandController {
     private final DeleteBomItemUseCase deleteBomItemUseCase;
     private final AddBomItemsBatchUseCase addBomItemsBatchUseCase;
 
-    @Operation(summary = "BOM 항목을 추가합니다", description = "DRAFT 상태 리비전에 BOM 항목을 추가합니다")
+    @Operation(operationId = "bomItemCommandAddBomItem", summary = "BOM 항목을 추가합니다", description = "DRAFT 상태 리비전에 BOM 항목을 추가합니다")
     @PostMapping("/{partId}/revisions/{revisionId}/bom-items")
     @ResponseStatus(HttpStatus.CREATED)
     public PartBomResponse addBomItem(
@@ -76,7 +76,7 @@ public class BomItemCommandController {
         return toBomResponse(partQuery.get(new PartBomCondition(partId, revisionId)));
     }
 
-    @Operation(summary = "BOM 항목을 수정합니다", description = "DRAFT 상태 리비전의 BOM 항목을 수정합니다")
+    @Operation(operationId = "bomItemCommandUpdateBomItem", summary = "BOM 항목을 수정합니다", description = "DRAFT 상태 리비전의 BOM 항목을 수정합니다")
     @PatchMapping("/{partId}/revisions/{revisionId}/bom-items/{bomItemId}")
     public PartBomResponse updateBomItem(
             @PathVariable UUID partId,
@@ -100,7 +100,7 @@ public class BomItemCommandController {
         return toBomResponse(partQuery.get(new PartBomCondition(partId, revisionId)));
     }
 
-    @Operation(summary = "BOM 항목을 삭제합니다", description = "DRAFT 상태 리비전의 BOM 항목을 삭제합니다")
+    @Operation(operationId = "bomItemCommandDeleteBomItem", summary = "BOM 항목을 삭제합니다", description = "DRAFT 상태 리비전의 BOM 항목을 삭제합니다")
     @DeleteMapping("/{partId}/revisions/{revisionId}/bom-items/{bomItemId}")
     public PartBomResponse deleteBomItem(
             @PathVariable UUID partId,
@@ -111,7 +111,7 @@ public class BomItemCommandController {
         return toBomResponse(partQuery.get(new PartBomCondition(partId, revisionId)));
     }
 
-    @Operation(summary = "BOM 항목을 일괄 추가합니다", description = "DRAFT 상태 리비전에 여러 BOM 항목을 한 번에 추가합니다")
+    @Operation(operationId = "bomItemCommandAddBomItemsBatch", summary = "BOM 항목을 일괄 추가합니다", description = "DRAFT 상태 리비전에 여러 BOM 항목을 한 번에 추가합니다")
     @PostMapping("/{partId}/revisions/{revisionId}/bom-items/batch")
     @ResponseStatus(HttpStatus.CREATED)
     public PartBomResponse addBomItemsBatch(
@@ -138,6 +138,7 @@ public class BomItemCommandController {
         return new PartBomResponse(
                 result.children().stream()
                         .map(item -> new BomChildResponse(
+                                item.bomItemId(),
                                 item.partId(),
                                 item.revisionId(),
                                 item.partNumber(),
@@ -151,6 +152,7 @@ public class BomItemCommandController {
                         .toList(),
                 result.parents().stream()
                         .map(item -> new BomParentResponse(
+                                item.bomItemId(),
                                 item.partId(),
                                 item.revisionId(),
                                 item.partNumber(),

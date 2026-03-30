@@ -33,6 +33,7 @@ public class ChangeFeedController {
     private final ChangeFeedQuery changeFeedQuery;
 
     @Operation(
+            operationId = "changeFeedList",
             summary = "변경 피드를 조회합니다",
             description = "릴리즈된 엔지니어링 변경 목록을 최신 순으로 조회합니다. partId를 지정하면 해당 파트에 영향을 준 변경만 반환합니다."
     )

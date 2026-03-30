@@ -65,6 +65,7 @@ public class TeamController {
     private final DeleteTeamUseCase deleteTeamUseCase;
 
     @Operation(
+            operationId = "teamCreate",
             summary = "팀을 생성합니다. 생성 직후 팀 상세를 반환합니다",
             description = "팀을 생성합니다. 생성 직후 팀 상세를 반환합니다"
     )
@@ -81,6 +82,7 @@ public class TeamController {
     }
 
     @Operation(
+            operationId = "teamLookup",
             summary = "팀 picker/autocomplete용 경량 목록을 조회합니다",
             description = "팀 picker/autocomplete용 경량 목록을 조회합니다"
     )
@@ -96,6 +98,7 @@ public class TeamController {
     }
 
     @Operation(
+            operationId = "teamList",
             summary = "팀 목록을 조회합니다",
             description = "팀 목록을 조회합니다"
     )
@@ -105,6 +108,7 @@ public class TeamController {
     }
 
     @Operation(
+            operationId = "teamGet",
             summary = "팀 상세를 조회합니다",
             description = "팀 상세를 조회합니다"
     )
@@ -117,6 +121,7 @@ public class TeamController {
     }
 
     @Operation(
+            operationId = "teamUpdate",
             summary = "팀 이름/설명을 부분 수정하고 최신 팀 상세를 반환합니다",
             description = "팀 이름/설명을 부분 수정하고 최신 팀 상세를 반환합니다"
     )
@@ -134,6 +139,7 @@ public class TeamController {
     }
 
     @Operation(
+            operationId = "teamDelete",
             summary = "팀을 삭제합니다. 팀 멤버 관계도 함께 제거됩니다",
             description = "팀을 삭제합니다. 팀 멤버 관계도 함께 제거됩니다"
     )

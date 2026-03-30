@@ -131,6 +131,7 @@ public class EngineeringChangeController {
     private final DeleteEngineeringChangeFileUseCase deleteEngineeringChangeFileUseCase;
 
     @Operation(
+            operationId = "engineeringChangeList",
             summary = "변경관리 목록을 조회합니다",
             description = "변경관리 목록을 조회합니다"
     )
@@ -151,6 +152,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeLookup",
             summary = "변경관리 연결 picker UI용 경량 목록을 조회합니다",
             description = "변경관리 연결 picker UI용 경량 목록을 조회합니다"
     )
@@ -166,6 +168,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeGet",
             summary = "변경관리 상세 정보를 조회합니다",
             description = "변경관리 ID로 상세 정보를 조회합니다"
     )
@@ -180,6 +183,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeCreate",
             summary = "변경관리를 생성하고 연관 정보(이슈/부품 리비전/단계/파일)를 일괄 연결합니다",
             description = "변경관리를 생성하고 연관 정보(이슈/부품 리비전/단계/파일)를 일괄 연결합니다"
     )
@@ -218,6 +222,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeCreateEcFromIssue",
             summary = "이슈로부터 설계변경을 생성합니다",
             description = "이슈에 연결된 부품의 DRAFT 리비전을 영향 항목으로 자동 등록하고, 영향 분석 요약을 본문에 포함하여 설계변경을 생성합니다"
     )
@@ -244,6 +249,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeUpdate",
             summary = "변경관리 제목/본문을 수정합니다",
             description = "변경관리 제목/본문을 수정합니다"
     )
@@ -275,6 +281,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeSubmit",
             summary = "변경관리를 검토 대기로 전환합니다 (DRAFT -> REVIEW_PENDING)",
             description = "변경관리를 검토 대기로 전환합니다 (DRAFT -> REVIEW_PENDING)"
     )
@@ -289,6 +296,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeReject",
             summary = "변경관리를 작성 단계로 되돌립니다 (*_PENDING -> DRAFT)",
             description = "변경관리를 작성 단계로 되돌립니다 (*_PENDING -> DRAFT)"
     )
@@ -305,6 +313,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeApprove",
             summary = "현재 승인 단계 담당자가 변경관리를 승인해 반영 대기로 전환합니다 (APPROVAL_PENDING -> RELEASE_PENDING)",
             description = "현재 승인 단계 담당자가 변경관리를 승인해 반영 대기로 전환합니다 (APPROVAL_PENDING -> RELEASE_PENDING)"
     )
@@ -321,6 +330,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeRelease",
             summary = "현재 반영 단계 담당자가 변경관리를 반영 완료합니다 (RELEASE_PENDING -> RELEASED)",
             description = "현재 반영 단계 담당자가 변경관리를 반영 완료합니다 (RELEASE_PENDING -> RELEASED)"
     )
@@ -337,6 +347,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeCancel",
             summary = "변경관리를 폐기하고 미반영 리비전을 취소합니다",
             description = "변경관리를 폐기하고 미반영 리비전을 취소합니다"
     )
@@ -353,6 +364,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeSyncIssues",
             summary = "변경관리에 연결된 이슈 목록을 동기화합니다",
             description = "변경관리에 연결된 이슈 목록을 동기화합니다"
     )
@@ -367,6 +379,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeReplaceSteps",
             summary = "변경관리 단계 목록을 동기화합니다",
             description = "변경관리 단계 목록을 동기화합니다"
     )
@@ -394,6 +407,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeApproveReview",
             summary = "현재 검토 단계 담당자가 자신의 검토 단계를 승인합니다",
             description = "현재 검토 단계 담당자가 자신의 검토 단계를 승인합니다"
     )
@@ -410,6 +424,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeSyncAffectedItems",
             summary = "변경관리 영향 항목 목록을 동기화합니다",
             description = "변경관리 영향 항목 목록을 동기화합니다"
     )
@@ -436,6 +451,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeGetTimeline",
             summary = "댓글과 활동 이력을 시간순으로 병합 조회합니다",
             description = "댓글과 활동 이력을 시간순으로 병합 조회합니다"
     )
@@ -447,6 +463,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeCreateComment",
             summary = "댓글을 생성합니다",
             description = "댓글을 생성합니다"
     )
@@ -467,6 +484,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeUpdateComment",
             summary = "댓글을 수정합니다",
             description = "댓글을 수정합니다"
     )
@@ -488,6 +506,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeDeleteComment",
             summary = "댓글을 삭제합니다",
             description = "댓글을 삭제합니다"
     )
@@ -503,6 +522,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeAddFiles",
             summary = "첨부파일을 배치 연결합니다",
             description = "첨부파일을 배치 연결합니다"
     )
@@ -523,6 +543,7 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeDeleteFile",
             summary = "첨부파일 1건을 삭제(soft delete)합니다",
             description = "첨부파일 1건을 삭제(soft delete)합니다"
     )

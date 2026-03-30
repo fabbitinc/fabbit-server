@@ -39,14 +39,14 @@ public class SettingsController {
     private final SettingsQuery settingsQuery;
     private final UpdateSettingsPartWorkflowPolicyUseCase updateSettingsPartWorkflowPolicyUseCase;
 
-    @Operation(summary = "초기 렌더에 필요한 설정 값을 조회합니다", description = "초기 렌더에 필요한 설정 값을 조회합니다")
+    @Operation(operationId = "settingsGet", summary = "초기 렌더에 필요한 설정 값을 조회합니다", description = "초기 렌더에 필요한 설정 값을 조회합니다")
     @GetMapping
     public SettingsResponse getSettings() {
         SettingsResult result = settingsQuery.get();
         return new SettingsResponse(result.partWorkflowMode());
     }
 
-    @Operation(summary = "부품 워크플로 정책을 변경합니다", description = "부품 워크플로 정책을 변경합니다")
+    @Operation(operationId = "settingsUpdatePartWorkflowPolicy", summary = "부품 워크플로 정책을 변경합니다", description = "부품 워크플로 정책을 변경합니다")
     @PutMapping("/parts/workflow-policy")
     public SettingsPartWorkflowPolicyResponse updatePartWorkflowPolicy(
             @Parameter(description = "부품 워크플로 정책 변경 요청")

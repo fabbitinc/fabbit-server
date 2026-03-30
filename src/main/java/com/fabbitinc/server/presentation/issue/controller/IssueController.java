@@ -127,6 +127,7 @@ public class IssueController {
     private final DeleteIssueFileUseCase deleteIssueFileUseCase;
 
     @Operation(
+            operationId = "issueLookup",
             summary = "이슈 연결 picker UI용 경량 목록을 조회합니다",
             description = "이슈 연결 picker UI용 경량 목록을 조회합니다"
     )
@@ -142,6 +143,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueList",
             summary = "이슈 목록을 조회합니다",
             description = "이슈 목록을 조회합니다"
     )
@@ -159,6 +161,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueGet",
             summary = "이슈 상세 정보를 조회합니다",
             description = "이슈 ID로 상세 정보를 조회합니다"
     )
@@ -171,6 +174,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueGetEcPrefill",
             summary = "이슈 기반 EC 사전 입력 데이터를 조회합니다",
             description = "이슈에 연결된 부품 정보를 기반으로 EC 생성 시 사전 입력할 제목, 영향 항목 후보, 추천 검토자, 영향 분석 요약을 반환합니다"
     )
@@ -200,6 +204,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueCreate",
             summary = "이슈를 생성하고 연관 정보(부품/담당자/라벨/파일)를 일괄 연결합니다",
             description = "이슈를 생성하고 연관 정보(부품/담당자/라벨/파일)를 일괄 연결합니다"
     )
@@ -224,6 +229,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueUpdate",
             summary = "이슈 제목/본문을 수정합니다",
             description = "이슈 제목/본문을 수정합니다"
     )
@@ -239,6 +245,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueSyncAssignees",
             summary = "개인 담당자 목록을 동기화합니다",
             description = "개인 담당자 목록을 동기화합니다"
     )
@@ -255,6 +262,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueSyncTeamAssignees",
             summary = "팀 담당자 목록을 동기화합니다",
             description = "팀 담당자 목록을 동기화합니다"
     )
@@ -271,6 +279,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueSyncLinkedEngineeringChanges",
             summary = "이슈에 연결된 변경관리 목록을 동기화합니다",
             description = "이슈에 연결된 변경관리 목록을 동기화합니다"
     )
@@ -290,6 +299,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueClose",
             summary = "이슈를 닫습니다 (OPEN -> CLOSED)",
             description = "이슈를 닫습니다 (OPEN -> CLOSED)"
     )
@@ -302,6 +312,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueReopen",
             summary = "이슈를 다시 엽니다 (CLOSED -> OPEN)",
             description = "이슈를 다시 엽니다 (CLOSED -> OPEN)"
     )
@@ -314,6 +325,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueSyncLabels",
             summary = "라벨 목록을 동기화합니다",
             description = "라벨 목록을 동기화합니다"
     )
@@ -330,6 +342,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueSyncParts",
             summary = "부품 목록을 동기화합니다",
             description = "부품 목록을 동기화합니다"
     )
@@ -346,6 +359,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueGetTimeline",
             summary = "댓글과 활동 이력을 시간순으로 병합 조회합니다",
             description = "댓글과 활동 이력을 시간순으로 병합 조회합니다"
     )
@@ -357,6 +371,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueCreateComment",
             summary = "댓글을 생성합니다",
             description = "댓글을 생성합니다"
     )
@@ -374,6 +389,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueUpdateComment",
             summary = "댓글을 수정합니다",
             description = "댓글을 수정합니다"
     )
@@ -391,6 +407,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueDeleteComment",
             summary = "댓글을 삭제합니다",
             description = "댓글을 삭제합니다"
     )
@@ -404,6 +421,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueAddFiles",
             summary = "첨부파일을 배치 연결합니다",
             description = "첨부파일을 배치 연결합니다"
     )
@@ -421,6 +439,7 @@ public class IssueController {
     }
 
     @Operation(
+            operationId = "issueDeleteFile",
             summary = "첨부파일 1건을 삭제(soft delete)합니다",
             description = "첨부파일 1건을 삭제(soft delete)합니다"
     )

@@ -81,7 +81,7 @@ public class ChatController {
     private final RejectChatActionUseCase rejectChatActionUseCase;
     private final ChatMessageComposer chatMessageComposer;
 
-    @Operation(summary = "챗 스레드를 생성합니다", description = "새로운 챗 스레드를 생성합니다")
+    @Operation(operationId = "chatCreateThread", summary = "챗 스레드를 생성합니다", description = "새로운 챗 스레드를 생성합니다")
     @PostMapping("/threads")
     @ResponseStatus(HttpStatus.CREATED)
     public CreateChatThreadResponse createThread(
@@ -98,13 +98,13 @@ public class ChatController {
         return new CreateChatThreadResponse(result.threadId());
     }
 
-    @Operation(summary = "챗 스레드 목록을 조회합니다", description = "현재 사용자의 챗 스레드 목록을 조회합니다")
+    @Operation(operationId = "chatListThreads", summary = "챗 스레드 목록을 조회합니다", description = "현재 사용자의 챗 스레드 목록을 조회합니다")
     @GetMapping("/threads")
     public ChatThreadListResponse listThreads() {
         return toChatThreadListResponse(chatQuery.list(new ChatThreadListCondition()));
     }
 
-    @Operation(summary = "챗 스레드 상세를 조회합니다", description = "챗 스레드 메타데이터를 조회합니다")
+    @Operation(operationId = "chatGetThread", summary = "챗 스레드 상세를 조회합니다", description = "챗 스레드 메타데이터를 조회합니다")
     @GetMapping("/threads/{threadId}")
     public ChatThreadDetailResponse getThread(
             @Parameter(description = "조회할 스레드 ID")
@@ -113,7 +113,7 @@ public class ChatController {
         return toChatThreadDetailResponse(chatQuery.get(new ChatThreadDetailCondition(threadId)));
     }
 
-    @Operation(summary = "챗 메시지 목록을 조회합니다", description = "스레드에 속한 메시지 목록을 조회합니다")
+    @Operation(operationId = "chatListMessages", summary = "챗 메시지 목록을 조회합니다", description = "스레드에 속한 메시지 목록을 조회합니다")
     @GetMapping("/threads/{threadId}/messages")
     public ChatMessageListResponse listMessages(
             @Parameter(description = "조회할 스레드 ID")
@@ -122,7 +122,7 @@ public class ChatController {
         return toChatMessageListResponse(chatQuery.list(new ChatMessageListCondition(threadId)));
     }
 
-    @Operation(summary = "챗 실행 이벤트 목록을 조회합니다", description = "실행에 속한 단계 이벤트 목록을 조회합니다")
+    @Operation(operationId = "chatListRunEvents", summary = "챗 실행 이벤트 목록을 조회합니다", description = "실행에 속한 단계 이벤트 목록을 조회합니다")
     @GetMapping("/runs/{runId}/events")
     public ChatRunEventListResponse listRunEvents(
             @Parameter(description = "조회할 실행 ID")
@@ -131,7 +131,7 @@ public class ChatController {
         return toChatRunEventListResponse(chatQuery.list(new ChatRunEventListCondition(runId)));
     }
 
-    @Operation(summary = "챗 메시지를 전송합니다", description = "사용자 메시지를 저장하고 비동기 챗 실행을 시작합니다")
+    @Operation(operationId = "chatSendMessage", summary = "챗 메시지를 전송합니다", description = "사용자 메시지를 저장하고 비동기 챗 실행을 시작합니다")
     @PostMapping("/threads/{threadId}/messages")
     public ResponseEntity<SendChatMessageResponse> sendMessage(
             @Parameter(description = "메시지를 추가할 스레드 ID")
@@ -145,7 +145,7 @@ public class ChatController {
                 .body(new SendChatMessageResponse(result.messageId(), result.runId(), result.status()));
     }
 
-    @Operation(summary = "챗 실행 스트림을 구독합니다", description = "실행 이벤트와 응답을 SSE 스트림으로 수신합니다")
+    @Operation(operationId = "chatStreamRun", summary = "챗 실행 스트림을 구독합니다", description = "실행 이벤트와 응답을 SSE 스트림으로 수신합니다")
     @GetMapping(value = "/runs/{runId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<StreamingResponseBody> streamRun(
             @Parameter(description = "스트림으로 구독할 실행 ID")
@@ -190,7 +190,7 @@ public class ChatController {
                 .body(body);
     }
 
-    @Operation(summary = "챗 액션 요청을 확인합니다", description = "사용자 확인이 필요한 액션 요청을 실제로 실행합니다")
+    @Operation(operationId = "chatConfirmAction", summary = "챗 액션 요청을 확인합니다", description = "사용자 확인이 필요한 액션 요청을 실제로 실행합니다")
     @PostMapping("/action-requests/{actionRequestId}/confirm")
     public ConfirmChatActionResponse confirmAction(
             @Parameter(description = "확인할 액션 요청 ID")
@@ -202,7 +202,7 @@ public class ChatController {
         return new ConfirmChatActionResponse(result.actionRequestId(), result.status(), result.issueId());
     }
 
-    @Operation(summary = "챗 액션 요청을 거절합니다", description = "사용자 확인이 필요한 액션 요청을 취소합니다")
+    @Operation(operationId = "chatRejectAction", summary = "챗 액션 요청을 거절합니다", description = "사용자 확인이 필요한 액션 요청을 취소합니다")
     @PostMapping("/action-requests/{actionRequestId}/reject")
     public ResponseEntity<Void> rejectAction(
             @Parameter(description = "거절할 액션 요청 ID")

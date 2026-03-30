@@ -60,13 +60,13 @@ public class PartRevisionAssetController {
     private final RegisterPartDrawingUseCase registerPartDrawingUseCase;
     private final DeletePartDrawingUseCase deletePartDrawingUseCase;
 
-    @Operation(summary = "연결된 파일 목록을 조회합니다", description = "리비전에 연결된 파일과 도면 목록을 조회합니다")
+    @Operation(operationId = "partRevisionAssetGetFiles", summary = "연결된 파일 목록을 조회합니다", description = "리비전에 연결된 파일과 도면 목록을 조회합니다")
     @GetMapping("/{partId}/revisions/{revisionId}/files")
     public PartFilesResponse getFiles(@PathVariable UUID partId, @PathVariable UUID revisionId) {
         return toPartFilesResponse(partQuery.get(new PartFilesCondition(partId, revisionId)));
     }
 
-    @Operation(summary = "파일을 첨부합니다", description = "업로드 완료 파일들을 리비전에 배치 연결합니다")
+    @Operation(operationId = "partRevisionAssetAttachFiles", summary = "파일을 첨부합니다", description = "업로드 완료 파일들을 리비전에 배치 연결합니다")
     @PostMapping("/{partId}/revisions/{revisionId}/files")
     public List<PartAttachmentItemResponse> attachFiles(
             @PathVariable UUID partId,
@@ -81,7 +81,7 @@ public class PartRevisionAssetController {
                 .toList();
     }
 
-    @Operation(summary = "첨부 파일을 제거합니다", description = "리비전에 연결된 첨부 파일 1건을 제거합니다")
+    @Operation(operationId = "partRevisionAssetDeleteFile", summary = "첨부 파일을 제거합니다", description = "리비전에 연결된 첨부 파일 1건을 제거합니다")
     @DeleteMapping("/{partId}/revisions/{revisionId}/files/{fileId}")
     public ResponseEntity<Void> deleteFile(
             @PathVariable UUID partId,
@@ -92,7 +92,7 @@ public class PartRevisionAssetController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "도면을 등록합니다", description = "업로드 완료 파일을 Drawing으로 등록하고 리비전에 연결합니다")
+    @Operation(operationId = "partRevisionAssetCreateDrawing", summary = "도면을 등록합니다", description = "업로드 완료 파일을 Drawing으로 등록하고 리비전에 연결합니다")
     @PostMapping("/{partId}/revisions/{revisionId}/drawings")
     public RegisterDrawingResponse createDrawing(
             @PathVariable UUID partId,
@@ -104,7 +104,7 @@ public class PartRevisionAssetController {
         );
     }
 
-    @Operation(summary = "도면을 삭제합니다", description = "리비전에 연결된 도면 1건을 삭제합니다")
+    @Operation(operationId = "partRevisionAssetDeleteDrawing", summary = "도면을 삭제합니다", description = "리비전에 연결된 도면 1건을 삭제합니다")
     @DeleteMapping("/{partId}/revisions/{revisionId}/drawings/{drawingId}")
     public ResponseEntity<Void> deleteDrawing(
             @PathVariable UUID partId,

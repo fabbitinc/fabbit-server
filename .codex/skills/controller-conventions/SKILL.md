@@ -25,6 +25,8 @@ description: Java Spring REST API의 Controller 레이어 네이밍, DTO, Swagge
 
 - 모든 Controller 클래스에 `@Tag(name, description)`를 선언하라.
 - 모든 엔드포인트 메서드에 `@Operation(summary, description)`를 선언하라.
+- 모든 엔드포인트 메서드의 `@Operation`에 `operationId`를 명시하라.
+- `operationId`는 OpenAPI 전체에서 유일한 lowerCamelCase로 작성하고, 리소스와 동작이 드러나게 적어라. 예: `partGet`, `partList`, `bomItemUpdate`
 - `@Operation.summary`에는 HTTP 메서드나 URL 경로를 넣지 말고, API가 하는 행위를 짧게 적어라.
 - `@Operation.description`에는 대상, 조건, 보조 설명을 적고 필요하면 경로 문맥을 풀어서 설명하라.
 - 모든 엔드포인트에 `@ApiResponses`를 작성하라.
@@ -54,7 +56,7 @@ description: Java Spring REST API의 Controller 레이어 네이밍, DTO, Swagge
 - 클래스명이 `*Controller`로 끝나는가?
 - 입력/출력 DTO 이름이 `*Request/*Response` 규칙을 따르는가?
 - 목록/상세/자동완성 응답 이름이 용도별로 구분되는가?
-- 모든 엔드포인트에 `@Operation`과 `@ApiResponses`가 있는가?
+- 모든 엔드포인트에 `@Operation`, 고유한 `operationId`, `@ApiResponses`가 있는가?
 - Request/Response DTO 필드에 `@Schema`가 있는가?
 - 생성/삭제 엔드포인트의 상태코드가 `201/204`로 일관적인가?
 - 컨트롤러 메서드명이 HTTP 동작과 의미가 맞는가?

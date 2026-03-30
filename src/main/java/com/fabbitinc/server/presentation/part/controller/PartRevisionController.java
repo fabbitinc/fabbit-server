@@ -59,7 +59,7 @@ public class PartRevisionController {
 
     private final PartQuery partQuery;
 
-    @Operation(summary = "PartRevision 상세를 조회합니다", description = "부품 리비전 상세와 관계 카운트를 조회합니다")
+    @Operation(operationId = "partRevisionGet", summary = "PartRevision 상세를 조회합니다", description = "부품 리비전 상세와 관계 카운트를 조회합니다")
     @GetMapping("/{partId}/revisions/{revisionId}")
     public PartDetailResponse get(
             @PathVariable UUID partId,
@@ -68,13 +68,13 @@ public class PartRevisionController {
         return toPartDetailResponse(partQuery.get(new PartDetailCondition(partId, revisionId)));
     }
 
-    @Operation(summary = "Part 변경 이력을 조회합니다", description = "공식 리비전 카드와 초안 시도 이력을 함께 조회합니다")
+    @Operation(operationId = "partRevisionGetHistory", summary = "Part 변경 이력을 조회합니다", description = "공식 리비전 카드와 초안 시도 이력을 함께 조회합니다")
     @GetMapping("/{partId}/history")
     public PartRevisionHistoryResponse getHistory(@PathVariable UUID partId) {
         return toPartRevisionHistoryResponse(partQuery.getHistory(new PartRevisionHistoryCondition(partId)));
     }
 
-    @Operation(summary = "기준 리비전 대비 상세 diff를 조회합니다", description = "이전 리비전 또는 지정한 기준 리비전 ID 대비 상세 diff를 조회합니다")
+    @Operation(operationId = "partRevisionGetDiff", summary = "기준 리비전 대비 상세 diff를 조회합니다", description = "이전 리비전 또는 지정한 기준 리비전 ID 대비 상세 diff를 조회합니다")
     @GetMapping("/{partId}/revisions/{revisionId}/diff")
     public PartRevisionDiffResponse getDiff(
             @PathVariable UUID partId,
@@ -84,13 +84,13 @@ public class PartRevisionController {
         return toPartRevisionDiffResponse(partQuery.getDiff(new PartRevisionDiffCondition(partId, revisionId, baseRevisionId)));
     }
 
-    @Operation(summary = "직접 자식/부모 BOM을 조회합니다", description = "리비전 기준 직접 자식/직접 부모 BOM 관계를 조회합니다")
+    @Operation(operationId = "partRevisionGetBom", summary = "직접 자식/부모 BOM을 조회합니다", description = "리비전 기준 직접 자식/직접 부모 BOM 관계를 조회합니다")
     @GetMapping("/{partId}/revisions/{revisionId}/bom")
     public PartBomResponse getBom(@PathVariable UUID partId, @PathVariable UUID revisionId) {
         return toPartBomResponse(partQuery.get(new PartBomCondition(partId, revisionId)));
     }
 
-    @Operation(summary = "BOM 트리를 조회합니다", description = "정전개 또는 역전개 BOM 트리를 조회합니다")
+    @Operation(operationId = "partRevisionGetBomTree", summary = "BOM 트리를 조회합니다", description = "정전개 또는 역전개 BOM 트리를 조회합니다")
     @GetMapping("/{partId}/revisions/{revisionId}/bom/tree")
     public BomTreeResponse getBomTree(
             @PathVariable UUID partId,
@@ -100,7 +100,7 @@ public class PartRevisionController {
         return toBomTreeResponse(partQuery.getBomTree(new BomTreeCondition(partId, revisionId, direction)));
     }
 
-    @Operation(summary = "BOM 트리를 Excel로 내보냅니다", description = "BOM 트리를 Excel(.xlsx) 파일로 내보냅니다")
+    @Operation(operationId = "partRevisionExportBomTree", summary = "BOM 트리를 Excel로 내보냅니다", description = "BOM 트리를 Excel(.xlsx) 파일로 내보냅니다")
     @GetMapping(value = "/{partId}/revisions/{revisionId}/bom/tree/export", produces = EXCEL_MEDIA_TYPE)
     public ResponseEntity<byte[]> exportBomTree(
             @PathVariable UUID partId,
@@ -115,13 +115,13 @@ public class PartRevisionController {
         return ResponseEntity.ok().headers(headers).body(content);
     }
 
-    @Operation(summary = "연결된 프로젝트 목록을 조회합니다", description = "리비전이 속한 프로젝트 목록을 조회합니다")
+    @Operation(operationId = "partRevisionGetProjects", summary = "연결된 프로젝트 목록을 조회합니다", description = "리비전이 속한 프로젝트 목록을 조회합니다")
     @GetMapping("/{partId}/revisions/{revisionId}/projects")
     public PartProjectsResponse getProjects(@PathVariable UUID partId, @PathVariable UUID revisionId) {
         return toPartProjectsResponse(partQuery.get(new PartProjectsCondition(partId, revisionId)));
     }
 
-    @Operation(summary = "연결된 공급사 목록을 조회합니다", description = "리비전에 연결된 공급사 목록을 조회합니다")
+    @Operation(operationId = "partRevisionGetSuppliers", summary = "연결된 공급사 목록을 조회합니다", description = "리비전에 연결된 공급사 목록을 조회합니다")
     @GetMapping("/{partId}/revisions/{revisionId}/suppliers")
     public PartSuppliersResponse getSuppliers(@PathVariable UUID partId, @PathVariable UUID revisionId) {
         return toPartSuppliersResponse(partQuery.get(new PartSuppliersCondition(partId, revisionId)));

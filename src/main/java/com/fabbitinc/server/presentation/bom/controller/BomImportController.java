@@ -58,6 +58,7 @@ public class BomImportController {
     private final CommitBomImportUseCase commitBomImportUseCase;
 
     @Operation(
+            operationId = "bomImportDownloadTemplate",
             summary = "BOM 가져오기 템플릿을 다운로드합니다",
             description = "BOM 가져오기에 사용할 엑셀 템플릿 파일을 다운로드합니다. 헤더 행만 포함된 .xlsx 파일을 반환합니다"
     )
@@ -75,6 +76,7 @@ public class BomImportController {
     }
 
     @Operation(
+            operationId = "bomImportPreview",
             summary = "BOM 가져오기 미리보기를 실행합니다",
             description = "업로드된 엑셀 파일의 BOM 데이터를 검증하고 행별 결과를 반환합니다. DRAFT 상태의 리비전에서만 사용 가능합니다"
     )
@@ -91,6 +93,7 @@ public class BomImportController {
     }
 
     @Operation(
+            operationId = "bomImportCommit",
             summary = "BOM 가져오기를 확정합니다",
             description = "미리보기로 검증한 엑셀 파일의 BOM 데이터를 실제로 등록합니다. APPEND 모드는 기존 항목에 추가하고, REPLACE 모드는 기존 항목을 모두 삭제 후 등록합니다"
     )

@@ -63,7 +63,7 @@ public class PartRevisionPreviewController {
     private final UploadPartPreviewFileUseCase uploadPartPreviewFileUseCase;
     private final DeletePartPreviewFileUseCase deletePartPreviewFileUseCase;
 
-    @Operation(summary = "대표 미리보기 소스를 변경합니다", description = "도면 또는 미리보기 전용 파일을 대표 미리보기로 선택합니다")
+    @Operation(operationId = "partRevisionPreviewUpdate", summary = "대표 미리보기 소스를 변경합니다", description = "도면 또는 미리보기 전용 파일을 대표 미리보기로 선택합니다")
     @PatchMapping("/{partId}/revisions/{revisionId}/preview")
     public PartPreviewResponse update(
             @PathVariable UUID partId,
@@ -76,13 +76,13 @@ public class PartRevisionPreviewController {
         return toPartPreviewResponse(partQuery.get(new PartDetailCondition(partId, revisionId)).preview());
     }
 
-    @Operation(summary = "미리보기 후보 목록을 조회합니다", description = "대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다")
+    @Operation(operationId = "partRevisionPreviewGetSources", summary = "미리보기 후보 목록을 조회합니다", description = "대표 미리보기 선택 모달에 필요한 선택 가능 소스 목록을 조회합니다")
     @GetMapping("/{partId}/revisions/{revisionId}/preview/sources")
     public PartPreviewSourcesResponse getSources(@PathVariable UUID partId, @PathVariable UUID revisionId) {
         return toPartPreviewSourcesResponse(partQuery.getPreviewSources(new PartPreviewSourcesCondition(partId, revisionId)));
     }
 
-    @Operation(summary = "미리보기 전용 파일을 업로드합니다", description = "업로드 완료 파일을 미리보기 전용 파일로 등록하고 현재 미리보기로 설정합니다")
+    @Operation(operationId = "partRevisionPreviewCreatePreviewFile", summary = "미리보기 전용 파일을 업로드합니다", description = "업로드 완료 파일을 미리보기 전용 파일로 등록하고 현재 미리보기로 설정합니다")
     @PostMapping("/{partId}/revisions/{revisionId}/preview/files")
     public PartPreviewResponse createPreviewFile(
             @PathVariable UUID partId,
@@ -93,7 +93,7 @@ public class PartRevisionPreviewController {
         return toPartPreviewResponse(partQuery.get(new PartDetailCondition(partId, revisionId)).preview());
     }
 
-    @Operation(summary = "미리보기 처리 상태를 조회합니다", description = "대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다")
+    @Operation(operationId = "partRevisionPreviewGetProcessing", summary = "미리보기 처리 상태를 조회합니다", description = "대표 미리보기 비동기 처리 상태와 산출물 준비 여부를 조회합니다")
     @GetMapping("/{partId}/revisions/{revisionId}/preview/processing")
     public PartPreviewProcessingResponse getProcessing(@PathVariable UUID partId, @PathVariable UUID revisionId) {
         return toPartPreviewProcessingResponse(
@@ -101,14 +101,14 @@ public class PartRevisionPreviewController {
         );
     }
 
-    @Operation(summary = "대표 미리보기를 해제합니다", description = "현재 대표 미리보기를 해제합니다")
+    @Operation(operationId = "partRevisionPreviewDelete", summary = "대표 미리보기를 해제합니다", description = "현재 대표 미리보기를 해제합니다")
     @DeleteMapping("/{partId}/revisions/{revisionId}/preview")
     public ResponseEntity<Void> delete(@PathVariable UUID partId, @PathVariable UUID revisionId) {
         clearPartPreviewUseCase.execute(new ClearPartPreviewCommand(partId, revisionId));
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "미리보기 전용 파일을 삭제합니다", description = "대표 미리보기 전용 파일 1건을 삭제합니다")
+    @Operation(operationId = "partRevisionPreviewDeletePreviewFile", summary = "미리보기 전용 파일을 삭제합니다", description = "대표 미리보기 전용 파일 1건을 삭제합니다")
     @DeleteMapping("/{partId}/revisions/{revisionId}/preview/files/{previewFileId}")
     public ResponseEntity<Void> deletePreviewFile(
             @PathVariable UUID partId,

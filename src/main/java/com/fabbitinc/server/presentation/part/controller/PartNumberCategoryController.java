@@ -54,14 +54,14 @@ public class PartNumberCategoryController {
     private final UpdatePartNumberCategoryUseCase updatePartNumberCategoryUseCase;
     private final DeletePartNumberCategoryUseCase deletePartNumberCategoryUseCase;
 
-    @Operation(summary = "채번 카테고리 목록을 조회합니다", description = "품번 생성 규칙으로 사용하는 채번 카테고리 목록과 예시 품번을 반환합니다")
+    @Operation(operationId = "partNumberCategoryList", summary = "채번 카테고리 목록을 조회합니다", description = "품번 생성 규칙으로 사용하는 채번 카테고리 목록과 예시 품번을 반환합니다")
     @ApiResponse(responseCode = "200", description = "요청 성공")
     @GetMapping
     public PartNumberCategoryListResponse list() {
         return toListResponse(partNumberCategoryQuery.list());
     }
 
-    @Operation(summary = "채번 카테고리를 생성합니다", description = "새 채번 카테고리를 생성하고 시퀀스를 초기화합니다")
+    @Operation(operationId = "partNumberCategoryCreate", summary = "채번 카테고리를 생성합니다", description = "새 채번 카테고리를 생성하고 시퀀스를 초기화합니다")
     @ApiResponse(responseCode = "201", description = "생성 성공")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -74,7 +74,7 @@ public class PartNumberCategoryController {
         )));
     }
 
-    @Operation(summary = "채번 카테고리를 수정합니다", description = "기존 채번 카테고리의 이름, 접두어, 구분자, 자릿수를 수정합니다")
+    @Operation(operationId = "partNumberCategoryUpdate", summary = "채번 카테고리를 수정합니다", description = "기존 채번 카테고리의 이름, 접두어, 구분자, 자릿수를 수정합니다")
     @ApiResponse(responseCode = "200", description = "수정 성공")
     @PutMapping("/{categoryId}")
     public PartNumberCategoryResponse update(
@@ -90,7 +90,7 @@ public class PartNumberCategoryController {
         )));
     }
 
-    @Operation(summary = "다음 품번을 미리봅니다", description = "지정한 채번 카테고리 기준으로 다음에 생성될 예상 품번을 반환합니다")
+    @Operation(operationId = "partNumberCategoryGetNextNumber", summary = "다음 품번을 미리봅니다", description = "지정한 채번 카테고리 기준으로 다음에 생성될 예상 품번을 반환합니다")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/{categoryId}/next-number")
     public PartNumberPreviewResponse getNextNumber(
@@ -100,7 +100,7 @@ public class PartNumberCategoryController {
         return new PartNumberPreviewResponse(result.partNumber(), result.note());
     }
 
-    @Operation(summary = "품번 중복 여부를 확인합니다", description = "입력한 품번이 현재 사용 가능한지 여부를 반환합니다")
+    @Operation(operationId = "partNumberCategoryCheckNumber", summary = "품번 중복 여부를 확인합니다", description = "입력한 품번이 현재 사용 가능한지 여부를 반환합니다")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/check-number")
     public PartNumberAvailabilityResponse checkNumber(
@@ -110,7 +110,7 @@ public class PartNumberCategoryController {
         return new PartNumberAvailabilityResponse(result.partNumber(), result.available());
     }
 
-    @Operation(summary = "채번 카테고리를 삭제합니다", description = "사용 중이지 않은 채번 카테고리를 삭제합니다")
+    @Operation(operationId = "partNumberCategoryDelete", summary = "채번 카테고리를 삭제합니다", description = "사용 중이지 않은 채번 카테고리를 삭제합니다")
     @ApiResponse(responseCode = "204", description = "삭제 성공")
     @DeleteMapping("/{categoryId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

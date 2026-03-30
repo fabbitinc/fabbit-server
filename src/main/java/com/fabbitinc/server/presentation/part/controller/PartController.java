@@ -96,7 +96,7 @@ public class PartController {
     private final RenameCategoryUseCase renameCategoryUseCase;
     private final ChangePartLifecycleStateUseCase changePartLifecycleStateUseCase;
 
-    @Operation(summary = "부품을 생성하고 초안 상세를 반환합니다", description = "부품을 생성하고 생성된 초기 초안 상세를 반환합니다")
+    @Operation(operationId = "partCreate", summary = "부품을 생성하고 초안 상세를 반환합니다", description = "부품을 생성하고 생성된 초기 초안 상세를 반환합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "생성 성공"),
             @ApiResponse(responseCode = "409", description = "리소스 충돌"),
@@ -121,7 +121,7 @@ public class PartController {
         return toPartDetailResponse(partQuery.get(new PartDetailCondition(result.partId(), result.revisionId())));
     }
 
-    @Operation(summary = "품번/품명으로 경량 Part 목록을 조회합니다", description = "품번/품명으로 경량 Part 목록을 조회합니다")
+    @Operation(operationId = "partLookup", summary = "품번/품명으로 경량 Part 목록을 조회합니다", description = "품번/품명으로 경량 Part 목록을 조회합니다")
     @GetMapping("/lookup")
     public PartLookupResponse lookupParts(
             @RequestParam(value = "search", required = false) String search,
@@ -131,7 +131,7 @@ public class PartController {
         return toPartLookupResponse(partQuery.lookup(new PartLookupCondition(search, limit)));
     }
 
-    @Operation(summary = "변경관리 연결 가능한 리비전 목록을 조회합니다", description = "현재 사용자가 만든 변경관리 연결 가능한 DRAFT 리비전 목록을 조회합니다")
+    @Operation(operationId = "partLookupRevisions", summary = "변경관리 연결 가능한 리비전 목록을 조회합니다", description = "현재 사용자가 만든 변경관리 연결 가능한 DRAFT 리비전 목록을 조회합니다")
     @GetMapping("/revisions/lookup")
     public PartRevisionLookupResponse lookupRevisions(
             @RequestParam(value = "search", required = false) String search,
@@ -141,7 +141,7 @@ public class PartController {
         return toPartRevisionLookupResponse(partQuery.lookupRevisions(new PartRevisionLookupCondition(search, limit)));
     }
 
-    @Operation(summary = "필터링된 Part 목록을 Excel 파일로 내보냅니다", description = "필터링된 Part 목록을 Excel(.xlsx) 파일로 내보냅니다")
+    @Operation(operationId = "partExport", summary = "필터링된 Part 목록을 Excel 파일로 내보냅니다", description = "필터링된 Part 목록을 Excel(.xlsx) 파일로 내보냅니다")
     @GetMapping(value = "/export", produces = EXCEL_MEDIA_TYPE)
     public ResponseEntity<byte[]> exportParts(
             @RequestParam(value = "search", required = false) String search,
@@ -173,25 +173,25 @@ public class PartController {
         return ResponseEntity.ok().headers(headers).body(content);
     }
 
-    @Operation(summary = "카테고리별 부품 개수를 조회합니다", description = "카테고리별 부품 개수를 조회합니다")
+    @Operation(operationId = "partListCategories", summary = "카테고리별 부품 개수를 조회합니다", description = "카테고리별 부품 개수를 조회합니다")
     @GetMapping("/categories")
     public CategoryStatsResponse listCategories() {
         return toCategoryStatsResponse(partQuery.listCategories());
     }
 
-    @Operation(summary = "카테고리 문자열 목록을 경량 조회합니다", description = "카테고리 문자열 목록을 경량 조회합니다")
+    @Operation(operationId = "partLookupCategories", summary = "카테고리 문자열 목록을 경량 조회합니다", description = "카테고리 문자열 목록을 경량 조회합니다")
     @GetMapping("/categories/lookup")
     public CategoryLookupResponse lookupCategories() {
         return toCategoryLookupResponse(partQuery.lookupCategories());
     }
 
-    @Operation(summary = "Part 목록 필터 옵션을 조회합니다", description = "Part 목록 필터 옵션(카테고리/수명주기 상태)을 조회합니다")
+    @Operation(operationId = "partGetFilterOptions", summary = "Part 목록 필터 옵션을 조회합니다", description = "Part 목록 필터 옵션(카테고리/수명주기 상태)을 조회합니다")
     @GetMapping("/filter-options")
     public PartFilterOptionsResponse getFilterOptions() {
         return toPartFilterOptionsResponse(partQuery.getFilterOptions());
     }
 
-    @Operation(summary = "Part 목록을 조회합니다", description = "검색/필터 조건과 함께 Part 목록을 조회합니다")
+    @Operation(operationId = "partList", summary = "Part 목록을 조회합니다", description = "검색/필터 조건과 함께 Part 목록을 조회합니다")
     @GetMapping
     public PartListResponse listParts(
             @RequestParam(value = "search", required = false) String search,
@@ -218,7 +218,7 @@ public class PartController {
         )));
     }
 
-    @Operation(summary = "진행중 부품 작업함 목록을 조회합니다", description = "검색/필터 조건과 함께 진행중 부품 작업함 목록을 조회합니다")
+    @Operation(operationId = "partListInProgress", summary = "진행중 부품 작업함 목록을 조회합니다", description = "검색/필터 조건과 함께 진행중 부품 작업함 목록을 조회합니다")
     @GetMapping("/in-progress")
     public PartInProgressListResponse listInProgressParts(
             @RequestParam(value = "search", required = false) String search,
@@ -249,7 +249,7 @@ public class PartController {
         )));
     }
 
-    @Operation(summary = "카테고리 이름을 일괄 변경합니다", description = "카테고리 이름을 일괄 변경하고 변경 건수를 반환합니다")
+    @Operation(operationId = "partRenameCategory", summary = "카테고리 이름을 일괄 변경합니다", description = "카테고리 이름을 일괄 변경하고 변경 건수를 반환합니다")
     @PatchMapping("/categories/{category}")
     public RenameCategoryResponse renameCategory(
             @PathVariable String category,
@@ -259,7 +259,7 @@ public class PartController {
         return new RenameCategoryResponse(result.updatedCount());
     }
 
-    @Operation(summary = "부품의 수명주기 상태를 변경합니다", description = "부품의 수명주기 상태를 변경합니다 (ACTIVE → EOL → OBSOLETE)")
+    @Operation(operationId = "partChangeLifecycleState", summary = "부품의 수명주기 상태를 변경합니다", description = "부품의 수명주기 상태를 변경합니다 (ACTIVE → EOL → OBSOLETE)")
     @PostMapping("/{partId}/lifecycle")
     public ChangePartLifecycleStateResponse changeLifecycleState(
             @PathVariable UUID partId,
@@ -272,7 +272,7 @@ public class PartController {
         return new ChangePartLifecycleStateResponse(result.partId(), result.lifecycleState());
     }
 
-    @Operation(summary = "부품 영향 분석", description = "특정 부품 변경 시 영향받는 상위 BOM, 프로젝트, 추천 리뷰어를 분석합니다")
+    @Operation(operationId = "partGetImpactAnalysis", summary = "부품 영향 분석", description = "특정 부품 변경 시 영향받는 상위 BOM, 프로젝트, 추천 리뷰어를 분석합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "영향 분석 성공"),
             @ApiResponse(responseCode = "404", description = "부품을 찾을 수 없음")
@@ -284,7 +284,7 @@ public class PartController {
         );
     }
 
-    @Operation(summary = "부품 변경 이력을 조회합니다", description = "특정 부품과 연결된 이슈, 설계변경 릴리즈, 리비전 이력을 시간순으로 조회합니다")
+    @Operation(operationId = "partGetChangeHistory", summary = "부품 변경 이력을 조회합니다", description = "특정 부품과 연결된 이슈, 설계변경 릴리즈, 리비전 이력을 시간순으로 조회합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "변경 이력 조회 성공"),
             @ApiResponse(responseCode = "404", description = "부품을 찾을 수 없음")

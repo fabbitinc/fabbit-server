@@ -28,6 +28,7 @@ public class UsageController {
     private final UsageQuery usageQuery;
 
     @Operation(
+            operationId = "usageGetStorage",
             summary = "스토리지 총 사용량/한도/초과분과 카테고리별 내역을 조회합니다",
             description = "스토리지 총 사용량/한도/초과분과 카테고리별 내역을 조회합니다"
     )
@@ -44,6 +45,7 @@ public class UsageController {
     }
 
     @Operation(
+            operationId = "usageGetStorageTrend",
             summary = "스토리지 사용량 추이를 period(7d|30d|1y) 기준으로 조회합니다",
             description = "스토리지 사용량 추이를 period(7d|30d|1y) 기준으로 조회합니다"
     )
@@ -63,6 +65,7 @@ public class UsageController {
     }
 
     @Operation(
+            operationId = "usageGetCredit",
             summary = "AI 크레딧 잔여/사용량과 카테고리별 사용량을 조회합니다",
             description = "AI 크레딧 잔여/사용량과 카테고리별 사용량을 조회합니다"
     )

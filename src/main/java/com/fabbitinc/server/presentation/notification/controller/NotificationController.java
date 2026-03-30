@@ -59,6 +59,7 @@ public class NotificationController {
     private final NotificationStreamUseCase notificationStreamUseCase;
 
     @Operation(
+            operationId = "notificationList",
             summary = "cursor 기반 페이지네이션으로 알림 목록을 조회합니다",
             description = "cursor 기반 페이지네이션으로 알림 목록을 조회합니다"
     )
@@ -78,6 +79,7 @@ public class NotificationController {
     }
 
     @Operation(
+            operationId = "notificationGetUnreadCount",
             summary = "현재 사용자의 미읽음 알림 개수를 조회합니다",
             description = "현재 사용자의 미읽음 알림 개수를 조회합니다"
     )
@@ -87,6 +89,7 @@ public class NotificationController {
     }
 
     @Operation(
+            operationId = "notificationRead",
             summary = "알림 1건을 읽음 처리합니다",
             description = "알림 1건을 읽음 처리합니다"
     )
@@ -100,6 +103,7 @@ public class NotificationController {
     }
 
     @Operation(
+            operationId = "notificationReadAll",
             summary = "현재 사용자의 미읽음 알림을 모두 읽음 처리합니다",
             description = "현재 사용자의 미읽음 알림을 모두 읽음 처리합니다"
     )
@@ -110,6 +114,7 @@ public class NotificationController {
     }
 
     @Operation(
+            operationId = "notificationStream",
             summary = "SSE 스트림으로 새 알림 이벤트를 실시간 수신합니다",
             description = "SSE 스트림으로 새 알림 이벤트를 실시간 수신합니다"
     )

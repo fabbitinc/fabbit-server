@@ -481,6 +481,7 @@ class PartQueryTest {
         PartBomResult result = partQuery.get(new PartBomCondition(parentPart.getId(), parentRevision.getId()));
 
         assertEquals(1, result.children().size());
+        assertEquals(bomItem.getId(), result.children().getFirst().bomItemId());
         assertEquals(childPart.getId(), result.children().getFirst().partId());
         assertEquals(childRevision.getId(), result.children().getFirst().revisionId());
         assertEquals(PartRevisionStatus.RELEASED, result.children().getFirst().revisionStatus());

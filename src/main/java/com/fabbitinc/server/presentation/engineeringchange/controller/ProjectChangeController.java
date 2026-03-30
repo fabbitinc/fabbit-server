@@ -36,6 +36,7 @@ public class ProjectChangeController {
     private final EngineeringChangeQuery engineeringChangeQuery;
 
     @Operation(
+            operationId = "projectChangeList",
             summary = "프로젝트에 연결된 변경관리 목록을 조회합니다",
             description = "프로젝트에 연결된 부품과 이슈를 기준으로 연관 변경관리 목록을 조회합니다"
     )
