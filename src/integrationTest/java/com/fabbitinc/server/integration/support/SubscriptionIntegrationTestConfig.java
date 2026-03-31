@@ -2,6 +2,7 @@ package com.fabbitinc.server.integration.support;
 
 import com.fabbitinc.server.application.auth.port.AuthEmailPort;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
+import com.fabbitinc.server.application.file.port.StoragePort;
 import com.fabbitinc.server.application.organization.port.TenantProvisioningPort;
 import javax.sql.DataSource;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -32,5 +33,11 @@ public class SubscriptionIntegrationTestConfig {
     @Primary
     public TenantProvisioningPort tenantProvisioningPort(DataSource dataSource) {
         return new TestTenantProvisioningPort(dataSource);
+    }
+
+    @Bean
+    @Primary
+    public StoragePort storagePort() {
+        return new TestStoragePort();
     }
 }

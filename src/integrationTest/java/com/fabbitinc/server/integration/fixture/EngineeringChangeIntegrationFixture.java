@@ -113,7 +113,7 @@ public class EngineeringChangeIntegrationFixture {
 
     public CreatePartResult createPart(String partNumber, String name) {
         return createPartUseCase.execute(new com.fabbitinc.server.application.part.usecase.command.CreatePartCommand(
-                partNumber, name, null, null, null, null, null, null, null, null, null
+                partNumber, null, null, name, null, null, null, null, null, null, null
         ));
     }
 
