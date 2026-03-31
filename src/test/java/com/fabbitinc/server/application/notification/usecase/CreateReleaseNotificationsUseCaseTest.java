@@ -8,12 +8,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fabbitinc.server.application.issue.api.IssueApi;
 import com.fabbitinc.server.application.notification.event.NotificationCreatedEvent;
 import com.fabbitinc.server.application.notification.service.NotificationService;
 import com.fabbitinc.server.application.notification.usecase.command.CreateReleaseNotificationsCommand;
-import com.fabbitinc.server.application.issue.api.IssueApi;
 import com.fabbitinc.server.application.user.api.UserApi;
-import com.fabbitinc.server.domain.bom.model.EngineeringBomItem;
 import com.fabbitinc.server.domain.bom.repository.EngineeringBomItemRepository;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItem;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItemType;

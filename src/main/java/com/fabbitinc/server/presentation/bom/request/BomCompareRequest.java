@@ -8,11 +8,9 @@ import java.util.UUID;
 public record BomCompareRequest(
 
         @Schema(description = "소스 부품 리비전 ID", example = "550e8400-e29b-41d4-a716-446655440000")
-        @NotNull(message = "소스 부품 리비전 ID는 필수입니다")
-        UUID sourceRevisionId,
+        @NotNull(message = "소스 부품 리비전 ID는 필수입니다") UUID sourceRevisionId,
 
         @Schema(description = "대상 부품 리비전 ID", example = "550e8400-e29b-41d4-a716-446655440001")
-        @NotNull(message = "대상 부품 리비전 ID는 필수입니다")
-        UUID targetRevisionId
+        @NotNull(message = "대상 부품 리비전 ID는 필수입니다") UUID targetRevisionId
 ) {
 }

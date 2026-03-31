@@ -11,8 +11,6 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.bom.query.condition.WhereUsedSummaryCondition;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.domain.bom.repository.EngineeringBomItemRepository;
-import com.fabbitinc.server.domain.part.model.Part;
-import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import java.util.Optional;

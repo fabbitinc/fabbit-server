@@ -51,8 +51,7 @@ public record CreatePartRequest(
         @Schema(description = "생성 사유", example = "신규 고객 프로젝트 대응을 위해 부품을 등록합니다")
         @Size(max = 2000, message = "reason은 최대 2000자여야 합니다") String reason
 ) {
-    @AssertTrue(message = "part_number 또는 numbering_category_id 중 하나는 필수입니다")
-    @Schema(hidden = true)
+    @AssertTrue(message = "part_number 또는 numbering_category_id 중 하나는 필수입니다") @Schema(hidden = true)
     public boolean isCreateContractValid() {
         return (partNumber != null && !partNumber.isBlank()) || numberingCategoryId != null;
     }

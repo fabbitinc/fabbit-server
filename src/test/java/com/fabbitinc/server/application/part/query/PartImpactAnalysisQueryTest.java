@@ -15,7 +15,6 @@ import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
-import com.fabbitinc.server.domain.project.model.ProjectPart;
 import com.fabbitinc.server.domain.project.repository.ProjectPartRepository;
 import com.fabbitinc.server.domain.project.repository.ProjectRepository;
 import java.math.BigDecimal;

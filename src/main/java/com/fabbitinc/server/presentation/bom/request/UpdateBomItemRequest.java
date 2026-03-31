@@ -15,12 +15,10 @@ public class UpdateBomItemRequest {
     private UUID childPartRevisionId;
 
     @Schema(description = "BOM 줄 번호", example = "10")
-    @Size(max = 50, message = "BOM 줄 번호는 최대 50자여야 합니다")
-    private String lineNumber;
+    @Size(max = 50, message = "BOM 줄 번호는 최대 50자여야 합니다") private String lineNumber;
 
     @Schema(description = "수량", example = "2")
-    @DecimalMin(value = "0", inclusive = false, message = "수량은 0보다 커야 합니다")
-    private BigDecimal quantity;
+    @DecimalMin(value = "0", inclusive = false, message = "수량은 0보다 커야 합니다") private BigDecimal quantity;
 
     @Schema(
             description = "확장 속성 JSON 객체. key는 property_definition.id(UUID)여야 합니다",

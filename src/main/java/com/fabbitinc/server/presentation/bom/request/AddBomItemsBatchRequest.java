@@ -10,8 +10,6 @@ import java.util.List;
 public record AddBomItemsBatchRequest(
 
         @Schema(description = "BOM 항목 목록")
-        @NotNull(message = "항목 목록은 필수입니다")
-        @Size(min = 1, max = 500, message = "항목은 1개 이상 500개 이하여야 합니다")
-        List<@Valid AddBomItemRequest> items
+        @NotNull(message = "항목 목록은 필수입니다") @Size(min = 1, max = 500, message = "항목은 1개 이상 500개 이하여야 합니다") List<@Valid AddBomItemRequest> items
 ) {
 }

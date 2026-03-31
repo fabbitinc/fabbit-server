@@ -3,7 +3,6 @@ package com.fabbitinc.server.domain.part.model;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import java.time.Instant;
 import java.util.UUID;
