@@ -17,7 +17,26 @@ WORKDIR /build
 RUN cmake /src/mayo -DCMAKE_BUILD_TYPE=Release -DMayo_BuildPluginAssimp=ON
 RUN cmake --build . --config Release -j"$(nproc)"
 
-FROM ubuntu:22.04 AS runtime
+# 
+# 
+# 
+
+FROM eclipse-temurin:21-jdk-jammy AS java-builder
+
+WORKDIR /workspace
+
+COPY gradlew gradlew.bat build.gradle.kts settings.gradle.kts gradle.properties gradle.lockfile ./
+COPY gradle ./gradle
+COPY src ./src
+
+RUN chmod +x ./gradlew
+RUN ./gradlew --no-daemon bootJar
+
+# 
+# 
+# 
+
+FROM eclipse-temurin:21-jre-jammy
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -27,8 +46,15 @@ RUN apt-get update && apt-get install -y \
     libassimp-dev xvfb \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /data
-
 COPY --from=3dconverter-builder /build/mayo-conv /opt/mayo-conv
 
-ENTRYPOINT ["/opt/mayo-conv"]
+WORKDIR /app
+
+ENV PORT=10010
+ENV SPRING_PROFILES_ACTIVE=prod
+
+COPY --from=java-builder /workspace/build/libs/*.jar /app/app.jar
+
+EXPOSE 10010
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
