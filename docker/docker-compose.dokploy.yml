@@ -2,6 +2,9 @@ services:
   fabbit-database:
     image: apache/age:latest
     restart: unless-stopped
+    cpus: 0.75
+    mem_reservation: 1g
+    mem_limit: 3g
     ports:
       - "127.0.0.1:5432:5432"
     environment:

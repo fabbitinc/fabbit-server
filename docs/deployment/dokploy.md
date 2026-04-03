@@ -92,9 +92,15 @@ POSTGRES_PASSWORD=<strong-password>
 POSTGRES_DB=fabbit
 ```
 
+### Compose 리소스 권장값
+
+- CPU: `0.75`
+- Memory reservation: `1g`
+- Memory limit: `3g`
+
 ### Compose 서비스 역할
 
-- `fabbit-db`: Apache AGE PostgreSQL
+- `fabbit-database`: Apache AGE PostgreSQL
 - `docker/initdb.d/01_init_age.sql` 로 AGE extension + graph 초기화
 - DB 포트는 `127.0.0.1:5432:5432` 로 바인딩되어 public 인터넷에는 노출되지 않고, 서버 localhost 와 SSH tunnel 경유 접근만 허용
 
@@ -103,7 +109,7 @@ POSTGRES_DB=fabbit
 권장 구조:
 
 - `fabbit-server` → Dokploy **Application**
-- `fabbit-db` → Dokploy **Docker Compose**
+- `fabbit-database` → Dokploy **Docker Compose**
 
 앱 환경 변수는 우선 아래처럼 맞춘다.
 
@@ -113,7 +119,7 @@ DB_USERNAME=fabbit
 DB_PASSWORD=<same-password-as-compose>
 ```
 
-> `fabbit-db` 는 SSH tunnel/DataGrip 용 접근 호스트가 아니다.
+> `fabbit-database` 는 SSH tunnel/DataGrip 용 접근 호스트가 아니다.
 > DataGrip에서는 SSH tunnel을 켜고 **DB Host를 `127.0.0.1`, Port를 `5432`** 로 설정한다.
 > 위 `DB_URL` 은 애플리케이션 컨테이너에서 서버 localhost 바인딩 DB에 붙기 위한 값이다.
 
