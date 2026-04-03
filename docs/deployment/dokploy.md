@@ -103,6 +103,7 @@ POSTGRES_DB=fabbit
 - `fabbit-database`: Apache AGE PostgreSQL
 - 이미지 태그는 `apache/age:release_PG18_1.7.0` 로 고정
 - PostgreSQL 18 계열 컨테이너 규칙에 맞춰 데이터 볼륨은 `/var/lib/postgresql` 에 마운트
+- `dokploy-network` 에도 연결되어 Dokploy Application(`fabbit-server`)에서 `fabbit-database:5432` 로 접근 가능
 - `docker/initdb.d/01_init_age.sql` 로 AGE extension + graph 초기화
 - DB 포트는 `127.0.0.1:5432:5432` 로 바인딩되어 public 인터넷에는 노출되지 않고, 서버 localhost 와 SSH tunnel 경유 접근만 허용
 
@@ -116,17 +117,17 @@ POSTGRES_DB=fabbit
 - `fabbit-server` → Dokploy **Application**
 - `fabbit-database` → Dokploy **Docker Compose**
 
-앱 환경 변수는 우선 아래처럼 맞춘다.
+앱 환경 변수는 아래처럼 맞춘다.
 
 ```dotenv
-DB_URL=jdbc:postgresql://host.docker.internal:5432/fabbit
-DB_USERNAME=fabbit
+DB_URL=jdbc:postgresql://fabbit-database:5432/fabbit
+DB_USERNAME=fabbit-server
 DB_PASSWORD=<same-password-as-compose>
 ```
 
-> `fabbit-database` 는 SSH tunnel/DataGrip 용 접근 호스트가 아니다.
+> `fabbit-database` 는 **애플리케이션 컨테이너 내부에서 사용하는 DB 호스트명**이다.
 > DataGrip에서는 SSH tunnel을 켜고 **DB Host를 `127.0.0.1`, Port를 `5432`** 로 설정한다.
-> 위 `DB_URL` 은 애플리케이션 컨테이너에서 서버 localhost 바인딩 DB에 붙기 위한 값이다.
+> 위 `DB_URL` 은 Dokploy Application 컨테이너에서 DB 컨테이너로 직접 붙기 위한 값이다.
 
 ### DataGrip SSH Tunnel 예시
 

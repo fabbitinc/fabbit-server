@@ -5,6 +5,9 @@ services:
     cpus: 0.75
     mem_reservation: 1g
     mem_limit: 3g
+    networks:
+      - default
+      - dokploy-network
     ports:
       - "127.0.0.1:5432:5432"
     environment:
@@ -23,3 +26,7 @@ services:
 
 volumes:
   fabbit-db-data:
+
+networks:
+  dokploy-network:
+    external: true
