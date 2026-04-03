@@ -101,8 +101,13 @@ POSTGRES_DB=fabbit
 ### Compose 서비스 역할
 
 - `fabbit-database`: Apache AGE PostgreSQL
+- 이미지 태그는 `apache/age:release_PG18_1.7.0` 로 고정
+- PostgreSQL 18 계열 컨테이너 규칙에 맞춰 데이터 볼륨은 `/var/lib/postgresql` 에 마운트
 - `docker/initdb.d/01_init_age.sql` 로 AGE extension + graph 초기화
 - DB 포트는 `127.0.0.1:5432:5432` 로 바인딩되어 public 인터넷에는 노출되지 않고, 서버 localhost 와 SSH tunnel 경유 접근만 허용
+
+> 주의: 이전에 `/var/lib/postgresql/data` 로 생성된 볼륨이 있으면 PG18 컨테이너가 restart loop에 빠질 수 있다.
+> 초기 세팅 단계라면 기존 볼륨을 삭제한 뒤 재배포하는 것이 가장 빠르다.
 
 ## Application ↔ DB 연결
 

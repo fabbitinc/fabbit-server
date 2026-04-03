@@ -1,6 +1,6 @@
 services:
   fabbit-database:
-    image: apache/age:latest
+    image: apache/age:release_PG18_1.7.0
     restart: unless-stopped
     cpus: 0.75
     mem_reservation: 1g
@@ -14,7 +14,7 @@ services:
       POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=ko-KR"
     volumes:
       - ./initdb.d:/docker-entrypoint-initdb.d:ro
-      - fabbit-db-data:/var/lib/postgresql/data
+      - fabbit-db-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-fabbit} -d $${POSTGRES_DB:-fabbit}"]
       interval: 5s

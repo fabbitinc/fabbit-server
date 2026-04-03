@@ -2,6 +2,12 @@
 
 THREED_CONVERTER_IMAGE ?= fabbit-3dconverter:latest
 
+release:
+	git checkout release
+	git merge main
+	git push
+	git checkout main
+
 # 개발환경 디비 종료
 dev-db-stop:
 	docker compose -f docker/docker-compose.dev.yml down
