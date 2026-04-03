@@ -1,9 +1,11 @@
 services:
-  fabbit-db:
+  fabbit-database:
     image: apache/age:latest
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-fabbit}
+      POSTGRES_USER: ${POSTGRES_USER:-fabbit-server}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-fabbit}
       POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=ko-KR"
