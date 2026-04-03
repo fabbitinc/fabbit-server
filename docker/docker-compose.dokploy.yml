@@ -1,0 +1,20 @@
+services:
+  fabbit-db:
+    image: apache/age:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fabbit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-fabbit}
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=ko-KR"
+    volumes:
+      - ./initdb.d:/docker-entrypoint-initdb.d:ro
+      - fabbit-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-fabbit} -d $${POSTGRES_DB:-fabbit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  fabbit-db-data:

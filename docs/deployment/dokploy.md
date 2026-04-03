@@ -74,6 +74,47 @@ gradle/**
 Dockerfile
 ```
 
+## Dokploy Compose 설정
+
+Apache AGE DB는 Dokploy **Docker Compose** 서비스로 분리하는 것을 권장한다.
+
+### Compose file path
+
+- `docker/docker-compose.dokploy.yml`
+
+### Compose 환경 변수
+
+Dokploy Compose 서비스에는 최소 아래 값을 넣는다.
+
+```dotenv
+POSTGRES_USER=fabbit
+POSTGRES_PASSWORD=<strong-password>
+POSTGRES_DB=fabbit
+```
+
+### Compose 서비스 역할
+
+- `fabbit-db`: Apache AGE PostgreSQL
+- `docker/initdb.d/01_init_age.sql` 로 AGE extension + graph 초기화
+
+## Application ↔ DB 연결
+
+권장 구조:
+
+- `fabbit-server` → Dokploy **Application**
+- `fabbit-db` → Dokploy **Docker Compose**
+
+앱 환경 변수는 우선 아래처럼 맞춘다.
+
+```dotenv
+DB_URL=jdbc:postgresql://fabbit-db:5432/fabbit
+DB_USERNAME=fabbit
+DB_PASSWORD=<same-password-as-compose>
+```
+
+> 참고: Dokploy 네트워크/isolated deployment 설정에 따라 서비스 간 hostname 접근 방식이 달라질 수 있다.
+> 우선 `fabbit-db` 로 시작하고, 연결이 안 되면 Dokploy 네트워크 설정을 확인한다.
+
 ## GitHub 브랜치 보호 규칙
 
 `release` 에는 아래 정책을 권장한다.
@@ -83,7 +124,7 @@ Dockerfile
 - 일반 기능 브랜치의 직접 머지 금지
 - 운영 배포는 `main -> release` PR로만 진행
 
-## 런타임 환경 변수
+## Application 런타임 환경 변수
 
 Dokploy에는 최소 아래 값을 넣는다.
 
