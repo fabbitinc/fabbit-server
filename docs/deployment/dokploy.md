@@ -3,9 +3,9 @@
 ## 목표
 
 - 운영 배포 브랜치는 `release` 하나만 사용한다.
-- Dokploy는 GitHub 저장소를 직접 감시한다.
-- `release` 브랜치 변경만 자동 배포한다.
-- 배포 시 CLI를 호출하지 않는다.
+- `release` 브랜치 변경은 GitHub Actions가 감지한다.
+- 배포 순서는 `migration -> Dokploy deploy trigger` 로 제어한다.
+- Dokploy 애플리케이션은 GitHub에 연결하되 **Autodeploy는 끈다**.
 - Dokploy CLI는 최초 프로젝트/앱 bootstrap 용도로만 선택적으로 사용한다.
 
 ## 현재 저장소 기준 배포 전제
@@ -20,7 +20,9 @@
 1. `feature/*` -> `main` 으로 PR
 2. 운영 배포 시점에 `main` -> `release` PR 생성
 3. `release` 머지 후 GitHub에 push 발생
-4. Dokploy가 `release` 브랜치 변화를 감지하고 자동 배포
+4. GitHub Actions가 release workflow를 실행
+5. migration one-shot 실행
+6. 성공 시 Dokploy 애플리케이션 배포 트리거 호출
 5. hotfix는 `release` 에서 분기해서 `release` 로 머지한 뒤, 반드시 `main` 으로 역머지
 
 ## 1회성 Dokploy bootstrap
@@ -50,7 +52,7 @@ Dokploy 프로젝트/앱이 아직 없으면 아래 스크립트로 생성한다
 - Git provider: `GitHub`
 - Repository: `fabbitinc/fabbit-server`
 - Branch: `release`
-- Auto deploy: `enabled`
+- Auto deploy: `disabled`
 
 ### Runtime
 
@@ -179,6 +181,33 @@ SMTP_USE_TLS=true|false
 SMTP_FROM_EMAIL=<email>
 SMTP_FROM_NAME=<name>
 ```
+
+## GitHub Actions release workflow
+
+릴리스 배포는 `.github/workflows/release-deploy.yml` 로 제어한다.
+
+순서:
+
+1. self-hosted runner에서 migration 이미지 빌드
+2. `dokploy-network` 에서 migration one-shot 실행
+3. 성공 시 Dokploy CLI로 `application.deploy` 호출
+
+### 필요한 GitHub Secrets
+
+```dotenv
+PROD_DATABASE_URL=jdbc:postgresql://fabbit-database:5432/fabbit
+PROD_DATABASE_USER=fabbit-server
+PROD_DATABASE_PASSWORD=<db-password>
+DOKPLOY_URL=https://<dokploy-url>
+DOKPLOY_AUTH_TOKEN=<dokploy-api-token>
+DOKPLOY_APPLICATION_ID=<dokploy-application-id>
+```
+
+### runner 요구사항
+
+- `self-hosted` GitHub runner
+- `docker` 사용 가능
+- Dokploy와 같은 서버(또는 `dokploy-network` 접근 가능한 서버)에서 실행
 
 > 참고: 현재 저장소의 기존 `docker/docker-compose.prod.yml` 는 현 Spring Boot 서버 배포 정의가 아니라
 > 예전 Python/Alembic 기준 명령을 포함하고 있으므로 운영 배포 기준으로 사용하면 안 된다.
