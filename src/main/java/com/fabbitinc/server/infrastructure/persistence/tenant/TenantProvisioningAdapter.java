@@ -23,9 +23,11 @@ import liquibase.LabelExpression;
 import liquibase.Liquibase;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
-import liquibase.resource.ClassLoaderResourceAccessor;
+import liquibase.integration.spring.SpringResourceAccessor;
+import liquibase.resource.ResourceAccessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -34,8 +36,10 @@ import org.springframework.stereotype.Component;
 public class TenantProvisioningAdapter implements TenantProvisioningPort {
 
     private static final Pattern AGE_LABEL_PATTERN = Pattern.compile("^[A-Za-z_][A-Za-z0-9_]*$");
+    private static final String CHANGELOG_PATH = "classpath:migrations/changelog-master.xml";
 
     private final DataSource dataSource;
+    private final ResourceLoader resourceLoader;
     private final TenantInitializationApi tenantInitializationApi;
 
     @Override
@@ -112,9 +116,10 @@ public class TenantProvisioningAdapter implements TenantProvisioningPort {
             database.setDefaultSchemaName(schemaName);
             database.setLiquibaseSchemaName(schemaName);
 
-            try (var liquibase = new Liquibase(
-                    "migrations/changelog-master.xml",
-                    new ClassLoaderResourceAccessor(),
+            try (ResourceAccessor resourceAccessor = new SpringResourceAccessor(resourceLoader);
+                 var liquibase = new Liquibase(
+                    CHANGELOG_PATH,
+                    resourceAccessor,
                     database
             )) {
                 liquibase.update(new Contexts("tenant"), new LabelExpression());
