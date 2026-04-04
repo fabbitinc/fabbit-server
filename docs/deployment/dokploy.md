@@ -190,7 +190,7 @@ SMTP_FROM_NAME=<name>
 
 1. self-hosted runner에서 migration 이미지 빌드
 2. `dokploy-network` 에서 migration one-shot 실행
-3. 성공 시 Dokploy CLI로 `application.deploy` 호출
+3. 성공 시 Dokploy API `application.deploy` 호출
 
 ### 필요한 GitHub Secrets
 
@@ -208,6 +208,11 @@ DOKPLOY_APPLICATION_ID=<dokploy-application-id>
 - `self-hosted` GitHub runner
 - `docker` 사용 가능
 - Dokploy와 같은 서버(또는 `dokploy-network` 접근 가능한 서버)에서 실행
+
+### migration 리소스 탐색
+
+migration one-shot 이미지는 `src/main/resources/migrations` 를 `/opt/migrations` 로 함께 복사한다.
+이렇게 해야 packaged `bootJar` 환경에서도 Liquibase `includeAll path="migrations/..."` 구조를 유지한 채 changeset 탐색이 가능하다.
 
 > 참고: 현재 저장소의 기존 `docker/docker-compose.prod.yml` 는 현 Spring Boot 서버 배포 정의가 아니라
 > 예전 Python/Alembic 기준 명령을 포함하고 있으므로 운영 배포 기준으로 사용하면 안 된다.

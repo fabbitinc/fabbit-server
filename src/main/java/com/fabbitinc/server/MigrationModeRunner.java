@@ -6,14 +6,8 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import javax.sql.DataSource;
-import liquibase.Contexts;
-import liquibase.LabelExpression;
-import liquibase.Liquibase;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.resource.ClassLoaderResourceAccessor;
-import liquibase.resource.ResourceAccessor;
-import liquibase.resource.SearchPathResourceAccessor;
+import liquibase.exception.LiquibaseException;
+import liquibase.integration.spring.SpringLiquibase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +17,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -32,10 +27,11 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class MigrationModeRunner implements ApplicationRunner {
 
-    private static final String CHANGELOG_PATH = "migrations/changelog-master.xml";
+    private static final String CHANGELOG_PATH = "classpath:migrations/changelog-master.xml";
 
     private final DataSource dataSource;
     private final ConfigurableApplicationContext applicationContext;
+    private final ResourceLoader resourceLoader;
 
     @Value("${migration.target:all}")
     private String migrationTarget;
@@ -76,23 +72,7 @@ public class MigrationModeRunner implements ApplicationRunner {
 
     private void migratePublicSchema() throws Exception {
         log.info("applying public schema migrations");
-        try (Connection connection = dataSource.getConnection()) {
-            connection.setAutoCommit(true);
-
-            var database = DatabaseFactory.getInstance()
-                    .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-            database.setDefaultSchemaName("public");
-            database.setLiquibaseSchemaName("public");
-
-            try (ResourceAccessor resourceAccessor = createResourceAccessor();
-                 Liquibase liquibase = new Liquibase(
-                    CHANGELOG_PATH,
-                    resourceAccessor,
-                    database
-            )) {
-                liquibase.update(new Contexts("public"), new LabelExpression());
-            }
-        }
+        runLiquibase("public", "public");
         log.info("public schema migrations completed");
     }
 
@@ -105,27 +85,7 @@ public class MigrationModeRunner implements ApplicationRunner {
 
         for (String schema : schemas) {
             log.info("applying tenant schema migrations: schema={}", schema);
-            try (Connection connection = dataSource.getConnection()) {
-                connection.setAutoCommit(true);
-
-                try (Statement statement = connection.createStatement()) {
-                    statement.execute("SELECT set_config('search_path', '" + schema + ", public', false)");
-                }
-
-                var database = DatabaseFactory.getInstance()
-                        .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-                database.setDefaultSchemaName(schema);
-                database.setLiquibaseSchemaName(schema);
-
-                try (ResourceAccessor resourceAccessor = createResourceAccessor();
-                     Liquibase liquibase = new Liquibase(
-                        CHANGELOG_PATH,
-                        resourceAccessor,
-                        database
-                )) {
-                    liquibase.update(new Contexts("tenant"), new LabelExpression());
-                }
-            }
+            runLiquibase(schema, "tenant");
             log.info("tenant schema migrations completed: schema={}", schema);
         }
     }
@@ -149,7 +109,14 @@ public class MigrationModeRunner implements ApplicationRunner {
         return schemas;
     }
 
-    private ResourceAccessor createResourceAccessor() {
-        return new SearchPathResourceAccessor(new ClassLoaderResourceAccessor());
+    private void runLiquibase(String schemaName, String contexts) throws LiquibaseException {
+        SpringLiquibase liquibase = new SpringLiquibase();
+        liquibase.setResourceLoader(resourceLoader);
+        liquibase.setDataSource(dataSource);
+        liquibase.setChangeLog(CHANGELOG_PATH);
+        liquibase.setContexts(contexts);
+        liquibase.setDefaultSchema(schemaName);
+        liquibase.setLiquibaseSchema(schemaName);
+        liquibase.afterPropertiesSet();
     }
 }

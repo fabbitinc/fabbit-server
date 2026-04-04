@@ -49,17 +49,14 @@ jobs:
             -e JAVA_TOOL_OPTIONS \
             fabbit-server-migrate:latest
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
       - name: Trigger Dokploy deployment
         env:
           DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
           DOKPLOY_AUTH_TOKEN: ${{ secrets.DOKPLOY_AUTH_TOKEN }}
           DOKPLOY_APPLICATION_ID: ${{ secrets.DOKPLOY_APPLICATION_ID }}
         run: |
-          npx -y @dokploy/cli app deploy \
-            --applicationId "$DOKPLOY_APPLICATION_ID" \
-            --skipConfirm
+          curl -fsS -X POST \
+            -H "x-api-key: $DOKPLOY_AUTH_TOKEN" \
+            -H "Content-Type: application/json" \
+            "${DOKPLOY_URL%/}/api/trpc/application.deploy" \
+            --data "{\"json\":{\"applicationId\":\"$DOKPLOY_APPLICATION_ID\"}}"
