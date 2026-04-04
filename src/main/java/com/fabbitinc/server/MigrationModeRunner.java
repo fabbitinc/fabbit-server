@@ -12,6 +12,8 @@ import liquibase.Liquibase;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
+import liquibase.resource.ResourceAccessor;
+import liquibase.resource.SearchPathResourceAccessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -82,9 +84,10 @@ public class MigrationModeRunner implements ApplicationRunner {
             database.setDefaultSchemaName("public");
             database.setLiquibaseSchemaName("public");
 
-            try (Liquibase liquibase = new Liquibase(
+            try (ResourceAccessor resourceAccessor = createResourceAccessor();
+                 Liquibase liquibase = new Liquibase(
                     CHANGELOG_PATH,
-                    new ClassLoaderResourceAccessor(),
+                    resourceAccessor,
                     database
             )) {
                 liquibase.update(new Contexts("public"), new LabelExpression());
@@ -114,9 +117,10 @@ public class MigrationModeRunner implements ApplicationRunner {
                 database.setDefaultSchemaName(schema);
                 database.setLiquibaseSchemaName(schema);
 
-                try (Liquibase liquibase = new Liquibase(
+                try (ResourceAccessor resourceAccessor = createResourceAccessor();
+                     Liquibase liquibase = new Liquibase(
                         CHANGELOG_PATH,
-                        new ClassLoaderResourceAccessor(),
+                        resourceAccessor,
                         database
                 )) {
                     liquibase.update(new Contexts("tenant"), new LabelExpression());
@@ -143,5 +147,9 @@ public class MigrationModeRunner implements ApplicationRunner {
             }
         }
         return schemas;
+    }
+
+    private ResourceAccessor createResourceAccessor() {
+        return new SearchPathResourceAccessor(new ClassLoaderResourceAccessor());
     }
 }
