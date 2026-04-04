@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 FROM ubuntu:22.04 AS converter-builder
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -27,10 +29,14 @@ WORKDIR /workspace
 
 COPY gradlew gradlew.bat build.gradle.kts settings.gradle.kts gradle.properties gradle.lockfile ./
 COPY gradle ./gradle
-COPY src ./src
 
 RUN chmod +x ./gradlew
-RUN ./gradlew --no-daemon bootJar
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew --no-daemon dependencies || true
+
+COPY src/main ./src/main
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew --no-daemon bootJar
 
 # 
 # 

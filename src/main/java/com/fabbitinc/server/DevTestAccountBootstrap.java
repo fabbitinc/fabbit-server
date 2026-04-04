@@ -16,11 +16,13 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Slf4j
 @Component
+@Profile("!prod & !migrate")
 @RequiredArgsConstructor
 public class DevTestAccountBootstrap implements CommandLineRunner {
 
