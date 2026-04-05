@@ -2,8 +2,9 @@ package com.fabbitinc.server.application.part.usecase.command;
 
 public record CreatePartCategoryCommand(
         String name,
-        String prefix,
-        String delimiter,
-        int digits
+        String formatPrefix,
+        String formatSuffix,
+        int digits,
+        boolean autoNumberingEnabled
 ) {
 }

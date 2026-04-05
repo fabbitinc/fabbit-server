@@ -35,9 +35,10 @@ public class PartCategoryQuery {
                         .map(category -> new PartCategoryListResult.Item(
                                 category.getId(),
                                 category.getName(),
-                                category.getPrefix(),
-                                category.getDelimiter(),
+                                category.getFormatPrefix(),
+                                category.getFormatSuffix(),
                                 category.getDigits(),
+                                category.isAutoNumberingEnabled(),
                                 category.formatNumber(1)
                         ))
                         .toList()

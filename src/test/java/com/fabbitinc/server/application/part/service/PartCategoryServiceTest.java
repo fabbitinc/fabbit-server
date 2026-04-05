@@ -30,22 +30,23 @@ class PartCategoryServiceTest {
 
     @Test
     void create_카테고리와_시퀀스를_함께_생성한다() {
-        PartCategory category = PartCategory.create("PCB", "PCB", "-", 4);
+        PartCategory category = PartCategory.create("PCB", "PCB-", "", 4, true);
         when(partCategoryRepository.existsByName("PCB")).thenReturn(false);
-        when(partCategoryRepository.existsByPrefix("PCB")).thenReturn(false);
+        when(partCategoryRepository.existsByFormatPrefixAndFormatSuffix("PCB-", "")).thenReturn(false);
         when(partCategoryRepository.save(any(PartCategory.class))).thenReturn(category);
 
         PartCategoryService service = createService();
-        PartCategory result = service.create("PCB", "PCB", "-", 4);
+        PartCategory result = service.create("PCB", "PCB-", "", 4, true);
 
         assertEquals("PCB", result.getName());
+        assertEquals(true, result.isAutoNumberingEnabled());
         verify(partNumberSequenceRepository).save(any(PartNumberSequence.class));
     }
 
     @Test
     void delete_사용중인_카테고리면_conflict를_던진다() {
         UUID categoryId = UUID.randomUUID();
-        PartCategory category = PartCategory.create("PCB", "PCB", "-", 4);
+        PartCategory category = PartCategory.create("PCB", "PCB-", "", 4, true);
         when(partCategoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
         when(partRepository.countByCategoryId(categoryId)).thenReturn(1L);
 
@@ -58,7 +59,7 @@ class PartCategoryServiceTest {
     @Test
     void delete_삭제직전_fk충돌이발생해도_conflict로매핑한다() {
         UUID categoryId = UUID.randomUUID();
-        PartCategory category = PartCategory.create("PCB", "PCB", "-", 4);
+        PartCategory category = PartCategory.create("PCB", "PCB-", "", 4, true);
         PartNumberSequence sequence = PartNumberSequence.createFor(categoryId);
         when(partCategoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
         when(partRepository.countByCategoryId(categoryId)).thenReturn(0L);
@@ -71,6 +72,19 @@ class PartCategoryServiceTest {
 
         AppException ex = assertThrows(AppException.class, () -> service.delete(categoryId));
         assertEquals(ErrorCode.CONFLICT, ex.getErrorCode());
+    }
+
+    @Test
+    void update_자동채번여부를_변경한다() {
+        UUID categoryId = UUID.randomUUID();
+        PartCategory category = PartCategory.create("PCB", "PCB-", "", 4, false);
+        when(partCategoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
+        when(partCategoryRepository.save(any(PartCategory.class))).thenReturn(category);
+
+        PartCategoryService service = createService();
+        PartCategory result = service.update(categoryId, "PCB", "PCB-", "", 4, true);
+
+        assertEquals(true, result.isAutoNumberingEnabled());
     }
 
     private PartCategoryService createService() {

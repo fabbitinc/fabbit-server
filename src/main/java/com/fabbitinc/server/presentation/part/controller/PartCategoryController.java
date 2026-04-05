@@ -68,9 +68,10 @@ public class PartCategoryController {
     public PartCategoryResponse create(@Valid @RequestBody CreatePartCategoryRequest request) {
         return toResponse(createPartCategoryUseCase.execute(new CreatePartCategoryCommand(
                 request.name(),
-                request.prefix(),
-                request.delimiter(),
-                request.digits()
+                request.formatPrefix(),
+                request.formatSuffix(),
+                request.digits(),
+                Boolean.TRUE.equals(request.autoNumberingEnabled())
         )));
     }
 
@@ -84,9 +85,10 @@ public class PartCategoryController {
         return toResponse(updatePartCategoryUseCase.execute(new UpdatePartCategoryCommand(
                 categoryId,
                 request.name(),
-                request.prefix(),
-                request.delimiter(),
-                request.digits()
+                request.formatPrefix(),
+                request.formatSuffix(),
+                request.digits(),
+                Boolean.TRUE.equals(request.autoNumberingEnabled())
         )));
     }
 
@@ -124,9 +126,10 @@ public class PartCategoryController {
                         .map(item -> new PartCategoryResponse(
                                 item.id(),
                                 item.name(),
-                                item.prefix(),
-                                item.delimiter(),
+                                item.formatPrefix(),
+                                item.formatSuffix(),
                                 item.digits(),
+                                item.autoNumberingEnabled(),
                                 item.previewPartNumber()
                         ))
                         .toList()
@@ -137,9 +140,10 @@ public class PartCategoryController {
         return new PartCategoryResponse(
                 result.id(),
                 result.name(),
-                result.prefix(),
-                result.delimiter(),
+                result.formatPrefix(),
+                result.formatSuffix(),
                 result.digits(),
+                result.autoNumberingEnabled(),
                 result.previewPartNumber()
         );
     }

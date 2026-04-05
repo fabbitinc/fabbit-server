@@ -45,10 +45,15 @@ public class PartService {
             if (partNumber != null && partNumber.isBlank()) {
                 partNumber = null;
             }
-            partCategoryRepository.findById(input.categoryId())
+            PartCategory category = partCategoryRepository.findById(input.categoryId())
                     .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "카테고리를 찾을 수 없습니다: " + input.categoryId()));
-            if (partNumber == null) {
+            if (category.isAutoNumberingEnabled()) {
+                if (partNumber != null) {
+                    throw new AppException(ErrorCode.BAD_REQUEST, "자동채번 카테고리에서는 품번을 직접 입력할 수 없습니다");
+                }
                 partNumber = partNumberService.generate(input.categoryId());
+            } else if (partNumber == null) {
+                throw new AppException(ErrorCode.BAD_REQUEST, "수동 품번 카테고리에서는 품번을 직접 입력해야 합니다");
             }
 
             Part part = Part.create(partNumber, input.categoryId(), input.itemType());

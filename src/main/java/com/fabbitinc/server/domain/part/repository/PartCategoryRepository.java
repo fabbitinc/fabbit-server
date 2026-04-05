@@ -12,7 +12,7 @@ public interface PartCategoryRepository extends JpaRepository<PartCategory, UUID
 
     boolean existsByName(String name);
 
-    boolean existsByPrefix(String prefix);
+    boolean existsByFormatPrefixAndFormatSuffix(String formatPrefix, String formatSuffix);
 
     List<PartCategory> findAllByOrderByNameAsc();
 }

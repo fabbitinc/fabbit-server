@@ -5,9 +5,10 @@ import java.util.UUID;
 public record PartCategoryResult(
         UUID id,
         String name,
-        String prefix,
-        String delimiter,
+        String formatPrefix,
+        String formatSuffix,
         int digits,
+        boolean autoNumberingEnabled,
         String previewPartNumber
 ) {
 }

@@ -51,7 +51,7 @@ class PartServiceTest {
     UUID actorId = UUID.randomUUID();
     UUID categoryId = UUID.randomUUID();
     when(partCategoryRepository.findById(categoryId))
-        .thenReturn(Optional.of(PartCategory.create("기구", "MC", "-", 4)));
+        .thenReturn(Optional.of(PartCategory.create("기구", "MC-", "", 4, false)));
     when(partRepository.findByPartNumber("P-100")).thenReturn(Optional.empty());
     when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(partRevisionRepository.save(any(PartRevision.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -81,7 +81,7 @@ class PartServiceTest {
   void createPart_중복된_품번이면_conflict를_던진다() {
     UUID categoryId = UUID.randomUUID();
     when(partCategoryRepository.findById(categoryId))
-        .thenReturn(Optional.of(PartCategory.create("기구", "MC", "-", 4)));
+        .thenReturn(Optional.of(PartCategory.create("기구", "MC-", "", 4, false)));
     when(partRepository.findByPartNumber("P-100")).thenReturn(Optional.of(Part.create("P-100")));
 
     PartService service = createService();
@@ -103,7 +103,7 @@ class PartServiceTest {
     UUID actorId = UUID.randomUUID();
     UUID categoryId = UUID.randomUUID();
     when(partCategoryRepository.findById(categoryId))
-        .thenReturn(Optional.of(PartCategory.create("기구", "MC", "-", 4)));
+        .thenReturn(Optional.of(PartCategory.create("기구", "MC-", "", 4, true)));
     when(partNumberService.generate(categoryId)).thenReturn("AUTO-0001");
     when(partRepository.findByPartNumber("AUTO-0001")).thenReturn(Optional.empty());
     when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -141,7 +141,7 @@ class PartServiceTest {
     UUID actorId = UUID.randomUUID();
     UUID categoryId = UUID.randomUUID();
     when(partCategoryRepository.findById(categoryId))
-        .thenReturn(Optional.of(PartCategory.create("기구", "MC", "-", 4)));
+        .thenReturn(Optional.of(PartCategory.create("기구", "MC-", "", 4, false)));
     when(partRepository.findByPartNumber("P-300")).thenReturn(Optional.empty());
     when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(partRevisionRepository.save(any(PartRevision.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -163,7 +163,7 @@ class PartServiceTest {
     UUID categoryId = UUID.randomUUID();
     Map<String, Object> extendedProperties = Map.of("weight", 1.2, "material_code", "AL6061");
     when(partCategoryRepository.findById(categoryId))
-        .thenReturn(Optional.of(PartCategory.create("기구", "MC", "-", 4)));
+        .thenReturn(Optional.of(PartCategory.create("기구", "MC-", "", 4, false)));
     when(partRepository.findByPartNumber("P-200")).thenReturn(Optional.empty());
     when(propertyApi.validateExtendedProperties(com.fabbitinc.server.domain.property.model.PropertyOwnerType.PART, extendedProperties))
         .thenReturn(extendedProperties);
@@ -205,6 +205,44 @@ class PartServiceTest {
     assertEquals("sample", savedRevision.getDescription());
     assertEquals(7, savedRevision.getLeadTimeDays());
     assertEquals("{\"weight\":1.2,\"material_code\":\"AL6061\"}", savedRevision.getExtendedProperties());
+  }
+
+  @Test
+  void createPart_자동채번카테고리에서_품번을_직접입력하면_bad_request를_던진다() {
+    UUID categoryId = UUID.randomUUID();
+    when(partCategoryRepository.findById(categoryId))
+        .thenReturn(Optional.of(PartCategory.create("기구", "MC-", "", 4, true)));
+
+    PartService service = createService();
+
+    AppException ex =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.createPart(
+                    new CreatePartInput("P-123", categoryId, PartItemType.MANUFACTURED, "Bolt", null, null, null, null, null, null, null),
+                    UUID.randomUUID()));
+
+    assertEquals(ErrorCode.BAD_REQUEST, ex.getErrorCode());
+  }
+
+  @Test
+  void createPart_수동카테고리에서_품번이없으면_bad_request를_던진다() {
+    UUID categoryId = UUID.randomUUID();
+    when(partCategoryRepository.findById(categoryId))
+        .thenReturn(Optional.of(PartCategory.create("기구", "MC-", "", 4, false)));
+
+    PartService service = createService();
+
+    AppException ex =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.createPart(
+                    new CreatePartInput(null, categoryId, PartItemType.MANUFACTURED, "Bolt", null, null, null, null, null, null, null),
+                    UUID.randomUUID()));
+
+    assertEquals(ErrorCode.BAD_REQUEST, ex.getErrorCode());
   }
 
   @Test

@@ -21,16 +21,18 @@ public class CreatePartCategoryUseCase {
         currentAuthProvider.getCurrentAuth();
         PartCategory category = partCategoryService.create(
                 command.name(),
-                command.prefix(),
-                command.delimiter(),
-                command.digits()
+                command.formatPrefix(),
+                command.formatSuffix(),
+                command.digits(),
+                command.autoNumberingEnabled()
         );
         return new PartCategoryResult(
                 category.getId(),
                 category.getName(),
-                category.getPrefix(),
-                category.getDelimiter(),
+                category.getFormatPrefix(),
+                category.getFormatSuffix(),
                 category.getDigits(),
+                category.isAutoNumberingEnabled(),
                 category.formatNumber(1)
         );
     }

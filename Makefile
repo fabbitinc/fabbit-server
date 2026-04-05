@@ -137,6 +137,11 @@ migrate-all:
 	$(MAKE) migrate-public
 	$(MAKE) migrate-tenant
 
+migrate-reset:
+	@find src/main/resources/migrations/public -type f -delete
+	@find src/main/resources/migrations/tenant -type f -delete
+	$(MAKE) revision-all
+
 # ── 테스트 ──
 
 # Playwright 전체 API 검증 실행 (OpenAPI contracts + 통합/보안/멱등/실패/스트레스)

@@ -39,7 +39,7 @@ class PartCategoryQueryTest {
         UUID categoryId = UUID.randomUUID();
         when(currentAuthProvider.getCurrentAuth()).thenReturn(new AuthContext(UUID.randomUUID(), "a@b.c", UUID.randomUUID(), null));
 
-        PartCategory category = PartCategory.create("PCB", "PCB", "-", 4);
+        PartCategory category = PartCategory.create("PCB", "PCB-", "", 4, true);
         PartNumberSequence sequence = PartNumberSequence.createFor(categoryId);
         setCurrentValue(sequence, 41);
 
@@ -81,7 +81,7 @@ class PartCategoryQueryTest {
         UUID categoryId = UUID.randomUUID();
         when(currentAuthProvider.getCurrentAuth()).thenReturn(new AuthContext(UUID.randomUUID(), "a@b.c", UUID.randomUUID(), null));
 
-        PartCategory category = PartCategory.create("PCB", "PCB", "-", 4);
+        PartCategory category = PartCategory.create("PCB", "PCB-", "", 4, true);
         PartNumberSequence sequence = PartNumberSequence.createFor(categoryId);
         setCurrentValue(sequence, 9999);
 

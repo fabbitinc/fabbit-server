@@ -22,16 +22,18 @@ public class UpdatePartCategoryUseCase {
         PartCategory category = partCategoryService.update(
                 command.categoryId(),
                 command.name(),
-                command.prefix(),
-                command.delimiter(),
-                command.digits()
+                command.formatPrefix(),
+                command.formatSuffix(),
+                command.digits(),
+                command.autoNumberingEnabled()
         );
         return new PartCategoryResult(
                 category.getId(),
                 category.getName(),
-                category.getPrefix(),
-                category.getDelimiter(),
+                category.getFormatPrefix(),
+                category.getFormatSuffix(),
                 category.getDigits(),
+                category.isAutoNumberingEnabled(),
                 category.formatNumber(1)
         );
     }

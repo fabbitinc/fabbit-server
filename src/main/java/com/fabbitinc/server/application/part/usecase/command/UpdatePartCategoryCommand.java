@@ -5,8 +5,9 @@ import java.util.UUID;
 public record UpdatePartCategoryCommand(
         UUID categoryId,
         String name,
-        String prefix,
-        String delimiter,
-        int digits
+        String formatPrefix,
+        String formatSuffix,
+        int digits,
+        boolean autoNumberingEnabled
 ) {
 }
