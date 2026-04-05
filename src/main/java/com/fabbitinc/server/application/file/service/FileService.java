@@ -57,7 +57,6 @@ public class FileService {
     }
 
     public CreateFileOutput createFile(AuthContext auth, CreateFileInput input) {
-        log.info("auth: {} input: {}", auth, input);
         UUID fileId = UuidV7Generator.next();
         String fileKey = "tenants/" + auth.orgId() + "/uploaded/" + fileId + "/" + input.originalName();
 
