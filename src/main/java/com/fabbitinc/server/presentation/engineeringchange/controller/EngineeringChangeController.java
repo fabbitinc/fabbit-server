@@ -20,9 +20,12 @@ import com.fabbitinc.server.application.engineeringchange.usecase.CreateEngineer
 import com.fabbitinc.server.application.engineeringchange.usecase.CreateEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.DeleteEngineeringChangeCommentUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.DeleteEngineeringChangeFileUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.PopulateWhereUsedAffectedItemsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.RejectEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.ReleaseEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.ReplaceEngineeringChangeStepsUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.RequestChangesOnStepUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.ResubmitStepUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SubmitEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangeAffectedItemsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SyncIssuesUseCase;
@@ -130,6 +133,9 @@ public class EngineeringChangeController {
     private final DeleteEngineeringChangeCommentUseCase deleteEngineeringChangeCommentUseCase;
     private final AddEngineeringChangeFilesUseCase addEngineeringChangeFilesUseCase;
     private final DeleteEngineeringChangeFileUseCase deleteEngineeringChangeFileUseCase;
+    private final PopulateWhereUsedAffectedItemsUseCase populateWhereUsedAffectedItemsUseCase;
+    private final RequestChangesOnStepUseCase requestChangesOnStepUseCase;
+    private final ResubmitStepUseCase resubmitStepUseCase;
 
     @Operation(
             operationId = "engineeringChangeList",
@@ -382,6 +388,44 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeRequestChanges",
+            summary = "현재 단계 담당자가 수정을 요청합니다",
+            description = "해당 step을 CHANGES_REQUESTED 상태로 전환합니다. stage는 멈추고 작성자의 재제출을 기다립니다."
+    )
+    @PostMapping("/{engineeringChangeId}/steps/{stepId}/request-changes")
+    public EngineeringChangeResponse requestChanges(
+            @PathVariable UUID engineeringChangeId,
+            @PathVariable UUID stepId,
+            @Valid @RequestBody StepActionRequest request
+    ) {
+        requestChangesOnStepUseCase.execute(
+                new RequestChangesOnStepUseCase.RequestChangesOnStepCommand(engineeringChangeId, stepId, request.comment())
+        );
+        return toEngineeringChangeResponse(
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
+        );
+    }
+
+    @Operation(
+            operationId = "engineeringChangeResubmit",
+            summary = "수정 요청된 단계를 재제출합니다",
+            description = "CHANGES_REQUESTED 상태의 step을 PENDING으로 되돌려 재검토를 요청합니다. EC 작성자만 실행할 수 있습니다."
+    )
+    @PostMapping("/{engineeringChangeId}/steps/{stepId}/resubmit")
+    @ResponseStatus(HttpStatus.OK)
+    public EngineeringChangeResponse resubmit(
+            @PathVariable UUID engineeringChangeId,
+            @PathVariable UUID stepId
+    ) {
+        resubmitStepUseCase.execute(
+                new ResubmitStepUseCase.ResubmitStepCommand(engineeringChangeId, stepId)
+        );
+        return toEngineeringChangeResponse(
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
+        );
+    }
+
+    @Operation(
             operationId = "engineeringChangeSyncIssues",
             summary = "변경관리에 연결된 이슈 목록을 동기화합니다",
             description = "변경관리에 연결된 이슈 목록을 동기화합니다"
@@ -470,6 +514,24 @@ public class EngineeringChangeController {
                                 ))
                                 .toList()
                 )
+        );
+        return toEngineeringChangeResponse(
+                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
+        );
+    }
+
+    @Operation(
+            operationId = "engineeringChangePopulateWhereUsed",
+            summary = "변경 영향 항목을 where-used 기반으로 자동 도출합니다",
+            description = "EC에 연결된 리비전의 상위 어셈블리를 자동으로 영향 항목에 추가합니다"
+    )
+    @PostMapping("/{engineeringChangeId}/affected-items/populate-where-used")
+    public EngineeringChangeResponse populateWhereUsed(
+            @Parameter(description = "대상 변경관리 ID")
+            @PathVariable UUID engineeringChangeId
+    ) {
+        populateWhereUsedAffectedItemsUseCase.execute(
+                new PopulateWhereUsedAffectedItemsUseCase.PopulateWhereUsedAffectedItemsCommand(engineeringChangeId)
         );
         return toEngineeringChangeResponse(
                 engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
@@ -774,6 +836,9 @@ public class EngineeringChangeController {
                 result.stepType(),
                 result.assigneeType(),
                 result.sequence(),
+                result.stepStageId(),
+                result.completionPolicy(),
+                result.deadline(),
                 result.status(),
                 toUserSummaryResponse(result.assigneeUser()),
                 toTeamBadgeResponse(result.assigneeTeam()),

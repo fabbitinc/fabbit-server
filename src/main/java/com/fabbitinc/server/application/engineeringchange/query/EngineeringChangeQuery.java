@@ -399,6 +399,9 @@ public class EngineeringChangeQuery {
                             stage != null ? stage.getStepType() : null,
                             step.getAssigneeType(),
                             stage != null ? stage.getSequence() : 0,
+                            step.getStepStageId(),
+                            stage != null ? stage.getCompletionPolicy() : null,
+                            stage != null ? stage.getDeadline() : null,
                             step.getStatus(),
                             step.getAssigneeType() == EngineeringChangeStepAssigneeType.USER
                                     ? toUserSummary(enrichment.userMap().get(step.getAssigneeId()))

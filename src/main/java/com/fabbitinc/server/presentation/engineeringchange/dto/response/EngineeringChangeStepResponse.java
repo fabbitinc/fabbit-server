@@ -3,6 +3,7 @@ package com.fabbitinc.server.presentation.engineeringchange.dto.response;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepAssigneeType;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepStatus;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepType;
+import com.fabbitinc.server.domain.engineeringchange.model.StepStageCompletionPolicy;
 import com.fabbitinc.server.presentation.workitem.dto.response.TeamBadgeResponse;
 import com.fabbitinc.server.presentation.workitem.dto.response.UserSummaryResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -19,6 +20,12 @@ public record EngineeringChangeStepResponse(
         EngineeringChangeStepAssigneeType assigneeType,
         @Schema(description = "단계 순서")
         int sequence,
+        @Schema(description = "소속 Stage ID")
+        UUID stepStageId,
+        @Schema(description = "완료 정책")
+        StepStageCompletionPolicy completionPolicy,
+        @Schema(description = "마감기한")
+        Instant deadline,
         @Schema(description = "단계 처리 상태")
         EngineeringChangeStepStatus status,
         @Schema(description = "사용자 담당자")
