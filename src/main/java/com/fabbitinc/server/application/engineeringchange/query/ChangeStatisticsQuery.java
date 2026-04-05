@@ -1,8 +1,10 @@
 package com.fabbitinc.server.application.engineeringchange.query;
 
 import com.fabbitinc.server.application.engineeringchange.query.condition.ChangeStatisticsCondition;
+import com.fabbitinc.server.application.engineeringchange.query.condition.StepProgressCondition;
 import com.fabbitinc.server.application.engineeringchange.query.result.ChangeStatisticsResult;
 import com.fabbitinc.server.application.engineeringchange.query.result.ChangeStatisticsResult.TopChangedPart;
+import com.fabbitinc.server.application.engineeringchange.query.result.StepProgressResult;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import java.time.Instant;
@@ -107,6 +109,60 @@ public class ChangeStatisticsQuery {
                         (String) row[1],
                         (String) row[2],
                         ((Number) row[3]).intValue()
+                ))
+                .toList();
+    }
+
+    /**
+     * 비종료 상태(RELEASED, CANCELED 제외) EC의 단계별 진행 현황 목록을 조회한다.
+     */
+    @SuppressWarnings("unchecked")
+    public List<StepProgressResult> listStepProgress(StepProgressCondition condition) {
+        String sql = """
+                SELECT
+                    ec.id AS engineering_change_id,
+                    (SELECT COUNT(*) FROM engineering_change_step_stages ss WHERE ss.engineering_change_id = ec.id)::int AS total_stages,
+                    (SELECT COUNT(*) FROM engineering_change_step_stages ss
+                     WHERE ss.engineering_change_id = ec.id
+                       AND NOT EXISTS (
+                           SELECT 1 FROM engineering_change_steps s
+                           WHERE s.step_stage_id = ss.id
+                             AND s.status NOT IN ('APPROVED', 'CANCELED')
+                       )
+                    )::int AS completed_stages,
+                    cur.step_type AS current_stage_type,
+                    (SELECT COUNT(*) FROM engineering_change_steps s WHERE s.step_stage_id = cur.id)::int AS current_stage_steps_total,
+                    (SELECT COUNT(*) FROM engineering_change_steps s WHERE s.step_stage_id = cur.id AND s.status = 'APPROVED')::int AS current_stage_steps_approved,
+                    (SELECT COUNT(*) FROM engineering_change_steps s WHERE s.step_stage_id = cur.id AND s.status = 'PENDING')::int AS current_stage_steps_pending,
+                    (SELECT COUNT(*) FROM engineering_change_steps s WHERE s.step_stage_id = cur.id AND s.status = 'CHANGES_REQUESTED')::int AS current_stage_steps_changes_requested
+                FROM engineering_changes ec
+                LEFT JOIN LATERAL (
+                    SELECT ss.id, ss.step_type
+                    FROM engineering_change_step_stages ss
+                    WHERE ss.engineering_change_id = ec.id
+                      AND EXISTS (
+                          SELECT 1 FROM engineering_change_steps s
+                          WHERE s.step_stage_id = ss.id
+                            AND s.status NOT IN ('APPROVED', 'CANCELED')
+                      )
+                    ORDER BY ss.sequence
+                    FETCH FIRST 1 ROW ONLY
+                ) cur ON TRUE
+                WHERE ec.state NOT IN ('RELEASED', 'CANCELED')
+                ORDER BY ec.created_at DESC
+                """;
+        Query query = entityManager.createNativeQuery(sql);
+        List<Object[]> rows = query.getResultList();
+        return rows.stream()
+                .map(row -> new StepProgressResult(
+                        (UUID) row[0],
+                        ((Number) row[1]).intValue(),
+                        ((Number) row[2]).intValue(),
+                        (String) row[3],
+                        ((Number) row[4]).intValue(),
+                        ((Number) row[5]).intValue(),
+                        ((Number) row[6]).intValue(),
+                        ((Number) row[7]).intValue()
                 ))
                 .toList();
     }

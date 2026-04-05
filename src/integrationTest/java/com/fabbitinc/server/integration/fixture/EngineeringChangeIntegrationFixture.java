@@ -5,8 +5,11 @@ import com.fabbitinc.server.application.engineeringchange.usecase.ApproveEnginee
 import com.fabbitinc.server.application.engineeringchange.usecase.ApproveEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.CancelEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.CreateEngineeringChangeUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.RejectEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.ReleaseEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.ReplaceEngineeringChangeStepsUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.RequestChangesOnStepUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.ResubmitStepUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SubmitEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangeAffectedItemsUseCase;
 import com.fabbitinc.server.application.part.service.PartRevisionWorkflowPolicyService;
@@ -22,14 +25,25 @@ import com.fabbitinc.server.application.part.usecase.result.ReleasePartDraftResu
 import com.fabbitinc.server.application.settings.usecase.UpdateSettingsPartWorkflowPolicyUseCase;
 import com.fabbitinc.server.application.settings.usecase.command.UpdateSettingsPartWorkflowPolicyCommand;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItemType;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStep;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepAssigneeType;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepStatus;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepType;
+import com.fabbitinc.server.domain.engineeringchange.model.StepStage;
+import com.fabbitinc.server.domain.engineeringchange.model.StepStageCompletionPolicy;
+import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeAffectedItemRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeCommentRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeIssueLinkRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeStepRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.StepStageRepository;
 import com.fabbitinc.server.domain.organization.model.MembershipRole;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartRevisionWorkflowMode;
 import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import com.fabbitinc.server.integration.support.TestCurrentAuthProvider;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,6 +65,15 @@ public class EngineeringChangeIntegrationFixture {
     private final ApproveEngineeringChangeUseCase approveUseCase;
     private final ReleaseEngineeringChangeUseCase releaseUseCase;
     private final CancelEngineeringChangeUseCase cancelUseCase;
+    private final RejectEngineeringChangeUseCase rejectUseCase;
+    private final RequestChangesOnStepUseCase requestChangesOnStepUseCase;
+    private final ResubmitStepUseCase resubmitStepUseCase;
+    private final EngineeringChangeRepository engineeringChangeRepository;
+    private final EngineeringChangeStepRepository engineeringChangeStepRepository;
+    private final EngineeringChangeAffectedItemRepository affectedItemRepository;
+    private final EngineeringChangeIssueLinkRepository issueLinkRepository;
+    private final EngineeringChangeCommentRepository commentRepository;
+    private final StepStageRepository stepStageRepository;
 
     public EngineeringChangeIntegrationFixture(
             UserRepository userRepository,
@@ -68,7 +91,16 @@ public class EngineeringChangeIntegrationFixture {
             ApproveEngineeringChangeReviewUseCase approveReviewUseCase,
             ApproveEngineeringChangeUseCase approveUseCase,
             ReleaseEngineeringChangeUseCase releaseUseCase,
-            CancelEngineeringChangeUseCase cancelUseCase
+            CancelEngineeringChangeUseCase cancelUseCase,
+            RejectEngineeringChangeUseCase rejectUseCase,
+            RequestChangesOnStepUseCase requestChangesOnStepUseCase,
+            ResubmitStepUseCase resubmitStepUseCase,
+            EngineeringChangeRepository engineeringChangeRepository,
+            EngineeringChangeStepRepository engineeringChangeStepRepository,
+            EngineeringChangeAffectedItemRepository affectedItemRepository,
+            EngineeringChangeIssueLinkRepository issueLinkRepository,
+            EngineeringChangeCommentRepository commentRepository,
+            StepStageRepository stepStageRepository
     ) {
         this.userRepository = userRepository;
         this.testCurrentAuthProvider = testCurrentAuthProvider;
@@ -86,6 +118,15 @@ public class EngineeringChangeIntegrationFixture {
         this.approveUseCase = approveUseCase;
         this.releaseUseCase = releaseUseCase;
         this.cancelUseCase = cancelUseCase;
+        this.rejectUseCase = rejectUseCase;
+        this.requestChangesOnStepUseCase = requestChangesOnStepUseCase;
+        this.resubmitStepUseCase = resubmitStepUseCase;
+        this.engineeringChangeRepository = engineeringChangeRepository;
+        this.engineeringChangeStepRepository = engineeringChangeStepRepository;
+        this.affectedItemRepository = affectedItemRepository;
+        this.issueLinkRepository = issueLinkRepository;
+        this.commentRepository = commentRepository;
+        this.stepStageRepository = stepStageRepository;
     }
 
     // === 컨텍스트 설정 ===
@@ -169,32 +210,193 @@ public class EngineeringChangeIntegrationFixture {
         );
     }
 
-    public void addAllStepsForUser(UUID ecId, UUID userId) {
+    /**
+     * EC에 3개 Stage(REVIEW, APPROVAL, RELEASE)를 ALL_MUST_APPROVE 정책으로 추가한다.
+     * 각 Stage에 지정된 userId를 담당자로 할당한다.
+     */
+    public void addAllStagesForUser(UUID ecId, UUID userId) {
         replaceStepsUseCase.execute(new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand(
                 ecId,
                 List.of(
-                        new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.Item(
-                                EngineeringChangeStepType.REVIEW, EngineeringChangeStepAssigneeType.USER, userId, 1
+                        new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.StageItem(
+                                EngineeringChangeStepType.REVIEW, 1,
+                                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null,
+                                List.of(new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.AssigneeItem(
+                                        EngineeringChangeStepAssigneeType.USER, userId
+                                ))
                         ),
-                        new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.Item(
-                                EngineeringChangeStepType.APPROVAL, EngineeringChangeStepAssigneeType.USER, userId, 2
+                        new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.StageItem(
+                                EngineeringChangeStepType.APPROVAL, 2,
+                                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null,
+                                List.of(new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.AssigneeItem(
+                                        EngineeringChangeStepAssigneeType.USER, userId
+                                ))
                         ),
-                        new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.Item(
-                                EngineeringChangeStepType.RELEASE, EngineeringChangeStepAssigneeType.USER, userId, 3
+                        new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.StageItem(
+                                EngineeringChangeStepType.RELEASE, 3,
+                                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null,
+                                List.of(new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.AssigneeItem(
+                                        EngineeringChangeStepAssigneeType.USER, userId
+                                ))
                         )
                 )
         ));
     }
 
+    /**
+     * 이전 호환성을 위해 addAllStepsForUser를 addAllStagesForUser로 위임한다.
+     */
+    public void addAllStepsForUser(UUID ecId, UUID userId) {
+        addAllStagesForUser(ecId, userId);
+    }
+
+    /**
+     * EC에 Stage를 직접 구성한다. 완료 정책과 담당자를 세밀하게 제어할 때 사용한다.
+     */
+    public void replaceStages(UUID ecId, List<ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.StageItem> stages) {
+        replaceStepsUseCase.execute(new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand(
+                ecId, stages
+        ));
+    }
+
+    /**
+     * submit → review approve → approval approve → release approve 전체 플로우를 실행한다.
+     * 각 step approve 후 EC를 다시 로드하여 최신 상태를 반영한다.
+     */
     public void executeEcReleaseFlow(UUID ecId) {
+        // submit
         submitUseCase.execute(new SubmitEngineeringChangeUseCase.SubmitEngineeringChangeCommand(ecId));
-        approveReviewUseCase.execute(new ApproveEngineeringChangeReviewUseCase.ApproveEngineeringChangeReviewCommand(ecId));
-        approveUseCase.execute(new ApproveEngineeringChangeUseCase.ApproveEngineeringChangeCommand(ecId));
-        releaseUseCase.execute(new ReleaseEngineeringChangeUseCase.ReleaseEngineeringChangeCommand(ecId));
+
+        // review step 승인
+        UUID reviewStepId = findPendingStepIdByStageType(ecId, EngineeringChangeStepType.REVIEW);
+        approveReviewUseCase.execute(
+                new ApproveEngineeringChangeReviewUseCase.ApproveEngineeringChangeReviewCommand(ecId, reviewStepId)
+        );
+
+        // approval step 승인
+        UUID approvalStepId = findPendingStepIdByStageType(ecId, EngineeringChangeStepType.APPROVAL);
+        approveUseCase.execute(
+                new ApproveEngineeringChangeUseCase.ApproveEngineeringChangeCommand(ecId, approvalStepId)
+        );
+
+        // release step 승인 (ReleaseUseCase가 approve 후 자동 release 처리)
+        UUID releaseStepId = findPendingStepIdByStageType(ecId, EngineeringChangeStepType.RELEASE);
+        releaseUseCase.execute(
+                new ReleaseEngineeringChangeUseCase.ReleaseEngineeringChangeCommand(ecId, releaseStepId)
+        );
+    }
+
+    // === Step 액션 ===
+
+    public void submitEc(UUID ecId) {
+        submitUseCase.execute(new SubmitEngineeringChangeUseCase.SubmitEngineeringChangeCommand(ecId));
+    }
+
+    public void approveReviewStep(UUID ecId, UUID stepId) {
+        approveReviewUseCase.execute(
+                new ApproveEngineeringChangeReviewUseCase.ApproveEngineeringChangeReviewCommand(ecId, stepId)
+        );
+    }
+
+    public void approveStep(UUID ecId, UUID stepId) {
+        approveUseCase.execute(
+                new ApproveEngineeringChangeUseCase.ApproveEngineeringChangeCommand(ecId, stepId)
+        );
+    }
+
+    public void releaseStep(UUID ecId, UUID stepId) {
+        releaseUseCase.execute(
+                new ReleaseEngineeringChangeUseCase.ReleaseEngineeringChangeCommand(ecId, stepId)
+        );
+    }
+
+    public void rejectStep(UUID ecId, UUID stepId, String comment) {
+        rejectUseCase.execute(
+                new RejectEngineeringChangeUseCase.RejectEngineeringChangeCommand(ecId, stepId, comment)
+        );
+    }
+
+    public void requestChangesOnStep(UUID ecId, UUID stepId, String comment) {
+        requestChangesOnStepUseCase.execute(
+                new RequestChangesOnStepUseCase.RequestChangesOnStepCommand(ecId, stepId, comment)
+        );
+    }
+
+    public void resubmitStep(UUID ecId, UUID stepId) {
+        resubmitStepUseCase.execute(
+                new ResubmitStepUseCase.ResubmitStepCommand(ecId, stepId)
+        );
     }
 
     public void cancelEc(UUID ecId) {
         cancelUseCase.execute(new CancelEngineeringChangeUseCase.CancelEngineeringChangeCommand(ecId));
+    }
+
+    // === 정리 ===
+
+    /**
+     * 모든 EC 관련 데이터를 삭제한다. 테스트 간 격리를 위해 사용한다.
+     */
+    public void cleanupAll() {
+        engineeringChangeStepRepository.deleteAll();
+        stepStageRepository.deleteAll();
+        affectedItemRepository.deleteAll();
+        issueLinkRepository.deleteAll();
+        commentRepository.deleteAll();
+        engineeringChangeRepository.deleteAll();
+    }
+
+    // === Step 조회 헬퍼 ===
+
+    /**
+     * EC의 특정 StepType Stage에 속한 PENDING 상태의 step ID를 찾는다.
+     */
+    public UUID findPendingStepIdByStageType(UUID ecId, EngineeringChangeStepType stepType) {
+        List<StepStage> stages = stepStageRepository.findByEngineeringChangeIdOrderBySequenceAsc(ecId);
+
+        StepStage targetStage = stages.stream()
+                .filter(stage -> stage.getStepType() == stepType)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "EC " + ecId + "에서 " + stepType + " 타입의 Stage를 찾을 수 없습니다"));
+
+        List<EngineeringChangeStep> steps = engineeringChangeStepRepository
+                .findByStepStageIdAndStatusOrderByCreatedAtAsc(targetStage.getId(), EngineeringChangeStepStatus.PENDING);
+
+        return steps.stream()
+                .findFirst()
+                .map(EngineeringChangeStep::getId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "EC " + ecId + "에서 " + stepType + " Stage의 PENDING step을 찾을 수 없습니다"));
+    }
+
+    /**
+     * EC의 특정 StepType Stage에 속한 CHANGES_REQUESTED 상태의 step ID를 찾는다.
+     */
+    public UUID findChangesRequestedStepIdByStageType(UUID ecId, EngineeringChangeStepType stepType) {
+        List<StepStage> stages = stepStageRepository.findByEngineeringChangeIdOrderBySequenceAsc(ecId);
+
+        StepStage targetStage = stages.stream()
+                .filter(stage -> stage.getStepType() == stepType)
+                .findFirst()
+                .orElseThrow();
+
+        List<EngineeringChangeStep> steps = engineeringChangeStepRepository
+                .findByStepStageIdAndStatusOrderByCreatedAtAsc(targetStage.getId(), EngineeringChangeStepStatus.CHANGES_REQUESTED);
+
+        return steps.stream()
+                .findFirst()
+                .map(EngineeringChangeStep::getId)
+                .orElseThrow();
+    }
+
+    /**
+     * EC의 모든 step 상태 목록을 반환한다.
+     */
+    public List<EngineeringChangeStepStatus> getAllStepStatuses(UUID ecId) {
+        return engineeringChangeStepRepository.findByEngineeringChangeIdOrderByCreatedAtAsc(ecId).stream()
+                .map(EngineeringChangeStep::getStatus)
+                .toList();
     }
 
     // === Result records ===

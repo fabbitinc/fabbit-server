@@ -41,7 +41,9 @@ import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChang
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeCommentRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeIssueLinkRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeRepository;
+import com.fabbitinc.server.domain.engineeringchange.model.StepStage;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeStepRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.StepStageRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.PartRevision;
@@ -88,6 +90,7 @@ public class EngineeringChangeQuery {
     private final EngineeringChangeRepository engineeringChangeRepository;
     private final EngineeringChangeCommentRepository engineeringChangeCommentRepository;
     private final EngineeringChangeStepRepository engineeringChangeStepRepository;
+    private final StepStageRepository stepStageRepository;
     private final EngineeringChangeIssueLinkRepository engineeringChangeIssueLinkRepository;
     private final IssueApi issueApi;
     private final ProjectApi projectApi;
@@ -289,6 +292,12 @@ public class EngineeringChangeQuery {
         List<UUID> engineeringChangeIds = engineeringChanges.stream().map(EngineeringChange::getId).toList();
         List<EngineeringChangeStep> steps =
                 engineeringChangeStepRepository.findByEngineeringChangeIdIn(new LinkedHashSet<>(engineeringChangeIds));
+        List<StepStage> stages =
+                stepStageRepository.findByEngineeringChangeIdIn(new LinkedHashSet<>(engineeringChangeIds));
+        Map<UUID, StepStage> stageMap = new HashMap<>();
+        for (StepStage stage : stages) {
+            stageMap.put(stage.getId(), stage);
+        }
         List<EngineeringChangeIssueLink> issueLinks =
                 engineeringChangeIssueLinkRepository.findByEngineeringChangeIdIn(new LinkedHashSet<>(engineeringChangeIds));
         List<File> files = fileRepository.findByOwnerTypeAndOwnerIdInAndDeletedAtIsNull("engineering_change", engineeringChangeIds);
@@ -322,6 +331,7 @@ public class EngineeringChangeQuery {
 
         return new Enrichment(
                 groupStepsByEngineeringChangeId(steps),
+                stageMap,
                 groupByEngineeringChangeId(issueLinks),
                 new HashMap<>(issueApi.getIssueSnapshotMap(issueIds)),
                 findTeams(teamIds),
@@ -377,24 +387,29 @@ public class EngineeringChangeQuery {
                 .getOrDefault(engineeringChangeId, List.of())
                 .stream()
                 .sorted(Comparator
-                        .comparing(EngineeringChangeStep::getStepType)
-                        .thenComparingInt(EngineeringChangeStep::getSequence)
+                        .<EngineeringChangeStep, Integer>comparing(step -> {
+                            StepStage stage = enrichment.stageMap().get(step.getStepStageId());
+                            return stage != null ? stage.getSequence() : 0;
+                        })
                         .thenComparing(EngineeringChangeStep::getCreatedAt))
-                .map(step -> new EngineeringChangeStepResult(
-                        step.getId(),
-                        step.getStepType(),
-                        step.getAssigneeType(),
-                        step.getSequence(),
-                        step.getStatus(),
-                        step.getAssigneeType() == EngineeringChangeStepAssigneeType.USER
-                                ? toUserSummary(enrichment.userMap().get(step.getAssigneeId()))
-                                : null,
-                        step.getAssigneeType() == EngineeringChangeStepAssigneeType.TEAM
-                                ? toTeamBadge(enrichment.teamMap().get(step.getAssigneeId()))
-                                : null,
-                        toUserSummary(enrichment.userMap().get(step.getActedBy())),
-                        step.getActedAt()
-                ))
+                .map(step -> {
+                    StepStage stage = enrichment.stageMap().get(step.getStepStageId());
+                    return new EngineeringChangeStepResult(
+                            step.getId(),
+                            stage != null ? stage.getStepType() : null,
+                            step.getAssigneeType(),
+                            stage != null ? stage.getSequence() : 0,
+                            step.getStatus(),
+                            step.getAssigneeType() == EngineeringChangeStepAssigneeType.USER
+                                    ? toUserSummary(enrichment.userMap().get(step.getAssigneeId()))
+                                    : null,
+                            step.getAssigneeType() == EngineeringChangeStepAssigneeType.TEAM
+                                    ? toTeamBadge(enrichment.teamMap().get(step.getAssigneeId()))
+                                    : null,
+                            toUserSummary(enrichment.userMap().get(step.getActedBy())),
+                            step.getActedAt()
+                    );
+                })
                 .toList();
     }
 
@@ -699,6 +714,7 @@ public class EngineeringChangeQuery {
 
     private record Enrichment(
             Map<UUID, List<EngineeringChangeStep>> stepsByEngineeringChangeId,
+            Map<UUID, StepStage> stageMap,
             Map<UUID, List<EngineeringChangeIssueLink>> linksByEngineeringChangeId,
             Map<UUID, IssueSnapshot> linkedIssues,
             Map<UUID, Team> teamMap,
@@ -708,6 +724,7 @@ public class EngineeringChangeQuery {
     ) {
         private static Enrichment empty() {
             return new Enrichment(
+                    Map.of(),
                     Map.of(),
                     Map.of(),
                     Map.of(),

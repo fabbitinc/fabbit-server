@@ -20,9 +20,9 @@ public class ApproveEngineeringChangeReviewUseCase {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         EngineeringChange engineeringChange =
                 engineeringChangeService.getEngineeringChangeByIdOrThrow(command.engineeringChangeId());
-        engineeringChangeService.approveReviewStep(auth.userId(), engineeringChange);
+        engineeringChangeService.approveStep(auth.userId(), engineeringChange, command.stepId());
     }
 
-    public record ApproveEngineeringChangeReviewCommand(java.util.UUID engineeringChangeId) {
+    public record ApproveEngineeringChangeReviewCommand(java.util.UUID engineeringChangeId, java.util.UUID stepId) {
     }
 }

@@ -20,12 +20,14 @@ import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeIssu
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeState;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStep;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepAssigneeType;
-import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepStatus;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepType;
+import com.fabbitinc.server.domain.engineeringchange.model.StepStage;
+import com.fabbitinc.server.domain.engineeringchange.model.StepStageCompletionPolicy;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeCommentRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeIssueLinkRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeStepRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.StepStageRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.team.model.TeamMember;
@@ -37,7 +39,6 @@ import com.fabbitinc.server.domain.workitem.model.AbstractComment;
 import com.fabbitinc.server.domain.workitem.model.WorkItemNumberSequence;
 import com.fabbitinc.server.domain.workitem.repository.WorkItemNumberSequenceRepository;
 import java.time.Instant;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -91,6 +92,8 @@ public class EngineeringChangeService {
     private final TipTapValidator tipTapValidator;
     private final MentionExtractor mentionExtractor;
     private final ObjectMapper objectMapper;
+    private final StepCompletionEvaluator stepCompletionEvaluator;
+    private final StepStageRepository stepStageRepository;
 
     public EngineeringChange getEngineeringChangeByIdOrThrow(UUID engineeringChangeId) {
         return engineeringChangeRepository.findById(engineeringChangeId)
@@ -130,7 +133,7 @@ public class EngineeringChangeService {
             String title,
             JsonNode body
     ) {
-        assertDraftEditable(engineeringChange);
+        assertMetadataEditable(engineeringChange);
 
         JsonNode oldBody = body == null ? null : parseJson(engineeringChange.getBody());
         if (title != null) {
@@ -153,163 +156,132 @@ public class EngineeringChangeService {
         return engineeringChange;
     }
 
-    public void replaceSteps(
-            UUID actorId,
-            EngineeringChange engineeringChange,
-            List<StepDraft> requestedSteps,
-            boolean emitActivity
-    ) {
-        assertDraftEditable(engineeringChange);
+    // ── Stage/Step 관리 ──
 
-        List<StepDraft> normalizedSteps = normalizeSteps(requestedSteps);
-        validateStepDrafts(normalizedSteps);
+    public void replaceStages(UUID actorId, EngineeringChange ec, List<StageDraft> stageDrafts) {
+        assertMetadataEditable(ec);
 
-        List<EngineeringChangeStep> currentSteps =
-                engineeringChangeStepRepository.findByEngineeringChangeIdOrderBySequenceAscCreatedAtAsc(engineeringChange.getId());
-        Map<UUID, User> users = findUsers(collectUserIds(currentSteps, normalizedSteps));
-        Map<UUID, String> teamNames = findTeamNames(collectTeamIds(currentSteps, normalizedSteps));
+        ec.clearStages(actorId);
 
-        List<Map<String, Object>> removedRefs = currentSteps.stream()
-                .sorted(stepComparator())
-                .map(step -> toStepRef(step, users, teamNames))
-                .toList();
-
-        engineeringChange.clearSteps(actorId);
-        for (StepDraft step : normalizedSteps) {
-            engineeringChange.addStep(
-                    step.stepType(),
-                    step.assigneeType(),
-                    step.assigneeId(),
-                    step.sequence(),
+        for (StageDraft draft : stageDrafts) {
+            StepStage stage = ec.addStage(
+                    draft.stepType(),
+                    draft.sequence(),
+                    draft.completionPolicy(),
+                    draft.minApprovals(),
+                    draft.deadline(),
                     actorId
             );
-        }
-
-        if (emitActivity && (!removedRefs.isEmpty() || !normalizedSteps.isEmpty())) {
-            List<Map<String, Object>> addedRefs = engineeringChange.getSteps().stream()
-                    .sorted(stepComparator())
-                    .map(step -> toStepRef(step, users, teamNames))
-                    .toList();
-            addDiffActivity(
-                    engineeringChange.getId(),
-                    actorId,
-                    ACTION_ENGINEERING_CHANGE_STEP_CHANGED,
-                    addedRefs,
-                    removedRefs
-            );
+            for (StepAssigneeDraft assignee : draft.assignees()) {
+                validateAssignee(assignee);
+                ec.addStep(stage, assignee.assigneeType(), assignee.assigneeId(), actorId);
+            }
         }
     }
 
-    public EngineeringChange submitEngineeringChange(UUID actorId, EngineeringChange engineeringChange) {
-        validateReadyForSubmit(engineeringChange);
-        resetSteps(engineeringChange);
-        String oldState = engineeringChange.getState().name();
+    public EngineeringChange submitEngineeringChange(UUID actorId, EngineeringChange ec) {
+        String oldState = ec.getState().name();
         try {
-            engineeringChange.submit(actorId);
+            ec.submit(actorId);
         } catch (DomainException ex) {
             throw new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
         }
         addStateActivity(
-                engineeringChange.getId(),
+                ec.getId(),
                 actorId,
                 ACTION_ENGINEERING_CHANGE_STATE_CHANGED,
                 oldState,
-                engineeringChange.getState().name()
+                ec.getState().name()
         );
-        return engineeringChange;
+        return ec;
     }
 
-    public EngineeringChangeStep approveReviewStep(UUID actorId, EngineeringChange engineeringChange) {
-        if (engineeringChange.getState() != EngineeringChangeState.REVIEW_PENDING) {
-            throw new AppException(ErrorCode.INVALID_STATE, "REVIEW_PENDING 상태에서만 검토를 승인할 수 있습니다");
+    public EngineeringChangeStep approveStep(UUID actorId, EngineeringChange ec, UUID stepId) {
+        EngineeringChangeStep step = findActionableStep(actorId, ec, stepId);
+        String oldState = ec.getState().name();
+
+        step.approve(actorId, Instant.now());
+
+        // Stage 완료 평가
+        StepStage stage = stepStageRepository.findById(step.getStepStageId())
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "단계(Stage)를 찾을 수 없습니다"));
+        List<EngineeringChangeStep> stageSteps = ec.getSteps().stream()
+                .filter(s -> s.getStepStageId().equals(stage.getId()))
+                .toList();
+        StageEvaluationResult result = stepCompletionEvaluator.evaluate(stage, stageSteps);
+
+        if (result.complete()) {
+            for (UUID cancelId : result.stepsToCancelIds()) {
+                ec.getSteps().stream()
+                        .filter(s -> s.getId().equals(cancelId))
+                        .findFirst()
+                        .ifPresent(EngineeringChangeStep::cancel);
+            }
+            ec.syncStateFromStages(actorId);
         }
 
-        EngineeringChangeStep step = findActionablePendingStep(actorId, engineeringChange, EngineeringChangeStepType.REVIEW);
-        step.approve(actorId, Instant.now());
-        transitionToApprovalPendingIfReviewCompleted(actorId, engineeringChange);
+        addStepActivity(ec.getId(), actorId, ActivityAction.ENGINEERING_CHANGE_STEP_APPROVED, step, null);
+
+        if (!oldState.equals(ec.getState().name())) {
+            addStateActivity(
+                    ec.getId(),
+                    actorId,
+                    ACTION_ENGINEERING_CHANGE_STATE_CHANGED,
+                    oldState,
+                    ec.getState().name()
+            );
+        }
+
         return step;
     }
 
-    public EngineeringChange approveEngineeringChange(UUID actorId, EngineeringChange engineeringChange) {
-        if (engineeringChange.getState() != EngineeringChangeState.APPROVAL_PENDING) {
-            throw new AppException(ErrorCode.INVALID_STATE, "APPROVAL_PENDING 상태에서만 승인할 수 있습니다");
-        }
+    public EngineeringChange rejectStep(UUID actorId, EngineeringChange ec, UUID stepId, String comment) {
+        EngineeringChangeStep step = findActionableStep(actorId, ec, stepId);
+        String oldState = ec.getState().name();
 
-        EngineeringChangeStep step = findActionablePendingStep(actorId, engineeringChange, EngineeringChangeStepType.APPROVAL);
-        step.approve(actorId, Instant.now());
-        if (hasPendingStageStep(engineeringChange.getId(), EngineeringChangeStepType.APPROVAL)) {
-            return engineeringChange;
-        }
-
-        String oldState = engineeringChange.getState().name();
-        try {
-            engineeringChange.approve(actorId);
-        } catch (DomainException ex) {
-            throw new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
-        }
-        addStateActivity(
-                engineeringChange.getId(),
-                actorId,
-                ACTION_ENGINEERING_CHANGE_STATE_CHANGED,
-                oldState,
-                engineeringChange.getState().name()
-        );
-        return engineeringChange;
-    }
-
-    public boolean approveReleaseStep(UUID actorId, EngineeringChange engineeringChange) {
-        if (engineeringChange.getState() != EngineeringChangeState.RELEASE_PENDING) {
-            throw new AppException(ErrorCode.INVALID_STATE, "RELEASE_PENDING 상태에서만 반영 단계를 진행할 수 있습니다");
-        }
-
-        EngineeringChangeStep step = findActionablePendingStep(actorId, engineeringChange, EngineeringChangeStepType.RELEASE);
-        step.approve(actorId, Instant.now());
-        return !hasPendingStageStep(engineeringChange.getId(), EngineeringChangeStepType.RELEASE);
-    }
-
-    public EngineeringChange completeRelease(UUID actorId, EngineeringChange engineeringChange) {
-        if (engineeringChange.getState() != EngineeringChangeState.RELEASE_PENDING) {
-            throw new AppException(ErrorCode.INVALID_STATE, "RELEASE_PENDING 상태에서만 반영 완료할 수 있습니다");
-        }
-        if (hasPendingStageStep(engineeringChange.getId(), EngineeringChangeStepType.RELEASE)) {
-            throw new AppException(ErrorCode.CONFLICT, "남아 있는 반영 단계가 있어 완료할 수 없습니다");
-        }
-
-        String oldState = engineeringChange.getState().name();
-        try {
-            engineeringChange.release(Instant.now(), actorId);
-        } catch (DomainException ex) {
-            throw new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
-        }
-        addStateActivity(
-                engineeringChange.getId(),
-                actorId,
-                ACTION_ENGINEERING_CHANGE_STATE_CHANGED,
-                oldState,
-                engineeringChange.getState().name()
-        );
-        return engineeringChange;
-    }
-
-    public EngineeringChange rejectEngineeringChange(UUID actorId, EngineeringChange engineeringChange) {
-        EngineeringChangeStepType currentStepType = resolveCurrentStepType(engineeringChange.getState());
-        EngineeringChangeStep step = findActionablePendingStep(actorId, engineeringChange, currentStepType);
         step.reject(actorId, Instant.now());
+        ec.resetAllSteps(actorId);
 
-        String oldState = engineeringChange.getState().name();
-        try {
-            engineeringChange.reject(actorId);
-        } catch (DomainException ex) {
-            throw new AppException(ErrorCode.INVALID_STATE, ex.getMessage());
-        }
+        addStepActivity(ec.getId(), actorId, ActivityAction.ENGINEERING_CHANGE_STEP_REJECTED, step, comment);
         addStateActivity(
-                engineeringChange.getId(),
+                ec.getId(),
                 actorId,
                 ACTION_ENGINEERING_CHANGE_STATE_CHANGED,
                 oldState,
-                engineeringChange.getState().name()
+                ec.getState().name()
         );
-        return engineeringChange;
+
+        return ec;
+    }
+
+    public EngineeringChangeStep requestChangesOnStep(UUID actorId, EngineeringChange ec, UUID stepId, String comment) {
+        EngineeringChangeStep step = findActionableStep(actorId, ec, stepId);
+
+        step.requestChanges(actorId, Instant.now());
+
+        addStepActivity(ec.getId(), actorId, ActivityAction.ENGINEERING_CHANGE_STEP_CHANGES_REQUESTED, step, comment);
+
+        return step;
+    }
+
+    public EngineeringChangeStep resubmitStep(UUID actorId, EngineeringChange ec, UUID stepId) {
+        EngineeringChangeStep step = ec.getSteps().stream()
+                .filter(s -> s.getId().equals(stepId))
+                .findFirst()
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "단계를 찾을 수 없습니다"));
+
+        if (!step.isChangesRequested()) {
+            throw new AppException(ErrorCode.INVALID_STATE, "수정 요청 상태의 단계만 재제출할 수 있습니다");
+        }
+        if (!actorId.equals(ec.getCreatedBy())) {
+            throw new AppException(ErrorCode.FORBIDDEN, "변경안 작성자만 재제출할 수 있습니다");
+        }
+
+        step.resubmit();
+
+        addStepActivity(ec.getId(), actorId, ActivityAction.ENGINEERING_CHANGE_STEP_RESUBMITTED, step, null);
+
+        return step;
     }
 
     public EngineeringChange cancelEngineeringChange(UUID actorId, EngineeringChange engineeringChange) {
@@ -329,8 +301,10 @@ public class EngineeringChangeService {
         return engineeringChange;
     }
 
+    // ── Issue 동기화 ──
+
     public DiffResult syncIssues(UUID actorId, UUID engineeringChangeId, List<UUID> issueIds, boolean emitActivity) {
-        assertDraftEditable(getEngineeringChangeByIdOrThrow(engineeringChangeId));
+        assertMetadataEditable(getEngineeringChangeByIdOrThrow(engineeringChangeId));
         issueApi.validateIssueIds(issueIds);
 
         Set<UUID> current = engineeringChangeIssueRepository.findByEngineeringChangeId(engineeringChangeId).stream()
@@ -390,6 +364,8 @@ public class EngineeringChangeService {
         return new DiffResult(toAdd, toRemove);
     }
 
+    // ── Affected Item Activity ──
+
     public void recordAffectedItemDiffActivity(
             UUID actorId,
             UUID engineeringChangeId,
@@ -407,6 +383,8 @@ public class EngineeringChangeService {
                 removed == null ? List.of() : removed.stream().map(this::toAffectedItemRef).toList()
         );
     }
+
+    // ── Comment ──
 
     public AbstractComment createComment(UUID actorId, UUID engineeringChangeId, JsonNode body) {
         tipTapValidator.validateDocument(body);
@@ -459,12 +437,14 @@ public class EngineeringChangeService {
         engineeringChangeCommentRepository.delete(comment);
     }
 
+    // ── File ──
+
     public List<File> attachFiles(UUID actorId, UUID engineeringChangeId, List<File> files) {
         return attachFiles(actorId, engineeringChangeId, files, true);
     }
 
     public List<File> attachFiles(UUID actorId, UUID engineeringChangeId, List<File> files, boolean emitActivity) {
-        assertDraftEditable(getEngineeringChangeByIdOrThrow(engineeringChangeId));
+        assertMetadataEditable(getEngineeringChangeByIdOrThrow(engineeringChangeId));
         if (files.isEmpty()) {
             return List.of();
         }
@@ -513,6 +493,22 @@ public class EngineeringChangeService {
         addDiffActivity(engineeringChangeId, actorId, ACTION_FILE_DETACHED, List.of(), List.of(removed));
     }
 
+    // ── Guard ──
+
+    public void assertMetadataEditable(EngineeringChange ec) {
+        if (ec.getState() != EngineeringChangeState.DRAFT) {
+            throw new AppException(ErrorCode.INVALID_STATE, "DRAFT 상태의 변경안만 수정할 수 있습니다");
+        }
+    }
+
+    public void assertContentEditable(EngineeringChange ec) {
+        if (ec.getState() != EngineeringChangeState.DRAFT && !ec.hasChangesRequestedStep()) {
+            throw new AppException(ErrorCode.INVALID_STATE, "DRAFT 상태이거나 수정 요청이 있는 변경안만 수정할 수 있습니다");
+        }
+    }
+
+    // ── WorkItem Number ──
+
     private int allocateWorkItemNumber() {
         WorkItemNumberSequence sequence = workItemNumberSequenceRepository.findByIdForUpdate(WORK_ITEM_NUMBER_SEQUENCE_ID)
                 .orElseGet(this::initializeWorkItemNumberSequence);
@@ -536,6 +532,48 @@ public class EngineeringChangeService {
                 ));
     }
 
+    // ── Step 찾기 (private) ──
+
+    private EngineeringChangeStep findActionableStep(UUID actorId, EngineeringChange ec, UUID stepId) {
+        EngineeringChangeStep step = ec.getSteps().stream()
+                .filter(s -> s.getId().equals(stepId))
+                .findFirst()
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "단계를 찾을 수 없습니다"));
+
+        if (!step.isPending()) {
+            throw new AppException(ErrorCode.INVALID_STATE, "대기 중인 단계만 처리할 수 있습니다");
+        }
+
+        // USER 직접 할당 확인
+        if (step.isAssignedToUser(actorId)) {
+            return step;
+        }
+
+        // TEAM 소속 확인
+        if (step.getAssigneeType() == EngineeringChangeStepAssigneeType.TEAM) {
+            boolean isMember = teamMemberRepository.findByTeam_IdIn(Set.of(step.getAssigneeId())).stream()
+                    .anyMatch(member -> actorId.equals(member.getUserId()));
+            if (isMember) {
+                return step;
+            }
+        }
+
+        throw new AppException(ErrorCode.FORBIDDEN, "해당 단계의 담당자만 처리할 수 있습니다");
+    }
+
+    private void validateAssignee(StepAssigneeDraft assignee) {
+        if (assignee.assigneeType() == EngineeringChangeStepAssigneeType.USER) {
+            userRepository.findById(assignee.assigneeId())
+                    .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "단계 담당 사용자를 찾을 수 없습니다"));
+            return;
+        }
+        if (!teamRepository.existsById(assignee.assigneeId())) {
+            throw new AppException(ErrorCode.NOT_FOUND, "단계 담당 팀을 찾을 수 없습니다");
+        }
+    }
+
+    // ── Activity 헬퍼 ──
+
     private void addStateActivity(UUID targetId, UUID actorId, ActivityAction action, String oldState, String newState) {
         addActivity(
                 targetId,
@@ -558,6 +596,24 @@ public class EngineeringChangeService {
         addActivity(targetId, actorId, action, detail);
     }
 
+    private void addStepActivity(
+            UUID ecId,
+            UUID actorId,
+            ActivityAction action,
+            EngineeringChangeStep step,
+            String comment
+    ) {
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("stepStageId", step.getStepStageId().toString());
+        detail.put("stepId", step.getId().toString());
+        if (comment != null) {
+            detail.put("comment", comment);
+        }
+        detail.put("previousStatus", step.getStatus().name());
+        detail.put("newStatus", step.getStatus().name());
+        addActivity(ecId, actorId, action, detail);
+    }
+
     private void addActivity(UUID targetId, UUID actorId, ActivityAction action, Object detail) {
         activityRepository.save(Activity.create(
                 resolveActivityTargetType(targetId),
@@ -578,6 +634,8 @@ public class EngineeringChangeService {
         return ActivityTargetType.ENGINEERING_CHANGE;
     }
 
+    // ── Comment 헬퍼 ──
+
     private EngineeringChangeComment findCommentOrThrow(UUID engineeringChangeId, UUID commentId) {
         EngineeringChangeComment comment = engineeringChangeCommentRepository.findById(commentId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "댓글을 찾을 수 없습니다"));
@@ -586,6 +644,8 @@ public class EngineeringChangeService {
         }
         return comment;
     }
+
+    // ── Mention 헬퍼 ──
 
     private void registerMentions(
             UUID sourceId,
@@ -641,293 +701,7 @@ public class EngineeringChangeService {
         );
     }
 
-    private void assertDraftEditable(EngineeringChange engineeringChange) {
-        if (engineeringChange.getState() != EngineeringChangeState.DRAFT) {
-            throw new AppException(ErrorCode.INVALID_STATE, "DRAFT 상태의 변경안만 수정할 수 있습니다");
-        }
-    }
-
-    private void validateReadyForSubmit(EngineeringChange engineeringChange) {
-        if (engineeringChange.getState() != EngineeringChangeState.DRAFT) {
-            throw new AppException(ErrorCode.INVALID_STATE, "DRAFT 상태에서만 제출할 수 있습니다");
-        }
-
-        List<EngineeringChangeStep> steps =
-                engineeringChangeStepRepository.findByEngineeringChangeIdOrderBySequenceAscCreatedAtAsc(engineeringChange.getId());
-        if (steps.isEmpty()) {
-            throw new AppException(ErrorCode.CONFLICT, "단계를 먼저 지정해야 합니다");
-        }
-
-        long reviewCount = steps.stream()
-                .filter(step -> step.getStepType() == EngineeringChangeStepType.REVIEW)
-                .count();
-        long approvalCount = steps.stream()
-                .filter(step -> step.getStepType() == EngineeringChangeStepType.APPROVAL)
-                .count();
-        long releaseCount = steps.stream()
-                .filter(step -> step.getStepType() == EngineeringChangeStepType.RELEASE)
-                .count();
-
-        if (reviewCount < 1) {
-            throw new AppException(ErrorCode.CONFLICT, "검토 단계를 최소 1개 이상 지정해야 합니다");
-        }
-        if (approvalCount < 1) {
-            throw new AppException(ErrorCode.CONFLICT, "승인 단계를 최소 1개 이상 지정해야 합니다");
-        }
-        if (releaseCount < 1) {
-            throw new AppException(ErrorCode.CONFLICT, "반영 단계를 최소 1개 이상 지정해야 합니다");
-        }
-    }
-
-    private void resetSteps(EngineeringChange engineeringChange) {
-        engineeringChangeStepRepository.findByEngineeringChangeIdOrderBySequenceAscCreatedAtAsc(engineeringChange.getId())
-                .forEach(EngineeringChangeStep::reset);
-    }
-
-    private void transitionToApprovalPendingIfReviewCompleted(UUID actorId, EngineeringChange engineeringChange) {
-        if (engineeringChange.getState() != EngineeringChangeState.REVIEW_PENDING) {
-            return;
-        }
-        if (hasPendingStageStep(engineeringChange.getId(), EngineeringChangeStepType.REVIEW)) {
-            return;
-        }
-        String oldState = engineeringChange.getState().name();
-        engineeringChange.completeReview(actorId);
-        addStateActivity(
-                engineeringChange.getId(),
-                actorId,
-                ACTION_ENGINEERING_CHANGE_STATE_CHANGED,
-                oldState,
-                engineeringChange.getState().name()
-        );
-    }
-
-    private EngineeringChangeStep findActionablePendingStep(
-            UUID actorId,
-            EngineeringChange engineeringChange,
-            EngineeringChangeStepType stepType
-    ) {
-        List<EngineeringChangeStep> pendingSteps = engineeringChangeStepRepository
-                .findByEngineeringChangeIdAndStepTypeAndStatusOrderBySequenceAscCreatedAtAsc(
-                        engineeringChange.getId(),
-                        stepType,
-                        EngineeringChangeStepStatus.PENDING
-                );
-        if (pendingSteps.isEmpty()) {
-            throw new AppException(ErrorCode.CONFLICT, "진행 가능한 단계가 없습니다");
-        }
-
-        int currentSequence = pendingSteps.stream()
-                .mapToInt(EngineeringChangeStep::getSequence)
-                .min()
-                .orElseThrow(() -> new AppException(ErrorCode.CONFLICT, "진행 가능한 단계가 없습니다"));
-
-        List<EngineeringChangeStep> activeSteps = pendingSteps.stream()
-                .filter(step -> step.getSequence() == currentSequence)
-                .toList();
-
-        Set<UUID> activeTeamIds = activeSteps.stream()
-                .filter(step -> step.getAssigneeType() == EngineeringChangeStepAssigneeType.TEAM)
-                .map(EngineeringChangeStep::getAssigneeId)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        Set<UUID> actorTeamIds = teamMemberRepository.findByTeam_IdIn(activeTeamIds).stream()
-                .filter(member -> actorId.equals(member.getUserId()))
-                .map(TeamMember::getTeamId)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-
-        return activeSteps.stream()
-                .filter(step -> step.isAssignedToUser(actorId)
-                        || (step.getAssigneeType() == EngineeringChangeStepAssigneeType.TEAM
-                        && actorTeamIds.contains(step.getAssigneeId())))
-                .findFirst()
-                .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN, forbiddenMessage(stepType)));
-    }
-
-    private boolean hasPendingStageStep(UUID engineeringChangeId, EngineeringChangeStepType stepType) {
-        return !engineeringChangeStepRepository
-                .findByEngineeringChangeIdAndStepTypeAndStatusOrderBySequenceAscCreatedAtAsc(
-                        engineeringChangeId,
-                        stepType,
-                        EngineeringChangeStepStatus.PENDING
-                )
-                .isEmpty();
-    }
-
-    private EngineeringChangeStepType resolveCurrentStepType(EngineeringChangeState state) {
-        return switch (state) {
-            case REVIEW_PENDING -> EngineeringChangeStepType.REVIEW;
-            case APPROVAL_PENDING -> EngineeringChangeStepType.APPROVAL;
-            case RELEASE_PENDING -> EngineeringChangeStepType.RELEASE;
-            default -> throw new AppException(ErrorCode.INVALID_STATE, "대기 상태에서만 처리할 수 있습니다");
-        };
-    }
-
-    private String forbiddenMessage(EngineeringChangeStepType stepType) {
-        return switch (stepType) {
-            case REVIEW -> "현재 검토 단계 담당자만 처리할 수 있습니다";
-            case APPROVAL -> "현재 승인 단계 담당자만 처리할 수 있습니다";
-            case RELEASE -> "현재 반영 단계 담당자만 처리할 수 있습니다";
-        };
-    }
-
-    private List<StepDraft> normalizeSteps(List<StepDraft> requestedSteps) {
-        if (requestedSteps == null) {
-            return List.of();
-        }
-        return requestedSteps.stream()
-                .sorted(Comparator
-                        .comparing(StepDraft::stepType)
-                        .thenComparingInt(StepDraft::sequence)
-                        .thenComparing(StepDraft::assigneeType)
-                        .thenComparing(StepDraft::assigneeId))
-                .toList();
-    }
-
-    private void validateStepDrafts(List<StepDraft> requestedSteps) {
-        Set<String> uniqueKeys = new LinkedHashSet<>();
-        for (StepDraft step : requestedSteps) {
-            validateAssignee(step);
-            String uniqueKey = step.stepType() + ":" + step.assigneeType() + ":" + step.assigneeId() + ":" + step.sequence();
-            if (!uniqueKeys.add(uniqueKey)) {
-                throw new AppException(ErrorCode.CONFLICT, "중복된 단계가 포함되어 있습니다");
-            }
-        }
-    }
-
-    private void validateAssignee(StepDraft step) {
-        if (step.assigneeType() == EngineeringChangeStepAssigneeType.USER) {
-            userRepository.findById(step.assigneeId())
-                    .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "단계 담당 사용자를 찾을 수 없습니다"));
-            return;
-        }
-        if (!teamRepository.existsById(step.assigneeId())) {
-            throw new AppException(ErrorCode.NOT_FOUND, "단계 담당 팀을 찾을 수 없습니다");
-        }
-    }
-
-    private Set<UUID> collectUserIds(List<EngineeringChangeStep> currentSteps, List<StepDraft> requestedSteps) {
-        Set<UUID> result = new LinkedHashSet<>();
-        for (EngineeringChangeStep step : currentSteps) {
-            if (step.getAssigneeType() == EngineeringChangeStepAssigneeType.USER) {
-                result.add(step.getAssigneeId());
-            }
-            if (step.getActedBy() != null) {
-                result.add(step.getActedBy());
-            }
-        }
-        for (StepDraft step : requestedSteps) {
-            if (step.assigneeType() == EngineeringChangeStepAssigneeType.USER) {
-                result.add(step.assigneeId());
-            }
-        }
-        return result;
-    }
-
-    private Set<UUID> collectTeamIds(List<EngineeringChangeStep> currentSteps, List<StepDraft> requestedSteps) {
-        Set<UUID> result = new LinkedHashSet<>();
-        for (EngineeringChangeStep step : currentSteps) {
-            if (step.getAssigneeType() == EngineeringChangeStepAssigneeType.TEAM) {
-                result.add(step.getAssigneeId());
-            }
-        }
-        for (StepDraft step : requestedSteps) {
-            if (step.assigneeType() == EngineeringChangeStepAssigneeType.TEAM) {
-                result.add(step.assigneeId());
-            }
-        }
-        return result;
-    }
-
-    private Map<UUID, String> findTeamNames(Set<UUID> teamIds) {
-        if (teamIds.isEmpty()) {
-            return Map.of();
-        }
-        Map<UUID, String> teamNames = new HashMap<>();
-        teamRepository.findAllById(teamIds).forEach(team -> teamNames.put(team.getId(), team.getName()));
-        return teamNames;
-    }
-
-    private Comparator<EngineeringChangeStep> stepComparator() {
-        return Comparator
-                .comparing(EngineeringChangeStep::getStepType)
-                .thenComparingInt(EngineeringChangeStep::getSequence)
-                .thenComparing(EngineeringChangeStep::getAssigneeType)
-                .thenComparing(EngineeringChangeStep::getAssigneeId);
-    }
-
-    private Map<String, Object> toStepRef(
-            EngineeringChangeStep step,
-            Map<UUID, User> users,
-            Map<UUID, String> teamNames
-    ) {
-        Map<String, Object> ref = new LinkedHashMap<>();
-        ref.put("id", step.getId().toString());
-        ref.put("type", "engineering_change_step");
-        ref.put("step_type", step.getStepType().name());
-        ref.put("assignee_type", step.getAssigneeType().name());
-        ref.put("sequence", step.getSequence());
-        ref.put("status", step.getStatus().name());
-        if (step.getAssigneeType() == EngineeringChangeStepAssigneeType.USER) {
-            User assignee = users.get(step.getAssigneeId());
-            ref.put("label", assignee == null ? step.getAssigneeId().toString() : assignee.getFullName());
-            ref.put("assignee_id", step.getAssigneeId().toString());
-        } else {
-            ref.put("label", teamNames.getOrDefault(step.getAssigneeId(), step.getAssigneeId().toString()));
-            ref.put("assignee_id", step.getAssigneeId().toString());
-        }
-        return ref;
-    }
-
-    private JsonNode parseJson(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return null;
-        }
-        try {
-            return objectMapper.readTree(raw);
-        } catch (JacksonException ex) {
-            return null;
-        }
-    }
-
-    private String toBodyString(JsonNode body) {
-        if (body == null || body.isNull()) {
-            return null;
-        }
-        return toJsonString(body);
-    }
-
-    private String toJsonString(Object value) {
-        try {
-            return objectMapper.writeValueAsString(value);
-        } catch (JacksonException ex) {
-            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "JSON 직렬화에 실패했습니다");
-        }
-    }
-
-    private Map<UUID, User> findUsers(Set<UUID> userIds) {
-        if (userIds.isEmpty()) {
-            return Map.of();
-        }
-        Map<UUID, User> users = new HashMap<>();
-        for (User user : userRepository.findByIdInOrderByFullNameAsc(userIds)) {
-            users.put(user.getId(), user);
-        }
-        return users;
-    }
-
-    private Set<UUID> union(Set<UUID> a, Set<UUID> b) {
-        Set<UUID> result = new LinkedHashSet<>(a);
-        result.addAll(b);
-        return result;
-    }
-
-    private Map<String, Object> toUserRef(UUID userId, User user) {
-        Map<String, Object> ref = new LinkedHashMap<>();
-        ref.put("id", userId.toString());
-        ref.put("type", "user");
-        ref.put("label", user == null ? "(알 수 없음)" : user.getFullName());
-        return ref;
-    }
+    // ── Ref 변환 헬퍼 ──
 
     private Map<String, Object> toIssueRef(IssueSnapshot issue) {
         Map<String, Object> ref = new LinkedHashMap<>();
@@ -971,6 +745,72 @@ public class EngineeringChangeService {
         return ref;
     }
 
+    private Map<String, Object> toUserRef(UUID userId, User user) {
+        Map<String, Object> ref = new LinkedHashMap<>();
+        ref.put("id", userId.toString());
+        ref.put("type", "user");
+        ref.put("label", user == null ? "(알 수 없음)" : user.getFullName());
+        return ref;
+    }
+
+    // ── JSON 헬퍼 ──
+
+    private JsonNode parseJson(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.readTree(raw);
+        } catch (JacksonException ex) {
+            return null;
+        }
+    }
+
+    private String toBodyString(JsonNode body) {
+        if (body == null || body.isNull()) {
+            return null;
+        }
+        return toJsonString(body);
+    }
+
+    private String toJsonString(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JacksonException ex) {
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, "JSON 직렬화에 실패했습니다");
+        }
+    }
+
+    // ── 조회 헬퍼 ──
+
+    private Map<UUID, User> findUsers(Set<UUID> userIds) {
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, User> users = new HashMap<>();
+        for (User user : userRepository.findByIdInOrderByFullNameAsc(userIds)) {
+            users.put(user.getId(), user);
+        }
+        return users;
+    }
+
+    private Set<UUID> union(Set<UUID> a, Set<UUID> b) {
+        Set<UUID> result = new LinkedHashSet<>(a);
+        result.addAll(b);
+        return result;
+    }
+
+    private Map<UUID, String> findTeamNames(Set<UUID> teamIds) {
+        if (teamIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, String> teamNames = new HashMap<>();
+        teamRepository.findAllById(teamIds).forEach(team -> teamNames.put(team.getId(), team.getName()));
+        return teamNames;
+    }
+
+    // ── inner records ──
+
     private record MentionSource(
             UUID id,
             int number,
@@ -985,11 +825,19 @@ public class EngineeringChangeService {
     ) {
     }
 
-    public record StepDraft(
+    public record StageDraft(
             EngineeringChangeStepType stepType,
+            int sequence,
+            StepStageCompletionPolicy completionPolicy,
+            Integer minApprovals,
+            Instant deadline,
+            List<StepAssigneeDraft> assignees
+    ) {
+    }
+
+    public record StepAssigneeDraft(
             EngineeringChangeStepAssigneeType assigneeType,
-            UUID assigneeId,
-            int sequence
+            UUID assigneeId
     ) {
     }
 }

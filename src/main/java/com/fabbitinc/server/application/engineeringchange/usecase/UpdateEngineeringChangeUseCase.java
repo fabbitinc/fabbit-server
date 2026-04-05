@@ -6,6 +6,8 @@ import com.fabbitinc.server.application.engineeringchange.service.EngineeringCha
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChange;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepAssigneeType;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepType;
+import com.fabbitinc.server.domain.engineeringchange.model.StepStageCompletionPolicy;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -26,19 +28,25 @@ public class UpdateEngineeringChangeUseCase {
         EngineeringChange engineeringChange =
                 engineeringChangeService.getEngineeringChangeByIdOrThrow(command.engineeringChangeId());
         engineeringChangeService.updateEngineeringChange(auth.userId(), engineeringChange, command.title(), command.body());
-        if (command.steps() != null) {
-            engineeringChangeService.replaceSteps(
+        if (command.stages() != null) {
+            engineeringChangeService.replaceStages(
                     auth.userId(),
                     engineeringChange,
-                    command.steps().stream()
-                            .map(step -> new EngineeringChangeService.StepDraft(
-                                    step.stepType(),
-                                    step.assigneeType(),
-                                    step.assigneeId(),
-                                    step.sequence()
+                    command.stages().stream()
+                            .map(stage -> new EngineeringChangeService.StageDraft(
+                                    stage.stepType(),
+                                    stage.sequence(),
+                                    stage.completionPolicy(),
+                                    stage.minApprovals(),
+                                    stage.deadline(),
+                                    stage.assignees().stream()
+                                            .map(a -> new EngineeringChangeService.StepAssigneeDraft(
+                                                    a.assigneeType(),
+                                                    a.assigneeId()
+                                            ))
+                                            .toList()
                             ))
-                            .toList(),
-                    true
+                            .toList()
             );
         }
     }
@@ -47,17 +55,28 @@ public class UpdateEngineeringChangeUseCase {
             UUID engineeringChangeId,
             String title,
             JsonNode body,
-            List<StepTarget> steps
+            List<StageTarget> stages
     ) {
         public UpdateEngineeringChangeCommand {
-            steps = steps == null ? null : List.copyOf(steps);
+            stages = stages == null ? null : List.copyOf(stages);
         }
 
-        public record StepTarget(
+        public record StageTarget(
                 EngineeringChangeStepType stepType,
+                int sequence,
+                StepStageCompletionPolicy completionPolicy,
+                Integer minApprovals,
+                Instant deadline,
+                List<AssigneeTarget> assignees
+        ) {
+            public StageTarget {
+                assignees = assignees == null ? List.of() : List.copyOf(assignees);
+            }
+        }
+
+        public record AssigneeTarget(
                 EngineeringChangeStepAssigneeType assigneeType,
-                UUID assigneeId,
-                int sequence
+                UUID assigneeId
         ) {
         }
     }

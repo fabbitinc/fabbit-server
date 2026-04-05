@@ -24,6 +24,22 @@ public enum ActivityAction {
     ENGINEERING_CHANGE_PART_REVISION_CHANGED(
             "engineering_change:part_revision_changed",
             ActivityScope.ENGINEERING_CHANGE
+    ),
+    ENGINEERING_CHANGE_STEP_APPROVED(
+            "engineering_change:step_approved",
+            ActivityScope.ENGINEERING_CHANGE
+    ),
+    ENGINEERING_CHANGE_STEP_REJECTED(
+            "engineering_change:step_rejected",
+            ActivityScope.ENGINEERING_CHANGE
+    ),
+    ENGINEERING_CHANGE_STEP_CHANGES_REQUESTED(
+            "engineering_change:step_changes_requested",
+            ActivityScope.ENGINEERING_CHANGE
+    ),
+    ENGINEERING_CHANGE_STEP_RESUBMITTED(
+            "engineering_change:step_resubmitted",
+            ActivityScope.ENGINEERING_CHANGE
     );
 
     private final String value;

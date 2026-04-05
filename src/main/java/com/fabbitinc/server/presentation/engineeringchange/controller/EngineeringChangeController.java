@@ -44,6 +44,7 @@ import com.fabbitinc.server.application.workitem.usecase.result.SyncDiffResult;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.CreateEcFromIssueRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.CreateEngineeringChangeRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncAffectedItemsRequest;
+import com.fabbitinc.server.presentation.engineeringchange.dto.request.StepActionRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncEngineeringChangeStepsRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncIssuesRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.UpdateEngineeringChangeRequest;
@@ -207,11 +208,18 @@ public class EngineeringChangeController {
                                 .toList(),
                         request.fileIds(),
                         request.steps().stream()
-                                .map(step -> new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.StepTarget(
+                                .map(step -> new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.StageTarget(
                                         step.stepType(),
-                                        step.assigneeType(),
-                                        step.assigneeId(),
-                                        step.sequence()
+                                        step.sequence(),
+                                        step.completionPolicy(),
+                                        step.minApprovals(),
+                                        step.deadline(),
+                                        step.assignees().stream()
+                                                .map(a -> new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.AssigneeTarget(
+                                                        a.assigneeType(),
+                                                        a.assigneeId()
+                                                ))
+                                                .toList()
                                 ))
                                 .toList()
                 )
@@ -266,11 +274,18 @@ public class EngineeringChangeController {
                         request.title(),
                         request.body(),
                         request.steps() == null ? null : request.steps().stream()
-                                .map(step -> new UpdateEngineeringChangeUseCase.UpdateEngineeringChangeCommand.StepTarget(
+                                .map(step -> new UpdateEngineeringChangeUseCase.UpdateEngineeringChangeCommand.StageTarget(
                                         step.stepType(),
-                                        step.assigneeType(),
-                                        step.assigneeId(),
-                                        step.sequence()
+                                        step.sequence(),
+                                        step.completionPolicy(),
+                                        step.minApprovals(),
+                                        step.deadline(),
+                                        step.assignees().stream()
+                                                .map(a -> new UpdateEngineeringChangeUseCase.UpdateEngineeringChangeCommand.AssigneeTarget(
+                                                        a.assigneeType(),
+                                                        a.assigneeId()
+                                                ))
+                                                .toList()
                                 ))
                                 .toList()
                 )
@@ -302,10 +317,11 @@ public class EngineeringChangeController {
     )
     @PostMapping("/{engineeringChangeId}/reject")
     public EngineeringChangeResponse reject(
-            @PathVariable UUID engineeringChangeId
+            @PathVariable UUID engineeringChangeId,
+            @Valid @RequestBody StepActionRequest request
     ) {
         rejectEngineeringChangeUseCase.execute(
-                new RejectEngineeringChangeUseCase.RejectEngineeringChangeCommand(engineeringChangeId)
+                new RejectEngineeringChangeUseCase.RejectEngineeringChangeCommand(engineeringChangeId, request.stepId(), request.comment())
         );
         return toEngineeringChangeResponse(
                 engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
@@ -319,10 +335,11 @@ public class EngineeringChangeController {
     )
     @PostMapping("/{engineeringChangeId}/approve")
     public EngineeringChangeResponse approve(
-            @PathVariable UUID engineeringChangeId
+            @PathVariable UUID engineeringChangeId,
+            @Valid @RequestBody StepActionRequest request
     ) {
         approveEngineeringChangeUseCase.execute(
-                new ApproveEngineeringChangeUseCase.ApproveEngineeringChangeCommand(engineeringChangeId)
+                new ApproveEngineeringChangeUseCase.ApproveEngineeringChangeCommand(engineeringChangeId, request.stepId())
         );
         return toEngineeringChangeResponse(
                 engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
@@ -336,10 +353,11 @@ public class EngineeringChangeController {
     )
     @PostMapping("/{engineeringChangeId}/release")
     public EngineeringChangeResponse release(
-            @PathVariable UUID engineeringChangeId
+            @PathVariable UUID engineeringChangeId,
+            @Valid @RequestBody StepActionRequest request
     ) {
         releaseEngineeringChangeUseCase.execute(
-                new ReleaseEngineeringChangeUseCase.ReleaseEngineeringChangeCommand(engineeringChangeId)
+                new ReleaseEngineeringChangeUseCase.ReleaseEngineeringChangeCommand(engineeringChangeId, request.stepId())
         );
         return toEngineeringChangeResponse(
                 engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
@@ -392,11 +410,18 @@ public class EngineeringChangeController {
                 new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand(
                         engineeringChangeId,
                         request.steps().stream()
-                                .map(step -> new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.Item(
+                                .map(step -> new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.StageItem(
                                         step.stepType(),
-                                        step.assigneeType(),
-                                        step.assigneeId(),
-                                        step.sequence()
+                                        step.sequence(),
+                                        step.completionPolicy(),
+                                        step.minApprovals(),
+                                        step.deadline(),
+                                        step.assignees().stream()
+                                                .map(a -> new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.AssigneeItem(
+                                                        a.assigneeType(),
+                                                        a.assigneeId()
+                                                ))
+                                                .toList()
                                 ))
                                 .toList()
                 )
@@ -413,10 +438,11 @@ public class EngineeringChangeController {
     )
     @PostMapping("/{engineeringChangeId}/review/approve")
     public EngineeringChangeResponse approveReview(
-            @PathVariable UUID engineeringChangeId
+            @PathVariable UUID engineeringChangeId,
+            @Valid @RequestBody StepActionRequest request
     ) {
         approveEngineeringChangeReviewUseCase.execute(
-                new ApproveEngineeringChangeReviewUseCase.ApproveEngineeringChangeReviewCommand(engineeringChangeId)
+                new ApproveEngineeringChangeReviewUseCase.ApproveEngineeringChangeReviewCommand(engineeringChangeId, request.stepId())
         );
         return toEngineeringChangeResponse(
                 engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))

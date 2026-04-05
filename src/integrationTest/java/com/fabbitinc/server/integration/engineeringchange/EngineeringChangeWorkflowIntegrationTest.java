@@ -8,8 +8,11 @@ import com.fabbitinc.server.application.engineeringchange.usecase.ApproveEnginee
 import com.fabbitinc.server.application.engineeringchange.usecase.ApproveEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.CancelEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.CreateEngineeringChangeUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.RejectEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.ReleaseEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.ReplaceEngineeringChangeStepsUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.RequestChangesOnStepUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.ResubmitStepUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SubmitEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangeAffectedItemsUseCase;
 import com.fabbitinc.server.application.part.service.PartRevisionWorkflowPolicyService;
@@ -20,7 +23,12 @@ import com.fabbitinc.server.application.part.usecase.ReleasePartDraftUseCase;
 import com.fabbitinc.server.application.part.usecase.result.CreatePartDraftResult;
 import com.fabbitinc.server.application.settings.usecase.UpdateSettingsPartWorkflowPolicyUseCase;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeState;
+import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeAffectedItemRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeCommentRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeIssueLinkRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeStepRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.StepStageRepository;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartRevisionWorkflowMode;
@@ -53,9 +61,17 @@ class EngineeringChangeWorkflowIntegrationTest extends PostgresIntegrationTestSu
     @Autowired private ApproveEngineeringChangeUseCase approveUseCase;
     @Autowired private ReleaseEngineeringChangeUseCase releaseUseCase;
     @Autowired private CancelEngineeringChangeUseCase cancelUseCase;
+    @Autowired private RejectEngineeringChangeUseCase rejectUseCase;
+    @Autowired private RequestChangesOnStepUseCase requestChangesOnStepUseCase;
+    @Autowired private ResubmitStepUseCase resubmitStepUseCase;
     @Autowired private PartRepository partRepository;
     @Autowired private PartRevisionRepository partRevisionRepository;
     @Autowired private EngineeringChangeRepository engineeringChangeRepository;
+    @Autowired private EngineeringChangeStepRepository engineeringChangeStepRepository;
+    @Autowired private EngineeringChangeAffectedItemRepository affectedItemRepository;
+    @Autowired private EngineeringChangeIssueLinkRepository issueLinkRepository;
+    @Autowired private EngineeringChangeCommentRepository commentRepository;
+    @Autowired private StepStageRepository stepStageRepository;
 
     private EngineeringChangeIntegrationFixture fixture;
     private User actor;
@@ -67,8 +83,12 @@ class EngineeringChangeWorkflowIntegrationTest extends PostgresIntegrationTestSu
                 createPartUseCase, createPartDraftUseCase, releasePartDraftUseCase,
                 changePartLifecycleStateUseCase, updateWorkflowPolicyUseCase,
                 createEcUseCase, syncAffectedItemsUseCase, replaceStepsUseCase,
-                submitUseCase, approveReviewUseCase, approveUseCase, releaseUseCase, cancelUseCase
+                submitUseCase, approveReviewUseCase, approveUseCase, releaseUseCase, cancelUseCase,
+                rejectUseCase, requestChangesOnStepUseCase, resubmitStepUseCase,
+                engineeringChangeRepository, engineeringChangeStepRepository,
+                affectedItemRepository, issueLinkRepository, commentRepository, stepStageRepository
         );
+        fixture.cleanupAll();
         fixture.ensureDefaultPolicy();
         actor = fixture.createUser();
         fixture.setAuth(actor);
@@ -86,7 +106,7 @@ class EngineeringChangeWorkflowIntegrationTest extends PostgresIntegrationTestSu
         fixture.setWorkflowMode(PartRevisionWorkflowMode.ENGINEERING_CHANGE_REQUIRED);
         CreatePartDraftResult draft = fixture.createDraft(part.partId(), part.revisionId());
 
-        // EC 생성 → affected items 등록 → steps 추가
+        // EC 생성 → affected items 등록 → stages 추가
         UUID ecId = fixture.createEc("테스트 EC");
         fixture.syncRevisionReleaseItem(ecId, draft.revisionId());
         fixture.addAllStepsForUser(ecId, actor.getId());
@@ -114,7 +134,7 @@ class EngineeringChangeWorkflowIntegrationTest extends PostgresIntegrationTestSu
         fixture.setWorkflowMode(PartRevisionWorkflowMode.ENGINEERING_CHANGE_REQUIRED);
         var created = fixture.createPart("EC-LIFE-001", "라이프사이클 테스트");
 
-        // EC 생성 → lifecycle 변경 등록 → steps 추가
+        // EC 생성 → lifecycle 변경 등록 → stages 추가
         UUID ecId = fixture.createEc("EOL 전환");
         fixture.syncLifecycleChangeItem(ecId, created.partId(), PartLifecycleState.EOL);
         fixture.addAllStepsForUser(ecId, actor.getId());

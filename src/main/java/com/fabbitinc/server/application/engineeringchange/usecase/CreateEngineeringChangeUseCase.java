@@ -8,7 +8,9 @@ import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChange;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItemType;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepAssigneeType;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepType;
+import com.fabbitinc.server.domain.engineeringchange.model.StepStageCompletionPolicy;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -64,19 +66,25 @@ public class CreateEngineeringChangeUseCase {
                     false
             );
         }
-        if (!command.steps().isEmpty()) {
-            engineeringChangeService.replaceSteps(
+        if (!command.stages().isEmpty()) {
+            engineeringChangeService.replaceStages(
                     auth.userId(),
                     engineeringChange,
-                    command.steps().stream()
-                            .map(step -> new EngineeringChangeService.StepDraft(
-                                    step.stepType(),
-                                    step.assigneeType(),
-                                    step.assigneeId(),
-                                    step.sequence()
+                    command.stages().stream()
+                            .map(stage -> new EngineeringChangeService.StageDraft(
+                                    stage.stepType(),
+                                    stage.sequence(),
+                                    stage.completionPolicy(),
+                                    stage.minApprovals(),
+                                    stage.deadline(),
+                                    stage.assignees().stream()
+                                            .map(a -> new EngineeringChangeService.StepAssigneeDraft(
+                                                    a.assigneeType(),
+                                                    a.assigneeId()
+                                            ))
+                                            .toList()
                             ))
-                            .toList(),
-                    false
+                            .toList()
             );
         }
 
@@ -89,12 +97,12 @@ public class CreateEngineeringChangeUseCase {
             UUID sourceIssueId,
             List<AffectedItemTarget> affectedItems,
             List<UUID> fileIds,
-            List<StepTarget> steps
+            List<StageTarget> stages
     ) {
         public CreateEngineeringChangeCommand {
             affectedItems = affectedItems == null ? List.of() : List.copyOf(affectedItems);
             fileIds = fileIds == null ? List.of() : List.copyOf(fileIds);
-            steps = steps == null ? List.of() : List.copyOf(steps);
+            stages = stages == null ? List.of() : List.copyOf(stages);
         }
 
         public record AffectedItemTarget(
@@ -104,11 +112,22 @@ public class CreateEngineeringChangeUseCase {
         ) {
         }
 
-        public record StepTarget(
+        public record StageTarget(
                 EngineeringChangeStepType stepType,
+                int sequence,
+                StepStageCompletionPolicy completionPolicy,
+                Integer minApprovals,
+                Instant deadline,
+                List<AssigneeTarget> assignees
+        ) {
+            public StageTarget {
+                assignees = assignees == null ? List.of() : List.copyOf(assignees);
+            }
+        }
+
+        public record AssigneeTarget(
                 EngineeringChangeStepAssigneeType assigneeType,
-                UUID assigneeId,
-                int sequence
+                UUID assigneeId
         ) {
         }
     }

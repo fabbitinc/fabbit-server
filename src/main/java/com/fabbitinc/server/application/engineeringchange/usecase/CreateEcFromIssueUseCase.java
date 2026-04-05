@@ -7,6 +7,7 @@ import com.fabbitinc.server.application.engineeringchange.usecase.command.Create
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItemType;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepAssigneeType;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepType;
+import com.fabbitinc.server.domain.engineeringchange.model.StepStageCompletionPolicy;
 import com.fabbitinc.server.domain.issue.model.Issue;
 import com.fabbitinc.server.domain.issue.model.IssuePart;
 import com.fabbitinc.server.domain.issue.repository.IssuePartRepository;
@@ -68,9 +69,9 @@ public class CreateEcFromIssueUseCase {
         // 5. 간단 요약 본문 생성
         JsonNode body = command.body() != null ? command.body() : buildImpactSummaryBody(linkedPartIds, affectedItems.size());
 
-        // 6. 단계(steps) 구성: 리뷰어 → 승인자 순서
-        List<CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.StepTarget> steps =
-                buildSteps(command.reviewerIds(), command.approverIds());
+        // 6. 단계(stages) 구성: 리뷰어 → 승인자 순서
+        List<CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.StageTarget> stages =
+                buildStages(command.reviewerIds(), command.approverIds());
 
         // 7. EC 생성 위임
         return createEngineeringChangeUseCase.execute(
@@ -80,7 +81,7 @@ public class CreateEcFromIssueUseCase {
                         command.issueId(),
                         affectedItems,
                         List.of(),
-                        steps
+                        stages
                 )
         );
     }
@@ -125,31 +126,45 @@ public class CreateEcFromIssueUseCase {
         return objectMapper.readTree(tiptapJson);
     }
 
-    private List<CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.StepTarget> buildSteps(
+    private List<CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.StageTarget> buildStages(
             List<UUID> reviewerIds,
             List<UUID> approverIds
     ) {
-        List<CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.StepTarget> steps = new ArrayList<>();
+        List<CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.StageTarget> stages = new ArrayList<>();
         AtomicInteger sequence = new AtomicInteger(1);
 
-        for (UUID reviewerId : reviewerIds) {
-            steps.add(new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.StepTarget(
+        if (!reviewerIds.isEmpty()) {
+            stages.add(new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.StageTarget(
                     EngineeringChangeStepType.REVIEW,
-                    EngineeringChangeStepAssigneeType.USER,
-                    reviewerId,
-                    sequence.getAndIncrement()
+                    sequence.getAndIncrement(),
+                    StepStageCompletionPolicy.ALL_MUST_APPROVE,
+                    null,
+                    null,
+                    reviewerIds.stream()
+                            .map(id -> new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.AssigneeTarget(
+                                    EngineeringChangeStepAssigneeType.USER,
+                                    id
+                            ))
+                            .toList()
             ));
         }
 
-        for (UUID approverId : approverIds) {
-            steps.add(new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.StepTarget(
+        if (!approverIds.isEmpty()) {
+            stages.add(new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.StageTarget(
                     EngineeringChangeStepType.APPROVAL,
-                    EngineeringChangeStepAssigneeType.USER,
-                    approverId,
-                    sequence.getAndIncrement()
+                    sequence.getAndIncrement(),
+                    StepStageCompletionPolicy.ALL_MUST_APPROVE,
+                    null,
+                    null,
+                    approverIds.stream()
+                            .map(id -> new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.AssigneeTarget(
+                                    EngineeringChangeStepAssigneeType.USER,
+                                    id
+                            ))
+                            .toList()
             ));
         }
 
-        return steps;
+        return stages;
     }
 }

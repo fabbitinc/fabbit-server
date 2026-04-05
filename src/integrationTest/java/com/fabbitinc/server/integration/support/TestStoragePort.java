@@ -4,6 +4,7 @@ import com.fabbitinc.server.application.file.port.StorageDeleteResult;
 import com.fabbitinc.server.application.file.port.StorageObjectListPage;
 import com.fabbitinc.server.application.file.port.StorageObjectMeta;
 import com.fabbitinc.server.application.file.port.StoragePort;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,11 @@ public class TestStoragePort implements StoragePort {
     @Override
     public String generateUploadPresignedUrl(String fileKey, String contentType, long contentLength) {
         return "http://test-storage/" + fileKey;
+    }
+
+    @Override
+    public String generateGetPresignedUrl(String fileKey, Duration expireDuration) {
+        return "http://test-storage/get/" + fileKey;
     }
 
     @Override

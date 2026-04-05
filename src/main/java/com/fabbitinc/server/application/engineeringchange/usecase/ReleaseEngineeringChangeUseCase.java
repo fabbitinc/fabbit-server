@@ -6,6 +6,7 @@ import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeA
 import com.fabbitinc.server.application.engineeringchange.event.EngineeringChangeReleasedEvent;
 import com.fabbitinc.server.application.engineeringchange.service.EngineeringChangeService;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChange;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeState;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -25,23 +26,23 @@ public class ReleaseEngineeringChangeUseCase {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         EngineeringChange engineeringChange =
                 engineeringChangeService.getEngineeringChangeByIdOrThrow(command.engineeringChangeId());
-        boolean readyToRelease = engineeringChangeService.approveReleaseStep(auth.userId(), engineeringChange);
-        if (!readyToRelease) {
-            return;
+        engineeringChangeService.approveStep(auth.userId(), engineeringChange, command.stepId());
+
+        if (engineeringChange.getState() == EngineeringChangeState.RELEASE_PENDING) {
+            affectedItemApi.releaseAffectedItems(
+                    auth.userId(),
+                    engineeringChange.getId()
+            );
+            engineeringChange.release(java.time.Instant.now(), auth.userId());
+            applicationEventPublisher.publishEvent(new EngineeringChangeReleasedEvent(
+                    engineeringChange.getId(),
+                    auth.userId(),
+                    engineeringChange.getNumber(),
+                    engineeringChange.getTitle()
+            ));
         }
-        affectedItemApi.releaseAffectedItems(
-                auth.userId(),
-                engineeringChange.getId()
-        );
-        engineeringChangeService.completeRelease(auth.userId(), engineeringChange);
-        applicationEventPublisher.publishEvent(new EngineeringChangeReleasedEvent(
-                engineeringChange.getId(),
-                auth.userId(),
-                engineeringChange.getNumber(),
-                engineeringChange.getTitle()
-        ));
     }
 
-    public record ReleaseEngineeringChangeCommand(java.util.UUID engineeringChangeId) {
+    public record ReleaseEngineeringChangeCommand(java.util.UUID engineeringChangeId, java.util.UUID stepId) {
     }
 }

@@ -23,29 +23,21 @@ import lombok.NoArgsConstructor;
 @Table(
         name = "engineering_change_steps",
         indexes = {
-                @Index(name = "ix_engineering_change_steps_engineering_change_id", columnList = "engineering_change_id"),
-                @Index(name = "ix_engineering_change_steps_step_type", columnList = "step_type"),
-                @Index(name = "ix_engineering_change_steps_assignee_id", columnList = "assignee_id")
+                @Index(name = "ix_ec_steps_stage_id", columnList = "step_stage_id"),
+                @Index(name = "ix_ec_steps_ec_id", columnList = "engineering_change_id"),
+                @Index(name = "ix_ec_steps_assignee_id", columnList = "assignee_id")
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class EngineeringChangeStep extends AbstractCreatedEntity {
 
-    public static final String CODE_ENGINEERING_CHANGE_STEP_REQUIRED = "ENGINEERING_CHANGE_STEP_REQUIRED";
-    public static final String CODE_ENGINEERING_CHANGE_STEP_ASSIGNEE_REQUIRED =
-            "ENGINEERING_CHANGE_STEP_ASSIGNEE_REQUIRED";
-    public static final String CODE_ENGINEERING_CHANGE_STEP_TYPE_REQUIRED =
-            "ENGINEERING_CHANGE_STEP_TYPE_REQUIRED";
-    public static final String CODE_ENGINEERING_CHANGE_STEP_ASSIGNEE_TYPE_REQUIRED =
-            "ENGINEERING_CHANGE_STEP_ASSIGNEE_TYPE_REQUIRED";
-    public static final String CODE_ENGINEERING_CHANGE_STEP_INVALID_STATUS =
-            "ENGINEERING_CHANGE_STEP_INVALID_STATUS";
-    public static final String CODE_ENGINEERING_CHANGE_STEP_ACTOR_REQUIRED =
-            "ENGINEERING_CHANGE_STEP_ACTOR_REQUIRED";
-    public static final String CODE_ENGINEERING_CHANGE_STEP_ACTED_AT_REQUIRED =
-            "ENGINEERING_CHANGE_STEP_ACTED_AT_REQUIRED";
-    public static final String CODE_ENGINEERING_CHANGE_STEP_SEQUENCE_INVALID =
-            "ENGINEERING_CHANGE_STEP_SEQUENCE_INVALID";
+    public static final String CODE_STEP_STAGE_REQUIRED = "ENGINEERING_CHANGE_STEP_STAGE_REQUIRED";
+    public static final String CODE_STEP_ASSIGNEE_REQUIRED = "ENGINEERING_CHANGE_STEP_ASSIGNEE_REQUIRED";
+    public static final String CODE_STEP_ASSIGNEE_TYPE_REQUIRED = "ENGINEERING_CHANGE_STEP_ASSIGNEE_TYPE_REQUIRED";
+    public static final String CODE_STEP_INVALID_STATUS = "ENGINEERING_CHANGE_STEP_INVALID_STATUS";
+    public static final String CODE_STEP_ACTOR_REQUIRED = "ENGINEERING_CHANGE_STEP_ACTOR_REQUIRED";
+    public static final String CODE_STEP_ACTED_AT_REQUIRED = "ENGINEERING_CHANGE_STEP_ACTED_AT_REQUIRED";
+    public static final String CODE_STEP_STAGE_ALREADY_COMPLETE = "ENGINEERING_CHANGE_STEP_STAGE_ALREADY_COMPLETE";
 
     @Column(name = "engineering_change_id", nullable = false)
     private UUID engineeringChangeId;
@@ -55,9 +47,13 @@ public class EngineeringChangeStep extends AbstractCreatedEntity {
     @JoinColumn(name = "engineering_change_id", insertable = false, updatable = false)
     private EngineeringChange _engineeringChangeRelation;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "step_type", nullable = false, length = 30)
-    private EngineeringChangeStepType stepType;
+    @Column(name = "step_stage_id", nullable = false)
+    private UUID stepStageId;
+
+    @Getter(AccessLevel.NONE)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "step_stage_id", insertable = false, updatable = false)
+    private StepStage _stepStageRelation;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "assignee_type", nullable = false, length = 20)
@@ -66,11 +62,8 @@ public class EngineeringChangeStep extends AbstractCreatedEntity {
     @Column(name = "assignee_id", nullable = false)
     private UUID assigneeId;
 
-    @Column(name = "sequence", nullable = false)
-    private int sequence;
-
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "status", nullable = false, length = 30)
     private EngineeringChangeStepStatus status;
 
     @Column(name = "acted_at")
@@ -81,61 +74,73 @@ public class EngineeringChangeStep extends AbstractCreatedEntity {
 
     private EngineeringChangeStep(
             UUID engineeringChangeId,
-            EngineeringChangeStepType stepType,
+            UUID stepStageId,
             EngineeringChangeStepAssigneeType assigneeType,
-            UUID assigneeId,
-            int sequence
+            UUID assigneeId
     ) {
         super(UuidV7Generator.next());
-        this.engineeringChangeId = requireEngineeringChangeId(engineeringChangeId);
-        this.stepType = requireStepType(stepType);
+        this.engineeringChangeId = engineeringChangeId;
+        this.stepStageId = requireStepStageId(stepStageId);
         this.assigneeType = requireAssigneeType(assigneeType);
         this.assigneeId = requireAssigneeId(assigneeId);
-        this.sequence = requireSequence(sequence);
         this.status = EngineeringChangeStepStatus.PENDING;
     }
 
     public static EngineeringChangeStep assign(
-            EngineeringChange engineeringChange,
-            EngineeringChangeStepType stepType,
+            StepStage stage,
             EngineeringChangeStepAssigneeType assigneeType,
-            UUID assigneeId,
-            int sequence
+            UUID assigneeId
     ) {
-        if (engineeringChange == null) {
-            throw new DomainException(CODE_ENGINEERING_CHANGE_STEP_REQUIRED, "변경관리 ID는 필수입니다");
+        if (stage == null) {
+            throw new DomainException(CODE_STEP_STAGE_REQUIRED, "단계(Stage)는 필수입니다");
         }
         EngineeringChangeStep step = new EngineeringChangeStep(
-                engineeringChange.getId(),
-                stepType,
-                assigneeType,
-                assigneeId,
-                sequence
+                stage.getEngineeringChangeId(), stage.getId(), assigneeType, assigneeId
         );
-        step._engineeringChangeRelation = engineeringChange;
+        step._stepStageRelation = stage;
         return step;
     }
 
     public void approve(UUID actorId, Instant actedAt) {
-        if (status != EngineeringChangeStepStatus.PENDING) {
-            throw new DomainException(CODE_ENGINEERING_CHANGE_STEP_INVALID_STATUS, "대기 중인 단계만 승인할 수 있습니다");
-        }
-        UUID requiredActorId = requireActorId(actorId);
-        Instant requiredActedAt = requireActedAt(actedAt);
+        assertStatus(EngineeringChangeStepStatus.PENDING, "대기 중인 단계만 승인할 수 있습니다");
         this.status = EngineeringChangeStepStatus.APPROVED;
-        this.actedBy = requiredActorId;
-        this.actedAt = requiredActedAt;
+        this.actedBy = requireActorId(actorId);
+        this.actedAt = requireActedAt(actedAt);
     }
 
     public void reject(UUID actorId, Instant actedAt) {
-        if (status != EngineeringChangeStepStatus.PENDING) {
-            throw new DomainException(CODE_ENGINEERING_CHANGE_STEP_INVALID_STATUS, "대기 중인 단계만 반려할 수 있습니다");
-        }
-        UUID requiredActorId = requireActorId(actorId);
-        Instant requiredActedAt = requireActedAt(actedAt);
+        assertStatus(EngineeringChangeStepStatus.PENDING, "대기 중인 단계만 반려할 수 있습니다");
         this.status = EngineeringChangeStepStatus.REJECTED;
-        this.actedBy = requiredActorId;
-        this.actedAt = requiredActedAt;
+        this.actedBy = requireActorId(actorId);
+        this.actedAt = requireActedAt(actedAt);
+    }
+
+    public void requestChanges(UUID actorId, Instant actedAt) {
+        assertStatus(EngineeringChangeStepStatus.PENDING, "대기 중인 단계만 수정 요청할 수 있습니다");
+        this.status = EngineeringChangeStepStatus.CHANGES_REQUESTED;
+        this.actedBy = requireActorId(actorId);
+        this.actedAt = requireActedAt(actedAt);
+    }
+
+    public void resubmit() {
+        assertStatus(EngineeringChangeStepStatus.CHANGES_REQUESTED,
+                "수정 요청 상태의 단계만 재제출할 수 있습니다");
+        this.status = EngineeringChangeStepStatus.PENDING;
+        this.actedBy = null;
+        this.actedAt = null;
+    }
+
+    public void withdrawApproval() {
+        assertStatus(EngineeringChangeStepStatus.APPROVED,
+                "승인된 단계만 승인을 철회할 수 있습니다");
+        this.status = EngineeringChangeStepStatus.PENDING;
+        this.actedBy = null;
+        this.actedAt = null;
+    }
+
+    public void cancel() {
+        assertStatus(EngineeringChangeStepStatus.PENDING, "대기 중인 단계만 취소할 수 있습니다");
+        this.status = EngineeringChangeStepStatus.CANCELED;
     }
 
     public void reset() {
@@ -148,6 +153,14 @@ public class EngineeringChangeStep extends AbstractCreatedEntity {
         return status == EngineeringChangeStepStatus.PENDING;
     }
 
+    public boolean isApproved() {
+        return status == EngineeringChangeStepStatus.APPROVED;
+    }
+
+    public boolean isChangesRequested() {
+        return status == EngineeringChangeStepStatus.CHANGES_REQUESTED;
+    }
+
     public boolean isAssignedToUser(UUID userId) {
         return assigneeType == EngineeringChangeStepAssigneeType.USER && assigneeId.equals(userId);
     }
@@ -156,51 +169,43 @@ public class EngineeringChangeStep extends AbstractCreatedEntity {
         return assigneeType == EngineeringChangeStepAssigneeType.TEAM && assigneeId.equals(teamId);
     }
 
-    private UUID requireEngineeringChangeId(UUID engineeringChangeId) {
-        if (engineeringChangeId == null) {
-            throw new DomainException(CODE_ENGINEERING_CHANGE_STEP_REQUIRED, "변경관리 ID는 필수입니다");
+    private void assertStatus(EngineeringChangeStepStatus expected, String message) {
+        if (status != expected) {
+            throw new DomainException(CODE_STEP_INVALID_STATUS, message);
         }
-        return engineeringChangeId;
     }
 
-    private EngineeringChangeStepType requireStepType(EngineeringChangeStepType stepType) {
-        if (stepType == null) {
-            throw new DomainException(CODE_ENGINEERING_CHANGE_STEP_TYPE_REQUIRED, "단계 타입은 필수입니다");
+    private UUID requireStepStageId(UUID id) {
+        if (id == null) {
+            throw new DomainException(CODE_STEP_STAGE_REQUIRED, "단계(Stage) ID는 필수입니다");
         }
-        return stepType;
+        return id;
     }
 
-    private EngineeringChangeStepAssigneeType requireAssigneeType(EngineeringChangeStepAssigneeType assigneeType) {
-        if (assigneeType == null) {
-            throw new DomainException(CODE_ENGINEERING_CHANGE_STEP_ASSIGNEE_TYPE_REQUIRED, "담당자 타입은 필수입니다");
+    private EngineeringChangeStepAssigneeType requireAssigneeType(EngineeringChangeStepAssigneeType type) {
+        if (type == null) {
+            throw new DomainException(CODE_STEP_ASSIGNEE_TYPE_REQUIRED, "담당자 타입은 필수입니다");
         }
-        return assigneeType;
+        return type;
     }
 
-    private UUID requireAssigneeId(UUID assigneeId) {
-        if (assigneeId == null) {
-            throw new DomainException(CODE_ENGINEERING_CHANGE_STEP_ASSIGNEE_REQUIRED, "담당자 ID는 필수입니다");
+    private UUID requireAssigneeId(UUID id) {
+        if (id == null) {
+            throw new DomainException(CODE_STEP_ASSIGNEE_REQUIRED, "담당자 ID는 필수입니다");
         }
-        return assigneeId;
-    }
-
-    private int requireSequence(int value) {
-        if (value < 1) {
-            throw new DomainException(CODE_ENGINEERING_CHANGE_STEP_SEQUENCE_INVALID, "단계 순서는 1 이상이어야 합니다");
-        }
-        return value;
+        return id;
     }
 
     private UUID requireActorId(UUID actorId) {
         if (actorId == null) {
-            throw new DomainException(CODE_ENGINEERING_CHANGE_STEP_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
+            throw new DomainException(CODE_STEP_ACTOR_REQUIRED, "수행자 ID는 필수입니다");
         }
         return actorId;
     }
 
     private Instant requireActedAt(Instant value) {
         if (value == null) {
-            throw new DomainException(CODE_ENGINEERING_CHANGE_STEP_ACTED_AT_REQUIRED, "처리 시각은 필수입니다");
+            throw new DomainException(CODE_STEP_ACTED_AT_REQUIRED, "처리 시각은 필수입니다");
         }
         return value;
     }

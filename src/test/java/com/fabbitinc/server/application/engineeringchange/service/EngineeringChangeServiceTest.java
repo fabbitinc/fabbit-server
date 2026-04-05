@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -21,10 +20,13 @@ import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStep
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepAssigneeType;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepStatus;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepType;
+import com.fabbitinc.server.domain.engineeringchange.model.StepStage;
+import com.fabbitinc.server.domain.engineeringchange.model.StepStageCompletionPolicy;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeCommentRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeIssueLinkRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeStepRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.StepStageRepository;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.team.model.TeamMember;
@@ -33,6 +35,7 @@ import com.fabbitinc.server.domain.team.repository.TeamRepository;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import com.fabbitinc.server.domain.workitem.repository.WorkItemNumberSequenceRepository;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -80,11 +83,17 @@ class EngineeringChangeServiceTest {
     private MentionExtractor mentionExtractor;
     @Mock
     private ObjectMapper objectMapper;
+    @Mock
+    private StepStageRepository stepStageRepository;
+
+    private StepCompletionEvaluator stepCompletionEvaluator;
 
     private EngineeringChangeService engineeringChangeService;
 
     @BeforeEach
     void setUp() {
+        stepCompletionEvaluator = new StepCompletionEvaluator();
+
         engineeringChangeService = new EngineeringChangeService(
                 issueApi,
                 workItemNumberSequenceRepository,
@@ -101,7 +110,9 @@ class EngineeringChangeServiceTest {
                 organizationApi,
                 tipTapValidator,
                 mentionExtractor,
-                objectMapper
+                objectMapper,
+                stepCompletionEvaluator,
+                stepStageRepository
         );
 
         lenient().when(engineeringChangeRepository.existsById(any())).thenReturn(true);
@@ -109,163 +120,174 @@ class EngineeringChangeServiceTest {
     }
 
     @Test
-    void approveReviewStep_다중ReviewStep이면_모두승인되기전까지ReviewPending을유지한다() {
+    void approveStep_다중ReviewStep이면_모두승인되기전까지ReviewPending을유지한다() {
         UUID actorId = UUID.randomUUID();
         UUID firstReviewerId = UUID.randomUUID();
         UUID secondReviewerId = UUID.randomUUID();
-        EngineeringChange engineeringChange = EngineeringChange.create(101, "변경", "본문", null, actorId);
-        EngineeringChangeStep firstStep = engineeringChange.addStep(
-                EngineeringChangeStepType.REVIEW,
-                EngineeringChangeStepAssigneeType.USER,
-                firstReviewerId,
-                1,
-                actorId
-        );
-        EngineeringChangeStep secondStep = engineeringChange.addStep(
-                EngineeringChangeStepType.REVIEW,
-                EngineeringChangeStepAssigneeType.USER,
-                secondReviewerId,
-                1,
-                actorId
-        );
-        engineeringChange.submit(actorId);
+        EngineeringChange ec = EngineeringChange.create(101, "변경", "본문", null, actorId);
 
-        stubPendingSteps(engineeringChange, List.of(firstStep, secondStep));
+        // Stage 생성: REVIEW, sequence=1, ALL_MUST_APPROVE
+        StepStage reviewStage = ec.addStage(
+                EngineeringChangeStepType.REVIEW, 1,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        EngineeringChangeStep firstStep = ec.addStep(
+                reviewStage, EngineeringChangeStepAssigneeType.USER, firstReviewerId, actorId);
+        EngineeringChangeStep secondStep = ec.addStep(
+                reviewStage, EngineeringChangeStepAssigneeType.USER, secondReviewerId, actorId);
+
+        // APPROVAL stage 추가 (REVIEW 다음 단계)
+        StepStage approvalStage = ec.addStage(
+                EngineeringChangeStepType.APPROVAL, 2,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        ec.addStep(approvalStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+
+        ec.submit(actorId);
+
+        when(stepStageRepository.findById(reviewStage.getId())).thenReturn(Optional.of(reviewStage));
         when(teamMemberRepository.findByTeam_IdIn(anyCollection())).thenReturn(List.of());
 
-        engineeringChangeService.approveReviewStep(firstReviewerId, engineeringChange);
+        // 첫 번째 리뷰어 승인 → ALL_MUST_APPROVE이므로 아직 stage 미완료
+        engineeringChangeService.approveStep(firstReviewerId, ec, firstStep.getId());
 
         assertEquals(EngineeringChangeStepStatus.APPROVED, firstStep.getStatus());
         assertEquals(EngineeringChangeStepStatus.PENDING, secondStep.getStatus());
-        assertEquals(EngineeringChangeState.REVIEW_PENDING, engineeringChange.getState());
+        assertEquals(EngineeringChangeState.REVIEW_PENDING, ec.getState());
 
-        engineeringChangeService.approveReviewStep(secondReviewerId, engineeringChange);
+        // 두 번째 리뷰어 승인 → stage 완료 → APPROVAL_PENDING으로 전이
+        engineeringChangeService.approveStep(secondReviewerId, ec, secondStep.getId());
 
         assertEquals(EngineeringChangeStepStatus.APPROVED, secondStep.getStatus());
-        assertEquals(EngineeringChangeState.APPROVAL_PENDING, engineeringChange.getState());
+        assertEquals(EngineeringChangeState.APPROVAL_PENDING, ec.getState());
     }
 
     @Test
-    void approveReviewStep_팀ReviewStep이면_팀원사용자가승인할수있다() {
+    void approveStep_팀ReviewStep이면_팀원사용자가승인할수있다() {
         UUID actorId = UUID.randomUUID();
         Team team = Team.create("검토팀", null, actorId);
         TeamMember teamMember = team.addMember(actorId);
-        EngineeringChange engineeringChange = EngineeringChange.create(102, "변경", "본문", null, actorId);
-        EngineeringChangeStep reviewStep = engineeringChange.addStep(
-                EngineeringChangeStepType.REVIEW,
-                EngineeringChangeStepAssigneeType.TEAM,
-                team.getId(),
-                1,
-                actorId
-        );
-        engineeringChange.submit(actorId);
+        EngineeringChange ec = EngineeringChange.create(102, "변경", "본문", null, actorId);
 
-        stubPendingSteps(engineeringChange, List.of(reviewStep));
+        StepStage reviewStage = ec.addStage(
+                EngineeringChangeStepType.REVIEW, 1,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        EngineeringChangeStep reviewStep = ec.addStep(
+                reviewStage, EngineeringChangeStepAssigneeType.TEAM, team.getId(), actorId);
+
+        // APPROVAL stage 추가 (REVIEW 다음 단계)
+        StepStage approvalStage = ec.addStage(
+                EngineeringChangeStepType.APPROVAL, 2,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        ec.addStep(approvalStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+
+        ec.submit(actorId);
+
+        when(stepStageRepository.findById(reviewStage.getId())).thenReturn(Optional.of(reviewStage));
         when(teamMemberRepository.findByTeam_IdIn(anyCollection())).thenReturn(List.of(teamMember));
 
-        engineeringChangeService.approveReviewStep(actorId, engineeringChange);
+        engineeringChangeService.approveStep(actorId, ec, reviewStep.getId());
 
         assertEquals(EngineeringChangeStepStatus.APPROVED, reviewStep.getStatus());
-        assertEquals(EngineeringChangeState.APPROVAL_PENDING, engineeringChange.getState());
+        assertEquals(EngineeringChangeState.APPROVAL_PENDING, ec.getState());
     }
 
     @Test
-    void rejectEngineeringChange_approvalPending이면Draft로되돌아간다() {
+    void rejectStep_approvalPending이면Draft로되돌아간다() {
         UUID actorId = UUID.randomUUID();
-        EngineeringChange engineeringChange = EngineeringChange.create(103, "변경", "본문", null, actorId);
-        EngineeringChangeStep approvalStep = engineeringChange.addStep(
-                EngineeringChangeStepType.APPROVAL,
-                EngineeringChangeStepAssigneeType.USER,
-                actorId,
-                1,
-                actorId
-        );
-        engineeringChange.submit(actorId);
-        engineeringChange.completeReview(actorId);
+        EngineeringChange ec = EngineeringChange.create(103, "변경", "본문", null, actorId);
 
-        stubPendingSteps(engineeringChange, List.of(approvalStep));
+        // REVIEW stage + step (승인 처리 후 submit)
+        StepStage reviewStage = ec.addStage(
+                EngineeringChangeStepType.REVIEW, 1,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        EngineeringChangeStep reviewStep = ec.addStep(
+                reviewStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+        reviewStep.approve(actorId, java.time.Instant.now());
+
+        // APPROVAL stage + step
+        StepStage approvalStage = ec.addStage(
+                EngineeringChangeStepType.APPROVAL, 2,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        EngineeringChangeStep approvalStep = ec.addStep(
+                approvalStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+
+        ec.submit(actorId);
+        assertEquals(EngineeringChangeState.APPROVAL_PENDING, ec.getState());
+
         when(teamMemberRepository.findByTeam_IdIn(anyCollection())).thenReturn(List.of());
 
-        engineeringChangeService.rejectEngineeringChange(actorId, engineeringChange);
+        engineeringChangeService.rejectStep(actorId, ec, approvalStep.getId(), null);
 
-        assertEquals(EngineeringChangeStepStatus.REJECTED, approvalStep.getStatus());
-        assertEquals(EngineeringChangeState.DRAFT, engineeringChange.getState());
+        assertEquals(EngineeringChangeStepStatus.PENDING, approvalStep.getStatus()); // reset 이후 PENDING
+        assertEquals(EngineeringChangeState.DRAFT, ec.getState());
     }
 
     @Test
-    void rejectEngineeringChange_releasePending이면Draft로되돌아간다() {
+    void rejectStep_releasePending이면Draft로되돌아간다() {
         UUID actorId = UUID.randomUUID();
-        EngineeringChange engineeringChange = EngineeringChange.create(104, "변경", "본문", null, actorId);
-        EngineeringChangeStep releaseStep = engineeringChange.addStep(
-                EngineeringChangeStepType.RELEASE,
-                EngineeringChangeStepAssigneeType.USER,
-                actorId,
-                1,
-                actorId
-        );
-        engineeringChange.submit(actorId);
-        engineeringChange.completeReview(actorId);
-        engineeringChange.approve(actorId);
+        EngineeringChange ec = EngineeringChange.create(104, "변경", "본문", null, actorId);
 
-        stubPendingSteps(engineeringChange, List.of(releaseStep));
+        // REVIEW stage + step (사전 승인)
+        StepStage reviewStage = ec.addStage(
+                EngineeringChangeStepType.REVIEW, 1,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        EngineeringChangeStep reviewStep = ec.addStep(
+                reviewStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+        reviewStep.approve(actorId, java.time.Instant.now());
+
+        // APPROVAL stage + step (사전 승인)
+        StepStage approvalStage = ec.addStage(
+                EngineeringChangeStepType.APPROVAL, 2,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        EngineeringChangeStep approvalStep = ec.addStep(
+                approvalStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+        approvalStep.approve(actorId, java.time.Instant.now());
+
+        // RELEASE stage + step
+        StepStage releaseStage = ec.addStage(
+                EngineeringChangeStepType.RELEASE, 3,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        EngineeringChangeStep releaseStep = ec.addStep(
+                releaseStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+
+        ec.submit(actorId);
+        assertEquals(EngineeringChangeState.RELEASE_PENDING, ec.getState());
+
         when(teamMemberRepository.findByTeam_IdIn(anyCollection())).thenReturn(List.of());
 
-        engineeringChangeService.rejectEngineeringChange(actorId, engineeringChange);
+        engineeringChangeService.rejectStep(actorId, ec, releaseStep.getId(), null);
 
-        assertEquals(EngineeringChangeStepStatus.REJECTED, releaseStep.getStatus());
-        assertEquals(EngineeringChangeState.DRAFT, engineeringChange.getState());
+        assertEquals(EngineeringChangeStepStatus.PENDING, releaseStep.getStatus()); // reset 이후 PENDING
+        assertEquals(EngineeringChangeState.DRAFT, ec.getState());
     }
 
     @Test
     void cancelEngineeringChange_후에는다시submit할수없다() {
         UUID actorId = UUID.randomUUID();
-        EngineeringChange engineeringChange = EngineeringChange.create(105, "변경", "본문", null, actorId);
-        EngineeringChangeStep reviewStep = engineeringChange.addStep(
-                EngineeringChangeStepType.REVIEW,
-                EngineeringChangeStepAssigneeType.USER,
-                actorId,
-                1,
-                actorId
-        );
-        EngineeringChangeStep approvalStep = engineeringChange.addStep(
-                EngineeringChangeStepType.APPROVAL,
-                EngineeringChangeStepAssigneeType.USER,
-                actorId,
-                1,
-                actorId
-        );
-        EngineeringChangeStep releaseStep = engineeringChange.addStep(
-                EngineeringChangeStepType.RELEASE,
-                EngineeringChangeStepAssigneeType.USER,
-                actorId,
-                1,
-                actorId
-        );
-        engineeringChangeService.cancelEngineeringChange(actorId, engineeringChange);
+        EngineeringChange ec = EngineeringChange.create(105, "변경", "본문", null, actorId);
+
+        StepStage reviewStage = ec.addStage(
+                EngineeringChangeStepType.REVIEW, 1,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        ec.addStep(reviewStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+
+        StepStage approvalStage = ec.addStage(
+                EngineeringChangeStepType.APPROVAL, 2,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        ec.addStep(approvalStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+
+        StepStage releaseStage = ec.addStage(
+                EngineeringChangeStepType.RELEASE, 3,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        ec.addStep(releaseStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+
+        engineeringChangeService.cancelEngineeringChange(actorId, ec);
 
         AppException exception = assertThrows(
                 AppException.class,
-                () -> engineeringChangeService.submitEngineeringChange(actorId, engineeringChange)
+                () -> engineeringChangeService.submitEngineeringChange(actorId, ec)
         );
 
         assertEquals(ErrorCode.INVALID_STATE, exception.getErrorCode());
-        assertEquals(EngineeringChangeState.CANCELED, engineeringChange.getState());
-    }
-
-    private void stubPendingSteps(EngineeringChange engineeringChange, List<EngineeringChangeStep> steps) {
-        when(engineeringChangeStepRepository.findByEngineeringChangeIdAndStepTypeAndStatusOrderBySequenceAscCreatedAtAsc(
-                eq(engineeringChange.getId()),
-                any(EngineeringChangeStepType.class),
-                eq(EngineeringChangeStepStatus.PENDING)
-        )).thenAnswer(invocation -> {
-            EngineeringChangeStepType stepType = invocation.getArgument(1);
-            return steps.stream()
-                    .filter(step -> step.getStepType() == stepType)
-                    .filter(step -> step.getStatus() == EngineeringChangeStepStatus.PENDING)
-                    .sorted(java.util.Comparator
-                            .comparingInt(EngineeringChangeStep::getSequence)
-                            .thenComparing(EngineeringChangeStep::getId))
-                    .toList();
-        });
+        assertEquals(EngineeringChangeState.CANCELED, ec.getState());
     }
 }

@@ -14,20 +14,13 @@ dev-db-stop:
 
 # 개발환경 디비 시작
 dev-db-start:
-	docker compose -f docker/docker-compose.dev.yml up -d 
-	@echo "PostgreSQL 준비 대기..."
-	@until docker exec fabbit-db pg_isready -U fabbit -q 2>/dev/null; do sleep 0.5; done
-	@echo "PostgreSQL 준비 완료"
-	$(MAKE) revision-all
+	docker compose -f docker/docker-compose.dev.yml up -d --wait
 	$(MAKE) migrate-all
 
 # DB 초기화 (볼륨 삭제 + 마이그레이션 파일 초기화)
 dev-db-reset:
 	docker compose -f docker/docker-compose.dev.yml down -v
 	@echo "DB 볼륨 삭제 완료."
-	@rm -f src/main/resources/migrations/public/[0-9]*.sql
-	@rm -f src/main/resources/migrations/tenant/[0-9]*.sql
-	@echo "마이그레이션 파일 삭제 완료."
 
 dev-db-restart:
 	$(MAKE) dev-db-reset
