@@ -22,7 +22,6 @@ public class UpdatePartCategoryUseCase {
         PartCategory category = partCategoryService.update(
                 command.categoryId(),
                 command.name(),
-                command.itemType(),
                 command.prefix(),
                 command.delimiter(),
                 command.digits()
@@ -30,7 +29,6 @@ public class UpdatePartCategoryUseCase {
         return new PartCategoryResult(
                 category.getId(),
                 category.getName(),
-                category.getItemType(),
                 category.getPrefix(),
                 category.getDelimiter(),
                 category.getDigits(),

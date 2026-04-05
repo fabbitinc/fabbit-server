@@ -13,7 +13,6 @@ import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.part.query.result.PartNumberAvailabilityResult;
 import com.fabbitinc.server.application.part.query.result.PartNumberPreviewResult;
 import com.fabbitinc.server.domain.part.model.PartCategory;
-import com.fabbitinc.server.domain.part.model.PartItemType;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartNumberSequence;
 import com.fabbitinc.server.domain.part.repository.PartCategoryRepository;
@@ -40,7 +39,7 @@ class PartCategoryQueryTest {
         UUID categoryId = UUID.randomUUID();
         when(currentAuthProvider.getCurrentAuth()).thenReturn(new AuthContext(UUID.randomUUID(), "a@b.c", UUID.randomUUID(), null));
 
-        PartCategory category = PartCategory.create("PCB", PartItemType.MANUFACTURED, "PCB", "-", 4);
+        PartCategory category = PartCategory.create("PCB", "PCB", "-", 4);
         PartNumberSequence sequence = PartNumberSequence.createFor(categoryId);
         setCurrentValue(sequence, 41);
 
@@ -82,7 +81,7 @@ class PartCategoryQueryTest {
         UUID categoryId = UUID.randomUUID();
         when(currentAuthProvider.getCurrentAuth()).thenReturn(new AuthContext(UUID.randomUUID(), "a@b.c", UUID.randomUUID(), null));
 
-        PartCategory category = PartCategory.create("PCB", PartItemType.MANUFACTURED, "PCB", "-", 4);
+        PartCategory category = PartCategory.create("PCB", "PCB", "-", 4);
         PartNumberSequence sequence = PartNumberSequence.createFor(categoryId);
         setCurrentValue(sequence, 9999);
 

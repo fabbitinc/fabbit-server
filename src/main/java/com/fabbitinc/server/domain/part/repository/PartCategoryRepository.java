@@ -1,7 +1,6 @@
 package com.fabbitinc.server.domain.part.repository;
 
 import com.fabbitinc.server.domain.part.model.PartCategory;
-import com.fabbitinc.server.domain.part.model.PartItemType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,6 +15,4 @@ public interface PartCategoryRepository extends JpaRepository<PartCategory, UUID
     boolean existsByPrefix(String prefix);
 
     List<PartCategory> findAllByOrderByNameAsc();
-
-    List<PartCategory> findAllByItemTypeOrderByNameAsc(PartItemType itemType);
 }

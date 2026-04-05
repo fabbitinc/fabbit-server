@@ -16,25 +16,25 @@ public record PropertyMetaResponse(
         @Schema(description = "속성 소유 타입", example = "PART")
         PropertyOwnerType ownerType,
 
-        @Schema(description = "속성 key. 시스템 속성은 property_key, 커스텀 속성은 UUID 문자열", example = "item_type")
+        @Schema(description = "속성 key. 시스템 속성은 property_key, 커스텀 속성은 UUID 문자열", example = "material")
         String propertyKey,
 
         @Schema(description = "시스템 속성 여부", example = "true")
         boolean system,
 
-        @Schema(description = "PART 시스템 속성 종류. PART 시스템 속성이 아니면 null", example = "ITEM_TYPE")
+        @Schema(description = "PART 시스템 속성 종류. PART 시스템 속성이 아니면 null", example = "MATERIAL")
         PartSystemPropertyKind partSystemPropertyKind,
 
         @Schema(description = "활성 여부를 조직 설정에서 변경할 수 있는지 여부", example = "true")
         boolean activeConfigurable,
 
-        @Schema(description = "시스템 컬럼명. 커스텀 속성이면 null", example = "item_type")
+        @Schema(description = "시스템 컬럼명. 커스텀 속성이면 null", example = "material")
         String columnName,
 
-        @Schema(description = "표시명", example = "아이템 유형")
+        @Schema(description = "표시명", example = "재질")
         String displayName,
 
-        @Schema(description = "설명", example = "부품 아이템 유형")
+        @Schema(description = "설명", example = "부품 재질")
         String description,
 
         @Schema(description = "값 타입", example = "OPTION")

@@ -93,20 +93,6 @@ public final class DefaultSystemPropertyCatalog {
             ),
             new SystemPropertyCatalogSeed(
                     PropertyOwnerType.PART,
-                    "item_type",
-                    PartSystemPropertyKind.ITEM_TYPE,
-                    "아이템 유형",
-                    "부품 아이템 유형",
-                    PropertyValueType.STRING,
-                    null,
-                    List.of(),
-                    "item_type",
-                    7,
-                    false,
-                    true
-            ),
-            new SystemPropertyCatalogSeed(
-                    PropertyOwnerType.PART,
                     "lifecycle_state",
                     PartSystemPropertyKind.LIFECYCLE_STATE,
                     "수명주기 상태",
@@ -115,7 +101,7 @@ public final class DefaultSystemPropertyCatalog {
                     null,
                     List.of(),
                     "lifecycle_state",
-                    8,
+                    7,
                     false,
                     true
             ),
@@ -129,7 +115,7 @@ public final class DefaultSystemPropertyCatalog {
                     null,
                     List.of(),
                     "lead_time_days",
-                    9,
+                    8,
                     false,
                     true
             ),

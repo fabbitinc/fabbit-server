@@ -21,7 +21,6 @@ public class CreatePartCategoryUseCase {
         currentAuthProvider.getCurrentAuth();
         PartCategory category = partCategoryService.create(
                 command.name(),
-                command.itemType(),
                 command.prefix(),
                 command.delimiter(),
                 command.digits()
@@ -29,7 +28,6 @@ public class CreatePartCategoryUseCase {
         return new PartCategoryResult(
                 category.getId(),
                 category.getName(),
-                category.getItemType(),
                 category.getPrefix(),
                 category.getDelimiter(),
                 category.getDigits(),

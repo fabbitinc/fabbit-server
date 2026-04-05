@@ -33,15 +33,15 @@ class PropertyQueryTest {
     void list_통합_catalog_row를_정렬해서_반환한다() {
         PropertyDefinition system = PropertyDefinition.defineSystemProperty(
                 PropertyOwnerType.PART,
-                "item_type",
-                PartSystemPropertyKind.ITEM_TYPE,
-                "아이템 유형",
-                "부품 아이템 유형",
+                "material",
+                PartSystemPropertyKind.MATERIAL,
+                "재질",
+                "부품 재질",
                 PropertyValueType.STRING,
                 null,
                 List.of(),
-                "item_type",
-                7,
+                "material",
+                4,
                 false,
                 true
         );
@@ -69,11 +69,11 @@ class PropertyQueryTest {
 
         PropertyMetaListResult result = query.list(new PropertyMetaListCondition(PropertyOwnerType.PART.name(), false));
 
-        assertEquals("item_type", result.items().get(0).propertyKey());
+        assertEquals("material", result.items().get(0).propertyKey());
         assertEquals(true, result.items().get(0).system());
-        assertEquals("item_type", result.items().get(0).columnName());
+        assertEquals("material", result.items().get(0).columnName());
         assertEquals(custom.getPropertyKey(), result.items().get(1).propertyKey());
         assertEquals(false, result.items().get(1).system());
-        assertEquals(PartSystemPropertyKind.ITEM_TYPE, result.items().get(0).partSystemPropertyKind());
+        assertEquals(PartSystemPropertyKind.MATERIAL, result.items().get(0).partSystemPropertyKind());
     }
 }

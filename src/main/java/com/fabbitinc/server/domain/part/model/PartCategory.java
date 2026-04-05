@@ -5,8 +5,6 @@ import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.common.id.UuidV7Generator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -14,7 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 부품 카테고리 마스터. itemType별 카테고리와 채번 규칙을 정의한다.
+ * 부품 카테고리 마스터. 카테고리별 채번 규칙을 정의한다.
  */
 @Getter
 @Entity
@@ -29,7 +27,6 @@ import lombok.NoArgsConstructor;
 public class PartCategory extends AbstractAuditableEntity {
 
     public static final String CODE_NAME_REQUIRED = "PART_CATEGORY_NAME_REQUIRED";
-    public static final String CODE_ITEM_TYPE_REQUIRED = "PART_CATEGORY_ITEM_TYPE_REQUIRED";
     public static final String CODE_PREFIX_REQUIRED = "PART_CATEGORY_PREFIX_REQUIRED";
     public static final String CODE_DIGITS_INVALID = "PART_CATEGORY_DIGITS_INVALID";
 
@@ -42,10 +39,6 @@ public class PartCategory extends AbstractAuditableEntity {
     @Column(name = "name", nullable = false, length = MAX_NAME_LENGTH)
     private String name;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "item_type", nullable = false, length = 30)
-    private PartItemType itemType;
-
     @Column(name = "prefix", nullable = false, length = MAX_PREFIX_LENGTH)
     private String prefix;
 
@@ -55,17 +48,16 @@ public class PartCategory extends AbstractAuditableEntity {
     @Column(name = "digits", nullable = false)
     private int digits;
 
-    private PartCategory(String name, PartItemType itemType, String prefix, String delimiter, int digits) {
+    private PartCategory(String name, String prefix, String delimiter, int digits) {
         super(UuidV7Generator.next());
         this.name = validateName(name);
-        this.itemType = validateItemType(itemType);
         this.prefix = validatePrefix(prefix);
         this.delimiter = delimiter == null ? "-" : delimiter;
         this.digits = validateDigits(digits);
     }
 
-    public static PartCategory create(String name, PartItemType itemType, String prefix, String delimiter, int digits) {
-        return new PartCategory(name, itemType, prefix, delimiter, digits);
+    public static PartCategory create(String name, String prefix, String delimiter, int digits) {
+        return new PartCategory(name, prefix, delimiter, digits);
     }
 
     /**
@@ -85,10 +77,6 @@ public class PartCategory extends AbstractAuditableEntity {
 
     public void changeName(String name) {
         this.name = validateName(name);
-    }
-
-    public void changeItemType(PartItemType itemType) {
-        this.itemType = validateItemType(itemType);
     }
 
     public void changePrefix(String prefix) {
@@ -112,13 +100,6 @@ public class PartCategory extends AbstractAuditableEntity {
             throw new DomainException(CODE_NAME_REQUIRED, "채번 카테고리 이름은 %d자 이하여야 합니다".formatted(MAX_NAME_LENGTH));
         }
         return trimmed;
-    }
-
-    private PartItemType validateItemType(PartItemType itemType) {
-        if (itemType == null) {
-            throw new DomainException(CODE_ITEM_TYPE_REQUIRED, "카테고리 itemType은 필수입니다");
-        }
-        return itemType;
     }
 
     private String validatePrefix(String prefix) {

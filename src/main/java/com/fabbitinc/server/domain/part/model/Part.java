@@ -74,6 +74,13 @@ public class Part extends AbstractCreatedEntity implements AggregateRoot {
         this.itemType = validateItemType(itemType);
     }
 
+    /**
+     * Legacy creation path kept temporarily for synthesis import flows that do not yet provide
+     * categoryId/itemType. Do not use for new write paths.
+     * TODO: Remove this factory once synthesis import provides categoryId/itemType and all
+     * callers can use Part.create(partNumber, categoryId, itemType).
+     */
+    @Deprecated
     public static Part create(String partNumber) {
         return new Part(partNumber);
     }

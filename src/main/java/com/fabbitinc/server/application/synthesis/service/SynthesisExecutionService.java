@@ -545,6 +545,10 @@ public class SynthesisExecutionService {
             return new UpsertPartResult(existing, revision, false);
         }
 
+        // Legacy fallback: synthesis rows do not yet provide categoryId, so this path still uses
+        // the deprecated Part.create(partNumber) factory. Do not copy this into new write flows.
+        // TODO: Add categoryId to synthesis input, switch to Part.create(partNumber, categoryId, itemType),
+        // and then enforce DB/application NOT NULL constraints without this fallback.
         Part created = Part.create(values.partNumber());
         if (values.itemType() != null) {
             created.changeItemType(values.itemType());

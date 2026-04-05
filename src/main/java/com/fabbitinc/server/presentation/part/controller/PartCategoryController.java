@@ -54,13 +54,11 @@ public class PartCategoryController {
     private final UpdatePartCategoryUseCase updatePartCategoryUseCase;
     private final DeletePartCategoryUseCase deletePartCategoryUseCase;
 
-    @Operation(operationId = "partCategoryList", summary = "부품 카테고리 목록을 조회합니다", description = "아이템 유형별 부품 카테고리 목록과 예시 품번을 반환합니다")
+    @Operation(operationId = "partCategoryList", summary = "부품 카테고리 목록을 조회합니다", description = "부품 카테고리 목록과 예시 품번을 반환합니다")
     @ApiResponse(responseCode = "200", description = "요청 성공")
     @GetMapping
-    public PartCategoryListResponse list(
-            @Parameter(description = "아이템 유형 필터") @RequestParam(value = "item_type", required = false) String itemType
-    ) {
-        return toListResponse(partCategoryQuery.list(itemType));
+    public PartCategoryListResponse list() {
+        return toListResponse(partCategoryQuery.list());
     }
 
     @Operation(operationId = "partCategoryCreate", summary = "부품 카테고리를 생성합니다", description = "새 부품 카테고리를 생성하고 시퀀스를 초기화합니다")
@@ -70,7 +68,6 @@ public class PartCategoryController {
     public PartCategoryResponse create(@Valid @RequestBody CreatePartCategoryRequest request) {
         return toResponse(createPartCategoryUseCase.execute(new CreatePartCategoryCommand(
                 request.name(),
-                request.itemType(),
                 request.prefix(),
                 request.delimiter(),
                 request.digits()
@@ -87,7 +84,6 @@ public class PartCategoryController {
         return toResponse(updatePartCategoryUseCase.execute(new UpdatePartCategoryCommand(
                 categoryId,
                 request.name(),
-                request.itemType(),
                 request.prefix(),
                 request.delimiter(),
                 request.digits()
@@ -128,7 +124,6 @@ public class PartCategoryController {
                         .map(item -> new PartCategoryResponse(
                                 item.id(),
                                 item.name(),
-                                item.itemType(),
                                 item.prefix(),
                                 item.delimiter(),
                                 item.digits(),
@@ -142,7 +137,6 @@ public class PartCategoryController {
         return new PartCategoryResponse(
                 result.id(),
                 result.name(),
-                result.itemType(),
                 result.prefix(),
                 result.delimiter(),
                 result.digits(),

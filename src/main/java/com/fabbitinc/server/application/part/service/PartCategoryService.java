@@ -3,7 +3,6 @@ package com.fabbitinc.server.application.part.service;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.domain.part.model.PartCategory;
-import com.fabbitinc.server.domain.part.model.PartItemType;
 import com.fabbitinc.server.domain.part.model.PartNumberSequence;
 import com.fabbitinc.server.domain.part.repository.PartCategoryRepository;
 import com.fabbitinc.server.domain.part.repository.PartNumberSequenceRepository;
@@ -21,7 +20,7 @@ public class PartCategoryService {
     private final PartNumberSequenceRepository partNumberSequenceRepository;
     private final PartRepository partRepository;
 
-    public PartCategory create(String name, PartItemType itemType, String prefix, String delimiter, int digits) {
+    public PartCategory create(String name, String prefix, String delimiter, int digits) {
         if (partCategoryRepository.existsByName(name)) {
             throw new AppException(ErrorCode.CONFLICT, "이미 존재하는 카테고리 이름입니다: " + name);
         }
@@ -31,7 +30,7 @@ public class PartCategoryService {
 
         try {
             PartCategory category = partCategoryRepository.save(
-                    PartCategory.create(name, itemType, prefix, delimiter, digits)
+                    PartCategory.create(name, prefix, delimiter, digits)
             );
             partNumberSequenceRepository.save(PartNumberSequence.createFor(category.getId()));
             return category;
@@ -40,7 +39,7 @@ public class PartCategoryService {
         }
     }
 
-    public PartCategory update(UUID categoryId, String name, PartItemType itemType, String prefix, String delimiter, int digits) {
+    public PartCategory update(UUID categoryId, String name, String prefix, String delimiter, int digits) {
         PartCategory category = partCategoryRepository.findById(categoryId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "카테고리를 찾을 수 없습니다: " + categoryId));
 
@@ -56,7 +55,6 @@ public class PartCategoryService {
 
         try {
             category.changeName(name);
-            category.changeItemType(itemType);
             category.changePrefix(prefix);
             category.changeDelimiter(delimiter);
             category.changeDigits(digits);

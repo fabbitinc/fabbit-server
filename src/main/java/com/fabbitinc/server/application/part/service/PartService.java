@@ -45,11 +45,8 @@ public class PartService {
             if (partNumber != null && partNumber.isBlank()) {
                 partNumber = null;
             }
-            PartCategory category = partCategoryRepository.findById(input.categoryId())
+            partCategoryRepository.findById(input.categoryId())
                     .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "카테고리를 찾을 수 없습니다: " + input.categoryId()));
-            if (input.itemType() != category.getItemType()) {
-                throw new AppException(ErrorCode.VALIDATION_ERROR, "선택한 itemType과 category가 일치하지 않습니다");
-            }
             if (partNumber == null) {
                 partNumber = partNumberService.generate(input.categoryId());
             }

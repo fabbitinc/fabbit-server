@@ -7,7 +7,6 @@ import com.fabbitinc.server.application.part.query.result.PartNumberAvailability
 import com.fabbitinc.server.application.part.query.result.PartCategoryListResult;
 import com.fabbitinc.server.application.part.query.result.PartNumberPreviewResult;
 import com.fabbitinc.server.domain.part.model.PartCategory;
-import com.fabbitinc.server.domain.part.model.PartItemType;
 import com.fabbitinc.server.domain.part.model.PartNumberSequence;
 import com.fabbitinc.server.domain.part.repository.PartCategoryRepository;
 import com.fabbitinc.server.domain.part.repository.PartNumberSequenceRepository;
@@ -29,18 +28,13 @@ public class PartCategoryQuery {
     private final PartNumberSequenceRepository partNumberSequenceRepository;
     private final PartRepository partRepository;
 
-    public PartCategoryListResult list(String itemType) {
+    public PartCategoryListResult list() {
         currentAuthProvider.getCurrentAuth();
-        PartItemType resolvedItemType = resolveItemType(itemType);
-        var categories = resolvedItemType == null
-                ? partCategoryRepository.findAllByOrderByNameAsc()
-                : partCategoryRepository.findAllByItemTypeOrderByNameAsc(resolvedItemType);
         return new PartCategoryListResult(
-                categories.stream()
+                partCategoryRepository.findAllByOrderByNameAsc().stream()
                         .map(category -> new PartCategoryListResult.Item(
                                 category.getId(),
                                 category.getName(),
-                                category.getItemType(),
                                 category.getPrefix(),
                                 category.getDelimiter(),
                                 category.getDigits(),
@@ -77,16 +71,5 @@ public class PartCategoryQuery {
                 normalized,
                 partRepository.findByPartNumber(normalized).isEmpty()
         );
-    }
-
-    private PartItemType resolveItemType(String itemType) {
-        if (itemType == null || itemType.isBlank()) {
-            return null;
-        }
-        try {
-            return PartItemType.valueOf(itemType.trim().toUpperCase(java.util.Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            throw new AppException(ErrorCode.BAD_REQUEST, "지원하지 않는 item_type입니다: " + itemType);
-        }
     }
 }
