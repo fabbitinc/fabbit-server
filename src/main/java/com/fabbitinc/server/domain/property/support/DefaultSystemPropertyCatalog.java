@@ -1,6 +1,5 @@
 package com.fabbitinc.server.domain.property.support;
 
-import com.fabbitinc.server.domain.property.model.PropertyOptionMode;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
 import com.fabbitinc.server.domain.property.model.PropertyValueType;
 import java.util.List;
@@ -94,29 +93,15 @@ public final class DefaultSystemPropertyCatalog {
             ),
             new SystemPropertyCatalogSeed(
                     PropertyOwnerType.PART,
-                    "category",
-                    PartSystemPropertyKind.CATEGORY,
-                    "카테고리",
-                    "부품 분류",
-                    PropertyValueType.OPTION,
-                    PropertyOptionMode.CREATABLE,
-                    List.of(),
-                    "category",
-                    7,
-                    false,
-                    true
-            ),
-            new SystemPropertyCatalogSeed(
-                    PropertyOwnerType.PART,
                     "item_type",
                     PartSystemPropertyKind.ITEM_TYPE,
-                    "부품 유형",
-                    "부품 조달 유형",
+                    "아이템 유형",
+                    "부품 아이템 유형",
                     PropertyValueType.STRING,
                     null,
                     List.of(),
                     "item_type",
-                    8,
+                    7,
                     false,
                     true
             ),
@@ -130,7 +115,7 @@ public final class DefaultSystemPropertyCatalog {
                     null,
                     List.of(),
                     "lifecycle_state",
-                    9,
+                    8,
                     false,
                     true
             ),
@@ -144,7 +129,7 @@ public final class DefaultSystemPropertyCatalog {
                     null,
                     List.of(),
                     "lead_time_days",
-                    10,
+                    9,
                     false,
                     true
             ),

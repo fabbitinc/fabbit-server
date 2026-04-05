@@ -58,7 +58,7 @@ public class Part extends AbstractCreatedEntity implements AggregateRoot {
     private PartItemType itemType;
 
     @Column(name = "numbering_category_id")
-    private UUID numberingCategoryId;
+    private UUID categoryId;
 
     private Part(String partNumber) {
         super(UuidV7Generator.next());
@@ -66,24 +66,28 @@ public class Part extends AbstractCreatedEntity implements AggregateRoot {
         this.lifecycleState = PartLifecycleState.ACTIVE;
     }
 
-    private Part(String partNumber, UUID numberingCategoryId, PartItemType itemType) {
+    private Part(String partNumber, UUID categoryId, PartItemType itemType) {
         super(UuidV7Generator.next());
         this.partNumber = validatePartNumber(partNumber);
         this.lifecycleState = PartLifecycleState.ACTIVE;
-        this.numberingCategoryId = numberingCategoryId;
-        this.itemType = itemType;
+        this.categoryId = validateCategoryId(categoryId);
+        this.itemType = validateItemType(itemType);
     }
 
     public static Part create(String partNumber) {
         return new Part(partNumber);
     }
 
-    public static Part create(String partNumber, UUID numberingCategoryId, PartItemType itemType) {
-        return new Part(partNumber, numberingCategoryId, itemType);
+    public static Part create(String partNumber, UUID categoryId, PartItemType itemType) {
+        return new Part(partNumber, categoryId, itemType);
     }
 
     public void changeItemType(PartItemType itemType) {
-        this.itemType = itemType;
+        this.itemType = validateItemType(itemType);
+    }
+
+    public void changeCategoryId(UUID categoryId) {
+        this.categoryId = validateCategoryId(categoryId);
     }
 
     public void changeLifecycleState(PartLifecycleState targetState) {
@@ -134,5 +138,19 @@ public class Part extends AbstractCreatedEntity implements AggregateRoot {
             throw new DomainException(CODE_PART_NUMBER_TOO_LONG, "품번은 100자 이하여야 합니다");
         }
         return trimmed;
+    }
+
+    private UUID validateCategoryId(UUID categoryId) {
+        if (categoryId == null) {
+            throw new DomainException(CODE_PART_NUMBER_REQUIRED, "카테고리는 필수입니다");
+        }
+        return categoryId;
+    }
+
+    private PartItemType validateItemType(PartItemType itemType) {
+        if (itemType == null) {
+            throw new DomainException(CODE_PART_NUMBER_REQUIRED, "itemType은 필수입니다");
+        }
+        return itemType;
     }
 }

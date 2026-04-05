@@ -4,11 +4,12 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.part.query.result.PartNumberAvailabilityResult;
-import com.fabbitinc.server.application.part.query.result.PartNumberCategoryListResult;
+import com.fabbitinc.server.application.part.query.result.PartCategoryListResult;
 import com.fabbitinc.server.application.part.query.result.PartNumberPreviewResult;
-import com.fabbitinc.server.domain.part.model.PartNumberCategory;
+import com.fabbitinc.server.domain.part.model.PartCategory;
+import com.fabbitinc.server.domain.part.model.PartItemType;
 import com.fabbitinc.server.domain.part.model.PartNumberSequence;
-import com.fabbitinc.server.domain.part.repository.PartNumberCategoryRepository;
+import com.fabbitinc.server.domain.part.repository.PartCategoryRepository;
 import com.fabbitinc.server.domain.part.repository.PartNumberSequenceRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import java.util.UUID;
@@ -19,22 +20,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class PartNumberCategoryQuery {
+public class PartCategoryQuery {
 
     private static final String PREVIEW_NOTE = "이 번호는 실제 생성 시 변경될 수 있습니다";
 
     private final CurrentAuthProvider currentAuthProvider;
-    private final PartNumberCategoryRepository partNumberCategoryRepository;
+    private final PartCategoryRepository partCategoryRepository;
     private final PartNumberSequenceRepository partNumberSequenceRepository;
     private final PartRepository partRepository;
 
-    public PartNumberCategoryListResult list() {
+    public PartCategoryListResult list(String itemType) {
         currentAuthProvider.getCurrentAuth();
-        return new PartNumberCategoryListResult(
-                partNumberCategoryRepository.findAllByOrderByNameAsc().stream()
-                        .map(category -> new PartNumberCategoryListResult.Item(
+        PartItemType resolvedItemType = resolveItemType(itemType);
+        var categories = resolvedItemType == null
+                ? partCategoryRepository.findAllByOrderByNameAsc()
+                : partCategoryRepository.findAllByItemTypeOrderByNameAsc(resolvedItemType);
+        return new PartCategoryListResult(
+                categories.stream()
+                        .map(category -> new PartCategoryListResult.Item(
                                 category.getId(),
                                 category.getName(),
+                                category.getItemType(),
                                 category.getPrefix(),
                                 category.getDelimiter(),
                                 category.getDigits(),
@@ -46,8 +52,8 @@ public class PartNumberCategoryQuery {
 
     public PartNumberPreviewResult get(UUID categoryId) {
         currentAuthProvider.getCurrentAuth();
-        PartNumberCategory category = partNumberCategoryRepository.findById(categoryId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "채번 카테고리를 찾을 수 없습니다: " + categoryId));
+        PartCategory category = partCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "카테고리를 찾을 수 없습니다: " + categoryId));
         PartNumberSequence sequence = partNumberSequenceRepository.findByCategoryId(categoryId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "채번 시퀀스를 찾을 수 없습니다: " + categoryId));
 
@@ -71,5 +77,16 @@ public class PartNumberCategoryQuery {
                 normalized,
                 partRepository.findByPartNumber(normalized).isEmpty()
         );
+    }
+
+    private PartItemType resolveItemType(String itemType) {
+        if (itemType == null || itemType.isBlank()) {
+            return null;
+        }
+        try {
+            return PartItemType.valueOf(itemType.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "지원하지 않는 item_type입니다: " + itemType);
+        }
     }
 }

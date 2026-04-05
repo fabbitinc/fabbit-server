@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public record CreatePartInput(
         String partNumber,
-        UUID numberingCategoryId,
+        UUID categoryId,
         PartItemType itemType,
         String name,
         String material,

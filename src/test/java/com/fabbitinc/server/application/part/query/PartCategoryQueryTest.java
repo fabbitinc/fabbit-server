@@ -12,10 +12,11 @@ import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.part.query.result.PartNumberAvailabilityResult;
 import com.fabbitinc.server.application.part.query.result.PartNumberPreviewResult;
+import com.fabbitinc.server.domain.part.model.PartCategory;
+import com.fabbitinc.server.domain.part.model.PartItemType;
 import com.fabbitinc.server.domain.part.model.Part;
-import com.fabbitinc.server.domain.part.model.PartNumberCategory;
 import com.fabbitinc.server.domain.part.model.PartNumberSequence;
-import com.fabbitinc.server.domain.part.repository.PartNumberCategoryRepository;
+import com.fabbitinc.server.domain.part.repository.PartCategoryRepository;
 import com.fabbitinc.server.domain.part.repository.PartNumberSequenceRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import java.lang.reflect.Field;
@@ -27,10 +28,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class PartNumberCategoryQueryTest {
+class PartCategoryQueryTest {
 
     @Mock private CurrentAuthProvider currentAuthProvider;
-    @Mock private PartNumberCategoryRepository partNumberCategoryRepository;
+    @Mock private PartCategoryRepository partCategoryRepository;
     @Mock private PartNumberSequenceRepository partNumberSequenceRepository;
     @Mock private PartRepository partRepository;
 
@@ -39,14 +40,14 @@ class PartNumberCategoryQueryTest {
         UUID categoryId = UUID.randomUUID();
         when(currentAuthProvider.getCurrentAuth()).thenReturn(new AuthContext(UUID.randomUUID(), "a@b.c", UUID.randomUUID(), null));
 
-        PartNumberCategory category = PartNumberCategory.create("PCB", "PCB", "-", 4);
+        PartCategory category = PartCategory.create("PCB", PartItemType.MANUFACTURED, "PCB", "-", 4);
         PartNumberSequence sequence = PartNumberSequence.createFor(categoryId);
         setCurrentValue(sequence, 41);
 
-        when(partNumberCategoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
+        when(partCategoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
         when(partNumberSequenceRepository.findByCategoryId(categoryId)).thenReturn(Optional.of(sequence));
 
-        PartNumberCategoryQuery query = createQuery();
+        PartCategoryQuery query = createQuery();
         PartNumberPreviewResult result = query.get(categoryId);
 
         assertEquals("PCB-0042", result.partNumber());
@@ -58,7 +59,7 @@ class PartNumberCategoryQueryTest {
         when(currentAuthProvider.getCurrentAuth()).thenReturn(new AuthContext(UUID.randomUUID(), "a@b.c", UUID.randomUUID(), null));
         when(partRepository.findByPartNumber("PCB-0042")).thenReturn(Optional.empty());
 
-        PartNumberCategoryQuery query = createQuery();
+        PartCategoryQuery query = createQuery();
         PartNumberAvailabilityResult result = query.lookup("  PCB-0042  ");
 
         assertEquals("PCB-0042", result.partNumber());
@@ -70,7 +71,7 @@ class PartNumberCategoryQueryTest {
         when(currentAuthProvider.getCurrentAuth()).thenReturn(new AuthContext(UUID.randomUUID(), "a@b.c", UUID.randomUUID(), null));
         when(partRepository.findByPartNumber("PCB-0001")).thenReturn(Optional.of(Part.create("PCB-0001")));
 
-        PartNumberCategoryQuery query = createQuery();
+        PartCategoryQuery query = createQuery();
         PartNumberAvailabilityResult result = query.lookup("PCB-0001");
 
         assertFalse(result.available());
@@ -81,23 +82,23 @@ class PartNumberCategoryQueryTest {
         UUID categoryId = UUID.randomUUID();
         when(currentAuthProvider.getCurrentAuth()).thenReturn(new AuthContext(UUID.randomUUID(), "a@b.c", UUID.randomUUID(), null));
 
-        PartNumberCategory category = PartNumberCategory.create("PCB", "PCB", "-", 4);
+        PartCategory category = PartCategory.create("PCB", PartItemType.MANUFACTURED, "PCB", "-", 4);
         PartNumberSequence sequence = PartNumberSequence.createFor(categoryId);
         setCurrentValue(sequence, 9999);
 
-        when(partNumberCategoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
+        when(partCategoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
         when(partNumberSequenceRepository.findByCategoryId(categoryId)).thenReturn(Optional.of(sequence));
 
-        PartNumberCategoryQuery query = createQuery();
+        PartCategoryQuery query = createQuery();
         AppException ex = assertThrows(AppException.class, () -> query.get(categoryId));
 
         assertEquals(ErrorCode.CONFLICT, ex.getErrorCode());
     }
 
-    private PartNumberCategoryQuery createQuery() {
-        return new PartNumberCategoryQuery(
+    private PartCategoryQuery createQuery() {
+        return new PartCategoryQuery(
                 currentAuthProvider,
-                partNumberCategoryRepository,
+                partCategoryRepository,
                 partNumberSequenceRepository,
                 partRepository
         );

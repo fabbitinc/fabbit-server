@@ -13,7 +13,7 @@ public record PartSnapshot(
         String material,
         String unit,
         String description,
-        UUID numberingCategoryId,
+        UUID categoryId,
         PartLifecycleState lifecycleState,
         PartItemType itemType,
         Integer leadTimeDays,

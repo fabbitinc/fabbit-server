@@ -15,9 +15,12 @@ import com.fabbitinc.server.application.part.service.input.CreatePartInput;
 import com.fabbitinc.server.application.property.api.PropertyApi;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
+import com.fabbitinc.server.domain.part.model.PartCategory;
+import com.fabbitinc.server.domain.part.model.PartItemType;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartRevision;
+import com.fabbitinc.server.domain.part.repository.PartCategoryRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import java.util.List;
@@ -41,10 +44,14 @@ class PartServiceTest {
   @Mock private PropertyApi propertyApi;
   @Mock private ObjectMapper objectMapper;
   @Mock private PartNumberService partNumberService;
+  @Mock private PartCategoryRepository partCategoryRepository;
 
   @Test
   void createPart_초기_초안을_생성한다() {
     UUID actorId = UUID.randomUUID();
+    UUID categoryId = UUID.randomUUID();
+    when(partCategoryRepository.findById(categoryId))
+        .thenReturn(Optional.of(PartCategory.create("기구", PartItemType.MANUFACTURED, "MC", "-", 4)));
     when(partRepository.findByPartNumber("P-100")).thenReturn(Optional.empty());
     when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(partRevisionRepository.save(any(PartRevision.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -54,7 +61,7 @@ class PartServiceTest {
     PartRevision createdDraft =
         service.createPart(
             new CreatePartInput(
-                "  P-100  ", null, null, "Bolt", null, null, null, null, null, null, null),
+                "  P-100  ", categoryId, PartItemType.MANUFACTURED, "Bolt", null, null, null, null, null, null, null),
             actorId);
 
     ArgumentCaptor<PartRevision> revisionCaptor = ArgumentCaptor.forClass(PartRevision.class);
@@ -72,6 +79,9 @@ class PartServiceTest {
 
   @Test
   void createPart_중복된_품번이면_conflict를_던진다() {
+    UUID categoryId = UUID.randomUUID();
+    when(partCategoryRepository.findById(categoryId))
+        .thenReturn(Optional.of(PartCategory.create("기구", PartItemType.MANUFACTURED, "MC", "-", 4)));
     when(partRepository.findByPartNumber("P-100")).thenReturn(Optional.of(Part.create("P-100")));
 
     PartService service = createService();
@@ -82,7 +92,7 @@ class PartServiceTest {
             () ->
                 service.createPart(
                     new CreatePartInput(
-                        "P-100", null, null, "Bolt", null, null, null, null, null, null, null),
+                        "P-100", categoryId, PartItemType.MANUFACTURED, "Bolt", null, null, null, null, null, null, null),
                     UUID.randomUUID()));
 
     assertEquals(ErrorCode.CONFLICT, ex.getErrorCode());
@@ -92,6 +102,8 @@ class PartServiceTest {
   void createPart_빈문자열_품번이면_자동채번을_수행한다() {
     UUID actorId = UUID.randomUUID();
     UUID categoryId = UUID.randomUUID();
+    when(partCategoryRepository.findById(categoryId))
+        .thenReturn(Optional.of(PartCategory.create("기구", PartItemType.MANUFACTURED, "MC", "-", 4)));
     when(partNumberService.generate(categoryId)).thenReturn("AUTO-0001");
     when(partRepository.findByPartNumber("AUTO-0001")).thenReturn(Optional.empty());
     when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -102,7 +114,7 @@ class PartServiceTest {
     PartRevision createdDraft =
         service.createPart(
             new CreatePartInput(
-                "   ", categoryId, null, "Auto Bolt", null, null, null, null, null, null, null),
+                "   ", categoryId, PartItemType.MANUFACTURED, "Auto Bolt", null, null, null, null, null, null, null),
             actorId);
 
     verify(partNumberService).generate(categoryId);
@@ -110,24 +122,26 @@ class PartServiceTest {
   }
 
   @Test
-  void createPart_품번과_채번카테고리가_둘다없으면_bad_request를_던진다() {
+  void createPart_category가_없으면_not_found를_던진다() {
     PartService service = createService();
 
     AppException ex = assertThrows(
         AppException.class,
         () -> service.createPart(
-            new CreatePartInput(null, null, null, "Bolt", null, null, null, null, null, null, null),
+            new CreatePartInput(null, UUID.randomUUID(), PartItemType.MANUFACTURED, "Bolt", null, null, null, null, null, null, null),
             UUID.randomUUID()
         )
     );
 
-    assertEquals(ErrorCode.BAD_REQUEST, ex.getErrorCode());
+    assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
   }
 
   @Test
-  void createPart_품번과_채번카테고리가_둘다있으면_수동품번을_우선한다() {
+  void createPart_품번과_카테고리가_둘다있으면_수동품번을_우선한다() {
     UUID actorId = UUID.randomUUID();
     UUID categoryId = UUID.randomUUID();
+    when(partCategoryRepository.findById(categoryId))
+        .thenReturn(Optional.of(PartCategory.create("기구", PartItemType.MANUFACTURED, "MC", "-", 4)));
     when(partRepository.findByPartNumber("P-300")).thenReturn(Optional.empty());
     when(partRepository.save(any(Part.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(partRevisionRepository.save(any(PartRevision.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -136,7 +150,7 @@ class PartServiceTest {
 
     PartRevision createdDraft =
         service.createPart(
-            new CreatePartInput("P-300", categoryId, null, "Manual Bolt", null, null, null, null, null, null, null),
+            new CreatePartInput("P-300", categoryId, PartItemType.MANUFACTURED, "Manual Bolt", null, null, null, null, null, null, null),
             actorId);
 
     verify(partNumberService, never()).generate(categoryId);
@@ -146,7 +160,10 @@ class PartServiceTest {
   @Test
   void createPart_속성과_수명주기상태를_저장한다() throws Exception {
     UUID actorId = UUID.randomUUID();
+    UUID categoryId = UUID.randomUUID();
     Map<String, Object> extendedProperties = Map.of("weight", 1.2, "material_code", "AL6061");
+    when(partCategoryRepository.findById(categoryId))
+        .thenReturn(Optional.of(PartCategory.create("기구", PartItemType.MANUFACTURED, "MC", "-", 4)));
     when(partRepository.findByPartNumber("P-200")).thenReturn(Optional.empty());
     when(propertyApi.validateExtendedProperties(com.fabbitinc.server.domain.property.model.PropertyOwnerType.PART, extendedProperties))
         .thenReturn(extendedProperties);
@@ -161,8 +178,8 @@ class PartServiceTest {
         service.createPart(
             new CreatePartInput(
                 "P-200",
-                null,
-                null,
+                categoryId,
+                PartItemType.MANUFACTURED,
                 "Bracket",
                 "AL6061",
                 "EA",
@@ -250,6 +267,7 @@ class PartServiceTest {
         organizationApi,
         propertyApi,
         objectMapper,
-        partNumberService);
+        partNumberService,
+        partCategoryRepository);
   }
 }

@@ -184,7 +184,7 @@ public class PartApi {
                 revision == null ? null : revision.getMaterial(),
                 revision == null ? null : revision.getUnit(),
                 revision == null ? null : revision.getDescription(),
-                part.getNumberingCategoryId(),
+                part.getCategoryId(),
                 part.getLifecycleState(),
                 part.getItemType(),
                 revision == null ? null : revision.getLeadTimeDays(),

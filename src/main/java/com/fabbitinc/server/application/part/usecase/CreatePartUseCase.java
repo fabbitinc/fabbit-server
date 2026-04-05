@@ -24,7 +24,7 @@ public class CreatePartUseCase {
 
         PartRevision draft = partService.createPart(new CreatePartInput(
                 command.partNumber(),
-                command.numberingCategoryId(),
+                command.categoryId(),
                 command.itemType(),
                 command.name(),
                 command.material(),

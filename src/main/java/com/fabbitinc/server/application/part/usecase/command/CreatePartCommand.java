@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public record CreatePartCommand(
         String partNumber,
-        UUID numberingCategoryId,
+        UUID categoryId,
         PartItemType itemType,
         String name,
         String material,

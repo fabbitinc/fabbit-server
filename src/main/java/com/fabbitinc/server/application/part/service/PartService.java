@@ -9,8 +9,10 @@ import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
+import com.fabbitinc.server.domain.part.model.PartCategory;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartRevision;
+import com.fabbitinc.server.domain.part.repository.PartCategoryRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
@@ -35,6 +37,7 @@ public class PartService {
     private final PropertyApi propertyApi;
     private final ObjectMapper objectMapper;
     private final PartNumberService partNumberService;
+    private final PartCategoryRepository partCategoryRepository;
 
     public PartRevision createPart(CreatePartInput input, UUID actorId) {
         try {
@@ -42,13 +45,16 @@ public class PartService {
             if (partNumber != null && partNumber.isBlank()) {
                 partNumber = null;
             }
-            if (partNumber == null && input.numberingCategoryId() != null) {
-                partNumber = partNumberService.generate(input.numberingCategoryId());
-            } else if (partNumber == null) {
-                throw new AppException(ErrorCode.BAD_REQUEST, "품번 또는 채번 카테고리를 지정해야 합니다");
+            PartCategory category = partCategoryRepository.findById(input.categoryId())
+                    .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "카테고리를 찾을 수 없습니다: " + input.categoryId()));
+            if (input.itemType() != category.getItemType()) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR, "선택한 itemType과 category가 일치하지 않습니다");
+            }
+            if (partNumber == null) {
+                partNumber = partNumberService.generate(input.categoryId());
             }
 
-            Part part = Part.create(partNumber, input.numberingCategoryId(), input.itemType());
+            Part part = Part.create(partNumber, input.categoryId(), input.itemType());
             if (partRepository.findByPartNumber(part.getPartNumber()).isPresent()) {
                 throw new AppException(ErrorCode.CONFLICT, "이미 존재하는 품번입니다: " + part.getPartNumber());
             }

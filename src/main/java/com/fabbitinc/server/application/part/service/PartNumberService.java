@@ -2,9 +2,9 @@ package com.fabbitinc.server.application.part.service;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
-import com.fabbitinc.server.domain.part.model.PartNumberCategory;
+import com.fabbitinc.server.domain.part.model.PartCategory;
 import com.fabbitinc.server.domain.part.model.PartNumberSequence;
-import com.fabbitinc.server.domain.part.repository.PartNumberCategoryRepository;
+import com.fabbitinc.server.domain.part.repository.PartCategoryRepository;
 import com.fabbitinc.server.domain.part.repository.PartNumberSequenceRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import java.util.UUID;
@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * 채번 카테고리 규칙에 따라 품번을 자동 생성하는 서비스.
+ * 카테고리 채번 규칙에 따라 품번을 자동 생성하는 서비스.
  */
 @Slf4j
 @Component
@@ -22,7 +22,7 @@ public class PartNumberService {
 
     private static final int MAX_RETRY = 3;
 
-    private final PartNumberCategoryRepository categoryRepository;
+    private final PartCategoryRepository categoryRepository;
     private final PartNumberSequenceRepository sequenceRepository;
     private final PartRepository partRepository;
 
@@ -31,9 +31,9 @@ public class PartNumberService {
      * 비관적 잠금으로 동시성을 제어하며, 품번 충돌 시 최대 3회 재시도한다.
      */
     public String generate(UUID categoryId) {
-        PartNumberCategory category = categoryRepository.findById(categoryId)
+        PartCategory category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
-                        "채번 카테고리를 찾을 수 없습니다: " + categoryId));
+                        "카테고리를 찾을 수 없습니다: " + categoryId));
 
         PartNumberSequence sequence = sequenceRepository.findByCategoryIdForUpdate(categoryId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,

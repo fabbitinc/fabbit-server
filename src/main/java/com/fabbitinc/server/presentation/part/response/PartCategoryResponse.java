@@ -1,17 +1,21 @@
 package com.fabbitinc.server.presentation.part.response;
 
+import com.fabbitinc.server.domain.part.model.PartItemType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.UUID;
 
-@Schema(description = "채번 카테고리 응답")
-public record PartNumberCategoryResponse(
-        @Schema(description = "채번 카테고리 ID", example = "019d0000-0000-7000-8000-000000000001")
+@Schema(description = "부품 카테고리 응답")
+public record PartCategoryResponse(
+        @Schema(description = "카테고리 ID", example = "019d0000-0000-7000-8000-000000000001")
         UUID id,
 
         @Schema(description = "카테고리 이름", example = "PCB")
         String name,
 
-        @Schema(description = "채번 접두어", example = "PCB")
+        @Schema(description = "아이템 유형", example = "MANUFACTURED")
+        PartItemType itemType,
+
+        @Schema(description = "카테고리 접두어", example = "PCB")
         String prefix,
 
         @Schema(description = "구분자", example = "-")

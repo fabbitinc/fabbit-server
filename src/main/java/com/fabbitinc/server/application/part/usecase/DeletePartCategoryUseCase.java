@@ -1,8 +1,8 @@
 package com.fabbitinc.server.application.part.usecase;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
-import com.fabbitinc.server.application.part.service.PartNumberCategoryService;
-import com.fabbitinc.server.application.part.usecase.command.DeletePartNumberCategoryCommand;
+import com.fabbitinc.server.application.part.service.PartCategoryService;
+import com.fabbitinc.server.application.part.usecase.command.DeletePartCategoryCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,13 +10,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 @Transactional
-public class DeletePartNumberCategoryUseCase {
+public class DeletePartCategoryUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
-    private final PartNumberCategoryService partNumberCategoryService;
+    private final PartCategoryService partCategoryService;
 
-    public void execute(DeletePartNumberCategoryCommand command) {
+    public void execute(DeletePartCategoryCommand command) {
         currentAuthProvider.getCurrentAuth();
-        partNumberCategoryService.delete(command.categoryId());
+        partCategoryService.delete(command.categoryId());
     }
 }

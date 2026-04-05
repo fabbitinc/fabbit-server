@@ -71,7 +71,7 @@ import com.fabbitinc.server.domain.part.model.PartRevisionHistory;
 import com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
-import com.fabbitinc.server.domain.part.repository.PartNumberCategoryRepository;
+import com.fabbitinc.server.domain.part.repository.PartCategoryRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewFileRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewProcessingJobRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewRepository;
@@ -129,7 +129,7 @@ public class PartQuery {
     private final MappingApi mappingApi;
     private final PartRepository partRepository;
     private final PartRevisionRepository partRevisionRepository;
-    private final PartNumberCategoryRepository partNumberCategoryRepository;
+    private final PartCategoryRepository partCategoryRepository;
     private final FileRepository fileRepository;
     private final EngineeringBomItemRepository engineeringBomItemRepository;
     private final PartSupplierRepository partSupplierRepository;
@@ -260,10 +260,10 @@ public class PartQuery {
 
     public CategoryStatsResult listCategories() {
         currentAuthProvider.getCurrentAuth();
-        List<CategoryStatsResult.Item> items = partNumberCategoryRepository.findAllByOrderByNameAsc().stream()
+        List<CategoryStatsResult.Item> items = partCategoryRepository.findAllByOrderByNameAsc().stream()
                 .map(category -> new CategoryStatsResult.Item(
                         category.getName(),
-                        partRepository.countByNumberingCategoryId(category.getId())
+                        partRepository.countByCategoryId(category.getId())
                 ))
                 .toList();
         return new CategoryStatsResult(items);
@@ -701,7 +701,7 @@ public class PartQuery {
                 revision == null ? null : revision.getId(),
                 revision == null ? null : revision.getStatus(),
                 part.getPartNumber(),
-                part.getNumberingCategoryId(),
+                part.getCategoryId(),
                 baseRevisionId,
                 baseRevisionCode,
                 resolvedPart.name(),
@@ -1346,7 +1346,7 @@ public class PartQuery {
                 revision.getStatus(),
                 revision.getMaterial(),
                 revision.getUnit(),
-                resolveCategoryName(part.getNumberingCategoryId()),
+                resolveCategoryName(part.getCategoryId()),
                 part.getLifecycleState(),
                 quantity,
                 children
@@ -1542,30 +1542,30 @@ public class PartQuery {
     }
 
     private List<String> findDistinctCategories() {
-        return partNumberCategoryRepository.findAllByOrderByNameAsc().stream()
-                .map(com.fabbitinc.server.domain.part.model.PartNumberCategory::getName)
+        return partCategoryRepository.findAllByOrderByNameAsc().stream()
+                .map(com.fabbitinc.server.domain.part.model.PartCategory::getName)
                 .toList();
     }
 
-    private String resolveCategoryName(UUID numberingCategoryId) {
-        if (numberingCategoryId == null) {
+    private String resolveCategoryName(UUID categoryId) {
+        if (categoryId == null) {
             return null;
         }
-        return partNumberCategoryRepository.findById(numberingCategoryId)
-                .map(com.fabbitinc.server.domain.part.model.PartNumberCategory::getName)
+        return partCategoryRepository.findById(categoryId)
+                .map(com.fabbitinc.server.domain.part.model.PartCategory::getName)
                 .orElse(null);
     }
 
     private Map<UUID, String> resolveCategoryNames(List<Part> parts) {
         Set<UUID> categoryIds = parts.stream()
-                .map(Part::getNumberingCategoryId)
+                .map(Part::getCategoryId)
                 .filter(Objects::nonNull)
                 .collect(java.util.stream.Collectors.toSet());
         if (categoryIds.isEmpty()) {
             return Map.of();
         }
         Map<UUID, String> nameById = new HashMap<>();
-        partNumberCategoryRepository.findAllById(categoryIds)
+        partCategoryRepository.findAllById(categoryIds)
                 .forEach(cat -> nameById.put(cat.getId(), cat.getName()));
         return nameById;
     }
@@ -1619,7 +1619,7 @@ public class PartQuery {
     private ResolvedPart resolvePart(Part part) {
         return resolveParts(List.of(part)).stream()
                 .findFirst()
-                .orElseGet(() -> new ResolvedPart(part, null, resolveCategoryName(part.getNumberingCategoryId())));
+                .orElseGet(() -> new ResolvedPart(part, null, resolveCategoryName(part.getCategoryId())));
     }
 
     private List<ResolvedPart> resolveParts(List<Part> parts) {
@@ -1632,7 +1632,7 @@ public class PartQuery {
                 .map(part -> new ResolvedPart(
                         part,
                         revisionsByPartId.get(part.getId()),
-                        part.getNumberingCategoryId() == null ? null : categoryNames.get(part.getNumberingCategoryId())
+                        part.getCategoryId() == null ? null : categoryNames.get(part.getCategoryId())
                 ))
                 .toList();
     }
@@ -1647,7 +1647,7 @@ public class PartQuery {
                 .map(part -> new ResolvedPart(
                         part,
                         revisionsByPartId.get(part.getId()),
-                        part.getNumberingCategoryId() == null ? null : categoryNames.get(part.getNumberingCategoryId())
+                        part.getCategoryId() == null ? null : categoryNames.get(part.getCategoryId())
                 ))
                 .filter(part -> part.revision() != null)
                 .toList();
@@ -1749,7 +1749,7 @@ public class PartQuery {
                             part,
                             revision,
                             baseRevisionsById.get(revision.getBaseRevisionId()),
-                            part.getNumberingCategoryId() == null ? null : categoryNames.get(part.getNumberingCategoryId())
+                            part.getCategoryId() == null ? null : categoryNames.get(part.getCategoryId())
                     );
                 })
                 .filter(java.util.Objects::nonNull)
@@ -2348,7 +2348,7 @@ public class PartQuery {
                         ErrorCode.NOT_FOUND,
                         "Part '%s'을(를) 찾을 수 없습니다".formatted(partId)
                 ));
-        return new ResolvedPart(part, draft, resolveCategoryName(part.getNumberingCategoryId()));
+        return new ResolvedPart(part, draft, resolveCategoryName(part.getCategoryId()));
     }
 
     private ResolvedPart resolveRequiredPart(UUID partId, UUID revisionId) {
@@ -2362,7 +2362,7 @@ public class PartQuery {
                         ErrorCode.NOT_FOUND,
                         "Part '%s'을(를) 찾을 수 없습니다".formatted(partId)
                 ));
-        return new ResolvedPart(part, revision, resolveCategoryName(part.getNumberingCategoryId()));
+        return new ResolvedPart(part, revision, resolveCategoryName(part.getCategoryId()));
     }
 
     private String resolveName(PartRevision revision) {
@@ -2662,8 +2662,8 @@ public class PartQuery {
             return revision == null ? null : revision.getDescription();
         }
 
-        UUID numberingCategoryId() {
-            return part.getNumberingCategoryId();
+        UUID categoryId() {
+            return part.getCategoryId();
         }
 
         String category() {

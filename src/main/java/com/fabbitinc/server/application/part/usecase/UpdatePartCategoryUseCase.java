@@ -1,10 +1,10 @@
 package com.fabbitinc.server.application.part.usecase;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
-import com.fabbitinc.server.application.part.service.PartNumberCategoryService;
-import com.fabbitinc.server.application.part.usecase.command.UpdatePartNumberCategoryCommand;
-import com.fabbitinc.server.application.part.usecase.result.PartNumberCategoryResult;
-import com.fabbitinc.server.domain.part.model.PartNumberCategory;
+import com.fabbitinc.server.application.part.service.PartCategoryService;
+import com.fabbitinc.server.application.part.usecase.command.UpdatePartCategoryCommand;
+import com.fabbitinc.server.application.part.usecase.result.PartCategoryResult;
+import com.fabbitinc.server.domain.part.model.PartCategory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,23 +12,25 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 @Transactional
-public class UpdatePartNumberCategoryUseCase {
+public class UpdatePartCategoryUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
-    private final PartNumberCategoryService partNumberCategoryService;
+    private final PartCategoryService partCategoryService;
 
-    public PartNumberCategoryResult execute(UpdatePartNumberCategoryCommand command) {
+    public PartCategoryResult execute(UpdatePartCategoryCommand command) {
         currentAuthProvider.getCurrentAuth();
-        PartNumberCategory category = partNumberCategoryService.update(
+        PartCategory category = partCategoryService.update(
                 command.categoryId(),
                 command.name(),
+                command.itemType(),
                 command.prefix(),
                 command.delimiter(),
                 command.digits()
         );
-        return new PartNumberCategoryResult(
+        return new PartCategoryResult(
                 category.getId(),
                 category.getName(),
+                category.getItemType(),
                 category.getPrefix(),
                 category.getDelimiter(),
                 category.getDigits(),

@@ -1,10 +1,10 @@
 package com.fabbitinc.server.application.part.usecase;
 
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
-import com.fabbitinc.server.application.part.service.PartNumberCategoryService;
-import com.fabbitinc.server.application.part.usecase.command.CreatePartNumberCategoryCommand;
-import com.fabbitinc.server.application.part.usecase.result.PartNumberCategoryResult;
-import com.fabbitinc.server.domain.part.model.PartNumberCategory;
+import com.fabbitinc.server.application.part.service.PartCategoryService;
+import com.fabbitinc.server.application.part.usecase.command.CreatePartCategoryCommand;
+import com.fabbitinc.server.application.part.usecase.result.PartCategoryResult;
+import com.fabbitinc.server.domain.part.model.PartCategory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,22 +12,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 @Transactional
-public class CreatePartNumberCategoryUseCase {
+public class CreatePartCategoryUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
-    private final PartNumberCategoryService partNumberCategoryService;
+    private final PartCategoryService partCategoryService;
 
-    public PartNumberCategoryResult execute(CreatePartNumberCategoryCommand command) {
+    public PartCategoryResult execute(CreatePartCategoryCommand command) {
         currentAuthProvider.getCurrentAuth();
-        PartNumberCategory category = partNumberCategoryService.create(
+        PartCategory category = partCategoryService.create(
                 command.name(),
+                command.itemType(),
                 command.prefix(),
                 command.delimiter(),
                 command.digits()
         );
-        return new PartNumberCategoryResult(
+        return new PartCategoryResult(
                 category.getId(),
                 category.getName(),
+                category.getItemType(),
                 category.getPrefix(),
                 category.getDelimiter(),
                 category.getDigits(),

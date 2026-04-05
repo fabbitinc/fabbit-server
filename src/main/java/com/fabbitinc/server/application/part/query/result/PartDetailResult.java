@@ -11,7 +11,7 @@ public record PartDetailResult(
         UUID revisionId,
         PartRevisionStatus revisionStatus,
         String partNumber,
-        UUID numberingCategoryId,
+        UUID categoryId,
         UUID baseRevisionId,
         String baseRevisionCode,
         String name,

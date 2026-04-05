@@ -17,7 +17,7 @@ dev-db-start:
 	docker compose -f docker/docker-compose.dev.yml up -d --wait
 	$(MAKE) migrate-all
 
-# DB 초기화 (볼륨 삭제 + 마이그레이션 파일 초기화)
+# DB 초기화 (볼륨 삭제)
 dev-db-reset:
 	docker compose -f docker/docker-compose.dev.yml down -v
 	@echo "DB 볼륨 삭제 완료."
@@ -42,17 +42,30 @@ LB_URL      = jdbc:postgresql://localhost:5432/fabbit
 LB_USER     = fabbit
 LB_PASS     = fabbit
 LB_DEV_PORT = 5433
+LB_DEV_DB_CONTAINER = lb-dev-db
+LB_DEV_DB_USER = postgres
+LB_DEV_DB_PASS = dev
+LB_DEV_DB_IMAGE = postgres:18
 LB_SEARCH_PATH = src/main/resources
 LB_CHANGELOG = migrations/changelog-master.xml
 LB = liquibase --username=$(LB_USER) --password=$(LB_PASS) --search-path=$(LB_SEARCH_PATH)
 
+define lb_dev_db_start
+	@docker rm -f $(LB_DEV_DB_CONTAINER) 2>/dev/null || true
+	@docker run --rm -d --name $(LB_DEV_DB_CONTAINER) -e POSTGRES_PASSWORD=$(LB_DEV_DB_PASS) -p $(LB_DEV_PORT):5432 $(LB_DEV_DB_IMAGE) > /dev/null
+	@until docker logs $(LB_DEV_DB_CONTAINER) 2>&1 | grep -q "PostgreSQL init process complete; ready for start up."; do sleep 0.5; done
+	@until docker exec $(LB_DEV_DB_CONTAINER) psql -U $(LB_DEV_DB_USER) -d postgres -qAt -c "SELECT 1" >/dev/null 2>&1; do sleep 0.5; done
+endef
+
+define lb_dev_db_stop
+	@docker rm -f $(LB_DEV_DB_CONTAINER) > /dev/null 2>&1 || true
+endef
+
 # public diff 자동 생성 (기존 마이그레이션 vs Hibernate DDL)
 revision-public:
-	@docker rm -f lb-dev-db 2>/dev/null || true
-	@docker run --rm -d --name lb-dev-db -e POSTGRES_PASSWORD=dev -p $(LB_DEV_PORT):5432 postgres:18 > /dev/null
-	@until docker exec lb-dev-db pg_isready -q 2>/dev/null; do sleep 0.5; done
-	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE current_state"
-	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE desired_state"
+	$(lb_dev_db_start)
+	@docker exec $(LB_DEV_DB_CONTAINER) psql -U $(LB_DEV_DB_USER) -q -c "CREATE DATABASE current_state"
+	@docker exec $(LB_DEV_DB_CONTAINER) psql -U $(LB_DEV_DB_USER) -q -c "CREATE DATABASE desired_state"
 	@# current: 기존 마이그레이션 적용
 	liquibase --username=postgres --password=dev --search-path=$(LB_SEARCH_PATH) \
 		update \
@@ -60,24 +73,22 @@ revision-public:
 		--changelog-file=$(LB_CHANGELOG) \
 		--context-filter=public 2>/dev/null || true
 	@# desired: Hibernate DDL 적용
-	@./gradlew -q schemaExportPublic | docker exec -i lb-dev-db psql -U postgres -d desired_state -q 2>/dev/null
+	@./gradlew -q schemaExportPublic | docker exec -i $(LB_DEV_DB_CONTAINER) psql -U $(LB_DEV_DB_USER) -d desired_state -q 2>/dev/null
 	@# diff: desired vs current (search-path 없이 CWD 기준 출력)
 	liquibase --username=postgres --password=dev \
 		--url="jdbc:postgresql://localhost:$(LB_DEV_PORT)/current_state" \
 		--referenceUrl="jdbc:postgresql://localhost:$(LB_DEV_PORT)/desired_state" \
 		--referenceUsername=postgres --referencePassword=dev \
 		--changelog-file=src/main/resources/migrations/public/$$(date +%Y%m%d%H%M%S)_diff.sql \
-		diffChangeLog || (docker rm -f lb-dev-db > /dev/null 2>&1; exit 1)
-	@docker rm -f lb-dev-db > /dev/null
+		diffChangeLog || (docker rm -f $(LB_DEV_DB_CONTAINER) > /dev/null 2>&1; exit 1)
+	$(lb_dev_db_stop)
 	@echo "public revision 생성 완료"
 
 # tenant diff 자동 생성 (기존 마이그레이션 vs Hibernate DDL)
 revision-tenant:
-	@docker rm -f lb-dev-db 2>/dev/null || true
-	@docker run --rm -d --name lb-dev-db -e POSTGRES_PASSWORD=dev -p $(LB_DEV_PORT):5432 postgres:18 > /dev/null
-	@until docker exec lb-dev-db pg_isready -q 2>/dev/null; do sleep 0.5; done
-	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE current_state"
-	@docker exec lb-dev-db psql -U postgres -q -c "CREATE DATABASE desired_state"
+	$(lb_dev_db_start)
+	@docker exec $(LB_DEV_DB_CONTAINER) psql -U $(LB_DEV_DB_USER) -q -c "CREATE DATABASE current_state"
+	@docker exec $(LB_DEV_DB_CONTAINER) psql -U $(LB_DEV_DB_USER) -q -c "CREATE DATABASE desired_state"
 	@# current: 기존 마이그레이션 적용
 	liquibase --username=postgres --password=dev --search-path=$(LB_SEARCH_PATH) \
 		update \
@@ -85,15 +96,15 @@ revision-tenant:
 		--changelog-file=$(LB_CHANGELOG) \
 		--context-filter=tenant 2>/dev/null || true
 	@# desired: Hibernate DDL 적용
-	@./gradlew -q schemaExportTenant | docker exec -i lb-dev-db psql -U postgres -d desired_state -q 2>/dev/null
+	@./gradlew -q schemaExportTenant | docker exec -i $(LB_DEV_DB_CONTAINER) psql -U $(LB_DEV_DB_USER) -d desired_state -q 2>/dev/null
 	@# diff: desired vs current (search-path 없이 CWD 기준 출력)
 	liquibase --username=postgres --password=dev \
 		--url="jdbc:postgresql://localhost:$(LB_DEV_PORT)/current_state" \
 		--referenceUrl="jdbc:postgresql://localhost:$(LB_DEV_PORT)/desired_state" \
 		--referenceUsername=postgres --referencePassword=dev \
 		--changelog-file=src/main/resources/migrations/tenant/$$(date +%Y%m%d%H%M%S)_diff.sql \
-		diffChangeLog || (docker rm -f lb-dev-db > /dev/null 2>&1; exit 1)
-	@docker rm -f lb-dev-db > /dev/null
+		diffChangeLog || (docker rm -f $(LB_DEV_DB_CONTAINER) > /dev/null 2>&1; exit 1)
+	$(lb_dev_db_stop)
 	@echo "tenant revision 생성 완료"
 
 revision-all:
