@@ -9,7 +9,7 @@ public record SettingsPartWorkflowPolicyRequest(
         @Schema(
                 description = "부품 리비전 워크플로 모드",
                 example = "DIRECT",
-                allowableValues = {"DIRECT", "CHANGE_REQUEST_REQUIRED"}
+                allowableValues = {"DIRECT", "ENGINEERING_CHANGE_REQUIRED"}
         )
         @NotNull(message = "mode는 필수입니다") PartRevisionWorkflowMode mode
 ) {
