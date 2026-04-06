@@ -2,7 +2,6 @@ package com.fabbitinc.server.presentation.part.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -19,7 +18,7 @@ public record CreatePartCategoryRequest(
         @Size(max = 20, message = "formatSuffix는 최대 20자여야 합니다") String formatSuffix,
 
         @Schema(description = "자릿수", example = "4")
-        @Min(value = 1, message = "digits는 1 이상이어야 합니다") @Max(value = 10, message = "digits는 10 이하여야 합니다") int digits,
+        @Max(value = 10, message = "digits는 10 이하여야 합니다") Integer digits,
 
         @Schema(description = "자동채번 활성화 여부", example = "true")
         @NotNull(message = "autoNumberingEnabled는 필수입니다") Boolean autoNumberingEnabled

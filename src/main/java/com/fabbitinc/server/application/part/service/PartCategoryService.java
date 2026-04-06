@@ -20,10 +20,11 @@ public class PartCategoryService {
     private final PartNumberSequenceRepository partNumberSequenceRepository;
     private final PartRepository partRepository;
 
-    public PartCategory create(String name, String formatPrefix, String formatSuffix, int digits, boolean autoNumberingEnabled) {
+    public PartCategory create(String name, String formatPrefix, String formatSuffix, Integer digits, boolean autoNumberingEnabled) {
         if (partCategoryRepository.existsByName(name)) {
             throw new AppException(ErrorCode.CONFLICT, "이미 존재하는 카테고리 이름입니다: " + name);
         }
+        int resolvedDigits = resolveDigits(digits, autoNumberingEnabled);
         String normalizedFormatPrefix = normalizeFormatSegment(formatPrefix);
         String normalizedFormatSuffix = normalizeFormatSegment(formatSuffix);
         if (partCategoryRepository.existsByFormatPrefixAndFormatSuffix(normalizedFormatPrefix, normalizedFormatSuffix)) {
@@ -35,7 +36,7 @@ public class PartCategoryService {
 
         try {
             PartCategory category = partCategoryRepository.save(
-                    PartCategory.create(name, formatPrefix, formatSuffix, digits, autoNumberingEnabled)
+                    PartCategory.create(name, formatPrefix, formatSuffix, resolvedDigits, autoNumberingEnabled)
             );
             partNumberSequenceRepository.save(PartNumberSequence.createFor(category.getId()));
             return category;
@@ -49,7 +50,7 @@ public class PartCategoryService {
             String name,
             String formatPrefix,
             String formatSuffix,
-            int digits,
+            Integer digits,
             boolean autoNumberingEnabled
     ) {
         PartCategory category = partCategoryRepository.findById(categoryId)
@@ -61,6 +62,7 @@ public class PartCategoryService {
                     throw new AppException(ErrorCode.CONFLICT, "이미 존재하는 카테고리 이름입니다: " + name);
                 });
 
+        int resolvedDigits = resolveDigits(digits, autoNumberingEnabled);
         String normalizedFormatPrefix = normalizeFormatSegment(formatPrefix);
         String normalizedFormatSuffix = normalizeFormatSegment(formatSuffix);
         boolean formatChanged = !category.getFormatPrefix().equals(normalizedFormatPrefix)
@@ -76,12 +78,25 @@ public class PartCategoryService {
             category.changeName(name);
             category.changeFormatPrefix(formatPrefix);
             category.changeFormatSuffix(formatSuffix);
-            category.changeDigits(digits);
+            category.changeDigits(resolvedDigits);
             category.changeAutoNumberingEnabled(autoNumberingEnabled);
             return partCategoryRepository.save(category);
         } catch (DataIntegrityViolationException ex) {
             throw new AppException(ErrorCode.CONFLICT, "중복된 카테고리 이름 또는 포맷입니다");
         }
+    }
+
+    private int resolveDigits(Integer digits, boolean autoNumberingEnabled) {
+        if (autoNumberingEnabled) {
+            if (digits == null) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR, "자동채번 카테고리에서는 digits가 필수입니다");
+            }
+            if (digits < 1 || digits > 10) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR, "digits는 1 이상 10 이하여야 합니다");
+            }
+            return digits;
+        }
+        return digits == null ? 1 : digits;
     }
 
     private String normalizeFormatSegment(String value) {

@@ -4,7 +4,7 @@ public record CreatePartCategoryCommand(
         String name,
         String formatPrefix,
         String formatSuffix,
-        int digits,
+        Integer digits,
         boolean autoNumberingEnabled
 ) {
 }
