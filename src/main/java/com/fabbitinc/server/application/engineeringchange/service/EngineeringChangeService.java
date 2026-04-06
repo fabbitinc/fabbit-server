@@ -158,25 +158,46 @@ public class EngineeringChangeService {
 
     // ── Stage/Step 관리 ──
 
-    public void replaceStages(UUID actorId, EngineeringChange ec, List<StageDraft> stageDrafts) {
+    public void syncStages(UUID actorId, EngineeringChange ec, List<StageDraft> stageDrafts) {
         assertMetadataEditable(ec);
+        validateStageDrafts(stageDrafts);
 
-        ec.clearStages(actorId);
+        Map<UUID, StepStage> existingStagesById = ec.getStages().stream()
+                .collect(java.util.stream.Collectors.toMap(StepStage::getId, stage -> stage, (left, right) -> left, LinkedHashMap::new));
+        Map<StageKey, StepStage> existingStagesByKey = ec.getStages().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        stage -> new StageKey(stage.getStepType(), stage.getSequence()),
+                        stage -> stage,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
 
+        Set<UUID> retainedStageIds = new LinkedHashSet<>();
         for (StageDraft draft : stageDrafts) {
-            StepStage stage = ec.addStage(
-                    draft.stepType(),
-                    draft.sequence(),
-                    draft.completionPolicy(),
-                    draft.minApprovals(),
-                    draft.deadline(),
-                    actorId
-            );
-            for (StepAssigneeDraft assignee : draft.assignees()) {
-                validateAssignee(assignee);
-                ec.addStep(stage, assignee.assigneeType(), assignee.assigneeId(), actorId);
+            StepStage stage = resolveStageForSync(draft, existingStagesById, existingStagesByKey, retainedStageIds);
+            if (stage == null) {
+                stage = ec.addStage(
+                        draft.stepType(),
+                        draft.sequence(),
+                        draft.completionPolicy(),
+                        draft.minApprovals(),
+                        draft.deadline(),
+                        actorId
+                );
+            } else {
+                stage.reconfigure(
+                        draft.stepType(),
+                        draft.sequence(),
+                        draft.completionPolicy(),
+                        draft.minApprovals(),
+                        draft.deadline()
+                );
             }
+            retainedStageIds.add(stage.getId());
+            syncStageAssignees(actorId, ec, stage, draft.assignees());
         }
+
+        removeObsoleteStages(actorId, ec, retainedStageIds);
     }
 
     public EngineeringChange submitEngineeringChange(UUID actorId, EngineeringChange ec) {
@@ -572,6 +593,111 @@ public class EngineeringChangeService {
         }
     }
 
+    private void validateStageDrafts(List<StageDraft> stageDrafts) {
+        Set<UUID> stageIds = new LinkedHashSet<>();
+        Set<StageKey> stageKeys = new LinkedHashSet<>();
+        for (StageDraft draft : stageDrafts) {
+            if (draft.stepStageId() != null && !stageIds.add(draft.stepStageId())) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR, "중복된 stage id는 허용되지 않습니다");
+            }
+            StageKey stageKey = new StageKey(draft.stepType(), draft.sequence());
+            if (!stageKeys.add(stageKey)) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR, "동일한 단계 타입/순서는 중복될 수 없습니다");
+            }
+            Set<StepAssignmentKey> assignees = new LinkedHashSet<>();
+            for (StepAssigneeDraft assignee : draft.assignees()) {
+                StepAssignmentKey key = new StepAssignmentKey(assignee.assigneeType(), assignee.assigneeId());
+                if (!assignees.add(key)) {
+                    throw new AppException(ErrorCode.VALIDATION_ERROR, "같은 단계 안에 중복 담당자를 지정할 수 없습니다");
+                }
+            }
+        }
+    }
+
+    private StepStage resolveStageForSync(
+            StageDraft draft,
+            Map<UUID, StepStage> existingStagesById,
+            Map<StageKey, StepStage> existingStagesByKey,
+            Set<UUID> retainedStageIds
+    ) {
+        if (draft.stepStageId() != null) {
+            StepStage stage = existingStagesById.get(draft.stepStageId());
+            if (stage == null) {
+                throw new AppException(ErrorCode.NOT_FOUND, "단계를 찾을 수 없습니다: " + draft.stepStageId());
+            }
+            if (retainedStageIds.contains(stage.getId())) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR, "동일한 단계를 중복 수정할 수 없습니다");
+            }
+            return stage;
+        }
+
+        StepStage stage = existingStagesByKey.get(new StageKey(draft.stepType(), draft.sequence()));
+        if (stage == null || retainedStageIds.contains(stage.getId())) {
+            return null;
+        }
+        return stage;
+    }
+
+    private void syncStageAssignees(UUID actorId, EngineeringChange ec, StepStage stage, List<StepAssigneeDraft> assigneeDrafts) {
+        List<EngineeringChangeStep> stageSteps = ec.getSteps().stream()
+                .filter(step -> step.getStepStageId().equals(stage.getId()))
+                .toList();
+        Map<StepAssignmentKey, EngineeringChangeStep> existingSteps = stageSteps.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        step -> new StepAssignmentKey(step.getAssigneeType(), step.getAssigneeId()),
+                        step -> step,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+        Set<StepAssignmentKey> desiredKeys = assigneeDrafts.stream()
+                .peek(this::validateAssignee)
+                .map(assignee -> new StepAssignmentKey(assignee.assigneeType(), assignee.assigneeId()))
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+
+        List<EngineeringChangeStep> stepsToRemove = stageSteps.stream()
+                .filter(step -> !desiredKeys.contains(new StepAssignmentKey(step.getAssigneeType(), step.getAssigneeId())))
+                .toList();
+        if (!stepsToRemove.isEmpty()) {
+            engineeringChangeStepRepository.deleteAll(stepsToRemove);
+            engineeringChangeStepRepository.flush();
+            stepsToRemove.forEach(step -> ec.removeStep(step.getId(), actorId));
+        }
+
+        for (StepAssigneeDraft assigneeDraft : assigneeDrafts) {
+            StepAssignmentKey key = new StepAssignmentKey(assigneeDraft.assigneeType(), assigneeDraft.assigneeId());
+            if (existingSteps.containsKey(key)) {
+                continue;
+            }
+            ec.addStep(stage, assigneeDraft.assigneeType(), assigneeDraft.assigneeId(), actorId);
+        }
+    }
+
+    private void removeObsoleteStages(UUID actorId, EngineeringChange ec, Set<UUID> retainedStageIds) {
+        List<StepStage> stagesToRemove = ec.getStages().stream()
+                .filter(stage -> !retainedStageIds.contains(stage.getId()))
+                .toList();
+        if (stagesToRemove.isEmpty()) {
+            return;
+        }
+
+        Set<UUID> stageIdsToRemove = stagesToRemove.stream()
+                .map(StepStage::getId)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        List<EngineeringChangeStep> stepsToRemove = ec.getSteps().stream()
+                .filter(step -> stageIdsToRemove.contains(step.getStepStageId()))
+                .toList();
+
+        if (!stepsToRemove.isEmpty()) {
+            engineeringChangeStepRepository.deleteAll(stepsToRemove);
+            engineeringChangeStepRepository.flush();
+            stepsToRemove.forEach(step -> ec.removeStep(step.getId(), actorId));
+        }
+
+        stepStageRepository.deleteAll(stagesToRemove);
+        stepStageRepository.flush();
+        stagesToRemove.forEach(stage -> ec.removeStage(stage.getId(), actorId));
+    }
+
     // ── Activity 헬퍼 ──
 
     private void addStateActivity(UUID targetId, UUID actorId, ActivityAction action, String oldState, String newState) {
@@ -826,6 +952,7 @@ public class EngineeringChangeService {
     }
 
     public record StageDraft(
+            UUID stepStageId,
             EngineeringChangeStepType stepType,
             int sequence,
             StepStageCompletionPolicy completionPolicy,
@@ -836,6 +963,18 @@ public class EngineeringChangeService {
     }
 
     public record StepAssigneeDraft(
+            EngineeringChangeStepAssigneeType assigneeType,
+            UUID assigneeId
+    ) {
+    }
+
+    private record StageKey(
+            EngineeringChangeStepType stepType,
+            int sequence
+    ) {
+    }
+
+    private record StepAssignmentKey(
             EngineeringChangeStepAssigneeType assigneeType,
             UUID assigneeId
     ) {

@@ -17,20 +17,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Transactional
 @RequiredArgsConstructor
-public class ReplaceEngineeringChangeStepsUseCase {
+public class SyncEngineeringChangeStepsUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final EngineeringChangeService engineeringChangeService;
 
-    public void execute(ReplaceEngineeringChangeStepsCommand command) {
+    public void execute(SyncEngineeringChangeStepsCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
         EngineeringChange engineeringChange =
                 engineeringChangeService.getEngineeringChangeByIdOrThrow(command.engineeringChangeId());
-        engineeringChangeService.replaceStages(
+        engineeringChangeService.syncStages(
                 auth.userId(),
                 engineeringChange,
                 command.stages().stream()
                         .map(stage -> new EngineeringChangeService.StageDraft(
+                                stage.stepStageId(),
                                 stage.stepType(),
                                 stage.sequence(),
                                 stage.completionPolicy(),
@@ -47,15 +48,16 @@ public class ReplaceEngineeringChangeStepsUseCase {
         );
     }
 
-    public record ReplaceEngineeringChangeStepsCommand(
+    public record SyncEngineeringChangeStepsCommand(
             UUID engineeringChangeId,
             List<StageItem> stages
     ) {
-        public ReplaceEngineeringChangeStepsCommand {
+        public SyncEngineeringChangeStepsCommand {
             stages = stages == null ? List.of() : List.copyOf(stages);
         }
 
         public record StageItem(
+                UUID stepStageId,
                 EngineeringChangeStepType stepType,
                 int sequence,
                 StepStageCompletionPolicy completionPolicy,

@@ -29,11 +29,12 @@ public class UpdateEngineeringChangeUseCase {
                 engineeringChangeService.getEngineeringChangeByIdOrThrow(command.engineeringChangeId());
         engineeringChangeService.updateEngineeringChange(auth.userId(), engineeringChange, command.title(), command.body());
         if (command.stages() != null) {
-            engineeringChangeService.replaceStages(
+            engineeringChangeService.syncStages(
                     auth.userId(),
                     engineeringChange,
                     command.stages().stream()
                             .map(stage -> new EngineeringChangeService.StageDraft(
+                                    null,
                                     stage.stepType(),
                                     stage.sequence(),
                                     stage.completionPolicy(),

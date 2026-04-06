@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fabbitinc.server.application.common.exception.AppException;
@@ -32,6 +34,7 @@ import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.team.model.TeamMember;
 import com.fabbitinc.server.domain.team.repository.TeamMemberRepository;
 import com.fabbitinc.server.domain.team.repository.TeamRepository;
+import com.fabbitinc.server.domain.user.model.User;
 import com.fabbitinc.server.domain.user.repository.UserRepository;
 import com.fabbitinc.server.domain.workitem.repository.WorkItemNumberSequenceRepository;
 import java.util.List;
@@ -41,6 +44,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -258,6 +262,101 @@ class EngineeringChangeServiceTest {
 
         assertEquals(EngineeringChangeStepStatus.PENDING, releaseStep.getStatus()); // reset 이후 PENDING
         assertEquals(EngineeringChangeState.DRAFT, ec.getState());
+    }
+
+    @Test
+    void syncStages_기존Step을먼저지우고_그다음Stage를지운다() {
+        UUID actorId = UUID.randomUUID();
+        EngineeringChange ec = EngineeringChange.create(200, "변경", "본문", null, actorId);
+
+        StepStage reviewStage = ec.addStage(
+                EngineeringChangeStepType.REVIEW, 1,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        EngineeringChangeStep reviewStep = ec.addStep(
+                reviewStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+
+        engineeringChangeService.syncStages(actorId, ec, List.of());
+
+        InOrder inOrder = inOrder(engineeringChangeStepRepository, stepStageRepository);
+        inOrder.verify(engineeringChangeStepRepository).deleteAll(List.of(reviewStep));
+        inOrder.verify(engineeringChangeStepRepository).flush();
+        inOrder.verify(stepStageRepository).deleteAll(List.of(reviewStage));
+        inOrder.verify(stepStageRepository).flush();
+        assertEquals(0, ec.getSteps().size());
+        assertEquals(0, ec.getStages().size());
+    }
+
+    @Test
+    void syncStages_기존Stage는유지하고_담당자만차등반영한다() {
+        UUID actorId = UUID.randomUUID();
+        UUID secondReviewerId = UUID.randomUUID();
+        EngineeringChange ec = EngineeringChange.create(201, "변경", "본문", null, actorId);
+        User actor = org.mockito.Mockito.mock(User.class);
+        User secondReviewer = org.mockito.Mockito.mock(User.class);
+
+        StepStage reviewStage = ec.addStage(
+                EngineeringChangeStepType.REVIEW, 1,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        EngineeringChangeStep existingStep = ec.addStep(
+                reviewStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+        when(userRepository.findById(actorId)).thenReturn(Optional.of(actor));
+        when(userRepository.findById(secondReviewerId)).thenReturn(Optional.of(secondReviewer));
+
+        engineeringChangeService.syncStages(
+                actorId,
+                ec,
+                List.of(new EngineeringChangeService.StageDraft(
+                        reviewStage.getId(),
+                        EngineeringChangeStepType.REVIEW,
+                        1,
+                        StepStageCompletionPolicy.ALL_MUST_APPROVE,
+                        null,
+                        null,
+                        List.of(
+                                new EngineeringChangeService.StepAssigneeDraft(EngineeringChangeStepAssigneeType.USER, actorId),
+                                new EngineeringChangeService.StepAssigneeDraft(EngineeringChangeStepAssigneeType.USER, secondReviewerId)
+                        )
+                ))
+        );
+
+        assertEquals(1, ec.getStages().size());
+        assertEquals(reviewStage.getId(), ec.getStages().getFirst().getId());
+        assertEquals(2, ec.getSteps().size());
+        assertEquals(existingStep.getId(), ec.getSteps().getFirst().getId());
+        assertEquals(
+                1,
+                ec.getSteps().stream()
+                        .filter(step -> step.getAssigneeId().equals(secondReviewerId))
+                        .count()
+        );
+    }
+
+    @Test
+    void syncStages_같은Stage안에중복담당자가있으면_예외를던진다() {
+        UUID actorId = UUID.randomUUID();
+        EngineeringChange ec = EngineeringChange.create(202, "변경", "본문", null, actorId);
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> engineeringChangeService.syncStages(
+                        actorId,
+                        ec,
+                        List.of(new EngineeringChangeService.StageDraft(
+                                null,
+                                EngineeringChangeStepType.REVIEW,
+                                1,
+                                StepStageCompletionPolicy.ALL_MUST_APPROVE,
+                                null,
+                                null,
+                                List.of(
+                                        new EngineeringChangeService.StepAssigneeDraft(EngineeringChangeStepAssigneeType.USER, actorId),
+                                        new EngineeringChangeService.StepAssigneeDraft(EngineeringChangeStepAssigneeType.USER, actorId)
+                                )
+                        ))
+                )
+        );
+
+        assertEquals(ErrorCode.VALIDATION_ERROR, exception.getErrorCode());
     }
 
     @Test

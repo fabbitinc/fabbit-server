@@ -67,11 +67,12 @@ public class CreateEngineeringChangeUseCase {
             );
         }
         if (!command.stages().isEmpty()) {
-            engineeringChangeService.replaceStages(
+            engineeringChangeService.syncStages(
                     auth.userId(),
                     engineeringChange,
                     command.stages().stream()
                             .map(stage -> new EngineeringChangeService.StageDraft(
+                                    null,
                                     stage.stepType(),
                                     stage.sequence(),
                                     stage.completionPolicy(),

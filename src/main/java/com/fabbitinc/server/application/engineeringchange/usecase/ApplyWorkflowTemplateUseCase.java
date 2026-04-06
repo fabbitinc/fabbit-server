@@ -31,11 +31,12 @@ public class ApplyWorkflowTemplateUseCase {
         WorkflowTemplate template = workflowTemplateRepository.findById(command.workflowTemplateId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "워크플로우 템플릿을 찾을 수 없습니다"));
 
-        engineeringChangeService.replaceStages(
+        engineeringChangeService.syncStages(
                 auth.userId(),
                 engineeringChange,
                 template.getStages().stream()
                         .map(stage -> new EngineeringChangeService.StageDraft(
+                                null,
                                 stage.getStepType(),
                                 stage.getSequence(),
                                 stage.getCompletionPolicy(),

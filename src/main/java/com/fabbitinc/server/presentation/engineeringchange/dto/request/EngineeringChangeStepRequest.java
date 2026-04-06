@@ -13,6 +13,8 @@ import java.util.UUID;
 
 @Schema(description = "변경관리 단계(Stage) 지정 요청")
 public record EngineeringChangeStepRequest(
+        @Schema(description = "기존 Stage ID. 기존 단계를 수정할 때 전달하고, 새 단계 추가 시 생략합니다")
+        UUID stepStageId,
         @NotNull(message = "stepType은 필수입니다") @Schema(description = "단계 타입", example = "REVIEW")
         EngineeringChangeStepType stepType,
         @Min(value = 1, message = "sequence는 1 이상이어야 합니다") @Schema(description = "단계 순서", example = "1")

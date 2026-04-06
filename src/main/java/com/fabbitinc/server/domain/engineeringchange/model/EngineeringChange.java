@@ -166,6 +166,16 @@ public class EngineeringChange extends AbstractActorAuditableEntity implements A
         return List.copyOf(steps);
     }
 
+    public void removeStep(UUID stepId, UUID actorId) {
+        UUID requiredActorId = requireActorId(actorId);
+        mutate(requiredActorId, () -> steps.removeIf(step -> step.getId().equals(stepId)));
+    }
+
+    public void removeStage(UUID stageId, UUID actorId) {
+        UUID requiredActorId = requireActorId(actorId);
+        mutate(requiredActorId, () -> stages.removeIf(stage -> stage.getId().equals(stageId)));
+    }
+
     // ── 상태 전이 (Step-Driven) ──
 
     /**

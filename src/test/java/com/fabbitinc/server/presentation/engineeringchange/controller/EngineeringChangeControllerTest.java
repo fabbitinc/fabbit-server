@@ -19,15 +19,20 @@ import com.fabbitinc.server.application.engineeringchange.usecase.DeleteEngineer
 import com.fabbitinc.server.application.engineeringchange.usecase.DeleteEngineeringChangeFileUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.RejectEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.ReleaseEngineeringChangeUseCase;
-import com.fabbitinc.server.application.engineeringchange.usecase.ReplaceEngineeringChangeStepsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SubmitEngineeringChangeUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangeStepsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangeAffectedItemsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SyncIssuesUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.UpdateEngineeringChangeCommentUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.UpdateEngineeringChangeUseCase;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeState;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.CreateEngineeringChangeRequest;
+import com.fabbitinc.server.presentation.engineeringchange.dto.request.EngineeringChangeStepRequest;
+import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncEngineeringChangeStepsRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeResponse;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepAssigneeType;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepType;
+import com.fabbitinc.server.domain.engineeringchange.model.StepStageCompletionPolicy;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -62,7 +67,7 @@ class EngineeringChangeControllerTest {
     @Mock
     private SyncIssuesUseCase syncIssuesUseCase;
     @Mock
-    private ReplaceEngineeringChangeStepsUseCase replaceEngineeringChangeStepsUseCase;
+    private SyncEngineeringChangeStepsUseCase syncEngineeringChangeStepsUseCase;
     @Mock
     private SyncEngineeringChangeAffectedItemsUseCase syncEngineeringChangeAffectedItemsUseCase;
     @Mock
@@ -122,6 +127,55 @@ class EngineeringChangeControllerTest {
         assertEquals(engineeringChangeId, response.id());
         assertNull(response.sourceIssue());
         verify(createEngineeringChangeUseCase).execute(any());
+        verify(engineeringChangeQuery).getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId));
+    }
+
+    @Test
+    void syncSteps_기존StageId를포함한명령을_usecase로전달한다() {
+        UUID engineeringChangeId = UUID.randomUUID();
+        UUID stageId = UUID.randomUUID();
+        EngineeringChangeDetailResult detail = new EngineeringChangeDetailResult(
+                engineeringChangeId,
+                101,
+                "변경관리",
+                JsonNodeFactory.instance.objectNode(),
+                EngineeringChangeState.DRAFT,
+                null,
+                Instant.parse("2026-03-25T00:00:00Z"),
+                Instant.parse("2026-03-25T00:00:00Z"),
+                false,
+                null,
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                0,
+                null,
+                null,
+                List.of()
+        );
+        SyncEngineeringChangeStepsRequest request = new SyncEngineeringChangeStepsRequest(List.of(
+                new EngineeringChangeStepRequest(
+                        stageId,
+                        EngineeringChangeStepType.REVIEW,
+                        1,
+                        StepStageCompletionPolicy.ALL_MUST_APPROVE,
+                        null,
+                        null,
+                        List.of(new EngineeringChangeStepRequest.AssigneeRequest(
+                                EngineeringChangeStepAssigneeType.USER,
+                                UUID.randomUUID()
+                        ))
+                )
+        ));
+
+        when(engineeringChangeQuery.getEngineeringChange(any(EngineeringChangeDetailCondition.class)))
+                .thenReturn(detail);
+
+        EngineeringChangeResponse response = engineeringChangeController.syncSteps(engineeringChangeId, request);
+
+        assertEquals(engineeringChangeId, response.id());
+        verify(syncEngineeringChangeStepsUseCase).execute(any());
         verify(engineeringChangeQuery).getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId));
     }
 }

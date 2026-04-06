@@ -106,6 +106,20 @@ public class StepStage extends AbstractCreatedEntity {
         return List.copyOf(steps);
     }
 
+    public void reconfigure(
+            EngineeringChangeStepType stepType,
+            int sequence,
+            StepStageCompletionPolicy completionPolicy,
+            Integer minApprovals,
+            Instant deadline
+    ) {
+        this.stepType = requireStepType(stepType);
+        this.sequence = requireSequence(sequence);
+        this.completionPolicy = requireCompletionPolicy(completionPolicy);
+        this.minApprovals = validateMinApprovals(completionPolicy, minApprovals);
+        this.deadline = deadline;
+    }
+
     private UUID requireEngineeringChangeId(UUID id) {
         if (id == null) {
             throw new DomainException(CODE_STEP_STAGE_EC_REQUIRED, "변경관리 ID는 필수입니다");

@@ -23,8 +23,8 @@ import com.fabbitinc.server.application.engineeringchange.usecase.DeleteEngineer
 import com.fabbitinc.server.application.engineeringchange.usecase.PopulateWhereUsedAffectedItemsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.RejectEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.ReleaseEngineeringChangeUseCase;
-import com.fabbitinc.server.application.engineeringchange.usecase.ReplaceEngineeringChangeStepsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.RequestChangesOnStepUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangeStepsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.ResubmitStepUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SubmitEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangeAffectedItemsUseCase;
@@ -126,7 +126,7 @@ public class EngineeringChangeController {
     private final ReleaseEngineeringChangeUseCase releaseEngineeringChangeUseCase;
     private final CancelEngineeringChangeUseCase cancelEngineeringChangeUseCase;
     private final SyncIssuesUseCase syncIssuesUseCase;
-    private final ReplaceEngineeringChangeStepsUseCase replaceEngineeringChangeStepsUseCase;
+    private final SyncEngineeringChangeStepsUseCase syncEngineeringChangeStepsUseCase;
     private final SyncEngineeringChangeAffectedItemsUseCase syncEngineeringChangeAffectedItemsUseCase;
     private final CreateEngineeringChangeCommentUseCase createEngineeringChangeCommentUseCase;
     private final UpdateEngineeringChangeCommentUseCase updateEngineeringChangeCommentUseCase;
@@ -441,27 +441,28 @@ public class EngineeringChangeController {
     }
 
     @Operation(
-            operationId = "engineeringChangeReplaceSteps",
+            operationId = "engineeringChangeSyncSteps",
             summary = "변경관리 단계 목록을 동기화합니다",
             description = "변경관리 단계 목록을 동기화합니다"
     )
     @PutMapping("/{engineeringChangeId}/steps")
-    public EngineeringChangeResponse replaceSteps(
+    public EngineeringChangeResponse syncSteps(
             @PathVariable UUID engineeringChangeId,
             @Valid @RequestBody SyncEngineeringChangeStepsRequest request
     ) {
-        replaceEngineeringChangeStepsUseCase.execute(
-                new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand(
+        syncEngineeringChangeStepsUseCase.execute(
+                new SyncEngineeringChangeStepsUseCase.SyncEngineeringChangeStepsCommand(
                         engineeringChangeId,
                         request.steps().stream()
-                                .map(step -> new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.StageItem(
+                                .map(step -> new SyncEngineeringChangeStepsUseCase.SyncEngineeringChangeStepsCommand.StageItem(
+                                        step.stepStageId(),
                                         step.stepType(),
                                         step.sequence(),
                                         step.completionPolicy(),
                                         step.minApprovals(),
                                         step.deadline(),
                                         step.assignees().stream()
-                                                .map(a -> new ReplaceEngineeringChangeStepsUseCase.ReplaceEngineeringChangeStepsCommand.AssigneeItem(
+                                                .map(a -> new SyncEngineeringChangeStepsUseCase.SyncEngineeringChangeStepsCommand.AssigneeItem(
                                                         a.assigneeType(),
                                                         a.assigneeId()
                                                 ))
