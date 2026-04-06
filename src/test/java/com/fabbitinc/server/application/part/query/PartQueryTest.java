@@ -22,9 +22,8 @@ import com.fabbitinc.server.application.part.query.result.PartDetailResult;
 import com.fabbitinc.server.application.part.query.result.PartListResult;
 import com.fabbitinc.server.application.part.query.result.PartLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewSourcesResult;
-import com.fabbitinc.server.application.part.query.result.PartRevisionCreationSourceType;
+import com.fabbitinc.server.application.part.query.result.PartRevisionHistoryEventType;
 import com.fabbitinc.server.application.part.query.result.PartRevisionHistoryResult;
-import com.fabbitinc.server.application.part.query.result.PartRevisionReleaseWorkflowType;
 import com.fabbitinc.server.application.project.api.ProjectApi;
 import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.bom.model.EngineeringBomItem;
@@ -39,9 +38,10 @@ import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartPreview;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
+import com.fabbitinc.server.domain.part.model.PartRevisionCreationSourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType;
-import com.fabbitinc.server.domain.part.model.PartRevisionHistorySourceType;
+import com.fabbitinc.server.domain.part.model.PartRevisionReleaseWorkflowType;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.repository.PartCategoryRepository;
 import com.fabbitinc.server.domain.part.repository.PartPreviewFileRepository;
@@ -196,9 +196,10 @@ class PartQueryTest {
         released.recordHistoryAt(
                 actorId,
                 PartRevisionHistoryActionType.RELEASED,
-                PartRevisionHistorySourceType.USER,
                 null,
-                "{\"reason\":\"최초 반영\"}",
+                PartRevisionReleaseWorkflowType.DIRECT,
+                null,
+                "최초 반영",
                 Instant.parse("2026-03-18T00:00:00Z")
         );
 
@@ -207,18 +208,20 @@ class PartQueryTest {
         canceledDraft.recordHistoryAt(
                 actorId,
                 PartRevisionHistoryActionType.CREATED,
-                PartRevisionHistorySourceType.USER,
+                PartRevisionCreationSourceType.USER,
                 null,
-                "{\"reason\":\"초안 생성\"}",
+                null,
+                "초안 생성",
                 Instant.parse("2026-03-18T01:00:00Z")
         );
         canceledDraft.cancel(actorId);
         canceledDraft.recordHistoryAt(
                 actorId,
                 PartRevisionHistoryActionType.CANCELED,
-                PartRevisionHistorySourceType.USER,
                 null,
-                "{\"action\":\"CANCELED\",\"reason\":\"폐기\"}",
+                null,
+                null,
+                "폐기",
                 Instant.parse("2026-03-18T02:00:00Z")
         );
 
@@ -227,9 +230,10 @@ class PartQueryTest {
         releasedDraft.recordHistoryAt(
                 actorId,
                 PartRevisionHistoryActionType.CREATED,
-                PartRevisionHistorySourceType.USER,
+                PartRevisionCreationSourceType.USER,
                 null,
-                "{\"reason\":\"초안 생성\"}",
+                null,
+                "초안 생성",
                 Instant.parse("2026-03-18T03:00:00Z")
         );
         releasedDraft.release("2", actorId);
@@ -237,9 +241,10 @@ class PartQueryTest {
         releasedDraft.recordHistoryAt(
                 actorId,
                 PartRevisionHistoryActionType.RELEASED,
-                PartRevisionHistorySourceType.ENGINEERING_CHANGE,
+                null,
+                PartRevisionReleaseWorkflowType.ENGINEERING_CHANGE,
                 engineeringChangeId,
-                "{\"reason\":\"\"}",
+                null,
                 Instant.parse("2026-03-18T04:00:00Z")
         );
 
@@ -272,21 +277,25 @@ class PartQueryTest {
         PartRevisionHistoryResult result = partQuery.getHistory(new PartRevisionHistoryCondition(part.getId()));
 
         assertEquals(2, result.items().size());
-        assertEquals(PartRevisionReleaseWorkflowType.ENGINEERING_CHANGE, result.items().getFirst().releaseWorkflowType());
-        assertEquals(engineeringChangeId, result.items().getFirst().releaseSourceId());
-        assertEquals(101, result.items().getFirst().releaseSourceNumber());
-        assertEquals("상위품 개정", result.items().getFirst().releaseSourceTitle());
-        assertNull(result.items().getFirst().releaseReason());
+        assertEquals(1, result.items().getFirst().events().size());
+        assertEquals(PartRevisionHistoryEventType.CREATED, result.items().getFirst().events().getFirst().eventType());
+        assertEquals(PartRevisionReleaseWorkflowType.ENGINEERING_CHANGE, result.items().getFirst().events().getFirst().releaseWorkflowType());
+        assertEquals(engineeringChangeId, result.items().getFirst().events().getFirst().sourceRefId());
+        assertEquals(101, result.items().getFirst().events().getFirst().sourceRefNumber());
+        assertEquals("상위품 개정", result.items().getFirst().events().getFirst().sourceRefTitle());
+        assertNull(result.items().getFirst().events().getFirst().reason());
         assertEquals("1", result.items().getLast().revisionCode());
-        assertEquals("최초 반영", result.items().getLast().releaseReason());
-        assertEquals(PartRevisionReleaseWorkflowType.DIRECT, result.items().getLast().releaseWorkflowType());
-        assertEquals(2, result.items().getLast().drafts().size());
-        assertEquals(PartRevisionCreationSourceType.USER, result.items().getLast().drafts().getFirst().creationSourceType());
-        assertEquals("2", result.items().getLast().drafts().getFirst().releasedRevisionCode());
-        assertEquals(PartRevisionStatus.CANCELED, result.items().getLast().drafts().getLast().status());
-        assertEquals(PartRevisionCreationSourceType.USER, result.items().getLast().drafts().getLast().creationSourceType());
-        assertNull(result.items().getLast().drafts().getLast().releasedRevisionCode());
-        assertEquals("폐기", result.items().getLast().drafts().getLast().reason());
+        assertEquals(5, result.items().getLast().events().size());
+        assertEquals(PartRevisionHistoryEventType.DRAFT_RELEASED, result.items().getLast().events().getFirst().eventType());
+        assertEquals("2", result.items().getLast().events().getFirst().targetRevisionCode());
+        assertEquals(PartRevisionReleaseWorkflowType.ENGINEERING_CHANGE, result.items().getLast().events().getFirst().releaseWorkflowType());
+        assertEquals(PartRevisionHistoryEventType.DRAFT_CREATED, result.items().getLast().events().get(1).eventType());
+        assertEquals(PartRevisionCreationSourceType.USER, result.items().getLast().events().get(1).creationSourceType());
+        assertEquals(PartRevisionHistoryEventType.DRAFT_CANCELED, result.items().getLast().events().get(2).eventType());
+        assertEquals("폐기", result.items().getLast().events().get(2).reason());
+        assertEquals(PartRevisionHistoryEventType.DRAFT_CREATED, result.items().getLast().events().get(3).eventType());
+        assertEquals(PartRevisionHistoryEventType.CREATED, result.items().getLast().events().get(4).eventType());
+        assertEquals("최초 반영", result.items().getLast().events().get(4).reason());
         assertEquals(PartRevisionStatus.RELEASED, result.items().getFirst().status());
     }
 

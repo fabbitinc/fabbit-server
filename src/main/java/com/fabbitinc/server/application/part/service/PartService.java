@@ -11,6 +11,7 @@ import com.fabbitinc.server.domain.file.model.FileStatus;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
 import com.fabbitinc.server.domain.part.model.PartCategory;
 import com.fabbitinc.server.domain.part.model.Part;
+import com.fabbitinc.server.domain.part.model.PartRevisionCreationSourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.repository.PartCategoryRepository;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
@@ -70,9 +71,10 @@ public class PartService {
             initialRevision.recordHistory(
                     actorId,
                     com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType.CREATED,
-                    com.fabbitinc.server.domain.part.model.PartRevisionHistorySourceType.USER,
+                    PartRevisionCreationSourceType.USER,
                     null,
-                    serializeReasonPayload(input.reason())
+                    null,
+                    normalizeReason(input.reason())
             );
             partRevisionRepository.save(initialRevision);
             return initialRevision;
@@ -177,15 +179,11 @@ public class PartService {
         }
     }
 
-    private String serializeReasonPayload(String reason) {
+    private String normalizeReason(String reason) {
         if (reason == null || reason.isBlank()) {
-            return "{}";
+            return null;
         }
-        try {
-            return objectMapper.writeValueAsString(Map.of("reason", reason.trim()));
-        } catch (JacksonException ex) {
-            throw new AppException(ErrorCode.BAD_REQUEST, "변경 이력을 직렬화할 수 없습니다");
-        }
+        return reason.trim();
     }
 
 

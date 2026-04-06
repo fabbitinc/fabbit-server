@@ -53,7 +53,7 @@ import com.fabbitinc.server.presentation.part.response.PartRevisionDiffFileChang
 import com.fabbitinc.server.presentation.part.response.PartRevisionDiffResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionDiffRevisionResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionDiffSummaryResponse;
-import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryDraftResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryEventResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionLookupItemResponse;
@@ -189,26 +189,21 @@ final class PartResponseMapper {
                                 item.revisionCode(),
                                 item.status(),
                                 item.name(),
-                                item.releasedAt(),
-                                toPartUserSummaryResponse(item.releasedBy()),
-                                item.releaseReason(),
-                                item.releaseWorkflowType(),
-                                item.releaseSourceId(),
-                                item.releaseSourceNumber(),
-                                item.releaseSourceTitle(),
                                 toPartRevisionDiffSummaryResponse(item.summary()),
-                                item.drafts().stream()
-                                        .map(draft -> new PartRevisionHistoryDraftResponse(
-                                                draft.revisionId(),
-                                                draft.name(),
-                                                draft.status(),
-                                                draft.createdAt(),
-                                                toPartUserSummaryResponse(draft.createdBy()),
-                                                draft.creationSourceType(),
-                                                draft.completedAt(),
-                                                toPartUserSummaryResponse(draft.completedBy()),
-                                                draft.releasedRevisionCode(),
-                                                draft.reason()
+                                item.events().stream()
+                                        .map(event -> new PartRevisionHistoryEventResponse(
+                                                event.eventType(),
+                                                event.occurredAt(),
+                                                toPartUserSummaryResponse(event.actor()),
+                                                event.reason(),
+                                                event.creationSourceType(),
+                                                event.releaseWorkflowType(),
+                                                event.draftRevisionId(),
+                                                event.targetRevisionId(),
+                                                event.targetRevisionCode(),
+                                                event.sourceRefId(),
+                                                event.sourceRefNumber(),
+                                                event.sourceRefTitle()
                                         ))
                                         .toList()
                         ))

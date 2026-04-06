@@ -337,23 +337,42 @@ public class PartRevision extends AbstractActorAuditableEntity implements Aggreg
     public PartRevisionHistory recordHistory(
             UUID actorId,
             PartRevisionHistoryActionType actionType,
-            PartRevisionHistorySourceType sourceType,
+            PartRevisionCreationSourceType creationSourceType,
+            PartRevisionReleaseWorkflowType releaseWorkflowType,
             UUID sourceRefId,
-            String payload
+            String reason
     ) {
         touch(actorId);
-        return appendHistory(PartRevisionHistory.record(this, actorId, actionType, sourceType, sourceRefId, payload));
+        return appendHistory(PartRevisionHistory.record(
+                this,
+                actorId,
+                actionType,
+                creationSourceType,
+                releaseWorkflowType,
+                sourceRefId,
+                reason
+        ));
     }
 
     public PartRevisionHistory recordHistoryAt(
             UUID actorId,
             PartRevisionHistoryActionType actionType,
-            PartRevisionHistorySourceType sourceType,
+            PartRevisionCreationSourceType creationSourceType,
+            PartRevisionReleaseWorkflowType releaseWorkflowType,
             UUID sourceRefId,
-            String payload,
+            String reason,
             Instant occurredAt
     ) {
-        return appendHistory(PartRevisionHistory.recordAt(this, actorId, actionType, sourceType, sourceRefId, payload, occurredAt));
+        return appendHistory(PartRevisionHistory.recordAt(
+                this,
+                actorId,
+                actionType,
+                creationSourceType,
+                releaseWorkflowType,
+                sourceRefId,
+                reason,
+                occurredAt
+        ));
     }
 
     public List<PartRevisionHistory> getHistories() {

@@ -41,11 +41,10 @@ import com.fabbitinc.server.application.part.query.result.PartLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewSourcesResult;
 import com.fabbitinc.server.application.part.query.result.PartProjectsResult;
-import com.fabbitinc.server.application.part.query.result.PartRevisionCreationSourceType;
 import com.fabbitinc.server.application.part.query.result.PartRevisionDiffResult;
 import com.fabbitinc.server.application.part.query.result.PartRevisionDiffSummaryResult;
+import com.fabbitinc.server.application.part.query.result.PartRevisionHistoryEventType;
 import com.fabbitinc.server.application.part.query.result.PartRevisionHistoryResult;
-import com.fabbitinc.server.application.part.query.result.PartRevisionReleaseWorkflowType;
 import com.fabbitinc.server.application.part.query.result.PartRevisionLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
 import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
@@ -70,10 +69,11 @@ import com.fabbitinc.server.domain.part.model.PartPreviewProcessingJob;
 import com.fabbitinc.server.domain.part.model.PartPreviewProcessingStatus;
 import com.fabbitinc.server.domain.part.model.PartPreviewServingProjection;
 import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
+import com.fabbitinc.server.domain.part.model.PartRevisionCreationSourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartRevisionHistory;
 import com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType;
-import com.fabbitinc.server.domain.part.model.PartRevisionHistorySourceType;
+import com.fabbitinc.server.domain.part.model.PartRevisionReleaseWorkflowType;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
 import com.fabbitinc.server.domain.part.repository.PartCategoryRepository;
@@ -153,7 +153,6 @@ public class PartQuery {
 
     private static final Pattern STRING_PATTERN = Pattern.compile("^\"(.*)\"$");
     private static final Pattern NUMBER_PATTERN = Pattern.compile("^-?\\d+(?:\\.\\d+)?$");
-    private static final Pattern HISTORY_REASON_PATTERN = Pattern.compile("\"reason\"\\s*:\\s*\"([^\"]*)\"");
     private static final int MAX_BOM_DEPTH = 30;
     private static final Comparator<ResolvedPart> PART_LIST_ORDER =
             Comparator.comparing(ResolvedPart::partNumber)
@@ -600,28 +599,19 @@ public class PartQuery {
                             usersById
                     );
 
-            PartRevisionHistory history = findHistoryByAction(
-                    historiesByRevisionId.getOrDefault(revision.getId(), List.of()),
-                    PartRevisionHistoryActionType.RELEASED
-            );
-
             items.add(new PartRevisionHistoryResult.Card(
                     revision.getId(),
                     revision.getRevisionCode(),
                     revision.getStatus(),
                     revision.getName(),
-                    history == null ? revision.getCreatedAt() : history.getOccurredAt(),
-                    history == null ? toUserSummary(usersById.get(revision.getCreatedBy())) : toUserSummary(usersById.get(history.getActorId())),
-                    history == null ? null : extractReason(history.getPayload()),
-                    resolveReleaseWorkflowType(history),
-                    history == null ? null : history.getSourceRefId(),
-                    resolveReleaseSourceNumber(history, engineeringChangesById),
-                    resolveReleaseSourceTitle(history, engineeringChangesById),
                     diff == null ? null : diff.summary(),
-                    draftsByBaseRevisionId.getOrDefault(revision.getId(), List.of()).stream()
-                            .sorted(Comparator.comparing(PartRevision::getCreatedAt, Comparator.reverseOrder()))
-                            .map(draft -> toHistoryDraft(draft, historiesByRevisionId.getOrDefault(draft.getId(), List.of()), usersById))
-                            .toList()
+                    buildHistoryEvents(
+                            revision,
+                            draftsByBaseRevisionId.getOrDefault(revision.getId(), List.of()),
+                            historiesByRevisionId,
+                            usersById,
+                            engineeringChangesById
+                    )
             ));
         }
 
@@ -2047,24 +2037,12 @@ public class PartQuery {
                 .collect(java.util.stream.Collectors.toMap(User::getId, user -> user));
     }
 
-    private String extractReason(String payload) {
-        if (payload == null || payload.isBlank() || "{}".equals(payload.trim())) {
-            return null;
-        }
-        Matcher matcher = HISTORY_REASON_PATTERN.matcher(payload);
-        if (!matcher.find()) {
-            return null;
-        }
-        String reason = matcher.group(1);
-        return reason == null || reason.isBlank() ? null : reason;
-    }
-
     private Map<UUID, EngineeringChangeSnapshot> loadEngineeringChangeSnapshots(
             Map<UUID, List<PartRevisionHistory>> historiesByRevisionId
     ) {
         Set<UUID> engineeringChangeIds = historiesByRevisionId.values().stream()
                 .flatMap(List::stream)
-                .filter(history -> history.getSourceType() == PartRevisionHistorySourceType.ENGINEERING_CHANGE)
+                .filter(history -> history.getReleaseWorkflowType() == PartRevisionReleaseWorkflowType.ENGINEERING_CHANGE)
                 .map(PartRevisionHistory::getSourceRefId)
                 .filter(Objects::nonNull)
                 .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
@@ -2078,7 +2056,7 @@ public class PartQuery {
             PartRevisionHistory history,
             Map<UUID, EngineeringChangeSnapshot> engineeringChangesById
     ) {
-        if (history == null || history.getSourceType() != PartRevisionHistorySourceType.ENGINEERING_CHANGE) {
+        if (history == null || history.getReleaseWorkflowType() != PartRevisionReleaseWorkflowType.ENGINEERING_CHANGE) {
             return null;
         }
         EngineeringChangeSnapshot snapshot = engineeringChangesById.get(history.getSourceRefId());
@@ -2089,21 +2067,11 @@ public class PartQuery {
             PartRevisionHistory history,
             Map<UUID, EngineeringChangeSnapshot> engineeringChangesById
     ) {
-        if (history == null || history.getSourceType() != PartRevisionHistorySourceType.ENGINEERING_CHANGE) {
+        if (history == null || history.getReleaseWorkflowType() != PartRevisionReleaseWorkflowType.ENGINEERING_CHANGE) {
             return null;
         }
         EngineeringChangeSnapshot snapshot = engineeringChangesById.get(history.getSourceRefId());
         return snapshot == null ? null : snapshot.title();
-    }
-
-    private PartRevisionReleaseWorkflowType resolveReleaseWorkflowType(PartRevisionHistory history) {
-        if (history == null) {
-            return null;
-        }
-        return switch (history.getSourceType()) {
-            case ENGINEERING_CHANGE -> PartRevisionReleaseWorkflowType.ENGINEERING_CHANGE;
-            case USER, SYNTHESIS -> PartRevisionReleaseWorkflowType.DIRECT;
-        };
     }
 
     private PartRevisionCreationSourceType resolveCreationSourceType(List<PartRevisionHistory> histories) {
@@ -2111,10 +2079,9 @@ public class PartQuery {
         if (creationHistory == null) {
             return PartRevisionCreationSourceType.USER;
         }
-        return switch (creationHistory.getSourceType()) {
-            case SYNTHESIS -> PartRevisionCreationSourceType.SYNTHESIS;
-            case USER, ENGINEERING_CHANGE -> PartRevisionCreationSourceType.USER;
-        };
+        return creationHistory.getCreationSourceType() == null
+                ? PartRevisionCreationSourceType.USER
+                : creationHistory.getCreationSourceType();
     }
 
     private Instant resolveReleaseOccurredAt(
@@ -2135,33 +2102,98 @@ public class PartQuery {
                 .orElse(null);
     }
 
-    private PartRevisionHistoryResult.Draft toHistoryDraft(
+    private List<PartRevisionHistoryResult.Event> buildHistoryEvents(
+            PartRevision officialRevision,
+            List<PartRevision> drafts,
+            Map<UUID, List<PartRevisionHistory>> historiesByRevisionId,
+            Map<UUID, User> usersById,
+            Map<UUID, EngineeringChangeSnapshot> engineeringChangesById
+    ) {
+        List<PartRevisionHistoryResult.Event> events = new ArrayList<>();
+        PartRevisionHistory releaseHistory = findHistoryByAction(
+                historiesByRevisionId.getOrDefault(officialRevision.getId(), List.of()),
+                PartRevisionHistoryActionType.RELEASED
+        );
+        Instant officialOccurredAt = releaseHistory == null ? officialRevision.getCreatedAt() : releaseHistory.getOccurredAt();
+        events.add(new PartRevisionHistoryResult.Event(
+                PartRevisionHistoryEventType.CREATED,
+                officialOccurredAt,
+                releaseHistory == null
+                        ? toUserSummary(usersById.get(officialRevision.getCreatedBy()))
+                        : toUserSummary(usersById.get(releaseHistory.getActorId())),
+                releaseHistory == null ? null : releaseHistory.getReason(),
+                null,
+                releaseHistory == null ? null : releaseHistory.getReleaseWorkflowType(),
+                null,
+                officialRevision.getId(),
+                officialRevision.getRevisionCode(),
+                releaseHistory == null ? null : releaseHistory.getSourceRefId(),
+                resolveReleaseSourceNumber(releaseHistory, engineeringChangesById),
+                resolveReleaseSourceTitle(releaseHistory, engineeringChangesById)
+        ));
+
+        drafts.stream()
+                .sorted(Comparator.comparing(PartRevision::getCreatedAt, Comparator.reverseOrder()))
+                .forEach(draft -> events.addAll(
+                        toHistoryEvents(draft, historiesByRevisionId.getOrDefault(draft.getId(), List.of()), usersById, engineeringChangesById)
+                ));
+
+        return events.stream()
+                .sorted(Comparator.comparing(PartRevisionHistoryResult.Event::occurredAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+    }
+
+    private List<PartRevisionHistoryResult.Event> toHistoryEvents(
             PartRevision revision,
             List<PartRevisionHistory> histories,
-            Map<UUID, User> usersById
+            Map<UUID, User> usersById,
+            Map<UUID, EngineeringChangeSnapshot> engineeringChangesById
     ) {
+        List<PartRevisionHistoryResult.Event> events = new ArrayList<>();
+        PartRevisionHistory creationHistory = findHistoryByAction(histories, PartRevisionHistoryActionType.CREATED);
+        Instant draftCreatedAt = creationHistory == null ? revision.getCreatedAt() : creationHistory.getOccurredAt();
+        events.add(new PartRevisionHistoryResult.Event(
+                PartRevisionHistoryEventType.DRAFT_CREATED,
+                draftCreatedAt,
+                creationHistory == null
+                        ? toUserSummary(usersById.get(revision.getCreatedBy()))
+                        : toUserSummary(usersById.get(creationHistory.getActorId())),
+                creationHistory == null ? null : creationHistory.getReason(),
+                resolveCreationSourceType(histories),
+                null,
+                revision.getId(),
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
+
         PartRevisionHistory completionHistory = switch (revision.getStatus()) {
             case CANCELED -> findHistoryByAction(histories, PartRevisionHistoryActionType.CANCELED);
             case RELEASED, SUPERSEDED -> findHistoryByAction(histories, PartRevisionHistoryActionType.RELEASED);
             default -> null;
         };
-        String releasedRevisionCode = switch (revision.getStatus()) {
-            case RELEASED, SUPERSEDED -> revision.getRevisionCode();
-            default -> null;
-        };
-
-        return new PartRevisionHistoryResult.Draft(
-                revision.getId(),
-                revision.getName(),
-                revision.getStatus(),
-                revision.getCreatedAt(),
-                toUserSummary(usersById.get(revision.getCreatedBy())),
-                resolveCreationSourceType(histories),
-                completionHistory == null ? null : completionHistory.getOccurredAt(),
-                completionHistory == null ? null : toUserSummary(usersById.get(completionHistory.getActorId())),
-                releasedRevisionCode,
-                completionHistory == null ? null : extractReason(completionHistory.getPayload())
-        );
+        if (completionHistory != null) {
+            PartRevisionHistoryEventType eventType = revision.getStatus() == PartRevisionStatus.CANCELED
+                    ? PartRevisionHistoryEventType.DRAFT_CANCELED
+                    : PartRevisionHistoryEventType.DRAFT_RELEASED;
+            events.add(new PartRevisionHistoryResult.Event(
+                    eventType,
+                    completionHistory.getOccurredAt(),
+                    toUserSummary(usersById.get(completionHistory.getActorId())),
+                    completionHistory.getReason(),
+                    null,
+                    completionHistory.getReleaseWorkflowType(),
+                    revision.getId(),
+                    revision.getStatus() == PartRevisionStatus.CANCELED ? null : revision.getId(),
+                    revision.getStatus() == PartRevisionStatus.CANCELED ? null : revision.getRevisionCode(),
+                    completionHistory.getSourceRefId(),
+                    resolveReleaseSourceNumber(completionHistory, engineeringChangesById),
+                    resolveReleaseSourceTitle(completionHistory, engineeringChangesById)
+            ));
+        }
+        return events;
     }
 
     private PartRevision resolveBaseRevision(PartRevision targetRevision, UUID baseRevisionId) {

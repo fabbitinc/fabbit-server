@@ -1,7 +1,6 @@
 package com.fabbitinc.server.domain.part.model;
 
-public enum PartRevisionHistorySourceType {
+public enum PartRevisionCreationSourceType {
     USER,
-    ENGINEERING_CHANGE,
     SYNTHESIS
 }

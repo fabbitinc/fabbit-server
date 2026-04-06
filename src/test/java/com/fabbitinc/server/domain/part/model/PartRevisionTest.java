@@ -83,9 +83,10 @@ class PartRevisionTest {
         PartRevisionHistory history = revision.recordHistoryAt(
                 actorId,
                 PartRevisionHistoryActionType.IMPORTED,
-                PartRevisionHistorySourceType.SYNTHESIS,
+                PartRevisionCreationSourceType.SYNTHESIS,
+                null,
                 UUID.randomUUID(),
-                "{\"file\":\"parts.xlsx\"}",
+                "parts.xlsx",
                 occurredAt
         );
 

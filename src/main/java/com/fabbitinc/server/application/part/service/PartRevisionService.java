@@ -9,14 +9,14 @@ import com.fabbitinc.server.application.property.api.PropertyApi;
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartRevision;
+import com.fabbitinc.server.domain.part.model.PartRevisionCreationSourceType;
 import com.fabbitinc.server.domain.part.model.PartRevisionDraftChanges;
 import com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType;
-import com.fabbitinc.server.domain.part.model.PartRevisionHistorySourceType;
+import com.fabbitinc.server.domain.part.model.PartRevisionReleaseWorkflowType;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -49,9 +49,10 @@ public class PartRevisionService {
             draft.recordHistory(
                     actorId,
                     PartRevisionHistoryActionType.CREATED,
-                    PartRevisionHistorySourceType.USER,
+                    PartRevisionCreationSourceType.USER,
                     null,
-                    serializeReasonPayload(input.reason())
+                    null,
+                    normalizeReason(input.reason())
             );
             return partRevisionRepository.save(draft);
         } catch (DomainException ex) {
@@ -91,9 +92,9 @@ public class PartRevisionService {
                     part,
                     draft,
                     actorId,
-                    PartRevisionHistorySourceType.USER,
+                    PartRevisionReleaseWorkflowType.DIRECT,
                     null,
-                    serializeReleasePayload(input.reason())
+                    normalizeReason(input.reason())
             );
         } catch (DomainException ex) {
             throw toAppException(ex);
@@ -108,9 +109,10 @@ public class PartRevisionService {
             draft.recordHistory(
                     actorId,
                     PartRevisionHistoryActionType.CANCELED,
-                    PartRevisionHistorySourceType.USER,
                     null,
-                    serializeReasonPayload(input.reason())
+                    null,
+                    null,
+                    normalizeReason(input.reason())
             );
             return draft;
         } catch (DomainException ex) {
@@ -130,9 +132,9 @@ public class PartRevisionService {
                     part,
                     draft,
                     actorId,
-                    PartRevisionHistorySourceType.ENGINEERING_CHANGE,
+                    PartRevisionReleaseWorkflowType.ENGINEERING_CHANGE,
                     engineeringChangeId,
-                    serializeReleasePayload(null)
+                    null
             );
         } catch (DomainException ex) {
             throw toAppException(ex);
@@ -151,9 +153,10 @@ public class PartRevisionService {
             revision.recordHistory(
                     actorId,
                     PartRevisionHistoryActionType.CANCELED,
-                    PartRevisionHistorySourceType.ENGINEERING_CHANGE,
-                    engineeringChangeId,
-                    "{}"
+                    null,
+                    null,
+                    null,
+                    null
             );
             return revision;
         } catch (DomainException ex) {
@@ -171,20 +174,21 @@ public class PartRevisionService {
             Part part,
             PartRevision draft,
             UUID actorId,
-            PartRevisionHistorySourceType sourceType,
+            PartRevisionReleaseWorkflowType releaseWorkflowType,
             UUID sourceRefId,
-            String payload
+            String reason
     ) {
         String revisionCode = resolveNextRevisionCode(part);
-        supersedeCurrentReleasedIfNeeded(part, draft.getId(), actorId, sourceType, sourceRefId, payload);
+        supersedeCurrentReleasedIfNeeded(part, draft.getId(), actorId, releaseWorkflowType, sourceRefId, reason);
         draft.release(revisionCode, actorId);
         part.assignCurrentReleasedRevision(draft.getId());
         draft.recordHistory(
                 actorId,
                 PartRevisionHistoryActionType.RELEASED,
-                sourceType,
+                null,
+                releaseWorkflowType,
                 sourceRefId,
-                payload
+                reason
         );
         return draft;
     }
@@ -275,9 +279,9 @@ public class PartRevisionService {
             Part part,
             UUID nextRevisionId,
             UUID actorId,
-            PartRevisionHistorySourceType sourceType,
+            PartRevisionReleaseWorkflowType releaseWorkflowType,
             UUID sourceRefId,
-            String payload
+            String reason
     ) {
         UUID currentReleasedRevisionId = part.getCurrentReleasedRevisionId();
         if (currentReleasedRevisionId == null || currentReleasedRevisionId.equals(nextRevisionId)) {
@@ -288,9 +292,10 @@ public class PartRevisionService {
         currentReleasedRevision.recordHistory(
                 actorId,
                 PartRevisionHistoryActionType.SUPERSEDED,
-                sourceType,
+                null,
+                releaseWorkflowType,
                 sourceRefId,
-                payload
+                reason
         );
     }
 
@@ -353,25 +358,11 @@ public class PartRevisionService {
         // 승인 포인터를 사용하지 않는 구조라 no-op으로 둔다.
     }
 
-    private String serializeReasonPayload(String reason) {
+    private String normalizeReason(String reason) {
         if (reason == null || reason.isBlank()) {
-            return "{}";
+            return null;
         }
-        try {
-            return objectMapper.writeValueAsString(Map.of("reason", reason.trim()));
-        } catch (JacksonException ex) {
-            throw new AppException(ErrorCode.BAD_REQUEST, "변경 이력을 직렬화할 수 없습니다");
-        }
-    }
-
-    private String serializeReleasePayload(String reason) {
-        try {
-            Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("reason", reason == null ? "" : reason.trim());
-            return objectMapper.writeValueAsString(payload);
-        } catch (JacksonException ex) {
-            throw new AppException(ErrorCode.BAD_REQUEST, "릴리즈 이력을 직렬화할 수 없습니다");
-        }
+        return reason.trim();
     }
 
     private String serializeProperties(Map<String, Object> properties) {

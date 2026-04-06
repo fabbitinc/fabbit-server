@@ -19,8 +19,6 @@ import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Getter
 @Entity
@@ -37,8 +35,13 @@ public class PartRevisionHistory extends AbstractCreatedEntity {
 
     public static final String CODE_PART_REVISION_HISTORY_REVISION_REQUIRED = "PART_REVISION_HISTORY_REVISION_REQUIRED";
     public static final String CODE_PART_REVISION_HISTORY_ACTION_REQUIRED = "PART_REVISION_HISTORY_ACTION_REQUIRED";
-    public static final String CODE_PART_REVISION_HISTORY_SOURCE_REQUIRED = "PART_REVISION_HISTORY_SOURCE_REQUIRED";
     public static final String CODE_PART_REVISION_HISTORY_OCCURRED_AT_REQUIRED = "PART_REVISION_HISTORY_OCCURRED_AT_REQUIRED";
+    public static final String CODE_PART_REVISION_HISTORY_CREATION_SOURCE_REQUIRED =
+            "PART_REVISION_HISTORY_CREATION_SOURCE_REQUIRED";
+    public static final String CODE_PART_REVISION_HISTORY_RELEASE_WORKFLOW_REQUIRED =
+            "PART_REVISION_HISTORY_RELEASE_WORKFLOW_REQUIRED";
+    public static final String CODE_PART_REVISION_HISTORY_SOURCE_AXIS_INVALID =
+            "PART_REVISION_HISTORY_SOURCE_AXIS_INVALID";
 
     @Getter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY)
@@ -70,15 +73,18 @@ public class PartRevisionHistory extends AbstractCreatedEntity {
     private PartRevisionHistoryActionType actionType;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "source_type", nullable = false, length = 30)
-    private PartRevisionHistorySourceType sourceType;
+    @Column(name = "creation_source_type", length = 30)
+    private PartRevisionCreationSourceType creationSourceType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "release_workflow_type", length = 30)
+    private PartRevisionReleaseWorkflowType releaseWorkflowType;
 
     @Column(name = "source_ref_id")
     private UUID sourceRefId;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "payload", nullable = false, columnDefinition = "jsonb")
-    private String payload;
+    @Column(name = "reason", columnDefinition = "text")
+    private String reason;
 
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
@@ -87,9 +93,10 @@ public class PartRevisionHistory extends AbstractCreatedEntity {
             PartRevision partRevision,
             UUID actorId,
             PartRevisionHistoryActionType actionType,
-            PartRevisionHistorySourceType sourceType,
+            PartRevisionCreationSourceType creationSourceType,
+            PartRevisionReleaseWorkflowType releaseWorkflowType,
             UUID sourceRefId,
-            String payload,
+            String reason,
             Instant occurredAt
     ) {
         super(UuidV7Generator.next());
@@ -97,10 +104,13 @@ public class PartRevisionHistory extends AbstractCreatedEntity {
         this.partRevision = requiredPartRevision;
         this.partRevisionId = requiredPartRevision.getId();
         this.actorId = actorId;
-        this.actionType = requireActionType(actionType);
-        this.sourceType = requireSourceType(sourceType);
+        PartRevisionHistoryActionType requiredActionType = requireActionType(actionType);
+        this.actionType = requiredActionType;
+        validateSourceAxes(requiredActionType, creationSourceType, releaseWorkflowType);
+        this.creationSourceType = creationSourceType;
+        this.releaseWorkflowType = releaseWorkflowType;
         this.sourceRefId = sourceRefId;
-        this.payload = normalizePayload(payload);
+        this.reason = normalizeReason(reason);
         this.occurredAt = requireOccurredAt(occurredAt);
     }
 
@@ -108,17 +118,19 @@ public class PartRevisionHistory extends AbstractCreatedEntity {
             PartRevision partRevision,
             UUID actorId,
             PartRevisionHistoryActionType actionType,
-            PartRevisionHistorySourceType sourceType,
+            PartRevisionCreationSourceType creationSourceType,
+            PartRevisionReleaseWorkflowType releaseWorkflowType,
             UUID sourceRefId,
-            String payload
+            String reason
     ) {
         return new PartRevisionHistory(
                 partRevision,
                 actorId,
                 actionType,
-                sourceType,
+                creationSourceType,
+                releaseWorkflowType,
                 sourceRefId,
-                payload,
+                reason,
                 Instant.now()
         );
     }
@@ -127,18 +139,20 @@ public class PartRevisionHistory extends AbstractCreatedEntity {
             PartRevision partRevision,
             UUID actorId,
             PartRevisionHistoryActionType actionType,
-            PartRevisionHistorySourceType sourceType,
+            PartRevisionCreationSourceType creationSourceType,
+            PartRevisionReleaseWorkflowType releaseWorkflowType,
             UUID sourceRefId,
-            String payload,
+            String reason,
             Instant occurredAt
     ) {
         return new PartRevisionHistory(
                 partRevision,
                 actorId,
                 actionType,
-                sourceType,
+                creationSourceType,
+                releaseWorkflowType,
                 sourceRefId,
-                payload,
+                reason,
                 occurredAt
         );
     }
@@ -157,13 +171,6 @@ public class PartRevisionHistory extends AbstractCreatedEntity {
         return value;
     }
 
-    private PartRevisionHistorySourceType requireSourceType(PartRevisionHistorySourceType value) {
-        if (value == null) {
-            throw new DomainException(CODE_PART_REVISION_HISTORY_SOURCE_REQUIRED, "이력 출처 타입은 필수입니다");
-        }
-        return value;
-    }
-
     private Instant requireOccurredAt(Instant value) {
         if (value == null) {
             throw new DomainException(CODE_PART_REVISION_HISTORY_OCCURRED_AT_REQUIRED, "발생 시각은 필수입니다");
@@ -171,9 +178,54 @@ public class PartRevisionHistory extends AbstractCreatedEntity {
         return value;
     }
 
-    private String normalizePayload(String value) {
+    private void validateSourceAxes(
+            PartRevisionHistoryActionType actionType,
+            PartRevisionCreationSourceType creationSourceType,
+            PartRevisionReleaseWorkflowType releaseWorkflowType
+    ) {
+        switch (actionType) {
+            case CREATED, IMPORTED -> {
+                if (creationSourceType == null) {
+                    throw new DomainException(
+                            CODE_PART_REVISION_HISTORY_CREATION_SOURCE_REQUIRED,
+                            "생성 이력에는 생성 출처 타입이 필요합니다"
+                    );
+                }
+                if (releaseWorkflowType != null) {
+                    throw new DomainException(
+                            CODE_PART_REVISION_HISTORY_SOURCE_AXIS_INVALID,
+                            "생성 이력에는 릴리즈 워크플로를 기록할 수 없습니다"
+                    );
+                }
+            }
+            case RELEASED, SUPERSEDED -> {
+                if (releaseWorkflowType == null) {
+                    throw new DomainException(
+                            CODE_PART_REVISION_HISTORY_RELEASE_WORKFLOW_REQUIRED,
+                            "릴리즈 이력에는 릴리즈 워크플로 타입이 필요합니다"
+                    );
+                }
+                if (creationSourceType != null) {
+                    throw new DomainException(
+                            CODE_PART_REVISION_HISTORY_SOURCE_AXIS_INVALID,
+                            "릴리즈 이력에는 생성 출처 타입을 기록할 수 없습니다"
+                    );
+                }
+            }
+            case CANCELED -> {
+                if (creationSourceType != null || releaseWorkflowType != null) {
+                    throw new DomainException(
+                            CODE_PART_REVISION_HISTORY_SOURCE_AXIS_INVALID,
+                            "취소 이력에는 생성 출처/릴리즈 워크플로를 기록할 수 없습니다"
+                    );
+                }
+            }
+        }
+    }
+
+    private String normalizeReason(String value) {
         if (value == null || value.isBlank()) {
-            return "{}";
+            return null;
         }
         return value.trim();
     }

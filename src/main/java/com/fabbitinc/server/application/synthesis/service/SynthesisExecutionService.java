@@ -23,8 +23,8 @@ import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartItemType;
 import com.fabbitinc.server.domain.part.model.PartLifecycleState;
 import com.fabbitinc.server.domain.part.model.PartRevision;
+import com.fabbitinc.server.domain.part.model.PartRevisionCreationSourceType;
 import com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType;
-import com.fabbitinc.server.domain.part.model.PartRevisionHistorySourceType;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
@@ -606,9 +606,10 @@ public class SynthesisExecutionService {
         revision.recordHistory(
                 requestedBy,
                 PartRevisionHistoryActionType.IMPORTED,
-                PartRevisionHistorySourceType.SYNTHESIS,
+                PartRevisionCreationSourceType.SYNTHESIS,
+                null,
                 jobId,
-                "{}"
+                null
         );
     }
 

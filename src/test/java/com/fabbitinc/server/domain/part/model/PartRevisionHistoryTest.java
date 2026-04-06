@@ -20,16 +20,17 @@ class PartRevisionHistoryTest {
                 revision,
                 actorId,
                 PartRevisionHistoryActionType.IMPORTED,
-                PartRevisionHistorySourceType.SYNTHESIS,
+                PartRevisionCreationSourceType.SYNTHESIS,
+                null,
                 UUID.randomUUID(),
-                "  {\"file\":\"parts.xlsx\"}  "
+                "  synthesis import  "
         );
 
         assertEquals(revision.getId(), history.getPartRevisionId());
         assertEquals(actorId, history.getActorId());
         assertEquals(PartRevisionHistoryActionType.IMPORTED, history.getActionType());
-        assertEquals(PartRevisionHistorySourceType.SYNTHESIS, history.getSourceType());
-        assertEquals("{\"file\":\"parts.xlsx\"}", history.getPayload());
+        assertEquals(PartRevisionCreationSourceType.SYNTHESIS, history.getCreationSourceType());
+        assertEquals("synthesis import", history.getReason());
     }
 
     @Test
@@ -38,9 +39,10 @@ class PartRevisionHistoryTest {
                 null,
                 UUID.randomUUID(),
                 PartRevisionHistoryActionType.CREATED,
-                PartRevisionHistorySourceType.USER,
+                PartRevisionCreationSourceType.USER,
                 null,
-                "{}",
+                null,
+                null,
                 Instant.now()
         ));
 
@@ -56,12 +58,51 @@ class PartRevisionHistoryTest {
                 revision,
                 UUID.randomUUID(),
                 PartRevisionHistoryActionType.CREATED,
-                PartRevisionHistorySourceType.USER,
+                PartRevisionCreationSourceType.USER,
                 null,
-                "{}",
+                null,
+                null,
                 null
         ));
 
         assertEquals(PartRevisionHistory.CODE_PART_REVISION_HISTORY_OCCURRED_AT_REQUIRED, ex.getDomainCode());
+    }
+
+    @Test
+    void recordAt_release는_릴리즈워크플로가_필수다() {
+        Part part = Part.create("AES-100");
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체", null);
+
+        DomainException ex = assertThrows(DomainException.class, () -> PartRevisionHistory.recordAt(
+                revision,
+                UUID.randomUUID(),
+                PartRevisionHistoryActionType.RELEASED,
+                null,
+                null,
+                null,
+                "개정",
+                Instant.now()
+        ));
+
+        assertEquals(PartRevisionHistory.CODE_PART_REVISION_HISTORY_RELEASE_WORKFLOW_REQUIRED, ex.getDomainCode());
+    }
+
+    @Test
+    void recordAt_cancel은_출처축을_기록할수없다() {
+        Part part = Part.create("AES-100");
+        PartRevision revision = PartRevision.createInitialDraft(part, "본체", null);
+
+        DomainException ex = assertThrows(DomainException.class, () -> PartRevisionHistory.recordAt(
+                revision,
+                UUID.randomUUID(),
+                PartRevisionHistoryActionType.CANCELED,
+                PartRevisionCreationSourceType.USER,
+                null,
+                null,
+                "폐기",
+                Instant.now()
+        ));
+
+        assertEquals(PartRevisionHistory.CODE_PART_REVISION_HISTORY_SOURCE_AXIS_INVALID, ex.getDomainCode());
     }
 }

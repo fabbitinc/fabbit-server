@@ -1,5 +1,7 @@
 package com.fabbitinc.server.application.part.query.result;
 
+import com.fabbitinc.server.domain.part.model.PartRevisionCreationSourceType;
+import com.fabbitinc.server.domain.part.model.PartRevisionReleaseWorkflowType;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import java.time.Instant;
 import java.util.List;
@@ -14,29 +16,24 @@ public record PartRevisionHistoryResult(
             String revisionCode,
             PartRevisionStatus status,
             String name,
-            Instant releasedAt,
-            PartUserSummaryResult releasedBy,
-            String releaseReason,
-            PartRevisionReleaseWorkflowType releaseWorkflowType,
-            UUID releaseSourceId,
-            Integer releaseSourceNumber,
-            String releaseSourceTitle,
             PartRevisionDiffSummaryResult summary,
-            List<Draft> drafts
+            List<Event> events
     ) {
     }
 
-    public record Draft(
-            UUID revisionId,
-            String name,
-            PartRevisionStatus status,
-            Instant createdAt,
-            PartUserSummaryResult createdBy,
+    public record Event(
+            PartRevisionHistoryEventType eventType,
+            Instant occurredAt,
+            PartUserSummaryResult actor,
+            String reason,
             PartRevisionCreationSourceType creationSourceType,
-            Instant completedAt,
-            PartUserSummaryResult completedBy,
-            String releasedRevisionCode,
-            String reason
+            PartRevisionReleaseWorkflowType releaseWorkflowType,
+            UUID draftRevisionId,
+            UUID targetRevisionId,
+            String targetRevisionCode,
+            UUID sourceRefId,
+            Integer sourceRefNumber,
+            String sourceRefTitle
     ) {
     }
 }

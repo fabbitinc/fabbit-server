@@ -1,4 +1,4 @@
-package com.fabbitinc.server.application.part.query.result;
+package com.fabbitinc.server.domain.part.model;
 
 public enum PartRevisionReleaseWorkflowType {
     DIRECT,
