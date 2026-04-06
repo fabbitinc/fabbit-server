@@ -193,6 +193,7 @@ final class PartResponseMapper {
                                 item.name(),
                                 item.releasedAt(),
                                 toPartUserSummaryResponse(item.releasedBy()),
+                                item.releaseReason(),
                                 toPartRevisionDiffSummaryResponse(item.summary()),
                                 item.drafts().stream()
                                         .map(draft -> new PartRevisionHistoryDraftResponse(

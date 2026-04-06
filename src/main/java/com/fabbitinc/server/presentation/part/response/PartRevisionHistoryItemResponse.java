@@ -14,6 +14,7 @@ public record PartRevisionHistoryItemResponse(
         String name,
         Instant releasedAt,
         PartUserSummaryResponse releasedBy,
+        String releaseReason,
         PartRevisionDiffSummaryResponse summary,
         List<PartRevisionHistoryDraftResponse> drafts
 ) {

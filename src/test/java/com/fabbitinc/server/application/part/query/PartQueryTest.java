@@ -259,7 +259,9 @@ class PartQueryTest {
         PartRevisionHistoryResult result = partQuery.getHistory(new PartRevisionHistoryCondition(part.getId()));
 
         assertEquals(2, result.items().size());
+        assertEquals("반영", result.items().getFirst().releaseReason());
         assertEquals("1", result.items().getLast().revisionCode());
+        assertEquals("최초 반영", result.items().getLast().releaseReason());
         assertEquals(2, result.items().getLast().drafts().size());
         assertEquals("2", result.items().getLast().drafts().getFirst().releasedRevisionCode());
         assertEquals(PartRevisionStatus.CANCELED, result.items().getLast().drafts().getLast().status());

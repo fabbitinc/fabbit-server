@@ -605,6 +605,7 @@ public class PartQuery {
                     revision.getName(),
                     history == null ? revision.getCreatedAt() : history.getOccurredAt(),
                     history == null ? toUserSummary(usersById.get(revision.getCreatedBy())) : toUserSummary(usersById.get(history.getActorId())),
+                    history == null ? null : extractReason(history.getPayload()),
                     diff == null ? null : diff.summary(),
                     draftsByBaseRevisionId.getOrDefault(revision.getId(), List.of()).stream()
                             .sorted(Comparator.comparing(PartRevision::getCreatedAt, Comparator.reverseOrder()))

@@ -16,6 +16,7 @@ public record PartRevisionHistoryResult(
             String name,
             Instant releasedAt,
             PartUserSummaryResult releasedBy,
+            String releaseReason,
             PartRevisionDiffSummaryResult summary,
             List<Draft> drafts
     ) {
