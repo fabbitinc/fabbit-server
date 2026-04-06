@@ -161,6 +161,7 @@ final class PartResponseMapper {
                 result.revisionStatus(),
                 result.partNumber(),
                 result.categoryId(),
+                result.categoryName(),
                 result.baseRevisionId(),
                 result.baseRevisionCode(),
                 result.name(),

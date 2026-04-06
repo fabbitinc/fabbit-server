@@ -702,6 +702,7 @@ public class PartQuery {
                 revision == null ? null : revision.getStatus(),
                 part.getPartNumber(),
                 part.getCategoryId(),
+                resolvedPart.category(),
                 baseRevisionId,
                 baseRevisionCode,
                 resolvedPart.name(),

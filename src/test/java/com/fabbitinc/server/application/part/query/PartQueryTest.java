@@ -375,7 +375,8 @@ class PartQueryTest {
     @Test
     void get_상세응답은_revisionStatus와_baseRevision문맥을_포함한다() {
         UUID actorId = UUID.randomUUID();
-        Part part = Part.create("P-300");
+        UUID categoryId = UUID.randomUUID();
+        Part part = Part.create("P-300", categoryId, com.fabbitinc.server.domain.part.model.PartItemType.MANUFACTURED);
         PartRevision baseRevision = PartRevision.createInitialDraft(part, "base", actorId);
         setCreatedAt(baseRevision, Instant.parse("2026-03-18T00:00:00Z"));
         baseRevision.release("1", actorId);
@@ -397,11 +398,16 @@ class PartQueryTest {
         when(engineeringBomItemRepository.countByParentPartRevisionId(draft.getId())).thenReturn(0L);
         when(engineeringBomItemRepository.countByChildPartRevisionId(draft.getId())).thenReturn(0L);
         when(projectApi.countPartProjects(part.getId())).thenReturn(0L);
+        when(partCategoryRepository.findById(categoryId)).thenReturn(Optional.of(
+                com.fabbitinc.server.domain.part.model.PartCategory.create("기구", "MECH-", "", 4, true)
+        ));
 
         PartDetailResult result = partQuery.get(new PartDetailCondition(part.getId(), draft.getId()));
 
         assertEquals(draft.getId(), result.revisionId());
         assertEquals(PartRevisionStatus.DRAFT, result.revisionStatus());
+        assertEquals(categoryId, result.categoryId());
+        assertEquals("기구", result.categoryName());
         assertEquals(baseRevision.getId(), result.baseRevisionId());
         assertEquals("1", result.baseRevisionCode());
     }
