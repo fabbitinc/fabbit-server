@@ -27,7 +27,7 @@ import lombok.NoArgsConstructor;
 public class PartCategory extends AbstractAuditableEntity {
 
     public static final String CODE_NAME_REQUIRED = "PART_CATEGORY_NAME_REQUIRED";
-    public static final String CODE_FORMAT_PREFIX_REQUIRED = "PART_CATEGORY_FORMAT_PREFIX_REQUIRED";
+    public static final String CODE_FORMAT_PREFIX_INVALID = "PART_CATEGORY_FORMAT_PREFIX_INVALID";
     public static final String CODE_DIGITS_INVALID = "PART_CATEGORY_DIGITS_INVALID";
 
     private static final int MAX_NAME_LENGTH = 100;
@@ -54,7 +54,7 @@ public class PartCategory extends AbstractAuditableEntity {
     private PartCategory(String name, String formatPrefix, String formatSuffix, int digits, boolean autoNumberingEnabled) {
         super(UuidV7Generator.next());
         this.name = validateName(name);
-        this.formatPrefix = validateFormatPrefix(formatPrefix);
+        this.formatPrefix = normalizeFormatPrefix(formatPrefix);
         this.formatSuffix = normalizeFormatSuffix(formatSuffix);
         this.digits = validateDigits(digits);
         this.autoNumberingEnabled = autoNumberingEnabled;
@@ -84,7 +84,7 @@ public class PartCategory extends AbstractAuditableEntity {
     }
 
     public void changeFormatPrefix(String formatPrefix) {
-        this.formatPrefix = validateFormatPrefix(formatPrefix);
+        this.formatPrefix = normalizeFormatPrefix(formatPrefix);
     }
 
     public void changeFormatSuffix(String formatSuffix) {
@@ -110,14 +110,14 @@ public class PartCategory extends AbstractAuditableEntity {
         return trimmed;
     }
 
-    private String validateFormatPrefix(String formatPrefix) {
-        if (formatPrefix == null || formatPrefix.isBlank()) {
-            throw new DomainException(CODE_FORMAT_PREFIX_REQUIRED, "카테고리 포맷 prefix는 필수입니다");
+    private String normalizeFormatPrefix(String formatPrefix) {
+        if (formatPrefix == null) {
+            return "";
         }
         String trimmed = formatPrefix.trim();
         if (trimmed.length() > MAX_FORMAT_PREFIX_LENGTH) {
             throw new DomainException(
-                    CODE_FORMAT_PREFIX_REQUIRED,
+                    CODE_FORMAT_PREFIX_INVALID,
                     "카테고리 포맷 prefix는 %d자 이하여야 합니다".formatted(MAX_FORMAT_PREFIX_LENGTH)
             );
         }
@@ -131,7 +131,7 @@ public class PartCategory extends AbstractAuditableEntity {
         String trimmed = formatSuffix.trim();
         if (trimmed.length() > MAX_FORMAT_SUFFIX_LENGTH) {
             throw new DomainException(
-                    CODE_FORMAT_PREFIX_REQUIRED,
+                    CODE_FORMAT_PREFIX_INVALID,
                     "카테고리 포맷 suffix는 %d자 이하여야 합니다".formatted(MAX_FORMAT_SUFFIX_LENGTH)
             );
         }

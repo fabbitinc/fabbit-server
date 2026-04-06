@@ -24,11 +24,12 @@ public class PartCategoryService {
         if (partCategoryRepository.existsByName(name)) {
             throw new AppException(ErrorCode.CONFLICT, "이미 존재하는 카테고리 이름입니다: " + name);
         }
-        String normalizedFormatSuffix = formatSuffix == null ? "" : formatSuffix.trim();
-        if (partCategoryRepository.existsByFormatPrefixAndFormatSuffix(formatPrefix.trim(), normalizedFormatSuffix)) {
+        String normalizedFormatPrefix = normalizeFormatSegment(formatPrefix);
+        String normalizedFormatSuffix = normalizeFormatSegment(formatSuffix);
+        if (partCategoryRepository.existsByFormatPrefixAndFormatSuffix(normalizedFormatPrefix, normalizedFormatSuffix)) {
             throw new AppException(
                     ErrorCode.CONFLICT,
-                    "이미 존재하는 카테고리 포맷입니다: " + formatPrefix.trim() + "{number}" + normalizedFormatSuffix
+                    "이미 존재하는 카테고리 포맷입니다: " + normalizedFormatPrefix + "{number}" + normalizedFormatSuffix
             );
         }
 
@@ -60,8 +61,8 @@ public class PartCategoryService {
                     throw new AppException(ErrorCode.CONFLICT, "이미 존재하는 카테고리 이름입니다: " + name);
                 });
 
-        String normalizedFormatPrefix = formatPrefix.trim();
-        String normalizedFormatSuffix = formatSuffix == null ? "" : formatSuffix.trim();
+        String normalizedFormatPrefix = normalizeFormatSegment(formatPrefix);
+        String normalizedFormatSuffix = normalizeFormatSegment(formatSuffix);
         boolean formatChanged = !category.getFormatPrefix().equals(normalizedFormatPrefix)
                 || !category.getFormatSuffix().equals(normalizedFormatSuffix);
         if (formatChanged && partCategoryRepository.existsByFormatPrefixAndFormatSuffix(normalizedFormatPrefix, normalizedFormatSuffix)) {
@@ -81,6 +82,10 @@ public class PartCategoryService {
         } catch (DataIntegrityViolationException ex) {
             throw new AppException(ErrorCode.CONFLICT, "중복된 카테고리 이름 또는 포맷입니다");
         }
+    }
+
+    private String normalizeFormatSegment(String value) {
+        return value == null ? "" : value.trim();
     }
 
     public void delete(UUID categoryId) {

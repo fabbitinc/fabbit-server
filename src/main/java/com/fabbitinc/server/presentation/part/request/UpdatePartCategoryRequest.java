@@ -13,7 +13,7 @@ public record UpdatePartCategoryRequest(
         @NotBlank(message = "name은 필수입니다") @Size(max = 100, message = "name은 최대 100자여야 합니다") String name,
 
         @Schema(description = "숫자 앞 포맷 문자열", example = "PCB-")
-        @NotBlank(message = "formatPrefix는 필수입니다") @Size(max = 20, message = "formatPrefix는 최대 20자여야 합니다") String formatPrefix,
+        @Size(max = 20, message = "formatPrefix는 최대 20자여야 합니다") String formatPrefix,
 
         @Schema(description = "숫자 뒤 포맷 문자열", example = "-A")
         @Size(max = 20, message = "formatSuffix는 최대 20자여야 합니다") String formatSuffix,
