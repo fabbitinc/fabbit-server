@@ -9,6 +9,8 @@ import static org.mockito.Mockito.when;
 import com.fabbitinc.server.application.auth.support.AuthContext;
 import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeApi;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeSnapshot;
 import com.fabbitinc.server.application.mapping.api.MappingApi;
 import com.fabbitinc.server.application.part.query.condition.PartBomCondition;
 import com.fabbitinc.server.application.part.query.condition.PartDetailCondition;
@@ -20,7 +22,9 @@ import com.fabbitinc.server.application.part.query.result.PartDetailResult;
 import com.fabbitinc.server.application.part.query.result.PartListResult;
 import com.fabbitinc.server.application.part.query.result.PartLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewSourcesResult;
+import com.fabbitinc.server.application.part.query.result.PartRevisionCreationSourceType;
 import com.fabbitinc.server.application.part.query.result.PartRevisionHistoryResult;
+import com.fabbitinc.server.application.part.query.result.PartRevisionReleaseWorkflowType;
 import com.fabbitinc.server.application.project.api.ProjectApi;
 import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.bom.model.EngineeringBomItem;
@@ -52,6 +56,7 @@ import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,6 +74,8 @@ class PartQueryTest {
 
     @Mock
     private CurrentAuthProvider currentAuthProvider;
+    @Mock
+    private EngineeringChangeApi engineeringChangeApi;
     @Mock
     private MappingApi mappingApi;
     @Mock
@@ -115,6 +122,7 @@ class PartQueryTest {
 
         partQuery = new PartQuery(
                 currentAuthProvider,
+                engineeringChangeApi,
                 mappingApi,
                 partRepository,
                 partRevisionRepository,
@@ -188,7 +196,7 @@ class PartQueryTest {
         released.recordHistoryAt(
                 actorId,
                 PartRevisionHistoryActionType.RELEASED,
-                PartRevisionHistorySourceType.UI,
+                PartRevisionHistorySourceType.USER,
                 null,
                 "{\"reason\":\"최초 반영\"}",
                 Instant.parse("2026-03-18T00:00:00Z")
@@ -199,7 +207,7 @@ class PartQueryTest {
         canceledDraft.recordHistoryAt(
                 actorId,
                 PartRevisionHistoryActionType.CREATED,
-                PartRevisionHistorySourceType.UI,
+                PartRevisionHistorySourceType.USER,
                 null,
                 "{\"reason\":\"초안 생성\"}",
                 Instant.parse("2026-03-18T01:00:00Z")
@@ -208,7 +216,7 @@ class PartQueryTest {
         canceledDraft.recordHistoryAt(
                 actorId,
                 PartRevisionHistoryActionType.CANCELED,
-                PartRevisionHistorySourceType.UI,
+                PartRevisionHistorySourceType.USER,
                 null,
                 "{\"action\":\"CANCELED\",\"reason\":\"폐기\"}",
                 Instant.parse("2026-03-18T02:00:00Z")
@@ -219,18 +227,19 @@ class PartQueryTest {
         releasedDraft.recordHistoryAt(
                 actorId,
                 PartRevisionHistoryActionType.CREATED,
-                PartRevisionHistorySourceType.UI,
+                PartRevisionHistorySourceType.USER,
                 null,
                 "{\"reason\":\"초안 생성\"}",
                 Instant.parse("2026-03-18T03:00:00Z")
         );
         releasedDraft.release("2", actorId);
+        UUID engineeringChangeId = UUID.randomUUID();
         releasedDraft.recordHistoryAt(
                 actorId,
                 PartRevisionHistoryActionType.RELEASED,
-                PartRevisionHistorySourceType.UI,
-                null,
-                "{\"reason\":\"반영\"}",
+                PartRevisionHistorySourceType.ENGINEERING_CHANGE,
+                engineeringChangeId,
+                "{\"reason\":\"\"}",
                 Instant.parse("2026-03-18T04:00:00Z")
         );
 
@@ -255,16 +264,27 @@ class PartQueryTest {
                         releasedDraft.getHistories().getLast()
                 ));
         when(userApi.getUsersByIdsOrdered(org.mockito.ArgumentMatchers.anyList())).thenReturn(List.of());
+        when(engineeringChangeApi.getEngineeringChangeSnapshotMap(java.util.Set.of(engineeringChangeId))).thenReturn(Map.of(
+                engineeringChangeId,
+                new EngineeringChangeSnapshot(engineeringChangeId, 101, "상위품 개정", null)
+        ));
 
         PartRevisionHistoryResult result = partQuery.getHistory(new PartRevisionHistoryCondition(part.getId()));
 
         assertEquals(2, result.items().size());
-        assertEquals("반영", result.items().getFirst().releaseReason());
+        assertEquals(PartRevisionReleaseWorkflowType.ENGINEERING_CHANGE, result.items().getFirst().releaseWorkflowType());
+        assertEquals(engineeringChangeId, result.items().getFirst().releaseSourceId());
+        assertEquals(101, result.items().getFirst().releaseSourceNumber());
+        assertEquals("상위품 개정", result.items().getFirst().releaseSourceTitle());
+        assertNull(result.items().getFirst().releaseReason());
         assertEquals("1", result.items().getLast().revisionCode());
         assertEquals("최초 반영", result.items().getLast().releaseReason());
+        assertEquals(PartRevisionReleaseWorkflowType.DIRECT, result.items().getLast().releaseWorkflowType());
         assertEquals(2, result.items().getLast().drafts().size());
+        assertEquals(PartRevisionCreationSourceType.USER, result.items().getLast().drafts().getFirst().creationSourceType());
         assertEquals("2", result.items().getLast().drafts().getFirst().releasedRevisionCode());
         assertEquals(PartRevisionStatus.CANCELED, result.items().getLast().drafts().getLast().status());
+        assertEquals(PartRevisionCreationSourceType.USER, result.items().getLast().drafts().getLast().creationSourceType());
         assertNull(result.items().getLast().drafts().getLast().releasedRevisionCode());
         assertEquals("폐기", result.items().getLast().drafts().getLast().reason());
         assertEquals(PartRevisionStatus.RELEASED, result.items().getFirst().status());

@@ -1,5 +1,6 @@
 package com.fabbitinc.server.presentation.part.response;
 
+import com.fabbitinc.server.application.part.query.result.PartRevisionCreationSourceType;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
@@ -12,6 +13,7 @@ public record PartRevisionHistoryDraftResponse(
         PartRevisionStatus status,
         Instant createdAt,
         PartUserSummaryResponse createdBy,
+        PartRevisionCreationSourceType creationSourceType,
         Instant completedAt,
         PartUserSummaryResponse completedBy,
         String releasedRevisionCode,

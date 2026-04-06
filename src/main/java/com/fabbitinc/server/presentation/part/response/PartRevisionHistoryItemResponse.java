@@ -1,5 +1,6 @@
 package com.fabbitinc.server.presentation.part.response;
 
+import com.fabbitinc.server.application.part.query.result.PartRevisionReleaseWorkflowType;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
@@ -15,6 +16,10 @@ public record PartRevisionHistoryItemResponse(
         Instant releasedAt,
         PartUserSummaryResponse releasedBy,
         String releaseReason,
+        PartRevisionReleaseWorkflowType releaseWorkflowType,
+        UUID releaseSourceId,
+        Integer releaseSourceNumber,
+        String releaseSourceTitle,
         PartRevisionDiffSummaryResponse summary,
         List<PartRevisionHistoryDraftResponse> drafts
 ) {

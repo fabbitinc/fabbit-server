@@ -16,6 +16,7 @@ import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.property.model.PropertyOwnerType;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -48,7 +49,7 @@ public class PartRevisionService {
             draft.recordHistory(
                     actorId,
                     PartRevisionHistoryActionType.CREATED,
-                    PartRevisionHistorySourceType.UI,
+                    PartRevisionHistorySourceType.USER,
                     null,
                     serializeReasonPayload(input.reason())
             );
@@ -90,9 +91,9 @@ public class PartRevisionService {
                     part,
                     draft,
                     actorId,
-                    PartRevisionHistorySourceType.UI,
+                    PartRevisionHistorySourceType.USER,
                     null,
-                    serializeReasonPayload(input.reason())
+                    serializeReleasePayload(input.reason())
             );
         } catch (DomainException ex) {
             throw toAppException(ex);
@@ -107,7 +108,7 @@ public class PartRevisionService {
             draft.recordHistory(
                     actorId,
                     PartRevisionHistoryActionType.CANCELED,
-                    PartRevisionHistorySourceType.UI,
+                    PartRevisionHistorySourceType.USER,
                     null,
                     serializeReasonPayload(input.reason())
             );
@@ -131,7 +132,7 @@ public class PartRevisionService {
                     actorId,
                     PartRevisionHistorySourceType.ENGINEERING_CHANGE,
                     engineeringChangeId,
-                    "{}"
+                    serializeReleasePayload(null)
             );
         } catch (DomainException ex) {
             throw toAppException(ex);
@@ -360,6 +361,16 @@ public class PartRevisionService {
             return objectMapper.writeValueAsString(Map.of("reason", reason.trim()));
         } catch (JacksonException ex) {
             throw new AppException(ErrorCode.BAD_REQUEST, "변경 이력을 직렬화할 수 없습니다");
+        }
+    }
+
+    private String serializeReleasePayload(String reason) {
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("reason", reason == null ? "" : reason.trim());
+            return objectMapper.writeValueAsString(payload);
+        } catch (JacksonException ex) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "릴리즈 이력을 직렬화할 수 없습니다");
         }
     }
 

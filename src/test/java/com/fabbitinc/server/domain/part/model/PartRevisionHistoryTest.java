@@ -38,7 +38,7 @@ class PartRevisionHistoryTest {
                 null,
                 UUID.randomUUID(),
                 PartRevisionHistoryActionType.CREATED,
-                PartRevisionHistorySourceType.UI,
+                PartRevisionHistorySourceType.USER,
                 null,
                 "{}",
                 Instant.now()
@@ -56,7 +56,7 @@ class PartRevisionHistoryTest {
                 revision,
                 UUID.randomUUID(),
                 PartRevisionHistoryActionType.CREATED,
-                PartRevisionHistorySourceType.UI,
+                PartRevisionHistorySourceType.USER,
                 null,
                 "{}",
                 null

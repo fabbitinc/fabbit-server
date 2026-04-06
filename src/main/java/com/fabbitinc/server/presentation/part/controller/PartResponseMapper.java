@@ -4,7 +4,6 @@ import com.fabbitinc.server.application.part.query.result.BomTreeResult;
 import com.fabbitinc.server.application.part.query.result.CategoryLookupResult;
 import com.fabbitinc.server.application.part.query.result.CategoryStatsResult;
 import com.fabbitinc.server.application.part.query.result.PartBomResult;
-import com.fabbitinc.server.application.part.query.result.PartChangeHistoryResult;
 import com.fabbitinc.server.application.part.query.result.PartDetailResult;
 import com.fabbitinc.server.application.part.query.result.PartFilesResult;
 import com.fabbitinc.server.application.part.query.result.PartFilterOptionsResult;
@@ -33,7 +32,6 @@ import com.fabbitinc.server.presentation.part.response.CategoryStatsItemResponse
 import com.fabbitinc.server.presentation.part.response.CategoryStatsResponse;
 import com.fabbitinc.server.presentation.part.response.PartAttachmentItemResponse;
 import com.fabbitinc.server.presentation.part.response.PartBomResponse;
-import com.fabbitinc.server.presentation.part.response.PartChangeHistoryResponse;
 import com.fabbitinc.server.presentation.part.response.PartDetailResponse;
 import com.fabbitinc.server.presentation.part.response.PartFilesResponse;
 import com.fabbitinc.server.presentation.part.response.PartFilterOptionsResponse;
@@ -194,6 +192,10 @@ final class PartResponseMapper {
                                 item.releasedAt(),
                                 toPartUserSummaryResponse(item.releasedBy()),
                                 item.releaseReason(),
+                                item.releaseWorkflowType(),
+                                item.releaseSourceId(),
+                                item.releaseSourceNumber(),
+                                item.releaseSourceTitle(),
                                 toPartRevisionDiffSummaryResponse(item.summary()),
                                 item.drafts().stream()
                                         .map(draft -> new PartRevisionHistoryDraftResponse(
@@ -202,6 +204,7 @@ final class PartResponseMapper {
                                                 draft.status(),
                                                 draft.createdAt(),
                                                 toPartUserSummaryResponse(draft.createdBy()),
+                                                draft.creationSourceType(),
                                                 draft.completedAt(),
                                                 toPartUserSummaryResponse(draft.completedBy()),
                                                 draft.releasedRevisionCode(),
@@ -422,21 +425,6 @@ final class PartResponseMapper {
                 result.pdfReady(),
                 result.webpReady(),
                 result.glbReady()
-        );
-    }
-
-    static PartChangeHistoryResponse toPartChangeHistoryResponse(PartChangeHistoryResult result) {
-        return new PartChangeHistoryResponse(
-                result.items().stream()
-                        .map(item -> new PartChangeHistoryResponse.PartChangeHistoryItemResponse(
-                                item.timestamp(),
-                                item.type(),
-                                item.referenceId(),
-                                item.referenceNumber(),
-                                item.title(),
-                                item.actorName()
-                        ))
-                        .toList()
         );
     }
 

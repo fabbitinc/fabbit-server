@@ -4,6 +4,8 @@ import com.fabbitinc.server.application.auth.support.CurrentAuthProvider;
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.common.support.FileUrlResolver;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeApi;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeSnapshot;
 import com.fabbitinc.server.application.mapping.api.MappingApi;
 import com.fabbitinc.server.application.part.model.BomDirection;
 import com.fabbitinc.server.application.part.model.DrawingViewerType;
@@ -39,9 +41,11 @@ import com.fabbitinc.server.application.part.query.result.PartLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewSourcesResult;
 import com.fabbitinc.server.application.part.query.result.PartProjectsResult;
+import com.fabbitinc.server.application.part.query.result.PartRevisionCreationSourceType;
 import com.fabbitinc.server.application.part.query.result.PartRevisionDiffResult;
 import com.fabbitinc.server.application.part.query.result.PartRevisionDiffSummaryResult;
 import com.fabbitinc.server.application.part.query.result.PartRevisionHistoryResult;
+import com.fabbitinc.server.application.part.query.result.PartRevisionReleaseWorkflowType;
 import com.fabbitinc.server.application.part.query.result.PartRevisionLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartSuppliersResult;
 import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
@@ -69,6 +73,7 @@ import com.fabbitinc.server.domain.part.model.PartPreviewSourceType;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.model.PartRevisionHistory;
 import com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType;
+import com.fabbitinc.server.domain.part.model.PartRevisionHistorySourceType;
 import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.model.PartSupplier;
 import com.fabbitinc.server.domain.part.repository.PartCategoryRepository;
@@ -126,6 +131,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PartQuery {
 
     private final CurrentAuthProvider currentAuthProvider;
+    private final EngineeringChangeApi engineeringChangeApi;
     private final MappingApi mappingApi;
     private final PartRepository partRepository;
     private final PartRevisionRepository partRevisionRepository;
@@ -576,6 +582,7 @@ public class PartQuery {
         Map<UUID, List<PartRevision>> draftsByBaseRevisionId = revisions.stream()
                 .filter(revision -> revision.getBaseRevisionId() != null)
                 .collect(java.util.stream.Collectors.groupingBy(PartRevision::getBaseRevisionId));
+        Map<UUID, EngineeringChangeSnapshot> engineeringChangesById = loadEngineeringChangeSnapshots(historiesByRevisionId);
 
         List<PartRevisionHistoryResult.Card> items = new ArrayList<>();
         for (int index = 0; index < officialRevisions.size(); index++) {
@@ -606,6 +613,10 @@ public class PartQuery {
                     history == null ? revision.getCreatedAt() : history.getOccurredAt(),
                     history == null ? toUserSummary(usersById.get(revision.getCreatedBy())) : toUserSummary(usersById.get(history.getActorId())),
                     history == null ? null : extractReason(history.getPayload()),
+                    resolveReleaseWorkflowType(history),
+                    history == null ? null : history.getSourceRefId(),
+                    resolveReleaseSourceNumber(history, engineeringChangesById),
+                    resolveReleaseSourceTitle(history, engineeringChangesById),
                     diff == null ? null : diff.summary(),
                     draftsByBaseRevisionId.getOrDefault(revision.getId(), List.of()).stream()
                             .sorted(Comparator.comparing(PartRevision::getCreatedAt, Comparator.reverseOrder()))
@@ -2044,7 +2055,66 @@ public class PartQuery {
         if (!matcher.find()) {
             return null;
         }
-        return matcher.group(1);
+        String reason = matcher.group(1);
+        return reason == null || reason.isBlank() ? null : reason;
+    }
+
+    private Map<UUID, EngineeringChangeSnapshot> loadEngineeringChangeSnapshots(
+            Map<UUID, List<PartRevisionHistory>> historiesByRevisionId
+    ) {
+        Set<UUID> engineeringChangeIds = historiesByRevisionId.values().stream()
+                .flatMap(List::stream)
+                .filter(history -> history.getSourceType() == PartRevisionHistorySourceType.ENGINEERING_CHANGE)
+                .map(PartRevisionHistory::getSourceRefId)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+        if (engineeringChangeIds.isEmpty()) {
+            return Map.of();
+        }
+        return engineeringChangeApi.getEngineeringChangeSnapshotMap(engineeringChangeIds);
+    }
+
+    private Integer resolveReleaseSourceNumber(
+            PartRevisionHistory history,
+            Map<UUID, EngineeringChangeSnapshot> engineeringChangesById
+    ) {
+        if (history == null || history.getSourceType() != PartRevisionHistorySourceType.ENGINEERING_CHANGE) {
+            return null;
+        }
+        EngineeringChangeSnapshot snapshot = engineeringChangesById.get(history.getSourceRefId());
+        return snapshot == null ? null : snapshot.number();
+    }
+
+    private String resolveReleaseSourceTitle(
+            PartRevisionHistory history,
+            Map<UUID, EngineeringChangeSnapshot> engineeringChangesById
+    ) {
+        if (history == null || history.getSourceType() != PartRevisionHistorySourceType.ENGINEERING_CHANGE) {
+            return null;
+        }
+        EngineeringChangeSnapshot snapshot = engineeringChangesById.get(history.getSourceRefId());
+        return snapshot == null ? null : snapshot.title();
+    }
+
+    private PartRevisionReleaseWorkflowType resolveReleaseWorkflowType(PartRevisionHistory history) {
+        if (history == null) {
+            return null;
+        }
+        return switch (history.getSourceType()) {
+            case ENGINEERING_CHANGE -> PartRevisionReleaseWorkflowType.ENGINEERING_CHANGE;
+            case USER, SYNTHESIS -> PartRevisionReleaseWorkflowType.DIRECT;
+        };
+    }
+
+    private PartRevisionCreationSourceType resolveCreationSourceType(List<PartRevisionHistory> histories) {
+        PartRevisionHistory creationHistory = findHistoryByAction(histories, PartRevisionHistoryActionType.CREATED);
+        if (creationHistory == null) {
+            return PartRevisionCreationSourceType.USER;
+        }
+        return switch (creationHistory.getSourceType()) {
+            case SYNTHESIS -> PartRevisionCreationSourceType.SYNTHESIS;
+            case USER, ENGINEERING_CHANGE -> PartRevisionCreationSourceType.USER;
+        };
     }
 
     private Instant resolveReleaseOccurredAt(
@@ -2086,6 +2156,7 @@ public class PartQuery {
                 revision.getStatus(),
                 revision.getCreatedAt(),
                 toUserSummary(usersById.get(revision.getCreatedBy())),
+                resolveCreationSourceType(histories),
                 completionHistory == null ? null : completionHistory.getOccurredAt(),
                 completionHistory == null ? null : toUserSummary(usersById.get(completionHistory.getActorId())),
                 releasedRevisionCode,

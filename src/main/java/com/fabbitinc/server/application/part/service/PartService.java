@@ -70,7 +70,7 @@ public class PartService {
             initialRevision.recordHistory(
                     actorId,
                     com.fabbitinc.server.domain.part.model.PartRevisionHistoryActionType.CREATED,
-                    com.fabbitinc.server.domain.part.model.PartRevisionHistorySourceType.UI,
+                    com.fabbitinc.server.domain.part.model.PartRevisionHistorySourceType.USER,
                     null,
                     serializeReasonPayload(input.reason())
             );

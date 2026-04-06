@@ -2,7 +2,6 @@ package com.fabbitinc.server.presentation.part.controller;
 
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toCategoryLookupResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toCategoryStatsResponse;
-import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartChangeHistoryResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartDetailResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartFilterOptionsResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartImpactAnalysisResponse;
@@ -11,10 +10,8 @@ import static com.fabbitinc.server.presentation.part.controller.PartResponseMapp
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartLookupResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartRevisionLookupResponse;
 
-import com.fabbitinc.server.application.part.query.PartChangeHistoryQuery;
 import com.fabbitinc.server.application.part.query.PartImpactAnalysisQuery;
 import com.fabbitinc.server.application.part.query.PartQuery;
-import com.fabbitinc.server.application.part.query.condition.PartChangeHistoryCondition;
 import com.fabbitinc.server.application.part.query.condition.PartDetailCondition;
 import com.fabbitinc.server.application.part.query.condition.PartExportCondition;
 import com.fabbitinc.server.application.part.query.condition.PartImpactAnalysisCondition;
@@ -32,7 +29,6 @@ import com.fabbitinc.server.presentation.part.request.CreatePartRequest;
 import com.fabbitinc.server.presentation.part.response.CategoryLookupResponse;
 import com.fabbitinc.server.presentation.part.response.CategoryStatsResponse;
 import com.fabbitinc.server.presentation.part.response.ChangePartLifecycleStateResponse;
-import com.fabbitinc.server.presentation.part.response.PartChangeHistoryResponse;
 import com.fabbitinc.server.presentation.part.response.PartDetailResponse;
 import com.fabbitinc.server.presentation.part.response.PartFilterOptionsResponse;
 import com.fabbitinc.server.presentation.part.response.PartImpactAnalysisResponse;
@@ -85,7 +81,6 @@ public class PartController {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     private final PartQuery partQuery;
-    private final PartChangeHistoryQuery partChangeHistoryQuery;
     private final PartImpactAnalysisQuery partImpactAnalysisQuery;
     private final CreatePartUseCase createPartUseCase;
     private final ChangePartLifecycleStateUseCase changePartLifecycleStateUseCase;
@@ -268,19 +263,4 @@ public class PartController {
         );
     }
 
-    @Operation(operationId = "partGetChangeHistory", summary = "부품 변경 이력을 조회합니다", description = "특정 부품과 연결된 이슈, 설계변경 릴리즈, 리비전 이력을 시간순으로 조회합니다")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "변경 이력 조회 성공"),
-            @ApiResponse(responseCode = "404", description = "부품을 찾을 수 없음")
-    })
-    @GetMapping("/{partId}/change-history")
-    public PartChangeHistoryResponse getChangeHistory(
-            @PathVariable UUID partId,
-            @RequestParam(value = "offset", defaultValue = "0")
-            @Min(value = 0, message = "offset은 0 이상이어야 합니다") int offset,
-            @RequestParam(value = "limit", defaultValue = "20")
-            @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 100, message = "limit은 100 이하여야 합니다") int limit
-    ) {
-        return toPartChangeHistoryResponse(partChangeHistoryQuery.get(new PartChangeHistoryCondition(partId, offset, limit)));
-    }
 }

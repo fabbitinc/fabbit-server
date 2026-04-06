@@ -17,6 +17,10 @@ public record PartRevisionHistoryResult(
             Instant releasedAt,
             PartUserSummaryResult releasedBy,
             String releaseReason,
+            PartRevisionReleaseWorkflowType releaseWorkflowType,
+            UUID releaseSourceId,
+            Integer releaseSourceNumber,
+            String releaseSourceTitle,
             PartRevisionDiffSummaryResult summary,
             List<Draft> drafts
     ) {
@@ -28,6 +32,7 @@ public record PartRevisionHistoryResult(
             PartRevisionStatus status,
             Instant createdAt,
             PartUserSummaryResult createdBy,
+            PartRevisionCreationSourceType creationSourceType,
             Instant completedAt,
             PartUserSummaryResult completedBy,
             String releasedRevisionCode,
