@@ -199,9 +199,13 @@ public class PartQuery {
 
         PathBuilder<PartRevision> revision = new PathBuilder<>(PartRevision.class, "revision");
 
-        BooleanBuilder predicate = new BooleanBuilder()
-                .and(revision.getEnum("status", PartRevisionStatus.class).eq(PartRevisionStatus.DRAFT))
-                .and(revision.get("createdBy", UUID.class).eq(actorId));
+        BooleanBuilder predicate = new BooleanBuilder();
+        if (condition.status() != null) {
+            predicate.and(revision.getEnum("status", PartRevisionStatus.class).eq(condition.status()));
+        }
+        if (condition.mineOnly()) {
+            predicate.and(revision.get("createdBy", UUID.class).eq(actorId));
+        }
 
         if (condition.search() != null && !condition.search().isBlank()) {
             String keyword = condition.search().trim();

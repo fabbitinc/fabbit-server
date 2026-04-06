@@ -26,6 +26,7 @@ import com.fabbitinc.server.application.part.usecase.command.CreatePartCommand;
 import com.fabbitinc.server.application.part.usecase.result.CreatePartResult;
 import com.fabbitinc.server.presentation.part.request.ChangePartLifecycleStateRequest;
 import com.fabbitinc.server.presentation.part.request.CreatePartRequest;
+import com.fabbitinc.server.presentation.part.request.PartRevisionLookupStatusRequest;
 import com.fabbitinc.server.presentation.part.response.CategoryLookupResponse;
 import com.fabbitinc.server.presentation.part.response.CategoryStatsResponse;
 import com.fabbitinc.server.presentation.part.response.ChangePartLifecycleStateResponse;
@@ -120,14 +121,18 @@ public class PartController {
         return toPartLookupResponse(partQuery.lookup(new PartLookupCondition(search, limit)));
     }
 
-    @Operation(operationId = "partLookupRevisions", summary = "변경관리 연결 가능한 리비전 목록을 조회합니다", description = "현재 사용자가 만든 변경관리 연결 가능한 DRAFT 리비전 목록을 조회합니다")
+    @Operation(operationId = "partLookupRevisions", summary = "리비전 lookup 목록을 조회합니다", description = "상태와 작성자 필터를 적용해 리비전 lookup 목록을 조회합니다. 기본값은 status=DRAFT, mine_only=true 입니다")
     @GetMapping("/revisions/lookup")
     public PartRevisionLookupResponse lookupRevisions(
             @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "status", defaultValue = "DRAFT") PartRevisionLookupStatusRequest status,
+            @RequestParam(value = "mine_only", defaultValue = "true") boolean mineOnly,
             @RequestParam(value = "limit", defaultValue = "10")
             @Min(value = 1, message = "limit은 1 이상이어야 합니다") @Max(value = 50, message = "limit은 50 이하여야 합니다") int limit
     ) {
-        return toPartRevisionLookupResponse(partQuery.lookupRevisions(new PartRevisionLookupCondition(search, limit)));
+        return toPartRevisionLookupResponse(partQuery.lookupRevisions(
+                new PartRevisionLookupCondition(search, limit, status.toDomainStatus(), mineOnly)
+        ));
     }
 
     @Operation(operationId = "partExport", summary = "필터링된 Part 목록을 Excel 파일로 내보냅니다", description = "필터링된 Part 목록을 Excel(.xlsx) 파일로 내보냅니다")
