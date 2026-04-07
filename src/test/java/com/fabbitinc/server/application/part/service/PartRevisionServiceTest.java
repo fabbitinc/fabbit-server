@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeRevisionLockApi;
 import com.fabbitinc.server.application.part.service.input.PartRevisionDecisionInput;
 import com.fabbitinc.server.application.part.service.input.UpdatePartRevisionInput;
 import com.fabbitinc.server.application.property.api.PropertyApi;
@@ -35,6 +36,9 @@ class PartRevisionServiceTest {
     private PartRevisionRepository partRevisionRepository;
 
     @Mock
+    private EngineeringChangeRevisionLockApi engineeringChangeRevisionLockApi;
+
+    @Mock
     private PropertyApi propertyApi;
 
     @Test
@@ -49,6 +53,7 @@ class PartRevisionServiceTest {
         PartRevisionService service = new PartRevisionService(
                 partRepository,
                 partRevisionRepository,
+                engineeringChangeRevisionLockApi,
                 propertyApi,
                 new ObjectMapper()
         );
@@ -77,6 +82,7 @@ class PartRevisionServiceTest {
         PartRevisionService service = new PartRevisionService(
                 partRepository,
                 partRevisionRepository,
+                engineeringChangeRevisionLockApi,
                 propertyApi,
                 new ObjectMapper()
         );
@@ -102,5 +108,47 @@ class PartRevisionServiceTest {
         );
 
         assertEquals(ErrorCode.VALIDATION_ERROR, ex.getErrorCode());
+    }
+
+    @Test
+    void updateDraft_진행중EC에연결된_revision이면_conflict를_던진다() {
+        Part part = Part.create("AES-100");
+        PartRevision draft = PartRevision.createInitialDraft(part, "초안", null);
+
+        when(partRevisionRepository.findByIdAndPartId(draft.getId(), part.getId()))
+                .thenReturn(Optional.of(draft));
+        org.mockito.Mockito.doThrow(new AppException(ErrorCode.CONFLICT, "잠금"))
+                .when(engineeringChangeRevisionLockApi)
+                .assertRevisionEditable(draft.getId());
+
+        PartRevisionService service = new PartRevisionService(
+                partRepository,
+                partRevisionRepository,
+                engineeringChangeRevisionLockApi,
+                propertyApi,
+                new ObjectMapper()
+        );
+
+        AppException ex = assertThrows(
+                AppException.class,
+                () -> service.updateDraft(new UpdatePartRevisionInput(
+                        part.getId(),
+                        draft.getId(),
+                        "바뀐 이름",
+                        true,
+                        null,
+                        false,
+                        null,
+                        false,
+                        null,
+                        false,
+                        null,
+                        false,
+                        Map.of(),
+                        false
+                ), UUID.randomUUID())
+        );
+
+        assertEquals(ErrorCode.CONFLICT, ex.getErrorCode());
     }
 }

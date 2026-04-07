@@ -6,6 +6,7 @@ import java.util.UUID;
 @Schema(description = "부품 배지")
 public record PartBadgeResponse(
         UUID id,
+        UUID revisionId,
         String partNumber,
         String name
 ) {

@@ -21,6 +21,8 @@ public record CreateIssueRequest(
         List<UUID> teamAssigneeIds,
         @Schema(description = "라벨 ID 목록")
         List<UUID> labelIds,
+        @Schema(description = "연결 변경관리 ID 목록")
+        List<UUID> linkedEngineeringChangeIds,
         @Schema(description = "첨부 파일 ID 목록(최대 20)")
         @Size(max = 20) List<UUID> fileIds
 ) {
@@ -29,6 +31,7 @@ public record CreateIssueRequest(
         assigneeUserIds = assigneeUserIds == null ? List.of() : List.copyOf(assigneeUserIds);
         teamAssigneeIds = teamAssigneeIds == null ? List.of() : List.copyOf(teamAssigneeIds);
         labelIds = labelIds == null ? List.of() : List.copyOf(labelIds);
+        linkedEngineeringChangeIds = linkedEngineeringChangeIds == null ? List.of() : List.copyOf(linkedEngineeringChangeIds);
         fileIds = fileIds == null ? List.of() : List.copyOf(fileIds);
     }
 }

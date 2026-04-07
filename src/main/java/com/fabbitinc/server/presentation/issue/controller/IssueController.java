@@ -222,6 +222,7 @@ public class IssueController {
                         request.assigneeUserIds(),
                         request.teamAssigneeIds(),
                         request.labelIds(),
+                        request.linkedEngineeringChangeIds(),
                         request.fileIds()
                 )
         );
@@ -623,7 +624,7 @@ public class IssueController {
     }
 
     private PartBadgeResponse toPartBadgeResponse(PartBadgeResult result) {
-        return new PartBadgeResponse(result.id(), result.partNumber(), result.name());
+        return new PartBadgeResponse(result.id(), result.revisionId(), result.partNumber(), result.name());
     }
 
     private FileItemResponse toFileItemResponse(FileItemResult result) {

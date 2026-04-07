@@ -109,7 +109,7 @@ public class ProjectIssueController {
     }
 
     private PartBadgeResponse toPartBadgeResponse(PartBadgeResult result) {
-        return new PartBadgeResponse(result.id(), result.partNumber(), result.name());
+        return new PartBadgeResponse(result.id(), result.revisionId(), result.partNumber(), result.name());
     }
 
     private FileItemResponse toFileItemResponse(FileItemResult result) {

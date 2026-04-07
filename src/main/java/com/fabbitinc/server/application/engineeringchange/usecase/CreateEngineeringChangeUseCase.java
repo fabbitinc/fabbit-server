@@ -32,15 +32,23 @@ public class CreateEngineeringChangeUseCase {
 
     public CreateEngineeringChangeResult execute(CreateEngineeringChangeCommand command) {
         AuthContext auth = currentAuthProvider.getCurrentAuth();
+        List<UUID> linkedIssueIds = resolveLinkedIssueIds(command.sourceIssueId(), command.linkedIssueIds());
 
         EngineeringChange engineeringChange =
-                engineeringChangeService.createEngineeringChange(auth.userId(), command.title(), command.body(), command.sourceIssueId());
+                engineeringChangeService.createEngineeringChange(
+                        auth.userId(),
+                        command.title(),
+                        command.body(),
+                        command.sourceIssueId() != null
+                                ? command.sourceIssueId()
+                                : linkedIssueIds.isEmpty() ? null : linkedIssueIds.getFirst()
+                );
 
-        if (command.sourceIssueId() != null) {
+        if (!linkedIssueIds.isEmpty()) {
             engineeringChangeService.syncIssues(
                     auth.userId(),
                     engineeringChange.getId(),
-                    java.util.List.of(command.sourceIssueId()),
+                    linkedIssueIds,
                     false
             );
         }
@@ -99,12 +107,14 @@ public class CreateEngineeringChangeUseCase {
             String title,
             JsonNode body,
             UUID sourceIssueId,
+            List<UUID> linkedIssueIds,
             List<AffectedItemTarget> affectedItems,
             List<UUID> labelIds,
             List<UUID> fileIds,
             List<StageTarget> stages
     ) {
         public CreateEngineeringChangeCommand {
+            linkedIssueIds = linkedIssueIds == null ? List.of() : List.copyOf(linkedIssueIds);
             affectedItems = affectedItems == null ? List.of() : List.copyOf(affectedItems);
             labelIds = labelIds == null ? List.of() : List.copyOf(labelIds);
             fileIds = fileIds == null ? List.of() : List.copyOf(fileIds);
@@ -139,5 +149,16 @@ public class CreateEngineeringChangeUseCase {
     }
 
     public record CreateEngineeringChangeResult(UUID engineeringChangeId) {
+    }
+
+    private List<UUID> resolveLinkedIssueIds(UUID sourceIssueId, List<UUID> linkedIssueIds) {
+        java.util.LinkedHashSet<UUID> resolved = new java.util.LinkedHashSet<>();
+        if (sourceIssueId != null) {
+            resolved.add(sourceIssueId);
+        }
+        if (linkedIssueIds != null) {
+            resolved.addAll(linkedIssueIds);
+        }
+        return List.copyOf(resolved);
     }
 }

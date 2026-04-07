@@ -7,8 +7,10 @@ import com.fabbitinc.server.application.common.exception.ErrorCode;
 import com.fabbitinc.server.application.engineeringchange.service.EngineeringChangeService;
 import com.fabbitinc.server.application.part.service.PartRevisionWorkflowPolicyService;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChange;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItem;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItemType;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeState;
+import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeAffectedItemRepository;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartRevision;
@@ -30,6 +32,7 @@ public class SyncEngineeringChangeAffectedItemsUseCase {
 
     private final CurrentAuthProvider currentAuthProvider;
     private final EngineeringChangeService engineeringChangeService;
+    private final EngineeringChangeRepository engineeringChangeRepository;
     private final EngineeringChangeAffectedItemRepository affectedItemRepository;
     private final PartRevisionRepository partRevisionRepository;
     private final PartRepository partRepository;
@@ -54,7 +57,7 @@ public class SyncEngineeringChangeAffectedItemsUseCase {
 
         // 새 affected items 추가
         for (Item item : command.items()) {
-            validateItem(item);
+            validateItem(engineeringChange, item);
             String actionDetail = buildActionDetail(item);
             engineeringChange.addAffectedItem(item.itemType(), item.targetId(), actionDetail);
         }
@@ -62,7 +65,7 @@ public class SyncEngineeringChangeAffectedItemsUseCase {
         return new SyncResult(command.items().size());
     }
 
-    private void validateItem(Item item) {
+    private void validateItem(EngineeringChange engineeringChange, Item item) {
         if (item.itemType() == EngineeringChangeAffectedItemType.REVISION_RELEASE) {
             PartRevision revision = partRevisionRepository.findById(item.targetId())
                     .filter(rev -> rev.getStatus() == PartRevisionStatus.DRAFT)
@@ -70,6 +73,7 @@ public class SyncEngineeringChangeAffectedItemsUseCase {
                             ErrorCode.NOT_FOUND,
                             "DRAFT 상태의 PartRevision '%s'을(를) 찾을 수 없습니다".formatted(item.targetId())
                     ));
+            assertNotLinkedToAnotherActiveEngineeringChange(engineeringChange.getId(), revision.getId());
         } else if (item.itemType() == EngineeringChangeAffectedItemType.LIFECYCLE_CHANGE) {
             partRepository.findById(item.targetId())
                     .orElseThrow(() -> new AppException(
@@ -80,6 +84,36 @@ public class SyncEngineeringChangeAffectedItemsUseCase {
                 throw new AppException(ErrorCode.VALIDATION_ERROR, "lifecycle 변경 시 targetState는 필수입니다");
             }
         }
+    }
+
+    private void assertNotLinkedToAnotherActiveEngineeringChange(UUID currentEngineeringChangeId, UUID revisionId) {
+        List<EngineeringChangeAffectedItem> links = affectedItemRepository.findByTargetIdAndItemTypeOrderByCreatedAtAsc(
+                revisionId,
+                EngineeringChangeAffectedItemType.REVISION_RELEASE
+        );
+
+        List<EngineeringChangeState> activeStates = List.of(
+                EngineeringChangeState.DRAFT,
+                EngineeringChangeState.REVIEW_PENDING,
+                EngineeringChangeState.APPROVAL_PENDING,
+                EngineeringChangeState.RELEASE_PENDING
+        );
+
+        engineeringChangeRepository.findAllById(
+                        links.stream()
+                                .map(EngineeringChangeAffectedItem::getEngineeringChangeId)
+                                .filter(ecId -> !ecId.equals(currentEngineeringChangeId))
+                                .distinct()
+                                .toList()
+                ).stream()
+                .filter(ec -> activeStates.contains(ec.getState()))
+                .findFirst()
+                .ifPresent(ec -> {
+                    throw new AppException(
+                            ErrorCode.CONFLICT,
+                            "해당 draft revision은 이미 다른 진행중 EC에 연결되어 있습니다: EC-%d".formatted(ec.getNumber())
+                    );
+                });
     }
 
     private String buildActionDetail(Item item) {

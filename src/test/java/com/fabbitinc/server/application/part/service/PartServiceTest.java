@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeRevisionLockApi;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.part.service.input.CreatePartInput;
 import com.fabbitinc.server.application.property.api.PropertyApi;
@@ -40,6 +41,7 @@ class PartServiceTest {
   @Mock private PartRepository partRepository;
   @Mock private PartRevisionRepository partRevisionRepository;
   @Mock private FileRepository fileRepository;
+  @Mock private EngineeringChangeRevisionLockApi engineeringChangeRevisionLockApi;
   @Mock private OrganizationApi organizationApi;
   @Mock private PropertyApi propertyApi;
   @Mock private ObjectMapper objectMapper;
@@ -267,6 +269,25 @@ class PartServiceTest {
   }
 
   @Test
+  void attachFiles_진행중EC에연결된_revision이면_conflict를_던진다() {
+    Part part = Part.create("P-100");
+    PartRevision revision = PartRevision.createInitialDraft(part, "Part", null);
+    when(partRevisionRepository.findByIdAndPartId(revision.getId(), part.getId())).thenReturn(Optional.of(revision));
+    org.mockito.Mockito.doThrow(new AppException(ErrorCode.CONFLICT, "잠금"))
+        .when(engineeringChangeRevisionLockApi)
+        .assertRevisionEditable(revision.getId());
+
+    PartService service = createService();
+
+    AppException ex =
+        assertThrows(
+            AppException.class,
+            () -> service.attachFiles(part.getId(), revision.getId(), List.of(UUID.randomUUID())));
+
+    assertEquals(ErrorCode.CONFLICT, ex.getErrorCode());
+  }
+
+  @Test
   void detachFile_파일_크기만큼_스토리지를_반환한다() {
     Part part = Part.create("P-100");
     PartRevision revision = PartRevision.createInitialDraft(part, "Part", null);
@@ -302,6 +323,7 @@ class PartServiceTest {
         partRepository,
         partRevisionRepository,
         fileRepository,
+        engineeringChangeRevisionLockApi,
         organizationApi,
         propertyApi,
         objectMapper,

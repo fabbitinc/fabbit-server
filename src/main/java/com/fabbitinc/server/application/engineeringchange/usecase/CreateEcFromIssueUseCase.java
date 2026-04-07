@@ -79,6 +79,7 @@ public class CreateEcFromIssueUseCase {
                         title,
                         body,
                         command.issueId(),
+                        List.of(command.issueId()),
                         affectedItems,
                         List.of(),
                         List.of(),

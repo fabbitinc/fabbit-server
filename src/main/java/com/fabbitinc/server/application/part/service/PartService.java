@@ -2,6 +2,7 @@ package com.fabbitinc.server.application.part.service;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeRevisionLockApi;
 import com.fabbitinc.server.application.organization.api.OrganizationApi;
 import com.fabbitinc.server.application.part.service.input.CreatePartInput;
 import com.fabbitinc.server.application.property.api.PropertyApi;
@@ -34,6 +35,7 @@ public class PartService {
     private final PartRepository partRepository;
     private final PartRevisionRepository partRevisionRepository;
     private final FileRepository fileRepository;
+    private final EngineeringChangeRevisionLockApi engineeringChangeRevisionLockApi;
     private final OrganizationApi organizationApi;
     private final PropertyApi propertyApi;
     private final ObjectMapper objectMapper;
@@ -84,7 +86,8 @@ public class PartService {
     }
 
     public List<File> attachFiles(UUID partId, UUID revisionId, List<UUID> fileIds) {
-        getRevisionOrThrow(partId, revisionId);
+        PartRevision revision = getRevisionOrThrow(partId, revisionId);
+        engineeringChangeRevisionLockApi.assertRevisionEditable(revision.getId());
 
         List<File> files = fileRepository.findByIdIn(fileIds);
         Set<UUID> foundIds = files.stream().map(File::getId).collect(java.util.stream.Collectors.toSet());
@@ -125,7 +128,8 @@ public class PartService {
     }
 
     public void detachFile(UUID partId, UUID revisionId, UUID fileId, UUID actorId) {
-        getRevisionOrThrow(partId, revisionId);
+        PartRevision revision = getRevisionOrThrow(partId, revisionId);
+        engineeringChangeRevisionLockApi.assertRevisionEditable(revision.getId());
 
         File file = fileRepository.findByIdAndOwnerTypeAndOwnerIdAndDeletedAtIsNull(fileId, "part_revision", revisionId)
                 .orElseThrow(() -> new AppException(

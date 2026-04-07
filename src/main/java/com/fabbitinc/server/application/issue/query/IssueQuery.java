@@ -480,7 +480,7 @@ public class IssueQuery {
             }
             PartSnapshot part = enrichment.partMap().get(link.getPartId());
             if (part != null) {
-                result.add(new PartBadgeResult(part.id(), part.partNumber(), part.name()));
+                result.add(new PartBadgeResult(part.id(), part.revisionId(), part.partNumber(), part.name()));
             }
         }
         return result;

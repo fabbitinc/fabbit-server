@@ -16,6 +16,8 @@ public record CreateEngineeringChangeRequest(
         JsonNode body,
         @Schema(description = "연결할 원본 이슈 ID")
         UUID sourceIssueId,
+        @Schema(description = "연결 이슈 ID 목록")
+        List<UUID> linkedIssueIds,
         @Schema(description = "영향 항목 목록")
         @Valid List<EngineeringChangeAffectedItemTargetRequest> affectedItems,
         @Schema(description = "라벨 ID 목록")
@@ -26,6 +28,7 @@ public record CreateEngineeringChangeRequest(
         @Valid List<EngineeringChangeStepRequest> steps
 ) {
     public CreateEngineeringChangeRequest {
+        linkedIssueIds = linkedIssueIds == null ? List.of() : List.copyOf(linkedIssueIds);
         affectedItems = affectedItems == null ? List.of() : List.copyOf(affectedItems);
         labelIds = labelIds == null ? List.of() : List.copyOf(labelIds);
         fileIds = fileIds == null ? List.of() : List.copyOf(fileIds);

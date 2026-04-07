@@ -162,6 +162,9 @@ public class PopulateWhereUsedAffectedItemsUseCase {
             }
 
             Part parentPart = partsById.get(parentRevision.getPartId());
+            if (parentPart == null || !parentRevisionId.equals(parentPart.getCurrentReleasedRevisionId())) {
+                continue;
+            }
 
             // EC에 WHERE_USED_IMPACT 영향 항목 추가
             engineeringChange.addAffectedItem(

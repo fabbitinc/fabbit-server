@@ -448,7 +448,8 @@ public class EngineeringChangeQuery {
         String name = null;
         String status = null;
         UUID partId = null;
-        if (item.getItemType() == EngineeringChangeAffectedItemType.REVISION_RELEASE) {
+        if (item.getItemType() == EngineeringChangeAffectedItemType.REVISION_RELEASE
+                || item.getItemType() == EngineeringChangeAffectedItemType.WHERE_USED_IMPACT) {
             PartRevision revision = partRevisionRepository.findById(item.getTargetId()).orElse(null);
             if (revision != null) {
                 partNumber = revision.getPartNumber();

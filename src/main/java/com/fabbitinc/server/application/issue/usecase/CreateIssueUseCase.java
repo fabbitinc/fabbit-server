@@ -38,6 +38,14 @@ public class CreateIssueUseCase {
         if (!command.labelIds().isEmpty()) {
             issueService.syncLabels(auth.userId(), issue.getId(), command.labelIds(), false);
         }
+        if (!command.linkedEngineeringChangeIds().isEmpty()) {
+            issueService.syncLinkedEngineeringChanges(
+                    auth.userId(),
+                    issue.getId(),
+                    command.linkedEngineeringChangeIds(),
+                    false
+            );
+        }
         if (!command.fileIds().isEmpty()) {
             issueService.attachFiles(
                     auth.userId(),
@@ -57,6 +65,7 @@ public class CreateIssueUseCase {
             List<UUID> assigneeUserIds,
             List<UUID> teamAssigneeIds,
             List<UUID> labelIds,
+            List<UUID> linkedEngineeringChangeIds,
             List<UUID> fileIds
     ) {
         public CreateIssueCommand {
@@ -64,6 +73,7 @@ public class CreateIssueUseCase {
             assigneeUserIds = assigneeUserIds == null ? List.of() : List.copyOf(assigneeUserIds);
             teamAssigneeIds = teamAssigneeIds == null ? List.of() : List.copyOf(teamAssigneeIds);
             labelIds = labelIds == null ? List.of() : List.copyOf(labelIds);
+            linkedEngineeringChangeIds = linkedEngineeringChangeIds == null ? List.of() : List.copyOf(linkedEngineeringChangeIds);
             fileIds = fileIds == null ? List.of() : List.copyOf(fileIds);
         }
     }

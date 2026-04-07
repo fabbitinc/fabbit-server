@@ -83,6 +83,7 @@ public class ChatActionService {
                         List.of(),
                         List.of(),
                         List.of(),
+                        List.of(),
                         List.of()
                 )
         );

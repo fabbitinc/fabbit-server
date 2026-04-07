@@ -209,6 +209,7 @@ public class EngineeringChangeController {
                         request.title(),
                         request.body(),
                         request.sourceIssueId(),
+                        request.linkedIssueIds(),
                         request.affectedItems().stream()
                                 .map(item -> new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.AffectedItemTarget(
                                         item.itemType(),

@@ -2,6 +2,7 @@ package com.fabbitinc.server.application.part.service;
 
 import com.fabbitinc.server.application.common.exception.AppException;
 import com.fabbitinc.server.application.common.exception.ErrorCode;
+import com.fabbitinc.server.application.engineeringchange.api.EngineeringChangeRevisionLockApi;
 import com.fabbitinc.server.application.part.service.input.CreatePartDraftInput;
 import com.fabbitinc.server.application.part.service.input.PartRevisionDecisionInput;
 import com.fabbitinc.server.application.part.service.input.UpdatePartRevisionInput;
@@ -34,6 +35,7 @@ public class PartRevisionService {
 
     private final PartRepository partRepository;
     private final PartRevisionRepository partRevisionRepository;
+    private final EngineeringChangeRevisionLockApi engineeringChangeRevisionLockApi;
     private final PropertyApi propertyApi;
     private final ObjectMapper objectMapper;
 
@@ -62,7 +64,7 @@ public class PartRevisionService {
 
     public PartRevision updateDraft(UpdatePartRevisionInput input, UUID actorId) {
         try {
-            PartRevision revision = getRequiredDraft(input.partId(), input.revisionId());
+            PartRevision revision = getRequiredEditableRevision(input.partId(), input.revisionId());
             PartRevisionDraftChanges changes = toDraftChanges(input);
             if (!changes.hasAnyChange()) {
                 return revision;
@@ -167,6 +169,7 @@ public class PartRevisionService {
     public PartRevision getRequiredEditableRevision(UUID partId, UUID revisionId) {
         PartRevision revision = getRequiredRevision(partId, revisionId);
         revision.assertDraftEditable();
+        engineeringChangeRevisionLockApi.assertRevisionEditable(revision.getId());
         return revision;
     }
 

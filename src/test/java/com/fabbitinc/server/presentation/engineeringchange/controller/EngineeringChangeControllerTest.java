@@ -100,6 +100,7 @@ class EngineeringChangeControllerTest {
                 List.of(),
                 List.of(),
                 List.of(),
+                List.of(),
                 List.of()
         );
         EngineeringChangeDetailResult detail = new EngineeringChangeDetailResult(

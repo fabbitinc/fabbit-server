@@ -13,6 +13,11 @@ public interface EngineeringChangeAffectedItemRepository extends JpaRepository<E
     List<EngineeringChangeAffectedItem> findByEngineeringChangeIdAndItemTypeOrderByCreatedAtAsc(
             UUID engineeringChangeId, EngineeringChangeAffectedItemType itemType);
 
+    List<EngineeringChangeAffectedItem> findByTargetIdAndItemTypeOrderByCreatedAtAsc(
+            UUID targetId,
+            EngineeringChangeAffectedItemType itemType
+    );
+
     boolean existsByTargetIdAndItemType(UUID targetId, EngineeringChangeAffectedItemType itemType);
 
     void deleteByEngineeringChangeId(UUID engineeringChangeId);
