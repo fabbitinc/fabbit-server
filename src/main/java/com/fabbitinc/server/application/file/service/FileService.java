@@ -73,8 +73,7 @@ public class FileService {
 
         String uploadUrl = storagePort.generateUploadPresignedUrl(
                 file.getFileKey(),
-                file.getContentType(),
-                file.getFileSize()
+                file.getContentType()
         );
         return new CreateFileOutput(file.getId(), uploadUrl, file.getFileKey());
     }
@@ -98,8 +97,7 @@ public class FileService {
 
             String uploadUrl = storagePort.generateUploadPresignedUrl(
                     file.getFileKey(),
-                    file.getContentType(),
-                    file.getFileSize()
+                    file.getContentType()
             );
             items.add(new CreateFileOutput(file.getId(), uploadUrl, file.getFileKey()));
         }

@@ -5,7 +5,7 @@ import java.util.List;
 
 public interface StoragePort {
 
-    String generateUploadPresignedUrl(String fileKey, String contentType, long contentLength);
+    String generateUploadPresignedUrl(String fileKey, String contentType);
 
     String generateGetPresignedUrl(String fileKey, Duration expireDuration);
 

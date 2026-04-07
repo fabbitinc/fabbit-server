@@ -63,13 +63,12 @@ public class S3StorageAdapter implements StoragePort {
     }
 
     @Override
-    public String generateUploadPresignedUrl(String fileKey, String contentType, long contentLength) {
+    public String generateUploadPresignedUrl(String fileKey, String contentType) {
         try {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(appProperties.storageBucket())
                     .key(fileKey)
                     .contentType(contentType)
-                    .contentLength(contentLength)
                     .build();
 
             PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
