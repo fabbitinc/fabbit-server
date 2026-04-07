@@ -17,6 +17,7 @@ import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChange;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItem;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeComment;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeIssueLink;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeLabel;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeState;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStep;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepAssigneeType;
@@ -25,11 +26,14 @@ import com.fabbitinc.server.domain.engineeringchange.model.StepStage;
 import com.fabbitinc.server.domain.engineeringchange.model.StepStageCompletionPolicy;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeCommentRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeIssueLinkRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeLabelRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeStepRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.StepStageRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
+import com.fabbitinc.server.domain.label.model.Label;
+import com.fabbitinc.server.domain.label.repository.LabelRepository;
 import com.fabbitinc.server.domain.team.model.TeamMember;
 import com.fabbitinc.server.domain.team.repository.TeamMemberRepository;
 import com.fabbitinc.server.domain.team.repository.TeamRepository;
@@ -63,6 +67,8 @@ public class EngineeringChangeService {
     private static final ActivityAction ACTION_ISSUE_STATE_CHANGED = ActivityAction.ISSUE_STATE_CHANGED;
     private static final ActivityAction ACTION_ENGINEERING_CHANGE_STATE_CHANGED =
             ActivityAction.ENGINEERING_CHANGE_STATE_CHANGED;
+    private static final ActivityAction ACTION_LABEL_CHANGED =
+            ActivityAction.ENGINEERING_CHANGE_LABEL_CHANGED;
     private static final ActivityAction ACTION_ENGINEERING_CHANGE_STEP_CHANGED =
             ActivityAction.ENGINEERING_CHANGE_STEP_CHANGED;
     private static final ActivityAction ACTION_FILE_ATTACHED = ActivityAction.ENGINEERING_CHANGE_FILE_ATTACHED;
@@ -81,10 +87,12 @@ public class EngineeringChangeService {
     private final EngineeringChangeRepository engineeringChangeRepository;
     private final EngineeringChangeStepRepository engineeringChangeStepRepository;
     private final EngineeringChangeIssueLinkRepository engineeringChangeIssueRepository;
+    private final EngineeringChangeLabelRepository engineeringChangeLabelRepository;
     private final EngineeringChangeCommentRepository engineeringChangeCommentRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final TeamRepository teamRepository;
     private final UserRepository userRepository;
+    private final LabelRepository labelRepository;
     private final FileRepository fileRepository;
     private final ActivityRepository activityRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -385,6 +393,43 @@ public class EngineeringChangeService {
         return new DiffResult(toAdd, toRemove);
     }
 
+    public DiffResult syncLabels(UUID actorId, UUID engineeringChangeId, List<UUID> labelIds, boolean emitActivity) {
+        assertMetadataEditable(getEngineeringChangeByIdOrThrow(engineeringChangeId));
+        validateLabels(labelIds);
+
+        Set<UUID> current = engineeringChangeLabelRepository.findByEngineeringChangeId(engineeringChangeId).stream()
+                .map(EngineeringChangeLabel::getLabelId)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        Set<UUID> desired = new LinkedHashSet<>(labelIds);
+
+        Set<UUID> toAdd = new LinkedHashSet<>(desired);
+        toAdd.removeAll(current);
+
+        Set<UUID> toRemove = new LinkedHashSet<>(current);
+        toRemove.removeAll(desired);
+
+        if (!toRemove.isEmpty()) {
+            engineeringChangeLabelRepository.deleteByEngineeringChangeIdAndLabelIdIn(engineeringChangeId, toRemove);
+        }
+        if (!toAdd.isEmpty()) {
+            EngineeringChange engineeringChange = getEngineeringChangeByIdOrThrow(engineeringChangeId);
+            engineeringChangeLabelRepository.saveAll(toAdd.stream().map(engineeringChange::linkLabel).toList());
+        }
+
+        if (emitActivity && (!toAdd.isEmpty() || !toRemove.isEmpty())) {
+            Map<UUID, Label> labels = findLabels(Set.copyOf(union(toAdd, toRemove)));
+            addDiffActivity(
+                    engineeringChangeId,
+                    actorId,
+                    ACTION_LABEL_CHANGED,
+                    toAdd.stream().map(labelId -> toLabelRef(labelId, labels.get(labelId))).toList(),
+                    toRemove.stream().map(labelId -> toLabelRef(labelId, labels.get(labelId))).toList()
+            );
+        }
+
+        return new DiffResult(toAdd, toRemove);
+    }
+
     // ── Affected Item Activity ──
 
     public void recordAffectedItemDiffActivity(
@@ -590,6 +635,18 @@ public class EngineeringChangeService {
         }
         if (!teamRepository.existsById(assignee.assigneeId())) {
             throw new AppException(ErrorCode.NOT_FOUND, "단계 담당 팀을 찾을 수 없습니다");
+        }
+    }
+
+    private void validateLabels(Iterable<UUID> labelIds) {
+        Set<UUID> foundIds = new LinkedHashSet<>();
+        for (Label label : labelRepository.findAllById(labelIds)) {
+            foundIds.add(label.getId());
+        }
+        for (UUID labelId : labelIds) {
+            if (!foundIds.contains(labelId)) {
+                throw new AppException(ErrorCode.NOT_FOUND, "Label '" + labelId + "'을(를) 찾을 수 없습니다");
+            }
         }
     }
 
@@ -838,6 +895,15 @@ public class EngineeringChangeService {
         return ref;
     }
 
+    private Map<String, Object> toLabelRef(UUID labelId, Label label) {
+        Map<String, Object> ref = new LinkedHashMap<>();
+        ref.put("id", labelId.toString());
+        ref.put("type", "label");
+        ref.put("label", label == null ? "(삭제됨)" : label.getName());
+        ref.put("meta", Map.of("color", label == null ? "#888888" : label.getColor()));
+        return ref;
+    }
+
     private Map<String, Object> toEngineeringChangeRef(EngineeringChange engineeringChange) {
         Map<String, Object> ref = new LinkedHashMap<>();
         ref.put("id", engineeringChange.getId().toString());
@@ -857,6 +923,17 @@ public class EngineeringChangeService {
         meta.put("action_detail", item.getActionDetail());
         ref.put("meta", meta);
         return ref;
+    }
+
+    private Map<UUID, Label> findLabels(Set<UUID> labelIds) {
+        if (labelIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Label> labels = new HashMap<>();
+        for (Label label : labelRepository.findAllById(labelIds)) {
+            labels.put(label.getId(), label);
+        }
+        return labels;
     }
 
     private Map<String, Object> toFileRef(File file) {

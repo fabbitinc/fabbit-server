@@ -20,6 +20,7 @@ import com.fabbitinc.server.application.engineeringchange.usecase.DeleteEngineer
 import com.fabbitinc.server.application.engineeringchange.usecase.RejectEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.ReleaseEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SubmitEngineeringChangeUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangeLabelsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangeStepsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangeAffectedItemsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SyncIssuesUseCase;
@@ -28,8 +29,10 @@ import com.fabbitinc.server.application.engineeringchange.usecase.UpdateEngineer
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeState;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.CreateEngineeringChangeRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.EngineeringChangeStepRequest;
+import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncLabelsRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncEngineeringChangeStepsRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeResponse;
+import com.fabbitinc.server.application.workitem.usecase.result.SyncDiffResult;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepAssigneeType;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepType;
 import com.fabbitinc.server.domain.engineeringchange.model.StepStageCompletionPolicy;
@@ -67,6 +70,8 @@ class EngineeringChangeControllerTest {
     @Mock
     private SyncIssuesUseCase syncIssuesUseCase;
     @Mock
+    private SyncEngineeringChangeLabelsUseCase syncEngineeringChangeLabelsUseCase;
+    @Mock
     private SyncEngineeringChangeStepsUseCase syncEngineeringChangeStepsUseCase;
     @Mock
     private SyncEngineeringChangeAffectedItemsUseCase syncEngineeringChangeAffectedItemsUseCase;
@@ -94,6 +99,7 @@ class EngineeringChangeControllerTest {
                 UUID.randomUUID(),
                 List.of(),
                 List.of(),
+                List.of(),
                 List.of()
         );
         EngineeringChangeDetailResult detail = new EngineeringChangeDetailResult(
@@ -108,6 +114,7 @@ class EngineeringChangeControllerTest {
                 false,
                 null,
                 null,
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -149,6 +156,7 @@ class EngineeringChangeControllerTest {
                 List.of(),
                 List.of(),
                 List.of(),
+                List.of(),
                 0,
                 null,
                 null,
@@ -177,5 +185,16 @@ class EngineeringChangeControllerTest {
         assertEquals(engineeringChangeId, response.id());
         verify(syncEngineeringChangeStepsUseCase).execute(any());
         verify(engineeringChangeQuery).getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId));
+    }
+
+    @Test
+    void syncLabels_라벨목록을_usecase로전달한다() {
+        UUID engineeringChangeId = UUID.randomUUID();
+        SyncLabelsRequest request = new SyncLabelsRequest(List.of(UUID.randomUUID(), UUID.randomUUID()));
+        when(syncEngineeringChangeLabelsUseCase.execute(any())).thenReturn(new SyncDiffResult(1, 0));
+
+        engineeringChangeController.syncLabels(engineeringChangeId, request);
+
+        verify(syncEngineeringChangeLabelsUseCase).execute(any());
     }
 }

@@ -44,6 +44,10 @@ public class EngineeringChange extends AbstractActorAuditableEntity implements A
     public static final String CODE_ENGINEERING_CHANGE_TITLE_TOO_LONG = "ENGINEERING_CHANGE_TITLE_TOO_LONG";
     public static final String CODE_ENGINEERING_CHANGE_INVALID_STATE = "ENGINEERING_CHANGE_INVALID_STATE";
     public static final String CODE_ENGINEERING_CHANGE_NO_STAGES = "ENGINEERING_CHANGE_NO_STAGES";
+    public static final String CODE_ENGINEERING_CHANGE_RELEASE_STAGE_REQUIRED =
+            "ENGINEERING_CHANGE_RELEASE_STAGE_REQUIRED";
+    public static final String CODE_ENGINEERING_CHANGE_RELEASE_ASSIGNEE_REQUIRED =
+            "ENGINEERING_CHANGE_RELEASE_ASSIGNEE_REQUIRED";
 
     private static final int MAX_TITLE_LENGTH = 500;
 
@@ -78,6 +82,9 @@ public class EngineeringChange extends AbstractActorAuditableEntity implements A
 
     @OneToMany(mappedBy = "engineeringChange", fetch = FetchType.LAZY)
     private List<EngineeringChangeIssueLink> linkedIssues = new ArrayList<>();
+
+    @OneToMany(mappedBy = "engineeringChange", fetch = FetchType.LAZY)
+    private List<EngineeringChangeLabel> labels = new ArrayList<>();
 
     @OneToMany(mappedBy = "_engineeringChangeRelation", fetch = FetchType.LAZY,
             cascade = CascadeType.ALL, orphanRemoval = true)
@@ -238,6 +245,7 @@ public class EngineeringChange extends AbstractActorAuditableEntity implements A
             throw new DomainException(CODE_ENGINEERING_CHANGE_NO_STAGES,
                     "단계(Stage)가 최소 1개 이상 있어야 제출할 수 있습니다");
         }
+        assertReleaseStageConfigured();
         syncStateFromStages(requiredActorId);
     }
 
@@ -289,10 +297,20 @@ public class EngineeringChange extends AbstractActorAuditableEntity implements A
         return link;
     }
 
+    public EngineeringChangeLabel linkLabel(UUID labelId) {
+        EngineeringChangeLabel link = EngineeringChangeLabel.link(this, labelId);
+        labels.add(link);
+        return link;
+    }
+
     public EngineeringChangeComment writeComment(String body, UUID actorId) {
         EngineeringChangeComment comment = EngineeringChangeComment.write(this, body, actorId);
         comments.add(comment);
         return comment;
+    }
+
+    public List<EngineeringChangeLabel> getLabels() {
+        return List.copyOf(labels);
     }
 
     public List<EngineeringChangeComment> getComments() {
@@ -341,6 +359,28 @@ public class EngineeringChange extends AbstractActorAuditableEntity implements A
             case APPROVAL -> EngineeringChangeState.APPROVAL_PENDING;
             case RELEASE -> EngineeringChangeState.RELEASE_PENDING;
         };
+    }
+
+    private void assertReleaseStageConfigured() {
+        List<StepStage> releaseStages = stages.stream()
+                .filter(stage -> stage.getStepType() == EngineeringChangeStepType.RELEASE)
+                .toList();
+        if (releaseStages.isEmpty()) {
+            throw new DomainException(
+                    CODE_ENGINEERING_CHANGE_RELEASE_STAGE_REQUIRED,
+                    "제출 전 반영(RELEASE) 단계가 반드시 필요합니다"
+            );
+        }
+
+        boolean hasReleaseAssignee = releaseStages.stream()
+                .map(StepStage::getId)
+                .anyMatch(stageId -> steps.stream().anyMatch(step -> step.getStepStageId().equals(stageId)));
+        if (!hasReleaseAssignee) {
+            throw new DomainException(
+                    CODE_ENGINEERING_CHANGE_RELEASE_ASSIGNEE_REQUIRED,
+                    "반영(RELEASE) 단계에는 담당자가 최소 1명 이상 필요합니다"
+            );
+        }
     }
 
     private UUID requireActorId(UUID actorId) {

@@ -8,6 +8,7 @@ import com.fabbitinc.server.application.workitem.query.result.FileItemResult;
 import com.fabbitinc.server.application.workitem.query.result.TeamBadgeResult;
 import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeListResponse;
+import com.fabbitinc.server.presentation.engineeringchange.dto.response.LabelBadgeResponse;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeStepResponse;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeSummaryResponse;
 import com.fabbitinc.server.presentation.file.dto.response.FileItemResponse;
@@ -79,12 +80,17 @@ public class ProjectChangeController {
                 result.createdAt(),
                 result.updatedAt(),
                 toUserSummaryResponse(result.createdBy()),
+                result.labels().stream().map(this::toLabelBadgeResponse).toList(),
                 result.steps().stream().map(this::toEngineeringChangeStepResponse).toList(),
                 result.files().stream().map(this::toFileItemResponse).toList(),
                 result.commentsCount(),
                 result.releasedAt(),
                 toUserSummaryResponse(result.releasedBy())
         );
+    }
+
+    private LabelBadgeResponse toLabelBadgeResponse(com.fabbitinc.server.application.engineeringchange.query.result.LabelBadgeResult result) {
+        return new LabelBadgeResponse(result.id(), result.name(), result.color());
     }
 
     private UserSummaryResponse toUserSummaryResponse(UserSummaryResult result) {

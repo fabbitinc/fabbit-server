@@ -26,10 +26,13 @@ import com.fabbitinc.server.domain.engineeringchange.model.StepStage;
 import com.fabbitinc.server.domain.engineeringchange.model.StepStageCompletionPolicy;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeCommentRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeIssueLinkRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeLabelRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeStepRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.StepStageRepository;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
+import com.fabbitinc.server.domain.label.model.Label;
+import com.fabbitinc.server.domain.label.repository.LabelRepository;
 import com.fabbitinc.server.domain.team.model.Team;
 import com.fabbitinc.server.domain.team.model.TeamMember;
 import com.fabbitinc.server.domain.team.repository.TeamMemberRepository;
@@ -39,6 +42,7 @@ import com.fabbitinc.server.domain.user.repository.UserRepository;
 import com.fabbitinc.server.domain.workitem.repository.WorkItemNumberSequenceRepository;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,6 +70,8 @@ class EngineeringChangeServiceTest {
     @Mock
     private EngineeringChangeIssueLinkRepository engineeringChangeIssueRepository;
     @Mock
+    private EngineeringChangeLabelRepository engineeringChangeLabelRepository;
+    @Mock
     private EngineeringChangeCommentRepository engineeringChangeCommentRepository;
     @Mock
     private TeamMemberRepository teamMemberRepository;
@@ -73,6 +79,8 @@ class EngineeringChangeServiceTest {
     private TeamRepository teamRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private LabelRepository labelRepository;
     @Mock
     private FileRepository fileRepository;
     @Mock
@@ -104,10 +112,12 @@ class EngineeringChangeServiceTest {
                 engineeringChangeRepository,
                 engineeringChangeStepRepository,
                 engineeringChangeIssueRepository,
+                engineeringChangeLabelRepository,
                 engineeringChangeCommentRepository,
                 teamMemberRepository,
                 teamRepository,
                 userRepository,
+                labelRepository,
                 fileRepository,
                 activityRepository,
                 applicationEventPublisher,
@@ -144,6 +154,10 @@ class EngineeringChangeServiceTest {
                 EngineeringChangeStepType.APPROVAL, 2,
                 StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
         ec.addStep(approvalStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+        StepStage releaseStage = ec.addStage(
+                EngineeringChangeStepType.RELEASE, 3,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        ec.addStep(releaseStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
 
         ec.submit(actorId);
 
@@ -182,6 +196,10 @@ class EngineeringChangeServiceTest {
                 EngineeringChangeStepType.APPROVAL, 2,
                 StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
         ec.addStep(approvalStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+        StepStage releaseStage = ec.addStage(
+                EngineeringChangeStepType.RELEASE, 3,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        ec.addStep(releaseStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
 
         ec.submit(actorId);
 
@@ -213,6 +231,10 @@ class EngineeringChangeServiceTest {
                 StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
         EngineeringChangeStep approvalStep = ec.addStep(
                 approvalStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+        StepStage releaseStage = ec.addStage(
+                EngineeringChangeStepType.RELEASE, 3,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        ec.addStep(releaseStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
 
         ec.submit(actorId);
         assertEquals(EngineeringChangeState.APPROVAL_PENDING, ec.getState());
@@ -360,6 +382,42 @@ class EngineeringChangeServiceTest {
     }
 
     @Test
+    void syncLabels_추가와삭제를차등반영한다() {
+        UUID actorId = UUID.randomUUID();
+        UUID keepLabelId = UUID.randomUUID();
+        UUID removeLabelId = UUID.randomUUID();
+        UUID addLabelId = UUID.randomUUID();
+        EngineeringChange ec = EngineeringChange.create(203, "변경", "본문", null, actorId);
+        ec.linkLabel(keepLabelId);
+        ec.linkLabel(removeLabelId);
+        Label keepLabel = stubLabel(Label.create("유지", null, "#111111", actorId), keepLabelId);
+        Label addLabel = stubLabel(Label.create("추가", null, "#222222", actorId), addLabelId);
+        when(labelRepository.findAllById(List.of(keepLabelId, addLabelId))).thenReturn(List.of(keepLabel, addLabel));
+        when(engineeringChangeLabelRepository.findByEngineeringChangeId(ec.getId())).thenReturn(List.of(
+                ec.getLabels().get(0),
+                ec.getLabels().get(1)
+        ));
+        when(engineeringChangeRepository.findById(ec.getId())).thenReturn(Optional.of(ec));
+
+        EngineeringChangeService.DiffResult diff = engineeringChangeService.syncLabels(
+                actorId,
+                ec.getId(),
+                List.of(keepLabelId, addLabelId),
+                false
+        );
+
+        assertEquals(Set.of(addLabelId), diff.added());
+        assertEquals(Set.of(removeLabelId), diff.removed());
+        verify(engineeringChangeLabelRepository).deleteByEngineeringChangeIdAndLabelIdIn(ec.getId(), Set.of(removeLabelId));
+        verify(engineeringChangeLabelRepository).saveAll(any());
+    }
+
+    private Label stubLabel(Label source, UUID id) {
+        org.springframework.test.util.ReflectionTestUtils.setField(source, "id", id);
+        return source;
+    }
+
+    @Test
     void cancelEngineeringChange_후에는다시submit할수없다() {
         UUID actorId = UUID.randomUUID();
         EngineeringChange ec = EngineeringChange.create(105, "변경", "본문", null, actorId);
@@ -388,5 +446,22 @@ class EngineeringChangeServiceTest {
 
         assertEquals(ErrorCode.INVALID_STATE, exception.getErrorCode());
         assertEquals(EngineeringChangeState.CANCELED, ec.getState());
+    }
+
+    @Test
+    void submitEngineeringChange_release단계가없으면_invalidState를던진다() {
+        UUID actorId = UUID.randomUUID();
+        EngineeringChange ec = EngineeringChange.create(300, "변경", "본문", null, actorId);
+        StepStage reviewStage = ec.addStage(
+                EngineeringChangeStepType.REVIEW, 1,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        ec.addStep(reviewStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> engineeringChangeService.submitEngineeringChange(actorId, ec)
+        );
+
+        assertEquals(ErrorCode.INVALID_STATE, exception.getErrorCode());
     }
 }

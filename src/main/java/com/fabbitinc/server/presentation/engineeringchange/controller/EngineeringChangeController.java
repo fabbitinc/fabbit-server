@@ -28,6 +28,7 @@ import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineerin
 import com.fabbitinc.server.application.engineeringchange.usecase.ResubmitStepUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SubmitEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangeAffectedItemsUseCase;
+import com.fabbitinc.server.application.engineeringchange.usecase.SyncEngineeringChangeLabelsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.SyncIssuesUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.UpdateEngineeringChangeCommentUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.UpdateEngineeringChangeUseCase;
@@ -46,6 +47,7 @@ import com.fabbitinc.server.application.workitem.usecase.result.CommentUserSumma
 import com.fabbitinc.server.application.workitem.usecase.result.SyncDiffResult;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.CreateEcFromIssueRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.CreateEngineeringChangeRequest;
+import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncLabelsRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncAffectedItemsRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.StepActionRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.SyncEngineeringChangeStepsRequest;
@@ -55,6 +57,7 @@ import com.fabbitinc.server.presentation.engineeringchange.dto.response.Engineer
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeListResponse;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeLookupItemResponse;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeLookupResponse;
+import com.fabbitinc.server.presentation.engineeringchange.dto.response.LabelBadgeResponse;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeResponse;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeStepResponse;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeSummaryResponse;
@@ -127,6 +130,7 @@ public class EngineeringChangeController {
     private final CancelEngineeringChangeUseCase cancelEngineeringChangeUseCase;
     private final SyncIssuesUseCase syncIssuesUseCase;
     private final SyncEngineeringChangeStepsUseCase syncEngineeringChangeStepsUseCase;
+    private final SyncEngineeringChangeLabelsUseCase syncEngineeringChangeLabelsUseCase;
     private final SyncEngineeringChangeAffectedItemsUseCase syncEngineeringChangeAffectedItemsUseCase;
     private final CreateEngineeringChangeCommentUseCase createEngineeringChangeCommentUseCase;
     private final UpdateEngineeringChangeCommentUseCase updateEngineeringChangeCommentUseCase;
@@ -212,6 +216,7 @@ public class EngineeringChangeController {
                                         item.targetState()
                         ))
                                 .toList(),
+                        request.labelIds(),
                         request.fileIds(),
                         request.steps().stream()
                                 .map(step -> new CreateEngineeringChangeUseCase.CreateEngineeringChangeCommand.StageTarget(
@@ -495,6 +500,26 @@ public class EngineeringChangeController {
     }
 
     @Operation(
+            operationId = "engineeringChangeSyncLabels",
+            summary = "변경관리 라벨 목록을 동기화합니다",
+            description = "변경관리 라벨 목록을 동기화합니다"
+    )
+    @PutMapping("/{engineeringChangeId}/labels")
+    public SyncDiffResponse syncLabels(
+            @PathVariable UUID engineeringChangeId,
+            @Valid @RequestBody SyncLabelsRequest request
+    ) {
+        return toSyncDiffResponse(
+                syncEngineeringChangeLabelsUseCase.execute(
+                        new SyncEngineeringChangeLabelsUseCase.SyncEngineeringChangeLabelsCommand(
+                                engineeringChangeId,
+                                request.labelIds()
+                        )
+                )
+        );
+    }
+
+    @Operation(
             operationId = "engineeringChangeSyncAffectedItems",
             summary = "변경관리 영향 항목 목록을 동기화합니다",
             description = "변경관리 영향 항목 목록을 동기화합니다"
@@ -685,6 +710,7 @@ public class EngineeringChangeController {
                 result.createdAt(),
                 result.updatedAt(),
                 toUserSummaryResponse(result.createdBy()),
+                result.labels().stream().map(this::toLabelBadgeResponse).toList(),
                 result.steps().stream().map(this::toEngineeringChangeStepResponse).toList(),
                 result.files().stream().map(this::toFileItemResponse).toList(),
                 result.commentsCount(),
@@ -719,6 +745,7 @@ public class EngineeringChangeController {
                 result.isModified(),
                 toUserSummaryResponse(result.createdBy()),
                 toLinkedIssueSummaryResponse(result.sourceIssue()),
+                result.labels().stream().map(this::toLabelBadgeResponse).toList(),
                 result.steps().stream().map(this::toEngineeringChangeStepResponse).toList(),
                 result.affectedItems().stream().map(this::toAffectedItemResponse).toList(),
                 result.files().stream().map(this::toFileItemResponse).toList(),
@@ -733,6 +760,10 @@ public class EngineeringChangeController {
         return new TimelineResponse(
                 result.items().stream().map(this::toTimelineItemResponse).toList()
         );
+    }
+
+    private LabelBadgeResponse toLabelBadgeResponse(com.fabbitinc.server.application.engineeringchange.query.result.LabelBadgeResult result) {
+        return new LabelBadgeResponse(result.id(), result.name(), result.color());
     }
 
     private TimelineItemResponse toTimelineItemResponse(TimelineResult.Item result) {

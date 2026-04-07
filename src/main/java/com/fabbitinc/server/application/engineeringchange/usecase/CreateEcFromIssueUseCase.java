@@ -81,6 +81,7 @@ public class CreateEcFromIssueUseCase {
                         command.issueId(),
                         affectedItems,
                         List.of(),
+                        List.of(),
                         stages
                 )
         );

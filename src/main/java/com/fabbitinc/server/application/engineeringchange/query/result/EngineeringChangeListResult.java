@@ -25,6 +25,7 @@ public record EngineeringChangeListResult(
             Instant createdAt,
             Instant updatedAt,
             UserSummaryResult createdBy,
+            List<LabelBadgeResult> labels,
             List<EngineeringChangeStepResult> steps,
             List<FileItemResult> files,
             int commentsCount,

@@ -18,6 +18,7 @@ public record EngineeringChangeSummaryResponse(
         Instant createdAt,
         Instant updatedAt,
         UserSummaryResponse createdBy,
+        List<LabelBadgeResponse> labels,
         List<EngineeringChangeStepResponse> steps,
         List<FileItemResponse> files,
         int commentsCount,

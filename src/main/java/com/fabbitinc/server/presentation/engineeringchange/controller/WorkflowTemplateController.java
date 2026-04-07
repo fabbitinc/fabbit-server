@@ -16,6 +16,7 @@ import com.fabbitinc.server.application.workitem.query.result.UserSummaryResult;
 import com.fabbitinc.server.presentation.engineeringchange.dto.request.CreateWorkflowTemplateRequest;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeAffectedItemResponse;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeResponse;
+import com.fabbitinc.server.presentation.engineeringchange.dto.response.LabelBadgeResponse;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.EngineeringChangeStepResponse;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.LinkedIssueSummaryResponse;
 import com.fabbitinc.server.presentation.engineeringchange.dto.response.WorkflowTemplateResponse;
@@ -172,6 +173,7 @@ public class WorkflowTemplateController {
                 result.isModified(),
                 toUserSummaryResponse(result.createdBy()),
                 toLinkedIssueSummaryResponse(result.sourceIssue()),
+                result.labels().stream().map(this::toLabelBadgeResponse).toList(),
                 result.steps().stream().map(this::toEngineeringChangeStepResponse).toList(),
                 result.affectedItems().stream().map(this::toAffectedItemResponse).toList(),
                 result.files().stream().map(this::toFileItemResponse).toList(),
@@ -180,6 +182,10 @@ public class WorkflowTemplateController {
                 toUserSummaryResponse(result.releasedBy()),
                 result.linkedIssues().stream().map(this::toLinkedIssueSummaryResponse).toList()
         );
+    }
+
+    private LabelBadgeResponse toLabelBadgeResponse(com.fabbitinc.server.application.engineeringchange.query.result.LabelBadgeResult result) {
+        return new LabelBadgeResponse(result.id(), result.name(), result.color());
     }
 
     private EngineeringChangeStepResponse toEngineeringChangeStepResponse(EngineeringChangeStepResult result) {

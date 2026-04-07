@@ -20,6 +20,7 @@ public record EngineeringChangeDetailResult(
         boolean isModified,
         UserSummaryResult createdBy,
         LinkedIssueSummaryResult sourceIssue,
+        List<LabelBadgeResult> labels,
         List<EngineeringChangeStepResult> steps,
         List<EngineeringChangeAffectedItemResult> affectedItems,
         List<FileItemResult> files,

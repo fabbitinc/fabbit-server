@@ -22,6 +22,7 @@ public record EngineeringChangeResponse(
         boolean isModified,
         UserSummaryResponse createdBy,
         LinkedIssueSummaryResponse sourceIssue,
+        List<LabelBadgeResponse> labels,
         List<EngineeringChangeStepResponse> steps,
         List<EngineeringChangeAffectedItemResponse> affectedItems,
         List<FileItemResponse> files,

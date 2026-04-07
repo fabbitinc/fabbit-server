@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fabbitinc.server.domain.common.exception.DomainException;
 import com.fabbitinc.server.domain.issue.model.Issue;
+import com.fabbitinc.server.domain.label.model.Label;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ class EngineeringChangeRelationTest {
         EngineeringChange engineeringChange = EngineeringChange.create(1, "변경 제목", "변경 본문", null, UUID.randomUUID());
 
         assertTrue(engineeringChange.getLinkedIssues().isEmpty());
+        assertTrue(engineeringChange.getLabels().isEmpty());
         assertTrue(engineeringChange.getSteps().isEmpty());
         assertTrue(engineeringChange.getComments().isEmpty());
     }
@@ -31,6 +33,18 @@ class EngineeringChangeRelationTest {
         assertEquals(engineeringChange, link.getEngineeringChange());
         assertEquals(engineeringChange.getId(), link.getEngineeringChangeId());
         assertEquals(issue.getId(), link.getIssueId());
+    }
+
+    @Test
+    void engineeringChange_linkLabel_루트가_라벨링크를_생성한다() {
+        EngineeringChange engineeringChange = EngineeringChange.create(1, "변경 제목", "변경 본문", null, UUID.randomUUID());
+        Label label = Label.create("긴급", null, "#ff0000", UUID.randomUUID());
+
+        EngineeringChangeLabel link = engineeringChange.linkLabel(label.getId());
+
+        assertEquals(engineeringChange, link.getEngineeringChange());
+        assertEquals(engineeringChange.getId(), link.getEngineeringChangeId());
+        assertEquals(label.getId(), link.getLabelId());
     }
 
     @Test
@@ -190,6 +204,54 @@ class EngineeringChangeRelationTest {
     }
 
     @Test
+    void submit_release단계가없으면_예외를던진다() {
+        UUID actorId = UUID.randomUUID();
+        EngineeringChange engineeringChange = EngineeringChange.create(1, "변경 제목", "변경 본문", null, actorId);
+        StepStage reviewStage = engineeringChange.addStage(
+                EngineeringChangeStepType.REVIEW,
+                1,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE,
+                null,
+                null,
+                actorId
+        );
+        engineeringChange.addStep(reviewStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+
+        DomainException ex = assertThrows(DomainException.class, () -> engineeringChange.submit(actorId));
+
+        assertEquals(EngineeringChange.CODE_ENGINEERING_CHANGE_RELEASE_STAGE_REQUIRED, ex.getDomainCode());
+        assertEquals(EngineeringChangeState.DRAFT, engineeringChange.getState());
+    }
+
+    @Test
+    void submit_release단계에담당자가없으면_예외를던진다() {
+        UUID actorId = UUID.randomUUID();
+        EngineeringChange engineeringChange = EngineeringChange.create(1, "변경 제목", "변경 본문", null, actorId);
+        StepStage reviewStage = engineeringChange.addStage(
+                EngineeringChangeStepType.REVIEW,
+                1,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE,
+                null,
+                null,
+                actorId
+        );
+        engineeringChange.addStep(reviewStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
+        engineeringChange.addStage(
+                EngineeringChangeStepType.RELEASE,
+                2,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE,
+                null,
+                null,
+                actorId
+        );
+
+        DomainException ex = assertThrows(DomainException.class, () -> engineeringChange.submit(actorId));
+
+        assertEquals(EngineeringChange.CODE_ENGINEERING_CHANGE_RELEASE_ASSIGNEE_REQUIRED, ex.getDomainCode());
+        assertEquals(EngineeringChangeState.DRAFT, engineeringChange.getState());
+    }
+
+    @Test
     void release_수행자ID가_null이면_상태변경없이_예외를_던진다() {
         UUID actorId = UUID.randomUUID();
         EngineeringChange engineeringChange = EngineeringChange.create(1, "변경 제목", "변경 본문", null, actorId);
@@ -208,6 +270,10 @@ class EngineeringChangeRelationTest {
         EngineeringChangeStep approvalStep = engineeringChange.addStep(
                 approvalStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
         approvalStep.approve(actorId, Instant.now());
+        StepStage releaseStage = engineeringChange.addStage(
+                EngineeringChangeStepType.RELEASE, 3,
+                StepStageCompletionPolicy.ALL_MUST_APPROVE, null, null, actorId);
+        engineeringChange.addStep(releaseStage, EngineeringChangeStepAssigneeType.USER, actorId, actorId);
 
         engineeringChange.submit(actorId);
 

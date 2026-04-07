@@ -58,6 +58,9 @@ public class CreateEngineeringChangeUseCase {
                     )
             );
         }
+        if (!command.labelIds().isEmpty()) {
+            engineeringChangeService.syncLabels(auth.userId(), engineeringChange.getId(), command.labelIds(), false);
+        }
         if (!command.fileIds().isEmpty()) {
             engineeringChangeService.attachFiles(
                     auth.userId(),
@@ -97,11 +100,13 @@ public class CreateEngineeringChangeUseCase {
             JsonNode body,
             UUID sourceIssueId,
             List<AffectedItemTarget> affectedItems,
+            List<UUID> labelIds,
             List<UUID> fileIds,
             List<StageTarget> stages
     ) {
         public CreateEngineeringChangeCommand {
             affectedItems = affectedItems == null ? List.of() : List.copyOf(affectedItems);
+            labelIds = labelIds == null ? List.of() : List.copyOf(labelIds);
             fileIds = fileIds == null ? List.of() : List.copyOf(fileIds);
             stages = stages == null ? List.of() : List.copyOf(stages);
         }

@@ -13,6 +13,7 @@ import com.fabbitinc.server.application.engineeringchange.query.condition.Engine
 import com.fabbitinc.server.application.engineeringchange.query.condition.ProjectChangeListCondition;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeAffectedItemResult;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeDetailResult;
+import com.fabbitinc.server.application.engineeringchange.query.result.LabelBadgeResult;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeListResult;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeLookupResult;
 import com.fabbitinc.server.application.engineeringchange.query.result.EngineeringChangeStepResult;
@@ -34,18 +35,22 @@ import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffe
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeAffectedItemType;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeComment;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeIssueLink;
+import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeLabel;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeState;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStep;
 import com.fabbitinc.server.domain.engineeringchange.model.EngineeringChangeStepAssigneeType;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeAffectedItemRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeCommentRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeIssueLinkRepository;
+import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeLabelRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeRepository;
 import com.fabbitinc.server.domain.engineeringchange.model.StepStage;
 import com.fabbitinc.server.domain.engineeringchange.repository.EngineeringChangeStepRepository;
 import com.fabbitinc.server.domain.engineeringchange.repository.StepStageRepository;
 import com.fabbitinc.server.domain.file.model.File;
 import com.fabbitinc.server.domain.file.repository.FileRepository;
+import com.fabbitinc.server.domain.label.model.Label;
+import com.fabbitinc.server.domain.label.repository.LabelRepository;
 import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.team.model.Team;
@@ -92,6 +97,7 @@ public class EngineeringChangeQuery {
     private final EngineeringChangeStepRepository engineeringChangeStepRepository;
     private final StepStageRepository stepStageRepository;
     private final EngineeringChangeIssueLinkRepository engineeringChangeIssueLinkRepository;
+    private final EngineeringChangeLabelRepository engineeringChangeLabelRepository;
     private final IssueApi issueApi;
     private final ProjectApi projectApi;
     private final UserRepository userRepository;
@@ -99,6 +105,7 @@ public class EngineeringChangeQuery {
     private final EngineeringChangeAffectedItemRepository affectedItemRepository;
     private final PartRevisionRepository partRevisionRepository;
     private final FileRepository fileRepository;
+    private final LabelRepository labelRepository;
     private final ActivityRepository activityRepository;
     private final FileUrlResolver fileUrlResolver;
     private final ObjectMapper objectMapper;
@@ -294,6 +301,8 @@ public class EngineeringChangeQuery {
                 engineeringChangeStepRepository.findByEngineeringChangeIdIn(new LinkedHashSet<>(engineeringChangeIds));
         List<StepStage> stages =
                 stepStageRepository.findByEngineeringChangeIdIn(new LinkedHashSet<>(engineeringChangeIds));
+        List<EngineeringChangeLabel> labelLinks =
+                engineeringChangeLabelRepository.findByEngineeringChangeIdIn(new LinkedHashSet<>(engineeringChangeIds));
         Map<UUID, StepStage> stageMap = new HashMap<>();
         for (StepStage stage : stages) {
             stageMap.put(stage.getId(), stage);
@@ -328,12 +337,17 @@ public class EngineeringChangeQuery {
         for (EngineeringChangeIssueLink link : issueLinks) {
             issueIds.add(link.getIssueId());
         }
+        Set<UUID> labelIds = new LinkedHashSet<>();
+        for (EngineeringChangeLabel link : labelLinks) {
+            labelIds.add(link.getLabelId());
+        }
 
         return new Enrichment(
                 groupStepsByEngineeringChangeId(steps),
                 stageMap,
                 groupByEngineeringChangeId(issueLinks),
                 new HashMap<>(issueApi.getIssueSnapshotMap(issueIds)),
+                groupLabelsByEngineeringChangeId(labelLinks, findLabels(labelIds)),
                 findTeams(teamIds),
                 findUsers(userIds),
                 files,
@@ -351,6 +365,7 @@ public class EngineeringChangeQuery {
                 engineeringChange.getCreatedAt(),
                 engineeringChange.getUpdatedAt(),
                 toUserSummary(enrichment.userMap().get(engineeringChange.getCreatedBy())),
+                labelsOf(engineeringChange.getId(), enrichment),
                 stepsOf(engineeringChange.getId(), enrichment),
                 filesOf(engineeringChange.getId(), enrichment),
                 enrichment.commentCounts().getOrDefault(engineeringChange.getId(), 0L).intValue(),
@@ -372,6 +387,7 @@ public class EngineeringChangeQuery {
                 isModified(engineeringChange.getCreatedAt(), engineeringChange.getUpdatedAt()),
                 toUserSummary(enrichment.userMap().get(engineeringChange.getCreatedBy())),
                 toLinkedIssueSummary(enrichment.linkedIssues().get(engineeringChange.getSourceIssueId())),
+                labelsOf(engineeringChange.getId(), enrichment),
                 stepsOf(engineeringChange.getId(), enrichment),
                 affectedItemsOf(engineeringChange.getId()),
                 filesOf(engineeringChange.getId(), enrichment),
@@ -422,6 +438,10 @@ public class EngineeringChangeQuery {
         return items.stream().map(this::toAffectedItemResult).toList();
     }
 
+    private List<LabelBadgeResult> labelsOf(UUID engineeringChangeId, Enrichment enrichment) {
+        return enrichment.labelsByEngineeringChangeId().getOrDefault(engineeringChangeId, List.of());
+    }
+
     private EngineeringChangeAffectedItemResult toAffectedItemResult(EngineeringChangeAffectedItem item) {
         String partNumber = null;
         String revisionCode = null;
@@ -449,6 +469,32 @@ public class EngineeringChangeQuery {
                 name,
                 status
         );
+    }
+
+    private Map<UUID, Label> findLabels(Set<UUID> labelIds) {
+        if (labelIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Label> labels = new HashMap<>();
+        labelRepository.findAllById(labelIds).forEach(label -> labels.put(label.getId(), label));
+        return labels;
+    }
+
+    private Map<UUID, List<LabelBadgeResult>> groupLabelsByEngineeringChangeId(
+            List<EngineeringChangeLabel> labelLinks,
+            Map<UUID, Label> labels
+    ) {
+        Map<UUID, List<LabelBadgeResult>> result = new HashMap<>();
+        for (EngineeringChangeLabel link : labelLinks) {
+            Label label = labels.get(link.getLabelId());
+            if (label == null) {
+                continue;
+            }
+            result.computeIfAbsent(link.getEngineeringChangeId(), ignored -> new ArrayList<>())
+                    .add(new LabelBadgeResult(label.getId(), label.getName(), label.getColor()));
+        }
+        result.values().forEach(items -> items.sort(Comparator.comparing(LabelBadgeResult::name)));
+        return result;
     }
 
     private List<FileItemResult> filesOf(UUID engineeringChangeId, Enrichment enrichment) {
@@ -720,6 +766,7 @@ public class EngineeringChangeQuery {
             Map<UUID, StepStage> stageMap,
             Map<UUID, List<EngineeringChangeIssueLink>> linksByEngineeringChangeId,
             Map<UUID, IssueSnapshot> linkedIssues,
+            Map<UUID, List<LabelBadgeResult>> labelsByEngineeringChangeId,
             Map<UUID, Team> teamMap,
             Map<UUID, User> userMap,
             List<File> files,
@@ -727,6 +774,7 @@ public class EngineeringChangeQuery {
     ) {
         private static Enrichment empty() {
             return new Enrichment(
+                    Map.of(),
                     Map.of(),
                     Map.of(),
                     Map.of(),

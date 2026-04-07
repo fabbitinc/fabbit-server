@@ -14,6 +14,7 @@ import com.fabbitinc.server.domain.part.model.PartRevision;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -108,9 +109,19 @@ public class PopulateWhereUsedAffectedItemsUseCase {
             return List.of();
         }
 
-        // where-used 조회: 이 revision을 사용하는 상위 BOM 항목 조회
-        var bomItems = engineeringBomItemRepository
-                .findByChildPartRevisionIdOrderByCreatedAtAsc(revision.getId());
+        // draft revision은 아직 BOM에 직접 물려 있지 않은 경우가 많으므로
+        // 현재 draft 자신과 base revision 둘 다 where-used 후보로 본다.
+        Set<UUID> candidateChildRevisionIds = new LinkedHashSet<>();
+        candidateChildRevisionIds.add(revision.getId());
+        if (revision.getBaseRevisionId() != null) {
+            candidateChildRevisionIds.add(revision.getBaseRevisionId());
+        }
+
+        List<com.fabbitinc.server.domain.bom.model.EngineeringBomItem> bomItems = candidateChildRevisionIds.stream()
+                .flatMap(candidateRevisionId -> engineeringBomItemRepository
+                        .findByChildPartRevisionIdOrderByCreatedAtAsc(candidateRevisionId)
+                        .stream())
+                .toList();
 
         List<UUID> parentRevisionIds = bomItems.stream()
                 .map(item -> item.getParentPartRevisionId())

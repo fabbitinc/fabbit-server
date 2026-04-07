@@ -18,6 +18,8 @@ public record CreateEngineeringChangeRequest(
         UUID sourceIssueId,
         @Schema(description = "영향 항목 목록")
         @Valid List<EngineeringChangeAffectedItemTargetRequest> affectedItems,
+        @Schema(description = "라벨 ID 목록")
+        List<UUID> labelIds,
         @Schema(description = "첨부 파일 ID 목록(최대 20)")
         @Size(max = 20) List<UUID> fileIds,
         @Schema(description = "변경관리 단계 목록")
@@ -25,6 +27,7 @@ public record CreateEngineeringChangeRequest(
 ) {
     public CreateEngineeringChangeRequest {
         affectedItems = affectedItems == null ? List.of() : List.copyOf(affectedItems);
+        labelIds = labelIds == null ? List.of() : List.copyOf(labelIds);
         fileIds = fileIds == null ? List.of() : List.copyOf(fileIds);
         steps = steps == null ? List.of() : List.copyOf(steps);
     }
