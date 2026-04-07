@@ -35,7 +35,7 @@ public class StartInventorMigrationUseCase {
                 .toList();
         inventorMigrationManifestService.validateStartInput(command.projectName(), command.ipjPath(), files);
 
-        BatchCreateFilesOutput output = fileService.batchCreateFiles(
+        BatchCreateFilesOutput output = fileService.batchCreateRawFiles(
                 auth,
                 files.stream()
                         .map(file -> new CreateFileInput(

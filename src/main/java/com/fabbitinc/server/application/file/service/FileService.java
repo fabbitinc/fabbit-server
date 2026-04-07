@@ -39,6 +39,8 @@ public class FileService {
 
     private static final int PROFILE_THUMBNAIL_SIZE = 256;
     private static final String WEBP_CONTENT_TYPE = "image/webp";
+    private static final String UPLOADED_DIRECTORY = "uploaded";
+    private static final String RAW_DATA_DIRECTORY = "raw_data";
 
     private final FileRepository fileRepository;
     private final StoragePort storagePort;
@@ -57,8 +59,28 @@ public class FileService {
     }
 
     public CreateFileOutput createFile(AuthContext auth, CreateFileInput input) {
+        return createFile(auth, input, UPLOADED_DIRECTORY);
+    }
+
+    public BatchCreateFilesOutput batchCreateFiles(AuthContext auth, List<CreateFileInput> inputs) {
+        return batchCreateFiles(auth, inputs, UPLOADED_DIRECTORY);
+    }
+
+    public BatchCreateFilesOutput batchCreateRawFiles(AuthContext auth, List<CreateFileInput> inputs) {
+        return batchCreateFiles(auth, inputs, RAW_DATA_DIRECTORY);
+    }
+
+    private BatchCreateFilesOutput batchCreateFiles(AuthContext auth, List<CreateFileInput> inputs, String directory) {
+        List<CreateFileOutput> items = new ArrayList<>(inputs.size());
+        for (CreateFileInput input : inputs) {
+            items.add(createFile(auth, input, directory));
+        }
+        return new BatchCreateFilesOutput(items);
+    }
+
+    private CreateFileOutput createFile(AuthContext auth, CreateFileInput input, String directory) {
         UUID fileId = UuidV7Generator.next();
-        String fileKey = "tenants/" + auth.orgId() + "/uploaded/" + fileId + "/" + input.originalName();
+        String fileKey = "tenants/" + auth.orgId() + "/" + directory + "/" + fileId + "/" + input.originalName();
 
         File file = fileRepository.save(
                 File.create(
@@ -76,32 +98,6 @@ public class FileService {
                 file.getContentType()
         );
         return new CreateFileOutput(file.getId(), uploadUrl, file.getFileKey());
-    }
-
-    public BatchCreateFilesOutput batchCreateFiles(AuthContext auth, List<CreateFileInput> inputs) {
-        List<CreateFileOutput> items = new ArrayList<>(inputs.size());
-        for (CreateFileInput input : inputs) {
-            UUID fileId = UuidV7Generator.next();
-            String fileKey = "tenants/" + auth.orgId() + "/raw_data/" + fileId + "/" + input.originalName();
-
-            File file = fileRepository.save(
-                    File.create(
-                            fileId,
-                            input.originalName(),
-                            fileKey,
-                            input.contentType(),
-                            input.fileSize(),
-                            input.contentHash()
-                    )
-            );
-
-            String uploadUrl = storagePort.generateUploadPresignedUrl(
-                    file.getFileKey(),
-                    file.getContentType()
-            );
-            items.add(new CreateFileOutput(file.getId(), uploadUrl, file.getFileKey()));
-        }
-        return new BatchCreateFilesOutput(items);
     }
 
     public BatchCompleteFilesOutput completeFiles(List<UUID> fileIds) {
