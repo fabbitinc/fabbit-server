@@ -6,6 +6,7 @@ import static com.fabbitinc.server.presentation.part.controller.PartResponseMapp
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartProjectsResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartRevisionDiffResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartRevisionHistoryResponse;
+import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartRevisionLookupResponse;
 import static com.fabbitinc.server.presentation.part.controller.PartResponseMapper.toPartSuppliersResponse;
 
 import com.fabbitinc.server.application.part.query.PartQuery;
@@ -16,6 +17,7 @@ import com.fabbitinc.server.application.part.query.condition.PartDetailCondition
 import com.fabbitinc.server.application.part.query.condition.PartProjectsCondition;
 import com.fabbitinc.server.application.part.query.condition.PartRevisionDiffCondition;
 import com.fabbitinc.server.application.part.query.condition.PartRevisionHistoryCondition;
+import com.fabbitinc.server.application.part.query.condition.PartRevisionLookupByPartCondition;
 import com.fabbitinc.server.application.part.query.condition.PartSuppliersCondition;
 import com.fabbitinc.server.presentation.part.response.BomTreeResponse;
 import com.fabbitinc.server.presentation.part.response.PartBomResponse;
@@ -23,6 +25,7 @@ import com.fabbitinc.server.presentation.part.response.PartDetailResponse;
 import com.fabbitinc.server.presentation.part.response.PartProjectsResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionDiffResponse;
 import com.fabbitinc.server.presentation.part.response.PartRevisionHistoryResponse;
+import com.fabbitinc.server.presentation.part.response.PartRevisionLookupResponse;
 import com.fabbitinc.server.presentation.part.response.PartSuppliersResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -72,6 +75,12 @@ public class PartRevisionController {
     @GetMapping("/{partId}/history")
     public PartRevisionHistoryResponse getHistory(@PathVariable UUID partId) {
         return toPartRevisionHistoryResponse(partQuery.getHistory(new PartRevisionHistoryCondition(partId)));
+    }
+
+    @Operation(operationId = "partRevisionLookupByPart", summary = "특정 부품의 리비전 selector 목록을 조회합니다", description = "부품 상세에서 리비전 선택 UI에 사용할 경량 목록을 조회합니다")
+    @GetMapping("/{partId}/revisions/lookup")
+    public PartRevisionLookupResponse lookupRevisionsByPart(@PathVariable UUID partId) {
+        return toPartRevisionLookupResponse(partQuery.lookupRevisions(new PartRevisionLookupByPartCondition(partId)));
     }
 
     @Operation(operationId = "partRevisionGetDiff", summary = "기준 리비전 대비 상세 diff를 조회합니다", description = "이전 리비전 또는 지정한 기준 리비전 ID 대비 상세 diff를 조회합니다")

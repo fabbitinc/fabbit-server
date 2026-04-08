@@ -5,7 +5,6 @@ import java.util.List;
 
 @Schema(description = "응답 DTO")
 public record PartBomResponse(
-        List<BomChildResponse> children,
-        List<BomParentResponse> parents
+        List<BomChildResponse> children
 ) {
 }

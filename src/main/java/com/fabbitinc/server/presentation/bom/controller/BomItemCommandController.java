@@ -15,7 +15,6 @@ import com.fabbitinc.server.presentation.bom.request.AddBomItemRequest;
 import com.fabbitinc.server.presentation.bom.request.AddBomItemsBatchRequest;
 import com.fabbitinc.server.presentation.bom.request.UpdateBomItemRequest;
 import com.fabbitinc.server.presentation.part.response.BomChildResponse;
-import com.fabbitinc.server.presentation.part.response.BomParentResponse;
 import com.fabbitinc.server.presentation.part.response.PartBomResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -138,20 +137,6 @@ public class BomItemCommandController {
         return new PartBomResponse(
                 result.children().stream()
                         .map(item -> new BomChildResponse(
-                                item.bomItemId(),
-                                item.partId(),
-                                item.revisionId(),
-                                item.partNumber(),
-                                item.name(),
-                                item.revisionCode(),
-                                item.revisionStatus(),
-                                item.lineNumber(),
-                                item.quantity(),
-                                item.extendedProperties()
-                        ))
-                        .toList(),
-                result.parents().stream()
-                        .map(item -> new BomParentResponse(
                                 item.bomItemId(),
                                 item.partId(),
                                 item.revisionId(),

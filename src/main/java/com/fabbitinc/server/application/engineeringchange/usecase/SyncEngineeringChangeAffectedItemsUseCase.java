@@ -37,6 +37,7 @@ public class SyncEngineeringChangeAffectedItemsUseCase {
     private final PartRevisionRepository partRevisionRepository;
     private final PartRepository partRepository;
     private final PartRevisionWorkflowPolicyService partRevisionWorkflowPolicyService;
+    private final PopulateWhereUsedAffectedItemsUseCase populateWhereUsedAffectedItemsUseCase;
     private final ObjectMapper objectMapper;
 
     public SyncResult execute(SyncEngineeringChangeAffectedItemsCommand command) {
@@ -61,6 +62,8 @@ public class SyncEngineeringChangeAffectedItemsUseCase {
             String actionDetail = buildActionDetail(item);
             engineeringChange.addAffectedItem(item.itemType(), item.targetId(), actionDetail);
         }
+
+        populateWhereUsedAffectedItemsUseCase.populateForDraftEngineeringChange(engineeringChange);
 
         return new SyncResult(command.items().size());
     }

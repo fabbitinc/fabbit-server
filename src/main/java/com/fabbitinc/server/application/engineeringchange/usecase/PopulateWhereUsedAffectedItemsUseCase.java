@@ -29,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * REVISION_RELEASE 영향 항목의 where-used(상위 어셈블리)를 조회하여
  * WHERE_USED_IMPACT 영향 항목으로 자동 추가하는 UseCase.
- * 사용자가 명시적으로 호출하는 populate 액션이다.
  */
 @Slf4j
 @Component
@@ -49,6 +48,10 @@ public class PopulateWhereUsedAffectedItemsUseCase {
         EngineeringChange engineeringChange =
                 engineeringChangeService.getEngineeringChangeByIdOrThrow(command.engineeringChangeId());
 
+        return populateForDraftEngineeringChange(engineeringChange);
+    }
+
+    public PopulateResult populateForDraftEngineeringChange(EngineeringChange engineeringChange) {
         if (engineeringChange.getState() != EngineeringChangeState.DRAFT) {
             throw new AppException(
                     ErrorCode.INVALID_STATE,

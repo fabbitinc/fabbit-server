@@ -8,6 +8,7 @@ public record PartListCondition(
         String lifecycleState,
         Boolean hasDrawing,
         Boolean hasChildren,
+        Boolean hasStaleChildReference,
         UUID projectId,
         String nextCursor,
         String prevCursor,

@@ -26,6 +26,7 @@ import com.fabbitinc.server.application.part.query.condition.PartPreviewSourcesC
 import com.fabbitinc.server.application.part.query.condition.PartProjectsCondition;
 import com.fabbitinc.server.application.part.query.condition.PartRevisionDiffCondition;
 import com.fabbitinc.server.application.part.query.condition.PartRevisionHistoryCondition;
+import com.fabbitinc.server.application.part.query.condition.PartRevisionLookupByPartCondition;
 import com.fabbitinc.server.application.part.query.condition.PartRevisionLookupCondition;
 import com.fabbitinc.server.application.part.query.condition.PartSuppliersCondition;
 import com.fabbitinc.server.application.part.query.result.BomTreeResult;
@@ -247,24 +248,51 @@ public class PartQuery {
                                 .collect(java.util.stream.Collectors.toMap(User::getId, user -> user))
                 ));
 
-        return new PartRevisionLookupResult(
+        Map<UUID, Part> partsById = loadPartsByIds(
                 drafts.stream()
-                        .map(draft -> {
-                            PartRevision baseRevision = draft.getBaseRevisionId() == null
-                                    ? null
-                                    : baseRevisions.get(draft.getBaseRevisionId());
-                            return new PartRevisionLookupResult.Item(
-                                    draft.getId(),
-                                    draft.getPartId(),
-                                    draft.getPartNumber(),
-                                    baseRevision == null ? null : baseRevision.getRevisionCode(),
-                                    draft.getName(),
-                                    draft.getStatus(),
-                                    toUserSummary(createdByUsers.get(draft.getCreatedBy()))
-                            );
-                        })
-                        .toList()
+                        .map(PartRevision::getPartId)
+                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new))
         );
+        return new PartRevisionLookupResult(toPartRevisionLookupItems(drafts, partsById, baseRevisions, createdByUsers));
+    }
+
+    public PartRevisionLookupResult lookupRevisions(PartRevisionLookupByPartCondition condition) {
+        currentAuthProvider.getCurrentAuth();
+
+        Part part = partRepository.findById(condition.partId())
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.NOT_FOUND,
+                        "Part '%s'을(를) 찾을 수 없습니다".formatted(condition.partId())
+                ));
+
+        List<PartRevision> revisions = partRevisionRepository.findByPartIdOrderByCreatedAtDesc(part.getId());
+        Map<UUID, PartRevision> baseRevisions = revisions.stream()
+                .map(PartRevision::getBaseRevisionId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.collectingAndThen(
+                        java.util.stream.Collectors.toSet(),
+                        baseRevisionIds -> baseRevisionIds.isEmpty()
+                                ? Map.<UUID, PartRevision>of()
+                                : partRevisionRepository.findAllById(baseRevisionIds).stream()
+                                .collect(java.util.stream.Collectors.toMap(PartRevision::getId, base -> base))
+                ));
+        Map<UUID, User> createdByUsers = revisions.stream()
+                .map(PartRevision::getCreatedBy)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.collectingAndThen(
+                        java.util.stream.Collectors.toCollection(LinkedHashSet::new),
+                        userIds -> userIds.isEmpty()
+                                ? Map.<UUID, User>of()
+                                : userApi.getUsersByIdsOrdered(List.copyOf(userIds)).stream()
+                                .collect(java.util.stream.Collectors.toMap(User::getId, user -> user))
+                ));
+
+        return new PartRevisionLookupResult(toPartRevisionLookupItems(
+                revisions,
+                Map.of(part.getId(), part),
+                baseRevisions,
+                createdByUsers
+        ));
     }
 
     public CategoryStatsResult listCategories() {
@@ -301,8 +329,7 @@ public class PartQuery {
             );
         }
 
-        List<ResolvedPart> filtered = filterResolvedParts(
-                resolveReleasedParts(findPartsForExport(
+        List<ResolvedPart> releasedParts = resolveReleasedParts(findPartsForExport(
                         null,
                         condition.category(),
                         lifecycleState,
@@ -310,11 +337,22 @@ public class PartQuery {
                         null,
                         null,
                         condition.projectId()
-                )),
+                ));
+        Set<UUID> staleChildReferenceRevisionIds = findStaleChildReferenceRevisionIds(
+                releasedParts.stream()
+                        .map(ResolvedPart::revisionId)
+                        .filter(Objects::nonNull)
+                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new))
+        );
+
+        List<ResolvedPart> filtered = filterResolvedParts(
+                releasedParts,
                 condition.search(),
                 condition.category(),
                 condition.hasChildren(),
-                condition.hasDrawing()
+                condition.hasDrawing(),
+                condition.hasStaleChildReference(),
+                staleChildReferenceRevisionIds
         ).stream()
                 .sorted(PART_LIST_ORDER)
                 .toList();
@@ -334,7 +372,8 @@ public class PartQuery {
                         part.revisionStatus(),
                         part.lifecycleState(),
                         countAttachedDrawings(part.revision()) > 0,
-                        countEngineeringBomChildren(part.revision())
+                        countEngineeringBomChildren(part.revision()),
+                        staleChildReferenceRevisionIds.contains(part.revisionId())
                 ))
                 .toList();
 
@@ -432,7 +471,9 @@ public class PartQuery {
                 condition.search(),
                 condition.category(),
                 condition.hasChildren(),
-                condition.hasDrawing()
+                condition.hasDrawing(),
+                null,
+                Set.of()
         );
 
         Set<String> extKeys = new TreeSet<>();
@@ -746,16 +787,16 @@ public class PartQuery {
         ResolvedPart resolvedPart = resolveRequiredPart(condition.partId(), condition.revisionId());
         PartRevision revision = resolvedPart.revision();
         if (revision == null) {
-            return new PartBomResult(List.of(), List.of());
+            return new PartBomResult(List.of());
         }
 
         List<EngineeringBomItem> childItems = engineeringBomItemRepository
                 .findByParentPartRevisionIdOrderByCreatedAtAsc(revision.getId());
-        List<EngineeringBomItem> parentItems = engineeringBomItemRepository
-                .findByChildPartRevisionIdOrderByCreatedAtAsc(revision.getId());
 
         Map<UUID, PartRevision> relatedRevisions = loadPartRevisions(
-                collectRelatedRevisionIds(childItems, parentItems, revision.getId())
+                childItems.stream()
+                        .map(EngineeringBomItem::getChildPartRevisionId)
+                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new))
         );
         Map<UUID, Part> relatedParts = loadPartsByRevisionIds(relatedRevisions.values());
 
@@ -785,33 +826,7 @@ public class PartQuery {
                 })
                 .toList();
 
-        List<PartBomResult.Parent> parents = parentItems.stream()
-                .map(item -> {
-                    PartRevision parentRevision = relatedRevisions.get(item.getParentPartRevisionId());
-                    Part parentPart = parentRevision == null ? null : relatedParts.get(parentRevision.getPartId());
-                    return new PartBomResult.Parent(
-                            item.getId(),
-                            parentPart == null ? null : parentPart.getId(),
-                            parentRevision == null ? null : parentRevision.getId(),
-                            parentPart == null ? null : parentPart.getPartNumber(),
-                            resolveName(parentRevision),
-                            resolveRevisionCode(parentRevision),
-                            parentRevision == null ? null : parentRevision.getStatus(),
-                            item.getLineNumber(),
-                            item.getQuantity(),
-                            parseExtendedProperties(item.getExtendedProperties())
-                    );
-                })
-                .sorted((left, right) -> {
-                    int lineNumberCompare = compareLineNumbers(left.lineNumber(), right.lineNumber());
-                    if (lineNumberCompare != 0) {
-                        return lineNumberCompare;
-                    }
-                    return Comparator.nullsLast(String::compareTo).compare(left.partNumber(), right.partNumber());
-                })
-                .toList();
-
-        return new PartBomResult(children, parents);
+        return new PartBomResult(children);
     }
 
     public BomTreeResult getBomTree(BomTreeCondition condition) {
@@ -1200,7 +1215,9 @@ public class PartQuery {
                                 e.parent_part_revision_id as next_id,
                                 1 as depth
                             from engineering_bom_items e
+                            join part_revisions parent_revision on parent_revision.id = e.parent_part_revision_id
                             where e.child_part_revision_id = :rootRevisionId
+                              and parent_revision.status <> 'CANCELED'
 
                             union all
 
@@ -1213,7 +1230,9 @@ public class PartQuery {
                                 bc.depth + 1 as depth
                             from bom_cte bc
                             join engineering_bom_items e on e.child_part_revision_id = bc.next_id
+                            join part_revisions parent_revision on parent_revision.id = e.parent_part_revision_id
                             where bc.depth < :maxDepth
+                              and parent_revision.status <> 'CANCELED'
                         )
                         select parent_revision_id, child_revision_id, line_number, quantity from bom_cte
                         """
@@ -1847,7 +1866,25 @@ public class PartQuery {
         if (revision == null) {
             return 0L;
         }
-        return engineeringBomItemRepository.countByChildPartRevisionId(revision.getId());
+        List<EngineeringBomItem> parentItems = engineeringBomItemRepository
+                .findByChildPartRevisionIdOrderByCreatedAtAsc(revision.getId());
+        if (parentItems.isEmpty()) {
+            return 0L;
+        }
+
+        Map<UUID, PartRevision> parentRevisions = loadPartRevisions(
+                parentItems.stream()
+                        .map(EngineeringBomItem::getParentPartRevisionId)
+                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new))
+        );
+        return parentItems.stream()
+                .map(EngineeringBomItem::getParentPartRevisionId)
+                .distinct()
+                .filter(parentRevisionId -> {
+                    PartRevision parentRevision = parentRevisions.get(parentRevisionId);
+                    return parentRevision != null && parentRevision.getStatus() != PartRevisionStatus.CANCELED;
+                })
+                .count();
     }
 
     private Set<UUID> collectRelatedRevisionIds(
@@ -1884,18 +1921,62 @@ public class PartQuery {
         return partsById;
     }
 
+    private Map<UUID, Part> loadPartsByIds(Set<UUID> partIds) {
+        if (partIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Part> partsById = new LinkedHashMap<>();
+        partRepository.findAllById(partIds).forEach(part -> partsById.put(part.getId(), part));
+        return partsById;
+    }
+
+    private List<PartRevisionLookupResult.Item> toPartRevisionLookupItems(
+            List<PartRevision> revisions,
+            Map<UUID, Part> partsById,
+            Map<UUID, PartRevision> baseRevisions,
+            Map<UUID, User> createdByUsers
+    ) {
+        Set<UUID> currentReleasedRevisionIds = partsById.values().stream()
+                .map(Part::getCurrentReleasedRevisionId)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+
+        return revisions.stream()
+                .map(revision -> {
+                    PartRevision baseRevision = revision.getBaseRevisionId() == null
+                            ? null
+                            : baseRevisions.get(revision.getBaseRevisionId());
+                    return new PartRevisionLookupResult.Item(
+                            revision.getId(),
+                            revision.getPartId(),
+                            revision.getPartNumber(),
+                            revision.getRevisionCode(),
+                            baseRevision == null ? null : baseRevision.getRevisionCode(),
+                            revision.getName(),
+                            revision.getStatus(),
+                            revision.getCreatedAt(),
+                            currentReleasedRevisionIds.contains(revision.getId()),
+                            toUserSummary(createdByUsers.get(revision.getCreatedBy()))
+                    );
+                })
+                .toList();
+    }
+
     private List<ResolvedPart> filterResolvedParts(
             List<ResolvedPart> parts,
             String search,
             String category,
             Boolean hasChildren,
-            Boolean hasDrawing
+            Boolean hasDrawing,
+            Boolean hasStaleChildReference,
+            Set<UUID> staleChildReferenceRevisionIds
     ) {
         return parts.stream()
                 .filter(part -> matchesSearch(part, search))
                 .filter(part -> matchesCategory(part, category))
                 .filter(part -> matchesHasChildren(part, hasChildren))
                 .filter(part -> matchesHasDrawing(part, hasDrawing))
+                .filter(part -> matchesHasStaleChildReference(part, hasStaleChildReference, staleChildReferenceRevisionIds))
                 .toList();
     }
 
@@ -1968,6 +2049,50 @@ public class PartQuery {
         }
         boolean exists = drawingRepository.existsByPartRevisionIdAndDeletedAtIsNull(item.revision().getId());
         return Boolean.TRUE.equals(hasDrawing) ? exists : !exists;
+    }
+
+    private boolean matchesHasStaleChildReference(
+            ResolvedPart part,
+            Boolean hasStaleChildReference,
+            Set<UUID> staleChildReferenceRevisionIds
+    ) {
+        if (hasStaleChildReference == null) {
+            return true;
+        }
+        if (part.revision() == null) {
+            return !Boolean.TRUE.equals(hasStaleChildReference);
+        }
+        boolean exists = staleChildReferenceRevisionIds.contains(part.revision().getId());
+        return Boolean.TRUE.equals(hasStaleChildReference) ? exists : !exists;
+    }
+
+    private Set<UUID> findStaleChildReferenceRevisionIds(Set<UUID> parentRevisionIds) {
+        if (parentRevisionIds.isEmpty()) {
+            return Set.of();
+        }
+
+        Query query = entityManager.createNativeQuery("""
+                select distinct e.parent_part_revision_id
+                from engineering_bom_items e
+                join part_revisions child_revision on child_revision.id = e.child_part_revision_id
+                join parts child_part on child_part.id = child_revision.part_id
+                where e.parent_part_revision_id in (:parentRevisionIds)
+                  and child_part.current_released_revision_id is not null
+                  and child_part.current_released_revision_id <> e.child_part_revision_id
+                """);
+        query.setParameter("parentRevisionIds", parentRevisionIds);
+
+        Set<UUID> result = new LinkedHashSet<>();
+        for (Object row : query.getResultList()) {
+            if (row instanceof UUID revisionId) {
+                result.add(revisionId);
+                continue;
+            }
+            if (row instanceof String revisionIdText) {
+                result.add(UUID.fromString(revisionIdText));
+            }
+        }
+        return result;
     }
 
     private UUID resolveRequiredPartId(UUID partId, UUID revisionId) {

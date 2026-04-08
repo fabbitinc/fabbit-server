@@ -24,7 +24,6 @@ import com.fabbitinc.server.application.part.query.result.PartUserSummaryResult;
 import com.fabbitinc.server.application.part.usecase.result.RegisterPartDrawingResult;
 import com.fabbitinc.server.presentation.drawing.dto.response.RegisterDrawingResponse;
 import com.fabbitinc.server.presentation.part.response.BomChildResponse;
-import com.fabbitinc.server.presentation.part.response.BomParentResponse;
 import com.fabbitinc.server.presentation.part.response.BomTreeNodeResponse;
 import com.fabbitinc.server.presentation.part.response.BomTreeResponse;
 import com.fabbitinc.server.presentation.part.response.CategoryLookupResponse;
@@ -83,9 +82,12 @@ final class PartResponseMapper {
                                 item.revisionId(),
                                 item.partId(),
                                 item.partNumber(),
+                                item.revisionCode(),
                                 item.baseRevisionCode(),
                                 item.name(),
                                 item.status(),
+                                item.createdAt(),
+                                item.currentReleased(),
                                 toPartUserSummaryResponse(item.createdBy())
                         ))
                         .toList()
@@ -123,7 +125,8 @@ final class PartResponseMapper {
                                 item.revisionStatus(),
                                 item.lifecycleState(),
                                 item.hasDrawing(),
-                                item.childrenCount()
+                                item.childrenCount(),
+                                item.hasStaleChildReference()
                         ))
                         .toList()
         );
@@ -251,20 +254,6 @@ final class PartResponseMapper {
         return new PartBomResponse(
                 result.children().stream()
                         .map(item -> new BomChildResponse(
-                                item.bomItemId(),
-                                item.partId(),
-                                item.revisionId(),
-                                item.partNumber(),
-                                item.name(),
-                                item.revisionCode(),
-                                item.revisionStatus(),
-                                item.lineNumber(),
-                                item.quantity(),
-                                item.extendedProperties()
-                        ))
-                        .toList(),
-                result.parents().stream()
-                        .map(item -> new BomParentResponse(
                                 item.bomItemId(),
                                 item.partId(),
                                 item.revisionId(),

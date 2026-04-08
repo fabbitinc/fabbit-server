@@ -16,6 +16,7 @@ public record PartSummaryResponse(
         PartRevisionStatus revisionStatus,
         PartLifecycleState lifecycleState,
         boolean hasDrawing,
-        long childrenCount
+        long childrenCount,
+        boolean hasStaleChildReference
 ) {
 }

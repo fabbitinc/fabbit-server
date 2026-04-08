@@ -9,6 +9,7 @@ import com.fabbitinc.server.domain.bom.model.EngineeringBomItem;
 import com.fabbitinc.server.domain.bom.repository.EngineeringBomItemRepository;
 import com.fabbitinc.server.domain.part.model.Part;
 import com.fabbitinc.server.domain.part.model.PartRevision;
+import com.fabbitinc.server.domain.part.model.PartRevisionStatus;
 import com.fabbitinc.server.domain.part.repository.PartRepository;
 import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import java.util.ArrayList;
@@ -77,6 +78,9 @@ public class WhereUsedSummaryQuery {
             if (parentRevision == null) {
                 continue;
             }
+            if (parentRevision.getStatus() == PartRevisionStatus.CANCELED) {
+                continue;
+            }
             Part part = partsById.get(parentRevision.getPartId());
 
             switch (parentRevision.getStatus()) {
@@ -97,7 +101,7 @@ public class WhereUsedSummaryQuery {
         }
 
         return new WhereUsedSummaryResult(
-                parentRevisionIds.size(),
+                references.size(),
                 new WhereUsedSummaryResult.StatusBreakdown(
                         draftCount, releasedCount, supersededCount, canceledCount
                 ),

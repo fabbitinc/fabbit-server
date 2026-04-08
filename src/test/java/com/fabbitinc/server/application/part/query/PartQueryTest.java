@@ -17,6 +17,7 @@ import com.fabbitinc.server.application.part.query.condition.PartDetailCondition
 import com.fabbitinc.server.application.part.query.condition.PartListCondition;
 import com.fabbitinc.server.application.part.query.condition.PartPreviewSourcesCondition;
 import com.fabbitinc.server.application.part.query.condition.PartRevisionHistoryCondition;
+import com.fabbitinc.server.application.part.query.condition.PartRevisionLookupByPartCondition;
 import com.fabbitinc.server.application.part.query.result.PartBomResult;
 import com.fabbitinc.server.application.part.query.result.PartDetailResult;
 import com.fabbitinc.server.application.part.query.result.PartListResult;
@@ -24,6 +25,7 @@ import com.fabbitinc.server.application.part.query.result.PartLookupResult;
 import com.fabbitinc.server.application.part.query.result.PartPreviewSourcesResult;
 import com.fabbitinc.server.application.part.query.result.PartRevisionHistoryEventType;
 import com.fabbitinc.server.application.part.query.result.PartRevisionHistoryResult;
+import com.fabbitinc.server.application.part.query.result.PartRevisionLookupResult;
 import com.fabbitinc.server.application.project.api.ProjectApi;
 import com.fabbitinc.server.application.user.api.UserApi;
 import com.fabbitinc.server.domain.bom.model.EngineeringBomItem;
@@ -54,6 +56,7 @@ import com.fabbitinc.server.domain.part.repository.PartRevisionRepository;
 import com.fabbitinc.server.domain.part.repository.PartSupplierRepository;
 import com.fabbitinc.server.domain.supplier.repository.SupplierRepository;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -112,6 +115,8 @@ class PartQueryTest {
     private FileUrlResolver fileUrlResolver;
     @Mock
     private EntityManager entityManager;
+    @Mock
+    private Query nativeQuery;
 
     private PartQuery partQuery;
 
@@ -119,6 +124,9 @@ class PartQueryTest {
     void setUp() {
         when(currentAuthProvider.getCurrentAuth()).thenReturn(new AuthContext(UUID.randomUUID(), "a@b.c", UUID.randomUUID(), null));
         when(fileUrlResolver.resolve(anyString())).thenAnswer(invocation -> "url/" + invocation.getArgument(0, String.class));
+        when(entityManager.createNativeQuery(org.mockito.ArgumentMatchers.anyString())).thenReturn(nativeQuery);
+        when(nativeQuery.setParameter(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any())).thenReturn(nativeQuery);
+        when(nativeQuery.getResultList()).thenReturn(List.of());
 
         partQuery = new PartQuery(
                 currentAuthProvider,
@@ -444,6 +452,60 @@ class PartQueryTest {
     }
 
     @Test
+    void get_상세응답의_parentsCount는_canceled_parent_revision을_제외한다() {
+        UUID actorId = UUID.randomUUID();
+        Part childPart = Part.create("P-211");
+        PartRevision childRevision = PartRevision.createInitialDraft(childPart, "child", actorId);
+        childRevision.release("1", actorId);
+
+        Part releasedParentPart = Part.create("P-212");
+        PartRevision releasedParentRevision = PartRevision.createInitialDraft(releasedParentPart, "released-parent", actorId);
+        releasedParentRevision.release("1", actorId);
+
+        Part canceledParentPart = Part.create("P-213");
+        PartRevision canceledParentRevision = PartRevision.createInitialDraft(canceledParentPart, "canceled-parent", actorId);
+        canceledParentRevision.cancel(actorId);
+
+        EngineeringBomItem releasedBomItem = EngineeringBomItem.add(
+                releasedParentRevision.getId(),
+                "1",
+                childRevision.getId(),
+                java.math.BigDecimal.ONE,
+                "{}"
+        );
+        EngineeringBomItem canceledBomItem = EngineeringBomItem.add(
+                canceledParentRevision.getId(),
+                "2",
+                childRevision.getId(),
+                java.math.BigDecimal.ONE,
+                "{}"
+        );
+
+        when(partRevisionRepository.findByIdAndPartId(childRevision.getId(), childPart.getId()))
+                .thenReturn(Optional.of(childRevision));
+        when(partRepository.findById(childPart.getId())).thenReturn(Optional.of(childPart));
+        when(partPreviewRepository.findByPartRevisionId(childRevision.getId())).thenReturn(Optional.empty());
+        when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(childPart.getId())).thenReturn(List.of(childRevision));
+        when(engineeringBomItemRepository.countByParentPartRevisionId(childRevision.getId())).thenReturn(0L);
+        when(engineeringBomItemRepository.findByChildPartRevisionIdOrderByCreatedAtAsc(childRevision.getId()))
+                .thenReturn(List.of(releasedBomItem, canceledBomItem));
+        when(partRevisionRepository.findAllById(org.mockito.ArgumentMatchers.anyCollection()))
+                .thenReturn(List.of(releasedParentRevision, canceledParentRevision));
+        when(drawingRepository.findByPartRevisionIdAndDeletedAtIsNullOrderByCreatedAtDesc(childRevision.getId()))
+                .thenReturn(List.of());
+        when(fileRepository.countByOwnerTypeAndOwnerIdAndStatusAndDeletedAtIsNull(
+                "part_revision",
+                childRevision.getId(),
+                FileStatus.UPLOADED
+        )).thenReturn(0L);
+        when(projectApi.countPartProjects(childPart.getId())).thenReturn(0L);
+
+        PartDetailResult result = partQuery.get(new PartDetailCondition(childPart.getId(), childRevision.getId()));
+
+        assertEquals(1L, result.parentsCount());
+    }
+
+    @Test
     void list_목록응답은_revisionId와_revisionStatus를_포함한다() {
         UUID actorId = UUID.randomUUID();
         Part part = Part.create("P-301");
@@ -458,11 +520,53 @@ class PartQueryTest {
                 .thenReturn(List.of());
         when(engineeringBomItemRepository.countByParentPartRevisionId(released.getId())).thenReturn(0L);
 
-        PartListResult result = partQuery.list(new PartListCondition(null, null, null, null, null, null, null, null, 20));
+        PartListResult result = partQuery.list(new PartListCondition(null, null, null, null, null, null, null, null, null, 20));
 
         assertEquals(1, result.items().size());
         assertEquals(released.getId(), result.items().getFirst().revisionId());
         assertEquals(PartRevisionStatus.RELEASED, result.items().getFirst().revisionStatus());
+        assertTrue(!result.items().getFirst().hasStaleChildReference());
+    }
+
+    @Test
+    void list_구형참조필터와_응답필드를_함께_반영한다() {
+        UUID actorId = UUID.randomUUID();
+        Part stalePart = Part.create("P-311");
+        PartRevision staleReleased = PartRevision.createInitialDraft(stalePart, "stale", actorId);
+        staleReleased.release("1", actorId);
+        stalePart.assignCurrentReleasedRevision(staleReleased.getId());
+
+        Part freshPart = Part.create("P-312");
+        PartRevision freshReleased = PartRevision.createInitialDraft(freshPart, "fresh", actorId);
+        freshReleased.release("1", actorId);
+        freshPart.assignCurrentReleasedRevision(freshReleased.getId());
+
+        when(partRepository.findAllByOrderByPartNumberAsc(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of(stalePart, freshPart));
+        when(partRevisionRepository.findByPartIdInOrderByCreatedAtDesc(org.mockito.ArgumentMatchers.anyCollection()))
+                .thenReturn(List.of(staleReleased, freshReleased));
+        when(drawingRepository.findByPartRevisionIdAndDeletedAtIsNullOrderByCreatedAtDesc(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of());
+        when(engineeringBomItemRepository.countByParentPartRevisionId(staleReleased.getId())).thenReturn(1L);
+        when(engineeringBomItemRepository.countByParentPartRevisionId(freshReleased.getId())).thenReturn(1L);
+        when(nativeQuery.getResultList()).thenReturn(List.of(staleReleased.getId()));
+
+        PartListResult result = partQuery.list(new PartListCondition(
+                null,
+                null,
+                null,
+                null,
+                null,
+                true,
+                null,
+                null,
+                null,
+                20
+        ));
+
+        assertEquals(1, result.items().size());
+        assertEquals(staleReleased.getId(), result.items().getFirst().revisionId());
+        assertTrue(result.items().getFirst().hasStaleChildReference());
     }
 
     @Test
@@ -482,6 +586,29 @@ class PartQueryTest {
         assertEquals(1, result.items().size());
         assertEquals(part.getId(), result.items().getFirst().id());
         assertEquals(released.getId(), result.items().getFirst().revisionId());
+    }
+
+    @Test
+    void lookupRevisions_특정부품용은_revision_selector정보를_반환한다() {
+        UUID actorId = UUID.randomUUID();
+        Part part = Part.create("P-303");
+        PartRevision released = PartRevision.createInitialDraft(part, "released", actorId);
+        released.release("1", actorId);
+        part.assignCurrentReleasedRevision(released.getId());
+        PartRevision draft = PartRevision.createDraft(part, released.getId(), "draft", actorId);
+
+        when(partRepository.findById(part.getId())).thenReturn(Optional.of(part));
+        when(partRevisionRepository.findByPartIdOrderByCreatedAtDesc(part.getId())).thenReturn(List.of(draft, released));
+        when(partRevisionRepository.findAllById(java.util.Set.of(released.getId()))).thenReturn(List.of(released));
+        when(userApi.getUsersByIdsOrdered(org.mockito.ArgumentMatchers.anyList())).thenReturn(List.of());
+
+        PartRevisionLookupResult result = partQuery.lookupRevisions(new PartRevisionLookupByPartCondition(part.getId()));
+
+        assertEquals(2, result.items().size());
+        assertEquals(draft.getId(), result.items().getFirst().revisionId());
+        assertEquals(released.getRevisionCode(), result.items().get(1).revisionCode());
+        assertEquals(true, result.items().get(1).currentReleased());
+        assertEquals(false, result.items().getFirst().currentReleased());
     }
 
     @Test

@@ -7,8 +7,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public record PartBomResult(
-        List<Child> children,
-        List<Parent> parents
+        List<Child> children
 ) {
     public record Child(
             UUID bomItemId,
@@ -24,17 +23,4 @@ public record PartBomResult(
     ) {
     }
 
-    public record Parent(
-            UUID bomItemId,
-            UUID partId,
-            UUID revisionId,
-            String partNumber,
-            String name,
-            String revisionCode,
-            PartRevisionStatus revisionStatus,
-            String lineNumber,
-            BigDecimal quantity,
-            Map<String, Object> extendedProperties
-    ) {
-    }
 }

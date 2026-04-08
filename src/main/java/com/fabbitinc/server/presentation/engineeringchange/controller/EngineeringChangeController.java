@@ -20,7 +20,6 @@ import com.fabbitinc.server.application.engineeringchange.usecase.CreateEngineer
 import com.fabbitinc.server.application.engineeringchange.usecase.CreateEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.DeleteEngineeringChangeCommentUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.DeleteEngineeringChangeFileUseCase;
-import com.fabbitinc.server.application.engineeringchange.usecase.PopulateWhereUsedAffectedItemsUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.RejectEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.ReleaseEngineeringChangeUseCase;
 import com.fabbitinc.server.application.engineeringchange.usecase.RequestChangesOnStepUseCase;
@@ -137,7 +136,6 @@ public class EngineeringChangeController {
     private final DeleteEngineeringChangeCommentUseCase deleteEngineeringChangeCommentUseCase;
     private final AddEngineeringChangeFilesUseCase addEngineeringChangeFilesUseCase;
     private final DeleteEngineeringChangeFileUseCase deleteEngineeringChangeFileUseCase;
-    private final PopulateWhereUsedAffectedItemsUseCase populateWhereUsedAffectedItemsUseCase;
     private final RequestChangesOnStepUseCase requestChangesOnStepUseCase;
     private final ResubmitStepUseCase resubmitStepUseCase;
 
@@ -541,24 +539,6 @@ public class EngineeringChangeController {
                                 ))
                                 .toList()
                 )
-        );
-        return toEngineeringChangeResponse(
-                engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
-        );
-    }
-
-    @Operation(
-            operationId = "engineeringChangePopulateWhereUsed",
-            summary = "변경 영향 항목을 where-used 기반으로 자동 도출합니다",
-            description = "EC에 연결된 리비전의 상위 어셈블리를 자동으로 영향 항목에 추가합니다"
-    )
-    @PostMapping("/{engineeringChangeId}/affected-items/populate-where-used")
-    public EngineeringChangeResponse populateWhereUsed(
-            @Parameter(description = "대상 변경관리 ID")
-            @PathVariable UUID engineeringChangeId
-    ) {
-        populateWhereUsedAffectedItemsUseCase.execute(
-                new PopulateWhereUsedAffectedItemsUseCase.PopulateWhereUsedAffectedItemsCommand(engineeringChangeId)
         );
         return toEngineeringChangeResponse(
                 engineeringChangeQuery.getEngineeringChange(new EngineeringChangeDetailCondition(engineeringChangeId))
