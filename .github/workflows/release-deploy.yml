@@ -24,30 +24,30 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Verify Dokploy network exists
-        run: docker network inspect dokploy-network >/dev/null
+      # - name: Verify Dokploy network exists
+      #   run: docker network inspect dokploy-network >/dev/null
 
-      - name: Build migration image
-        run: docker build -t fabbit-server-migrate:latest .
+      # - name: Build migration image
+      #   run: docker build -t fabbit-server-migrate:latest .
 
-      - name: Run database migration
-        env:
-          SPRING_PROFILES_ACTIVE: prod,migrate
-          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-          DATABASE_USER: ${{ secrets.PROD_DATABASE_USER }}
-          DATABASE_PASSWORD: ${{ secrets.PROD_DATABASE_PASSWORD }}
-          MIGRATION_TARGET: all
-          JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60 -XX:InitialRAMPercentage=25
-        run: |
-          docker run --rm \
-            --network dokploy-network \
-            -e SPRING_PROFILES_ACTIVE \
-            -e DATABASE_URL \
-            -e DATABASE_USER \
-            -e DATABASE_PASSWORD \
-            -e MIGRATION_TARGET \
-            -e JAVA_TOOL_OPTIONS \
-            fabbit-server-migrate:latest
+      # - name: Run database migration
+      #   env:
+      #     SPRING_PROFILES_ACTIVE: prod,migrate
+      #     DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+      #     DATABASE_USER: ${{ secrets.PROD_DATABASE_USER }}
+      #     DATABASE_PASSWORD: ${{ secrets.PROD_DATABASE_PASSWORD }}
+      #     MIGRATION_TARGET: all
+      #     JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60 -XX:InitialRAMPercentage=25
+      #   run: |
+      #     docker run --rm \
+      #       --network dokploy-network \
+      #       -e SPRING_PROFILES_ACTIVE \
+      #       -e DATABASE_URL \
+      #       -e DATABASE_USER \
+      #       -e DATABASE_PASSWORD \
+      #       -e MIGRATION_TARGET \
+      #       -e JAVA_TOOL_OPTIONS \
+      #       fabbit-server-migrate:latest
 
       - name: Trigger Dokploy deployment
         env:
